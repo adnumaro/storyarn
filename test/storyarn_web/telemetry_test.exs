@@ -146,7 +146,22 @@ defmodule StoryarnWeb.TelemetryTest do
     test "includes import metrics with privacy-safe tags" do
       metrics = Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :import]))
 
-      assert length(metrics) == 9
+      assert length(metrics) == 10
+
+      assert Enum.any?(metrics, fn metric ->
+               metric.name == [:storyarn, :import, :snapshot, :transition, :count] and
+                 metric.tags == [:format, :source_kind, :parser_version, :import_mode, :state]
+             end)
+
+      assert Enum.all?(
+               Enum.filter(metrics, fn metric ->
+                 Enum.take(metric.name, 4) in [
+                   [:storyarn, :import, :execute, :stop],
+                   [:storyarn, :import, :error, :count]
+                 ]
+               end),
+               &(:import_mode in &1.tags)
+             )
 
       refute Enum.any?(metrics, fn metric ->
                Enum.any?([:filename, :content, :user_id, :project_id], &(&1 in metric.tags))
@@ -293,7 +308,7 @@ defmodule StoryarnWeb.TelemetryTest do
       # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
       # 1 asset trash + 2 storage cleanup retry + 64 snapshot lifecycle +
       # 3 AI expiration + 4 VM = 111
-      assert length(metrics) == 111
+      assert length(metrics) == 112
     end
   end
 

@@ -87,6 +87,8 @@ if bool_env.("NOINDEX") do
 end
 
 if config_env() != :test do
+  config :storyarn, Storyarn.Imports, replace_project_enabled: bool_env.("YARN_IMPORT_REPLACE_ENABLED")
+
   config :storyarn, Storyarn.Versioning.RestorePolicy,
     sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
     flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),

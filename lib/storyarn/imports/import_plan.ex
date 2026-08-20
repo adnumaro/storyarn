@@ -9,7 +9,19 @@ defmodule Storyarn.Imports.ImportPlan do
   alias Storyarn.Imports.ImportIssue
 
   @enforce_keys [:format, :parser_version, :data]
-  defstruct [:format, :parser_version, :data, :source_kind, :attempt_binding, issues: [], metadata: %{}]
+  defstruct [
+    :format,
+    :parser_version,
+    :data,
+    :source_kind,
+    :attempt_binding,
+    # Ephemeral parser metadata used only while creating the durable attempt.
+    # It is intentionally absent from PlanStorage so parser-v5 plans remain
+    # compatible with workers during a rolling deploy.
+    replace_eligible: nil,
+    issues: [],
+    metadata: %{}
+  ]
 
   @type t :: %__MODULE__{
           format: atom(),
@@ -17,6 +29,7 @@ defmodule Storyarn.Imports.ImportPlan do
           data: map(),
           source_kind: atom() | nil,
           attempt_binding: String.t() | nil,
+          replace_eligible: boolean() | nil,
           issues: [ImportIssue.t()],
           metadata: map()
         }

@@ -169,6 +169,11 @@ defmodule Storyarn.Versioning do
     RestorePolicy.enabled?({:project_snapshot_restore, "full"})
   end
 
+  @doc false
+  defdelegate restorable_project_snapshot_identity(snapshot),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :restorable_snapshot_identity
+
   @doc "Returns one durable project-snapshot restore operation."
   defdelegate get_project_snapshot_restore(restore_id),
     to: ProjectSnapshotRestoreLifecycle,

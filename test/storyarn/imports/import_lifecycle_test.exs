@@ -2463,6 +2463,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert metadata == %{
              format: "yarn",
              parser_version: parser_version,
+             import_mode: "unknown",
              phase: "cleanup",
              error_code: "plan_cleanup_failed",
              exception_module: "none"

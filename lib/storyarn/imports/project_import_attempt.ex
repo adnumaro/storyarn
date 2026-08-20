@@ -14,13 +14,15 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
   alias Storyarn.Accounts.User
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Projects.Project
+  alias Storyarn.Versioning.ProjectSnapshot
 
   @statuses ~w(ready queued running retrying completed failed expired)
   @active_statuses ~w(ready queued running retrying)
-  @stages ~w(parsed queued materializing retrying completed failed expired)
+  @stages ~w(parsed awaiting_snapshot queued materializing retrying completed failed expired)
   @formats ~w(yarn storyarn)
   @source_kinds ~w(file archive)
   @strategies ~w(skip overwrite rename)
+  @import_modes ~w(additive replace_project)
 
   schema "project_import_attempts" do
     field :status, :string
@@ -29,6 +31,20 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     field :source_kind, :string
     field :parser_version, :string
     field :conflict_strategy, :string, default: "rename"
+    field :import_mode, :string, default: "additive"
+    field :replace_eligible, :boolean, default: false
+    field :snapshot_request_key, Ecto.UUID
+    field :snapshot_reference_bound_at, :utc_datetime
+    field :snapshot_lifecycle_generation, :integer
+    field :snapshot_accounting_generation, :integer
+    field :snapshot_capture_digest, :string
+    field :snapshot_project_checksum, :string
+    field :snapshot_archive_storage_key, :string
+    field :snapshot_archive_size_bytes, :integer
+    field :snapshot_archive_checksum, :string
+    field :snapshot_manifest_storage_key, :string
+    field :snapshot_manifest_size_bytes, :integer
+    field :snapshot_manifest_checksum, :string
     field :idempotency_key, :string
     field :plan_storage_key, :string
     field :counts, :map, default: %{}
@@ -44,12 +60,14 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     belongs_to :project, Project
     belongs_to :user, User
     belongs_to :plan_cleanup_request, PlanCleanupRequest
+    belongs_to :pre_import_snapshot, ProjectSnapshot
 
     timestamps(type: :utc_datetime)
   end
 
   def active_statuses, do: @active_statuses
   def strategies, do: @strategies
+  def import_modes, do: @import_modes
 
   @doc """
   Whether the attempt may be operated on by the given member.
@@ -77,6 +95,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
       :format,
       :source_kind,
       :parser_version,
+      :replace_eligible,
       :idempotency_key,
       :plan_storage_key,
       :counts,
@@ -97,6 +116,43 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
+  def import_mode_changeset(attempt, "additive") do
+    attempt
+    |> change(
+      import_mode: "additive",
+      snapshot_request_key: nil,
+      pre_import_snapshot_id: nil,
+      snapshot_reference_bound_at: nil,
+      snapshot_lifecycle_generation: nil,
+      snapshot_accounting_generation: nil,
+      snapshot_capture_digest: nil,
+      snapshot_project_checksum: nil,
+      snapshot_archive_storage_key: nil,
+      snapshot_archive_size_bytes: nil,
+      snapshot_archive_checksum: nil,
+      snapshot_manifest_storage_key: nil,
+      snapshot_manifest_size_bytes: nil,
+      snapshot_manifest_checksum: nil
+    )
+    |> validate_common()
+  end
+
+  def import_mode_changeset(attempt, "replace_project") do
+    attempt
+    |> change(
+      import_mode: "replace_project",
+      snapshot_request_key: attempt.snapshot_request_key || Ecto.UUID.generate()
+    )
+    |> validate_common()
+  end
+
+  def import_mode_changeset(attempt, _mode) do
+    attempt
+    |> change()
+    |> add_error(:import_mode, "is invalid")
+    |> validate_common()
+  end
+
   def queued_changeset(attempt, strategy, job_id, expires_at) do
     attempt
     |> change(
@@ -105,6 +161,57 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
       conflict_strategy: strategy,
       oban_job_id: job_id,
       expires_at: expires_at,
+      error_code: nil,
+      error_message: nil,
+      error_report: %{}
+    )
+    |> validate_common()
+  end
+
+  def awaiting_snapshot_changeset(attempt, strategy, job_id, expires_at) do
+    attempt
+    |> change(
+      status: "queued",
+      stage: "awaiting_snapshot",
+      conflict_strategy: strategy,
+      oban_job_id: job_id,
+      pre_import_snapshot_id: nil,
+      snapshot_reference_bound_at: nil,
+      expires_at: expires_at,
+      error_code: nil,
+      error_message: nil,
+      error_report: %{}
+    )
+    |> validate_common()
+  end
+
+  def snapshot_ready_changeset(attempt, snapshot) do
+    attempt
+    |> change(
+      status: "queued",
+      stage: "queued",
+      snapshot_lifecycle_generation: snapshot.lifecycle_generation,
+      snapshot_accounting_generation: snapshot.accounting_generation,
+      snapshot_capture_digest: snapshot.capture_digest,
+      snapshot_project_checksum: snapshot.project_checksum,
+      snapshot_archive_storage_key: snapshot.archive_storage_key,
+      snapshot_archive_size_bytes: snapshot.archive_size_bytes,
+      snapshot_archive_checksum: snapshot.archive_checksum,
+      snapshot_manifest_storage_key: snapshot.manifest_storage_key,
+      snapshot_manifest_size_bytes: snapshot.manifest_size_bytes,
+      snapshot_manifest_checksum: snapshot.manifest_checksum,
+      error_code: nil,
+      error_message: nil,
+      error_report: %{}
+    )
+    |> validate_common()
+  end
+
+  def snapshot_waiting_changeset(attempt) do
+    attempt
+    |> change(
+      status: "queued",
+      stage: "awaiting_snapshot",
       error_code: nil,
       error_message: nil,
       error_report: %{}
@@ -142,6 +249,14 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
   def retrying_changeset(attempt, attrs) do
     attempt
     |> cast(attrs, [:status, :stage, :error_code, :error_message, :error_report, :started_at, :expires_at])
+    |> validate_common()
+  end
+
+  def queued_retry_changeset(attempt, attrs) do
+    attempt
+    |> cast(attrs, [:error_code, :error_message, :error_report, :expires_at])
+    |> put_change(:status, "queued")
+    |> put_change(:stage, attempt.stage)
     |> validate_common()
   end
 
@@ -202,14 +317,24 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_inclusion(:format, @formats)
     |> validate_inclusion(:source_kind, @source_kinds)
     |> validate_inclusion(:conflict_strategy, @strategies)
+    |> validate_inclusion(:import_mode, @import_modes)
     |> validate_length(:parser_version, max: 30)
     |> validate_length(:idempotency_key, is: 64)
     |> validate_length(:plan_storage_key, max: 255)
+    |> validate_length(:snapshot_capture_digest, is: 64)
+    |> validate_length(:snapshot_project_checksum, is: 64)
+    |> validate_length(:snapshot_archive_storage_key, max: 520)
+    |> validate_length(:snapshot_archive_checksum, is: 64)
+    |> validate_length(:snapshot_manifest_storage_key, max: 520)
+    |> validate_length(:snapshot_manifest_checksum, is: 64)
+    |> validate_number(:snapshot_archive_size_bytes, greater_than: 0)
+    |> validate_number(:snapshot_manifest_size_bytes, greater_than: 0)
     |> validate_length(:error_code, max: 100)
     |> foreign_key_constraint(:project_id)
     |> foreign_key_constraint(:user_id)
     |> foreign_key_constraint(:oban_job_id)
     |> foreign_key_constraint(:plan_cleanup_request_id)
+    |> foreign_key_constraint(:pre_import_snapshot_id)
     |> unique_constraint(:idempotency_key,
       name: :project_import_attempts_active_idempotency_unique,
       message: "already has an active import"
@@ -219,6 +344,13 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> check_constraint(:format, name: :project_import_attempts_format_check)
     |> check_constraint(:source_kind, name: :project_import_attempts_source_kind_check)
     |> check_constraint(:conflict_strategy, name: :project_import_attempts_conflict_strategy_check)
+    |> check_constraint(:import_mode, name: :project_import_attempts_import_mode_check)
+    |> check_constraint(:replace_eligible, name: :project_import_attempts_replace_eligibility_check)
+    |> check_constraint(:pre_import_snapshot_id, name: :project_import_attempts_snapshot_identity_check)
+    |> check_constraint(:pre_import_snapshot_id, name: :project_import_attempts_replace_snapshot_check)
+    |> check_constraint(:pre_import_snapshot_id,
+      name: :project_import_attempts_snapshot_reference_state_check
+    )
     |> check_constraint(:status, name: :project_import_attempts_state_check)
     |> check_constraint(:status, name: :project_import_attempts_terminal_privacy_check)
   end

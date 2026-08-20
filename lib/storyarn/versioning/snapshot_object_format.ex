@@ -142,6 +142,25 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   def build_catalog(_assets, _opts), do: {:error, :invalid_asset_collection}
 
   @doc false
+  @spec source_refs_for_assets([Asset.t()]) :: {:ok, %{String.t() => String.t()}} | {:error, term()}
+  def source_refs_for_assets(assets) when is_list(assets) do
+    source_refs =
+      assets
+      |> Enum.sort_by(&{&1.inserted_at, &1.id})
+      |> logical_assets()
+      |> source_refs_for_logical_assets()
+
+    case validate_source_ref_shape(source_refs) do
+      :ok -> {:ok, source_refs}
+      {:error, _reason} = error -> error
+    end
+  rescue
+    _exception -> {:error, :invalid_asset_collection}
+  end
+
+  def source_refs_for_assets(_assets), do: {:error, :invalid_asset_collection}
+
+  @doc false
   @spec validate_source_refs(term(), term()) :: :ok | {:error, term()}
   def validate_source_refs(source_refs, assets) when is_map(source_refs) and is_list(assets) do
     with :ok <- validate_source_ref_shape(source_refs),
@@ -266,7 +285,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   end
 
   defp build_catalog_entries(logical_assets, limits, project_id, source_key_mode, asset_content_mode) do
-    source_refs = Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
+    source_refs = source_refs_for_logical_assets(logical_assets)
 
     logical_assets
     |> Enum.reduce_while({:ok, [], %{}, %{}}, fn {asset, logical_id}, {:ok, entries, blobs, sources} ->
@@ -304,6 +323,10 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
       {:error, _reason} = error ->
         error
     end
+  end
+
+  defp source_refs_for_logical_assets(logical_assets) do
+    Map.new(logical_assets, fn {%Asset{id: id}, logical_id} -> {to_string(id), logical_id} end)
   end
 
   defp catalog_entry(%Asset{} = asset, logical_id, logical_ids, limits, project_id, source_key_mode, asset_content_mode) do

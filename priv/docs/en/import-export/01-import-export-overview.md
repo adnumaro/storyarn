@@ -30,10 +30,17 @@ Custom side-effect commands that do not have a Storyarn equivalent are retained 
 1. Select a `.yarn` or `.zip` file. The maximum upload size is 50 MB.
 2. Click **Validate and preview**. ZIP paths, entry count, expanded size, compression ratio, text encoding, and individual file sizes are checked before extraction.
 3. Review entity counts, shortcut conflicts, and compatibility warnings.
-4. Choose **Skip**, **Overwrite**, or **Keep both** for conflicts, then start the import.
-5. The encrypted import plan runs in the background. You can leave the page and return after it completes.
+4. Keep the default **Add to this project** mode, or choose **Replace narrative content** when the ZIP contains exactly one valid `.yarnproject` file.
+5. For an additive import, choose **Skip**, **Overwrite**, or **Keep both** for conflicts, then start the import.
+6. The encrypted import plan runs in the background. You can leave the page and return after it completes.
 
-Only project members with content-editing permission can prepare or execute an import. Storyarn checks that permission again in the background job. Failed imports use a database transaction, so partial project content is not retained.
+Only project owners can prepare or execute an import. Storyarn checks that permission again in the background job. Failed imports use a database transaction, so partial project content is not retained.
+
+### Replacing an existing project
+
+Whole-project replacement is offered only for an explicit Yarn project ZIP with one valid `.yarnproject` file. A standalone `.yarn` file or an implicit-project ZIP can still be added, but cannot replace the current project.
+
+Before replacement, Storyarn creates a normal, visible full-project snapshot and waits until it is verified and recoverable. Nothing is changed while that snapshot is being built. Storyarn then checks that the project still exactly matches the snapshot and, in one database transaction, moves the active Sheets, Flows, Scenes, and localization content to recoverable trash or archive before importing the Yarn project. Existing assets, project settings, members, snapshots, prior trash, and entity version history are preserved. If the snapshot fails, recovery is unavailable, the project changes after capture, or materialization fails, the replacement stops without retaining partial changes.
 
 ### Current Yarn import boundaries
 
@@ -42,6 +49,7 @@ Only project members with content-editing permission can prepare or execute an i
 - Yarn 3 line groups, node groups and storylet `when` clauses are not converted yet. Files that use them are rejected because flattening their selection rules would change which dialogue is shown. Stateful `once` blocks are rejected for the same reason.
 - Imported speaker sheets contain the inferred name only; enrich them with your project-specific schema after import. Dynamic speaker expressions remain in the dialogue text and are flagged for review instead of being linked to a character sheet.
 - Images, audio, Unity assets, Godot resources, and compiled Yarn bytecode are not imported.
+- Replace mode requires full-project snapshot recovery to be enabled and enough workspace storage to create the recovery point.
 
 ## Export formats
 

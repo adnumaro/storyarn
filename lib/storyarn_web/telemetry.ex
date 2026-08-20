@@ -98,14 +98,17 @@ defmodule StoryarnWeb.Telemetry do
         unit: {:native, :millisecond}
       ),
       sum("storyarn.import.execute.stop.count",
-        tags: [:format, :source_kind, :status, :error_code, :parser_version]
+        tags: [:format, :source_kind, :status, :error_code, :parser_version, :import_mode]
       ),
       summary("storyarn.import.execute.stop.duration",
-        tags: [:format, :source_kind, :status, :error_code, :parser_version],
+        tags: [:format, :source_kind, :status, :error_code, :parser_version, :import_mode],
         unit: {:native, :millisecond}
       ),
       sum("storyarn.import.error.count",
-        tags: [:format, :parser_version, :phase, :error_code, :exception_module]
+        tags: [:format, :parser_version, :import_mode, :phase, :error_code, :exception_module]
+      ),
+      sum("storyarn.import.snapshot.transition.count",
+        tags: [:format, :source_kind, :parser_version, :import_mode, :state]
       ),
       sum("storyarn.import.expiration.stop.expired_count",
         tags: [:status, :error_code]

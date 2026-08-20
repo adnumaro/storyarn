@@ -23,6 +23,7 @@ defmodule Storyarn.Imports.Execution do
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
+  alias Storyarn.Imports.Replacement
   alias Storyarn.Imports.Shared
   alias Storyarn.Imports.Telemetry
   alias Storyarn.Notifications
@@ -37,7 +38,9 @@ defmodule Storyarn.Imports.Execution do
 
   @doc false
   @spec perform_import(pos_integer(), keyword()) ::
-          {:ok, ProjectImportAttempt.t() | :attempt_not_found} | {:error, term()}
+          {:ok, ProjectImportAttempt.t() | :attempt_not_found}
+          | {:snooze, pos_integer()}
+          | {:error, term()}
   def perform_import(attempt_id, opts \\ []) do
     case Shared.get_attempt(attempt_id) do
       nil ->
@@ -67,22 +70,18 @@ defmodule Storyarn.Imports.Execution do
     started_at = System.monotonic_time()
     attempt_number = Keyword.get(opts, :attempt, 1)
     max_attempts = Keyword.get(opts, :max_attempts, 1)
+    plan_load = Keyword.get(opts, :plan_load, &PlanStorage.load/1)
 
     result =
       try do
-        with {:ok, project, _membership} <- authorize_worker(attempt),
-             {:ok, plan} <- PlanStorage.load(attempt.plan_storage_key),
-             :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
-             true <- ReviewDecisions.resolved?(plan),
-             {:ok, outcome} <- begin_and_materialize(attempt, project, plan, opts) do
-          {:materialized, outcome}
-        else
-          false ->
-            handled_execution_error(attempt, :invalid_import_review, attempt_number, max_attempts, started_at, opts)
-
-          {:error, reason} ->
-            handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
-        end
+        execute_import_attempt(
+          attempt,
+          opts,
+          plan_load,
+          attempt_number,
+          max_attempts,
+          started_at
+        )
       rescue
         exception ->
           handled_execution_error(
@@ -108,7 +107,46 @@ defmodule Storyarn.Imports.Execution do
 
     case result do
       {:materialized, outcome} -> finish_import(outcome, started_at, opts)
+      {:waiting, seconds} -> {:snooze, seconds}
       {:handled, handled_result} -> handled_result
+    end
+  end
+
+  defp execute_import_attempt(attempt, opts, plan_load, attempt_number, max_attempts, started_at) do
+    with {:ok, project, _membership} <- authorize_worker(attempt),
+         {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
+         :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
+         true <- ReviewDecisions.resolved?(plan) do
+      continue_import_with_snapshot(attempt, project, plan, opts, attempt_number, max_attempts, started_at)
+    else
+      false ->
+        handled_execution_error(attempt, :invalid_import_review, attempt_number, max_attempts, started_at, opts)
+
+      {:error, reason} ->
+        handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
+    end
+  end
+
+  defp continue_import_with_snapshot(attempt, project, plan, opts, attempt_number, max_attempts, started_at) do
+    case Replacement.ensure_snapshot_ready(attempt, project, opts) do
+      {:ok, ready_attempt} ->
+        materialize_ready_import(ready_attempt, project, plan, opts, attempt_number, max_attempts, started_at)
+
+      {:snooze, seconds} ->
+        {:waiting, seconds}
+
+      {:error, reason} ->
+        handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
+    end
+  end
+
+  defp materialize_ready_import(attempt, project, plan, opts, attempt_number, max_attempts, started_at) do
+    case begin_and_materialize(attempt, project, plan, opts) do
+      {:ok, outcome} ->
+        {:materialized, outcome}
+
+      {:error, reason} ->
+        handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
     end
   end
 
@@ -171,6 +209,7 @@ defmodule Storyarn.Imports.Execution do
       with {:ok, authorized_project, notification_context} <-
              authorize_worker_locked(attempt, attempt.user_id),
            true <- authorized_project.id == project.id,
+           :ok <- Replacement.prelock_snapshot_in_transaction(attempt),
            %ProjectImportAttempt{} = locked_attempt <-
              lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
         begin_locked_attempt(locked_attempt, notification_context)
@@ -213,6 +252,7 @@ defmodule Storyarn.Imports.Execution do
           with {:ok, authorized_project, notification_context} <-
                  authorize_worker_locked(attempt, attempt.user_id),
                true <- authorized_project.id == project.id,
+               :ok <- Replacement.prelock_snapshot_in_transaction(attempt),
                %ProjectImportAttempt{} = locked_attempt <-
                  lock_import_attempt(attempt.id, authorized_project.id, attempt.user_id) do
             materialize_locked_attempt(
@@ -264,9 +304,7 @@ defmodule Storyarn.Imports.Execution do
       expire_locked_import_attempt(attempt, notification_context)
     else
       with {:ok, result} <-
-             Materializer.materialize_locked_project_in_transaction(project, plan,
-               conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
-             ),
+             prepare_and_materialize_project(attempt, project, plan),
            {:ok, notification_outcome} <-
              NotificationDelivery.deliver(attempt, notification_context, "success"),
            :ok <- run_before_attempt_completion(opts),
@@ -279,6 +317,14 @@ defmodule Storyarn.Imports.Execution do
 
   defp materialize_locked_attempt(_attempt, _project, _notification_context, _plan, _opts),
     do: {:error, :import_not_queued}
+
+  defp prepare_and_materialize_project(attempt, project, plan) do
+    with :ok <- Replacement.prepare_project_in_transaction(attempt, project) do
+      Materializer.materialize_locked_project_in_transaction(project, plan,
+        conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
+      )
+    end
+  end
 
   defp expire_locked_import_attempt(attempt, notification_context) do
     # Only accepted statuses reach here, and an accepted import that ran out
@@ -498,6 +544,30 @@ defmodule Storyarn.Imports.Execution do
          {:ok, failed} <- attempt |> ProjectImportAttempt.failed_changeset(attrs) |> Repo.update(),
          :ok <- PlanCleanup.mark_plan_cleanup_pending(failed.plan_storage_key) do
       {:ok, {:failed, failed, notification_outcome}}
+    end
+  end
+
+  # Before replacement reaches materialization, no project content has been
+  # touched. Keep it queued and cancellable across transient plan/snapshot
+  # failures; Oban's durable error list still owns the bounded retry budget.
+  defp transition_execution_error(
+         %{status: "queued", import_mode: "replace_project"} = attempt,
+         _notification_context,
+         code,
+         _message,
+         number,
+         max,
+         false
+       ) do
+    attrs = %{
+      error_code: code,
+      error_message: nil,
+      error_report: %{attempt: number, max_attempts: max},
+      expires_at: PlanCleanup.bounded_plan_retention_deadline(attempt, TimeHelpers.now())
+    }
+
+    with {:ok, queued} <- attempt |> ProjectImportAttempt.queued_retry_changeset(attrs) |> Repo.update() do
+      {:ok, {:retrying, queued}}
     end
   end
 

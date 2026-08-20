@@ -34,7 +34,7 @@ defmodule Storyarn.Imports.ErrorResilienceTest do
     assert reported.error_code == "cache_unavailable"
 
     assert reported |> Map.keys() |> Enum.sort() ==
-             [:error_code, :exception_module, :format, :parser_version, :phase]
+             [:error_code, :exception_module, :format, :import_mode, :parser_version, :phase]
 
     ensure_deduplicator_started()
   end
@@ -53,6 +53,7 @@ defmodule Storyarn.Imports.ErrorResilienceTest do
   defp metadata(error_code) do
     %{
       format: "yarn",
+      import_mode: "replace_project",
       parser_version: "3",
       phase: "parse",
       error_code: error_code,

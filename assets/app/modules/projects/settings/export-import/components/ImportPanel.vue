@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { useLiveUpload, type UploadConfig } from "live_vue";
-import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, Upload } from "@lucide/vue";
-import { computed, toRef } from "vue";
+import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, ShieldCheck, Upload } from "@lucide/vue";
+import { computed, ref, toRef, watch } from "vue";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Label } from "@components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
 import {
@@ -20,7 +21,7 @@ import ImportCompatibilitySummary from "@modules/projects/settings/export-import
 import YarnSpeakerReview from "@modules/projects/settings/export-import/components/YarnSpeakerReview.vue";
 import { useImportResume } from "@modules/projects/settings/export-import/composables/useImportResume";
 import { useYarnImportReview } from "@modules/projects/settings/export-import/composables/useYarnImportReview";
-import type { ImportPanelProps } from "../types";
+import type { ImportMode, ImportPanelProps } from "../types";
 
 const { t } = useI18n();
 
@@ -47,6 +48,59 @@ const review = useYarnImportReview({
   canImport: () => canImport,
   importState: () => importState,
 });
+
+interface ReplacementConfirmationIdentity {
+  attemptId: number;
+  decisionFingerprint: string;
+}
+
+const replaceDialogOpen = ref(false);
+const replacementConfirmationIdentity = ref<ReplacementConfirmationIdentity | null>(null);
+
+// Import state is server-authoritative. Unknown values fail closed to the
+// additive presentation and are still rejected by the event contract.
+const currentImportMode = computed<ImportMode>(() =>
+  importState.importMode === "replace_project" ? "replace_project" : "additive",
+);
+const replacementSelected = computed(() => currentImportMode.value === "replace_project");
+const replacementAvailable = computed(
+  () => importState.replaceEligible && importState.replaceAvailable,
+);
+const awaitingSnapshot = computed(() => importState.stage === "awaiting_snapshot");
+
+function currentReplacementConfirmationIdentity(): ReplacementConfirmationIdentity | null {
+  const attemptId = importState.attemptId;
+  const decisionFingerprint = importState.preview?.import_review_resolution?.decision_fingerprint;
+
+  if (
+    typeof attemptId !== "number" ||
+    !Number.isSafeInteger(attemptId) ||
+    attemptId <= 0 ||
+    typeof decisionFingerprint !== "string" ||
+    decisionFingerprint.length === 0
+  ) {
+    return null;
+  }
+
+  return { attemptId, decisionFingerprint };
+}
+
+function sameReplacementConfirmationIdentity(
+  left: ReplacementConfirmationIdentity | null,
+  right: ReplacementConfirmationIdentity | null,
+) {
+  return (
+    left !== null &&
+    right !== null &&
+    left.attemptId === right.attemptId &&
+    left.decisionFingerprint === right.decisionFingerprint
+  );
+}
+
+function closeReplacementDialog() {
+  replaceDialogOpen.value = false;
+  replacementConfirmationIdentity.value = null;
+}
 
 const upload = uploadConfig
   ? useLiveUpload(
@@ -93,9 +147,28 @@ const showAcknowledgement = computed(
     !review.matchesResolution.value,
 );
 
+const RECOVERABLE_PREFLIGHT_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
+  import_replace_not_eligible: "project_settings.import.errors.preflight_not_eligible",
+  invalid_import_snapshot_request: "project_settings.import.errors.preflight_snapshot_request",
+  project_snapshot_restore_disabled: "project_settings.import.errors.preflight_replace_unavailable",
+  replace_import_confirmation_required: "project_settings.import.errors.preflight_reconfirm",
+  stale_import_mode: "project_settings.import.errors.preflight_mode_changed",
+};
+
+const preflightErrorMessage = computed(() => {
+  if (importState.step !== "preview" || !importState.errorCode) return null;
+
+  const key = RECOVERABLE_PREFLIGHT_ERROR_KEYS_BY_CODE[importState.errorCode];
+  return key ? t(key) : null;
+});
+
 // Server rejections carry coarse reason codes; each maps to catalog copy so
-// raw codes never render as UI text.
+// raw codes never render as UI text. Recoverable preflight failures are
+// projected by the server on the preview itself, so avoid a second generic
+// transport banner for the same failure.
 const reviewErrorMessage = computed(() => {
+  if (preflightErrorMessage.value) return null;
+
   const failure = review.transportError.value;
   if (!failure) return null;
 
@@ -146,7 +219,15 @@ const INVALID_FILE_ERROR_CODES = new Set([
 const TERMINAL_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   import_cancelled: "project_settings.import.errors.cancelled",
   import_expired: "project_settings.import.errors.expired",
+  invalid_import_snapshot_identity: "project_settings.import.errors.snapshot_failed",
+  pre_import_snapshot_capacity_unavailable: "project_settings.import.errors.snapshot_failed",
+  pre_import_snapshot_request_failed: "project_settings.import.errors.snapshot_failed",
+  pre_import_snapshot_unavailable: "project_settings.import.errors.snapshot_failed",
+  pre_import_snapshot_verification_failed: "project_settings.import.errors.snapshot_failed",
+  import_project_replacement_failed: "project_settings.import.errors.replacement_failed",
+  project_changed_since_import_snapshot: "project_settings.import.errors.project_changed",
   project_already_has_main_flow: "project_settings.import.errors.project_has_main_flow",
+  project_snapshot_restore_disabled: "project_settings.import.errors.replace_unavailable",
   duplicate_yarn_node_title: "project_settings.import.errors.unsupported_narrative",
   import_plan_has_errors: "project_settings.import.errors.unsupported_narrative",
   unauthorized: "project_settings.import.errors.unauthorized",
@@ -177,6 +258,51 @@ function setStrategy(strategy: string) {
   if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
 
   live.pushEvent("set_strategy", { attempt_id: attemptId, strategy });
+}
+
+function setImportMode(importMode: unknown) {
+  const attemptId = importState.attemptId;
+  if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
+  if (importMode !== "additive" && importMode !== "replace_project") return;
+  if (importMode === "replace_project" && !replacementAvailable.value) return;
+
+  live.pushEvent("set_import_mode", { attempt_id: attemptId, import_mode: importMode });
+}
+
+function startImport() {
+  if (!review.canExecute.value || review.pendingOperation.value !== null) return;
+
+  if (replacementSelected.value) {
+    if (!replacementAvailable.value) return;
+
+    const identity = currentReplacementConfirmationIdentity();
+    if (!identity) return;
+
+    replacementConfirmationIdentity.value = identity;
+    replaceDialogOpen.value = true;
+    return;
+  }
+
+  review.execute(false);
+}
+
+function confirmReplacement() {
+  // Confirmation authorizes exactly the attempt and validated review that
+  // opened the dialog. Cross-tab recovery or a new review resolution must
+  // never inherit an already-open destructive confirmation.
+  const openedFor = replacementConfirmationIdentity.value;
+  const current = currentReplacementConfirmationIdentity();
+
+  if (
+    !replacementSelected.value ||
+    !replacementAvailable.value ||
+    !sameReplacementConfirmationIdentity(openedFor, current)
+  ) {
+    closeReplacementDialog();
+    return;
+  }
+
+  review.execute(true);
 }
 
 function resetImport() {
@@ -210,6 +336,37 @@ function formatFileSize(bytes: number) {
   if (bytes >= 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${bytes} B`;
 }
+
+watch(
+  () =>
+    [
+      importState.attemptId,
+      importState.preview?.import_review_resolution?.decision_fingerprint,
+      importState.step,
+      importState.importMode,
+      importState.replaceEligible,
+      importState.replaceAvailable,
+    ] as const,
+  () => {
+    const identityStillMatches = sameReplacementConfirmationIdentity(
+      replacementConfirmationIdentity.value,
+      currentReplacementConfirmationIdentity(),
+    );
+
+    if (
+      importState.step !== "preview" ||
+      !replacementSelected.value ||
+      !replacementAvailable.value ||
+      (replaceDialogOpen.value && !identityStillMatches)
+    ) {
+      closeReplacementDialog();
+    }
+  },
+);
+
+watch(replaceDialogOpen, (open) => {
+  if (!open) replacementConfirmationIdentity.value = null;
+});
 </script>
 
 <template>
@@ -283,10 +440,88 @@ function formatFileSize(bytes: number) {
           :warning-codes="importState.warningCodes ?? []"
         />
 
+        <div
+          v-if="importState.replaceEligible"
+          data-testid="yarn-import-mode-selector"
+          class="space-y-3 rounded-xl border border-border bg-muted/30 p-4"
+        >
+          <div class="space-y-1">
+            <Label id="yarn-import-mode-label" class="text-sm font-medium">
+              {{ $t("project_settings.import.mode_title") }}
+            </Label>
+            <p class="text-xs text-muted-foreground">
+              {{ $t("project_settings.import.mode_description") }}
+            </p>
+          </div>
+
+          <RadioGroup
+            :model-value="currentImportMode"
+            aria-labelledby="yarn-import-mode-label"
+            class="grid gap-2"
+            @update:model-value="setImportMode"
+          >
+            <label
+              data-testid="yarn-import-mode-additive"
+              class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/40"
+            >
+              <RadioGroupItem value="additive" class="mt-0.5" />
+              <span class="space-y-1">
+                <span class="block text-sm font-medium">
+                  {{ $t("project_settings.import.mode_additive") }}
+                </span>
+                <span class="block text-xs leading-5 text-muted-foreground">
+                  {{ $t("project_settings.import.mode_additive_description") }}
+                </span>
+              </span>
+            </label>
+
+            <label
+              data-testid="yarn-import-mode-replace"
+              class="flex items-start gap-3 rounded-lg border bg-background p-3 transition-colors"
+              :class="[
+                replacementAvailable
+                  ? 'cursor-pointer hover:border-destructive/50'
+                  : 'cursor-not-allowed opacity-60',
+                replacementSelected && replacementAvailable
+                  ? 'border-destructive/50 bg-destructive/5'
+                  : 'border-border',
+              ]"
+            >
+              <RadioGroupItem
+                value="replace_project"
+                class="mt-0.5"
+                :disabled="!replacementAvailable"
+                aria-describedby="yarn-import-mode-replace-description"
+              />
+              <span class="space-y-1">
+                <span class="flex items-center gap-1.5 text-sm font-medium">
+                  <ShieldCheck class="size-4 text-destructive" aria-hidden="true" />
+                  {{ $t("project_settings.import.mode_replace") }}
+                </span>
+                <span
+                  id="yarn-import-mode-replace-description"
+                  class="block text-xs leading-5 text-muted-foreground"
+                >
+                  {{ $t("project_settings.import.mode_replace_description") }}
+                </span>
+              </span>
+            </label>
+          </RadioGroup>
+
+          <p
+            v-if="!importState.replaceAvailable"
+            data-testid="yarn-import-replace-unavailable"
+            class="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
+          >
+            <Lock class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+            {{ $t("project_settings.import.mode_replace_unavailable") }}
+          </p>
+        </div>
+
         <YarnSpeakerReview :review="review" />
 
         <!-- Conflicts -->
-        <div v-if="importState.preview?.has_conflicts" class="space-y-2">
+        <div v-if="importState.preview?.has_conflicts && !replacementSelected" class="space-y-2">
           <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
             {{ $t("project_settings.import.conflicts_title") }}
           </h4>
@@ -356,14 +591,30 @@ function formatFileSize(bytes: number) {
             id="yarn-import-confirm"
             size="sm"
             :disabled="!review.canExecute.value || review.pendingOperation.value !== null"
-            @click="review.execute"
+            @click="startImport"
           >
             <Upload class="size-4" />
-            {{ $t("project_settings.import.import_button") }}
+            {{
+              $t(
+                replacementSelected
+                  ? "project_settings.import.replace_button"
+                  : "project_settings.import.import_button",
+              )
+            }}
           </Button>
           <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
             {{ $t("project_settings.import.cancel") }}
           </Button>
+        </div>
+
+        <div
+          v-if="preflightErrorMessage"
+          data-testid="yarn-import-preflight-error"
+          role="alert"
+          class="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground"
+        >
+          <AlertTriangle class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <span>{{ preflightErrorMessage }}</span>
         </div>
 
         <div
@@ -380,6 +631,21 @@ function formatFileSize(bytes: number) {
       <!-- Step: Queued / running -->
       <div v-if="importState.step === 'queued'" class="space-y-3">
         <div
+          v-if="awaitingSnapshot"
+          class="flex items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-foreground"
+          data-testid="yarn-import-awaiting-snapshot"
+        >
+          <ShieldCheck class="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <div>
+            <p class="font-medium">{{ $t("project_settings.import.snapshot_preparing") }}</p>
+            <p class="text-xs leading-5 opacity-75">
+              {{ $t("project_settings.import.snapshot_preparing_description") }}
+            </p>
+          </div>
+        </div>
+
+        <div
+          v-else
           class="flex items-start gap-3 rounded-lg border border-sky-500/25 bg-sky-500/10 p-3 text-sm text-foreground"
           data-testid="yarn-import-processing"
         >
@@ -409,7 +675,15 @@ function formatFileSize(bytes: number) {
           class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
         >
           <CheckCircle class="size-5 shrink-0" />
-          <span>{{ $t("project_settings.import.success") }}</span>
+          <span>
+            {{
+              $t(
+                replacementSelected
+                  ? "project_settings.import.replace_success"
+                  : "project_settings.import.success",
+              )
+            }}
+          </span>
         </div>
 
         <Table v-if="entityCountRows.length">
@@ -458,5 +732,16 @@ function formatFileSize(bytes: number) {
         <span>{{ $t("project_settings.import.no_permission") }}</span>
       </div>
     </template>
+
+    <ConfirmDialog
+      v-model:open="replaceDialogOpen"
+      :title="$t('project_settings.import.replace_confirm_title')"
+      :description="$t('project_settings.import.replace_confirm_description')"
+      :confirm-text="$t('project_settings.import.replace_confirm_action')"
+      :cancel-text="$t('project_settings.import.replace_confirm_cancel')"
+      variant="destructive"
+      :icon="AlertTriangle"
+      @confirm="confirmReplacement"
+    />
   </section>
 </template>

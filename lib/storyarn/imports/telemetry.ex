@@ -35,9 +35,24 @@ defmodule Storyarn.Imports.Telemetry do
       format: attempt.format,
       source_kind: attempt.source_kind,
       parser_version: attempt.parser_version,
+      import_mode: attempt.import_mode,
       status: status,
       error_code: error_code
     }
+  end
+
+  def emit_snapshot_transition(attempt, state) when state in ["awaiting_snapshot", "ready"] do
+    :telemetry.execute(
+      [:storyarn, :import, :snapshot, :transition],
+      %{count: 1},
+      %{
+        format: attempt.format,
+        source_kind: attempt.source_kind,
+        parser_version: attempt.parser_version,
+        import_mode: attempt.import_mode,
+        state: state
+      }
+    )
   end
 
   def report_prepare_error(reason, metadata, started_at) do

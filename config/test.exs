@@ -141,6 +141,7 @@ config :storyarn, Storyarn.AI.Settlement, StoryarnTest.AI.FakeSettlement
 # Slice-2 contract tests use a deterministic provider and non-financial fake
 # settlement. Production keeps every one of these boundaries unavailable.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: [StoryarnTest.AI.ContractTask]
+config :storyarn, Storyarn.Imports, replace_project_enabled: true
 
 # In test we don't send emails
 config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test

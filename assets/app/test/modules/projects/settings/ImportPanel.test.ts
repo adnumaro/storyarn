@@ -1,5 +1,6 @@
 import { mount } from "@vue/test-utils";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import type { ImportState } from "../../../../modules/projects/settings/export-import/types";
 import { createMockLive, setTestLocale } from "../../../setup";
 
@@ -18,12 +19,37 @@ const { default: ImportPanel } =
 function uploadState(): ImportState {
   return {
     step: "upload",
+    stage: null,
     attemptId: null,
     preview: null,
     conflictStrategy: "rename",
+    importMode: "additive",
+    replaceEligible: false,
+    replaceAvailable: true,
     warningCodes: [],
     status: null,
   };
+}
+
+function stageForStatus(
+  status: NonNullable<ImportState["status"]>,
+): NonNullable<ImportState["stage"]> {
+  switch (status) {
+    case "ready":
+      return "parsed";
+    case "running":
+      return "materializing";
+    case "completed":
+      return "completed";
+    case "failed":
+      return "failed";
+    case "expired":
+      return "expired";
+    case "queued":
+      return "queued";
+    case "retrying":
+      return "retrying";
+  }
 }
 
 function attemptState(
@@ -33,6 +59,7 @@ function attemptState(
 ): ImportState {
   return {
     step,
+    stage: stageForStatus(status),
     attemptId,
     preview: {
       counts: { flows: 2, nodes: 4 },
@@ -40,6 +67,9 @@ function attemptState(
       has_conflicts: false,
     },
     conflictStrategy: "rename",
+    importMode: "additive",
+    replaceEligible: false,
+    replaceAvailable: true,
     warningCodes: [],
     status,
   };
@@ -143,6 +173,18 @@ function resolvedPreviewState(): ImportState {
   };
 
   return state;
+}
+
+function replacementPreviewState(
+  importMode: ImportState["importMode"] = "replace_project",
+  replaceAvailable = true,
+): ImportState {
+  return {
+    ...resolvedPreviewState(),
+    importMode,
+    replaceEligible: true,
+    replaceAvailable,
+  };
 }
 
 const RESUME_STORAGE_KEY = "storyarn:project-import:opaque-resume-token";
@@ -1118,6 +1160,198 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("offers replacement only for an eligible Yarn project and explains unavailable safety", () => {
+    const ineligible = mountPanel(resolvedPreviewState());
+    expect(ineligible.find('[data-testid="yarn-import-mode-selector"]').exists()).toBe(false);
+    ineligible.unmount();
+
+    const unavailable = mountPanel(replacementPreviewState("additive", false));
+    const selector = unavailable.get('[data-testid="yarn-import-mode-selector"]');
+    const replaceRadio = selector.get('[data-testid="yarn-import-mode-replace"] [role="radio"]');
+
+    expect(selector.text()).toContain("How should this project be imported?");
+    expect(replaceRadio.attributes("disabled")).toBeDefined();
+    expect(unavailable.get('[data-testid="yarn-import-replace-unavailable"]').text()).toContain(
+      "temporarily unavailable",
+    );
+
+    unavailable.unmount();
+  });
+
+  it("persists an explicit replacement choice without exposing source metadata", async () => {
+    const wrapper = mountPanel(replacementPreviewState("additive"));
+
+    await wrapper.get('[data-testid="yarn-import-mode-replace"] [role="radio"]').trigger("click");
+
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("set_import_mode", {
+      attempt_id: 42,
+      import_mode: "replace_project",
+    });
+    expect(reviewEventCalls("set_import_mode")[0]?.[1]).toEqual({
+      attempt_id: 42,
+      import_mode: "replace_project",
+    });
+
+    wrapper.unmount();
+  });
+
+  it("hides additive conflict controls when replacement is selected", () => {
+    const state = replacementPreviewState();
+    if (!state.preview) throw new Error("preview fixture missing");
+    state.preview.has_conflicts = true;
+    state.preview.conflicts = { sheets: ["alice"] };
+
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.find("#yarn-import-conflict-strategy-label").exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("alice");
+
+    wrapper.unmount();
+  });
+
+  it("requires destructive confirmation and binds it to the replacement execution", async () => {
+    const wrapper = mountPanel(replacementPreviewState());
+
+    await wrapper.get("#yarn-import-confirm").trigger("click");
+
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("description")).toContain("If the snapshot cannot be prepared");
+
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "execute_import",
+      {
+        attempt_id: 42,
+        review_confirmation_fingerprint: "resolution-fingerprint",
+        import_mode: "replace_project",
+        replace_acknowledged: true,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+
+    wrapper.unmount();
+  });
+
+  it("closes replacement confirmation when cross-tab recovery swaps the attempt", async () => {
+    const wrapper = mountPanel(replacementPreviewState());
+
+    await wrapper.get("#yarn-import-confirm").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+
+    const newerAttempt = replacementPreviewState();
+    newerAttempt.attemptId = 43;
+    await wrapper.setProps({ importState: newerAttempt });
+
+    expect(confirmation.props("open")).toBe(false);
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
+
+    wrapper.unmount();
+  });
+
+  it("closes replacement confirmation when the validated review fingerprint changes", async () => {
+    const wrapper = mountPanel(replacementPreviewState());
+
+    await wrapper.get("#yarn-import-confirm").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+
+    const changedReview = replacementPreviewState();
+    if (!changedReview.preview?.import_review_resolution) {
+      throw new Error("review resolution fixture missing");
+    }
+    changedReview.preview.import_review_resolution.decision_fingerprint = "new-resolution";
+    await wrapper.setProps({ importState: changedReview });
+
+    expect(confirmation.props("open")).toBe(false);
+    confirmation.vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
+
+    wrapper.unmount();
+  });
+
+  it.each([
+    ["stale_import_mode", "changed in another tab"],
+    ["replace_import_confirmation_required", "confirmation is no longer current"],
+    ["project_snapshot_restore_disabled", "replacement is no longer available"],
+    ["import_replace_not_eligible", "is not eligible to replace"],
+    ["invalid_import_snapshot_request", "cannot create a recovery snapshot"],
+  ])("keeps recoverable preflight error %s on the preview", (errorCode, expectedCopy) => {
+    const state = replacementPreviewState();
+    state.errorCode = errorCode;
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.get('[data-testid="yarn-import-preflight-error"]').text()).toContain(
+      expectedCopy,
+    );
+    expect(wrapper.find('[data-testid="yarn-import-terminal-error"]').exists()).toBe(false);
+    expect(wrapper.find("#yarn-import-confirm").exists()).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it("uses the preview error instead of a generic transport error for recoverable preflight", async () => {
+    const wrapper = mountPanel(replacementPreviewState());
+
+    await wrapper.get("#yarn-import-confirm").trigger("click");
+    wrapper.getComponent(ConfirmDialog).vm.$emit("confirm");
+    await wrapper.vm.$nextTick();
+
+    reviewEventCalls("execute_import")[0]?.[2]?.({ ok: false, reason: "recoverable" });
+
+    const recovered = replacementPreviewState("additive");
+    recovered.errorCode = "stale_import_mode";
+    await wrapper.setProps({ importState: recovered });
+
+    expect(wrapper.get('[data-testid="yarn-import-preflight-error"]').text()).toContain(
+      "changed in another tab",
+    );
+    expect(wrapper.find('[data-testid="yarn-import-review-error"]').exists()).toBe(false);
+
+    wrapper.unmount();
+  });
+
+  it("renders snapshot preparation as recoverable background work", () => {
+    const state = {
+      ...attemptState("queued"),
+      stage: "awaiting_snapshot",
+      importMode: "replace_project",
+      replaceEligible: true,
+      replaceAvailable: true,
+    } satisfies ImportState;
+    const wrapper = mountPanel(state);
+
+    const notice = wrapper.get('[data-testid="yarn-import-awaiting-snapshot"]');
+    expect(notice.text()).toContain("Creating a recovery snapshot");
+    expect(notice.text()).toContain("Nothing changes until the snapshot is complete and verified");
+    expect(wrapper.find('[data-testid="yarn-import-processing"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="yarn-import-reset"]').exists()).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it("renders the replacement safety contract in Spanish", () => {
+    setTestLocale("es");
+    const wrapper = mountPanel(replacementPreviewState());
+
+    expect(wrapper.get('[data-testid="yarn-import-mode-replace"]').text()).toContain(
+      "Reemplazar el contenido narrativo",
+    );
+    expect(wrapper.get("#yarn-import-confirm").text()).toContain(
+      "Reemplazar contenido del proyecto",
+    );
+
+    wrapper.unmount();
+  });
+
   it("does not apply heuristic suggestions and debounces partial draft saves", async () => {
     const wrapper = mountPanel(reviewedPreviewState());
 
@@ -1438,6 +1672,8 @@ describe("ImportPanel resume state", () => {
       {
         attempt_id: 42,
         review_confirmation_fingerprint: "resolution-fingerprint",
+        import_mode: "additive",
+        replace_acknowledged: false,
       },
       expect.any(Function),
       expect.any(Function),

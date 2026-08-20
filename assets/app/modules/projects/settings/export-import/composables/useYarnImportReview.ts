@@ -75,7 +75,7 @@ export interface YarnImportReviewApi {
   setAcknowledged: (value: boolean | "indeterminate") => void;
   aliasCanMap: (alias: YarnSpeakerAliasReview) => boolean;
   validate: () => void;
-  execute: () => void;
+  execute: (replaceAcknowledged?: boolean) => void;
   clearSaveTimer: () => void;
 }
 
@@ -682,7 +682,11 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       allDecisionsSelected.value &&
       !hasCompatibilityErrors.value &&
       matchesResolution.value &&
-      nonEmptyString(resolution.value?.decision_fingerprint),
+      nonEmptyString(resolution.value?.decision_fingerprint) &&
+      (importState().importMode === "additive" ||
+        (importState().importMode === "replace_project" &&
+          importState().replaceEligible &&
+          importState().replaceAvailable)),
   );
 
   const pendingOperation = ref<"validate" | "execute" | null>(null);
@@ -895,9 +899,13 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
     );
   }
 
-  function execute() {
+  function execute(replaceAcknowledged = false) {
     const current = resolution.value;
     if (!canExecute.value || !current || pendingOperation.value !== null) return;
+
+    const importMode = importState().importMode;
+    if (importMode !== "additive" && importMode !== "replace_project") return;
+    if (importMode === "replace_project" && !replaceAcknowledged) return;
 
     const sentAttemptId = importState().attemptId;
     const token = beginOperation("execute");
@@ -907,12 +915,26 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       {
         attempt_id: sentAttemptId,
         review_confirmation_fingerprint: current.decision_fingerprint,
+        import_mode: importMode,
+        replace_acknowledged: replaceAcknowledged,
       },
       (reply) => {
         const settled = settleOperation(token);
 
         if (reply.ok === true) {
           if (token === operationToken && importState().attemptId === sentAttemptId) {
+            transportError.value = null;
+          }
+
+          return;
+        }
+
+        // The LiveView keeps recoverable replacement preflight failures on
+        // the preview and projects a stable error code through props. That
+        // localized, actionable message owns the UI; a generic transport
+        // banner would incorrectly make the same attempt look unusable.
+        if (reply.reason === "recoverable") {
+          if (settled && token === operationToken && importState().attemptId === sentAttemptId) {
             transportError.value = null;
           }
 

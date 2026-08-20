@@ -182,6 +182,12 @@ config :storyarn, Storyarn.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 
+# Enabling exact snapshot restore is necessary but not sufficient for Yarn
+# replacement imports. Keep their producer disabled during rolling deploys so
+# an older imports worker can never consume a destructive-mode job it does not
+# understand. Operators enable this only after every imports worker is current.
+config :storyarn, Storyarn.Imports, replace_project_enabled: false
+
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)

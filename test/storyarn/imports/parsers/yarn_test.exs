@@ -53,6 +53,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       assert plan.parser_version == "5"
       assert plan.source_kind == :file
+      refute plan.replace_eligible
       assert plan.metadata.flow_count == 2
       assert plan.metadata.variable_count == 2
 

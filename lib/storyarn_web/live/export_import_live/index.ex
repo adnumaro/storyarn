@@ -12,6 +12,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @all_sections ~w(sheets flows scenes localization)a
   @archive_export_formats ~w(ink yarn godot unreal articy)a
   @max_safe_import_attempt_id 9_007_199_254_740_991
+  @recoverable_import_preflight_errors [
+    :import_replace_not_eligible,
+    :invalid_import_snapshot_request,
+    :project_snapshot_restore_disabled,
+    :replace_import_confirmation_required,
+    :stale_import_mode
+  ]
 
   defguardp valid_import_attempt_id(attempt_id)
             when is_integer(attempt_id) and attempt_id > 0 and
@@ -147,10 +154,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp serialize_import_state(state) do
     %{
       step: state.step,
+      stage: state.stage,
       attemptId: state.attempt_id,
       preview: state.preview,
       errorCode: state.error_code,
       conflictStrategy: state.conflict_strategy,
+      importMode: state.import_mode,
+      replaceEligible: state.replace_eligible,
+      replaceAvailable: Imports.replace_project_available?(),
       warningCodes: state.warning_codes,
       status: state.status
     }
@@ -336,6 +347,21 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("set_strategy", _params, socket), do: {:noreply, socket}
 
+  def handle_event("set_import_mode", %{"attempt_id" => attempt_id, "import_mode" => import_mode}, socket)
+      when valid_import_attempt_id(attempt_id) and import_mode in ~w(additive replace_project) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      case socket.assigns.import_state do
+        %{step: "preview", attempt_id: ^attempt_id} ->
+          update_import_mode(socket, attempt_id, import_mode)
+
+        _stale_state ->
+          {:noreply, socket}
+      end
+    end)
+  end
+
+  def handle_event("set_import_mode", _params, socket), do: {:noreply, socket}
+
   def handle_event("save_import_review", %{"attempt_id" => attempt_id, "review_decisions" => decisions}, socket)
       when valid_import_attempt_id(attempt_id) and is_list(decisions) do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
@@ -370,16 +396,29 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event(
         "execute_import",
+        %{
+          "attempt_id" => attempt_id,
+          "review_confirmation_fingerprint" => fingerprint,
+          "import_mode" => import_mode,
+          "replace_acknowledged" => replace_acknowledged?
+        },
+        socket
+      )
+      when valid_import_attempt_id(attempt_id) and is_binary(fingerprint) and import_mode in ~w(additive replace_project) and
+             is_boolean(replace_acknowledged?) do
+    execute_import_event(socket, attempt_id, fingerprint, import_mode, replace_acknowledged?)
+  end
+
+  # A tab loaded before this deployment can only know the additive workflow.
+  # Keeping that in-flight action working is safe: a durable replacement mode
+  # still fails the context's exact mode and acknowledgement preflight.
+  def handle_event(
+        "execute_import",
         %{"attempt_id" => attempt_id, "review_confirmation_fingerprint" => fingerprint},
         socket
       )
       when valid_import_attempt_id(attempt_id) and is_binary(fingerprint) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      case current_import_state(socket, attempt_id) do
-        {:ok, state} -> execute_ready_import(socket, state, fingerprint)
-        :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
-      end
-    end)
+    execute_import_event(socket, attempt_id, fingerprint, "additive", false)
   end
 
   def handle_event("execute_import", _params, socket) do
@@ -512,6 +551,24 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Import
   # ===========================================================================
 
+  defp execute_import_event(socket, attempt_id, fingerprint, import_mode, replace_acknowledged?) do
+    Authorize.with_authorization(socket, :manage_project, fn socket ->
+      case current_import_state(socket, attempt_id) do
+        {:ok, state} ->
+          execute_ready_import(
+            socket,
+            state,
+            fingerprint,
+            import_mode,
+            replace_acknowledged?
+          )
+
+        :stale ->
+          {:reply, %{ok: false, reason: "stale"}, socket}
+      end
+    end)
+  end
+
   defp current_import_state(socket, attempt_id) do
     case socket.assigns.import_state do
       %{attempt_id: ^attempt_id} = state -> {:ok, state}
@@ -599,6 +656,21 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
+  defp update_import_mode(socket, attempt_id, import_mode) do
+    case Imports.update_import_mode(socket.assigns.current_scope, attempt_id, import_mode) do
+      {:ok, attempt} ->
+        {:noreply, assign_import_attempt(socket, attempt)}
+
+      {:error, _reason} ->
+        {:noreply,
+         reconcile_failed_import_mutation(
+           socket,
+           attempt_id,
+           &Function.identity/1
+         )}
+    end
+  end
+
   # Every mutation starts from an exact attempt id, but another tab can move
   # that row after the client rendered its ready snapshot. On any failure,
   # adopt a durable non-ready state before projecting a local error. Otherwise
@@ -618,6 +690,23 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
+  defp reconcile_recoverable_import_preflight(socket, attempt_id, reason) do
+    case load_project_import_attempt(socket, attempt_id) do
+      {:ok, %ProjectImportAttempt{status: "ready"} = attempt} ->
+        socket
+        |> assign_import_attempt(attempt)
+        |> assign_import_preview_error(reason)
+
+      {:ok, attempt} ->
+        socket
+        |> assign_import_attempt(attempt)
+        |> maybe_recover_active_after_terminal(attempt)
+
+      :unavailable ->
+        assign_import_preview_error(socket, reason)
+    end
+  end
+
   defp load_project_import_attempt(socket, attempt_id) do
     case Imports.get_import_attempt(socket.assigns.current_scope, attempt_id) do
       {:ok, %ProjectImportAttempt{project_id: project_id} = attempt}
@@ -632,11 +721,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp empty_import_state do
     %{
       step: "upload",
+      stage: nil,
       attempt_id: nil,
       preview: nil,
       error: nil,
       error_code: nil,
       conflict_strategy: "rename",
+      import_mode: "additive",
+      replace_eligible: false,
       warning_codes: [],
       status: nil
     }
@@ -664,13 +756,27 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
-  defp execute_ready_import(socket, %{step: "preview", attempt_id: attempt_id} = state, confirmation_fingerprint)
+  defp execute_ready_import(
+         socket,
+         %{step: "preview", attempt_id: attempt_id} = state,
+         confirmation_fingerprint,
+         import_mode,
+         replace_acknowledged?
+       )
        when is_integer(attempt_id) do
     case Imports.enqueue_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy,
-           review_confirmation_fingerprint: confirmation_fingerprint
+           review_confirmation_fingerprint: confirmation_fingerprint,
+           import_mode: import_mode,
+           replace_acknowledged: replace_acknowledged?
          ) do
       {:ok, attempt} ->
         {:reply, %{ok: true}, assign_import_attempt(socket, attempt)}
+
+      {:error, reason} when reason in @recoverable_import_preflight_errors ->
+        # These failures happen before queue acceptance and leave the durable
+        # attempt ready. Keep the review usable, adopt any mode changed by a
+        # concurrent tab, and expose only a stable code for localized copy.
+        {:reply, %{ok: false, reason: "recoverable"}, reconcile_recoverable_import_preflight(socket, attempt_id, reason)}
 
       {:error, reason} when reason in [:import_review_required, :invalid_import_review_selection] ->
         # The stored review no longer authorizes this fingerprint; the client
@@ -690,7 +796,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     end
   end
 
-  defp execute_ready_import(socket, _state, _confirmation_fingerprint) do
+  defp execute_ready_import(socket, _state, _confirmation_fingerprint, _import_mode, _replace_acknowledged?) do
     {:reply, %{ok: false, reason: "stale"}, socket}
   end
 
@@ -806,6 +912,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         # no way to clear the attempt, resurfacing the failure every mount.
         assign(socket, :import_state, %{
           step: "error",
+          stage: attempt.stage,
           attempt_id: attempt.id,
           preview: nil,
           error:
@@ -815,6 +922,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
             ),
           error_code: import_error_code(reason),
           conflict_strategy: attempt.conflict_strategy || "rename",
+          import_mode: attempt.import_mode || "additive",
+          replace_eligible: attempt.replace_eligible == true,
           warning_codes: attempt.warning_codes || [],
           status: attempt.status
         })
@@ -839,11 +948,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
     state = %{
       step: step,
+      stage: attempt.stage,
       attempt_id: attempt.id,
       preview: preview,
       error: if(step == "error", do: import_attempt_error(attempt)),
       error_code: attempt.error_code,
       conflict_strategy: attempt.conflict_strategy || "rename",
+      import_mode: attempt.import_mode || "additive",
+      replace_eligible: attempt.replace_eligible == true,
       warning_codes: attempt.warning_codes || [],
       status: attempt.status
     }
@@ -996,6 +1108,17 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         error: import_error_message(reason),
         error_code: import_error_code(reason),
         status: status
+    }
+
+    assign(socket, :import_state, state)
+  end
+
+  defp assign_import_preview_error(socket, reason) do
+    state = %{
+      socket.assigns.import_state
+      | step: "preview",
+        error: nil,
+        error_code: import_error_code(reason)
     }
 
     assign(socket, :import_state, state)

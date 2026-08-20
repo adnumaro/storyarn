@@ -23,11 +23,15 @@ defmodule Storyarn.Imports.SourceBundle do
   @allowed_extensions MapSet.new([".yarn", ".yarnproject", ".csv", ".json"])
   @archive_extensions MapSet.new([".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"])
 
-  @enforce_keys [:kind, :files]
-  defstruct [:kind, :files]
+  @enforce_keys [:kind, :files, :replace_eligible]
+  defstruct [:kind, :files, :replace_eligible]
 
   @type source_file :: %{alias: String.t(), extension: String.t(), content: binary()}
-  @type t :: %__MODULE__{kind: :file | :archive, files: [source_file()]}
+  @type t :: %__MODULE__{
+          kind: :file | :archive,
+          files: [source_file()],
+          replace_eligible: boolean()
+        }
 
   @spec open(String.t(), binary()) :: {:ok, t()} | {:error, atom()}
   def open(filename, binary) when is_binary(filename) and is_binary(binary) do
@@ -59,7 +63,8 @@ defmodule Storyarn.Imports.SourceBundle do
       {:ok,
        %__MODULE__{
          kind: :file,
-         files: [%{alias: "source_1", extension: extension, content: content}]
+         files: [%{alias: "source_1", extension: extension, content: content}],
+         replace_eligible: false
        }}
     end
   end
@@ -71,9 +76,15 @@ defmodule Storyarn.Imports.SourceBundle do
          {:ok, selected} <- validate_entries(entries),
          {:ok, extracted} <- extract_selected(binary, selected),
          {:ok, normalized} <- normalize_files(extracted),
+         replace_eligible = Enum.any?(normalized, &(&1.extension == ".yarnproject")),
          {:ok, selected_sources} <- YarnProjectSources.select(normalized),
          :ok <- require_yarn(selected_sources) do
-      {:ok, %__MODULE__{kind: :archive, files: anonymize_files(selected_sources)}}
+      {:ok,
+       %__MODULE__{
+         kind: :archive,
+         files: anonymize_files(selected_sources),
+         replace_eligible: replace_eligible
+       }}
     end
   end
 

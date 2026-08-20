@@ -37,6 +37,7 @@ defmodule Storyarn.Imports do
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Versioning
   alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400
@@ -48,6 +49,17 @@ defmodule Storyarn.Imports do
   # still accepted any editor, so the rule was only enforced where the UI
   # happened to check it.
   @import_action :manage_project
+
+  @doc "Returns whether the server may produce snapshot-backed replacement jobs."
+  @spec replace_project_available?() :: boolean()
+  def replace_project_available? do
+    producer_enabled? =
+      :storyarn
+      |> Application.get_env(__MODULE__, [])
+      |> Keyword.get(:replace_project_enabled, false)
+
+    producer_enabled? == true and Versioning.project_snapshot_restore_enabled?()
+  end
 
   @doc """
   Parse an import file and detect its format.
@@ -227,6 +239,26 @@ defmodule Storyarn.Imports do
   end
 
   def update_import_strategy(%Scope{}, _attempt_id, _strategy), do: {:error, :not_found}
+
+  @doc "Persists the explicit additive or snapshot-backed replacement mode for a ready import."
+  @spec update_import_mode(Scope.t(), pos_integer(), String.t() | atom()) ::
+          {:ok, ProjectImportAttempt.t()} | {:error, term()}
+  def update_import_mode(%Scope{} = scope, attempt_id, mode) when is_integer(attempt_id) and attempt_id > 0 do
+    with {:ok, mode} <- normalize_import_mode(mode),
+         %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
+         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         :ok <- authorize_attempt_owner(attempt, scope.user.id),
+         :ok <- ensure_import_mode_available(attempt, mode),
+         {:ok, updated} <- persist_import_mode(attempt, scope.user.id, mode) do
+      Queue.broadcast(updated)
+      {:ok, updated}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def update_import_mode(%Scope{}, _attempt_id, _mode), do: {:error, :not_found}
 
   @doc """
   Returns the opaque browser-storage key for one user's import in one project.
@@ -727,6 +759,7 @@ defmodule Storyarn.Imports do
       format: to_string(plan.format),
       source_kind: to_string(plan.source_kind),
       parser_version: plan.parser_version,
+      replace_eligible: plan.replace_eligible == true,
       idempotency_key: idempotency_key,
       plan_storage_key: cleanup_request.plan_storage_key,
       counts: stringify_keys(preview.counts),
@@ -859,6 +892,46 @@ defmodule Storyarn.Imports do
 
   defp update_locked_import_strategy(%ProjectImportAttempt{}, _strategy), do: {:error, :import_not_ready}
 
+  defp persist_import_mode(attempt, user_id, mode) do
+    Repo.transact(fn ->
+      with {:ok, :authorized} <- authorize_import_locked(Repo, attempt.project_id, user_id),
+           %ProjectImportAttempt{} = locked_attempt <-
+             ProjectImportAttempt
+             |> where(
+               [candidate],
+               candidate.id == ^attempt.id and candidate.project_id == ^attempt.project_id and
+                 candidate.user_id == ^user_id
+             )
+             |> lock("FOR UPDATE")
+             |> Repo.one(),
+           :ok <- ensure_import_mode_available(locked_attempt, mode) do
+        update_locked_import_mode(locked_attempt, mode)
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
+
+  defp update_locked_import_mode(%ProjectImportAttempt{status: "ready"} = attempt, mode) do
+    attempt
+    |> ProjectImportAttempt.import_mode_changeset(mode)
+    |> Repo.update()
+  end
+
+  defp update_locked_import_mode(%ProjectImportAttempt{}, _mode), do: {:error, :import_not_ready}
+
+  defp ensure_import_mode_available(%ProjectImportAttempt{}, "additive"), do: :ok
+
+  defp ensure_import_mode_available(%ProjectImportAttempt{replace_eligible: true}, "replace_project") do
+    if replace_project_available?(),
+      do: :ok,
+      else: {:error, :project_snapshot_restore_disabled}
+  end
+
+  defp ensure_import_mode_available(%ProjectImportAttempt{}, "replace_project"),
+    do: {:error, :import_replace_not_eligible}
+
   defp enqueue_locked_attempt(attempt_id, project_id, user_id, strategy, opts) do
     with {:ok, :authorized} <- authorize_import_locked(Repo, project_id, user_id),
          %ProjectImportAttempt{} = attempt <-
@@ -878,9 +951,13 @@ defmodule Storyarn.Imports do
   end
 
   defp enqueue_locked_attempt_by_status(%ProjectImportAttempt{status: "ready"} = attempt, strategy, opts) do
-    if ready_plan_deadline_reached?(attempt, TimeHelpers.now()),
-      do: reject_invalid_review_attempt(attempt, :import_expired),
-      else: enqueue_ready_attempt(attempt, strategy, opts)
+    if ready_plan_deadline_reached?(attempt, TimeHelpers.now()) do
+      reject_invalid_review_attempt(attempt, :import_expired)
+    else
+      with :ok <- preflight_recovery_snapshot(attempt, opts) do
+        enqueue_ready_attempt(attempt, strategy, opts)
+      end
+    end
   end
 
   defp enqueue_locked_attempt_by_status(%ProjectImportAttempt{status: status} = attempt, _strategy, _opts)
@@ -901,7 +978,7 @@ defmodule Storyarn.Imports do
              plan,
              Keyword.get(opts, :review_confirmation_fingerprint)
            ) do
-      queue_resolved_import(attempt, plan, strategy)
+      queue_resolved_import(attempt, plan, strategy, opts)
     else
       false ->
         reject_invalid_review_attempt(attempt, :invalid_import_review)
@@ -921,23 +998,50 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp queue_resolved_import(attempt, plan, strategy) do
+  defp queue_resolved_import(attempt, plan, strategy, opts) do
     with {:ok, preview} <- preview(attempt.project_id, plan),
+         {:ok, snapshot} <- recovery_snapshot_for_queue(attempt, opts),
          {:ok, job} <-
            %{"attempt_id" => attempt.id}
            |> ImportProjectWorker.new()
            |> Oban.insert(),
          {:ok, queued} <-
            attempt
-           |> ProjectImportAttempt.queued_changeset(
+           |> queued_import_changeset(
              strategy,
              job.id,
+             snapshot,
              PlanCleanup.bounded_plan_retention_deadline(attempt, TimeHelpers.now())
            )
            |> Ecto.Changeset.put_change(:counts, stringify_keys(preview.counts))
            |> Repo.update() do
       {:ok, {:queued, queued}}
     end
+  end
+
+  defp recovery_snapshot_for_queue(%ProjectImportAttempt{import_mode: mode}, _opts)
+       when mode in ["additive", "replace_project"], do: {:ok, nil}
+
+  defp recovery_snapshot_for_queue(%ProjectImportAttempt{}, _opts), do: {:error, :invalid_import_mode}
+
+  defp queued_import_changeset(
+         %ProjectImportAttempt{import_mode: "additive"} = attempt,
+         strategy,
+         job_id,
+         nil,
+         expires_at
+       ) do
+    ProjectImportAttempt.queued_changeset(attempt, strategy, job_id, expires_at)
+  end
+
+  defp queued_import_changeset(
+         %ProjectImportAttempt{import_mode: "replace_project"} = attempt,
+         strategy,
+         job_id,
+         nil,
+         expires_at
+       ) do
+    ProjectImportAttempt.awaiting_snapshot_changeset(attempt, strategy, job_id, expires_at)
   end
 
   # Carries the reason as the attempt's `error_code` so a resumed attempt can be
@@ -972,6 +1076,50 @@ defmodule Storyarn.Imports do
 
   defp normalize_strategy(strategy) when strategy in ~w(skip overwrite rename), do: {:ok, strategy}
   defp normalize_strategy(_strategy), do: {:error, :invalid_conflict_strategy}
+
+  defp normalize_import_mode(mode) when is_atom(mode), do: normalize_import_mode(to_string(mode))
+
+  defp normalize_import_mode(mode) when mode in ~w(additive replace_project), do: {:ok, mode}
+  defp normalize_import_mode(_mode), do: {:error, :invalid_import_mode}
+
+  defp preflight_recovery_snapshot(%ProjectImportAttempt{import_mode: "additive"}, opts) do
+    validate_enqueue_import_mode("additive", opts)
+  end
+
+  defp preflight_recovery_snapshot(%ProjectImportAttempt{import_mode: "replace_project"} = attempt, opts) do
+    if attempt.status == "ready" do
+      with :ok <- ensure_import_mode_available(attempt, "replace_project"),
+           :ok <- validate_enqueue_import_mode("replace_project", opts),
+           :ok <- require_replace_acknowledgement(opts),
+           request_key when is_binary(request_key) <- attempt.snapshot_request_key do
+        :ok
+      else
+        nil -> {:error, :invalid_import_snapshot_request}
+        {:error, _reason} = error -> error
+        _invalid -> {:error, :invalid_import_snapshot_request}
+      end
+    else
+      # A replay after acceptance must not require browser confirmation again.
+      # The locked queue transition below returns the durable accepted attempt.
+      :ok
+    end
+  end
+
+  defp preflight_recovery_snapshot(%ProjectImportAttempt{}, _opts), do: {:error, :invalid_import_mode}
+
+  defp validate_enqueue_import_mode(expected_mode, opts) do
+    case normalize_import_mode(Keyword.get(opts, :import_mode, "additive")) do
+      {:ok, ^expected_mode} -> :ok
+      {:ok, _other_mode} -> {:error, :stale_import_mode}
+      {:error, _reason} -> {:error, :invalid_import_mode}
+    end
+  end
+
+  defp require_replace_acknowledgement(opts) do
+    if Keyword.get(opts, :replace_acknowledged, false) == true,
+      do: :ok,
+      else: {:error, :replace_import_confirmation_required}
+  end
 
   defp idempotency_key(scope, project, plan, binary) do
     source_digest = :crypto.hash(:sha256, binary)
