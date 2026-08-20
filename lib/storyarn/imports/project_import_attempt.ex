@@ -259,7 +259,6 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     attempt
     |> cast(attrs, [:error_code, :error_message, :error_report, :expires_at])
     |> put_change(:status, "queued")
-    |> put_change(:stage, attempt.stage)
     |> validate_common()
   end
 

@@ -5,6 +5,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   alias Ecto.Migration.Runner
   alias Storyarn.Release
   alias Storyarn.Repo
+  alias Storyarn.Repo.Migrations.AddAbandonedImportSnapshotCleanupReason
   alias Storyarn.Repo.Migrations.AllowZeroByteRestoreStagingReservations
   alias Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffolding
 
@@ -14,6 +15,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @v2_only_migration 20_260_811_180_000
   @migration_version 20_260_812_100_000
   @zero_byte_restore_migration_version 20_260_813_101_000
+  @abandoned_import_cleanup_migration_version 20_260_820_160_000
   @release_gate :enforce_snapshot_lifecycle_release_gate
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
@@ -38,15 +40,25 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     )
   end
 
+  if !Code.ensure_loaded?(AddAbandonedImportSnapshotCleanupReason) do
+    Code.require_file(
+      Path.expand(
+        "../../../../priv/repo/migrations/20260820160000_add_abandoned_import_snapshot_cleanup_reason.exs",
+        __DIR__
+      )
+    )
+  end
+
   setup do
     prefix = "RemoveSnapshotCutover#{System.unique_integer([:positive])}"
     Repo.query!(~s(CREATE SCHEMA "#{prefix}"))
     Repo.query!("SELECT set_config('search_path', $1, true)", [~s("#{prefix}", public)])
     create_transitional_schema!(prefix)
 
-    # The fixture clones today's public table, so explicitly rewind the later
-    # ENG-76 constraint migration to reproduce the schema seen by 20260812100000.
+    # The fixture clones today's public tables, so explicitly rewind later
+    # constraint migrations to reproduce the schema seen by 20260812100000.
     assert :ok = run_zero_byte_restore_migration(:down, prefix)
+    assert :ok = run_abandoned_import_cleanup_migration(:down, prefix)
 
     %{prefix: prefix}
   end
@@ -72,6 +84,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
     refute constraint_exists?(prefix, "oban_jobs_snapshot_worker_routing")
 
     assert :ok = run_zero_byte_restore_migration(:up, prefix)
+    assert :ok = run_abandoned_import_cleanup_migration(:up, prefix)
 
     assert {:ok, _result} =
              insert_storage_reservation(prefix, "restore_staging", "active", 0, nil)
@@ -438,6 +451,20 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
       Repo.config(),
       @zero_byte_restore_migration_version,
       AllowZeroByteRestoreStagingReservations,
+      :forward,
+      direction,
+      direction,
+      prefix: prefix,
+      log: false
+    )
+  end
+
+  defp run_abandoned_import_cleanup_migration(direction, prefix) do
+    Runner.run(
+      Repo,
+      Repo.config(),
+      @abandoned_import_cleanup_migration_version,
+      AddAbandonedImportSnapshotCleanupReason,
       :forward,
       direction,
       direction,

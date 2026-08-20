@@ -951,6 +951,33 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   def cancel(_scope, _project, _snapshot_id), do: {:error, :invalid_snapshot_cancel_request}
 
   @doc false
+  @spec request_import_recovery_snapshot_cancellation_in_transaction(
+          ProjectSnapshot.t(),
+          pos_integer()
+        ) :: {:ok, ProjectSnapshot.t()} | {:error, term()}
+  def request_import_recovery_snapshot_cancellation_in_transaction(%ProjectSnapshot{} = snapshot, workspace_id)
+      when is_integer(workspace_id) and workspace_id > 0 do
+    cond do
+      not Repo.in_transaction?() ->
+        {:error, :snapshot_cleanup_transaction_required}
+
+      not Billing.workspace_lock_held?(workspace_id) ->
+        {:error, :snapshot_cleanup_workspace_lock_required}
+
+      true ->
+        cancel_locked(snapshot.project_id, snapshot.id)
+    end
+  end
+
+  def request_import_recovery_snapshot_cancellation_in_transaction(_snapshot, _workspace_id),
+    do: {:error, :invalid_snapshot_cleanup_scope}
+
+  @doc false
+  def publish_committed_import_recovery_snapshot_cancellation(%ProjectSnapshot{} = snapshot) do
+    broadcast(snapshot)
+  end
+
+  @doc false
   def subscribe(project_id) when is_integer(project_id) and project_id > 0 do
     Phoenix.PubSub.subscribe(Storyarn.PubSub, topic(project_id))
   end

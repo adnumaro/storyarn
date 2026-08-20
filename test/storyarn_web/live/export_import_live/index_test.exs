@@ -85,7 +85,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert state["conflictStrategy"] == "rename"
       assert state["importMode"] == "additive"
       assert state["replaceEligible"] == false
-      assert state["replaceAvailable"] == true
+      refute Map.has_key?(state, "replaceAvailable")
     end
 
     test "automatically restores the current user's latest active import on connected mount", %{
@@ -203,7 +203,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert state["stage"] == "parsed"
       assert state["importMode"] == "additive"
       assert state["replaceEligible"] == true
-      assert state["replaceAvailable"] == true
+      refute Map.has_key?(state, "replaceAvailable")
 
       render_hook(view, "set_import_mode", %{
         "attempt_id" => ready.id,

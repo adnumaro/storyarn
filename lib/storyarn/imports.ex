@@ -28,6 +28,7 @@ defmodule Storyarn.Imports do
   alias Storyarn.Imports.Preview
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
+  alias Storyarn.Imports.Replacement
   alias Storyarn.Imports.Resume
   alias Storyarn.Imports.Shared
   alias Storyarn.Imports.SourceBundle
@@ -48,10 +49,6 @@ defmodule Storyarn.Imports do
   # still accepted any editor, so the rule was only enforced where the UI
   # happened to check it.
   @import_action :manage_project
-
-  @doc "Returns whether snapshot-backed replacement is supported by this release."
-  @spec replace_project_available?() :: boolean()
-  def replace_project_available?, do: true
 
   @doc """
   Parse an import file and detect its format.
@@ -368,6 +365,8 @@ defmodule Storyarn.Imports do
          :ok <- authorize_attempt_owner(attempt, scope.user.id),
          :ok <- run_before_cancel_transaction(opts),
          {:ok, expired} <- cancel_attempt(attempt, scope.user.id, opts) do
+      Replacement.cleanup_terminal_recovery_snapshot(expired)
+      expired = Repo.get(ProjectImportAttempt, expired.id) || expired
       PlanCleanup.cleanup_plan(expired)
       Queue.broadcast(expired)
       {:ok, expired}
@@ -966,7 +965,7 @@ defmodule Storyarn.Imports do
              plan,
              Keyword.get(opts, :review_confirmation_fingerprint)
            ) do
-      queue_resolved_import(attempt, plan, strategy, opts)
+      queue_resolved_import(attempt, plan, strategy)
     else
       false ->
         reject_invalid_review_attempt(attempt, :invalid_import_review)
@@ -986,9 +985,8 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp queue_resolved_import(attempt, plan, strategy, opts) do
+  defp queue_resolved_import(attempt, plan, strategy) do
     with {:ok, preview} <- preview(attempt.project_id, plan),
-         {:ok, snapshot} <- recovery_snapshot_for_queue(attempt, opts),
          {:ok, job} <-
            %{"attempt_id" => attempt.id}
            |> ImportProjectWorker.new()
@@ -998,7 +996,6 @@ defmodule Storyarn.Imports do
            |> queued_import_changeset(
              strategy,
              job.id,
-             snapshot,
              PlanCleanup.bounded_plan_retention_deadline(attempt, TimeHelpers.now())
            )
            |> Ecto.Changeset.put_change(:counts, stringify_keys(preview.counts))
@@ -1007,18 +1004,7 @@ defmodule Storyarn.Imports do
     end
   end
 
-  defp recovery_snapshot_for_queue(%ProjectImportAttempt{import_mode: mode}, _opts)
-       when mode in ["additive", "replace_project"], do: {:ok, nil}
-
-  defp recovery_snapshot_for_queue(%ProjectImportAttempt{}, _opts), do: {:error, :invalid_import_mode}
-
-  defp queued_import_changeset(
-         %ProjectImportAttempt{import_mode: "additive"} = attempt,
-         strategy,
-         job_id,
-         nil,
-         expires_at
-       ) do
+  defp queued_import_changeset(%ProjectImportAttempt{import_mode: "additive"} = attempt, strategy, job_id, expires_at) do
     ProjectImportAttempt.queued_changeset(attempt, strategy, job_id, expires_at)
   end
 
@@ -1026,7 +1012,6 @@ defmodule Storyarn.Imports do
          %ProjectImportAttempt{import_mode: "replace_project"} = attempt,
          strategy,
          job_id,
-         nil,
          expires_at
        ) do
     ProjectImportAttempt.awaiting_snapshot_changeset(attempt, strategy, job_id, expires_at)
@@ -1075,21 +1060,15 @@ defmodule Storyarn.Imports do
   end
 
   defp preflight_recovery_snapshot(%ProjectImportAttempt{import_mode: "replace_project"} = attempt, opts) do
-    if attempt.status == "ready" do
-      with :ok <- ensure_import_mode_available(attempt, "replace_project"),
-           :ok <- validate_enqueue_import_mode("replace_project", opts),
-           :ok <- require_replace_acknowledgement(opts),
-           request_key when is_binary(request_key) <- attempt.snapshot_request_key do
-        :ok
-      else
-        nil -> {:error, :invalid_import_snapshot_request}
-        {:error, _reason} = error -> error
-        _invalid -> {:error, :invalid_import_snapshot_request}
-      end
-    else
-      # A replay after acceptance must not require browser confirmation again.
-      # The locked queue transition below returns the durable accepted attempt.
+    with :ok <- ensure_import_mode_available(attempt, "replace_project"),
+         :ok <- validate_enqueue_import_mode("replace_project", opts),
+         :ok <- require_replace_acknowledgement(opts),
+         request_key when is_binary(request_key) <- attempt.snapshot_request_key do
       :ok
+    else
+      nil -> {:error, :invalid_import_snapshot_request}
+      {:error, _reason} = error -> error
+      _invalid -> {:error, :invalid_import_snapshot_request}
     end
   end
 

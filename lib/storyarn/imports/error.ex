@@ -41,7 +41,6 @@ defmodule Storyarn.Imports.Error do
     pre_import_snapshot_verification_failed
     project_already_has_main_flow
     project_changed_since_import_snapshot
-    project_snapshot_restore_disabled
     replace_import_confirmation_required
     stale_import_mode
     unauthorized

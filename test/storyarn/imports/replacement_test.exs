@@ -36,6 +36,7 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Versioning.SnapshotCleanupIntent
 
   @yarn_project_fixture_root Path.expand("../../fixtures/imports/yarn/emberfall", __DIR__)
   @yarn_project_fixture_files [
@@ -110,9 +111,7 @@ defmodule Storyarn.Imports.ReplacementTest do
     assert Repo.aggregate(ProjectSnapshot, :count) == snapshot_count
   end
 
-  test "snapshot-backed replacement is available without runtime gates", ctx do
-    assert Imports.replace_project_available?()
-
+  test "snapshot-backed replacement completes without runtime gates", ctx do
     assert {:ok, prepared, _preview} =
              Imports.prepare_import(
                ctx.scope,
@@ -210,6 +209,41 @@ defmodule Storyarn.Imports.ReplacementTest do
     assert waiting.stage == "awaiting_snapshot"
     assert waiting.error_code == nil
     assert %DateTime{} = waiting.snapshot_reference_bound_at
+  end
+
+  test "snapshot request exceptions report their sanitized module without leaking details", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    handler_id = "replacement-snapshot-request-exception-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    private_detail = "customer-private-snapshot-request-detail"
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :error],
+        fn event, measurements, metadata, {pid, ref} ->
+          send(pid, {ref, event, measurements, metadata})
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    assert {:error, :retryable_import_error} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               snapshot_request: fn _scope, _project, _attrs ->
+                 raise ArgumentError, private_detail
+               end
+             )
+
+    assert_receive {^marker, [:storyarn, :import, :error], %{count: 1}, metadata}
+    assert metadata.error_code == "pre_import_snapshot_request_failed"
+    assert metadata.exception_module == "ArgumentError"
+    refute inspect(metadata) =~ private_detail
   end
 
   test "transient plan loads recover before and after a pending snapshot is bound", ctx do
@@ -323,6 +357,189 @@ defmodule Storyarn.Imports.ReplacementTest do
              )
   end
 
+  test "cancelling a replacement cancels and durably cleans its pending recovery snapshot", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    assert {:snooze, _seconds} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3
+             )
+
+    waiting = Repo.get!(ProjectImportAttempt, queued.id)
+    snapshot_id = waiting.pre_import_snapshot_id
+    assert is_integer(snapshot_id)
+    assert Repo.get!(ProjectSnapshot, snapshot_id).lifecycle_state == "pending"
+
+    assert {:ok, expired} = Imports.cancel_import(ctx.scope, waiting.id)
+    assert expired.status == "expired"
+    assert expired.pre_import_snapshot_id == nil
+    refute Repo.get(ProjectSnapshot, snapshot_id)
+
+    assert %SnapshotCleanupIntent{
+             reason: "abandoned_import",
+             authority_kind: "system",
+             authority_actor_id: nil
+           } =
+             Repo.get_by!(SnapshotCleanupIntent,
+               project_snapshot_id_snapshot: snapshot_id
+             )
+  end
+
+  test "an active recovery build is cancelled cooperatively and swept after it becomes terminal", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    assert {:snooze, 5} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               snapshot_request: fn scope, project, attrs ->
+                 {:ok,
+                  pending_project_snapshot_fixture(project, %{
+                    created_by_id: scope.user.id,
+                    idempotency_key: attrs.idempotency_key
+                  })}
+               end
+             )
+
+    waiting = Repo.get!(ProjectImportAttempt, queued.id)
+    now = TimeHelpers.now()
+
+    building =
+      waiting.pre_import_snapshot_id
+      |> then(&Repo.get!(ProjectSnapshot, &1))
+      |> ProjectSnapshot.build_state_changeset(%{
+        lifecycle_state: "building",
+        progress_phase: "copying",
+        building_started_at: now,
+        state_updated_at: now
+      })
+      |> Repo.update!()
+
+    assert {:ok, expired} = Imports.cancel_import(ctx.scope, waiting.id)
+    assert expired.status == "expired"
+    assert expired.error_code == "import_cancelled"
+    assert expired.pre_import_snapshot_id == building.id
+
+    cancellation_requested = Repo.get!(ProjectSnapshot, building.id)
+    assert cancellation_requested.lifecycle_state == "building"
+    assert %DateTime{} = cancellation_requested.cancel_requested_at
+    refute Repo.get_by(SnapshotCleanupIntent, project_snapshot_id_snapshot: building.id)
+
+    cancelled_at = TimeHelpers.now()
+
+    cancelled =
+      cancellation_requested
+      |> ProjectSnapshot.build_state_changeset(%{
+        lifecycle_state: "cancelled",
+        integrity_state: "unknown",
+        progress_phase: "cancelled",
+        cancelled_at: cancelled_at,
+        state_updated_at: cancelled_at
+      })
+      |> Repo.update!()
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^expired.id),
+      set: [updated_at: DateTime.add(cancelled_at, -600, :second)]
+    )
+
+    assert %{cleaned_count: 1, failure_count: 0, more?: false} =
+             Replacement.cleanup_terminal_recovery_snapshots()
+
+    refute Repo.get(ProjectSnapshot, cancelled.id)
+
+    swept_attempt = Repo.get!(ProjectImportAttempt, expired.id)
+    assert swept_attempt.status == "expired"
+    assert swept_attempt.error_code == "import_cancelled"
+    assert swept_attempt.pre_import_snapshot_id == nil
+
+    assert %SnapshotCleanupIntent{reason: "abandoned_import", authority_kind: "system"} =
+             Repo.get_by!(SnapshotCleanupIntent,
+               project_snapshot_id_snapshot: cancelled.id
+             )
+  end
+
+  test "snapshot cleanup failure does not replace the import cancellation outcome", ctx do
+    assert {:ok, queued_attempt} = queued_replacement(ctx)
+    queued = Repo.preload(queued_attempt, :user)
+
+    snapshot =
+      ready_snapshot_fixture(
+        ctx,
+        ctx.project,
+        queued.snapshot_request_key,
+        current_project_checksum(ctx.project)
+      )
+
+    assert {:ok, bound} =
+             Replacement.ensure_snapshot_ready(
+               queued,
+               ctx.project,
+               snapshot_request: fn _scope, _project, _attrs -> {:ok, snapshot} end
+             )
+
+    assert {:ok, restore} =
+             Versioning.request_project_snapshot_restore(ctx.scope, ctx.project, snapshot, %{
+               idempotency_key: Ecto.UUID.generate()
+             })
+
+    assert restore.status == "queued"
+    assert {:ok, expired} = Imports.cancel_import(ctx.scope, bound.id)
+    assert expired.status == "expired"
+    assert expired.stage == "expired"
+    assert expired.error_code == "import_cancelled"
+    assert %DateTime{} = expired.completed_at
+    assert expired.pre_import_snapshot_id == snapshot.id
+
+    persisted = Repo.get!(ProjectImportAttempt, bound.id)
+    assert persisted.status == "expired"
+    assert persisted.stage == "expired"
+    assert persisted.error_code == "import_cancelled"
+    assert persisted.completed_at == expired.completed_at
+    assert persisted.pre_import_snapshot_id == snapshot.id
+    assert Repo.get!(ProjectSnapshot, snapshot.id).lifecycle_state == "ready"
+    refute Repo.get_by(SnapshotCleanupIntent, project_snapshot_id_snapshot: snapshot.id)
+
+    assert {:error, :pre_import_snapshot_cleanup_failed} =
+             Replacement.cleanup_terminal_recovery_snapshot(persisted)
+  end
+
+  test "pending snapshot polling backs off from the durable binding age", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    assert {:snooze, 5} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               snapshot_request: fn scope, project, attrs ->
+                 {:ok,
+                  pending_project_snapshot_fixture(project, %{
+                    created_by_id: scope.user.id,
+                    idempotency_key: attrs.idempotency_key
+                  })}
+               end
+             )
+
+    for {age_seconds, expected_snooze} <- [{10, 5}, {60, 15}, {300, 60}, {1_200, 300}] do
+      bound_at = DateTime.add(TimeHelpers.now(), -age_seconds, :second)
+
+      ProjectImportAttempt
+      |> Repo.get!(queued.id)
+      |> Ecto.Changeset.change(snapshot_reference_bound_at: bound_at)
+      |> Repo.update!()
+
+      assert {:snooze, ^expected_snooze} =
+               Imports.perform_import(queued.id,
+                 attempt: 1,
+                 max_attempts: 3,
+                 snapshot_request: fn _scope, _project, _attrs ->
+                   flunk("a bound snapshot must be reused while polling")
+                 end
+               )
+    end
+  end
+
   test "a deleted bound checkpoint fails closed instead of requesting a different snapshot", ctx do
     assert {:ok, queued_attempt} = queued_replacement(ctx)
     queued = Repo.preload(queued_attempt, :user)
@@ -389,6 +606,139 @@ defmodule Storyarn.Imports.ReplacementTest do
                  flunk("a deleted pending checkpoint must never be silently replaced")
                end
              )
+  end
+
+  test "the maintenance sweep cleans a terminal snapshot created before its reference was bound", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    snapshot =
+      ready_snapshot_fixture(
+        ctx,
+        ctx.project,
+        queued.snapshot_request_key,
+        current_project_checksum(ctx.project)
+      )
+
+    failed_at = TimeHelpers.now()
+
+    failed =
+      queued
+      |> ProjectImportAttempt.failed_changeset(%{
+        status: "failed",
+        stage: "failed",
+        error_code: "pre_import_snapshot_request_failed",
+        error_message: nil,
+        error_report: %{},
+        completed_at: failed_at
+      })
+      |> Repo.update!()
+
+    assert failed.pre_import_snapshot_id == nil
+    assert failed.snapshot_reference_bound_at == nil
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
+      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+    )
+
+    assert %{cleaned_count: 1, failure_count: 0, more?: false} =
+             Replacement.cleanup_terminal_recovery_snapshots()
+
+    refute Repo.get(ProjectSnapshot, snapshot.id)
+
+    assert %SnapshotCleanupIntent{reason: "abandoned_import", authority_kind: "system"} =
+             Repo.get_by!(SnapshotCleanupIntent,
+               project_snapshot_id_snapshot: snapshot.id
+             )
+  end
+
+  test "the import expiration batch runs the terminal recovery snapshot sweep", ctx do
+    assert {:ok, queued_attempt} = queued_replacement(ctx)
+    queued = Repo.preload(queued_attempt, :user)
+
+    snapshot =
+      ready_snapshot_fixture(
+        ctx,
+        ctx.project,
+        queued.snapshot_request_key,
+        current_project_checksum(ctx.project)
+      )
+
+    assert {:ok, bound} =
+             Replacement.ensure_snapshot_ready(
+               queued,
+               ctx.project,
+               snapshot_request: fn _scope, _project, _attrs -> {:ok, snapshot} end
+             )
+
+    failed_at = TimeHelpers.now()
+
+    failed =
+      bound
+      |> ProjectImportAttempt.failed_changeset(%{
+        status: "failed",
+        stage: "failed",
+        error_code: "import_failed",
+        error_message: nil,
+        error_report: %{},
+        completed_at: failed_at
+      })
+      |> Repo.update!()
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
+      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+    )
+
+    assert {:ok, %{expired_count: 0, failure_count: 0, more?: false}} =
+             Imports.expire_stale_imports_batch(snapshot_cleanup_batch_size: 1)
+
+    refute Repo.get(ProjectSnapshot, snapshot.id)
+
+    assert %SnapshotCleanupIntent{reason: "abandoned_import", authority_kind: "system"} =
+             Repo.get_by!(SnapshotCleanupIntent,
+               project_snapshot_id_snapshot: snapshot.id
+             )
+  end
+
+  test "the maintenance sweep excludes snapshots owned by deleted projects", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+
+    snapshot =
+      ready_snapshot_fixture(
+        ctx,
+        ctx.project,
+        queued.snapshot_request_key,
+        current_project_checksum(ctx.project)
+      )
+
+    failed_at = TimeHelpers.now()
+
+    failed =
+      queued
+      |> ProjectImportAttempt.failed_changeset(%{
+        status: "failed",
+        stage: "failed",
+        error_code: "pre_import_snapshot_request_failed",
+        error_message: nil,
+        error_report: %{},
+        completed_at: failed_at
+      })
+      |> Repo.update!()
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^failed.id),
+      set: [updated_at: DateTime.add(failed_at, -600, :second)]
+    )
+
+    ctx.project
+    |> Ecto.Changeset.change(deleted_at: failed_at)
+    |> Repo.update!()
+
+    assert %{cleaned_count: 0, failure_count: 0, more?: false} =
+             Replacement.cleanup_terminal_recovery_snapshots()
+
+    assert Repo.get!(ProjectSnapshot, snapshot.id)
   end
 
   test "a ready checkpoint replaces active narrative state and preserves recoverable state", ctx do
@@ -487,6 +837,11 @@ defmodule Storyarn.Imports.ReplacementTest do
     assert replayed.pre_import_snapshot_id == completed.pre_import_snapshot_id
     assert Repo.aggregate(ProjectSnapshot, :count) == snapshot_count
 
+    assert {:ok, :not_terminal} =
+             Replacement.cleanup_terminal_recovery_snapshot(replayed)
+
+    assert Repo.get!(ProjectSnapshot, completed.pre_import_snapshot_id).lifecycle_state == "ready"
+
     assert ctx.project.id
            |> Storyarn.Flows.list_flows()
            |> Enum.map(& &1.id)
@@ -497,9 +852,11 @@ defmodule Storyarn.Imports.ReplacementTest do
     old_sheet = sheet_fixture(ctx.project, %{name: "Prior project"})
     assert {:ok, queued} = queued_replacement(ctx)
     checkpoint_checksum = current_project_checksum(ctx.project)
+    parent = self()
 
     drifting_request = fn _scope, project, attrs ->
       snapshot = ready_snapshot_fixture(ctx, project, attrs.idempotency_key, checkpoint_checksum)
+      send(parent, {:drift_snapshot, snapshot.id})
       assert {:ok, _updated} = Sheets.update_sheet(old_sheet, %{name: "Concurrent edit"})
       {:ok, snapshot}
     end
@@ -513,6 +870,19 @@ defmodule Storyarn.Imports.ReplacementTest do
 
     assert failed.status == "failed"
     assert failed.error_code == "project_changed_since_import_snapshot"
+    assert failed.pre_import_snapshot_id == nil
+    assert_receive {:drift_snapshot, drift_snapshot_id}
+    refute Repo.get(ProjectSnapshot, drift_snapshot_id)
+
+    assert %SnapshotCleanupIntent{
+             reason: "abandoned_import",
+             authority_kind: "system",
+             authority_actor_id: nil
+           } =
+             Repo.get_by!(SnapshotCleanupIntent,
+               project_snapshot_id_snapshot: drift_snapshot_id
+             )
+
     assert Repo.get!(Sheet, old_sheet.id).deleted_at == nil
     refute Enum.any?(Storyarn.Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
 

@@ -69,9 +69,7 @@ const recoverySnapshotUrl = computed(() =>
     ? importState.recoverySnapshotUrl
     : null,
 );
-const replacementAvailable = computed(
-  () => importState.replaceEligible && importState.replaceAvailable,
-);
+const replacementEligible = computed(() => importState.replaceEligible);
 const awaitingSnapshot = computed(() => importState.stage === "awaiting_snapshot");
 
 function currentReplacementConfirmationIdentity(): ReplacementConfirmationIdentity | null {
@@ -156,7 +154,6 @@ const showAcknowledgement = computed(
 const RECOVERABLE_PREFLIGHT_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   import_replace_not_eligible: "project_settings.import.errors.preflight_not_eligible",
   invalid_import_snapshot_request: "project_settings.import.errors.preflight_snapshot_request",
-  project_snapshot_restore_disabled: "project_settings.import.errors.preflight_replace_unavailable",
   replace_import_confirmation_required: "project_settings.import.errors.preflight_reconfirm",
   stale_import_mode: "project_settings.import.errors.preflight_mode_changed",
 };
@@ -233,7 +230,6 @@ const TERMINAL_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   import_project_replacement_failed: "project_settings.import.errors.replacement_failed",
   project_changed_since_import_snapshot: "project_settings.import.errors.project_changed",
   project_already_has_main_flow: "project_settings.import.errors.project_has_main_flow",
-  project_snapshot_restore_disabled: "project_settings.import.errors.replace_unavailable",
   duplicate_yarn_node_title: "project_settings.import.errors.unsupported_narrative",
   import_plan_has_errors: "project_settings.import.errors.unsupported_narrative",
   unauthorized: "project_settings.import.errors.unauthorized",
@@ -270,7 +266,7 @@ function setImportMode(importMode: unknown) {
   const attemptId = importState.attemptId;
   if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
   if (importMode !== "additive" && importMode !== "replace_project") return;
-  if (importMode === "replace_project" && !replacementAvailable.value) return;
+  if (importMode === "replace_project" && !replacementEligible.value) return;
 
   live.pushEvent("set_import_mode", { attempt_id: attemptId, import_mode: importMode });
 }
@@ -279,7 +275,7 @@ function startImport() {
   if (!review.canExecute.value || review.pendingOperation.value !== null) return;
 
   if (replacementSelected.value) {
-    if (!replacementAvailable.value) return;
+    if (!replacementEligible.value) return;
 
     const identity = currentReplacementConfirmationIdentity();
     if (!identity) return;
@@ -301,7 +297,7 @@ function confirmReplacement() {
 
   if (
     !replacementSelected.value ||
-    !replacementAvailable.value ||
+    !replacementEligible.value ||
     !sameReplacementConfirmationIdentity(openedFor, current)
   ) {
     closeReplacementDialog();
@@ -351,7 +347,6 @@ watch(
       importState.step,
       importState.importMode,
       importState.replaceEligible,
-      importState.replaceAvailable,
     ] as const,
   () => {
     const identityStillMatches = sameReplacementConfirmationIdentity(
@@ -362,7 +357,7 @@ watch(
     if (
       importState.step !== "preview" ||
       !replacementSelected.value ||
-      !replacementAvailable.value ||
+      !replacementEligible.value ||
       (replaceDialogOpen.value && !identityStillMatches)
     ) {
       closeReplacementDialog();
@@ -485,10 +480,10 @@ watch(replaceDialogOpen, (open) => {
               data-testid="yarn-import-mode-replace"
               class="flex items-start gap-3 rounded-lg border bg-background p-3 transition-colors"
               :class="[
-                replacementAvailable
+                replacementEligible
                   ? 'cursor-pointer hover:border-destructive/50'
                   : 'cursor-not-allowed opacity-60',
-                replacementSelected && replacementAvailable
+                replacementSelected && replacementEligible
                   ? 'border-destructive/50 bg-destructive/5'
                   : 'border-border',
               ]"
@@ -496,7 +491,7 @@ watch(replaceDialogOpen, (open) => {
               <RadioGroupItem
                 value="replace_project"
                 class="mt-0.5"
-                :disabled="!replacementAvailable"
+                :disabled="!replacementEligible"
                 aria-describedby="yarn-import-mode-replace-description"
               />
               <span class="space-y-1">
@@ -513,15 +508,6 @@ watch(replaceDialogOpen, (open) => {
               </span>
             </label>
           </RadioGroup>
-
-          <p
-            v-if="!importState.replaceAvailable"
-            data-testid="yarn-import-replace-unavailable"
-            class="flex items-start gap-2 text-xs leading-5 text-muted-foreground"
-          >
-            <Lock class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-            {{ $t("project_settings.import.mode_replace_unavailable") }}
-          </p>
         </div>
 
         <YarnSpeakerReview :review="review" />

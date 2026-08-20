@@ -684,9 +684,7 @@ export function useYarnImportReview(options: UseYarnImportReviewOptions): YarnIm
       matchesResolution.value &&
       nonEmptyString(resolution.value?.decision_fingerprint) &&
       (importState().importMode === "additive" ||
-        (importState().importMode === "replace_project" &&
-          importState().replaceEligible &&
-          importState().replaceAvailable)),
+        (importState().importMode === "replace_project" && importState().replaceEligible)),
   );
 
   const pendingOperation = ref<"validate" | "execute" | null>(null);

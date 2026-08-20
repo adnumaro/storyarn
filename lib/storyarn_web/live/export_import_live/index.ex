@@ -15,7 +15,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @recoverable_import_preflight_errors [
     :import_replace_not_eligible,
     :invalid_import_snapshot_request,
-    :project_snapshot_restore_disabled,
     :replace_import_confirmation_required,
     :stale_import_mode
   ]
@@ -161,7 +160,6 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       conflictStrategy: state.conflict_strategy,
       importMode: state.import_mode,
       replaceEligible: state.replace_eligible,
-      replaceAvailable: Imports.replace_project_available?(),
       recoverySnapshotUrl: Map.get(state, :recovery_snapshot_url),
       warningCodes: state.warning_codes,
       status: state.status

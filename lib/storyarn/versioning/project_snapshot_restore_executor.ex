@@ -62,7 +62,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Versioning.RestorePolicy
 
   @phase_rank %{"preflight" => 0, "staging" => 1, "materializing" => 2, "verifying" => 3}
   @compensation_context_key {__MODULE__, :compensation_context}
@@ -186,8 +185,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   def settle_bound_reservation(_restore, _opts), do: {:error, :invalid_project_snapshot_restore_request}
 
   defp preflight(restore, reader, materializer, recovery, opts) do
-    with :ok <- RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"}),
-         %ProjectSnapshotRestore{} = restore <- current_restore(restore.id),
+    with %ProjectSnapshotRestore{} = restore <- current_restore(restore.id),
          :ok <- validate_execution_fence(restore),
          %ProjectSnapshot{} = snapshot <- Repo.get(ProjectSnapshot, restore.project_snapshot_id),
          :ok <- validate_snapshot_identity(restore, snapshot),
@@ -244,7 +242,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          staging_prefix: staging_prefix,
          staging_keys: staging_keys,
          staging_inventory: staging_inventory,
-         after_final_authorization: Keyword.get(opts, :after_final_authorization, fn _membership -> :ok end),
          before_postverify: Keyword.get(opts, :before_postverify, fn -> :ok end)
        }}
     else
@@ -619,7 +616,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp commit_owner(_reservation, preserved_localization_actor_ids, context, tracker) do
     with {:ok, locked} <- lock_and_reauthorize(context, preserved_localization_actor_ids),
-         :ok <- RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"}),
          {:ok, previous} <- capture_active_state(locked.project.id),
          :ok <- trash_active_graph(previous),
          :ok <- reconcile_localization_before_materialization(locked.project.id, context.archive_plan.project),
@@ -683,8 +679,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          true <- MapSet.member?(preserved_localization_actor_ids, context.actor.id),
          %User{} = actor <- context.actor,
          %ProjectMembership{} = membership <- lock_project_membership(project.id, actor.id),
-         true <- ProjectMembership.can?(membership.role, :manage_project),
-         :ok <- context.after_final_authorization.(membership) do
+         true <- ProjectMembership.can?(membership.role, :manage_project) do
       {:ok, %{project: project, restore: restore, snapshot: snapshot, actor: actor}}
     else
       nil -> {:error, :project_snapshot_restore_target_not_found}

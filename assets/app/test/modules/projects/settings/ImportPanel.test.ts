@@ -25,7 +25,6 @@ function uploadState(): ImportState {
     conflictStrategy: "rename",
     importMode: "additive",
     replaceEligible: false,
-    replaceAvailable: true,
     warningCodes: [],
     status: null,
   };
@@ -69,7 +68,6 @@ function attemptState(
     conflictStrategy: "rename",
     importMode: "additive",
     replaceEligible: false,
-    replaceAvailable: true,
     warningCodes: [],
     status,
   };
@@ -177,13 +175,11 @@ function resolvedPreviewState(): ImportState {
 
 function replacementPreviewState(
   importMode: ImportState["importMode"] = "replace_project",
-  replaceAvailable = true,
 ): ImportState {
   return {
     ...resolvedPreviewState(),
     importMode,
     replaceEligible: true,
-    replaceAvailable,
   };
 }
 
@@ -1160,22 +1156,19 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
-  it("offers replacement only for an eligible Yarn project and explains unavailable safety", () => {
+  it("offers replacement only for an eligible Yarn project", () => {
     const ineligible = mountPanel(resolvedPreviewState());
     expect(ineligible.find('[data-testid="yarn-import-mode-selector"]').exists()).toBe(false);
     ineligible.unmount();
 
-    const unavailable = mountPanel(replacementPreviewState("additive", false));
-    const selector = unavailable.get('[data-testid="yarn-import-mode-selector"]');
+    const eligible = mountPanel(replacementPreviewState("additive"));
+    const selector = eligible.get('[data-testid="yarn-import-mode-selector"]');
     const replaceRadio = selector.get('[data-testid="yarn-import-mode-replace"] [role="radio"]');
 
     expect(selector.text()).toContain("How should this project be imported?");
-    expect(replaceRadio.attributes("disabled")).toBeDefined();
-    expect(unavailable.get('[data-testid="yarn-import-replace-unavailable"]').text()).toContain(
-      "temporarily unavailable",
-    );
+    expect(replaceRadio.attributes("disabled")).toBeUndefined();
 
-    unavailable.unmount();
+    eligible.unmount();
   });
 
   it("persists an explicit replacement choice without exposing source metadata", async () => {
@@ -1281,7 +1274,6 @@ describe("ImportPanel resume state", () => {
   it.each([
     ["stale_import_mode", "changed in another tab"],
     ["replace_import_confirmation_required", "confirmation is no longer current"],
-    ["project_snapshot_restore_disabled", "replacement is no longer available"],
     ["import_replace_not_eligible", "is not eligible to replace"],
     ["invalid_import_snapshot_request", "cannot create a recovery snapshot"],
   ])("keeps recoverable preflight error %s on the preview", (errorCode, expectedCopy) => {
@@ -1325,7 +1317,6 @@ describe("ImportPanel resume state", () => {
       stage: "awaiting_snapshot",
       importMode: "replace_project",
       replaceEligible: true,
-      replaceAvailable: true,
     } satisfies ImportState;
     const wrapper = mountPanel(state);
 

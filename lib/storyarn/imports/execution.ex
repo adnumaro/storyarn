@@ -54,8 +54,9 @@ defmodule Storyarn.Imports.Execution do
             {:ok, attempt}
 
           status when status in ["failed", "expired"] ->
+            cleanup_terminal_recovery_snapshot(attempt)
             PlanCleanup.cleanup_plan_if_pending(attempt)
-            {:ok, attempt}
+            {:ok, refresh_attempt(attempt)}
 
           "ready" ->
             {:error, :import_not_queued}
@@ -134,6 +135,18 @@ defmodule Storyarn.Imports.Execution do
 
       {:snooze, seconds} ->
         {:waiting, seconds}
+
+      {:error, {:pre_import_snapshot_request_failed, exception_module} = reason}
+      when is_binary(exception_module) ->
+        handled_execution_error(
+          attempt,
+          reason,
+          attempt_number,
+          max_attempts,
+          started_at,
+          opts,
+          exception_module
+        )
 
       {:error, reason} ->
         handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
@@ -395,6 +408,8 @@ defmodule Storyarn.Imports.Execution do
 
   defp finish_import({:expired, attempt, notification_outcome}, started_at, opts) do
     Notifications.publish_committed(notification_outcome)
+    cleanup_terminal_recovery_snapshot(attempt)
+    attempt = refresh_attempt(attempt)
     PlanCleanup.cleanup_plan_if_pending(attempt, opts)
 
     Telemetry.emit_stop(
@@ -411,6 +426,8 @@ defmodule Storyarn.Imports.Execution do
   end
 
   defp finish_import({:terminal, attempt}, _started_at, opts) do
+    cleanup_terminal_recovery_snapshot(attempt)
+    attempt = refresh_attempt(attempt)
     PlanCleanup.cleanup_plan_if_pending(attempt, opts)
     {:ok, attempt}
   end
@@ -473,12 +490,16 @@ defmodule Storyarn.Imports.Execution do
 
     case persist_execution_error(attempt, code, message, attempt_number, max_attempts, terminal?) do
       {:ok, {:terminal, terminal_attempt}} ->
+        cleanup_terminal_recovery_snapshot(terminal_attempt)
+        terminal_attempt = refresh_attempt(terminal_attempt)
         PlanCleanup.cleanup_plan_if_pending(terminal_attempt, opts)
         replay_completed_recovery(terminal_attempt)
         {:ok, terminal_attempt}
 
       {:ok, {:failed, failed, notification_outcome}} ->
         Notifications.publish_committed(notification_outcome)
+        cleanup_terminal_recovery_snapshot(failed)
+        failed = refresh_attempt(failed)
         metadata = Telemetry.attempt_metadata(failed, "failed", code)
         Error.report(Map.merge(metadata, %{phase: "execute", error_code: code, exception_module: exception_module}))
         PlanCleanup.cleanup_plan(failed, opts)
@@ -619,4 +640,13 @@ defmodule Storyarn.Imports.Execution do
   end
 
   defp replay_completed_recovery(%ProjectImportAttempt{}), do: :ok
+
+  defp cleanup_terminal_recovery_snapshot(%ProjectImportAttempt{} = attempt) do
+    Replacement.cleanup_terminal_recovery_snapshot(attempt)
+    :ok
+  end
+
+  defp refresh_attempt(%ProjectImportAttempt{} = attempt) do
+    Repo.get(ProjectImportAttempt, attempt.id) || attempt
+  end
 end
