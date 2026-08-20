@@ -33,6 +33,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     field :conflict_strategy, :string, default: "rename"
     field :import_mode, :string, default: "additive"
     field :replace_eligible, :boolean, default: false
+    field :replacement_prepared_at, :utc_datetime
     field :snapshot_request_key, Ecto.UUID
     field :snapshot_reference_bound_at, :utc_datetime
     field :snapshot_lifecycle_generation, :integer
@@ -120,6 +121,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     attempt
     |> change(
       import_mode: "additive",
+      replacement_prepared_at: nil,
       snapshot_request_key: nil,
       pre_import_snapshot_id: nil,
       snapshot_reference_bound_at: nil,
@@ -141,6 +143,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     attempt
     |> change(
       import_mode: "replace_project",
+      replacement_prepared_at: nil,
       snapshot_request_key: attempt.snapshot_request_key || Ecto.UUID.generate()
     )
     |> validate_common()
@@ -260,7 +263,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> validate_common()
   end
 
-  def completed_changeset(attempt, now, counts) do
+  def completed_changeset(attempt, now, counts, opts \\ []) do
     attempt
     |> change(
       status: "completed",
@@ -273,6 +276,7 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
       error_message: nil,
       error_report: %{}
     )
+    |> force_change(:replacement_prepared_at, Keyword.get(opts, :replacement_prepared_at))
     |> validate_common()
   end
 
@@ -346,6 +350,9 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
     |> check_constraint(:conflict_strategy, name: :project_import_attempts_conflict_strategy_check)
     |> check_constraint(:import_mode, name: :project_import_attempts_import_mode_check)
     |> check_constraint(:replace_eligible, name: :project_import_attempts_replace_eligibility_check)
+    |> check_constraint(:replacement_prepared_at,
+      name: :project_import_attempts_replacement_fence_check
+    )
     |> check_constraint(:pre_import_snapshot_id, name: :project_import_attempts_snapshot_identity_check)
     |> check_constraint(:pre_import_snapshot_id, name: :project_import_attempts_replace_snapshot_check)
     |> check_constraint(:pre_import_snapshot_id,

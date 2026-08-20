@@ -23,6 +23,7 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.Builders.AssetHashResolver
@@ -132,6 +133,41 @@ defmodule Storyarn.Imports.ReplacementTest do
              )
 
     assert completed.status == "completed"
+  end
+
+  test "the database fence rejects a legacy completion before replacement preparation", ctx do
+    assert {:ok, queued_attempt} = queued_replacement(ctx)
+    queued = Repo.preload(queued_attempt, :user)
+
+    assert {:ok, bound} =
+             Replacement.ensure_snapshot_ready(
+               queued,
+               ctx.project,
+               snapshot_request: ready_snapshot_request(ctx, current_project_checksum(ctx.project))
+             )
+
+    assert {:ok, running} =
+             bound
+             |> ProjectImportAttempt.running_changeset(TimeHelpers.now())
+             |> Repo.update()
+
+    assert {:error, changeset} =
+             running
+             |> ProjectImportAttempt.completed_changeset(TimeHelpers.now(), %{})
+             |> Repo.update()
+
+    assert Keyword.has_key?(changeset.errors, :replacement_prepared_at)
+    assert Repo.get!(ProjectImportAttempt, running.id).status == "running"
+
+    assert {:error, stale_fence_changeset} =
+             running
+             |> Ecto.Changeset.change(replacement_prepared_at: TimeHelpers.now())
+             |> Ecto.Changeset.check_constraint(:replacement_prepared_at,
+               name: :project_import_attempts_replacement_fence_check
+             )
+             |> Repo.update()
+
+    assert Keyword.has_key?(stale_fence_changeset.errors, :replacement_prepared_at)
   end
 
   test "a transient snapshot request remains queued, cancellable, and resumes", ctx do
@@ -390,6 +426,7 @@ defmodule Storyarn.Imports.ReplacementTest do
 
     assert completed.status == "completed"
     assert completed.import_mode == "replace_project"
+    assert %DateTime{} = completed.replacement_prepared_at
     assert is_integer(completed.pre_import_snapshot_id)
     assert Repo.get!(ProjectSnapshot, completed.pre_import_snapshot_id).lifecycle_state == "ready"
 
@@ -444,6 +481,7 @@ defmodule Storyarn.Imports.ReplacementTest do
 
     retrying = Repo.get!(ProjectImportAttempt, queued_again.id)
     assert retrying.status == "retrying"
+    assert retrying.replacement_prepared_at == nil
     assert Repo.get!(Sheet, old_sheet.id).deleted_at == nil
     refute Enum.any?(Storyarn.Flows.list_flows(ctx.project.id), &(&1.name == "Start"))
   end

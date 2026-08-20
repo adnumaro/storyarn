@@ -414,6 +414,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
 
     assert metadata.error_code == "import_plan_unavailable"
     assert metadata.exception_module == "none"
+    assert metadata.import_mode == "additive"
     refute inspect(metadata) =~ @private_filename
     refute inspect(metadata) =~ @private_content
     refute Map.has_key?(metadata, :attempt_id)
@@ -685,6 +686,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert_receive {:queue_wakeup_error, %{count: 1}, metadata}
     assert metadata.phase == "queue_wakeup"
     assert metadata.error_code == "queue_wakeup_failed"
+    assert metadata.import_mode == "additive"
     refute Map.has_key?(metadata, :project_id)
     refute Map.has_key?(metadata, :user_id)
     refute inspect(metadata) =~ @private_content
@@ -2045,6 +2047,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert metadata.phase == "expiration"
     assert metadata.error_code == "plan_cleanup_request_unavailable"
     assert metadata.parser_version == parser_version
+    assert metadata.import_mode == "additive"
     refute Map.has_key?(metadata, :attempt_id)
     refute Map.has_key?(metadata, :project_id)
     refute Map.has_key?(metadata, :user_id)
@@ -2319,6 +2322,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     assert metadata.phase == "expiration"
     assert metadata.error_code == "import_job_cancellation_failed"
     assert metadata.parser_version == parser_version
+    assert metadata.import_mode == "additive"
     refute inspect(metadata) =~ @private_content
     refute Map.has_key?(metadata, :attempt_id)
     refute Map.has_key?(metadata, :project_id)

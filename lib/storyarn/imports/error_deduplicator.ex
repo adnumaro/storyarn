@@ -49,7 +49,7 @@ defmodule Storyarn.Imports.ErrorDeduplicator do
 
   defp fingerprint(metadata) do
     metadata
-    |> Map.take([:format, :parser_version, :phase, :error_code, :exception_module])
+    |> Map.take([:format, :parser_version, :import_mode, :phase, :error_code, :exception_module])
     |> :erlang.term_to_binary()
     |> then(&:crypto.hash(:sha256, &1))
   end

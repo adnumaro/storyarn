@@ -303,12 +303,12 @@ defmodule Storyarn.Imports.Execution do
     if PlanCleanup.absolute_plan_deadline_reached?(attempt, TimeHelpers.now()) do
       expire_locked_import_attempt(attempt, notification_context)
     else
-      with {:ok, result} <-
+      with {:ok, prepared_attempt, result} <-
              prepare_and_materialize_project(attempt, project, plan),
            {:ok, notification_outcome} <-
-             NotificationDelivery.deliver(attempt, notification_context, "success"),
+             NotificationDelivery.deliver(prepared_attempt, notification_context, "success"),
            :ok <- run_before_attempt_completion(opts),
-           {:ok, completed} <- complete_attempt(attempt, result.counts),
+           {:ok, completed} <- complete_attempt(prepared_attempt, result.counts),
            :ok <- PlanCleanup.mark_plan_cleanup_pending(completed.plan_storage_key) do
         {:ok, {:materialized, completed, notification_outcome}}
       end
@@ -319,11 +319,20 @@ defmodule Storyarn.Imports.Execution do
     do: {:error, :import_not_queued}
 
   defp prepare_and_materialize_project(attempt, project, plan) do
-    with :ok <- Replacement.prepare_project_in_transaction(attempt, project) do
-      Materializer.materialize_locked_project_in_transaction(project, plan,
-        conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
-      )
+    with :ok <- Replacement.prepare_project_in_transaction(attempt, project),
+         {:ok, prepared_attempt} <- mark_replacement_prepared(attempt),
+         {:ok, result} <-
+           Materializer.materialize_locked_project_in_transaction(project, plan,
+             conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
+           ) do
+      {:ok, prepared_attempt, result}
     end
+  end
+
+  defp mark_replacement_prepared(%ProjectImportAttempt{import_mode: "additive"} = attempt), do: {:ok, attempt}
+
+  defp mark_replacement_prepared(%ProjectImportAttempt{import_mode: "replace_project"} = attempt) do
+    {:ok, %{attempt | replacement_prepared_at: TimeHelpers.now()}}
   end
 
   defp expire_locked_import_attempt(attempt, notification_context) do
@@ -440,8 +449,21 @@ defmodule Storyarn.Imports.Execution do
   end
 
   defp complete_attempt(attempt, counts) do
+    opts =
+      case attempt do
+        %ProjectImportAttempt{import_mode: "replace_project", replacement_prepared_at: %DateTime{} = prepared_at} ->
+          [replacement_prepared_at: prepared_at]
+
+        %ProjectImportAttempt{} ->
+          []
+      end
+
     attempt
-    |> ProjectImportAttempt.completed_changeset(TimeHelpers.now(), Shared.stringify_keys(counts))
+    |> ProjectImportAttempt.completed_changeset(
+      TimeHelpers.now(),
+      Shared.stringify_keys(counts),
+      opts
+    )
     |> Repo.update()
   end
 

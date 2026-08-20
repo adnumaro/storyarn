@@ -71,7 +71,7 @@ defmodule Storyarn.Imports.Error do
     safe_metadata = %{
       format: Map.get(metadata, :format, "unknown"),
       parser_version: Map.get(metadata, :parser_version, "unknown"),
-      import_mode: Map.get(metadata, :import_mode, "unknown"),
+      import_mode: safe_import_mode(Map.get(metadata, :import_mode)),
       phase: Map.get(metadata, :phase, "unknown"),
       error_code: Map.get(metadata, :error_code, "unexpected_error"),
       exception_module: Map.get(metadata, :exception_module, "none")
@@ -108,6 +108,9 @@ defmodule Storyarn.Imports.Error do
   end
 
   defp maybe_emit(false, _safe_metadata), do: :ok
+
+  defp safe_import_mode(mode) when mode in ["additive", "replace_project"], do: mode
+  defp safe_import_mode(_mode), do: "unknown"
 
   defp safe_code(reason) when is_atom(reason), do: to_string(reason)
   defp safe_code({reason, _details}) when is_atom(reason), do: to_string(reason)

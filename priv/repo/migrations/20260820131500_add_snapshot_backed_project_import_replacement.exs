@@ -5,6 +5,7 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotBackedProjectImportReplacement do
     alter table(:project_import_attempts) do
       add :import_mode, :string, null: false, default: "additive"
       add :replace_eligible, :boolean, null: false, default: false
+      add :replacement_prepared_at, :utc_datetime
       add :snapshot_request_key, :uuid
       add :snapshot_reference_bound_at, :utc_datetime
 
@@ -39,6 +40,21 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotBackedProjectImportReplacement do
              :project_import_attempts,
              :project_import_attempts_replace_eligibility_check,
              check: "replace_eligible OR import_mode = 'additive'"
+           )
+
+    create constraint(
+             :project_import_attempts,
+             :project_import_attempts_replacement_fence_check,
+             check: """
+             (import_mode = 'additive' AND replacement_prepared_at IS NULL)
+             OR
+             (import_mode = 'replace_project'
+              AND (
+                (status = 'completed' AND replacement_prepared_at IS NOT NULL)
+                OR
+                (status <> 'completed' AND replacement_prepared_at IS NULL)
+              ))
+             """
            )
 
     create constraint(:project_import_attempts, :project_import_attempts_snapshot_identity_check,
@@ -140,6 +156,24 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotBackedProjectImportReplacement do
   end
 
   def down do
+    execute "LOCK TABLE project_import_attempts IN ACCESS EXCLUSIVE MODE"
+
+    execute """
+    DO $$
+    BEGIN
+      IF EXISTS (
+        SELECT 1
+        FROM project_import_attempts
+        WHERE import_mode = 'replace_project'
+          AND status IN ('ready', 'queued', 'running', 'retrying')
+      ) THEN
+        RAISE EXCEPTION
+          'cannot roll back snapshot-backed project replacement while replacement imports are active';
+      END IF;
+    END
+    $$
+    """
+
     drop_if_exists index(:project_import_attempts, [:pre_import_snapshot_id],
                      name: :project_import_attempts_pre_import_snapshot_idx
                    )
@@ -153,6 +187,7 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotBackedProjectImportReplacement do
 
     drop constraint(:project_import_attempts, :project_import_attempts_replace_snapshot_check)
     drop constraint(:project_import_attempts, :project_import_attempts_snapshot_identity_check)
+    drop constraint(:project_import_attempts, :project_import_attempts_replacement_fence_check)
     drop constraint(:project_import_attempts, :project_import_attempts_replace_eligibility_check)
     drop constraint(:project_import_attempts, :project_import_attempts_import_mode_check)
     drop constraint(:project_import_attempts, :project_import_attempts_stage_check)
@@ -194,6 +229,7 @@ defmodule Storyarn.Repo.Migrations.AddSnapshotBackedProjectImportReplacement do
       remove :pre_import_snapshot_id
       remove :snapshot_reference_bound_at
       remove :snapshot_request_key
+      remove :replacement_prepared_at
       remove :replace_eligible
       remove :import_mode
     end

@@ -374,6 +374,7 @@ defmodule Storyarn.Imports.Expiration do
     Error.report(%{
       format: attempt.format,
       parser_version: attempt.parser_version,
+      import_mode: attempt.import_mode,
       phase: "expiration",
       error_code: error_code,
       exception_module: "none"

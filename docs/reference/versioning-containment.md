@@ -345,6 +345,54 @@ ENTITY_TRASH_RETENTION_ENABLED=false
 
 These switches do not affect project snapshot creation or downloads.
 
+### Yarn replacement rollout and containment
+
+Yarn whole-project replacement has two independent runtime controls:
+
+```text
+PROJECT_SNAPSHOT_RESTORE_ENABLED=false
+YARN_IMPORT_REPLACE_ENABLED=false
+```
+
+`PROJECT_SNAPSHOT_RESTORE_ENABLED` is the fail-closed restore switch and a
+mandatory execution prerequisite for replacement. `YARN_IMPORT_REPLACE_ENABLED`
+is only a producer gate: disabling it prevents new replacement jobs, but does
+not stop one that has already been accepted.
+
+Keep both values disabled while deploying the replacement-capable release and
+running its migrations. After every process consuming the `imports` queue is on
+that release, complete the real-provider snapshot smoke above, enable project
+snapshot restore, and then enable the Yarn producer gate. Do not enable the
+producer while an older imports worker can still claim jobs.
+
+For incident containment, disable `YARN_IMPORT_REPLACE_ENABLED` first. If an
+accepted replacement must also stop, disable
+`PROJECT_SNAPSHOT_RESTORE_ENABLED`; an execution that has not crossed the final
+replacement gate then fails closed before project content is removed. A final
+transaction already past that gate may still complete, so wait for active work
+to settle. This also disables normal project-snapshot restores, so treat it as
+the broader emergency switch.
+
+Before rolling application code or this migration back, keep the producer gate
+disabled and verify that no replacement attempt remains active:
+
+```sql
+SELECT status, stage, count(*)
+FROM project_import_attempts
+WHERE import_mode = 'replace_project'
+  AND status IN ('ready', 'queued', 'running', 'retrying')
+GROUP BY status, stage
+ORDER BY status, stage;
+```
+
+Wait for the query to return no rows. Cancel ready or queued work through the
+supported import cancellation path and let running or retrying work reach a
+terminal state; do not edit attempts or Oban rows by hand. Re-enable the gates
+only after all imports workers are current again. Monitor the
+low-cardinality, content-free import metrics by `import_mode`, especially
+snapshot transitions and execute/error outcomes; filenames, project IDs, user
+IDs, and imported content must never be added as tags.
+
 Provider lifecycle rules must not expire ready snapshot namespaces outside the
 application protocol. Maintain external immutable object backup, access
 boundaries, and a tested PostgreSQL restore drill. Reconciliation and the
