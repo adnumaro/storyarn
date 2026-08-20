@@ -1,0 +1,93 @@
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_6ce2be7da793bc::t_bb46c1d24db49d 953-978
+  s_6ce2be7da793bc::t_66063029c835ce 979
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_6ce2be7da793bc::t_7a0f3004c54880 188
+  s_6ce2be7da793bc::t_3af692e58ceceb 682
+lib/storyarn/imports/replacement.ex
+  s_6ce2be7da793bc::t_e39dc53f885a4f 443-444,446-447
+  s_6ce2be7da793bc::t_3fde03645efddb 250-251,287,303,380-383
+  s_6ce2be7da793bc::t_c1bf89f99f7cf3 119-120,123,267,269,288-289
+  s_6ce2be7da793bc::t_46b54c4817207a 121-122,124
+  s_6ce2be7da793bc::t_dc471396413684 18,35,37-41
+  s_6ce2be7da793bc::t_7933bada1ec83c 116-118,125-249,252-266,268,270-286,290-302,304-379,384-396
+  s_6ce2be7da793bc::t_7c18c90544871e 510,548-558
+  s_6ce2be7da793bc::t_fa1556a9a636cf 559
+lib/storyarn/versioning/snapshot_cleanup_intent.ex
+  s_6ce2be7da793bc::t_b36ce8765d9526 20
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_6ce2be7da793bc::t_460d5ee5c8a517 72,269,278,300,360,483,486,494
+lib/storyarn/imports/expiration.ex
+  s_6ce2be7da793bc::t_f646627df24e3b 77,92-134
+  s_6ce2be7da793bc::t_849ab29aa74831 23,81-82,88
+priv/docs/es/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_21c3cce82c9ab6 43
+assets/app/locales/es/project-settings.json
+  s_6ce2be7da793bc::t_2c241a439788aa 494
+test/storyarn/repo/migrations/remove_transitional_snapshot_cutover_scaffolding_migration_test.exs
+  s_6ce2be7da793bc::t_72ff3576163876 8,18,43-51,58-59,61,87,462-467,473-474
+  s_6ce2be7da793bc::t_c035e9b5d88fa1 468-472
+  s_6ce2be7da793bc::t_7ad5a530b28f30 475
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_6ce2be7da793bc::t_bb46c1d24db49d 145-171
+  s_6ce2be7da793bc::t_eed14434e9ae94 144
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_6ce2be7da793bc::t_62391f62f64a67 88,206
+docs/reference/versioning-containment.md
+  s_6ce2be7da793bc::t_4e59c4522b8ecb 5,14-16
+  s_6ce2be7da793bc::t_21c3cce82c9ab6 368-375,394-398
+  s_6ce2be7da793bc::t_d08510ea35d59d 399
+lib/storyarn/imports.ex
+  s_6ce2be7da793bc::t_14825272683cd6 1007
+  s_6ce2be7da793bc::t_7927cf18699bbd 968,988
+  s_6ce2be7da793bc::t_45067ff445a7b3 1063-1066,1068-1071
+  s_6ce2be7da793bc::t_77eb27bfdce742 31,368-369
+lib/storyarn/imports/execution.ex
+  s_6ce2be7da793bc::t_2c5439e402b188 139-150
+  s_6ce2be7da793bc::t_07e7132a712f6c 57,59,411-412,429-430,493-494,501-502,643-651
+test/storyarn/imports/replacement_test.exs
+  s_6ce2be7da793bc::t_e819ab5033d1d7 452-456,503-505
+  s_6ce2be7da793bc::t_62391f62f64a67 114
+  s_6ce2be7da793bc::t_957dbde413c0f7 39,360-388,611-645,695-701,840-844,855,859,873-885
+  s_6ce2be7da793bc::t_6ed70da89f5fbd 214-248
+  s_6ce2be7da793bc::t_afcd8a2a8d3219 508-526,531-542
+  s_6ce2be7da793bc::t_a706fdbfddac12 527-528
+  s_6ce2be7da793bc::t_637c848d840790 702,704-743
+  s_6ce2be7da793bc::t_63218de8e7e834 529-530
+  s_6ce2be7da793bc::t_c2b6a5f8976fd7 389-451,457-502,506-507,646-694
+  s_6ce2be7da793bc::t_eccb260b10872d 703
+priv/repo/migrations/20260820160000_add_abandoned_import_snapshot_cleanup_reason.exs
+  s_6ce2be7da793bc::t_b36ce8765d9526 1-77
+lib/storyarn/versioning.ex
+  s_6ce2be7da793bc::t_bb46c1d24db49d 332-335,345-347
+  s_6ce2be7da793bc::t_66063029c835ce 336-339
+  s_6ce2be7da793bc::t_f9aae42ed4eff6 348
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_6ce2be7da793bc::t_70033ad323f093 1159,1164-1165,1169,1171
+priv/docs/en/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_21c3cce82c9ab6 43
+assets/app/locales/en/project-settings.json
+  s_6ce2be7da793bc::t_2c241a439788aa 494
+assets/app/modules/projects/settings/export-import/composables/useYarnImportReview.ts
+  s_6ce2be7da793bc::t_ca223fc9d8449c 687
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_31bb5ab14403c6 803,808,813,818,823,1172,1177,1182,1187,1192,1197,1202,1207
+priv/gettext/projects.pot
+  s_6ce2be7da793bc::t_c9df62d5740d21 803,808,813,818,823,1172,1177,1182,1187,1192,1197,1202,1207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "5893eef64224dd941d0827d5ba80c844ea1b0fc0",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
