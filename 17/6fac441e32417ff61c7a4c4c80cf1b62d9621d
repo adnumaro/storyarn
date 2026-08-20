@@ -1,0 +1,98 @@
+.env.example
+  s_6ce2be7da793bc::t_b31f26b1c64645 89,91-93
+assets/app/locales/en/project-settings.json
+  s_6ce2be7da793bc::t_cd259ea906f387 404,469
+  s_6ce2be7da793bc::t_bcf61e9e2a478b 479
+config/config.exs
+  s_6ce2be7da793bc::t_b31f26b1c64645 221,223-224,228
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_6ce2be7da793bc::t_bd407a377005ba 10,55-56,966-981,986-1001,1003,1867-1915,1917-1930
+  s_6ce2be7da793bc::t_d50b3a69a7619f 52-54,983-985,1002,1916
+  s_6ce2be7da793bc::t_6519b8197ff7f8 982,1931-1932
+config/test.exs
+  s_6ce2be7da793bc::t_b31f26b1c64645 170
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_6ce2be7da793bc::t_bcf61e9e2a478b 9,67-71,695-704,737-745
+  s_6ce2be7da793bc::t_3056ebb1c6f0ff 746
+test/storyarn/versioning/restore_policy_test.exs
+  s_6ce2be7da793bc::t_20a1b2d19d8bc1 34-44
+lib/storyarn_web/live/export_import_live/index.ex
+  s_6ce2be7da793bc::t_2ead8448b79993 970-983
+  s_6ce2be7da793bc::t_bcf61e9e2a478b 165,733,929,962,984-986
+  s_6ce2be7da793bc::t_94f7780c487046 987
+test/fixtures/imports/yarn/emberfall/Dialogue/02_market.yarn
+  s_6ce2be7da793bc::t_837fd32c24450b 1-19
+lib/storyarn/imports/replacement.ex
+  s_6ce2be7da793bc::t_b31f26b1c64645 52
+test/fixtures/imports/yarn/emberfall/Emberfall.yarnproject
+  s_6ce2be7da793bc::t_837fd32c24450b 1-7
+priv/docs/en/project-management/04-project-settings.md
+  s_6ce2be7da793bc::t_3ed2ac0adaa583 53
+assets/app/locales/es/project-settings.json
+  s_6ce2be7da793bc::t_bcf61e9e2a478b 479
+  s_6ce2be7da793bc::t_cd259ea906f387 404,469
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_6ce2be7da793bc::t_2ead8448b79993 879,881
+priv/docs/es/project-management/04-project-settings.md
+  s_6ce2be7da793bc::t_3ed2ac0adaa583 53
+config/runtime.exs
+  s_6ce2be7da793bc::t_b31f26b1c64645 93
+test/fixtures/imports/yarn/emberfall/README.md
+  s_6ce2be7da793bc::t_837fd32c24450b 1-9
+assets/app/modules/projects/settings/export-import/types.ts
+  s_6ce2be7da793bc::t_c0c696d64d4918 177
+  s_6ce2be7da793bc::t_bcf61e9e2a478b 178
+  s_6ce2be7da793bc::t_2ead8448b79993 175
+test/e2e/import_resume_test.exs
+  s_6ce2be7da793bc::t_41010928bd8c3d 126,129-130,166
+  s_6ce2be7da793bc::t_4594b9e51acb90 13-14,18,22-25,29-36,91-125,127,131-155,171-173,175-180,203,256-306
+  s_6ce2be7da793bc::t_58072670459dd8 128,186-202
+  s_6ce2be7da793bc::t_10d1fa09fa1bdb 156-165,167-170,174,184-185
+  s_6ce2be7da793bc::t_54bbafe71aca09 181-183
+  s_6ce2be7da793bc::t_a007693997d9a4 204
+lib/storyarn/versioning.ex
+  s_6ce2be7da793bc::t_b31f26b1c64645 167
+priv/docs/es/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_3ed2ac0adaa583 43,52
+docs/reference/versioning-containment.md
+  s_6ce2be7da793bc::t_fd81db90aca98d 350-369,380-387
+test/storyarn/imports/replacement_test.exs
+  s_6ce2be7da793bc::t_f936e18bf8b2ac 18,25-27,33,36,40-46,48,55-87,395-404,409-411,458-465,470-493,609-614,616-617
+  s_6ce2be7da793bc::t_20a1b2d19d8bc1 113-116,120,124-125
+  s_6ce2be7da793bc::t_c593580112aab8 88,618
+test/fixtures/imports/yarn/emberfall/Dialogue/01_arrival.yarn
+  s_6ce2be7da793bc::t_837fd32c24450b 1-18
+lib/storyarn/imports.ex
+  s_6ce2be7da793bc::t_b31f26b1c64645 52,54,918
+priv/docs/en/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_3ed2ac0adaa583 43,52
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_6ce2be7da793bc::t_d50b3a69a7619f 1348,1370,1374,1400
+  s_6ce2be7da793bc::t_bd407a377005ba 1341-1347,1349-1369,1371-1373,1375-1378,1393-1399,1401-1405,1408-1409
+  s_6ce2be7da793bc::t_26e49e4d691304 1406-1407
+  s_6ce2be7da793bc::t_a0df1f45dff23d 1410
+test/fixtures/imports/yarn/emberfall/Dialogue/03_watchtower.yarn
+  s_6ce2be7da793bc::t_837fd32c24450b 1-21
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_6ce2be7da793bc::t_2ead8448b79993 179-180
+lib/storyarn/versioning/restore_policy.ex
+  s_6ce2be7da793bc::t_b31f26b1c64645 3,5-8,27
+priv/gettext/projects.pot
+  s_6ce2be7da793bc::t_159d24783e9815 813,818,823,1172,1177,1182,1187,1192,1197,1202,1207
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.22",
+  "base_commit_sha": "176fac441e32417ff61c7a4c4c80cf1b62d9621d",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
