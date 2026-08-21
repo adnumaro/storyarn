@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-12
+> Last reviewed: 2026-08-20
 >
 > Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
 > `lib/storyarn/versioning/snapshot_archive_storage.ex`,
@@ -11,8 +11,9 @@
 > `lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex`,
 > `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
 > `lib/storyarn/workers/`, plus
-> `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs` and
-> `priv/repo/migrations/20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs`
+> `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs`,
+> `priv/repo/migrations/20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs`, and
+> `priv/repo/migrations/20260820160000_add_abandoned_import_snapshot_cleanup_reason.exs`
 
 Project snapshots have one canonical representation: a v2 full ZIP archive and
 its manifest sidecar. There is no runtime switch, alternate format, linked mode,
@@ -344,6 +345,61 @@ ENTITY_TRASH_RETENTION_ENABLED=false
 ```
 
 These switches do not affect project snapshot creation or downloads.
+
+### Yarn replacement rollout and containment
+
+Exact project-snapshot restore and Yarn replacement do not have runtime feature
+flags. They are normal authorized product capabilities. Their safety boundary
+is the verified snapshot identity, the current-project checksum fence, and the
+single final replacement transaction.
+
+For the initial rollout, apply the migration before starting replacement-aware
+application processes and avoid accepting imports until every `imports` queue
+consumer runs the new release. The database completion fence prevents an older
+worker from committing a replacement as an additive import, but pausing the
+queue avoids needless retries while processes are mixed.
+
+For incident containment, put the import surface into maintenance and pause the
+`imports` queue. Cancel ready or queued attempts through the supported import
+cancellation path and let running or retrying attempts settle; do not edit
+attempts or Oban rows by hand. A final transaction that has already acquired
+its locks may complete atomically.
+
+Recovery snapshots are retained only for completed replacements. Failed,
+cancelled, and expired replacements request cooperative cancellation while a
+snapshot is still building, or create an `abandoned_import` cleanup intent once
+it is terminal. The import-maintenance sweep reconciles any cleanup missed by a
+process crash. Do not delete the snapshot row or provider objects by hand; the
+cleanup intent is the durable ownership handoff that releases accounted storage
+and removes the exact object inventory.
+
+Before rolling application code or the replacement migration back, block new
+imports, pause queue consumers, and verify that no replacement attempt remains
+active:
+
+```sql
+SELECT status, stage, count(*)
+FROM project_import_attempts
+WHERE import_mode = 'replace_project'
+  AND status IN ('ready', 'queued', 'running', 'retrying')
+GROUP BY status, stage
+ORDER BY status, stage;
+```
+
+Wait for the query to return no rows. The migration `down` path also takes an
+exclusive table lock and aborts when it finds active replacement work. Only
+after the query and migration guard pass may the older application release be
+started and the queue resumed.
+
+The cleanup-reason migration also refuses to roll back while an
+`abandoned_import` cleanup intent exists. Those rows are durable audit and
+ownership records, so do not delete them merely to force a rollback. Once this
+cleanup path has been used, prefer a forward fix unless a separately reviewed
+cleanup-history migration makes the older schema truthful again.
+
+Monitor the low-cardinality, content-free import metrics by `import_mode`,
+especially snapshot transitions and execute/error outcomes. Filenames, project
+IDs, user IDs, and imported content must never be added as tags.
 
 Provider lifecycle rules must not expire ready snapshot namespaces outside the
 application protocol. Maintain external immutable object backup, access

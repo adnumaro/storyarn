@@ -18,7 +18,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.ProjectSnapshotRestoreExecutor
-  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
@@ -40,25 +39,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
   end
 
   describe "request_project_snapshot_restore/4" do
-    test "fails closed before persistence when the project restore policy is disabled", context do
-      previous = Application.get_env(:storyarn, RestorePolicy)
-
-      on_exit(fn ->
-        Application.put_env(:storyarn, RestorePolicy, previous)
-      end)
-
-      Application.put_env(:storyarn, RestorePolicy,
-        sheet_version_restore: true,
-        flow_version_restore: true,
-        scene_version_restore: true,
-        project_snapshot_restore: false
-      )
-
-      assert {:error, :restore_temporarily_disabled} = request(context, Ecto.UUID.generate())
-      assert Repo.aggregate(ProjectSnapshotRestore, :count) == 0
-      assert all_enqueued(worker: RestoreProjectSnapshotWorker) == []
-    end
-
     test "persists immutable target identity and binds one worker atomically", context do
       idempotency_key = Ecto.UUID.generate()
 
@@ -549,42 +529,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
       refute_receive {:remote_change, :asset_library_restored, %{}}, 20
       refute_receive {:entities_deleted, _type, _ids}, 20
       refute_receive {:languages_changed, nil}, 20
-    end
-
-    test "does not invoke the executor after the restore policy is disabled", context do
-      {:ok, restore} = request(context, Ecto.UUID.generate())
-      job = executing_job!(restore, 1)
-      previous = Application.get_env(:storyarn, RestorePolicy)
-
-      on_exit(fn ->
-        Application.put_env(:storyarn, RestorePolicy, previous)
-      end)
-
-      Application.put_env(:storyarn, RestorePolicy,
-        sheet_version_restore: true,
-        flow_version_restore: true,
-        scene_version_restore: true,
-        project_snapshot_restore: false
-      )
-
-      parent = self()
-
-      assert {:discard, :restore_temporarily_disabled} =
-               Versioning.perform_project_snapshot_restore(restore.id, 1,
-                 job_id: job.id,
-                 attempt: 1,
-                 max_attempts: 5,
-                 executor: fn _claimed, _opts ->
-                   send(parent, :disabled_executor_called)
-                   {:ok, %{result_digest: String.duplicate("d", 64), reservation_id: nil}}
-                 end
-               )
-
-      refute_receive :disabled_executor_called
-
-      failed = Repo.get!(ProjectSnapshotRestore, restore.id)
-      assert failed.status == "failed"
-      assert failed.failure_code == "restore_temporarily_disabled"
     end
 
     test "never terminalizes any delivery family while bound reservation settlement fails" do

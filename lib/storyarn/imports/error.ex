@@ -17,6 +17,8 @@ defmodule Storyarn.Imports.Error do
     import_plan_has_errors
     import_plan_too_large
     import_expired
+    import_project_replacement_failed
+    import_replace_not_eligible
     import_review_too_large
     invalid_archive
     invalid_archive_entry
@@ -25,13 +27,22 @@ defmodule Storyarn.Imports.Error do
     invalid_json
     invalid_json_structure
     invalid_import_review
+    invalid_import_mode
+    invalid_import_snapshot_identity
+    invalid_import_snapshot_request
     invalid_text_encoding
     missing_yarn_body_end
     missing_yarn_body_start
     missing_yarn_endif
     nested_archive_not_allowed
     not_found
+    pre_import_snapshot_capacity_unavailable
+    pre_import_snapshot_unavailable
+    pre_import_snapshot_verification_failed
     project_already_has_main_flow
+    project_changed_since_import_snapshot
+    replace_import_confirmation_required
+    stale_import_mode
     unauthorized
     unsupported_archive_entry
     unsupported_import_format
@@ -59,6 +70,7 @@ defmodule Storyarn.Imports.Error do
     safe_metadata = %{
       format: Map.get(metadata, :format, "unknown"),
       parser_version: Map.get(metadata, :parser_version, "unknown"),
+      import_mode: safe_import_mode(Map.get(metadata, :import_mode)),
       phase: Map.get(metadata, :phase, "unknown"),
       error_code: Map.get(metadata, :error_code, "unexpected_error"),
       exception_module: Map.get(metadata, :exception_module, "none")
@@ -95,6 +107,9 @@ defmodule Storyarn.Imports.Error do
   end
 
   defp maybe_emit(false, _safe_metadata), do: :ok
+
+  defp safe_import_mode(mode) when mode in ["additive", "replace_project"], do: mode
+  defp safe_import_mode(_mode), do: "unknown"
 
   defp safe_code(reason) when is_atom(reason), do: to_string(reason)
   defp safe_code({reason, _details}) when is_atom(reason), do: to_string(reason)

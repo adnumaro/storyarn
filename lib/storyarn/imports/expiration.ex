@@ -20,6 +20,7 @@ defmodule Storyarn.Imports.Expiration do
   alias Storyarn.Imports.PlanCleanup
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
+  alias Storyarn.Imports.Replacement
   alias Storyarn.Notifications
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -73,46 +74,62 @@ defmodule Storyarn.Imports.Expiration do
     attempts = stale_expiration_candidates(now, stale_batch_size(opts))
 
     {expired_count, failure_count} =
-      Enum.reduce(attempts, {0, 0}, fn attempt, {expired_count, failure_count} ->
-        case expire_stale_attempt_safely(attempt, now, opts) do
-          {:ok, {:expired, expired, notification_outcome}} ->
-            Notifications.publish_committed(notification_outcome)
-            Queue.broadcast(expired)
-
-            cleanup_failure_count =
-              expired
-              |> PlanCleanup.cleanup_plan(opts)
-              |> PlanCleanup.cleanup_failure_count()
-
-            {expired_count + 1, failure_count + cleanup_failure_count}
-
-          {:ok, {:executable, executable, "available"}} ->
-            Queue.wake(executable, opts)
-            {expired_count, failure_count}
-
-          {:ok, {:executable, _executable, _job_state}} ->
-            {expired_count, failure_count}
-
-          {:ok, :not_stale} ->
-            {expired_count, failure_count}
-
-          {:error, reason} ->
-            report_expiration_error(attempt, reason)
-            defer_failed_expiration(attempt.id, now)
-            {expired_count, failure_count + 1}
-        end
-      end)
+      Enum.reduce(attempts, {0, 0}, &reconcile_expiration_candidate(&1, now, opts, &2))
 
     maybe_wake_stale_available_import(now, opts)
     cleanup_failure_count = PlanCleanup.retry_pending_plan_cleanup(opts)
-    failure_count = failure_count + cleanup_failure_count
+    snapshot_cleanup = Replacement.cleanup_terminal_recovery_snapshots(opts)
+    failure_count = failure_count + cleanup_failure_count + snapshot_cleanup.failure_count
 
     {:ok,
      %{
        expired_count: expired_count,
        failure_count: failure_count,
-       more?: expiration_work_remaining?(TimeHelpers.now())
+       more?: expiration_work_remaining?(TimeHelpers.now()) or snapshot_cleanup.more?
      }}
+  end
+
+  defp reconcile_expiration_candidate(attempt, now, opts, {expired_count, failure_count}) do
+    case expire_stale_attempt_safely(attempt, now, opts) do
+      {:ok, {:expired, expired, notification_outcome}} ->
+        finish_expired_attempt(expired, notification_outcome, opts, expired_count, failure_count)
+
+      {:ok, {:executable, executable, "available"}} ->
+        Queue.wake(executable, opts)
+        {expired_count, failure_count}
+
+      {:ok, {:executable, _executable, _job_state}} ->
+        {expired_count, failure_count}
+
+      {:ok, :not_stale} ->
+        {expired_count, failure_count}
+
+      {:error, reason} ->
+        report_expiration_error(attempt, reason)
+        defer_failed_expiration(attempt.id, now)
+        {expired_count, failure_count + 1}
+    end
+  end
+
+  defp finish_expired_attempt(expired, notification_outcome, opts, expired_count, failure_count) do
+    Notifications.publish_committed(notification_outcome)
+    snapshot_cleanup_failure_count = snapshot_cleanup_failure_count(expired)
+    expired = Repo.get(ProjectImportAttempt, expired.id) || expired
+    Queue.broadcast(expired)
+
+    plan_cleanup_failure_count =
+      expired
+      |> PlanCleanup.cleanup_plan(opts)
+      |> PlanCleanup.cleanup_failure_count()
+
+    {expired_count + 1, failure_count + plan_cleanup_failure_count + snapshot_cleanup_failure_count}
+  end
+
+  defp snapshot_cleanup_failure_count(expired) do
+    case Replacement.cleanup_terminal_recovery_snapshot(expired) do
+      {:error, _reason} -> 1
+      {:ok, _outcome} -> 0
+    end
   end
 
   defp stale_batch_size(opts) do
@@ -374,6 +391,7 @@ defmodule Storyarn.Imports.Expiration do
     Error.report(%{
       format: attempt.format,
       parser_version: attempt.parser_version,
+      import_mode: attempt.import_mode,
       phase: "expiration",
       error_code: error_code,
       exception_module: "none"

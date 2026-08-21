@@ -1,0 +1,21 @@
+title: Watchtower
+tags: chapter_1 emberfall_watch
+---
+Captain Ilyra: Stop there. The city is sealed until the courier is found. #line:watch_ilyra_challenge
+<<if $watch_alerted>>
+    Captain Ilyra: Tarin already sold me your description. #line:watch_alerted
+<<else>>
+    Mara: We are late traders seeking shelter from the storm. #line:watch_cover
+<<endif>>
+-> Show the maintenance map <<if $has_watch_map>> #line:watch_show_map
+    Player: Your own seal marks this route as open. #line:watch_map_reply
+    Captain Ilyra: Then someone inside Emberfall wants you admitted. #line:watch_map_result
+    <<set $mara_trust to $mara_trust + 1>>
+-> Hand over the satchel <<if $mara_trust < 0>> #line:watch_betray
+    Player: Take it. I was never part of this. #line:watch_betray_reply
+    Captain Ilyra: Sensible. Emberfall remembers sensible people. #line:watch_betray_result
+-> Trust Mara to answer #line:watch_trust
+    Mara: Open the gate, Captain. You know what follows if the beacon goes dark. #line:watch_trust_reply
+    Captain Ilyra: Go, before I decide that I do not. #line:watch_trust_result
+<<stop>>
+===

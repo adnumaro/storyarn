@@ -68,6 +68,27 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
 
   def prepare(_project_id, _project_snapshot, _assets, _opts), do: {:error, :invalid_snapshot_archive_source}
 
+  @doc false
+  @spec canonical_project_checksum(map(), [Storyarn.Assets.Asset.t()], keyword()) ::
+          {:ok, String.t()} | {:error, term()}
+  def canonical_project_checksum(project_snapshot, assets, opts \\ [])
+
+  def canonical_project_checksum(project_snapshot, assets, opts)
+      when is_map(project_snapshot) and is_list(assets) and is_list(opts) do
+    limits = SnapshotObjectFormat.limits(opts)
+
+    with {:ok, normalized_project} <- normalize_project_snapshot(project_snapshot, limits),
+         {:ok, project} <- SnapshotObjectFormat.portable_project(normalized_project),
+         {:ok, source_refs} <- SnapshotObjectFormat.source_refs_for_assets(assets),
+         project = Map.put(project, "asset_catalog_refs", source_refs),
+         :ok <- SnapshotObjectFormat.validate_project(project),
+         {:ok, descriptor, _json} <- project_descriptor(project, opts) do
+      {:ok, descriptor["sha256"]}
+    end
+  end
+
+  def canonical_project_checksum(_project_snapshot, _assets, _opts), do: {:error, :invalid_snapshot_archive_source}
+
   @doc """
   Claims, uploads and verifies one archive beneath its inert staging prefix.
 

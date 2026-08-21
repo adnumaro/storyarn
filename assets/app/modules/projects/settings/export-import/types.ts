@@ -65,6 +65,18 @@ export interface ExportPanelProps {
 
 export type ImportStep = "upload" | "preview" | "queued" | "done" | "error";
 
+export type ImportMode = "additive" | "replace_project";
+
+export type ImportAttemptStage =
+  | "parsed"
+  | "awaiting_snapshot"
+  | "queued"
+  | "materializing"
+  | "retrying"
+  | "completed"
+  | "failed"
+  | "expired";
+
 export type ImportAttemptStatus =
   | "ready"
   | "queued"
@@ -151,11 +163,17 @@ export interface ImportPreview {
 
 export interface ImportState {
   step: ImportStep;
+  stage: ImportAttemptStage | null;
   attemptId?: number | null;
   preview?: ImportPreview | null;
   /** Stable, content-free server code. UI copy is always resolved through i18n. */
   errorCode?: string | null;
   conflictStrategy?: string;
+  importMode: ImportMode;
+  /** True only for a validated archive that contains one real `.yarnproject`. */
+  replaceEligible: boolean;
+  /** Server-derived internal route to the exact replacement recovery snapshot card. */
+  recoverySnapshotUrl?: string | null;
   warningCodes?: string[];
   status?: ImportAttemptStatus | null;
 }

@@ -30,10 +30,17 @@ Los comandos personalizados con efectos externos y sin equivalente en Storyarn s
 1. Selecciona un archivo `.yarn` o `.zip`. El tamaño máximo es de 50 MB.
 2. Pulsa **Validar y previsualizar**. Antes de extraer un ZIP se comprueban sus rutas, número de entradas, tamaño expandido, ratio de compresión, codificación de texto y tamaño de cada archivo.
 3. Revisa el número de entidades, los conflictos de atajos y las advertencias de compatibilidad.
-4. Elige **Omitir**, **Sobrescribir** o **Conservar ambos** para los conflictos e inicia la importación.
-5. El plan de importación cifrado se procesa en segundo plano. Puedes salir de la página y volver cuando termine.
+4. Mantén el modo predeterminado **Añadir a este proyecto** o elige **Reemplazar contenido narrativo** cuando el ZIP contenga exactamente un archivo `.yarnproject` válido.
+5. En una importación aditiva, elige **Omitir**, **Sobrescribir** o **Conservar ambos** para los conflictos e inicia la importación.
+6. El plan de importación cifrado se procesa en segundo plano. Puedes salir de la página y volver cuando termine.
 
-Solo los miembros con permiso para editar contenido pueden preparar o ejecutar una importación. Storyarn vuelve a comprobar el permiso dentro del trabajo en segundo plano. Las importaciones fallidas usan una transacción de base de datos, por lo que no conservan contenido parcial.
+Solo los propietarios del proyecto pueden preparar o ejecutar una importación. Storyarn vuelve a comprobar el permiso dentro del trabajo en segundo plano. Las importaciones fallidas usan una transacción de base de datos, por lo que no conservan contenido parcial.
+
+### Reemplazar un proyecto existente
+
+El reemplazo completo solo se ofrece para un ZIP de proyecto Yarn explícito que contenga un único `.yarnproject` válido. Un archivo `.yarn` suelto o un ZIP de proyecto implícito se puede añadir, pero no puede reemplazar el proyecto actual.
+
+Antes del reemplazo, Storyarn crea un snapshot completo normal y visible, y espera hasta que esté verificado y se pueda recuperar. Mientras se construye, no modifica nada. Después comprueba que el proyecto siga coincidiendo exactamente con el snapshot y, en una única transacción de base de datos, mueve las Fichas, Flujos, Escenas, idiomas y textos de localización activos a la papelera o archivo recuperable antes de importar el proyecto Yarn. Se conservan los assets, ajustes del proyecto, miembros, snapshots, entradas del glosario, contenido que ya estaba en la papelera y el historial de versiones de entidades. Si falla el snapshot, la recuperación no está disponible, el proyecto cambia tras la captura o falla la materialización, el reemplazo se detiene sin conservar cambios parciales. El snapshot de recuperación se conserva después de un reemplazo correcto; los reemplazos fallidos, cancelados o caducados eliminan su snapshot sin usar mediante una limpieza durable en segundo plano.
 
 ### Límites actuales del importador de Yarn
 
@@ -42,6 +49,7 @@ Solo los miembros con permiso para editar contenido pueden preparar o ejecutar u
 - Los grupos de líneas, los grupos de nodos y las cláusulas `when` de los storylets de Yarn 3 todavía no se convierten. Los archivos que los usan se rechazan porque aplanar sus reglas de selección cambiaría qué diálogo aparece. Los bloques `once` con estado se rechazan por el mismo motivo.
 - Las fichas de hablante importadas solo contienen el nombre inferido; complétalas después con el esquema propio de tu proyecto. Las expresiones de hablante dinámicas permanecen en el texto del diálogo y se marcan para revisión en vez de enlazarse a una ficha de personaje.
 - No se importan imágenes, audio, assets de Unity, recursos de Godot ni bytecode compilado de Yarn.
+- El modo de reemplazo requiere espacio suficiente en el workspace para que Storyarn cree y verifique el snapshot completo de recuperación. Si no puede completar ese punto de recuperación, el proyecto existente permanece intacto.
 
 ## Formatos de exportacion
 

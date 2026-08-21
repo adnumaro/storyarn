@@ -1,10 +1,11 @@
 defmodule Storyarn.Versioning.RestorePolicy do
   @moduledoc """
-  Runtime kill switches for restore operations that mutate persisted data.
+  Runtime policy for restore operations that mutate persisted data.
 
-  Restore paths are fail-closed: a missing or invalid configuration value keeps
-  the corresponding operation disabled. Read-only version and snapshot
-  features are intentionally unaffected.
+  Entity-version restore paths are fail-closed: a missing or invalid
+  configuration value keeps the corresponding operation disabled. Exact full
+  project snapshot restore is an always-available recovery primitive and still
+  requires its normal authorization, integrity, quota, and concurrency checks.
   """
 
   @type entity_type :: String.t()
@@ -23,7 +24,7 @@ defmodule Storyarn.Versioning.RestorePolicy do
     end
   end
 
-  def enabled?({:project_snapshot_restore, "full"}), do: configured?(:project_snapshot_restore)
+  def enabled?({:project_snapshot_restore, "full"}), do: true
 
   def enabled?(_action), do: false
 

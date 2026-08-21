@@ -10,6 +10,7 @@ defmodule Storyarn.Imports.PlanStorageTest do
   @envelope_magic "STORYARN_IMPORT_PLAN"
   @envelope_version 1
   @binding_nonce_bytes 32
+  @binding_digest_bytes 32
   @binding_domain "storyarn:import-plan:storage-key:v1"
 
   test "a plan without source_kind roundtrips as a canonical file import" do
@@ -37,6 +38,21 @@ defmodule Storyarn.Imports.PlanStorageTest do
 
     assert {:ok, ^key} = PlanStorage.store_at(key, plan(:archive))
     assert {:ok, %ImportPlan{source_kind: :archive}} = PlanStorage.load(key)
+  end
+
+  test "replacement eligibility stays ephemeral and preserves the parser-v5 payload contract" do
+    key = storage_key()
+    on_exit(fn -> PlanStorage.delete(key) end)
+
+    eligible = %{plan(:archive) | parser_version: "5", replace_eligible: true}
+    additive_only = %{eligible | replace_eligible: false}
+
+    assert {:ok, eligible_binding} = PlanStorage.canonical_binding_payload(eligible)
+    assert {:ok, ^eligible_binding} = PlanStorage.canonical_binding_payload(additive_only)
+    assert {:ok, ^key} = PlanStorage.store_at(key, eligible)
+    assert {:ok, %ImportPlan{parser_version: "5", replace_eligible: nil}} = PlanStorage.load(key)
+
+    refute key |> stored_payload() |> Map.has_key?("replace_eligible")
   end
 
   test "roundtrips only the privacy-safe issue aggregate" do
@@ -246,6 +262,16 @@ defmodule Storyarn.Imports.PlanStorageTest do
 
     assert {:ok, encrypted} = Vault.encrypt(envelope)
     encrypted
+  end
+
+  defp stored_payload(key) do
+    assert {:ok, encrypted} = Storage.download(key)
+    assert {:ok, envelope} = Vault.decrypt(encrypted)
+
+    assert <<@envelope_magic, @envelope_version::unsigned-8, _nonce::binary-size(@binding_nonce_bytes),
+             _binding::binary-size(@binding_digest_bytes), compressed::binary>> = envelope
+
+    compressed |> :zlib.gunzip() |> Jason.decode!()
   end
 
   defp encoded_source_kind(nil), do: "file"

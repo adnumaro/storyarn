@@ -35,6 +35,7 @@ defmodule Storyarn.Imports.Queue do
         Error.report(%{
           format: attempt.format,
           parser_version: attempt.parser_version,
+          import_mode: attempt.import_mode,
           phase: "queue_wakeup",
           error_code: "queue_wakeup_failed",
           exception_module: "none"

@@ -17,7 +17,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
   alias Storyarn.Versioning.ProjectSnapshot
 
   @statuses ~w(pending processing retrying completed terminal)
-  @reasons ~w(user_delete retention expired_build project_hard_delete workspace_hard_delete)
+  @reasons ~w(user_delete retention expired_build abandoned_import project_hard_delete workspace_hard_delete)
   @origins ~w(user daily pre_restore post_restore)
   @v2_ready_prefix ~r|\Aprojects/[1-9]\d*/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}\z|
   @provider_namespace_pattern ~r/\A[0-9a-f]{64}\z/

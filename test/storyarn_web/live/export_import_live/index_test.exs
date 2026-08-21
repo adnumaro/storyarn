@@ -7,6 +7,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
+  import Storyarn.VersioningFixtures
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Flows.FlowConnection
@@ -48,6 +49,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
   end
 
+  defp snapshot_url(project, snapshot_id) do
+    base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/snapshots"
+    "#{base}#snapshot-#{snapshot_id}"
+  end
+
   describe "import and export page" do
     test "renders the combined import and export workspace", %{conn: conn, project: project} do
       {:ok, view, _html} = live(conn, export_url(project))
@@ -72,8 +78,14 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       refute Map.has_key?(props, "current-user-id")
       assert props["resume-storage-key"] == Imports.resume_storage_key(Scope.for_user(user), project)
       assert is_map(props["upload-config"])
-      assert import_state(view)["step"] == "upload"
-      assert import_state(view)["conflictStrategy"] == "rename"
+
+      state = import_state(view)
+      assert state["step"] == "upload"
+      assert state["stage"] == nil
+      assert state["conflictStrategy"] == "rename"
+      assert state["importMode"] == "additive"
+      assert state["replaceEligible"] == false
+      refute Map.has_key?(state, "replaceAvailable")
     end
 
     test "automatically restores the current user's latest active import on connected mount", %{
@@ -166,6 +178,241 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       {:ok, remounted, _html} = live(conn, export_url(project))
       assert import_state(remounted)["attemptId"] == ready.id
       assert import_state(remounted)["conflictStrategy"] == "skip"
+    end
+
+    test "persists an eligible replacement mode across navigation", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      scope = Scope.for_user(user)
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 scope,
+                 project,
+                 "replaceable-project.zip",
+                 replaceable_yarn_archive()
+               )
+
+      assert ready.replace_eligible
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      state = import_state(view)
+      assert state["stage"] == "parsed"
+      assert state["importMode"] == "additive"
+      assert state["replaceEligible"] == true
+      refute Map.has_key?(state, "replaceAvailable")
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      state = import_state(view)
+      assert state["importMode"] == "replace_project"
+      assert state["replaceEligible"] == true
+
+      persisted = Repo.get!(ProjectImportAttempt, ready.id)
+      assert persisted.import_mode == "replace_project"
+      assert is_binary(persisted.snapshot_request_key)
+
+      {:ok, remounted, _html} = live(conn, export_url(project))
+      assert import_state(remounted)["attemptId"] == ready.id
+      assert import_state(remounted)["importMode"] == "replace_project"
+      assert import_state(remounted)["replaceEligible"] == true
+    end
+
+    test "rejects replacement mode for a standalone Yarn source", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(user),
+                 project,
+                 "standalone.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      refute ready.replace_eligible
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      state = import_state(view)
+      assert state["importMode"] == "additive"
+      assert state["replaceEligible"] == false
+      assert Repo.get!(ProjectImportAttempt, ready.id).import_mode == "additive"
+    end
+
+    test "queues a confirmed replacement while it awaits its recovery snapshot", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(user),
+                 project,
+                 "replaceable-project.zip",
+                 replaceable_yarn_archive()
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(
+        view,
+        %{ok: true, review_confirmation_fingerprint: fingerprint}
+      )
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "replace_project",
+        "replace_acknowledged" => true
+      })
+
+      assert_reply(view, %{ok: true})
+
+      queued = Repo.get!(ProjectImportAttempt, ready.id)
+      assert queued.status == "queued"
+      assert queued.stage == "awaiting_snapshot"
+      assert queued.import_mode == "replace_project"
+
+      state = import_state(view)
+      assert state["step"] == "queued"
+      assert state["status"] == "queued"
+      assert state["stage"] == "awaiting_snapshot"
+      assert state["importMode"] == "replace_project"
+      assert state["replaceEligible"] == true
+
+      render_hook(view, "reset_import", %{"attempt_id" => ready.id})
+      ready_id = ready.id
+      assert_reply(view, %{ok: true, attempt_id: ^ready_id})
+      assert import_state(view)["step"] == "upload"
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "expired"
+    end
+
+    test "keeps a stale cross-tab replacement mode on its actionable preview", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(user),
+                 project,
+                 "replaceable-project.zip",
+                 replaceable_yarn_archive()
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(
+        view,
+        %{ok: true, review_confirmation_fingerprint: fingerprint}
+      )
+
+      # A second tab changes the durable mode after this socket rendered its
+      # destructive confirmation. The stale tab must adopt that mode without
+      # discarding the validated preview.
+      assert {:ok, _updated} =
+               Imports.update_import_mode(Scope.for_user(user), ready.id, "additive")
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "replace_project",
+        "replace_acknowledged" => true
+      })
+
+      assert_reply(view, %{ok: false, reason: "recoverable"})
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["status"] == "ready"
+      assert state["attemptId"] == ready.id
+      assert state["importMode"] == "additive"
+      assert state["errorCode"] == "stale_import_mode"
+      assert state["preview"]["import_review_resolution"]["decision_fingerprint"] == fingerprint
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    end
+
+    test "keeps a missing replacement acknowledgement on its actionable preview", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(user),
+                 project,
+                 "replaceable-project.zip",
+                 replaceable_yarn_archive()
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(
+        view,
+        %{ok: true, review_confirmation_fingerprint: fingerprint}
+      )
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "replace_project",
+        "replace_acknowledged" => false
+      })
+
+      assert_reply(view, %{ok: false, reason: "recoverable"})
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["status"] == "ready"
+      assert state["importMode"] == "replace_project"
+      assert state["errorCode"] == "replace_import_confirmation_required"
+      assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
     end
 
     test "a concurrent strategy failure cannot dismiss a running import", %{
@@ -591,14 +838,18 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       render_hook(view, "execute_import", %{
         "attempt_id" => ready.id,
-        "review_confirmation_fingerprint" => "stale-fingerprint"
+        "review_confirmation_fingerprint" => "stale-fingerprint",
+        "import_mode" => "additive",
+        "replace_acknowledged" => false
       })
 
       assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
 
       render_hook(view, "execute_import", %{
         "attempt_id" => ready.id,
-        "review_confirmation_fingerprint" => fingerprint
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "additive",
+        "replace_acknowledged" => false
       })
 
       assert Repo.get!(ProjectImportAttempt, ready.id).status == "queued"
@@ -712,6 +963,44 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert state["step"] == "done"
       assert state["attemptId"] == completed.id
       assert state["preview"]["counts"] == completed.counts
+      assert state["recoverySnapshotUrl"] == nil
+    end
+
+    test "rehydrates a completed replacement with its recovery snapshot route", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      completed = terminal_replacement_attempt(Scope.for_user(user), project, :completed)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => completed.id})
+      assert_reply(view, %{ok: true, status: "completed"})
+
+      state = import_state(view)
+      assert state["step"] == "done"
+
+      assert state["recoverySnapshotUrl"] ==
+               snapshot_url(project, completed.pre_import_snapshot_id)
+
+      refute Map.has_key?(state, "recoverySnapshotId")
+    end
+
+    test "rehydrates a failed replacement with its recovery snapshot route", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      failed = terminal_replacement_attempt(Scope.for_user(user), project, :failed)
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      render_hook(view, "resume_import", %{"attempt_id" => failed.id})
+      assert_reply(view, %{ok: true, status: "failed"})
+
+      state = import_state(view)
+      assert state["step"] == "error"
+      assert state["recoverySnapshotUrl"] == snapshot_url(project, failed.pre_import_snapshot_id)
+      refute Map.has_key?(state, "recoverySnapshotId")
     end
 
     test "polling a terminal attempt reveals another import that is still active", %{
@@ -1079,7 +1368,18 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       refute Map.has_key?(state, "error")
     end
 
-    test "an editor sees no import surface", %{project: project} do
+    test "an editor sees no import surface and cannot change an import mode", %{
+      project: project,
+      user: owner
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(owner),
+                 project,
+                 "replaceable-project.zip",
+                 replaceable_yarn_archive()
+               )
+
       editor = user_fixture()
       membership_fixture(project, editor, "editor")
 
@@ -1092,6 +1392,13 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       refute vue.props["can-import"]
       refute vue.props["upload-config"]
+
+      render_hook(view, "set_import_mode", %{
+        "attempt_id" => ready.id,
+        "import_mode" => "replace_project"
+      })
+
+      assert Repo.get!(ProjectImportAttempt, ready.id).import_mode == "additive"
     end
 
     test "stays connected when a linked process exits normally", %{conn: conn, project: project} do
@@ -1538,6 +1845,89 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   defp connect_from_entry(flow, node) do
     entry = flow.id |> Storyarn.Flows.list_nodes() |> Enum.find(&(&1.type == "entry"))
     connection_fixture(flow, entry, node)
+  end
+
+  defp replaceable_yarn_archive do
+    project =
+      Jason.encode!(%{
+        "projectFileVersion" => 3,
+        "sourceFiles" => ["*.yarn"],
+        "excludeFiles" => []
+      })
+
+    entries = [
+      {~c"project.yarnproject", project},
+      {~c"main.yarn", "title: Start\n---\nHello\n===\n"}
+    ]
+
+    {:ok, {_name, binary}} = :zip.create(~c"replaceable-yarn.zip", entries, [:memory])
+    binary
+  end
+
+  defp terminal_replacement_attempt(scope, project, terminal_status) do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               scope,
+               project,
+               "replaceable-project.zip",
+               replaceable_yarn_archive()
+             )
+
+    assert {:ok, replacement} =
+             Imports.update_import_mode(scope, ready.id, "replace_project")
+
+    assert {:ok, reviewed, _preview, fingerprint} =
+             Imports.resolve_import_review(scope, replacement.id, false, [])
+
+    assert {:ok, queued} =
+             Imports.enqueue_import(scope, reviewed.id, :rename,
+               import_mode: "replace_project",
+               replace_acknowledged: true,
+               review_confirmation_fingerprint: fingerprint
+             )
+
+    snapshot =
+      full_project_snapshot_fixture(project, %{
+        created_by_id: scope.user.id,
+        idempotency_key: queued.snapshot_request_key,
+        asset_blob_size_bytes: 0
+      })
+
+    bound =
+      queued
+      |> Ecto.Changeset.change(
+        pre_import_snapshot_id: snapshot.id,
+        snapshot_reference_bound_at: TimeHelpers.now()
+      )
+      |> Repo.update!()
+
+    snapshot_ready =
+      bound
+      |> ProjectImportAttempt.snapshot_ready_changeset(snapshot)
+      |> Repo.update!()
+
+    now = TimeHelpers.now()
+
+    case terminal_status do
+      :completed ->
+        snapshot_ready
+        |> ProjectImportAttempt.running_changeset(now)
+        |> Repo.update!()
+        |> ProjectImportAttempt.completed_changeset(now, %{"flows" => 1}, replacement_prepared_at: now)
+        |> Repo.update!()
+
+      :failed ->
+        snapshot_ready
+        |> ProjectImportAttempt.failed_changeset(%{
+          status: "failed",
+          stage: "failed",
+          error_code: "import_project_replacement_failed",
+          error_message: nil,
+          error_report: %{},
+          completed_at: now
+        })
+        |> Repo.update!()
+    end
   end
 
   defp condition(sheet, variable) do

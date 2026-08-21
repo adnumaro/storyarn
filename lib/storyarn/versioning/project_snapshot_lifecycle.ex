@@ -142,6 +142,34 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   def delete(_scope, _project, _snapshot_id), do: {:error, :invalid_snapshot_delete_request}
 
   @doc false
+  @spec prepare_abandoned_import_snapshot_cleanup_in_transaction(
+          ProjectSnapshot.t(),
+          pos_integer()
+        ) :: {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
+  def prepare_abandoned_import_snapshot_cleanup_in_transaction(%ProjectSnapshot{} = snapshot, workspace_id)
+      when is_integer(workspace_id) and workspace_id > 0 do
+    cond do
+      not Repo.in_transaction?() ->
+        {:error, :snapshot_cleanup_transaction_required}
+
+      not Billing.workspace_lock_held?(workspace_id) ->
+        {:error, :snapshot_cleanup_workspace_lock_required}
+
+      snapshot.lifecycle_state not in @deletable_user_states ->
+        {:error, :snapshot_not_deletable}
+
+      true ->
+        with :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+             :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
+          create_cleanup_and_delete(snapshot, workspace_id, :abandoned_import, :system)
+        end
+    end
+  end
+
+  def prepare_abandoned_import_snapshot_cleanup_in_transaction(_snapshot, _workspace_id),
+    do: {:error, :invalid_snapshot_cleanup_scope}
+
+  @doc false
   @spec prepare_project_hard_delete(Project.t()) ::
           {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
   def prepare_project_hard_delete(%Project{} = project) do

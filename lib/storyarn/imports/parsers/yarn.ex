@@ -52,6 +52,7 @@ defmodule Storyarn.Imports.Parsers.Yarn do
         format: format(),
         parser_version: parser_version(),
         source_kind: bundle.kind,
+        replace_eligible: bundle.replace_eligible,
         data: data,
         issues: issues,
         metadata: metadata

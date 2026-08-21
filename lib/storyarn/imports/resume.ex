@@ -193,6 +193,7 @@ defmodule Storyarn.Imports.Resume do
     Error.report(%{
       format: attempt.format,
       parser_version: attempt.parser_version,
+      import_mode: attempt.import_mode,
       phase: "resume",
       error_code: code,
       exception_module: "none"

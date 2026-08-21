@@ -164,10 +164,15 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotRestoreLifecycle,
     as: :request
 
-  @doc "Returns whether exact full-project snapshot restore is enabled."
+  @doc "Returns whether this release supports exact full-project snapshot restore."
   def project_snapshot_restore_enabled? do
     RestorePolicy.enabled?({:project_snapshot_restore, "full"})
   end
+
+  @doc false
+  defdelegate restorable_project_snapshot_identity(snapshot),
+    to: ProjectSnapshotRestoreLifecycle,
+    as: :restorable_snapshot_identity
 
   @doc "Returns one durable project-snapshot restore operation."
   defdelegate get_project_snapshot_restore(restore_id),
@@ -324,10 +329,22 @@ defmodule Storyarn.Versioning do
     to: ProjectSnapshotBuild,
     as: :cancel
 
+  @doc false
+  defdelegate request_import_recovery_snapshot_cancellation_in_transaction(snapshot, workspace_id),
+    to: ProjectSnapshotBuild
+
+  @doc false
+  defdelegate publish_committed_import_recovery_snapshot_cancellation(snapshot),
+    to: ProjectSnapshotBuild
+
   @doc "Authorizes deletion and durably hands every owned object to cleanup."
   defdelegate delete_project_snapshot(current_scope, project, snapshot_id),
     to: ProjectSnapshotLifecycle,
     as: :delete
+
+  @doc false
+  defdelegate prepare_abandoned_import_snapshot_cleanup_in_transaction(snapshot, workspace_id),
+    to: ProjectSnapshotLifecycle
 
   @doc false
   defdelegate prepare_project_snapshot_hard_delete(project),

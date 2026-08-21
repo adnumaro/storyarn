@@ -876,8 +876,9 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
       <div v-else class="space-y-3">
         <div
           v-for="snapshot in snapshots"
+          :id="`snapshot-${snapshot.id}`"
           :key="snapshot.id"
-          class="rounded-lg border border-border bg-muted/30 p-4"
+          class="scroll-mt-4 rounded-lg border border-border bg-muted/30 p-4 transition-shadow target:ring-2 target:ring-primary/50 target:ring-offset-2 target:ring-offset-background"
           :data-testid="`snapshot-card-${snapshot.id}`"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">

@@ -8,6 +8,7 @@ defmodule Storyarn.Imports.SourceBundleTest do
 
     assert {:ok, bundle} = SourceBundle.open("private-project-name.zip", zip)
     assert bundle.kind == :archive
+    assert bundle.replace_eligible
     assert Enum.map(bundle.files, & &1.alias) == ["source_1", "source_2"]
     refute inspect(bundle) =~ "private-project-name"
     refute inspect(bundle) =~ "Dialogue/intro.yarn"
@@ -79,6 +80,13 @@ defmodule Storyarn.Imports.SourceBundleTest do
 
     assert {:ok, bundle} = SourceBundle.open("project.zip", zip)
     assert length(SourceBundle.yarn_files(bundle)) == 2
+    refute bundle.replace_eligible
+  end
+
+  test "standalone Yarn sources are not eligible for whole-project replacement" do
+    assert {:ok, bundle} = SourceBundle.open("dialogue.yarn", yarn("Start"))
+    assert bundle.kind == :file
+    refute bundle.replace_eligible
   end
 
   test "rejects multiple yarnprojects instead of merging independent programs" do

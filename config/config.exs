@@ -218,13 +218,14 @@ config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   build_lease_ttl_seconds: 5 * 60,
   export_lease_retention_seconds: 7 * 24 * 60 * 60
 
-# Mutating restore surfaces remain disabled by default and are enabled
+# Entity-version restore surfaces remain disabled by default and are enabled
 # independently only after their canonical workflows are operationally ready.
+# Exact full-project snapshot restore is part of the recovery contract and is
+# always available to authorized project managers.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: false,
   flow_version_restore: false,
-  scene_version_restore: false,
-  project_snapshot_restore: false
+  scene_version_restore: false
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

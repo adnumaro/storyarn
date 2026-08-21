@@ -229,9 +229,10 @@ defmodule Storyarn.Imports.PlanStorage do
   defp maybe_put_attempt_binding(payload, nil), do: payload
   defp maybe_put_attempt_binding(payload, binding), do: Map.put(payload, "attempt_binding", binding)
 
-  # The HMAC and stored object deliberately share this exact payload builder.
-  # A newly persisted field therefore cannot silently fall outside identity
-  # validation while remaining part of the materialized plan.
+  # The HMAC and stored object deliberately share this exact materializable
+  # payload builder. Source-derived replacement eligibility is intentionally
+  # attempt metadata, not plan data, so the parser-v5 payload remains readable
+  # by older additive workers during a rolling deploy.
   defp encode_persisted_payload(plan) do
     with {:ok, source_kind} <- encode_source_kind(plan.source_kind),
          {:ok, issue_summary} <- encode_issue_summary(plan.metadata) do

@@ -45,7 +45,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.Versioning.ProjectSnapshotRestore
   alias Storyarn.Versioning.ProjectSnapshotRestoreExecutor
   alias Storyarn.Versioning.ProjectSnapshotZip
-  alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectFormat
 
@@ -1783,36 +1782,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert restored.translated_text == "Hola exacta"
     assert restored.translated_source_hash == stale_hash
     assert restored.status == "review"
-  end
-
-  test "the runtime restore kill switch is rechecked after final authorization", context do
-    previous = Application.get_env(:storyarn, RestorePolicy)
-    on_exit(fn -> Application.put_env(:storyarn, RestorePolicy, previous) end)
-    project = Repo.get!(Project, context.restore.project_id)
-    current_sheet = sheet_fixture(project, %{name: "Must survive disabled restore"})
-
-    assert {:retry, :restore_temporarily_disabled} =
-             ProjectSnapshotRestoreExecutor.execute(context.restore,
-               archive_reader: EmptyArchiveReader,
-               asset_materializer: EmptyMaterializer,
-               project_recovery: ProjectRecovery,
-               after_final_authorization: fn _membership ->
-                 Application.put_env(:storyarn, RestorePolicy,
-                   sheet_version_restore: true,
-                   flow_version_restore: true,
-                   scene_version_restore: true,
-                   project_snapshot_restore: false
-                 )
-
-                 :ok
-               end
-             )
-
-    assert is_nil(Repo.get!(Sheet, current_sheet.id).deleted_at)
-    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
-    reservation = Repo.get!(StorageReservation, restore.storage_reservation_id)
-    assert restore.status == "running"
-    assert reservation.status == "released"
   end
 
   test "restores the exact canonical asset catalog after captured rows and objects disappear" do

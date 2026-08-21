@@ -50,6 +50,6 @@ La membresía del espacio de trabajo y la del proyecto son independientes. Una p
 
 ## Importación y exportación
 
-La página Importar y exportar permite previsualizar e importar archivos `.yarn` o proyectos ZIP de Yarn Spinner. También configura el formato de exportación para el motor, las secciones incluidas, el tratamiento de recursos, el formato de salida y la validación previa. La importación requiere permiso para editar contenido. Consulta la guía de [Importación y exportación](/docs/import-export/import-export-overview).
+La página Importar y exportar permite previsualizar e importar archivos `.yarn` o proyectos ZIP de Yarn Spinner. También configura el formato de exportación para el motor, las secciones incluidas, el tratamiento de recursos, el formato de salida y la validación previa. Solo los propietarios del proyecto, que disponen del permiso `manage_project`, pueden preparar o ejecutar una importación. Consulta la guía de [Importación y exportación](/docs/import-export/import-export-overview).
 
 Las capturas y la papelera se explican en [Capturas y papelera](/docs/project-management/recovery-and-trash).

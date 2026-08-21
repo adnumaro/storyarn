@@ -1267,6 +1267,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
     end
   end
 
+  @doc false
+  def restorable_snapshot_identity(%ProjectSnapshot{} = snapshot) do
+    with :ok <- validate_restorable_snapshot(snapshot) do
+      {:ok,
+       %{
+         lifecycle_generation: snapshot.lifecycle_generation,
+         accounting_generation: snapshot.accounting_generation,
+         archive_storage_key: snapshot.archive_storage_key,
+         archive_size_bytes: snapshot.archive_size_bytes,
+         archive_checksum: snapshot.archive_checksum,
+         manifest_storage_key: snapshot.manifest_storage_key,
+         manifest_size_bytes: snapshot.manifest_size_bytes,
+         manifest_checksum: snapshot.manifest_checksum
+       }}
+    end
+  end
+
+  def restorable_snapshot_identity(_snapshot), do: {:error, :project_snapshot_not_restorable}
+
   defp validate_restorable_snapshot(snapshot) do
     valid? =
       Enum.all?([
