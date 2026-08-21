@@ -16,6 +16,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.ConnectionCrud
   alias Storyarn.Flows.ContextQueries
   alias Storyarn.Flows.DebugSessionStore
+  alias Storyarn.Flows.EditorCatalog
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.Engine
@@ -271,6 +272,15 @@ defmodule Storyarn.Flows do
   defdelegate search_exit_target_scenes(project_id, query, opts \\ []),
     to: ExitTargetScenes,
     as: :search
+
+  @doc """
+  Loads the Sheet and Scene presentation catalog needed by the Flow editor.
+
+  The returned data is owned by Flows and does not expose schemas from other
+  bounded contexts.
+  """
+  @spec load_editor_catalog(integer()) :: EditorCatalog.t()
+  defdelegate load_editor_catalog(project_id), to: EditorCatalog, as: :load
 
   @doc """
   Sets a flow as the main flow for its project.

@@ -47,21 +47,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/flows/flow.ex",
-      "lib/storyarn/projects/project.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/flows/flow.ex",
-      "lib/storyarn/scenes/scene.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/flows/flow.ex",
-      "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/flows/flow_crud.ex",
       "lib/storyarn/projects/project.ex",
       "export"
@@ -273,16 +258,6 @@
     ],
     [
       "lib/storyarn_web/live/flow_live/player_live.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/flow_live/show.ex",
-      "lib/storyarn/scenes.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/flow_live/show.ex",
       "lib/storyarn/sheets.ex",
       "runtime"
     ],

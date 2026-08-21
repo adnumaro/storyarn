@@ -21,11 +21,8 @@ defmodule Storyarn.Flows.Flow do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Projects.Project
-  alias Storyarn.Scenes
   alias Storyarn.Shared.HierarchicalSchema
   alias Storyarn.Shared.Validations
-  alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -36,16 +33,13 @@ defmodule Storyarn.Flows.Flow do
           is_main: boolean(),
           settings: map(),
           scene_id: integer() | nil,
-          scene: Scenes.Scene.t() | NotLoaded.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
           parent: t() | NotLoaded.t() | nil,
           children: [t()] | NotLoaded.t(),
           nodes: [FlowNode.t()] | NotLoaded.t(),
           connections: [FlowConnection.t()] | NotLoaded.t(),
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
@@ -58,12 +52,12 @@ defmodule Storyarn.Flows.Flow do
     field :position, :integer, default: 0
     field :is_main, :boolean, default: false
     field :settings, :map, default: %{}
+    field :project_id, :id
+    field :scene_id, :id
+    field :current_version_id, :id
     field :deleted_at, :utc_datetime
 
-    belongs_to :project, Project
     belongs_to :parent, __MODULE__
-    belongs_to :scene, Scenes.Scene
-    belongs_to :current_version, EntityVersion
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :nodes, FlowNode
     has_many :connections, FlowConnection
@@ -118,7 +112,7 @@ defmodule Storyarn.Flows.Flow do
   end
 
   @doc """
-  Changeset for updating the scene association.
+  Changeset for updating the scene reference.
   """
   def scene_changeset(flow, attrs) do
     flow

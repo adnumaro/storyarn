@@ -7,8 +7,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Flows
-  alias Storyarn.Scenes
-  alias Storyarn.Sheets
   alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
@@ -397,15 +395,16 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp load_flow_data(project, flow) do
     full_flow = Flows.get_flow!(project.id, flow.id)
     project_variables = VariableHelpers.list_all_variables(project.id)
+    editor_catalog = Flows.load_editor_catalog(project.id)
 
     %{
       flow: full_flow,
       flow_data: Flows.serialize_for_canvas(full_flow, project_variables: project_variables),
-      all_sheets: Sheets.list_all_sheets(project.id),
-      gallery_by_sheet: Sheets.batch_load_gallery_data_by_sheet(project.id),
+      all_sheets: editor_catalog.sheets,
+      gallery_by_sheet: editor_catalog.gallery_by_sheet,
       flow_hubs: Flows.list_hubs(flow.id),
       project_variables: project_variables,
-      available_scenes: Scenes.list_scenes(project.id)
+      available_scenes: editor_catalog.scenes
     }
   end
 
@@ -1687,16 +1686,18 @@ defmodule StoryarnWeb.FlowLive.Show do
     resolved_id = Flows.resolve_scene_id(flow)
     is_inherited = resolved_id != nil and resolved_id != flow.scene_id
 
-    scene_name =
-      if resolved_id do
-        case Scenes.get_scene_brief(socket.assigns.project.id, resolved_id) do
-          nil -> nil
-          map -> map.name
-        end
-      end
+    scene_name = resolved_scene_name(socket.assigns.available_scenes, resolved_id)
 
     socket
     |> assign(:scene_name, scene_name)
     |> assign(:scene_inherited, is_inherited)
+  end
+
+  defp resolved_scene_name(_available_scenes, nil), do: nil
+
+  defp resolved_scene_name(available_scenes, resolved_id) do
+    Enum.find_value(available_scenes, fn scene ->
+      if scene.id == resolved_id, do: scene.name
+    end)
   end
 end
