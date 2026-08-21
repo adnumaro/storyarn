@@ -1,0 +1,107 @@
+lib/storyarn/flows/exit_target_scenes.ex
+  s_e9e5a90425bc26::t_4d274d59da04c9 1-60
+config/architecture_baselines/platform.json
+  s_e9e5a90425bc26::t_c958fc6e6cddd8 1-376
+priv/gettext/workspaces.pot
+  s_e9e5a90425bc26::t_52a050f553ae57 305
+lib/storyarn/flows/persistence/scene_record.ex
+  s_e9e5a90425bc26::t_4d274d59da04c9 1-13
+lib/storyarn_web/live/flow_live/nodes/exit/node.ex
+  s_e9e5a90425bc26::t_4d274d59da04c9 66,173
+config/architecture_baselines/flows.json
+  s_e9e5a90425bc26::t_c958fc6e6cddd8 1-301
+config/architecture_baselines/project.json
+  s_e9e5a90425bc26::t_c958fc6e6cddd8 1-1051
+priv/gettext/flows.pot
+  s_e9e5a90425bc26::t_52a050f553ae57 19,98,112,174,267
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_e9e5a90425bc26::t_52a050f553ae57 305
+test/storyarn/architecture/dependency_policy_test.exs
+  s_e9e5a90425bc26::t_8f2d0e65f99352 25-26
+  s_e9e5a90425bc26::t_d45305067f5e88 58-98
+  s_e9e5a90425bc26::t_16ec48504e869d 1-19,21-24,27-56,139-229
+  s_e9e5a90425bc26::t_30b9e90ed518a1 99-138
+  s_e9e5a90425bc26::t_1ba0152dcd1833 57
+  s_e9e5a90425bc26::t_ac588b323244ea 20
+test/storyarn/flows/exit_target_scenes_test.exs
+  s_e9e5a90425bc26::t_d1d29b705eec3f 95-98,100-102,104-108
+  s_e9e5a90425bc26::t_13765b3218c6e7 56-69,103
+  s_e9e5a90425bc26::t_4d274d59da04c9 1-55,70-92,94,109-111,113-116
+  s_e9e5a90425bc26::t_dd579bc6bcae6d 99
+  s_e9e5a90425bc26::t_dec2c99246cb1f 93,112
+test/storyarn/architecture/dependency_baseline_test.exs
+  s_e9e5a90425bc26::t_d05499e4c25d76 22-29
+  s_e9e5a90425bc26::t_1eeb3ee8325a9e 5
+  s_e9e5a90425bc26::t_0b9eb2d94a9266 53-61,63
+  s_e9e5a90425bc26::t_158730da2f7982 62
+  s_e9e5a90425bc26::t_16ec48504e869d 1-4,6-21,30-52,64
+config/architecture_baselines/sheets.json
+  s_e9e5a90425bc26::t_c958fc6e6cddd8 1-251
+justfile
+  s_e9e5a90425bc26::t_16ec48504e869d 77
+lib/storyarn/architecture/dependency_baseline.ex
+  s_e9e5a90425bc26::t_16ec48504e869d 1-40,44-65,67-79,81-85
+  s_e9e5a90425bc26::t_4aef1802fc4f81 41-43
+  s_e9e5a90425bc26::t_22b67f7db28150 66,80
+mix.exs
+  s_e9e5a90425bc26::t_16ec48504e869d 161
+config/architecture_baselines/web_platform.json
+  s_e9e5a90425bc26::t_5ed89760a968ed 1-61
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_30b9e90ed518a1 52-57,67-68,74-75
+  s_e9e5a90425bc26::t_e3cce91f47df9f 36-37,45-51,70-72,86
+  s_e9e5a90425bc26::t_16ec48504e869d 1-22,24-26,28-30,34-35,44,58-60,77-85,126-130,152
+  s_e9e5a90425bc26::t_e472a04e1d29f9 88-89
+  s_e9e5a90425bc26::t_8f2d0e65f99352 23,27,31-33,38-43,61-63,69,76
+  s_e9e5a90425bc26::t_1ba0152dcd1833 64-66,73
+  s_e9e5a90425bc26::t_478c1ee12a66d2 87,90-125
+  s_e9e5a90425bc26::t_c8dc4fc008713f 131-151
+lib/storyarn/architecture/dependency_policy.ex
+  s_e9e5a90425bc26::t_4aef1802fc4f81 40,127-147,214-215,217-220,222-223,225-236
+  s_e9e5a90425bc26::t_16ec48504e869d 1-39,41-95,106-126,148-213,216,221,224,237-238,242-276
+  s_e9e5a90425bc26::t_22b67f7db28150 96-105,239-241
+config/architecture_baselines/scenes.json
+  s_e9e5a90425bc26::t_c958fc6e6cddd8 1-271
+test/storyarn_web/live/flow_live/nodes/exit_node_test.exs
+  s_e9e5a90425bc26::t_4d274d59da04c9 206,210,249-250,259
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_e9e5a90425bc26::t_52a050f553ae57 19,98,112,174,267,287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,425,430,443,458,463,468,473,478
+docs/reference/domain-patterns.md
+  s_e9e5a90425bc26::t_199cb19a7f66a8 51-52
+  s_e9e5a90425bc26::t_6770687e67150b 149-150
+  s_e9e5a90425bc26::t_30b9e90ed518a1 55-62
+  s_e9e5a90425bc26::t_e472a04e1d29f9 5,7-8,28-29,35-50,53-54,63
+  s_e9e5a90425bc26::t_158730da2f7982 122-124,152-156,167-173
+lib/mix/tasks/architecture_check.ex
+  s_e9e5a90425bc26::t_16ec48504e869d 1-40,42,44-121,123-125
+  s_e9e5a90425bc26::t_8f2d0e65f99352 41
+  s_e9e5a90425bc26::t_22b67f7db28150 43,122
+test/mix/tasks/architecture_check_test.exs
+  s_e9e5a90425bc26::t_e472a04e1d29f9 6
+  s_e9e5a90425bc26::t_d45305067f5e88 1-5,7-70
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_e9e5a90425bc26::t_52a050f553ae57 305
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_52a050f553ae57 803,808,813,818,823,1172,1177,1182,1187,1192,1197,1202,1207
+lib/storyarn/flows.ex
+  s_e9e5a90425bc26::t_4d274d59da04c9 25,263-273
+  s_e9e5a90425bc26::t_0dcc8468c47dc2 274
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_e9e5a90425bc26::t_52a050f553ae57 19,98,112,174,267,287,292,297,302,307,312,317,327,332,337,342,347,352,357,362,425,430,443,458,463,468,473,478
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1988cd090cef07a7270062d528a9678e742d45d5",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
