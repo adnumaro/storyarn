@@ -111,6 +111,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:34
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:36
+#: lib/storyarn_web/live/settings_live/workspace_imports.ex:44
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:33
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:136
 #, elixir-autogen, elixir-format
@@ -155,28 +156,28 @@ msgstr ""
 msgid "Invalid file data or upload failed."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:91
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:92
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:88
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:89
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:85
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:86
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:68
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:69
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr ""
@@ -186,12 +187,12 @@ msgstr ""
 msgid "Deleted Projects"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:71
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:72
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:82
+#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:83
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr ""
@@ -300,3 +301,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change Storyarn AI policy."
 msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_imports.ex:22
+#, elixir-autogen, elixir-format
+msgid "Imports"
+msgstr "Imports"

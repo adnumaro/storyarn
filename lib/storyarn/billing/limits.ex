@@ -20,6 +20,7 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -41,8 +42,19 @@ defmodule Storyarn.Billing.Limits do
   def can_create_project?(workspace) do
     plan = SubscriptionCrud.plan_for(workspace)
     limit = Plan.limit(plan, :projects_per_workspace)
-    used = count_workspace_projects(workspace.id)
+    used = count_workspace_projects(workspace.id) + count_active_workspace_imports(workspace.id)
     check_limit(:projects_per_workspace, used, limit)
+  end
+
+  @doc false
+  def can_publish_reserved_project?(workspace) do
+    plan = SubscriptionCrud.plan_for(workspace)
+
+    check_limit(
+      :projects_per_workspace,
+      count_workspace_projects(workspace.id),
+      Plan.limit(plan, :projects_per_workspace)
+    )
   end
 
   @doc """
@@ -354,6 +366,15 @@ defmodule Storyarn.Billing.Limits do
 
   defp count_workspace_projects(workspace_id) do
     Repo.aggregate(from(p in Project, where: p.workspace_id == ^workspace_id and is_nil(p.deleted_at)), :count)
+  end
+
+  defp count_active_workspace_imports(workspace_id) do
+    Repo.aggregate(
+      from(import in WorkspaceSnapshotImport,
+        where: import.workspace_id == ^workspace_id and import.status in ^WorkspaceSnapshotImport.active_statuses()
+      ),
+      :count
+    )
   end
 
   defp count_workspace_project_templates(workspace_id) do

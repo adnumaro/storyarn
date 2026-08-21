@@ -1317,7 +1317,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
          capture_asset_inventory_fingerprint(expected_inventory.raw_assets) do
       project_snapshot =
         ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project_id,
-          localization_scope: :active
+          localization_scope: :active,
+          include_referenced_tombstones: true
         )
 
       project_snapshot = put_capture_asset_catalog(project_snapshot, assets)

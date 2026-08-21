@@ -13,6 +13,7 @@
         "ai_team": "Mi equipo IA",
         "workspace_general": "General",
         "workspace_members": "Miembros",
+        "workspace_imports": "Importaciones",
         "deleted_projects": "Proyectos eliminados"
       }
     },
@@ -144,12 +145,67 @@
         "no_members": "No se han encontrado miembros.",
         "remove_member": "Eliminar miembro"
       },
+      "imports": {
+        "title": "Importaciones",
+        "subtitle": "Recupera un proyecto desde un ZIP de snapshot de Storyarn",
+        "upload": {
+          "title": "Importar un snapshot de proyecto",
+          "description": "Elige un ZIP de snapshot descargado de Storyarn. Storyarn lo valida y comprueba la capacidad del espacio antes de iniciar la importación.",
+          "choose_file": "Elegir ZIP",
+          "file_help": "Solo se admiten archivos ZIP de snapshots de Storyarn.",
+          "submit": "Validar e importar",
+          "validating": "Validando snapshot…"
+        },
+        "quota": {
+          "title": "No hay suficiente almacenamiento en el espacio",
+          "description": "Este snapshot necesita más almacenamiento del que está disponible actualmente.",
+          "required": "Necesario",
+          "available": "Disponible",
+          "limit": "Límite del espacio",
+          "action": "Libera almacenamiento del espacio o aumenta el límite y vuelve a elegir el ZIP.",
+          "close": "Cerrar"
+        },
+        "history": {
+          "title": "Importaciones de proyectos",
+          "empty_title": "No hay importaciones de proyectos",
+          "empty_description": "Las importaciones iniciadas desde este espacio aparecerán aquí."
+        },
+        "status": {
+          "uploading": "Subiendo",
+          "queued": "En cola",
+          "running": "Importando",
+          "retrying": "Reintentando",
+          "completed": "Completada",
+          "failed": "Fallida"
+        },
+        "phase": {
+          "uploading": "Subiendo ZIP",
+          "queued": "Esperando para comenzar",
+          "verifying": "Validando el snapshot",
+          "materializing": "Restaurando el proyecto",
+          "retrying": "Preparando otro intento"
+        },
+        "attempt": "Intento {attempt} de {max}",
+        "progress": "Progreso de importación: {percent}%",
+        "cancel": "Cancelar subida",
+        "open_project": "Abrir proyecto",
+        "errors": {
+          "invalid_file": "Este archivo no es un ZIP de snapshot válido de Storyarn.",
+          "file_too_large": "Este ZIP supera el tamaño máximo de subida permitido.",
+          "in_progress": "Espera a que termine la importación activa antes de iniciar otra.",
+          "rate_limited": "Se han iniciado varias subidas de snapshots recientemente. Inténtalo de nuevo dentro de aproximadamente una hora.",
+          "unauthorized": "Ya no tienes permiso para importar proyectos en este espacio.",
+          "failed": "No se ha podido importar el proyecto.",
+          "unavailable": "No se ha podido validar el snapshot. Inténtalo de nuevo."
+        }
+      },
       "deleted_projects": {
         "title": "Proyectos eliminados",
         "subtitle": "Revisa los proyectos conservados en la papelera del espacio de trabajo",
-        "unavailable": {
-          "title": "La recuperación de proyectos aún no está disponible",
-          "description": "Los proyectos eliminados se conservan y cuentan para el almacenamiento del espacio de trabajo. La recuperación solo volverá cuando el flujo canónico de snapshots pueda verificar el proyecto completo antes de modificar datos."
+        "recovery": {
+          "title": "Recuperar un proyecto desde un snapshot",
+          "description": "Si descargaste un snapshot del proyecto antes de eliminarlo, importa ese ZIP para reconstruir el proyecto en este espacio de trabajo.",
+          "action": "Ir a importaciones"
         },
         "empty": {
           "title": "No hay proyectos eliminados",

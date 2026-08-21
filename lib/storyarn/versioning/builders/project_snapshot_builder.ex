@@ -21,6 +21,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
+  alias Storyarn.Versioning.ReferencedTombstones
 
   @doc """
   Builds a portable project-template snapshot containing all active entities.
@@ -63,9 +64,14 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   @spec build_canonical_snapshot_in_transaction(integer(), keyword()) :: map()
   def build_canonical_snapshot_in_transaction(project_id, opts) when is_list(opts) do
     if Repo.in_transaction?() do
-      project_id
-      |> lock_active_project_for_snapshot!()
-      |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope), :canonical)
+      snapshot =
+        project_id
+        |> lock_active_project_for_snapshot!()
+        |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope), :canonical)
+
+      if Keyword.get(opts, :include_referenced_tombstones, false),
+        do: Map.put(snapshot, "referenced_tombstones", ReferencedTombstones.capture!(project_id)),
+        else: snapshot
     else
       raise ArgumentError, "canonical project snapshot capture requires a database transaction"
     end

@@ -32,6 +32,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Workspaces.Workspace
 
   @accounting_version 1
@@ -1572,9 +1573,34 @@ defmodule Storyarn.Billing.StorageAccounting do
   end
 
   defp workspace_reservation_usage(workspace_id) do
-    StorageReservation
-    |> where([reservation], reservation.workspace_id_snapshot == ^workspace_id)
-    |> active_reservation_usage()
+    reservations =
+      StorageReservation
+      |> where([reservation], reservation.workspace_id_snapshot == ^workspace_id)
+      |> active_reservation_usage()
+
+    import_reservations =
+      WorkspaceSnapshotImport
+      |> where(
+        [import],
+        import.workspace_id == ^workspace_id and import.status in ^WorkspaceSnapshotImport.active_statuses()
+      )
+      |> select([import], {
+        type(coalesce(sum(import.reserved_bytes), 0), :integer),
+        count(import.id)
+      })
+      |> Repo.one()
+
+    merge_workspace_import_reservations(reservations, import_reservations)
+  end
+
+  defp merge_workspace_import_reservations(reservations, {0, 0}), do: reservations
+
+  defp merge_workspace_import_reservations(reservations, {bytes, count}) do
+    %{
+      bytes: reservations.bytes + bytes,
+      count: reservations.count + count,
+      by_kind: Map.put(reservations.by_kind, "workspace_snapshot_import", bytes)
+    }
   end
 
   defp project_reservation_usage(project_id) do

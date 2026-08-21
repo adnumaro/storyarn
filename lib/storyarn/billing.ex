@@ -24,6 +24,7 @@ defmodule Storyarn.Billing do
   # Limit checks
   defdelegate can_create_workspace?(user), to: Limits
   defdelegate can_create_project?(workspace), to: Limits
+  defdelegate can_publish_reserved_project?(workspace), to: Limits
   defdelegate can_create_project_template?(source_project), to: Limits
   defdelegate can_create_project_template_version?(template), to: Limits
   defdelegate can_invite_member?(workspace_or_project), to: Limits

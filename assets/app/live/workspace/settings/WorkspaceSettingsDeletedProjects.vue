@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { Folder, ShieldAlert, Trash2 } from "@lucide/vue";
+import { FileUp, Folder, Trash2 } from "@lucide/vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
 
 interface DeletedProject {
   id: number;
@@ -10,6 +11,7 @@ interface DeletedProject {
 
 defineProps<{
   deletedProjects: DeletedProject[];
+  importsPath: string;
 }>();
 </script>
 
@@ -25,17 +27,24 @@ defineProps<{
     </div>
 
     <section
-      class="flex gap-3 rounded-xl border border-amber-500/25 bg-amber-500/8 p-4"
+      class="flex gap-3 rounded-xl border border-primary/20 bg-primary/5 p-4"
       aria-labelledby="deleted-project-recovery-status"
     >
-      <ShieldAlert class="mt-0.5 size-5 shrink-0 text-amber-600 dark:text-amber-400" />
-      <div class="space-y-1">
+      <FileUp class="mt-0.5 size-5 shrink-0 text-primary" />
+      <div class="space-y-2">
         <h2 id="deleted-project-recovery-status" class="text-sm font-semibold text-foreground">
-          {{ $t("settings.workspace.deleted_projects.unavailable.title") }}
+          {{ $t("settings.workspace.deleted_projects.recovery.title") }}
         </h2>
         <p class="text-sm leading-relaxed text-muted-foreground">
-          {{ $t("settings.workspace.deleted_projects.unavailable.description") }}
+          {{ $t("settings.workspace.deleted_projects.recovery.description") }}
         </p>
+        <LiveLink
+          :to="importsPath"
+          class="inline-flex text-sm font-medium text-primary underline-offset-4 hover:underline"
+          data-testid="open-workspace-imports"
+        >
+          {{ $t("settings.workspace.deleted_projects.recovery.action") }}
+        </LiveLink>
       </div>
     </section>
 

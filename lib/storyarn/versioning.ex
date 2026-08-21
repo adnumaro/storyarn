@@ -29,6 +29,7 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.SnapshotDiff
   alias Storyarn.Versioning.SnapshotViewer
   alias Storyarn.Versioning.VersionCrud
+  alias Storyarn.Versioning.WorkspaceSnapshotImports
 
   @type version :: EntityVersion.t()
   @type project_snapshot :: ProjectSnapshot.t()
@@ -148,6 +149,52 @@ defmodule Storyarn.Versioning do
   defdelegate get_builder!(entity_type), to: VersionCrud
 
   # ========== Project Snapshots ==========
+
+  @doc "Requests one durable standalone snapshot import into a workspace."
+  defdelegate request_workspace_snapshot_import(current_scope, workspace, uploaded_path, attrs),
+    to: WorkspaceSnapshotImports,
+    as: :request
+
+  defdelegate prepare_external_workspace_snapshot_import(current_scope, workspace, attrs),
+    to: WorkspaceSnapshotImports,
+    as: :prepare_external_upload
+
+  defdelegate request_stored_workspace_snapshot_import(current_scope, workspace, import_id),
+    to: WorkspaceSnapshotImports,
+    as: :request_stored
+
+  defdelegate update_workspace_snapshot_upload_progress(current_scope, workspace, import_id, percent),
+    to: WorkspaceSnapshotImports,
+    as: :upload_progress
+
+  defdelegate cancel_workspace_snapshot_upload(current_scope, workspace, import_id),
+    to: WorkspaceSnapshotImports,
+    as: :cancel_upload
+
+  @doc "Lists recent standalone snapshot imports for one workspace."
+  defdelegate list_workspace_snapshot_imports(current_scope, workspace),
+    to: WorkspaceSnapshotImports,
+    as: :list
+
+  @doc "Subscribes to committed standalone snapshot-import lifecycle changes."
+  defdelegate subscribe_workspace_snapshot_imports(workspace_id),
+    to: WorkspaceSnapshotImports,
+    as: :subscribe
+
+  @doc false
+  defdelegate prepare_workspace_snapshot_import_hard_delete(workspace),
+    to: WorkspaceSnapshotImports,
+    as: :prepare_workspace_hard_delete
+
+  @doc false
+  defdelegate perform_workspace_snapshot_import(import_id, opts),
+    to: WorkspaceSnapshotImports,
+    as: :perform
+
+  @doc false
+  defdelegate reconcile_abandoned_workspace_snapshot_import_deliveries(opts \\ []),
+    to: WorkspaceSnapshotImports,
+    as: :reconcile_abandoned_deliveries
 
   @doc "Persists one immutable full-snapshot request and enqueues its worker atomically."
   defdelegate request_full_project_snapshot(current_scope, project, attrs),

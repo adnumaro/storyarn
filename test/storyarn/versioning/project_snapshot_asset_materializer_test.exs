@@ -2,6 +2,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
   use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets.Asset
@@ -308,6 +309,124 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     cleanup_fixture_objects(fixture, plan)
   end
 
+  test "rejects an unmapped family relationship that resolves to another active asset", %{
+    project: project,
+    user: user
+  } do
+    fixture = project.id |> catalog_fixture() |> workspace_snapshot_import_fixture(project.workspace_id)
+    foreign_user = user_fixture()
+    foreign_project = project_fixture(foreign_user)
+    foreign_asset = unmapped_asset_fixture(foreign_project, foreign_user, fixture)
+
+    project_object =
+      put_in(
+        fixture.project_object,
+        ["asset_metadata", "41", "persisted_metadata"],
+        %{"web_asset_id" => foreign_asset.id}
+      )
+
+    assert {:ok, plan} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               "foreign-relationship-guard",
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+
+    tracker = StorageCompensation.new()
+
+    assert {:error, {:snapshot_asset_unmapped_existing_relationship_ids, [foreign_asset_id]}} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+               ProjectSnapshotAssetMaterializer.adopt_locked(plan, locked_project, user.id, tracker)
+             end)
+
+    assert foreign_asset_id == foreign_asset.id
+    assert Storyarn.Assets.list_assets_for_export(project.id) == []
+  end
+
+  test "rejects an unmapped family relationship that resolves to another trashed asset", %{
+    project: project,
+    user: user
+  } do
+    fixture = project.id |> catalog_fixture() |> workspace_snapshot_import_fixture(project.workspace_id)
+    foreign_user = user_fixture()
+    foreign_project = project_fixture(foreign_user)
+    foreign_asset = unmapped_asset_fixture(foreign_project, foreign_user, fixture)
+
+    foreign_asset
+    |> Asset.trash_changeset(foreign_user.id, "user", DateTime.utc_now(:second))
+    |> Repo.update!()
+
+    project_object =
+      put_in(
+        fixture.project_object,
+        ["asset_metadata", "41", "persisted_metadata"],
+        %{"original_asset_id" => foreign_asset.id}
+      )
+
+    assert {:ok, plan} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               "foreign-trashed-relationship-guard",
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+
+    tracker = StorageCompensation.new()
+
+    assert {:error, {:snapshot_asset_unmapped_existing_relationship_ids, [foreign_asset_id]}} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+               ProjectSnapshotAssetMaterializer.adopt_locked(plan, locked_project, user.id, tracker)
+             end)
+
+    assert foreign_asset_id == foreign_asset.id
+    assert Storyarn.Assets.list_assets_for_export(project.id) == []
+  end
+
+  test "in-situ snapshot restore preserves its existing unmapped relationship behavior", %{
+    project: project,
+    user: user
+  } do
+    fixture = catalog_fixture(project.id)
+    foreign_user = user_fixture()
+    foreign_project = project_fixture(foreign_user)
+    foreign_asset = unmapped_asset_fixture(foreign_project, foreign_user, fixture)
+
+    project_object =
+      put_in(
+        fixture.project_object,
+        ["asset_metadata", "41", "persisted_metadata"],
+        %{"web_asset_id" => foreign_asset.id}
+      )
+
+    assert {:ok, plan} =
+             ProjectSnapshotAssetMaterializer.prepare(
+               project.id,
+               "in-situ-restore-keeps-established-semantics",
+               fixture.manifest,
+               project_object,
+               fixture.staging_prefix,
+               fixture.staging_keys
+             )
+
+    tracker = StorageCompensation.new()
+
+    assert {:ok, %{assets: assets}} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+               ProjectSnapshotAssetMaterializer.adopt_locked(plan, locked_project, user.id, tracker)
+             end)
+
+    assert Enum.find(assets, &(&1.filename == "duplicate.png")).metadata["web_asset_id"] ==
+             foreign_asset.id
+  end
+
   test "restores a zero-byte row with captured metadata and remapped valid relationships", %{
     project: project,
     user: user
@@ -442,6 +561,17 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
   defp prepare_bulk_plan(project_id, asset_count) do
     fixture = bulk_catalog_fixture(project_id, asset_count)
     prepare_plan(project_id, fixture)
+  end
+
+  defp workspace_snapshot_import_fixture(fixture, workspace_id) do
+    prefix = "workspace-snapshot-imports/v1/#{workspace_id}/#{Ecto.UUID.generate()}"
+
+    staging_keys =
+      Map.new(fixture.staging_keys, fn {path, _key} ->
+        {path, prefix <> "/blobs/" <> Path.basename(path)}
+      end)
+
+    %{fixture | staging_prefix: prefix, staging_keys: staging_keys}
   end
 
   defp adopt_unstaged_plan(plan, project, actor_id) do
@@ -700,6 +830,19 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
     Enum.each(Map.values(fixture.staging_keys), &storage.delete/1)
     Enum.each(plan.assets, &storage.delete(&1.destination_key))
     Enum.each(plan.blobs, &delete_storage_blob(&1.destination_key))
+  end
+
+  defp unmapped_asset_fixture(project, user, fixture) do
+    captured_source_ids =
+      fixture.project_object
+      |> Map.fetch!("asset_metadata")
+      |> Map.keys()
+      |> MapSet.new(&String.to_integer/1)
+
+    Enum.find_value(1..10, fn _attempt ->
+      asset = asset_fixture(project, user)
+      if MapSet.member?(captured_source_ids, asset.id), do: nil, else: asset
+    end) || flunk("could not allocate an asset id outside the captured source inventory")
   end
 
   defp capture_repo_queries(fun) when is_function(fun, 0) do

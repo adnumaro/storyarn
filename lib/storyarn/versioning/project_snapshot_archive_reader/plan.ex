@@ -22,6 +22,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader.Plan do
     :archive_size_bytes,
     :archive_checksum,
     :archive_identity,
+    :logical_asset_bytes,
     :entries_by_path,
     :entry_order
   ]
@@ -36,6 +37,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotArchiveReader.Plan do
           archive_size_bytes: pos_integer(),
           archive_checksum: String.t(),
           archive_identity: archive_identity(),
+          logical_asset_bytes: non_neg_integer() | nil,
           entries_by_path: %{String.t() => Entry.t()},
           entry_order: [String.t()]
         }

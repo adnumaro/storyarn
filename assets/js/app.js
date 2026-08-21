@@ -18,6 +18,10 @@ import {
 import { initPostHog } from "./utils/posthog";
 import { PublicMobileNavigation } from "./utils/public_mobile_navigation";
 import { SeoMetadata } from "./utils/seo_metadata";
+import { createWorkspaceSnapshotUploader } from "./utils/workspace_snapshot_uploader";
+
+const { abortUpload: abortWorkspaceSnapshotUpload, uploader: workspaceSnapshotUploader } =
+  createWorkspaceSnapshotUploader();
 
 if (!window.__storyarnAppInitialized) {
   window.__storyarnAppInitialized = true;
@@ -33,6 +37,14 @@ if (!window.__storyarnAppInitialized) {
     longPollFallbackMs: 2500,
     params: { _csrf_token: csrfToken, player_tab_id: playerTabId },
     hooks: { ...getHooks(liveVueApp), PublicMobileNavigation, SeoMetadata },
+    uploaders: { WorkspaceSnapshot: workspaceSnapshotUploader },
+  });
+
+  window.addEventListener("storyarn:workspace-snapshot-upload-cancel", ({ detail }) => {
+    abortWorkspaceSnapshotUpload(detail);
+  });
+  window.addEventListener("phx:workspace-snapshot-upload-cancelled", ({ detail }) => {
+    abortWorkspaceSnapshotUpload(detail);
   });
 
   // Progress bar

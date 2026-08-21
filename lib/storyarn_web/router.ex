@@ -20,7 +20,7 @@ defmodule StoryarnWeb.Router do
       "img-src 'self' data: blob: https:#{@csp_dev_asset_origin}; " <>
       "media-src 'self' blob: https:; " <>
       "font-src 'self' data: https://fonts.gstatic.com#{@csp_dev_extras}; " <>
-      "connect-src 'self' ws: wss: #{posthog_connect_src()}#{@csp_dev_extras}; " <>
+      "connect-src 'self' ws: wss: #{connect_src()}#{@csp_dev_extras}; " <>
       "frame-src 'self'; " <>
       "frame-ancestors 'self'; " <>
       "base-uri 'self'; " <>
@@ -86,18 +86,31 @@ defmodule StoryarnWeb.Router do
     |> Enum.join(" ")
   end
 
-  defp csp_origin(url) when is_binary(url) do
-    case URI.parse(url) do
-      %URI{scheme: scheme, host: host, port: port} when scheme in ["http", "https"] and is_binary(host) ->
-        port_suffix = csp_port_suffix(scheme, port)
-        "#{scheme}://#{host}#{port_suffix}"
+  defp connect_src do
+    r2_origin = :storyarn |> Application.get_env(:r2, []) |> Keyword.get(:endpoint_url) |> csp_https_origin()
+    [posthog_connect_src(), r2_origin] |> Enum.reject(&is_nil/1) |> Enum.join(" ")
+  end
 
-      _ ->
-        nil
+  defp csp_https_origin(url), do: csp_origin(url, ["https"])
+
+  defp csp_origin(url), do: csp_origin(url, ["http", "https"])
+
+  defp csp_origin(url, schemes) when is_binary(url) do
+    with {:ok, %URI{scheme: scheme, host: host, port: port, userinfo: nil, path: path, query: nil, fragment: nil}} <-
+           URI.new(url),
+         true <- scheme in schemes and path in [nil, ""] and valid_csp_host?(host) and valid_csp_port?(port) do
+      "#{scheme}://#{host}#{csp_port_suffix(scheme, port)}"
+    else
+      _invalid -> nil
     end
   end
 
-  defp csp_origin(_url), do: nil
+  defp csp_origin(_url, _schemes), do: nil
+
+  defp valid_csp_host?(host) when is_binary(host), do: Regex.match?(~r/\A[a-z0-9](?:[a-z0-9.-]*[a-z0-9])?\z/i, host)
+
+  defp valid_csp_host?(_host), do: false
+  defp valid_csp_port?(port), do: is_integer(port) and port in 1..65_535
 
   defp csp_port_suffix("http", 80), do: ""
   defp csp_port_suffix("https", 443), do: ""
@@ -331,6 +344,10 @@ defmodule StoryarnWeb.Router do
 
       live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
+
+      live "/users/settings/workspaces/:slug/imports",
+           SettingsLive.WorkspaceImports,
+           :index
 
       live "/users/settings/workspaces/:slug/deleted-projects",
            SettingsLive.WorkspaceDeletedProjects,

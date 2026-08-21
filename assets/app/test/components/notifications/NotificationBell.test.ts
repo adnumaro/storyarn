@@ -128,6 +128,23 @@ describe("NotificationBell", () => {
     expect(wrapper.text()).toContain("Marcar todo como leído");
   });
 
+  it("labels completed workspace snapshot imports", async () => {
+    const { wrapper } = await mountBell(
+      center({
+        items: [
+          {
+            ...readNotification,
+            entityType: "workspace_snapshot_import",
+            entityName: "Recovered story",
+          },
+        ],
+        unreadCount: 0,
+      }),
+    );
+
+    expect(wrapper.text()).toContain("snapshot import: Recovered story completed");
+  });
+
   it("requests and applies the unread filter", async () => {
     const { live, pushEvent, wrapper } = await mountBell();
 

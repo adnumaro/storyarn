@@ -18,6 +18,7 @@ defmodule Storyarn.Notifications.Notification do
   @kinds ~w(async_operation content_created content_deleted)
   @entity_types ~w(
     project_snapshot
+    workspace_snapshot_import
     project_import
     template_install
     localization_batch

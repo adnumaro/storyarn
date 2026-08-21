@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.RouterTest do
-  use StoryarnWeb.ConnCase, async: true
+  use StoryarnWeb.ConnCase, async: false
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
@@ -30,6 +30,11 @@ defmodule StoryarnWeb.RouterTest do
 
     test "redirects to login for unauthenticated settings access", %{conn: conn} do
       conn = get(conn, ~p"/users/settings")
+      assert redirected_to(conn) =~ "/users/log-in"
+    end
+
+    test "redirects to login for unauthenticated workspace imports access", %{conn: conn} do
+      conn = get(conn, ~p"/users/settings/workspaces/test-ws/imports")
       assert redirected_to(conn) =~ "/users/log-in"
     end
 
@@ -125,6 +130,11 @@ defmodule StoryarnWeb.RouterTest do
   # ── CSP headers ────────────────────────────────────────────────
 
   describe "CSP headers" do
+    setup do
+      original = Application.get_env(:storyarn, :r2, [])
+      on_exit(fn -> Application.put_env(:storyarn, :r2, original) end)
+    end
+
     test "sets content-security-policy header", %{conn: conn} do
       conn = get(conn, ~p"/")
       csp = Plug.Conn.get_resp_header(conn, "content-security-policy")
@@ -133,6 +143,16 @@ defmodule StoryarnWeb.RouterTest do
       assert policy =~ "default-src 'self'"
       assert policy =~ "script-src 'self'"
       assert policy =~ "frame-ancestors 'self'"
+    end
+
+    test "allows only a canonical HTTPS storage origin" do
+      Application.put_env(:storyarn, :r2, endpoint_url: "https://uploads.example:444")
+      [policy] = build_conn() |> get(~p"/") |> get_resp_header("content-security-policy")
+      assert policy =~ "https://uploads.example:444"
+
+      Application.put_env(:storyarn, :r2, endpoint_url: "https://good.test; script-src *")
+      [policy] = build_conn() |> get(~p"/") |> get_resp_header("content-security-policy")
+      refute policy =~ "good.test"
     end
   end
 

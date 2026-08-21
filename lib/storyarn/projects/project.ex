@@ -93,6 +93,34 @@ defmodule Storyarn.Projects.Project do
     |> unique_constraint([:workspace_id, :slug])
   end
 
+  @doc false
+  def snapshot_import_changeset(project, attrs) do
+    project
+    |> cast(attrs, [
+      :name,
+      :slug,
+      :description,
+      :project_type,
+      :project_subtype,
+      :project_type_other,
+      :settings,
+      :auto_version_flows,
+      :auto_version_scenes,
+      :auto_version_sheets,
+      :workspace_id
+    ])
+    |> validate_required([
+      :name,
+      :slug,
+      :auto_version_flows,
+      :auto_version_scenes,
+      :auto_version_sheets
+    ])
+    |> validate_slug()
+    |> foreign_key_constraint(:workspace_id)
+    |> unique_constraint([:workspace_id, :slug])
+  end
+
   defp validate_slug(changeset), do: Storyarn.Shared.Validations.validate_slug(changeset)
 
   @doc """

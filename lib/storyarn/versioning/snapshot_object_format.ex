@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Versioning.ReferencedTombstones
 
   @format "storyarn.project_snapshot"
   @format_version 1
@@ -79,6 +80,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     project = scrub_storage_metadata(project)
 
     with :ok <- validate_json_value(project),
+         :ok <- ReferencedTombstones.validate(project, @default_limits.max_objects),
          :ok <- reject_storage_metadata(project) do
       {:ok, project}
     end
@@ -102,6 +104,7 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
   @spec validate_project(term()) :: :ok | {:error, term()}
   def validate_project(%{"format_version" => @project_format_version} = project) do
     with :ok <- validate_json_value(project),
+         :ok <- ReferencedTombstones.validate(project, @default_limits.max_objects),
          :ok <- validate_project_source_refs(project) do
       reject_storage_metadata(project)
     end
@@ -252,6 +255,14 @@ defmodule Storyarn.Versioning.SnapshotObjectFormat do
     do: {:error, {:unsupported_snapshot_object_type, format}}
 
   def validate_manifest(_manifest, _opts), do: {:error, :invalid_snapshot_manifest}
+
+  @doc false
+  @spec logical_asset_bytes(term()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def logical_asset_bytes(manifest) do
+    with :ok <- validate_manifest(manifest) do
+      {:ok, Enum.reduce(manifest["assets"], 0, &(&1["size_bytes"] + &2))}
+    end
+  end
 
   @doc false
   def limits(opts \\ []) do

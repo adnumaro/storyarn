@@ -44,6 +44,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Versioning.ReferencedTombstones
   alias Storyarn.Versioning.SnapshotObjectFormat
 
   require Logger
@@ -65,6 +66,11 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   @localization_actor_mode_key :project_recovery_localization_actor_mode
   @preserved_localization_actor_ids_key :preserved_localization_actor_ids
   @materialization_mode_key :materialization_mode
+  @snapshot_import_asset_catalog_fun_key :snapshot_import_asset_catalog_fun
+  @snapshot_import_asset_id_map_key :snapshot_import_asset_id_map
+  @snapshot_import_project_id_key :snapshot_import_project_id
+  @snapshot_import_tombstone_nodes_fun_key :snapshot_import_tombstone_nodes_fun
+  @snapshot_import_external_tombstone_node_map_key :snapshot_import_external_tombstone_node_map
   @snapshot_count_collections %{
     "sheets" => ["sheets"],
     "flows" => ["flows"],
@@ -95,6 +101,47 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     opts = Keyword.put(opts, @localization_actor_mode_key, :discard)
     recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
   end
+
+  @doc """
+  Materializes an exact project snapshot as a new project.
+
+  This is the recovery entry point for a verified standalone snapshot archive.
+  It creates fresh database identities while preserving the captured project
+  settings and content. The caller must reserve a fresh project ID, stage the
+  complete verified asset catalog before the final transaction and provide
+  `:snapshot_import_asset_catalog_fun`; that callback adopts the staged catalog
+  inside the transaction and returns the historical-to-new asset ID map.
+  """
+  @spec materialize_snapshot_import(integer(), map(), integer(), keyword()) ::
+          {:ok, Project.t()} | {:error, term()}
+  def materialize_snapshot_import(workspace_id, snapshot_data, user_id, opts \\ []) do
+    name = get_in(snapshot_data, ["project", "name"])
+
+    with :ok <- validate_snapshot_import(snapshot_data),
+         :ok <- validate_snapshot_import_asset_catalog_fun(opts),
+         :ok <- validate_snapshot_import_project_id(opts) do
+      opts =
+        opts
+        |> Keyword.put(:materialization_mode, :exact)
+        |> Keyword.put(:name, name)
+
+      materialize_template(workspace_id, snapshot_data, user_id, opts)
+    end
+  end
+
+  @doc false
+  @spec validate_snapshot_import(map()) :: :ok | {:error, term()}
+  def validate_snapshot_import(snapshot_data) when is_map(snapshot_data) do
+    with :ok <-
+           ReferencedTombstones.validate_complete(
+             snapshot_data,
+             SnapshotObjectFormat.hard_limits().max_objects
+           ) do
+      validate_materialization_snapshot(snapshot_data, :exact)
+    end
+  end
+
+  def validate_snapshot_import(_snapshot_data), do: {:error, :invalid_project_snapshot_envelope}
 
   @doc false
   @spec validate_materialization_snapshot(map()) :: :ok | {:error, term()}
@@ -1063,9 +1110,70 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp do_recover(workspace_id, snapshot_data, user_id, name, opts) do
-    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data),
-         {:ok, _membership} <- create_owner_membership(project, user_id) do
+    with {:ok, project} <- create_project(workspace_id, user_id, name, snapshot_data, opts),
+         {:ok, _membership} <- create_owner_membership(project, user_id),
+         {:ok, opts} <- materialize_snapshot_import_asset_catalog(project, snapshot_data, user_id, opts) do
       materialize_project_graph(project, snapshot_data, user_id, opts)
+    end
+  end
+
+  defp validate_snapshot_import_asset_catalog_fun(opts) when is_list(opts) do
+    with true <- Keyword.keyword?(opts),
+         {:ok, _fun} <- snapshot_import_asset_catalog_fun(opts) do
+      :ok
+    else
+      _missing_or_invalid -> {:error, :snapshot_import_asset_catalog_materializer_required}
+    end
+  end
+
+  defp validate_snapshot_import_asset_catalog_fun(_opts),
+    do: {:error, :snapshot_import_asset_catalog_materializer_required}
+
+  defp validate_snapshot_import_project_id(opts) when is_list(opts) do
+    case Keyword.get(opts, @snapshot_import_project_id_key) do
+      project_id when is_integer(project_id) and project_id > 0 -> :ok
+      _missing_or_invalid -> {:error, :snapshot_import_project_id_required}
+    end
+  end
+
+  defp validate_snapshot_import_project_id(_opts), do: {:error, :snapshot_import_project_id_required}
+
+  defp materialize_snapshot_import_asset_catalog(project, snapshot_data, user_id, opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
+      with {:ok, fun} <- snapshot_import_asset_catalog_fun(opts),
+           {:ok, cache} <- snapshot_import_asset_materialization_cache(opts),
+           {:ok, materialized_asset_ids} <- fun.(project, snapshot_data, user_id, opts),
+           {:ok, materialized_asset_ids} <- source_id_map(snapshot_data, materialized_asset_ids),
+           :ok <-
+             AssetHashResolver.preload_materialized_assets(
+               snapshot_data,
+               materialized_asset_ids,
+               project.id,
+               cache
+             ) do
+        {:ok,
+         opts
+         |> Keyword.put(:pre_materialized_assets, true)
+         |> Keyword.put(@snapshot_import_asset_id_map_key, materialized_asset_ids)}
+      else
+        {:error, _reason} = error -> error
+      end
+    else
+      {:ok, opts}
+    end
+  end
+
+  defp snapshot_import_asset_catalog_fun(opts) do
+    case Keyword.get(opts, @snapshot_import_asset_catalog_fun_key) do
+      fun when is_function(fun, 4) -> {:ok, fun}
+      _missing_or_invalid -> {:error, :snapshot_import_asset_catalog_materializer_required}
+    end
+  end
+
+  defp snapshot_import_asset_materialization_cache(opts) do
+    case Keyword.get(opts, :asset_materialization_cache) do
+      cache when is_reference(cache) -> {:ok, cache}
+      _missing_or_invalid -> {:error, :snapshot_import_asset_materialization_cache_required}
     end
   end
 
@@ -1082,8 +1190,24 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     with :ok <- validate_recovery_localization_actor_references(snapshot_data, opts),
          {:ok, opts, preserved_actor_ids} <-
            prepare_recovery_localization_actors(snapshot_data, opts),
+         {:ok, root_tombstone_maps} <-
+           materialize_snapshot_import_root_tombstones(project.id, snapshot_data, opts, now),
+         {:ok, detached_node_tombstone_maps} <-
+           materialize_detached_snapshot_import_node_tombstones(
+             snapshot_data,
+             root_tombstone_maps.flow,
+             opts,
+             now
+           ),
          {:ok, {sheet_maps, snapshot_data}} <-
            recover_sheets_with_portable_namespaces(project.id, snapshot_data, user_id, opts),
+         {:ok, block_tombstone_maps} <-
+           materialize_snapshot_import_block_tombstones(
+             snapshot_data,
+             Map.merge(root_tombstone_maps.sheet, sheet_maps.sheet),
+             opts,
+             now
+           ),
          {:ok, scene_maps} <-
            recover_scenes(project.id, snapshot_data, sheet_maps.sheet, user_id, opts),
          {:ok, flow_maps} <-
@@ -1093,12 +1217,30 @@ defmodule Storyarn.Versioning.ProjectRecovery do
              sheet_maps.sheet,
              scene_maps.scene,
              sheet_maps.avatar,
+             Map.put(root_tombstone_maps, :node, detached_node_tombstone_maps.node),
              user_id,
              opts
            ) do
-      id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
+      active_id_maps = merge_recovery_id_maps([sheet_maps, scene_maps, flow_maps])
 
-      with :ok <- validate_materialized_id_map_coverage(snapshot_data, id_maps),
+      tombstone_id_maps =
+        [
+          root_tombstone_maps,
+          block_tombstone_maps,
+          detached_node_tombstone_maps
+        ]
+        |> merge_recovery_id_maps()
+        |> Map.put(
+          :node,
+          Map.merge(
+            detached_node_tombstone_maps.node,
+            Map.get(flow_maps, :referenced_tombstone_node, %{})
+          )
+        )
+
+      with :ok <- validate_materialized_id_map_coverage(snapshot_data, active_id_maps),
+           {:ok, id_maps} <- merge_materialized_id_maps(active_id_maps, tombstone_id_maps),
+           :ok <- remap_snapshot_import_tombstone_payloads(snapshot_data, id_maps, opts),
            :ok <- remap_sheet_refs(project.id, id_maps, snapshot_data, opts),
            :ok <- maybe_validate_recovered_sheet_inheritance(project.id, opts),
            :ok <- remap_flow_refs(project.id, id_maps, snapshot_data, opts),
@@ -1306,26 +1448,65 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   # ========== Project Creation ==========
 
-  defp create_project(workspace_id, user_id, name, snapshot_data) do
+  defp create_project(workspace_id, user_id, name, snapshot_data, opts) do
     slug = NameNormalizer.generate_unique_slug(Project, [workspace_id: workspace_id], name)
+    project = snapshot_import_project(user_id, opts)
 
-    %Project{owner_id: user_id}
-    |> Project.create_changeset(recovered_project_attrs(workspace_id, name, slug, snapshot_data))
-    |> Repo.insert()
+    changeset =
+      project_creation_changeset(
+        project,
+        recovered_project_attrs(workspace_id, name, slug, snapshot_data, opts),
+        opts
+      )
+
+    Repo.insert(changeset)
   end
 
-  defp recovered_project_attrs(workspace_id, name, slug, snapshot_data) do
-    snapshot_project = snapshot_data["project"] || %{}
-    project_type = snapshot_project["project_type"] || "game"
+  defp snapshot_import_project(user_id, opts) do
+    case Keyword.get(opts, @snapshot_import_project_id_key) do
+      project_id when is_integer(project_id) and project_id > 0 ->
+        %Project{id: project_id, owner_id: user_id}
 
-    %{
-      name: name,
-      slug: slug,
-      workspace_id: workspace_id,
-      project_type: project_type,
-      project_subtype: recovered_project_subtype(project_type, snapshot_project),
-      project_type_other: recovered_project_type_other(project_type, snapshot_project)
-    }
+      _not_snapshot_import ->
+        %Project{owner_id: user_id}
+    end
+  end
+
+  defp project_creation_changeset(project, attrs, opts) do
+    if MaterializationHelpers.exact_materialization?(opts),
+      do: Project.snapshot_import_changeset(project, attrs),
+      else: Project.create_changeset(project, attrs)
+  end
+
+  defp recovered_project_attrs(workspace_id, name, slug, snapshot_data, opts) do
+    snapshot_project = snapshot_data["project"] || %{}
+
+    if MaterializationHelpers.exact_materialization?(opts) do
+      %{
+        name: name,
+        slug: slug,
+        workspace_id: workspace_id,
+        description: snapshot_project["description"],
+        project_type: snapshot_project["project_type"],
+        project_subtype: snapshot_project["project_subtype"],
+        project_type_other: snapshot_project["project_type_other"],
+        settings: snapshot_project["settings"],
+        auto_version_flows: snapshot_project["auto_version_flows"],
+        auto_version_scenes: snapshot_project["auto_version_scenes"],
+        auto_version_sheets: snapshot_project["auto_version_sheets"]
+      }
+    else
+      project_type = snapshot_project["project_type"] || "game"
+
+      %{
+        name: name,
+        slug: slug,
+        workspace_id: workspace_id,
+        project_type: project_type,
+        project_subtype: recovered_project_subtype(project_type, snapshot_project),
+        project_type_other: recovered_project_type_other(project_type, snapshot_project)
+      }
+    end
   end
 
   defp recovered_project_subtype("game", snapshot_project), do: snapshot_project["project_subtype"] || "rpg"
@@ -1343,6 +1524,244 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     %ProjectMembership{}
     |> ProjectMembership.changeset(%{project_id: project.id, user_id: user_id, role: "owner"})
     |> Repo.insert()
+  end
+
+  defp materialize_snapshot_import_root_tombstones(project_id, snapshot_data, opts, now) do
+    if snapshot_import_materialization?(opts) do
+      snapshot_data
+      |> snapshot_import_tombstone_entries()
+      |> Enum.filter(&(&1["entity_type"] in ~w(sheet flow scene)))
+      |> Enum.reduce_while(
+        {:ok, empty_recovery_id_maps()},
+        &reduce_snapshot_import_root_tombstone(&1, &2, project_id, now)
+      )
+    else
+      {:ok, empty_recovery_id_maps()}
+    end
+  end
+
+  defp reduce_snapshot_import_root_tombstone(entry, {:ok, id_maps}, project_id, now) do
+    case insert_snapshot_import_root_tombstone(project_id, entry, now) do
+      {:ok, kind, source_id, destination_id} ->
+        {:cont, {:ok, put_in(id_maps, [kind, source_id], destination_id)}}
+
+      {:error, _reason} = error ->
+        {:halt, error}
+    end
+  end
+
+  defp insert_snapshot_import_root_tombstone(project_id, entry, now) do
+    source_id = entry["id"]
+    deleted_at = snapshot_import_tombstone_deleted_at!(entry)
+    snapshot = entry["snapshot"]
+
+    {kind, schema, attrs} =
+      case entry["entity_type"] do
+        "sheet" -> {:sheet, Sheet, snapshot_import_sheet_tombstone_attrs(snapshot)}
+        "flow" -> {:flow, Flow, snapshot_import_flow_tombstone_attrs(snapshot)}
+        "scene" -> {:scene, Scene, snapshot_import_scene_tombstone_attrs(snapshot)}
+      end
+
+    attrs =
+      attrs
+      |> Map.put(:project_id, project_id)
+      |> Map.put(:deleted_at, deleted_at)
+      |> Map.merge(MaterializationHelpers.timestamps(now))
+
+    case MaterializationHelpers.insert_one_returning_id(Repo, schema, attrs) do
+      {:ok, destination_id} -> {:ok, kind, source_id, destination_id}
+      {:error, reason} -> {:error, {:snapshot_import_tombstone_insert_failed, kind, source_id, reason}}
+    end
+  end
+
+  defp snapshot_import_sheet_tombstone_attrs(snapshot) do
+    %{
+      name: snapshot["name"],
+      shortcut: snapshot["shortcut"],
+      description: snapshot["description"],
+      color: snapshot["color"],
+      position: snapshot["position"],
+      hidden_inherited_block_ids: snapshot["hidden_inherited_block_ids"],
+      parent_id: nil,
+      banner_asset_id: nil
+    }
+  end
+
+  defp snapshot_import_flow_tombstone_attrs(snapshot) do
+    %{
+      name: snapshot["name"],
+      shortcut: snapshot["shortcut"],
+      description: snapshot["description"],
+      position: snapshot["position"],
+      is_main: snapshot["is_main"],
+      settings: snapshot["settings"],
+      parent_id: nil,
+      scene_id: nil
+    }
+  end
+
+  defp snapshot_import_scene_tombstone_attrs(snapshot) do
+    snapshot
+    |> Map.take(~w(
+      name shortcut description width height default_zoom default_center_x default_center_y
+      position scale_unit scale_value fog_color fog_opacity exploration_display_mode
+    ))
+    |> Map.new(fn {key, value} -> {String.to_existing_atom(key), value} end)
+    |> Map.merge(%{parent_id: nil, background_asset_id: nil})
+  end
+
+  defp materialize_snapshot_import_block_tombstones(snapshot_data, sheet_id_map, opts, now) do
+    entries =
+      if snapshot_import_materialization?(opts),
+        do: Enum.filter(snapshot_import_tombstone_entries(snapshot_data), &(&1["entity_type"] == "block")),
+        else: []
+
+    Enum.reduce_while(entries, {:ok, empty_recovery_id_maps()}, fn entry, {:ok, id_maps} ->
+      owner_id = get_in(entry, ["owner", "id"])
+
+      with {:ok, sheet_id} <- fetch_required_mapping(sheet_id_map, owner_id, {:tombstone_block_owner, entry["id"]}),
+           {:ok, block_id} <- insert_snapshot_import_block_tombstone(entry, sheet_id, now) do
+        {:cont, {:ok, put_in(id_maps, [:block, entry["id"]], block_id)}}
+      else
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp insert_snapshot_import_block_tombstone(entry, sheet_id, now) do
+    snapshot = entry["snapshot"]
+
+    attrs =
+      snapshot
+      |> Map.take(~w(
+        type position config value is_constant variable_name scope detached required
+        column_group_id column_index word_count
+      ))
+      |> Map.new(fn {key, value} -> {String.to_existing_atom(key), value} end)
+      |> Map.merge(%{
+        sheet_id: sheet_id,
+        inherited_from_block_id: nil,
+        deleted_at: snapshot_import_tombstone_deleted_at!(entry)
+      })
+      |> Map.merge(MaterializationHelpers.timestamps(now))
+
+    case MaterializationHelpers.insert_one_returning_id(Repo, Block, attrs) do
+      {:ok, block_id} -> {:ok, block_id}
+      {:error, reason} -> {:error, {:snapshot_import_tombstone_insert_failed, :block, entry["id"], reason}}
+    end
+  end
+
+  defp materialize_detached_snapshot_import_node_tombstones(snapshot_data, tombstone_flow_map, opts, now) do
+    entries =
+      if snapshot_import_materialization?(opts),
+        do: snapshot_import_tombstone_entries(snapshot_data),
+        else: []
+
+    Enum.reduce_while(
+      tombstone_flow_map,
+      {:ok, empty_recovery_id_maps()},
+      fn {source_flow_id, flow_id}, {:ok, id_maps} ->
+        reduce_detached_snapshot_import_nodes(entries, source_flow_id, flow_id, id_maps, now)
+      end
+    )
+  end
+
+  defp reduce_detached_snapshot_import_nodes(entries, source_flow_id, flow_id, id_maps, now) do
+    with {:ok, node_map} <-
+           insert_snapshot_import_node_tombstones(entries, source_flow_id, flow_id, now),
+         nil <- conflicting_materialized_id(id_maps.node, node_map) do
+      {:cont, {:ok, Map.put(id_maps, :node, Map.merge(id_maps.node, node_map))}}
+    else
+      source_id when is_integer(source_id) ->
+        {:halt, {:error, {:duplicate_project_snapshot_identity, :node, source_id}}}
+
+      {:error, _reason} = error ->
+        {:halt, error}
+    end
+  end
+
+  defp insert_snapshot_import_node_tombstones(entries, source_flow_id, flow_id, now) do
+    entries
+    |> Enum.filter(fn entry ->
+      entry["entity_type"] == "flow_node" and get_in(entry, ["owner", "id"]) == source_flow_id
+    end)
+    |> Enum.reduce_while({:ok, %{}}, fn entry, {:ok, node_map} ->
+      attrs = snapshot_import_node_tombstone_attrs(entry, flow_id, now)
+
+      case MaterializationHelpers.insert_one_returning_id(Repo, FlowNode, attrs) do
+        {:ok, node_id} -> {:cont, {:ok, Map.put(node_map, entry["id"], node_id)}}
+        {:error, reason} -> {:halt, {:error, {:snapshot_import_tombstone_insert_failed, :node, entry["id"], reason}}}
+      end
+    end)
+  end
+
+  defp snapshot_import_node_tombstone_attrs(entry, flow_id, now) do
+    entry["snapshot"]
+    |> Map.take(~w(type position_x position_y data word_count derivatives_fingerprint))
+    |> Map.new(fn {key, value} -> {String.to_existing_atom(key), value} end)
+    |> Map.merge(%{
+      flow_id: flow_id,
+      parent_id: nil,
+      deleted_at: snapshot_import_tombstone_deleted_at!(entry)
+    })
+    |> Map.merge(MaterializationHelpers.timestamps(now))
+  end
+
+  defp snapshot_import_tombstone_deleted_at!(entry) do
+    {:ok, deleted_at, 0} = DateTime.from_iso8601(entry["deleted_at"])
+    DateTime.truncate(deleted_at, :second)
+  end
+
+  defp snapshot_import_tombstone_entries(snapshot_data),
+    do: get_in(snapshot_data, ["referenced_tombstones", "entries"]) || []
+
+  defp remap_snapshot_import_tombstone_payloads(snapshot_data, id_maps, opts) do
+    if snapshot_import_materialization?(opts) do
+      id_maps = Map.put(id_maps, :asset, Keyword.fetch!(opts, @snapshot_import_asset_id_map_key))
+
+      snapshot_data
+      |> snapshot_import_tombstone_entries()
+      |> remap_snapshot_import_tombstone_entries(id_maps, opts)
+    else
+      :ok
+    end
+  end
+
+  defp remap_snapshot_import_tombstone_entries(entries, id_maps, opts) do
+    Enum.reduce_while(entries, :ok, fn entry, :ok ->
+      case remap_snapshot_import_tombstone_payload(entry, id_maps, opts) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp remap_snapshot_import_tombstone_payload(
+         %{"entity_type" => "block", "id" => source_id, "snapshot" => snapshot},
+         id_maps,
+         opts
+       ) do
+    remap_sheet_block_payloads([Map.put(snapshot, "original_id", source_id)], id_maps, opts)
+  end
+
+  defp remap_snapshot_import_tombstone_payload(
+         %{"entity_type" => "flow_node", "id" => source_id, "owner" => %{"id" => source_flow_id}, "snapshot" => snapshot},
+         id_maps,
+         opts
+       ) do
+    with {:ok, flow_id} <-
+           fetch_required_mapping(id_maps.flow, source_flow_id, {:tombstone_flow_node_owner, source_id}) do
+      remap_flow_nodes([Map.put(snapshot, "original_id", source_id)], flow_id, id_maps, opts)
+    end
+  end
+
+  defp remap_snapshot_import_tombstone_payload(_entry, _id_maps, _opts), do: :ok
+
+  defp snapshot_import_materialization?(opts) do
+    case Keyword.get(opts, @snapshot_import_project_id_key) do
+      project_id when is_integer(project_id) and project_id > 0 -> true
+      _not_snapshot_import -> false
+    end
   end
 
   # ========== Phase A: Materialize Entities ==========
@@ -1372,21 +1791,56 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     end)
   end
 
-  defp recover_flows(project_id, snapshot_data, sheet_id_map, scene_id_map, avatar_id_map, user_id, opts) do
+  defp recover_flows(project_id, snapshot_data, sheet_id_map, scene_id_map, avatar_id_map, tombstone_maps, user_id, opts) do
     builder_opts =
-      materialization_opts(user_id, opts,
+      user_id
+      |> materialization_opts(opts,
         external_id_maps: %{
-          sheet: sheet_id_map,
+          sheet: Map.merge(tombstone_maps.sheet, sheet_id_map),
           avatar: avatar_id_map,
-          scene: scene_id_map
+          scene: Map.merge(tombstone_maps.scene, scene_id_map),
+          flow: tombstone_maps.flow
         },
         restore_localization: false,
         rebuild_references: false
       )
+      |> maybe_put_snapshot_import_tombstone_nodes_fun(snapshot_data, tombstone_maps, opts)
 
     materialize_entities(snapshot_data["flows"] || [], :flow, fn snapshot ->
+      snapshot = remap_snapshot_import_flow_scene(snapshot, tombstone_maps.scene, opts)
       FlowBuilder.instantiate_snapshot(project_id, snapshot, builder_opts)
     end)
+  end
+
+  defp maybe_put_snapshot_import_tombstone_nodes_fun(builder_opts, snapshot_data, tombstone_maps, opts) do
+    if snapshot_import_materialization?(opts) do
+      entries = snapshot_import_tombstone_entries(snapshot_data)
+
+      builder_opts
+      |> Keyword.put(
+        @snapshot_import_tombstone_nodes_fun_key,
+        fn flow_id, flow_snapshot, _active_node_id_map, now ->
+          insert_snapshot_import_node_tombstones(entries, flow_snapshot["original_id"], flow_id, now)
+        end
+      )
+      |> Keyword.put(
+        @snapshot_import_external_tombstone_node_map_key,
+        Map.get(tombstone_maps, :node, %{})
+      )
+    else
+      builder_opts
+    end
+  end
+
+  defp remap_snapshot_import_flow_scene(snapshot, tombstone_scene_map, opts) do
+    if snapshot_import_materialization?(opts) do
+      case Map.get(tombstone_scene_map, snapshot["scene_id"]) do
+        scene_id when is_integer(scene_id) -> Map.put(snapshot, "scene_id", scene_id)
+        _not_tombstone -> snapshot
+      end
+    else
+      snapshot
+    end
   end
 
   defp materialization_opts(user_id, recovery_opts, builder_opts) do
@@ -1429,7 +1883,8 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     materialized_maps = namespace_connection_id_map(materialized_maps, entity_type)
 
     with :ok <- validate_materialized_root_mapping(entry, entity_type, materialized_maps),
-         {:ok, merged_maps} <- merge_materialized_id_maps(id_maps, materialized_maps) do
+         {:ok, merged_maps} <- merge_materialized_id_maps(id_maps, materialized_maps),
+         {:ok, merged_maps} <- merge_tombstone_node_maps(merged_maps, materialized_maps) do
       {:cont, {:ok, merged_maps}}
     else
       {:error, reason} -> halt_materialization(entry, entity_type, reason)
@@ -1449,6 +1904,16 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   end
 
   defp namespace_connection_id_map(materialized_maps, _entity_type), do: materialized_maps
+
+  defp merge_tombstone_node_maps(id_maps, materialized_maps) do
+    existing = Map.get(id_maps, :referenced_tombstone_node, %{})
+    incoming = Map.get(materialized_maps, :referenced_tombstone_node, %{})
+
+    case conflicting_materialized_id(existing, incoming) do
+      nil -> {:ok, Map.put(id_maps, :referenced_tombstone_node, Map.merge(existing, incoming))}
+      source_id -> {:error, {:duplicate_project_snapshot_identity, :node, source_id}}
+    end
+  end
 
   defp halt_materialization(entry, entity_type, reason) do
     {:halt, {:error, {:materialization_failed, entity_type, entry["id"], reason}}}
@@ -1964,7 +2429,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
     nodes = snapshot["nodes"] || []
 
     Enum.reduce_while(snapshot["connections"] || [], :ok, fn connection, :ok ->
-      source_node = Enum.at(nodes, connection["source_node_index"])
+      source_node =
+        if is_integer(connection["source_node_index"]),
+          do: Enum.at(nodes, connection["source_node_index"])
 
       case remap_recovered_dynamic_exit_pin(
              connection,
@@ -2213,56 +2680,30 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   defp remap_single_node_data(node_id, new_flow_id, source_node_id, node_type, data, id_maps, opts) do
     original_data = data
 
-    with {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "speaker_sheet_id",
-             id_maps.sheet,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "location_sheet_id",
-             id_maps.sheet,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "referenced_flow_id",
-             id_maps.flow,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_data_reference(
-             data,
-             "avatar_id",
-             id_maps.avatar,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_node_typed_target(
-             data,
-             id_maps,
-             source_node_id,
-             opts
-           ),
-         {:ok, data} <-
-           remap_embedded_mentions(
-             data,
-             id_maps,
-             {:flow_node, source_node_id},
-             opts
-           ),
+    with {:ok, data} <- remap_authored_node_data(source_node_id, data, id_maps, opts),
          {:ok, new_data} <- maybe_normalize_recovered_node_avatar(new_flow_id, node_type, data, opts) do
       persist_remapped_node_data(node_id, original_data, new_data)
     end
   end
+
+  defp remap_authored_node_data(source_node_id, data, id_maps, opts) do
+    with {:ok, data} <-
+           remap_node_data_reference(data, "speaker_sheet_id", id_maps.sheet, source_node_id, opts),
+         {:ok, data} <-
+           remap_node_data_reference(data, "location_sheet_id", id_maps.sheet, source_node_id, opts),
+         {:ok, data} <-
+           remap_node_data_reference(data, "referenced_flow_id", id_maps.flow, source_node_id, opts),
+         {:ok, data} <- remap_node_data_reference(data, "avatar_id", id_maps.avatar, source_node_id, opts),
+         {:ok, data} <- remap_node_asset_reference(data, source_node_id, id_maps, opts),
+         {:ok, data} <- remap_node_typed_target(data, id_maps, source_node_id, opts) do
+      remap_embedded_mentions(data, id_maps, {:flow_node, source_node_id}, opts)
+    end
+  end
+
+  defp remap_node_asset_reference(data, source_node_id, %{asset: asset_ids}, opts),
+    do: remap_node_data_reference(data, "audio_asset_id", asset_ids, source_node_id, opts)
+
+  defp remap_node_asset_reference(data, _source_node_id, _id_maps, _opts), do: {:ok, data}
 
   defp maybe_normalize_recovered_node_avatar(flow_id, node_type, data, opts) do
     if MaterializationHelpers.exact_materialization?(opts),

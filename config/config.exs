@@ -124,6 +124,7 @@ config :storyarn, Oban,
     # Exact restores are also serialized: each operation stages and verifies
     # a complete snapshot-owned object set before its database commit.
     snapshot_restores: 1,
+    snapshot_imports: 1,
     snapshots_maintenance: 1,
     storage_cleanup: 1
   ],
