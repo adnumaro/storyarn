@@ -74,4 +74,5 @@ quality-lint:
     mix gettext.extract --check-up-to-date
     mix sobelow --config
     mix convention.check
+    mix architecture.check
     mix credo --strict

@@ -203,10 +203,11 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
     end
 
     test "with terminal mode assigns available_scenes and available_flows", %{socket: socket} do
+      scene = Storyarn.ScenesFixtures.scene_fixture(socket.assigns.project, %{name: "Exit target"})
       node = %{data: %{"exit_mode" => "terminal"}}
       result = ExitNode.on_select(node, socket)
 
-      assert Map.has_key?(result.assigns, :available_scenes)
+      assert result.assigns.available_scenes == [%{id: scene.id, name: "Exit target"}]
       assert Map.has_key?(result.assigns, :available_flows)
     end
 
@@ -245,6 +246,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
     end
 
     test "clears referenced_flow_id when switching to terminal", %{socket: socket, node: node} do
+      scene = Storyarn.ScenesFixtures.scene_fixture(socket.assigns.project, %{name: "Exit target"})
+
       # First set a flow reference
       Storyarn.Flows.update_node_data(node, Map.put(node.data, "referenced_flow_id", 999))
 
@@ -253,6 +256,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.NodeTest do
       updated = Storyarn.Flows.get_node!(result.assigns.flow.id, node.id)
       assert updated.data["referenced_flow_id"] == nil
       assert updated.data["exit_mode"] == "terminal"
+      assert result.assigns.available_scenes == [%{id: scene.id, name: "Exit target"}]
     end
 
     test "falls back to terminal for invalid mode", %{socket: socket} do

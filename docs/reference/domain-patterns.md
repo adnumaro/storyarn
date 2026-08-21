@@ -2,9 +2,10 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-10
+> Last reviewed: 2026-08-21
 >
-> Source of truth: `lib/storyarn/`, `lib/storyarn_web/`, and `lib/mix/tasks/convention_check.ex`
+> Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
+> `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
 
 ## Context Facade Pattern
 
@@ -24,11 +25,41 @@ lib/storyarn/{context}/
 - Facade exposes public API via `defdelegate` to submodules
 - LiveViews call `Context.function()`, NEVER `Context.SubModule.function()`
 - Submodules can call each other within the same context
-- Cross-context calls go through the facade: `Sheets.get_sheet/2`, not `Sheets.SheetCrud.get_sheet/2`
+- Calls to an allowed supporting context go through its public facade, never one
+  of its internals
 
 `mix convention.check` enforces this as the `facade_bypass` rule, but only for a
 hardcoded submodule list (`@facade_submodules` in `lib/mix/tasks/convention_check.ex`)
 and only under `lib/storyarn_web/`. The rule above is broader than the linter.
+
+### ENG-92 bounded-context ratchet
+
+Storyarn currently protects four business boundaries: `Sheets`, `Flows`,
+`Scenes`, and `Project`. The Project boundary includes the project/global
+coordination code in `Projects`, `References`, `Versioning`, `Exports`,
+`Imports`, `ProjectTemplates`, and `Shortcuts`.
+
+New code dependencies between these boundaries are forbidden. Existing ones are
+legacy migration debt recorded exactly in the partitioned baselines under
+`config/architecture_baselines/`; a facade call does not make such a dependency
+acceptable. Consumer-owned Ecto records may map the existing shared tables, but
+must not associate to schemas owned by another boundary. ENG-92 keeps the shared
+Repo, SQL schema, and current write behavior unchanged.
+
+`mix architecture.check` compares the JSON `mix xref` graph with that debt. It
+rejects new edges, stronger dependency kinds, and stale baseline entries. The
+baseline may only shrink or weaken as dependencies are migrated. `platform` is
+a technical classification rather than a fifth business boundary: tools may use its listed
+public/technical contracts, while platform code may not become a hidden bridge
+back into a tool. Project/platform collaboration remains temporarily allowed.
+`web_platform` applies the same anti-bridge rule to shared Web helpers while
+allowing concrete tool and Project Web roots to keep their business owner.
+
+The ratchet operates at xref file-edge granularity. If a source file already has
+a baselined edge to a target file, another call between that same pair is not
+distinguishable in the JSON graph. Review must therefore still reject semantic
+expansion inside a legacy edge; the automated gate prevents new file edges and
+dependency-kind strengthening, not individual call sites.
 
 ### Contexts and their submodules
 
@@ -88,10 +119,12 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   # Each context has its OWN TreeOperations wrapper — alias the local one,
   # not Storyarn.Shared.TreeOperations:
   alias Storyarn.{Context}.TreeOperations
+  # Entity-specific shortcut policy is also consumer-owned. Existing calls to
+  # the global Storyarn.Shortcuts module are migration debt, not a template:
+  alias Storyarn.{Context}.Shortcuts, as: ContextShortcuts
   # Import only what you need — not all CRUD modules use the same set:
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
   alias Storyarn.Shared.SearchHelpers  # only if search is needed
-  alias Storyarn.Shortcuts              # centralized shortcut generators
 
   # ========== Queries ==========
   def list_{entities}(project_id) do
@@ -113,9 +146,14 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 
   # ========== Create ==========
   def create_{entity}(project, attrs) do
-    attrs = attrs
+    attrs =
+      attrs
       |> MapUtils.stringify_keys()
-      |> ShortcutHelpers.maybe_generate_shortcut(project.id, nil, &Shortcuts.generate_{entity}_shortcut/3)
+      |> ShortcutHelpers.maybe_generate_shortcut(
+        project.id,
+        nil,
+        &ContextShortcuts.generate_{entity}_shortcut/3
+      )
       # position_fn is called as fn.(project_id, parent_id) — arity 2
       |> ShortcutHelpers.maybe_assign_position(project.id, parent_id, &TreeOperations.next_position/2)
 
@@ -126,10 +164,13 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 
   # ========== Update ==========
   def update_{entity}(entity, attrs) do
-    attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(
-      entity, attrs, &Shortcuts.generate_{entity}_shortcut/3,
-      check_backlinks_fn: &has_backlinks?/1  # optional
-    )
+    attrs =
+      ShortcutHelpers.maybe_generate_shortcut_on_update(
+        entity,
+        attrs,
+        &ContextShortcuts.generate_{entity}_shortcut/3,
+        check_backlinks_fn: &has_backlinks?/1  # optional
+      )
 
     entity
     |> Entity.update_changeset(attrs)

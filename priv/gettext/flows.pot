@@ -16,7 +16,7 @@ msgstr ""
 msgid "A flow cannot reference itself."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:213
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:212
 #, elixir-autogen, elixir-format
 msgid "Cannot reference the current flow."
 msgstr ""
@@ -95,7 +95,7 @@ msgid "Entry"
 msgstr ""
 
 #: lib/storyarn/flows/node_label.ex:36
-#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:19
 #, elixir-autogen, elixir-format
 msgid "Exit"
 msgstr ""
@@ -109,7 +109,7 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
 #: lib/storyarn_web/live/flow_live/index.ex:461
 #: lib/storyarn_web/live/flow_live/index.ex:482
-#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:225
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:224
 #: lib/storyarn_web/live/flow_live/player_live.ex:87
 #: lib/storyarn_web/live/flow_live/show.ex:360
 #, elixir-autogen, elixir-format
@@ -171,7 +171,7 @@ msgstr ""
 msgid "This node is being edited by %{user}"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:221
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:220
 #, elixir-autogen, elixir-format
 msgid "This would create a circular reference."
 msgstr ""
@@ -264,7 +264,7 @@ msgstr ""
 msgid "Embed another flow as a node"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:21
+#: lib/storyarn_web/live/flow_live/nodes/exit/node.ex:20
 #, elixir-autogen, elixir-format
 msgid "End point of a flow"
 msgstr ""

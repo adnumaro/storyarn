@@ -9,7 +9,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Scenes
   alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
@@ -64,7 +63,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
         Phoenix.Component.assign(socket, :available_flows, available_flows)
 
       "terminal" ->
-        available_scenes = Scenes.search_scenes(project_id, "")
+        available_scenes = Flows.search_exit_target_scenes(project_id, "")
         available_flows = Flows.search_flows(project_id, "", exclude_id: flow_id)
 
         socket
@@ -171,7 +170,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Exit.Node do
           {:noreply, Phoenix.Component.assign(socket, :available_flows, available_flows)}
 
         "terminal" ->
-          available_scenes = Scenes.search_scenes(project_id, "")
+          available_scenes = Flows.search_exit_target_scenes(project_id, "")
           available_flows = Flows.search_flows(project_id, "", exclude_id: current_flow_id)
 
           {:noreply,

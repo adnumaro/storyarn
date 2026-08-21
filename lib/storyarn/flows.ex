@@ -22,6 +22,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.Helpers
   alias Storyarn.Flows.Evaluator.InstructionExec
+  alias Storyarn.Flows.ExitTargetScenes
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowCrud
@@ -258,6 +259,18 @@ defmodule Storyarn.Flows do
   """
   @spec resolve_scene_id(flow(), keyword()) :: integer() | nil
   defdelegate resolve_scene_id(flow, opts \\ []), to: SceneResolver
+
+  @doc """
+  Searches active scene options for Exit node targets.
+
+  The returned maps contain only `:id` and `:name` and are owned by Flows;
+  callers do not receive a Scenes schema.
+  """
+  @spec search_exit_target_scenes(integer(), String.t(), keyword()) ::
+          [ExitTargetScenes.scene_option()]
+  defdelegate search_exit_target_scenes(project_id, query, opts \\ []),
+    to: ExitTargetScenes,
+    as: :search
 
   @doc """
   Sets a flow as the main flow for its project.

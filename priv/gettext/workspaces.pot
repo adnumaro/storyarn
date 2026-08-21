@@ -302,7 +302,7 @@ msgstr ""
 msgid "Only the workspace owner can change Storyarn AI policy."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_imports.ex:22
+#: lib/storyarn_web/live/settings_live/workspace_imports.ex:25
 #, elixir-autogen, elixir-format
 msgid "Imports"
 msgstr ""
