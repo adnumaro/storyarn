@@ -83,6 +83,29 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
   end
 
   @doc """
+  Builds the minimal speaker map consumed by the Flow player.
+
+  Unlike `sheets_map/2`, this projection intentionally omits banners and
+  galleries because the runtime does not consume them.
+  """
+  @spec player_speakers_map(list()) :: map()
+  def player_speakers_map(speakers) do
+    Map.new(speakers, fn speaker ->
+      avatars = build_avatars(speaker)
+      default_avatar = Enum.find(avatars, & &1.is_default)
+
+      {to_string(speaker.id),
+       %{
+         id: speaker.id,
+         name: speaker.name,
+         color: speaker.color,
+         avatar_url: default_avatar && default_avatar.url,
+         avatars: Enum.map(avatars, &Map.take(&1, [:id, :url]))
+       }}
+    end)
+  end
+
+  @doc """
   Extracts the name part from an email address.
   """
   @spec get_email_name(any()) :: String.t()

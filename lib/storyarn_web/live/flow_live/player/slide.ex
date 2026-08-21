@@ -17,15 +17,15 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   Returns a map with `:type` and type-specific fields.
   """
   @spec build(map() | nil, map(), map(), integer()) :: map()
-  def build(nil, _state, _sheets_map, _project_id) do
+  def build(nil, _state, _speakers_map, _project_id) do
     %{type: :empty}
   end
 
-  def build(%{type: "dialogue"} = node, state, sheets_map, _project_id) do
+  def build(%{type: "dialogue"} = node, state, speakers_map, _project_id) do
     data = node.data || %{}
-    sheet_info = resolve_sheet_info(data["speaker_sheet_id"], sheets_map)
-    speaker = build_speaker(sheet_info)
-    avatar_url = resolve_avatar_url(data["avatar_id"], sheet_info, speaker)
+    speaker_info = resolve_speaker_info(data["speaker_sheet_id"], speakers_map)
+    speaker = build_speaker(speaker_info)
+    avatar_url = resolve_avatar_url(data["avatar_id"], speaker_info, speaker)
 
     text =
       (data["text"] || "")
@@ -69,7 +69,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(%{type: "exit"} = node, state, _sheets_map, _project_id) do
+  def build(%{type: "exit"} = node, state, _speakers_map, _project_id) do
     data = node.data || %{}
 
     variables_changed =
@@ -90,7 +90,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(_node, _state, _sheets_map, _project_id) do
+  def build(_node, _state, _speakers_map, _project_id) do
     %{type: :empty}
   end
 
@@ -98,12 +98,12 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # Speaker resolution
   # ===========================================================================
 
-  defp resolve_sheet_info(sheet_id, sheets_map) when is_integer(sheet_id) or is_binary(sheet_id) do
-    id = parse_sheet_id(sheet_id)
-    Map.get(sheets_map, to_string(id))
+  defp resolve_speaker_info(speaker_id, speakers_map) when is_integer(speaker_id) or is_binary(speaker_id) do
+    id = parse_speaker_id(speaker_id)
+    Map.get(speakers_map, to_string(id))
   end
 
-  defp resolve_sheet_info(_, _), do: nil
+  defp resolve_speaker_info(_, _), do: nil
 
   defp build_speaker(nil), do: %{name: nil, initials: "?", color: nil, avatar_url: nil}
 
@@ -116,8 +116,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  defp resolve_avatar_url(avatar_id, sheet_info, speaker) when not is_nil(avatar_id) do
-    avatars = (sheet_info && sheet_info[:avatars]) || []
+  defp resolve_avatar_url(avatar_id, speaker_info, speaker) when not is_nil(avatar_id) do
+    avatars = (speaker_info && speaker_info[:avatars]) || []
 
     case Enum.find(avatars, &(&1.id == avatar_id)) do
       %{url: url} -> url
@@ -127,16 +127,16 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   defp resolve_avatar_url(_, _, speaker), do: speaker.avatar_url
 
-  defp parse_sheet_id(id) when is_integer(id), do: id
+  defp parse_speaker_id(id) when is_integer(id), do: id
 
-  defp parse_sheet_id(id) when is_binary(id) do
+  defp parse_speaker_id(id) when is_binary(id) do
     case Integer.parse(id) do
       {parsed, ""} -> parsed
       _ -> nil
     end
   end
 
-  defp parse_sheet_id(_), do: nil
+  defp parse_speaker_id(_), do: nil
 
   defp speaker_initials(nil), do: "?"
 

@@ -152,6 +152,33 @@ defmodule Storyarn.Flows.EditorCatalogTest do
     end
   end
 
+  describe "get_preview_speaker_name/2" do
+    test "returns only the current active speaker name within the project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      other_project = project_fixture(user)
+      speaker = sheet_fixture(project, %{name: "Ada Lovelace"})
+
+      assert Flows.get_preview_speaker_name(project.id, speaker.id) ==
+               Sheets.get_sheet(project.id, speaker.id).name
+
+      assert Flows.get_preview_speaker_name(other_project.id, speaker.id) == nil
+      assert Flows.get_preview_speaker_name(project.id, -1) == nil
+    end
+
+    test "returns nil after the source speaker is soft-deleted" do
+      project = project_fixture(user_fixture())
+      speaker = sheet_fixture(project, %{name: "Deleted speaker"})
+
+      Repo.update_all(
+        from(record in SheetRecord, where: record.id == ^speaker.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
+
+      assert Flows.get_preview_speaker_name(project.id, speaker.id) == nil
+    end
+  end
+
   describe "Flow schema boundary" do
     test "keeps foreign references as scalar ids instead of foreign associations" do
       assert Flow.__schema__(:type, :project_id) == :id

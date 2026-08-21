@@ -35,6 +35,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.NodeLabel
+  alias Storyarn.Flows.PlayerCatalog
   alias Storyarn.Flows.SceneResolver
   alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.StructuralAnalysis
@@ -281,6 +282,24 @@ defmodule Storyarn.Flows do
   """
   @spec load_editor_catalog(integer()) :: EditorCatalog.t()
   defdelegate load_editor_catalog(project_id), to: EditorCatalog, as: :load
+
+  @doc """
+  Loads the speaker presentation data required by the Flow player.
+
+  Speakers are Flows-owned DTOs and do not expose Sheets schemas.
+  """
+  @spec load_player_speakers(integer()) :: [PlayerCatalog.speaker()]
+  defdelegate load_player_speakers(project_id), to: PlayerCatalog, as: :load_speakers
+
+  @doc """
+  Resolves the current speaker name for the editor preview.
+
+  The lookup is project-scoped and excludes soft-deleted source records.
+  """
+  @spec get_preview_speaker_name(integer(), integer()) :: String.t() | nil
+  defdelegate get_preview_speaker_name(project_id, speaker_id),
+    to: EditorCatalog,
+    as: :speaker_name
 
   @doc """
   Sets a flow as the main flow for its project.

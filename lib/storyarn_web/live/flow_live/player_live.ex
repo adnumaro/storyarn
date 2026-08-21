@@ -14,8 +14,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias Storyarn.Analytics
   alias Storyarn.Flows
   alias Storyarn.Projects
-  alias Storyarn.Scenes
-  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
@@ -95,8 +93,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp mount_flow_player(socket, project, flow) do
     nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
     connections = DebugExecutionHandlers.build_connections(flow.id)
-    all_sheets = Sheets.list_all_sheets(project.id)
-    sheets_map = FormHelpers.sheets_map(all_sheets)
+    speakers = Flows.load_player_speakers(project.id)
+    speakers_map = FormHelpers.player_speakers_map(speakers)
     variables = VariableHelpers.build_variables(project.id)
 
     case init_and_step(nodes_map, connections, variables, flow.id) do
@@ -108,10 +106,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
       {:ok, engine_state} ->
         node = Map.get(nodes_map, engine_state.current_node_id)
-        slide = Slide.build(node, engine_state, sheets_map, project.id)
+        slide = Slide.build(node, engine_state, speakers_map, project.id)
 
         scene_id = Flows.resolve_scene_id(flow)
-        scene_backdrop = if scene_id, do: Scenes.get_scene_backdrop(scene_id)
 
         socket =
           maybe_restore_player_session(socket, project) ||
@@ -119,14 +116,13 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
             |> assign(:engine_state, engine_state)
             |> assign(:nodes, nodes_map)
             |> assign(:connections, connections)
-            |> assign(:sheets_map, sheets_map)
+            |> assign(:speakers_map, speakers_map)
             |> assign(:flow, flow)
             |> assign(:project, project)
             |> assign(:workspace, project.workspace)
             |> assign(:slide, slide)
             |> assign(:player_mode, :player)
             |> assign(:can_go_back, can_go_back?(engine_state, nodes_map))
-            |> assign(:scene_backdrop, scene_backdrop)
             |> assign(:current_scene_id, scene_id)
 
         if connected?(socket) do
@@ -177,21 +173,21 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
       restored ->
         if Map.has_key?(restored, :player_mode) do
+          speakers_map = restored[:speakers_map] || restored[:sheets_map] || %{}
           node = Map.get(restored.nodes, restored.engine_state.current_node_id)
-          slide = Slide.build(node, restored.engine_state, restored.sheets_map, project.id)
+          slide = Slide.build(node, restored.engine_state, speakers_map, project.id)
 
           socket
           |> assign(:engine_state, restored.engine_state)
           |> assign(:nodes, restored.nodes)
           |> assign(:connections, restored.connections)
-          |> assign(:sheets_map, restored.sheets_map)
+          |> assign(:speakers_map, speakers_map)
           |> assign(:flow, restored.flow)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
           |> assign(:slide, slide)
           |> assign(:player_mode, restored.player_mode)
           |> assign(:can_go_back, can_go_back?(restored.engine_state, restored.nodes))
-          |> assign(:scene_backdrop, restored[:scene_backdrop])
           |> assign(:current_scene_id, restored[:current_scene_id])
         end
     end
@@ -329,7 +325,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         )
       end
 
-    socket = maybe_update_scene_backdrop(socket, new_scene_id)
+    socket = assign_current_scene(socket, new_scene_id)
 
     case DebugExecutionHandlers.find_entry_node(target_nodes) do
       nil ->
@@ -381,7 +377,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         # Restore parent flow's scene
         parent_flow = Flows.get_flow_brief(socket.assigns.project.id, parent_flow_id)
         parent_scene_id = if parent_flow, do: Flows.resolve_scene_id(parent_flow)
-        socket = maybe_update_scene_backdrop(socket, parent_scene_id)
+        socket = assign_current_scene(socket, parent_scene_id)
 
         # Find the connection after the return node to advance.
         conn =
@@ -435,7 +431,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp store_and_navigate_player(socket, state, nodes, connections, flow_id) do
-    %{workspace: ws, project: proj, sheets_map: sheets_map, player_mode: mode} = socket.assigns
+    %{workspace: ws, project: proj, speakers_map: speakers_map, player_mode: mode} = socket.assigns
     user_id = socket.assigns.current_scope.user.id
     session_id = socket.assigns.player_session_id
     tab_id = socket.assigns.player_tab_id
@@ -446,10 +442,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
       engine_state: state,
       nodes: nodes,
       connections: connections,
-      sheets_map: sheets_map,
+      speakers_map: speakers_map,
       flow: target_flow,
       player_mode: mode,
-      scene_backdrop: socket.assigns.scene_backdrop,
       current_scene_id: socket.assigns.current_scene_id
     })
 
@@ -472,9 +467,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp update_slide(socket, new_state) do
-    %{nodes: nodes, sheets_map: sheets_map, project: project} = socket.assigns
+    %{nodes: nodes, speakers_map: speakers_map, project: project} = socket.assigns
     node = Map.get(nodes, new_state.current_node_id)
-    slide = Slide.build(node, new_state, sheets_map, project.id)
+    slide = Slide.build(node, new_state, speakers_map, project.id)
 
     socket
     |> assign(:engine_state, new_state)
@@ -504,15 +499,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp renderable_node?(%{type: type}) when type in ["dialogue", "exit"], do: true
   defp renderable_node?(_), do: false
 
-  defp maybe_update_scene_backdrop(socket, new_scene_id) do
+  defp assign_current_scene(socket, new_scene_id) do
     if new_scene_id == socket.assigns.current_scene_id do
       socket
     else
-      new_backdrop = if new_scene_id, do: Scenes.get_scene_backdrop(new_scene_id)
-
-      socket
-      |> assign(:scene_backdrop, new_backdrop)
-      |> assign(:current_scene_id, new_scene_id)
+      assign(socket, :current_scene_id, new_scene_id)
     end
   end
 

@@ -11,7 +11,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Sheets
 
   @max_traversal_depth 50
 
@@ -109,12 +108,12 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   # Serialization (socket assigns → Vue props)
   # ============================================================================
 
-  @spec serialize_preview_state(Socket.t()) :: map()
-  def serialize_preview_state(socket) do
-    assigns = socket.assigns
+  @spec serialize_preview_state(Socket.t() | map()) :: map()
+  def serialize_preview_state(%Socket{assigns: assigns}), do: serialize_preview_state(assigns)
 
+  def serialize_preview_state(assigns) when is_map(assigns) do
     # Guard: during disconnected static render, assigns may not be populated yet
-    if is_map(assigns) and is_map_key(assigns, :preview_current_node) do
+    if is_map_key(assigns, :preview_current_node) do
       node = assigns.preview_current_node
 
       %{
@@ -279,17 +278,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   end
 
   defp lookup_speaker_name(assigns, sheet_id) do
-    sheets_map = Map.get(assigns, :sheets_map, %{})
-    sheet_info = Map.get(sheets_map, to_string(sheet_id))
-
-    if sheet_info do
-      sheet_info.name
-    else
-      case Sheets.get_sheet(assigns.project.id, sheet_id) do
-        nil -> nil
-        sheet -> sheet.name
-      end
-    end
+    Flows.get_preview_speaker_name(assigns.project.id, sheet_id)
   end
 
   # ============================================================================

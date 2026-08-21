@@ -1510,7 +1510,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
-      preview: PreviewHandlers.serialize_preview_state(assigns.socket)
+      preview: PreviewHandlers.serialize_preview_state(assigns)
     }
   end
 

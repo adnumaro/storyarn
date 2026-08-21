@@ -53,6 +53,19 @@ defmodule Storyarn.Flows.EditorCatalog do
     }
   end
 
+  @doc "Returns the current speaker name used by the dialogue preview."
+  @spec speaker_name(integer(), integer()) :: String.t() | nil
+  def speaker_name(project_id, speaker_id) do
+    Repo.one(
+      from(sheet in SheetRecord,
+        where:
+          sheet.project_id == ^project_id and sheet.id == ^speaker_id and
+            is_nil(sheet.deleted_at),
+        select: sheet.name
+      )
+    )
+  end
+
   defp load_sheets(project_id) do
     from(sheet in SheetRecord,
       where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at),

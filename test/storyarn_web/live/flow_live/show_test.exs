@@ -4,6 +4,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   import Phoenix.LiveViewTest
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
@@ -66,6 +67,38 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert "missing_dialogue_text" in codes
       assert "missing_dialogue_speaker" in codes
       refute Enum.any?(health["errorItems"], &(&1["entityId"] == dialogue.id))
+    end
+
+    test "exposes the current speaker through the preview panel", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Preview Flow"})
+      speaker = sheet_fixture(project, %{name: "Ada Lovelace"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Hello from preview</p>",
+            "speaker_sheet_id" => speaker.id,
+            "responses" => []
+          }
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+      render_click(view, "start_preview", %{"id" => dialogue.id})
+
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      preview = panels.props["panels"]["preview"]
+
+      assert preview["open"] == true
+      assert preview["currentNode"]["speaker"] == "Ada Lovelace"
+      assert preview["currentNode"]["speakerInitials"] == "AL"
     end
 
     test "compact route keeps the canvas boundary mounted while data loads",
