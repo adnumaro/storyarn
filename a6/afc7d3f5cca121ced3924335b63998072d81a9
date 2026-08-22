@@ -1,0 +1,354 @@
+lib/storyarn_web/live/settings_live/profile.ex
+  s_e9e5a90425bc26::t_68d778c3040a97 10,151
+lib/storyarn/localization/export_policy.ex
+  s_e9e5a90425bc26::t_13f04fb37871e9 6-7,25-26
+lib/storyarn/sheets/property_inheritance.ex
+  s_e9e5a90425bc26::t_b6198e2b979b09 26
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 20,31,47,60,86,93,100,106,112,123,134,140,146,151,156
+lib/storyarn/localization/translation_job_queue.ex
+  s_e9e5a90425bc26::t_92736729dcde87 1-18
+lib/storyarn/localization/notification_delivery.ex
+  s_e9e5a90425bc26::t_4ad075699b9f79 12-17
+  s_e9e5a90425bc26::t_6ac7b7ec247e60 6-11
+  s_e9e5a90425bc26::t_999d72be64f780 1-5,18-20
+lib/storyarn/exports/localization_catalog.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 7-10
+test/storyarn_web/language_picker_option_test.exs
+  s_e9e5a90425bc26::t_abdcbf17a6dfc2 1-21
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 14,19,24,103,220,225,230-231,236,241,246,251,256,261,266,302,307,312,317,322,408,413,418
+lib/storyarn/projects/localization_reconstitution.ex
+  s_e9e5a90425bc26::t_17258d037ec1b1 1-51
+lib/storyarn/localization/translation_run.ex
+  s_e9e5a90425bc26::t_c6e648ffb18e2c 8-9,29-30
+lib/storyarn/sheets/block_crud.ex
+  s_e9e5a90425bc26::t_19979c3ef2aaa9 14,21
+lib/storyarn/exports/artifact_validator.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 24
+lib/storyarn/platform.ex
+  s_e9e5a90425bc26::t_6ac7b7ec247e60 67-72
+  s_e9e5a90425bc26::t_4ad075699b9f79 73-79
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_e9e5a90425bc26::t_665a98c6554896 14-15,107,242-243,247,253,259,265
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_eecc28c6255970 310,369,371-374,393,461-466,473-478,515-520
+lib/storyarn/sheets/sheet_stats.ex
+  s_e9e5a90425bc26::t_19979c3ef2aaa9 8,16,92-127
+test/storyarn/sheets/content_contract_test.exs
+  s_e9e5a90425bc26::t_5938b12bcccd63 1-44
+lib/storyarn/localization/project_language.ex
+  s_e9e5a90425bc26::t_c6e648ffb18e2c 20,30,42
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 14,19,24,34,39,44,49,54,59-60,69,74,79,84,91,98,105,176-177,192,197,202,207,217,232,237,247,267,272,394,688,698,721,737,781,811,816,821,826,831,836,841,846,851
+lib/storyarn/localization/glossary_sync.ex
+  s_e9e5a90425bc26::t_13f04fb37871e9 7
+test/storyarn/localization/structural_notifications_test.exs
+  s_e9e5a90425bc26::t_8c1736f0fcfd36 275-302
+lib/storyarn/localization/persistence/block_record.ex
+  s_e9e5a90425bc26::t_ef649a4a2ca35f 1-34
+lib/storyarn/exports/serializers/godot_dialogic.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 23
+lib/storyarn/versioning/builders/flow_builder.ex
+  s_e9e5a90425bc26::t_976430b8006175 15,18-22,76,97,979,1230
+lib/storyarn/localization/batch_translation_job.ex
+  s_e9e5a90425bc26::t_999d72be64f780 1-12,15-16,18-210
+  s_e9e5a90425bc26::t_b6469e7e55115d 13-14,17
+test/storyarn/assets/active_asset_associations_test.exs
+  s_e9e5a90425bc26::t_1f28bb7cb98cd5 70
+lib/storyarn_web/live/localization_live/edit.ex
+  s_e9e5a90425bc26::t_864263ee8a6f24 34
+lib/storyarn/localization/translation_run_crud.ex
+  s_e9e5a90425bc26::t_ef27cff6906fcb 7-9,11,37-38,160,170,176-177,203,226-228,242-243
+  s_e9e5a90425bc26::t_8d50dea41662f3 244
+test/storyarn/projects/localization_settings_test.exs
+  s_e9e5a90425bc26::t_99b637325f67a0 1-36,38-42,45-46
+  s_e9e5a90425bc26::t_c448a28f1c8a9e 37,43-44
+lib/storyarn/sheets/persistence/project_language_record.ex
+  s_e9e5a90425bc26::t_af0b24167f028f 9
+  s_e9e5a90425bc26::t_4eecdcdc4f74f2 1-8,10-16
+lib/storyarn/projects/localization_settings.ex
+  s_e9e5a90425bc26::t_17258d037ec1b1 1-5,7-22,66-68,71-72,74-175,179,186-203,205,208-214,216-217,221-237
+  s_e9e5a90425bc26::t_5b1323d991eb85 6,69-70,73,204,206-207,218-220
+  s_e9e5a90425bc26::t_e9b80a537e914d 176-178,215
+  s_e9e5a90425bc26::t_b10814f6f46625 180-185
+  s_e9e5a90425bc26::t_b182c9a0ad377b 23-39
+  s_e9e5a90425bc26::t_99b637325f67a0 40-65
+test/storyarn/architecture/localization_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_65b90a283e9cb3 87
+  s_e9e5a90425bc26::t_b6f5bd37bc6763 1-86,88-113
+lib/storyarn/sheets/content_contract.ex
+  s_e9e5a90425bc26::t_4eecdcdc4f74f2 1-40
+lib/storyarn_web/language_picker_option.ex
+  s_e9e5a90425bc26::t_d08369b681125b 10-65,82,84-85,90-112
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 20,31,47,60,86,93,100,106,112,123,134,140,146,151,156
+lib/storyarn/localization/project_access.ex
+  s_e9e5a90425bc26::t_b3c08a32252e09 25-26
+  s_e9e5a90425bc26::t_ef649a4a2ca35f 1-24,27-91
+lib/storyarn/sheets/localization_projection.ex
+  s_e9e5a90425bc26::t_af0b24167f028f 431
+  s_e9e5a90425bc26::t_da46c8be99b810 490-498
+  s_e9e5a90425bc26::t_b6198e2b979b09 317-318
+  s_e9e5a90425bc26::t_f7b5bbafca0699 1-12,14-143,148-316,319-430,432-489,499-531
+  s_e9e5a90425bc26::t_f7cc6e2ae461a6 13
+  s_e9e5a90425bc26::t_bce32285c710eb 144-147
+config/config.exs
+  s_e9e5a90425bc26::t_92736729dcde87 187-190
+  s_e9e5a90425bc26::t_4142059f858010 191
+lib/storyarn/projects/localization_locale_code.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 1-29
+lib/storyarn/localization/glossary_entry.ex
+  s_e9e5a90425bc26::t_c6e648ffb18e2c 20,28,47
+lib/storyarn/projects/localization_placeholder_validator.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 1-29
+lib/storyarn/projects/persistence/glossary_entry_record.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 1-17
+lib/storyarn/sheets.ex
+  s_e9e5a90425bc26::t_19979c3ef2aaa9 31,44,1128-1132
+  s_e9e5a90425bc26::t_bc2b2ba51b85f4 1133
+lib/storyarn/imports/materializer.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 28-31,1626,1657,1806
+lib/storyarn/projects/localization_projection.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 134-136
+  s_e9e5a90425bc26::t_970399c07c3fba 1-133,137-539
+lib/storyarn/exports/serializers/articy_xml.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 30-31
+lib/storyarn/exports/serializers/ink.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 23
+lib/storyarn/projects/localization_runtime_key.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 1-62
+lib/storyarn/projects/localization_read_model.ex
+  s_e9e5a90425bc26::t_ccae720a65824a 1-336
+test/storyarn/notifications_test.exs
+  s_e9e5a90425bc26::t_420f8e78535113 226-228,371-373
+  s_e9e5a90425bc26::t_a33efa2948b200 202-217,221-225,229-254
+  s_e9e5a90425bc26::t_abdcbf17a6dfc2 338-355,359-370,374-380
+  s_e9e5a90425bc26::t_7702b7e032ee97 218-220,356-358,832-861
+  s_e9e5a90425bc26::t_920643cc5ea2e1 862
+lib/storyarn_web/components/docs_layout.ex
+  s_e9e5a90425bc26::t_68d778c3040a97 12,137-138
+lib/storyarn/localization/text_crud.ex
+  s_e9e5a90425bc26::t_405466247c39cd 7-8,11,460,775,788,864-865,883
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 13
+lib/storyarn/versioning/sheet_localization_snapshot_validator.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 4-6
+lib/storyarn_web/public_language_metadata.ex
+  s_e9e5a90425bc26::t_7bd8ee68892ade 1-39
+lib/storyarn/versioning/referenced_tombstones.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 9
+lib/storyarn_web/components/public_language_switcher.ex
+  s_e9e5a90425bc26::t_68d778c3040a97 7,144-145
+test/storyarn/localization/project_access_test.exs
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 21,29,45,52
+  s_e9e5a90425bc26::t_444882e03dae7f 1-20,22-28,30-44,46-51,53-72
+lib/storyarn/projects/localization_language_catalog.ex
+  s_e9e5a90425bc26::t_17258d037ec1b1 1-156
+lib/storyarn/projects/localization_export_policy.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 1-21,23-41
+  s_e9e5a90425bc26::t_e9b80a537e914d 22
+lib/storyarn_web/live/localization_live/report.ex
+  s_e9e5a90425bc26::t_864263ee8a6f24 34
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 28-30
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_e9e5a90425bc26::t_6496a7960149c2 41,92,166,274
+  s_e9e5a90425bc26::t_45f864f8cfe458 70
+lib/storyarn/workspaces.ex
+  s_e9e5a90425bc26::t_a0c12316de054f 20,48-50
+  s_e9e5a90425bc26::t_a5aa3e3c665fb1 51
+lib/storyarn/localization/language_positions.ex
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 9
+  s_e9e5a90425bc26::t_ef649a4a2ca35f 1-8,10-25
+lib/storyarn/projects/persistence/localized_text_record.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 33
+lib/storyarn/project_templates/audit.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 18-20
+  s_e9e5a90425bc26::t_952c92abdccd84 14
+lib/storyarn/projects.ex
+  s_e9e5a90425bc26::t_874ef707bbf98e 21-23,31-45
+  s_e9e5a90425bc26::t_3f224f78e1b625 46
+lib/storyarn_web/live/localization_toolbar_live.ex
+  s_e9e5a90425bc26::t_cf9664868e6f37 24,41,54,87-92,97,109
+lib/storyarn/projects/persistence/project_language_record.ex
+  s_e9e5a90425bc26::t_f53bade2b83104 6-10,13,18-19,22-52
+lib/storyarn/localization/project_reference_integrity.ex
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 47,86
+  s_e9e5a90425bc26::t_b182c9a0ad377b 101-103
+  s_e9e5a90425bc26::t_152cbdb3c75164 69-75,79-81,104-110
+  s_e9e5a90425bc26::t_ef649a4a2ca35f 1-46,48-68,76-78,82-85,87-100,111-196
+lib/storyarn/localization/provider_config.ex
+  s_e9e5a90425bc26::t_c6e648ffb18e2c 20,29,48
+lib/storyarn/localization.ex
+  s_e9e5a90425bc26::t_118554b5123368 16,22,316-321,476-481,485-489
+  s_e9e5a90425bc26::t_d02faf69733454 48-49,91-92,97,120,125,132,134-135,140,149-150,358,419,422
+  s_e9e5a90425bc26::t_cc58a9cb44b7c2 127-128
+  s_e9e5a90425bc26::t_b3c08a32252e09 26,52-60
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 28,421
+  s_e9e5a90425bc26::t_9eae2e944b8a72 61
+  s_e9e5a90425bc26::t_21ba2b0726a4f2 490
+priv/gettext/projects.pot
+  s_e9e5a90425bc26::t_964dc090170077 14,19,24,34,39,44,49,54,59-60,69,74,79,84,91,98,105,176-177,192,197,202,207,217,232,237,247,267,272,394,688,698,721,737,781,811,816,821,826,831,836,841,846,851
+test/storyarn/localization/localizable_words_boundary_test.exs
+  s_e9e5a90425bc26::t_444882e03dae7f 1-20,27-28
+  s_e9e5a90425bc26::t_bbc75239f2f00d 21-26
+test/storyarn/sheets/localization_projection_test.exs
+  s_e9e5a90425bc26::t_a8f267b7cb775f 44-48
+  s_e9e5a90425bc26::t_5938b12bcccd63 1-43,49-159
+lib/storyarn/projects/localization_source_contract.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 51
+  s_e9e5a90425bc26::t_f53bade2b83104 1-50,52-97
+lib/storyarn/localization/localizable_words.ex
+  s_e9e5a90425bc26::t_0f4ca94e3276cb 9,12-13,51-52,230-232,234,239-240,261-262,272,367,409,426,468,476,482,615-616,640-647,650,655-656,661-662
+  s_e9e5a90425bc26::t_bbc75239f2f00d 338-339,342,345,352-354,648-649,651-654
+lib/storyarn/localization/localized_text.ex
+  s_e9e5a90425bc26::t_c6e648ffb18e2c 25-28,40,52,56,64,66,99-103
+lib/storyarn/exports/serializers/yarn.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 23-25
+lib/storyarn/localization/glossary_crud.ex
+  s_e9e5a90425bc26::t_13f04fb37871e9 7,51,56
+lib/storyarn_web/controllers/localization_export_controller.ex
+  s_e9e5a90425bc26::t_d2a16714f94410 14
+lib/storyarn_web/controllers/llms_controller.ex
+  s_e9e5a90425bc26::t_68d778c3040a97 7,127-129
+lib/storyarn/notifications.ex
+  s_e9e5a90425bc26::t_4ad075699b9f79 107-125,411-421
+  s_e9e5a90425bc26::t_6ac7b7ec247e60 220-243
+  s_e9e5a90425bc26::t_6dc3355aef730a 106,219,422
+lib/storyarn/versioning/localization_snapshot_codec.ex
+  s_e9e5a90425bc26::t_341c430cb74fca 8-11
+lib/storyarn/exports/serializers/unity_json.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 17
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_e9e5a90425bc26::t_83633ce6e908dd 21,163,173,193,316,320,331-333
+  s_e9e5a90425bc26::t_b10814f6f46625 337-339
+lib/storyarn/localization/reports.ex
+  s_e9e5a90425bc26::t_13f04fb37871e9 7,84
+lib/storyarn/exports/serializers/helpers.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 8
+lib/storyarn/exports/serializers/unreal_csv.ex
+  s_e9e5a90425bc26::t_952c92abdccd84 24
+lib/storyarn_web/live/localization_live/glossary.ex
+  s_e9e5a90425bc26::t_864263ee8a6f24 33
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 273,278,283,290,295,300
+lib/storyarn/workspaces/source_locale_catalog.ex
+  s_e9e5a90425bc26::t_a0c12316de054f 1-9,12-14,17-18,20-22,24-29,31-32,34-40,42-45,49-53
+  s_e9e5a90425bc26::t_99b637325f67a0 10-11,15-16,19,23,30,33,41,46-48
+lib/storyarn/imports/replacement.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 21-22
+lib/storyarn/workers/localization_batch_translation_worker.ex
+  s_e9e5a90425bc26::t_753e504c92fc7c 2,6,10
+  s_e9e5a90425bc26::t_65b90a283e9cb3 9
+lib/storyarn_web/public_urls.ex
+  s_e9e5a90425bc26::t_68d778c3040a97 13,116
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 273,278,283,290,295,300
+lib/storyarn/assets.ex
+  s_e9e5a90425bc26::t_341c430cb74fca 29
+lib/storyarn/versioning/project_recovery.ex
+  s_e9e5a90425bc26::t_e9b80a537e914d 19-21
+  s_e9e5a90425bc26::t_341c430cb74fca 15
+test/storyarn/workers/localization_batch_translation_worker_test.exs
+  s_e9e5a90425bc26::t_420f8e78535113 62-65
+  s_e9e5a90425bc26::t_0cd3d2886e2124 52-56
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 14,19,24,103,220,225,230-231,236,241,246,251,256,261,266,302,307,312,317,322,408,413,418
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_e9e5a90425bc26::t_d2a16714f94410 68,70,189-191
+lib/storyarn/exports/data_collector.ex
+  s_e9e5a90425bc26::t_665a98c6554896 19,23-24,220-221,233-234,236,373,375,603-604
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_e9e5a90425bc26::t_a0c12316de054f 63,203-207
+  s_e9e5a90425bc26::t_92acf75c7bcd9b 208
+lib/storyarn/localization/language_crud.ex
+  s_e9e5a90425bc26::t_b6469e7e55115d 19,276,292
+  s_e9e5a90425bc26::t_2067348da55e88 6,12-13,83-84,102,205-206,258,270-271,283-284,349,364-365,370,405-406,411,413-415,421,434,446,451-452
+  s_e9e5a90425bc26::t_3aad72b8d3727a 11,107,211,295,431-433
+  s_e9e5a90425bc26::t_cc58a9cb44b7c2 93,219-220,280,282,303
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 94,101,118,275,291
+  s_e9e5a90425bc26::t_912714ea04edcb 91-92,115-116,281,304
+  s_e9e5a90425bc26::t_fe24f5720ca1a0 18
+  s_e9e5a90425bc26::t_22a147623cf9bb 117
+  s_e9e5a90425bc26::t_deee479dd9c4a0 305
+  s_e9e5a90425bc26::t_13cf4364118c18 422
+lib/storyarn/sheets/persistence/localized_text_record.ex
+  s_e9e5a90425bc26::t_4eecdcdc4f74f2 1-36
+test/storyarn/localization/project_reference_integrity_test.exs
+  s_e9e5a90425bc26::t_73c9eca6a7c36d 43
+  s_e9e5a90425bc26::t_444882e03dae7f 1-42,44-72
+lib/storyarn/sheets/word_count.ex
+  s_e9e5a90425bc26::t_4eecdcdc4f74f2 1-38
+test/storyarn/projects/localization_owned_primitives_test.exs
+  s_e9e5a90425bc26::t_c2a26268d5936b 1-104
+lib/storyarn/localization/persistence/sheet_record.ex
+  s_e9e5a90425bc26::t_5a6878b4cbd862 1-22
+priv/gettext/workspaces.pot
+  s_e9e5a90425bc26::t_964dc090170077 273,278,283,290,295,300
+lib/storyarn_web/live/localization_live/index.ex
+  s_e9e5a90425bc26::t_864263ee8a6f24 37,57,295,323-324
+  s_e9e5a90425bc26::t_bd279b25fceb31 415
+priv/gettext/sheets.pot
+  s_e9e5a90425bc26::t_964dc090170077 14,19,24,103,220,225,230-231,236,241,246,251,256,261,266,302,307,312,317,322,408,413,418
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_e9e5a90425bc26::t_a94f0347a8a7dc 17,69,482,663-664,764,2027,2546,2553,2555,2580,2588,2612
+lib/storyarn/exports/validator.ex
+  s_e9e5a90425bc26::t_665a98c6554896 409,429
+  s_e9e5a90425bc26::t_e9b80a537e914d 14
+lib/storyarn/sheets/sheet_crud.ex
+  s_e9e5a90425bc26::t_19979c3ef2aaa9 20
+lib/storyarn/sheets/persistence/project_record.ex
+  s_e9e5a90425bc26::t_da46c8be99b810 1-11
+test/storyarn/localization/persistence_associations_test.exs
+  s_e9e5a90425bc26::t_444882e03dae7f 1-35
+priv/gettext/localization.pot
+  s_e9e5a90425bc26::t_964dc090170077 20,31,47,60,86,93,100,106,112,123,134,140,146,151,156
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_e2b54f0fc249d3 14,19,24,34,39,44,49,54,59-60,69,74,79,84,91,98,105,176-177,192,197,202,207,217,232,237,247,267,272,394,688,698,721,737,781,811,816,821,826,831,836,841,846,851
+config/architecture_baselines/localization.json
+  s_e9e5a90425bc26::t_9fafb69018d853 3
+lib/storyarn/localization/persistence/asset_record.ex
+  s_e9e5a90425bc26::t_4622b2d3f947a2 1-20
+lib/storyarn/localization/persistence/project_membership_record.ex
+  s_7996e75ca8ca83::t_cfc6699e717c51 1-20
+lib/storyarn/localization/persistence/project_record.ex
+  s_dfc97b274be459::t_49c532d510dbc6 1-26
+lib/storyarn/localization/persistence/user_record.ex
+  s_dfc97b274be459::t_5cacef1f1cd973 1-11
+lib/storyarn/localization/persistence/workspace_membership_record.ex
+  s_7996e75ca8ca83::t_358e9c0d21d2bd 1-20
+lib/storyarn/localization/persistence/workspace_record.ex
+  s_dfc97b274be459::t_d81ca62d9be92d 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "a6afc7d3f5cca121ced3924335b63998072d81a9",
+  "prompts": {},
+  "sessions": {
+    "s_7996e75ca8ca83": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02afb-8f02-7901-8447-53336ab12995",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_dfc97b274be459": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a02afb-6113-78d0-986b-25114b65dc6e",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
