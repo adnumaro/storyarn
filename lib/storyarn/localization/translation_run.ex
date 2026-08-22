@@ -5,8 +5,8 @@ defmodule Storyarn.Localization.TranslationRun do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
-  alias Storyarn.Projects.Project
+  alias Storyarn.Localization.Persistence.ProjectRecord
+  alias Storyarn.Localization.Persistence.UserRecord
 
   @statuses ~w(queued running completed failed cancelled)
   @text_statuses ~w(pending draft in_progress review final)
@@ -26,8 +26,8 @@ defmodule Storyarn.Localization.TranslationRun do
     field :cancelled_at, :utc_datetime
     field :oban_job_id, :integer
 
-    belongs_to :project, Project
-    belongs_to :requested_by, User
+    belongs_to :project, ProjectRecord
+    belongs_to :requested_by, UserRecord
 
     timestamps(type: :utc_datetime)
   end

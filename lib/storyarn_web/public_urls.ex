@@ -7,10 +7,10 @@ defmodule StoryarnWeb.PublicURLs do
   language.
   """
 
-  alias Storyarn.Localization.Languages
   alias Storyarn.Publication.Locales, as: PublicLocales
   alias Storyarn.Publication.PathLocalizer
   alias StoryarnWeb.Layouts
+  alias StoryarnWeb.PublicLanguageMetadata
 
   @public_roots ~w(contact privacy terms docs blog)
   @known_gettext_locales Gettext.known_locales(Storyarn.Gettext)
@@ -109,12 +109,11 @@ defmodule StoryarnWeb.PublicURLs do
     Enum.map(locale_paths, fn {locale, path} ->
       locale = validate_locale!(locale)
       language_tag = PublicLocales.language_tag(locale)
-      language = Languages.get(language_tag)
 
       %{
         locale: locale,
         language_tag: language_tag,
-        label: if(language, do: language.native, else: String.upcase(language_tag)),
+        label: PublicLanguageMetadata.native_name(language_tag),
         path: path
       }
     end)

@@ -11,13 +11,13 @@ defmodule Storyarn.ProjectTemplates.Audit do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.ProjectLanguage
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer

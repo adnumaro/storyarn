@@ -6,8 +6,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.HtmlHandler
-  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Shared.HtmlSanitizer
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
@@ -36,6 +34,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           "project_slug" => @project.slug,
           "selected_locale" => @selected_locale,
           "can_edit" => @can_edit,
+          "membership" => @membership,
           "active_tool" => "localization",
           "dashboard_url" =>
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",
@@ -55,6 +54,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             "selected_locale" => @selected_locale,
             "has_provider" => @has_provider,
             "can_edit" => @can_edit,
+            "membership" => @membership,
             "filters" => %{
               "status" => @filter_status,
               "source_type" => @filter_source_type,
@@ -292,7 +292,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         sourceField: text.source_field,
         wordCount: text.word_count || 0,
         machineTranslated: text.machine_translated || false,
-        stale: LocalizedText.stale?(text),
+        stale: Localization.text_stale?(text),
         sourceTypeIcon: source_type_icon(text.source_type),
         editUrl: ~p"/workspaces/#{ws_slug}/projects/#{proj_slug}/localization/texts/#{text.locale_code}/#{text.id}"
       }
@@ -320,8 +320,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       voEligible: text.vo_eligible,
       machineTranslated: text.machine_translated || false,
       lastTranslatedAt: text.last_translated_at && DateTime.to_iso8601(text.last_translated_at),
-      stale: LocalizedText.stale?(text),
-      placeholders: HtmlHandler.placeholders(text.source_text),
+      stale: Localization.text_stale?(text),
+      placeholders: Localization.text_placeholders(text.source_text),
       lockVersion: text.lock_version
     }
   end
@@ -412,7 +412,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
-  defp save_with_lock(socket, text_id, %LocalizedText{lock_version: expected_lock} = text, expected_lock, params) do
+  defp save_with_lock(socket, text_id, %{lock_version: expected_lock} = text, expected_lock, params) do
     params = Map.put(params, "translated_by_id", socket.assigns.current_scope.user.id)
 
     case Localization.update_text(text, params) do

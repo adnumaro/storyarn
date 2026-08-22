@@ -12,7 +12,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
   alias Storyarn.Billing
-  alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.References
   alias Storyarn.Repo
@@ -35,14 +34,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     |> Ecto.Changeset.validate_required([:email, :role])
     |> Validations.validate_email_format()
     |> Ecto.Changeset.validate_inclusion(:role, @project_invite_roles)
-  end
-
-  def get_provider_config(project_id) do
-    Localization.get_provider_config(project_id)
-  end
-
-  def provider_changeset(config) do
-    Localization.change_provider_config(config)
   end
 
   # ---------------------------------------------------------------------------
@@ -144,66 +135,6 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   # ---------------------------------------------------------------------------
   # Action helpers (called from handle_event)
   # ---------------------------------------------------------------------------
-
-  def do_test_provider_connection(socket) do
-    config = get_provider_config(socket.assigns.project.id)
-
-    if config && config.api_key_encrypted do
-      case Localization.get_deepl_usage(config) do
-        {:ok, usage} ->
-          {:noreply,
-           socket
-           |> assign(:provider_usage, usage)
-           |> put_flash(:info, dgettext("projects", "Connection successful."))}
-
-        {:error, :invalid_api_key} ->
-          {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid API key."))}
-
-        {:error, _reason} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "Connection failed. Check your API key and endpoint.")
-           )}
-      end
-    else
-      {:noreply, put_flash(socket, :error, dgettext("projects", "No API key configured."))}
-    end
-  end
-
-  def do_save_provider_config(socket, params) do
-    project = socket.assigns.project
-
-    # Don't overwrite API key if the field is empty (user didn't change it)
-    params =
-      if params["api_key_encrypted"] == "" do
-        Map.delete(params, "api_key_encrypted")
-      else
-        params
-      end
-
-    result = Localization.upsert_provider_config(project, params)
-
-    case result do
-      {:ok, config} ->
-        socket =
-          socket
-          |> assign(:provider_form, to_form(provider_changeset(config), as: "provider"))
-          |> assign(:has_api_key, config.api_key_encrypted != nil)
-          |> put_flash(:info, dgettext("projects", "Provider settings saved."))
-
-        {:noreply, socket}
-
-      {:error, changeset} ->
-        {:noreply,
-         assign(
-           socket,
-           :provider_form,
-           changeset |> Map.put(:action, :validate) |> to_form(as: "provider")
-         )}
-    end
-  end
 
   def do_repair_variable_references(socket) do
     do_repair_variable_references(socket, &References.repair_stale_variable_references/1)

@@ -14,14 +14,14 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Localization
-  alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.LocalizationReadModel
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
+  alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -217,8 +217,8 @@ defmodule Storyarn.Exports.DataCollector do
   defp maybe_load(:localization, project_id, opts) do
     languages =
       if opts.format == :storyarn,
-        do: Localization.list_languages_for_backup(project_id),
-        else: Localization.list_languages(project_id)
+        do: LocalizationReadModel.list_languages_for_backup(project_id),
+        else: LocalizationReadModel.list_languages(project_id)
 
     locale_codes =
       case opts.languages do
@@ -230,10 +230,10 @@ defmodule Storyarn.Exports.DataCollector do
       languages: languages,
       strings:
         if(opts.format == :storyarn,
-          do: Localization.list_texts_for_backup(project_id, locale_codes),
-          else: Localization.list_texts_for_export(project_id, locale_codes, opts)
+          do: LocalizationReadModel.list_texts_for_backup(project_id, locale_codes),
+          else: LocalizationReadModel.list_texts_for_export(project_id, locale_codes, opts)
         ),
-      glossary: Localization.list_glossary_for_export(project_id)
+      glossary: LocalizationReadModel.list_glossary_for_export(project_id)
     }
   end
 
@@ -370,9 +370,9 @@ defmodule Storyarn.Exports.DataCollector do
   defp count_localized_texts(_project_id, %{include_localization: false}), do: 0
 
   defp count_localized_texts(project_id, opts) do
-    active_languages = Localization.list_languages(project_id)
+    active_languages = LocalizationReadModel.list_languages(project_id)
     locale_codes = requested_locale_codes(opts.languages, active_languages)
-    Localization.count_texts_for_export(project_id, locale_codes, opts)
+    LocalizationReadModel.count_texts_for_export(project_id, locale_codes, opts)
   end
 
   defp count_glossary_entries(_project_id, %{include_localization: false}), do: 0
@@ -600,8 +600,8 @@ defmodule Storyarn.Exports.DataCollector do
   end
 
   defp project_localized_texts_query(project_id, opts) do
-    locale_codes = requested_locale_codes(opts.languages, Localization.list_languages(project_id))
-    Localization.texts_for_export_query(project_id, locale_codes, opts)
+    locale_codes = requested_locale_codes(opts.languages, LocalizationReadModel.list_languages(project_id))
+    LocalizationReadModel.texts_for_export_query(project_id, locale_codes, opts)
   end
 
   defp project_sheet_children_query(schema, project_id, %{sheet_ids: sheet_ids}) do

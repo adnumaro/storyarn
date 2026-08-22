@@ -17,7 +17,7 @@ defmodule Storyarn.Localization.GlossaryEntry do
 
   import Ecto.Changeset
 
-  alias Storyarn.Projects.Project
+  alias Storyarn.Localization.Persistence.ProjectRecord
 
   @term_format ~r/^[^\t\r\n]*$/u
   @term_format_error "cannot contain tabs or line breaks"
@@ -25,7 +25,7 @@ defmodule Storyarn.Localization.GlossaryEntry do
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: ProjectRecord.t() | Ecto.Association.NotLoaded.t() | nil,
           source_term: String.t() | nil,
           source_locale: String.t() | nil,
           target_term: String.t() | nil,
@@ -44,7 +44,7 @@ defmodule Storyarn.Localization.GlossaryEntry do
     field :context, :string
     field :do_not_translate, :boolean, default: false
 
-    belongs_to :project, Project
+    belongs_to :project, ProjectRecord
 
     timestamps(type: :utc_datetime)
   end

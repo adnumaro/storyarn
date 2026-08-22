@@ -16,10 +16,10 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Telemetry
-  alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes

@@ -13,7 +13,6 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.EntityReference
@@ -24,6 +23,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   alias Storyarn.Sheets.SheetQueries
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.WordCount
 
   # =============================================================================
   # Resolution

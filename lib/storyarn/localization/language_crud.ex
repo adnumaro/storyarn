@@ -3,19 +3,20 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
+  alias Storyarn.Localization.LanguagePositions
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.NotificationDelivery
+  alias Storyarn.Localization.Persistence.ProjectRecord
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Notifications
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.TreeOperations
+
+  defguardp is_positive_id(value) when is_integer(value) and value > 0
 
   # =============================================================================
   # Queries
@@ -79,26 +80,31 @@ defmodule Storyarn.Localization.LanguageCrud do
   # Mutations
   # =============================================================================
 
-  def add_language(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def add_language(%{user: %{id: actor_id}} = actor_scope, %{id: project_id} = project, attrs)
+      when is_integer(actor_id) and actor_id > 0 and is_integer(project_id) and project_id > 0 do
     case add_language_with_count(actor_scope, project, attrs) do
       {:ok, %{language: language}} -> {:ok, language}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  def add_language(%Project{} = project, attrs) do
+  def add_language(%{user: _user}, %{id: project_id}, _attrs) when is_integer(project_id) and project_id > 0,
+    do: {:error, :not_found}
+
+  def add_language(%{id: project_id} = project, attrs) when is_integer(project_id) and project_id > 0 do
     case add_language_with_count(project, attrs) do
       {:ok, %{language: language}} -> {:ok, language}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  def add_language_with_count(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def add_language_with_count(%{user: %{id: actor_id}} = actor_scope, %{id: project_id} = project, attrs)
+      when is_integer(actor_id) and actor_id > 0 and is_integer(project_id) and project_id > 0 do
     result = add_language_with_count_for_actor(actor_scope, project, attrs)
 
     case result do
       {:ok, %{notification_outcome: outcome} = value} ->
-        Notifications.publish_committed(outcome)
+        NotificationDelivery.publish_committed(outcome)
         {:ok, Map.delete(value, :notification_outcome)}
 
       other ->
@@ -106,7 +112,10 @@ defmodule Storyarn.Localization.LanguageCrud do
     end
   end
 
-  def add_language_with_count(%Project{} = project, attrs) do
+  def add_language_with_count(%{user: _user}, %{id: project_id}, _attrs) when is_integer(project_id) and project_id > 0,
+    do: {:error, :not_found}
+
+  def add_language_with_count(%{id: project_id} = project, attrs) when is_integer(project_id) and project_id > 0 do
     case add_language_with_count_for_actor(nil, project, attrs) do
       {:ok, value} -> {:ok, Map.delete(value, :notification_outcome)}
       other -> other
@@ -193,18 +202,21 @@ defmodule Storyarn.Localization.LanguageCrud do
     remove_language_for_actor(nil, language)
   end
 
-  def remove_language(%Scope{} = actor_scope, %ProjectLanguage{} = language) do
+  def remove_language(%{user: %{id: actor_id}} = actor_scope, %ProjectLanguage{} = language)
+      when is_integer(actor_id) and actor_id > 0 do
     result = remove_language_for_actor(actor_scope, language)
 
     case result do
       {:ok, {archived, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
+        NotificationDelivery.publish_committed(notification_outcome)
         {:ok, archived}
 
       other ->
         other
     end
   end
+
+  def remove_language(%{user: _user}, %ProjectLanguage{}), do: {:error, :not_found}
 
   defp remove_language_for_actor(actor_scope, language) do
     fn ->
@@ -243,7 +255,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   Uses the same safety rules as `change_source_language/3`.
   """
   def set_source_language(%ProjectLanguage{} = language) do
-    Project
+    ProjectRecord
     |> Repo.get!(language.project_id)
     |> change_source_language(language.locale_code)
   end
@@ -255,32 +267,41 @@ defmodule Storyarn.Localization.LanguageCrud do
   Otherwise a new source language row is created. The previous source remains
   available as a target. Existing translations require an explicit reset.
   """
-  def change_source_language(%Project{} = project, locale_code) when is_binary(locale_code) do
+  def change_source_language(%{id: project_id} = project, locale_code)
+      when is_integer(project_id) and project_id > 0 and is_binary(locale_code) do
     change_source_language(project, locale_code, [])
   end
 
-  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) when is_binary(locale_code) do
+  def change_source_language(%{user: %{id: actor_id}} = actor_scope, %{id: project_id} = project, locale_code)
+      when is_positive_id(actor_id) and is_positive_id(project_id) and is_binary(locale_code) do
     change_source_language(actor_scope, project, locale_code, [])
   end
 
-  def change_source_language(%Project{} = project, locale_code, opts) when is_binary(locale_code) do
+  def change_source_language(%{user: _user}, %{id: project_id}, locale_code)
+      when is_integer(project_id) and project_id > 0 and is_binary(locale_code), do: {:error, :not_found}
+
+  def change_source_language(%{id: project_id} = project, locale_code, opts)
+      when is_integer(project_id) and project_id > 0 and is_binary(locale_code) do
     case change_source_language_for_actor(nil, project, locale_code, opts) do
       {:ok, {language, _notification_outcome}} -> {:ok, language}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code, opts)
-      when is_binary(locale_code) do
+  def change_source_language(%{user: %{id: actor_id}} = actor_scope, %{id: project_id} = project, locale_code, opts)
+      when is_positive_id(actor_id) and is_positive_id(project_id) and is_binary(locale_code) do
     case change_source_language_for_actor(actor_scope, project, locale_code, opts) do
       {:ok, {language, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
+        NotificationDelivery.publish_committed(notification_outcome)
         {:ok, language}
 
       {:error, reason} ->
         {:error, reason}
     end
   end
+
+  def change_source_language(%{user: _user}, %{id: project_id}, locale_code, _opts)
+      when is_integer(project_id) and project_id > 0 and is_binary(locale_code), do: {:error, :not_found}
 
   defp change_source_language_for_actor(actor_scope, project, locale_code, opts) do
     locale_code = LocaleCode.normalize(locale_code)
@@ -325,11 +346,7 @@ defmodule Storyarn.Localization.LanguageCrud do
       if Enum.all?(language_ids, &is_integer/1) and
            length(language_ids) == length(Enum.uniq(language_ids)) and
            Enum.sort(language_ids) == active_ids do
-        TreeOperations.batch_set_positions(
-          "project_languages",
-          Enum.with_index(language_ids),
-          scope: {"project_id", project_id}
-        )
+        LanguagePositions.set_positions(project_id, Enum.with_index(language_ids))
       else
         Repo.rollback(:invalid_language_order)
       end
@@ -344,13 +361,13 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   Returns `{:ok, source_language}` in all cases.
   """
-  def ensure_source_language(%Project{} = project) do
-    case get_source_language(project.id) do
+  def ensure_source_language(%{id: project_id}) when is_integer(project_id) and project_id > 0 do
+    case get_source_language(project_id) do
       %ProjectLanguage{} = lang ->
         {:ok, lang}
 
       nil ->
-        project = Repo.preload(project, :workspace)
+        project = ProjectRecord |> Repo.get!(project_id) |> Repo.preload(:workspace)
         locale = project.workspace.source_locale || "en"
         name = Languages.name(locale)
 
@@ -385,19 +402,23 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp maybe_deliver_content_activity!(nil, _project, _action, _language), do: :suppressed
 
-  defp maybe_deliver_content_activity!(%Scope{} = actor_scope, project, action, language) do
+  defp maybe_deliver_content_activity!(%{user: %{id: actor_id}} = actor_scope, project, action, language)
+       when is_integer(actor_id) and actor_id > 0 do
     deliver_content_activity!(actor_scope, project, action, language)
   end
 
   defp authorize_actor_project(nil, project), do: {:ok, project}
-  defp authorize_actor_project(%Scope{user: nil}, _project), do: {:error, :not_found}
+  defp authorize_actor_project(%{user: nil}, _project), do: {:error, :not_found}
 
-  defp authorize_actor_project(%Scope{} = actor_scope, project) do
-    case Projects.get_project(actor_scope, project.id) do
+  defp authorize_actor_project(%{user: %{id: actor_id}} = actor_scope, project)
+       when is_integer(actor_id) and actor_id > 0 do
+    case ProjectAccess.get_project(actor_scope, project.id) do
       {:ok, authorized_project, _membership} -> {:ok, authorized_project}
       {:error, _reason} -> {:error, :not_found}
     end
   end
+
+  defp authorize_actor_project(_actor_scope, _project), do: {:error, :not_found}
 
   defp maybe_deliver_created_content_activity!(_actor_scope, _project, _language, :reactivated), do: :suppressed
 
@@ -407,10 +428,10 @@ defmodule Storyarn.Localization.LanguageCrud do
     maybe_deliver_content_activity!(actor_scope, project, :created, language)
   end
 
-  defp deliver_content_activity!(actor_scope, project, action, language) do
-    case Notifications.deliver_content_activity(
-           actor_scope,
-           project,
+  defp deliver_content_activity!(%{user: %{id: actor_id}}, project, action, language) do
+    case NotificationDelivery.deliver_content_activity(
+           actor_id,
+           project.id,
            action,
            "localization_language",
            language
@@ -422,13 +443,13 @@ defmodule Storyarn.Localization.LanguageCrud do
 
   defp lock_project!(project_id) do
     case Repo.one(
-           from(project in Project,
+           from(project in ProjectRecord,
              where: project.id == ^project_id,
              lock: "FOR UPDATE"
            )
          ) do
-      %Project{deleted_at: nil} = project -> project
-      %Project{} -> Repo.rollback(:project_not_active)
+      %ProjectRecord{deleted_at: nil} = project -> project
+      %ProjectRecord{} -> Repo.rollback(:project_not_active)
       nil -> Repo.rollback(:project_not_found)
     end
   end

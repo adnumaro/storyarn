@@ -184,6 +184,11 @@ config :storyarn, Storyarn.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 
+config :storyarn, Storyarn.Localization.TranslationJobQueue,
+  worker: "Storyarn.Workers.LocalizationBatchTranslationWorker",
+  queue: :localization,
+  max_attempts: 3
+
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)

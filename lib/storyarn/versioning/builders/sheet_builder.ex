@@ -14,9 +14,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   import Ecto.Query, warn: false
   import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
-  alias Storyarn.Localization
-  alias Storyarn.Localization.LocalizableWords
-  alias Storyarn.Localization.TextCrud
+  alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
@@ -68,7 +66,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
           :ok = lock_sheet_project_for_snapshot!(sheet.project_id)
           locked_sheet = lock_sheet_for_snapshot!(sheet)
 
-          :ok = LocalizableWords.lock_inventory!(locked_sheet.project_id)
+          :ok = LocalizationProjection.lock_inventory!(locked_sheet.project_id)
           do_build_snapshot(locked_sheet, mode)
         end,
         isolation: :repeatable_read
@@ -481,7 +479,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
              locked_external_block_ids,
              opts
            ),
-         :ok <- LocalizableWords.lock_inventory!(project_id),
+         :ok <- LocalizationProjection.lock_inventory!(project_id),
          avatar_entries = build_avatar_entries(snapshot, project_id, now, opts),
          {:ok, sheet_id} <-
            MaterializationHelpers.insert_one_returning_id(
@@ -662,8 +660,8 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
 
   defp complete_sheet_instantiation_with_localization(sheet, project_id, snapshot, id_maps, opts) do
     with :ok <- restore_instantiated_sheet_localization(project_id, snapshot, id_maps, opts),
-         :ok <- Localization.extract_sheet_blocks(sheet.id),
-         :ok <- Localization.sync_sheet_names(project_id) do
+         :ok <- LocalizationProjection.extract_sheet_blocks(sheet.id),
+         :ok <- LocalizationProjection.sync_sheet_names(project_id) do
       finish_sheet_instantiation(sheet, id_maps, project_id, opts)
     else
       {:error, reason} -> Repo.rollback(reason)
@@ -763,7 +761,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     with {:ok, _project} <- lock_sheet_project_for_restore(sheet.project_id),
          {:ok, locked_sheet} <- lock_sheet_for_restore(sheet),
          :ok <- lock_pre_restore_version_record(locked_sheet, opts),
-         :ok <- LocalizableWords.lock_inventory!(locked_sheet.project_id),
+         :ok <- LocalizationProjection.lock_inventory!(locked_sheet.project_id),
          :ok <- verify_pre_restore_sheet_baseline(locked_sheet, opts),
          :ok <- validate_sheet_snapshot(locked_sheet, snapshot),
          {:ok, normalized_blocks} <-
@@ -2026,7 +2024,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp delete_extra_children_source(%{source: source, active_instance_ids: active_instance_ids}) do
     Enum.each([source.id | active_instance_ids], &References.delete_block_references/1)
 
-    TextCrud.archive_texts_for_sources(
+    LocalizationProjection.archive_texts_for_sources(
       "block",
       [source.id | active_instance_ids],
       "source_deleted"
@@ -2545,16 +2543,16 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp restore_sheet_localization_in_place(sheet, snapshot, block_data) do
     target_ids = Map.keys(block_data.block_id_map)
 
-    TextCrud.archive_texts_for_active_target_locales(
+    LocalizationProjection.archive_texts_for_active_target_locales(
       sheet.project_id,
       "block",
       target_ids,
       "version_replaced"
     )
 
-    TextCrud.archive_texts_for_sources("block", block_data.soft_deleted_ids, "source_deleted")
+    LocalizationProjection.archive_texts_for_sources("block", block_data.soft_deleted_ids, "source_deleted")
 
-    TextCrud.archive_texts_for_active_target_locales(
+    LocalizationProjection.archive_texts_for_active_target_locales(
       sheet.project_id,
       "sheet",
       [sheet.id],
@@ -2579,7 +2577,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
              id_maps
            ),
          :ok <- reconcile_restored_block_localization(target_ids) do
-      Localization.sync_sheet_names(sheet.project_id)
+      LocalizationProjection.sync_sheet_names(sheet.project_id)
     end
   end
 
@@ -2587,7 +2585,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
     block_ids
     |> Enum.map(&Repo.get(Block, &1))
     |> Enum.reduce_while(:ok, fn block, :ok ->
-      case Localization.extract_block(block) do
+      case LocalizationProjection.extract_block(block) do
         :ok -> {:cont, :ok}
         {:error, reason} -> {:halt, {:error, reason}}
       end
@@ -2611,7 +2609,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
       instance = Repo.get!(Block, instance_id)
 
       with :ok <- reconcile_block_references(instance, project_id, opts) do
-        Localization.extract_block(instance)
+        LocalizationProjection.extract_block(instance)
       end
     end)
   end

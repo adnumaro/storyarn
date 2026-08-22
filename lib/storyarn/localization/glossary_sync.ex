@@ -4,9 +4,9 @@ defmodule Storyarn.Localization.GlossarySync do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.GlossaryCrud
+  alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers.DeepL
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   @hashes_key "glossary_hashes"

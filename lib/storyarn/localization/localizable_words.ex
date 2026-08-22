@@ -6,15 +6,15 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.Persistence.BlockRecord
   alias Storyarn.Localization.Persistence.FlowNodeRecord
   alias Storyarn.Localization.Persistence.FlowRecord
+  alias Storyarn.Localization.Persistence.SheetRecord
+  alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Sheet
 
   @inventory_lock_namespace "storyarn:localization:inventory"
   @flow_node_lock_namespace "storyarn:localization:flow_node"
@@ -48,8 +48,8 @@ defmodule Storyarn.Localization.LocalizableWords do
     localizable_block_types = SourceContract.localizable_block_types()
 
     block_counts =
-      from(block in Block,
-        join: sheet in Sheet,
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
         on: sheet.id == block.sheet_id,
         where:
           sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
@@ -227,16 +227,17 @@ defmodule Storyarn.Localization.LocalizableWords do
     )
   end
 
-  @spec extract_block(Block.t()) :: :ok | {:error, term()}
-  def extract_block(%Block{} = block) do
+  @spec extract_block(%{required(:id) => integer(), required(:sheet_id) => integer()}) ::
+          :ok | {:error, term()}
+  def extract_block(%{id: block_id, sheet_id: sheet_id}) do
     case_result =
-      case sheet_project_id(block.sheet_id) do
+      case sheet_project_id(sheet_id) do
         nil ->
           :ok
 
         project_id ->
-          with_source_lock(project_id, @block_lock_namespace, block.id, fn ->
-            reconcile_block(project_id, block.id)
+          with_source_lock(project_id, @block_lock_namespace, block_id, fn ->
+            reconcile_block(project_id, block_id)
           end)
       end
 
@@ -257,8 +258,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   defp reconcile_block(project_id, block_id) do
     current =
       Repo.one(
-        from(block in Block,
-          join: sheet in Sheet,
+        from(block in BlockRecord,
+          join: sheet in SheetRecord,
           on: sheet.id == block.sheet_id,
           where:
             block.id == ^block_id and sheet.project_id == ^project_id and
@@ -268,7 +269,7 @@ defmodule Storyarn.Localization.LocalizableWords do
       )
 
     case current do
-      %Block{} = block -> reconcile_current_block(project_id, block)
+      %BlockRecord{} = block -> reconcile_current_block(project_id, block)
       nil -> TextCrud.archive_texts_for_source("block", block_id, "source_deleted")
     end
 
@@ -334,20 +335,23 @@ defmodule Storyarn.Localization.LocalizableWords do
   def extract_sheet_blocks_for_sheets([]), do: :ok
 
   def extract_sheet_blocks_for_sheets(sheet_ids) do
-    case sheet_project_id(List.first(sheet_ids)) do
-      nil ->
+    case sheet_project_ids(sheet_ids) do
+      [] ->
         :ok
 
-      project_id ->
+      [project_id] ->
         project_id
         |> with_inventory_lock(fn ->
-          from(block in Block, where: block.sheet_id in ^sheet_ids)
+          from(block in BlockRecord, where: block.sheet_id in ^sheet_ids)
           |> Repo.all()
           |> Enum.each(&reconcile_block(project_id, &1.id))
 
           :ok
         end)
         |> normalize_lock_result()
+
+      _mixed_project_ids ->
+        {:error, :mixed_project_sheet_ids}
     end
   end
 
@@ -360,7 +364,7 @@ defmodule Storyarn.Localization.LocalizableWords do
       project_id ->
         project_id
         |> with_inventory_lock(fn ->
-          from(b in Block, where: b.id == ^block_id or b.inherited_from_block_id == ^block_id)
+          from(b in BlockRecord, where: b.id == ^block_id or b.inherited_from_block_id == ^block_id)
           |> Repo.all()
           |> Enum.each(&reconcile_block(project_id, &1.id))
 
@@ -402,7 +406,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     with_source_project_lock(block_project_id(block_id), fn ->
       block_ids =
         Repo.all(
-          from(b in Block,
+          from(b in BlockRecord,
             where: b.id == ^block_id or b.inherited_from_block_id == ^block_id,
             select: b.id
           )
@@ -419,7 +423,7 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   def delete_block_texts_for_sheets(sheet_ids) do
     with_source_project_lock(sheet_project_id(List.first(sheet_ids)), fn ->
-      block_ids = Repo.all(from(b in Block, where: b.sheet_id in ^sheet_ids, select: b.id))
+      block_ids = Repo.all(from(b in BlockRecord, where: b.sheet_id in ^sheet_ids, select: b.id))
       TextCrud.delete_texts_for_sources("block", block_ids)
     end)
 
@@ -461,7 +465,7 @@ defmodule Storyarn.Localization.LocalizableWords do
     end)
   end
 
-  defp block_source_fields(%Block{value: value} = block) do
+  defp block_source_fields(%BlockRecord{value: value} = block) do
     if SourceContract.localizable_block?(block) do
       optional_field("value.content", value["content"], "runtime_value")
     else
@@ -469,13 +473,13 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  defp speaker_source_fields(%Sheet{name: name}) do
+  defp speaker_source_fields(%SheetRecord{name: name}) do
     optional_field("name", name, "speaker_name")
   end
 
   defp runtime_sheets(project_id) do
     Repo.all(
-      from(s in Sheet,
+      from(s in SheetRecord,
         where: s.project_id == ^project_id and is_nil(s.deleted_at),
         order_by: [asc: s.id]
       )
@@ -608,8 +612,8 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   defp load_project_blocks(project_id) do
     Repo.all(
-      from(b in Block,
-        join: s in Sheet,
+      from(b in BlockRecord,
+        join: s in SheetRecord,
         on: b.sheet_id == s.id,
         where: s.project_id == ^project_id and is_nil(s.deleted_at) and is_nil(b.deleted_at),
         order_by: [asc: b.id]
@@ -633,13 +637,29 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp sheet_project_id(sheet_id) do
-    Repo.one(from(s in Sheet, where: s.id == ^sheet_id and is_nil(s.deleted_at), select: s.project_id))
+    Repo.one(
+      from(s in SheetRecord,
+        where: s.id == ^sheet_id and is_nil(s.deleted_at),
+        select: s.project_id
+      )
+    )
+  end
+
+  defp sheet_project_ids(sheet_ids) do
+    Repo.all(
+      from(sheet in SheetRecord,
+        where: sheet.id in ^sheet_ids,
+        distinct: true,
+        order_by: [asc: sheet.project_id],
+        select: sheet.project_id
+      )
+    )
   end
 
   defp block_project_id(block_id) do
     Repo.one(
-      from(b in Block,
-        join: s in Sheet,
+      from(b in BlockRecord,
+        join: s in SheetRecord,
         on: s.id == b.sheet_id,
         where: b.id == ^block_id,
         select: s.project_id

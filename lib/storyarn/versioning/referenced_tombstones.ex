@@ -3,10 +3,10 @@ defmodule Storyarn.Versioning.ReferencedTombstones do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow

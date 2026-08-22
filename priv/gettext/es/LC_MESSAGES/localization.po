@@ -17,7 +17,7 @@ msgid "Block"
 msgstr "Bloque"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:64
-#: lib/storyarn_web/live/localization_sidebar_live.ex:245
+#: lib/storyarn_web/live/localization_sidebar_live.ex:241
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the source language."
 msgstr "No se puede eliminar el idioma de origen."
@@ -28,7 +28,7 @@ msgid "Draft"
 msgstr "Borrador"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:154
-#: lib/storyarn_web/live/localization_sidebar_live.ex:222
+#: lib/storyarn_web/live/localization_sidebar_live.ex:218
 #, elixir-autogen, elixir-format
 msgid "Failed to add language."
 msgstr "No se pudo añadir el idioma."
@@ -44,7 +44,7 @@ msgid "In Progress"
 msgstr "En proceso"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:149
-#: lib/storyarn_web/live/localization_sidebar_live.ex:229
+#: lib/storyarn_web/live/localization_sidebar_live.ex:225
 #, elixir-autogen, elixir-format
 msgid "Language added."
 msgstr "Idioma añadido."
@@ -57,7 +57,7 @@ msgstr[0] "Idioma añadido. Se extrajo %{count} texto."
 msgstr[1] "Idioma añadido. Se extrajeron %{count} textos."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:58
-#: lib/storyarn_web/live/localization_sidebar_live.ex:255
+#: lib/storyarn_web/live/localization_sidebar_live.ex:251
 #, elixir-autogen, elixir-format
 msgid "Language removed."
 msgstr "Idioma eliminado."
@@ -83,33 +83,33 @@ msgid "Sheet name"
 msgstr "Nombre de ficha"
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:78
-#: lib/storyarn_web/live/localization_sidebar_live.ex:125
+#: lib/storyarn_web/live/localization_sidebar_live.ex:124
 #, elixir-autogen, elixir-format
 msgid "Synced %{count} text entry."
 msgid_plural "Synced %{count} text entries."
 msgstr[0] "Se sincronizó %{count} entrada de texto."
 msgstr[1] "Se sincronizaron %{count} entradas de texto."
 
-#: lib/storyarn_web/live/localization_toolbar_live.ex:179
+#: lib/storyarn_web/live/localization_toolbar_live.ex:183
 #, elixir-autogen, elixir-format
 msgid "Translated %{count} string."
 msgid_plural "Translated %{count} strings."
 msgstr[0] "Se tradujo %{count} cadena."
 msgstr[1] "Se tradujeron %{count} cadenas."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:158
+#: lib/storyarn_web/live/localization_live/edit.ex:159
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:112
 #, elixir-autogen, elixir-format
 msgid "Translation complete."
 msgstr "Traducción completada."
 
-#: lib/storyarn_web/live/localization_live/edit.ex:167
+#: lib/storyarn_web/live/localization_live/edit.ex:168
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:121
 #, elixir-autogen, elixir-format
 msgid "Translation failed: %{reason}"
 msgstr "Traducción fallida: %{reason}"
 
-#: lib/storyarn_web/live/localization_live/edit.ex:138
+#: lib/storyarn_web/live/localization_live/edit.ex:139
 #, elixir-autogen, elixir-format
 msgid "Translation saved."
 msgstr "Traducción guardada."
@@ -120,7 +120,7 @@ msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:61
-#: lib/storyarn_web/live/localization_sidebar_live.ex:258
+#: lib/storyarn_web/live/localization_sidebar_live.ex:254
 #, elixir-autogen, elixir-format
 msgid "Could not remove language."
 msgstr "No se pudo eliminar el idioma."
@@ -131,30 +131,29 @@ msgid "Invalid text ID."
 msgstr "ID de texto no válido."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:90
-#: lib/storyarn_web/live/localization_sidebar_live.ex:136
+#: lib/storyarn_web/live/localization_sidebar_live.ex:135
 #, elixir-autogen, elixir-format
 msgid "Sync failed."
 msgstr "Error al sincronizar."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:44
-#: lib/storyarn_web/live/localization_sidebar_live.ex:102
+#: lib/storyarn_web/live/localization_sidebar_live.ex:101
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr "No se pudo actualizar el idioma de origen."
 
 #: lib/storyarn_web/live/localization_live/handlers/localization_handlers.ex:35
-#: lib/storyarn_web/live/localization_sidebar_live.ex:87
+#: lib/storyarn_web/live/localization_sidebar_live.ex:86
 #, elixir-autogen, elixir-format
 msgid "Source language updated."
 msgstr "Idioma de origen actualizado."
 
-#: lib/storyarn_web/live/localization_sidebar_live.ex:167
-#: lib/storyarn_web/live/localization_toolbar_live.ex:88
+#: lib/storyarn_web/live/localization_toolbar_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
 
-#: lib/storyarn_web/live/localization_sidebar_live.ex:94
+#: lib/storyarn_web/live/localization_sidebar_live.ex:93
 #, elixir-autogen, elixir-format
 msgid "Changing the source language requires resetting translations."
 msgstr "Cambiar el idioma de origen requiere restablecer las traducciones."

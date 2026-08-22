@@ -13,24 +13,25 @@ defmodule Storyarn.Localization do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
+  alias Storyarn.Localization.BatchTranslationJob
   alias Storyarn.Localization.BatchTranslator
   alias Storyarn.Localization.ExportImport
   alias Storyarn.Localization.GlossaryCrud
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.GlossarySync
+  alias Storyarn.Localization.HtmlHandler
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers
   alias Storyarn.Localization.Reports
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Localization.TextExtractor
   alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Projects.Project
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   # =============================================================================
@@ -44,7 +45,19 @@ defmodule Storyarn.Localization do
   @type id :: integer()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type actor_scope :: %{required(:user) => %{required(:id) => pos_integer()} | nil}
+  @type project_identity :: %{required(:id) => pos_integer()}
   @type language_add_error :: changeset() | {:localization_sync_failed, term()}
+
+  # =============================================================================
+  # Project access read model
+  # =============================================================================
+
+  @doc "Gets an active project visible to the current actor, with its workspace preloaded."
+  defdelegate get_project(actor_scope, project_id), to: ProjectAccess
+
+  @doc "Gets an active project by workspace/project slugs for the current actor."
+  defdelegate get_project_by_slugs(actor_scope, workspace_slug, project_slug), to: ProjectAccess
 
   # =============================================================================
   # Project Languages
@@ -75,12 +88,13 @@ defmodule Storyarn.Localization do
   defdelegate get_target_languages(project_id), to: LanguageCrud
 
   @doc "Adds a new language to a project."
-  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, language_add_error()}
+  @spec add_language(project_identity(), attrs()) ::
+          {:ok, project_language()} | {:error, language_add_error()}
   defdelegate add_language(project, attrs), to: LanguageCrud
   defdelegate add_language(actor_scope, project, attrs), to: LanguageCrud
 
   @doc "Adds a language and reports how many localization rows were reconciled."
-  @spec add_language_with_count(Project.t(), attrs()) ::
+  @spec add_language_with_count(project_identity(), attrs()) ::
           {:ok, %{language: project_language(), extracted_count: non_neg_integer()}}
           | {:error, language_add_error()}
   defdelegate add_language_with_count(project, attrs), to: LanguageCrud
@@ -103,25 +117,27 @@ defmodule Storyarn.Localization do
   defdelegate set_source_language(language), to: LanguageCrud
 
   @doc "Changes the project source language to the given locale code."
-  @spec change_source_language(Project.t(), String.t()) ::
+  @spec change_source_language(project_identity(), String.t()) ::
           {:ok, project_language()} | {:error, term()}
   defdelegate change_source_language(project, locale_code), to: LanguageCrud
 
   @doc "Changes the source language, optionally resetting all translations."
-  @spec change_source_language(Scope.t(), Project.t(), String.t()) ::
+  @spec change_source_language(actor_scope(), project_identity(), String.t()) ::
           {:ok, project_language()} | {:error, term()}
-  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) do
+  def change_source_language(%{user: _user} = actor_scope, %{id: project_id} = project, locale_code)
+      when is_integer(project_id) and project_id > 0 do
     LanguageCrud.change_source_language(actor_scope, project, locale_code)
   end
 
-  @spec change_source_language(Project.t(), String.t(), keyword()) ::
+  @spec change_source_language(project_identity(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
-  def change_source_language(%Project{} = project, locale_code, opts) do
+  def change_source_language(%{id: project_id} = project, locale_code, opts)
+      when is_integer(project_id) and project_id > 0 do
     LanguageCrud.change_source_language(project, locale_code, opts)
   end
 
   @doc "Changes the source language for an authorized actor, optionally resetting translations."
-  @spec change_source_language(Scope.t(), Project.t(), String.t(), keyword()) ::
+  @spec change_source_language(actor_scope(), project_identity(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
   defdelegate change_source_language(actor_scope, project, locale_code, opts), to: LanguageCrud
 
@@ -130,7 +146,8 @@ defmodule Storyarn.Localization do
   defdelegate reorder_languages(project_id, language_ids), to: LanguageCrud
 
   @doc "Ensures a source language exists for the project (auto-creates from workspace if missing)."
-  @spec ensure_source_language(Project.t()) :: {:ok, project_language()} | {:error, changeset()}
+  @spec ensure_source_language(project_identity()) ::
+          {:ok, project_language()} | {:error, changeset()}
   defdelegate ensure_source_language(project), to: LanguageCrud
 
   # =============================================================================
@@ -296,6 +313,12 @@ defmodule Storyarn.Localization do
   @doc "Cancels an active translation run."
   defdelegate cancel_translation_run(run), to: TranslationRunCrud, as: :cancel
 
+  @doc "Returns the PubSub topic for Localization translation runs."
+  defdelegate translation_runs_topic(project_id), to: TranslationRunCrud, as: :topic
+
+  @doc false
+  defdelegate perform_translation_run(run_id, attempt, max_attempts), to: BatchTranslationJob, as: :perform
+
   # =============================================================================
   # Export / Import
   # =============================================================================
@@ -332,7 +355,7 @@ defmodule Storyarn.Localization do
     as: :get_entries_for_pair
 
   @doc "Creates a glossary entry."
-  @spec create_glossary_entry(Project.t(), attrs()) ::
+  @spec create_glossary_entry(project_identity(), attrs()) ::
           {:ok, glossary_entry()} | {:error, changeset()}
   defdelegate create_glossary_entry(project, attrs), to: GlossaryCrud, as: :create_entry
 
@@ -393,10 +416,10 @@ defmodule Storyarn.Localization do
   end
 
   @doc "Creates or updates a provider config for a project."
-  @spec upsert_provider_config(Project.t(), map()) ::
+  @spec upsert_provider_config(project_identity(), map()) ::
           {:ok, provider_config()} | {:error, changeset() | term()}
-  def upsert_provider_config(%Project{} = project, attrs) do
-    Repo.transaction(fn -> upsert_provider_config_transaction(project.id, attrs) end)
+  def upsert_provider_config(%{id: project_id}, attrs) when is_integer(project_id) and project_id > 0 do
+    Repo.transaction(fn -> upsert_provider_config_transaction(project_id, attrs) end)
   end
 
   defp upsert_provider_config_transaction(project_id, attrs) do
@@ -450,8 +473,20 @@ defmodule Storyarn.Localization do
     LocalizedText.update_changeset(text, attrs)
   end
 
+  @doc "Returns whether a localized text is stale against its source revision."
+  defdelegate text_stale?(text), to: LocalizedText, as: :stale?
+
+  @doc "Extracts runtime placeholders from localized content."
+  defdelegate text_placeholders(text), to: HtmlHandler, as: :placeholders
+
   @doc "Returns the display name for a language code."
   defdelegate language_name(code), to: Languages, as: :name
+
+  @doc "Returns the flag code used to present a language."
+  defdelegate language_flag_code(code), to: Languages, as: :flag_code
+
+  @doc "Returns the compact label used to present a language."
+  defdelegate language_short_label(code), to: Languages, as: :short_label
 
   @doc "Returns language options for select inputs."
   def language_options_for_select(opts \\ []), do: Languages.options_for_select(opts)

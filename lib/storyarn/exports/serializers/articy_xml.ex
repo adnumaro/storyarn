@@ -27,8 +27,8 @@ defmodule Storyarn.Exports.Serializers.ArticyXML do
   alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Localization.RuntimeKey
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
 
   # UUID v5 namespace for deterministic GUID generation
   @storyarn_namespace "6ba7b810-9dad-11d1-80b4-00c04fd430c8"

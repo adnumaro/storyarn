@@ -15,7 +15,6 @@ defmodule Storyarn.Sheets do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Collaboration
-  alias Storyarn.Localization
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.References
@@ -29,6 +28,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.HealthSnapshots
+  alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
@@ -41,6 +41,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableCatalog
   alias Storyarn.Sheets.VariableUsage
+  alias Storyarn.Sheets.WordCount
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -1123,6 +1124,12 @@ defmodule Storyarn.Sheets do
 
   @doc "Returns per-sheet localizable word counts from runtime sheet fields. %{sheet_id => word_count}."
   defdelegate sheet_word_counts(project_id), to: SheetStats
+
+  @doc "Returns the block types that contribute player-facing runtime text."
+  defdelegate localizable_block_types(), to: Storyarn.Sheets.ContentContract
+
+  @doc "Computes the player-facing word count for one Sheet block."
+  defdelegate block_word_count(type, value), to: WordCount, as: :for_block
 
   @doc "Returns MapSet of block IDs with at least one variable reference."
   defdelegate referenced_block_ids_for_project(project_id), to: SheetStats

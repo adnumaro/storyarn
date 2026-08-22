@@ -64,6 +64,19 @@ defmodule Storyarn.Platform do
     to: Notifications,
     as: :deliver_content_activity_by_project_id
 
+  @doc "Persists content activity from scalar context-owned identities."
+  @spec deliver_content_activity_by_ids(pos_integer(), pos_integer(), atom(), String.t(), map()) ::
+          {:ok, term()} | {:error, term()}
+  defdelegate deliver_content_activity_by_ids(actor_id, project_id, action, entity_type, entity),
+    to: Notifications
+
+  @doc "Persists a requester-only async outcome from scalar context-owned identities."
+  @spec deliver_async_result(integer() | nil, pos_integer(), map()) ::
+          {:ok, term()} | {:error, term()}
+  defdelegate deliver_async_result(requested_by_id, project_id, attrs),
+    to: Notifications,
+    as: :deliver_async_result_by_ids
+
   @doc "Publishes the committed notification outcome to connected recipients."
   @spec publish_notification_delivery(term()) :: :ok
   defdelegate publish_notification_delivery(outcome), to: Notifications, as: :publish_committed

@@ -1,11 +1,10 @@
 defmodule Storyarn.Localization.ExportPolicy do
   @moduledoc "Central release/preview eligibility rules for engine localization exports."
 
-  alias Storyarn.Exports.ExportOptions
   alias Storyarn.Shared.MapUtils
 
-  @spec text_eligible?(map(), ExportOptions.t() | atom()) :: boolean()
-  def text_eligible?(text, %ExportOptions{localization_policy: policy}), do: text_eligible?(text, policy)
+  @spec text_eligible?(map(), %{required(:localization_policy) => atom()} | atom()) :: boolean()
+  def text_eligible?(text, %{localization_policy: policy}), do: text_eligible?(text, policy)
 
   def text_eligible?(text, :release) do
     present?(attr(text, :translated_text)) and
@@ -23,8 +22,8 @@ defmodule Storyarn.Localization.ExportPolicy do
     raise ArgumentError, "unknown localization export policy: #{inspect(policy)}"
   end
 
-  @spec voiceover_eligible?(map(), ExportOptions.t() | atom()) :: boolean()
-  def voiceover_eligible?(text, %ExportOptions{localization_policy: policy}), do: voiceover_eligible?(text, policy)
+  @spec voiceover_eligible?(map(), %{required(:localization_policy) => atom()} | atom()) :: boolean()
+  def voiceover_eligible?(text, %{localization_policy: policy}), do: voiceover_eligible?(text, policy)
 
   def voiceover_eligible?(text, :release) do
     text_eligible?(text, :release) and attr(text, :vo_eligible) == true and attr(text, :vo_status) == "approved" and

@@ -10,9 +10,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization
-  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.LocalizationReadModel
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -104,7 +104,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
     {languages, texts} = localization_inventory(project_id, localization_scope, mode)
 
-    glossary = Localization.list_glossary_for_export(project_id)
+    glossary = LocalizationReadModel.list_glossary_for_export(project_id)
 
     sheet_snapshots = build_sheet_snapshots(sheets, mode)
     flow_snapshots = build_flow_snapshots(flows, mode)
@@ -239,29 +239,30 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   end
 
   defp localization_inventory(project_id, :active, :canonical) do
-    {Localization.list_languages(project_id), Localization.list_texts_for_canonical_snapshot(project_id)}
+    {LocalizationReadModel.list_languages(project_id),
+     LocalizationReadModel.list_texts_for_canonical_snapshot(project_id)}
   end
 
   defp localization_inventory(project_id, :active, _mode) do
-    languages = Localization.list_languages(project_id)
+    languages = LocalizationReadModel.list_languages(project_id)
     locale_codes = Enum.map(languages, & &1.locale_code)
 
     texts =
       if locale_codes == [],
         do: [],
-        else: Localization.list_texts_for_export(project_id, locale_codes)
+        else: LocalizationReadModel.list_texts_for_export(project_id, locale_codes)
 
     {languages, texts}
   end
 
   defp localization_inventory(project_id, :backup, _mode) do
-    languages = Localization.list_languages_for_backup(project_id)
+    languages = LocalizationReadModel.list_languages_for_backup(project_id)
     locale_codes = Enum.map(languages, & &1.locale_code)
 
     texts =
       if locale_codes == [],
         do: [],
-        else: Localization.list_texts_for_backup(project_id, locale_codes)
+        else: LocalizationReadModel.list_texts_for_backup(project_id, locale_codes)
 
     {languages, texts}
   end

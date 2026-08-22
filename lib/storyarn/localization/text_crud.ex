@@ -3,19 +3,19 @@ defmodule Storyarn.Localization.TextCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.Persistence.AssetRecord
+  alias Storyarn.Localization.Persistence.BlockRecord
   alias Storyarn.Localization.Persistence.FlowNodeRecord
   alias Storyarn.Localization.Persistence.FlowRecord
+  alias Storyarn.Localization.Persistence.SheetRecord
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Sheet
 
   # =============================================================================
   # Queries
@@ -457,7 +457,7 @@ defmodule Storyarn.Localization.TextCrud do
 
   defp validate_voiceover_asset_type!(asset_id) do
     case Repo.one(
-           from(asset in Asset,
+           from(asset in AssetRecord,
              where:
                asset.id == ^asset_id and
                  is_nil(asset.deleted_at) and
@@ -772,7 +772,7 @@ defmodule Storyarn.Localization.TextCrud do
   defp engine_sheet_source_ids(project_id, opts) do
     if export_option(opts, :include_sheets, true) do
       sheet_query =
-        from(s in Sheet,
+        from(s in SheetRecord,
           where: s.project_id == ^project_id and is_nil(s.deleted_at),
           select: s.id
         )
@@ -785,7 +785,7 @@ defmodule Storyarn.Localization.TextCrud do
       localizable_block_types = SourceContract.localizable_block_types()
 
       block_ids =
-        from(b in Block,
+        from(b in BlockRecord,
           where: b.sheet_id in ^sheet_ids and b.type in ^localizable_block_types,
           select: %{
             id: b.id,
@@ -861,8 +861,8 @@ defmodule Storyarn.Localization.TextCrud do
   defp block_runtime_refs(ids) do
     ids = Enum.uniq(ids)
 
-    from(block in Block,
-      join: sheet in Sheet,
+    from(block in BlockRecord,
+      join: sheet in SheetRecord,
       on: sheet.id == block.sheet_id,
       where: block.id in ^ids,
       select: {block.id, sheet.shortcut, block.variable_name}
@@ -880,7 +880,7 @@ defmodule Storyarn.Localization.TextCrud do
   defp sheet_runtime_refs(ids) do
     ids = Enum.uniq(ids)
 
-    from(sheet in Sheet,
+    from(sheet in SheetRecord,
       where: sheet.id in ^ids,
       select: {sheet.id, sheet.shortcut}
     )

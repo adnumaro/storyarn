@@ -307,6 +307,7 @@ boundaries = %{
     "lib/storyarn_web/private_download/",
     "lib/storyarn_web/private_media.ex",
     "lib/storyarn_web/public_locale.ex",
+    "lib/storyarn_web/public_language_metadata.ex",
     "lib/storyarn_web/public_seo.ex",
     "lib/storyarn_web/public_urls.ex",
     "lib/storyarn_web/telemetry.ex",
@@ -365,12 +366,12 @@ forbidden_dependencies =
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
   # when the current xref graph contains the exact same edge.
-  zero_debt_consumers: [:flows],
+  zero_debt_consumers: [:flows, :localization],
 
-  # Flows is sealed in both directions. Durable coordinator access to its
-  # public facade must use an exact exception; it cannot be accepted by adding
-  # an inbound edge to another consumer's temporary-debt baseline.
-  isolated_contexts: [:flows],
+  # Flows and Localization are sealed in both directions. Durable coordinator
+  # access to their public facades must use an exact exception; it cannot be
+  # accepted by adding an inbound edge to another consumer's debt baseline.
+  isolated_contexts: [:flows, :localization],
 
   # Repo is deliberately shared during ENG-92. Ecto and other external
   # dependencies do not appear as repository paths in the xref JSON graph.
@@ -389,6 +390,7 @@ forbidden_dependencies =
     "lib/storyarn/rate_limiter.ex",
     "lib/storyarn/urls.ex",
     "lib/storyarn/shared/color_utils.ex",
+    "lib/storyarn/shared/encrypted_binary.ex",
     "lib/storyarn/shared/html_sanitizer.ex",
     "lib/storyarn/shared/html_utils.ex",
     "lib/storyarn/shared/map_utils.ex",
@@ -457,10 +459,22 @@ forbidden_dependencies =
       reason: "Flow snapshot materialization applies the Platform-owned storage entitlement"
     },
     %{
+      source: "lib/storyarn/localization/notification_delivery.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Localization requests durable cross-cutting delivery through the public Platform contract"
+    },
+    %{
       source: "lib/storyarn/projects/project.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Projects validates the Platform-owned product metric taxonomy through its public facade"
+    },
+    %{
+      source: "lib/storyarn/projects/localization_settings.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Project-owned localization settings request durable delivery through the public Platform contract"
     },
     %{
       source: "lib/storyarn/platform/product_metrics.ex",
@@ -497,6 +511,12 @@ forbidden_dependencies =
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Workspace project creation presents the Platform-owned product metric taxonomy through its public facade"
+    },
+    %{
+      source: "lib/storyarn/workers/localization_batch_translation_worker.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "The Oban adapter delegates batch translation execution to the public Localization facade"
     },
     %{
       source: "lib/storyarn/urls.ex",

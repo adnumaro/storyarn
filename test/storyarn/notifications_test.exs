@@ -199,6 +199,59 @@ defmodule Storyarn.NotificationsTest do
       refute_receive :notifications_changed
       assert Notifications.list_notifications(teammate_scope) == []
     end
+
+    test "resolves scalar requester and project identities inside the source transaction" do
+      requester = user_fixture()
+      project = project_fixture(requester)
+
+      attrs = %{
+        entity_type: "localization_batch",
+        entity_id: 10,
+        status: "success",
+        dedupe_key: "localization_batch:10:success"
+      }
+
+      assert_raise ArgumentError,
+                   "deliver_async_result_by_ids/3 must be called inside an open transaction",
+                   fn -> Notifications.deliver_async_result_by_ids(requester.id, project.id, attrs) end
+
+      {lock_marker, lock_handler_id} = attach_scalar_lock_probe()
+      on_exit(fn -> :telemetry.detach(lock_handler_id) end)
+
+      assert {:ok, {:ok, {:created, notification}}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_async_result_by_ids(requester.id, project.id, attrs)
+               end)
+
+      assert_receive {^lock_marker, first_lock}
+      assert_receive {^lock_marker, second_lock}
+      assert [first_lock, second_lock] == [:project, :user]
+      assert notification.recipient_id == requester.id
+      assert notification.project_id == project.id
+    end
+
+    test "suppresses missing or unauthorized scalar identities" do
+      owner = user_fixture()
+      outsider = user_fixture()
+      project = project_fixture(owner)
+
+      attrs = %{
+        entity_type: "localization_batch",
+        entity_id: 11,
+        status: "failure",
+        dedupe_key: "localization_batch:11:failure"
+      }
+
+      assert {:ok, {:ok, :suppressed}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_async_result_by_ids(outsider.id, project.id, attrs)
+               end)
+
+      assert {:ok, {:ok, :suppressed}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_async_result_by_ids(nil, project.id, attrs)
+               end)
+    end
   end
 
   describe "deliver_to_project_members/3" do
@@ -282,6 +335,49 @@ defmodule Storyarn.NotificationsTest do
   end
 
   describe "deliver_content_activity/5" do
+    test "accepts scalar actor and project identities for isolated contexts" do
+      actor = user_fixture()
+      recipient = user_fixture()
+      project = project_fixture(actor)
+      membership_fixture(project, recipient)
+      entity_id = System.unique_integer([:positive])
+
+      assert_raise ArgumentError,
+                   "deliver_content_activity_by_ids/5 must be called inside an open transaction",
+                   fn ->
+                     Notifications.deliver_content_activity_by_ids(
+                       actor.id,
+                       project.id,
+                       :created,
+                       "localization_language",
+                       %{id: entity_id, name: "Danish"}
+                     )
+                   end
+
+      {lock_marker, lock_handler_id} = attach_scalar_lock_probe()
+      on_exit(fn -> :telemetry.detach(lock_handler_id) end)
+
+      assert {:ok, {:ok, {:created, [notification]}}} =
+               Repo.transaction(fn ->
+                 Notifications.deliver_content_activity_by_ids(
+                   actor.id,
+                   project.id,
+                   :created,
+                   "localization_language",
+                   %{id: entity_id, name: "Danish"}
+                 )
+               end)
+
+      assert_receive {^lock_marker, first_lock}
+      assert_receive {^lock_marker, second_lock}
+      assert [first_lock, second_lock] == [:project, :user]
+      assert notification.recipient_id == recipient.id
+      assert notification.actor_id == actor.id
+      assert notification.project_id == project.id
+      assert notification.entity_type == "localization_language"
+      assert notification.entity_id == entity_id
+    end
+
     test "requires the source transaction and stores the structural event contract once" do
       actor = user_fixture()
       recipient = user_fixture()
@@ -731,6 +827,37 @@ defmodule Storyarn.NotificationsTest do
         select: count(field(marker, :id))
       )
     )
+  end
+
+  defp attach_scalar_lock_probe do
+    handler_id = "notification-scalar-lock-order-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        &handle_scalar_lock_query/4,
+        {test_pid, marker}
+      )
+
+    {marker, handler_id}
+  end
+
+  defp handle_scalar_lock_query(_event, _measurements, %{query: query}, {pid, marker}) do
+    if self() == pid do
+      cond do
+        String.contains?(query, ~s(FROM "projects")) and String.contains?(query, "FOR SHARE") ->
+          send(pid, {marker, :project})
+
+        String.contains?(query, ~s(FROM "users")) and String.contains?(query, "FOR KEY SHARE") ->
+          send(pid, {marker, :user})
+
+        true ->
+          :ok
+      end
+    end
   end
 
   defp publish_outside_transaction(outcome) do

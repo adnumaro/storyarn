@@ -21,7 +21,7 @@ defmodule Storyarn.Exports.Serializers.UnrealCSV do
   alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
 
   @impl true
   def content_type, do: "text/csv"

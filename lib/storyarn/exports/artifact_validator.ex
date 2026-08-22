@@ -17,11 +17,11 @@ defmodule Storyarn.Exports.ArtifactValidator do
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers, as: SerializerHelpers
   alias Storyarn.Exports.Serializers.Yarn
-  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Projects.FlowCondition
   alias Storyarn.Projects.FlowInstruction
   alias Storyarn.Projects.FlowNodeConnectionRules
   alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
   alias Storyarn.References
   alias Storyarn.Shared.StringUtils
   alias Storyarn.Sheets

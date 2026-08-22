@@ -7,7 +7,6 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Localization
   alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.References
@@ -18,6 +17,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.BlockCrud
+  alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Shortcuts

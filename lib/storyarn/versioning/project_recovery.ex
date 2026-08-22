@@ -12,13 +12,13 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
-  alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.ProjectLanguage
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References

@@ -2,7 +2,6 @@
   "consumer": "sheets",
   "edges": [
     ["lib/storyarn/sheets.ex", "lib/storyarn/accounts/user.ex", "export"],
-    ["lib/storyarn/sheets.ex", "lib/storyarn/localization.ex", "runtime"],
     ["lib/storyarn/sheets.ex", "lib/storyarn/projects.ex", "runtime"],
     ["lib/storyarn/sheets.ex", "lib/storyarn/projects/project.ex", "export"],
     ["lib/storyarn/sheets.ex", "lib/storyarn/references.ex", "runtime"],
@@ -19,7 +18,6 @@
     ],
     ["lib/storyarn/sheets/block.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/assets.ex", "runtime"],
-    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/localization.ex", "runtime"],
     ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/references.ex", "runtime"],
     [
       "lib/storyarn/sheets/block_crud.ex",
@@ -28,7 +26,6 @@
     ],
     ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
-    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/word_count.ex", "runtime"],
     ["lib/storyarn/sheets/block_gallery_image.ex", "lib/storyarn/assets/asset.ex", "runtime"],
     ["lib/storyarn/sheets/formula_resolver.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
     [
@@ -47,7 +44,6 @@
       "lib/storyarn/shared/name_normalizer.ex",
       "runtime"
     ],
-    ["lib/storyarn/sheets/property_inheritance.ex", "lib/storyarn/shared/word_count.ex", "runtime"],
     [
       "lib/storyarn/sheets/reference_tracker.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
@@ -70,7 +66,6 @@
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/assets.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/localization.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/projects/project.ex", "export"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/references.ex", "runtime"],
@@ -86,11 +81,6 @@
     ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
-    [
-      "lib/storyarn/sheets/sheet_stats.ex",
-      "lib/storyarn/localization/localizable_words.ex",
-      "runtime"
-    ],
     ["lib/storyarn/sheets/table_column.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     [
       "lib/storyarn/sheets/table_crud.ex",

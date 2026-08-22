@@ -5,20 +5,20 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.Localization
   alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TreeOperations
-  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Sheets.VariableUsage
+  alias Storyarn.Sheets.WordCount
 
   # =============================================================================
   # Query Operations

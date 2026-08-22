@@ -1,24 +1,9 @@
 {
   "consumer": "web_infrastructure",
   "edges": [
-    [
-      "lib/storyarn_web/components/docs_layout.ex",
-      "lib/storyarn/localization/languages.ex",
-      "runtime"
-    ],
     ["lib/storyarn_web/components/project_layout.ex", "lib/storyarn/projects.ex", "runtime"],
-    [
-      "lib/storyarn_web/components/public_language_switcher.ex",
-      "lib/storyarn/localization/languages.ex",
-      "runtime"
-    ],
     ["lib/storyarn_web/components/sheet_components.ex", "lib/storyarn/assets.ex", "runtime"],
     ["lib/storyarn_web/components/sheet_components.ex", "lib/storyarn/assets/asset.ex", "export"],
-    [
-      "lib/storyarn_web/controllers/llms_controller.ex",
-      "lib/storyarn/localization/languages.ex",
-      "runtime"
-    ],
     ["lib/storyarn_web/endpoint.ex", "lib/storyarn/assets/upload_policy.ex", "compile"],
     ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/accounts/user.ex", "export"],
@@ -29,11 +14,6 @@
     [
       "lib/storyarn_web/helpers/version_history_helpers.ex",
       "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/language_picker_option.ex",
-      "lib/storyarn/localization/languages.ex",
       "runtime"
     ],
     ["lib/storyarn_web/live/hooks/notifications.ex", "lib/storyarn/notifications.ex", "runtime"],
@@ -71,7 +51,6 @@
       "export"
     ],
     ["lib/storyarn_web/private_media.ex", "lib/storyarn/assets/asset.ex", "export"],
-    ["lib/storyarn_web/public_urls.ex", "lib/storyarn/localization/languages.ex", "runtime"],
     ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts.ex", "runtime"],
     ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts/user.ex", "export"],

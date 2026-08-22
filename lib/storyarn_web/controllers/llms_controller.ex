@@ -3,8 +3,8 @@ defmodule StoryarnWeb.LlmsController do
 
   alias Storyarn.Blog
   alias Storyarn.Docs
-  alias Storyarn.Localization.Languages
   alias Storyarn.Publication.Locales, as: PublicLocales
+  alias StoryarnWeb.PublicLanguageMetadata
   alias StoryarnWeb.PublicURLs
 
   @summary "Storyarn is a narrative design platform for video games, branching dialogue, " <>
@@ -124,10 +124,9 @@ defmodule StoryarnWeb.LlmsController do
   end
 
   defp locale_name(locale) do
-    case locale |> PublicLocales.language_tag() |> Languages.get() do
-      %{native: native} -> native
-      nil -> locale |> PublicLocales.language_tag() |> String.upcase()
-    end
+    locale
+    |> PublicLocales.language_tag()
+    |> PublicLanguageMetadata.native_name()
   end
 
   defp link_list(links) do

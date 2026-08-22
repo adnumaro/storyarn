@@ -4,8 +4,7 @@ defmodule Storyarn.Localization.GlossaryCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Projects.Project
-  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
 
@@ -49,12 +48,12 @@ defmodule Storyarn.Localization.GlossaryCrud do
   # Mutations
   # =============================================================================
 
-  def create_entry(%Project{} = project, attrs) do
+  def create_entry(%{id: project_id}, attrs) when is_integer(project_id) and project_id > 0 do
     attrs = MapUtils.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       with {:ok, locked_project} <-
-             ProjectReferenceIntegrity.lock_active_project(project.id, :update),
+             ProjectReferenceIntegrity.lock_active_project(project_id, :update),
            {:ok, entry} <-
              %GlossaryEntry{project_id: locked_project.id}
              |> GlossaryEntry.create_changeset(attrs)

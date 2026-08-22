@@ -2,7 +2,6 @@ defmodule StoryarnWeb.LocalizationExportController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Localization
-  alias Storyarn.Projects
 
   def export(conn, %{
         "workspace_slug" => workspace_slug,
@@ -12,7 +11,7 @@ defmodule StoryarnWeb.LocalizationExportController do
       }) do
     scope = conn.assigns.current_scope
 
-    case Projects.get_project_by_slugs(scope, workspace_slug, project_slug) do
+    case Localization.get_project_by_slugs(scope, workspace_slug, project_slug) do
       {:ok, project, _membership} ->
         opts = [locale_code: locale]
         opts = maybe_add_filter(opts, :status, conn.params["status"])

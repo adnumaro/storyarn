@@ -20,7 +20,7 @@ defmodule Storyarn.Exports.Serializers.Ink do
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Shared.StringUtils
 
   @impl true

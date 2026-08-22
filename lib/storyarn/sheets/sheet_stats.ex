@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.SheetStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.ContentContract
   alias Storyarn.Sheets.HealthChecker
   alias Storyarn.Sheets.HealthSnapshots
   alias Storyarn.Sheets.Persistence.VariableReferenceRecord
@@ -13,6 +13,7 @@ defmodule Storyarn.Sheets.SheetStats do
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Sheets.VariableNamespaceResolver
+  alias Storyarn.Sheets.WordCount
 
   @variable_types ~w(text rich_text number select multi_select boolean date)
 
@@ -88,7 +89,42 @@ defmodule Storyarn.Sheets.SheetStats do
 
   Returns `%{sheet_id => word_count}`.
   """
-  defdelegate sheet_word_counts(project_id), to: LocalizableWords
+  def sheet_word_counts(project_id) do
+    localizable_block_types = ContentContract.localizable_block_types()
+
+    block_counts =
+      from(block in Block,
+        join: sheet in Sheet,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
+            block.type in ^localizable_block_types,
+        select: %{
+          sheet_id: block.sheet_id,
+          type: block.type,
+          is_constant: block.is_constant,
+          variable_name: block.variable_name,
+          deleted_at: block.deleted_at,
+          word_count: block.word_count
+        }
+      )
+      |> Repo.all()
+      |> Enum.filter(&ContentContract.localizable_block?/1)
+      |> Enum.reduce(%{}, fn block, counts ->
+        Map.update(counts, block.sheet_id, block.word_count, &(&1 + block.word_count))
+      end)
+
+    sheet_counts =
+      Sheet
+      |> where([sheet], sheet.project_id == ^project_id and is_nil(sheet.deleted_at))
+      |> select([sheet], {sheet.id, sheet.name})
+      |> Repo.all()
+      |> Map.new(fn {sheet_id, name} -> {sheet_id, WordCount.for_name(name)} end)
+
+    Map.merge(sheet_counts, block_counts, fn _sheet_id, name_words, block_words ->
+      name_words + block_words
+    end)
+  end
 
   @doc """
   Returns a MapSet of block IDs that have at least one variable reference,

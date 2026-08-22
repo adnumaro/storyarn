@@ -10,8 +10,8 @@ defmodule Storyarn.Exports.Validator do
 
   alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Localization
   alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.LocalizationReadModel
   alias Storyarn.References
   alias Storyarn.Sheets
 
@@ -406,7 +406,7 @@ defmodule Storyarn.Exports.Validator do
   defp check_missing_translations(project_id, opts, artifact_flows) do
     languages =
       project_id
-      |> Localization.list_target_locale_codes()
+      |> LocalizationReadModel.list_target_locale_codes()
       |> selected_locales(opts.languages)
 
     if languages == [] do
@@ -426,7 +426,7 @@ defmodule Storyarn.Exports.Validator do
           do: node.id
 
     readiness =
-      Localization.export_readiness_by_locale(project_id, languages, opts, flow_node_ids)
+      LocalizationReadModel.export_readiness_by_locale(project_id, languages, opts, flow_node_ids)
 
     Enum.flat_map(languages, fn locale ->
       counts = Map.get(readiness, locale, %{total: 0, preview_ready: 0, release_ready: 0})

@@ -4,9 +4,9 @@ defmodule Storyarn.Localization.Reports do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.Persistence.SheetRecord
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
 
   @doc """
   Returns progress per language for a project.
@@ -81,7 +81,7 @@ defmodule Storyarn.Localization.Reports do
   def word_counts_by_speaker(project_id, locale_code) do
     Repo.all(
       from(t in LocalizedText,
-        left_join: s in Sheet,
+        left_join: s in SheetRecord,
         on: s.id == t.speaker_sheet_id and is_nil(s.deleted_at),
         where:
           t.project_id == ^project_id and t.locale_code == ^locale_code and

@@ -26,7 +26,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo

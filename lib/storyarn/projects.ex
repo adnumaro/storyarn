@@ -18,12 +18,31 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Invitations
+  alias Storyarn.Projects.LocalizationLanguageCatalog
+  alias Storyarn.Projects.LocalizationReadModel
+  alias Storyarn.Projects.LocalizationSettings
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.ProjectTrash
+
+  @doc false
+  defdelegate ensure_source_language(project), to: LocalizationSettings
+
+  @doc false
+  defdelegate get_source_language(project_id), to: LocalizationReadModel
+
+  @doc false
+  defdelegate change_source_language(actor_scope, project, locale_code, opts),
+    to: LocalizationSettings
+
+  @doc false
+  defdelegate source_language_options(), to: LocalizationLanguageCatalog, as: :options
+
+  @doc false
+  defdelegate source_language_option(code, label), to: LocalizationLanguageCatalog, as: :option
 
   # =============================================================================
   # Type Definitions

@@ -21,6 +21,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Localization
+  alias StoryarnWeb.Helpers.Authorize
 
   @max_import_bytes 5 * 1024 * 1024
 
@@ -37,6 +38,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
       |> assign(:selected_locale, session["selected_locale"])
       |> assign(:has_provider, session["has_provider"] || false)
       |> assign(:can_edit, session["can_edit"] || false)
+      |> assign(:membership, session["membership"])
       |> assign(:filters, session["filters"] || %{})
       |> assign(
         :active_run,
@@ -49,7 +51,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
-        Storyarn.Localization.TranslationRunCrud.topic(session["project_id"])
+        Localization.translation_runs_topic(session["project_id"])
       )
     end
 
@@ -82,15 +84,17 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
   # ── Translate batch ──────────────────────────────────────────────────────
   @impl true
   def handle_event("translate_batch", _params, socket) do
-    if socket.assigns.can_edit do
-      do_translate_batch(socket)
-    else
-      {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
+    case Authorize.authorize(socket, :edit_content) do
+      :ok ->
+        do_translate_batch(socket)
+
+      {:error, :unauthorized} ->
+        {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
     end
   end
 
   def handle_event("cancel_translation_run", %{"id" => run_id}, socket) do
-    with true <- socket.assigns.can_edit,
+    with :ok <- Authorize.authorize(socket, :edit_content),
          {id, ""} <- Integer.parse(to_string(run_id)),
          run when not is_nil(run) <- Localization.get_translation_run(socket.assigns.project_id, id),
          {:ok, cancelled} <- Localization.cancel_translation_run(run) do
@@ -102,7 +106,7 @@ defmodule StoryarnWeb.LocalizationToolbarLive do
 
   def handle_event("import_csv", %{"content" => content}, socket) when is_binary(content) do
     cond do
-      not socket.assigns.can_edit ->
+      Authorize.authorize(socket, :edit_content) != :ok ->
         {:reply, %{ok: false, error: "unauthorized"}, socket}
 
       byte_size(content) > @max_import_bytes ->

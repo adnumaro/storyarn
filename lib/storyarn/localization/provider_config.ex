@@ -17,7 +17,7 @@ defmodule Storyarn.Localization.ProviderConfig do
 
   import Ecto.Changeset
 
-  alias Storyarn.Projects.Project
+  alias Storyarn.Localization.Persistence.ProjectRecord
 
   @default_api_endpoint "https://api-free.deepl.com"
   @supported_api_endpoints [@default_api_endpoint, "https://api.deepl.com"]
@@ -26,7 +26,7 @@ defmodule Storyarn.Localization.ProviderConfig do
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: ProjectRecord.t() | Ecto.Association.NotLoaded.t() | nil,
           provider: String.t(),
           api_key_encrypted: binary() | nil,
           api_endpoint: String.t() | nil,
@@ -45,7 +45,7 @@ defmodule Storyarn.Localization.ProviderConfig do
     field :is_active, :boolean, default: true
     field :deepl_glossary_ids, :map, default: %{}
 
-    belongs_to :project, Project
+    belongs_to :project, ProjectRecord
 
     timestamps(type: :utc_datetime)
   end

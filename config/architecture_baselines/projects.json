@@ -4,7 +4,6 @@
     ["lib/storyarn/assets.ex", "lib/storyarn/accounts/user.ex", "export"],
     ["lib/storyarn/assets.ex", "lib/storyarn/analytics.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/assets.ex", "lib/storyarn/localization/localized_text.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
@@ -25,23 +24,7 @@
       "lib/storyarn/workers/delete_storage_objects_worker.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/exports/artifact_validator.ex",
-      "lib/storyarn/localization/runtime_key.ex",
-      "runtime"
-    ],
     ["lib/storyarn/exports/artifact_validator.ex", "lib/storyarn/sheets.ex", "runtime"],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/localization.ex", "runtime"],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/localization/glossary_entry.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     [
@@ -63,77 +46,6 @@
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets/sheet_avatar.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets/table_column.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets/table_row.ex", "runtime"],
-    [
-      "lib/storyarn/exports/localization_catalog.ex",
-      "lib/storyarn/localization/export_policy.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/localization_catalog.ex",
-      "lib/storyarn/localization/locale_code.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/localization_catalog.ex",
-      "lib/storyarn/localization/runtime_key.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/localization_catalog.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/articy_xml.ex",
-      "lib/storyarn/localization/runtime_key.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/articy_xml.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/godot_dialogic.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/helpers.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/ink.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/unity_json.ex",
-      "lib/storyarn/localization/export_policy.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/unreal_csv.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/yarn.ex",
-      "lib/storyarn/localization/export_policy.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/yarn.ex",
-      "lib/storyarn/localization/locale_code.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/serializers/yarn.ex",
-      "lib/storyarn/localization/runtime_key.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/exports/validator.ex", "lib/storyarn/localization.ex", "runtime"],
     ["lib/storyarn/exports/validator.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/imports.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn/imports.ex", "lib/storyarn/workers/import_project_worker.ex", "runtime"],
@@ -142,14 +54,6 @@
     ["lib/storyarn/imports/execution.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn/imports/expiration.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/imports/materializer.ex", "lib/storyarn/localization.ex", "runtime"],
-    ["lib/storyarn/imports/materializer.ex", "lib/storyarn/localization/locale_code.ex", "runtime"],
-    ["lib/storyarn/imports/materializer.ex", "lib/storyarn/localization/runtime_key.ex", "runtime"],
-    [
-      "lib/storyarn/imports/materializer.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/scenes/route_points.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/sheets.ex", "runtime"],
@@ -177,42 +81,12 @@
     ["lib/storyarn/imports/project_import_attempt.ex", "lib/storyarn/accounts/user.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/accounts/scope.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/billing.ex", "runtime"],
-    [
-      "lib/storyarn/imports/replacement.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/replacement.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/imports/resume.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn/imports/resume.ex", "lib/storyarn/notifications.ex", "runtime"],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/localization/glossary_entry.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
     ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     [
       "lib/storyarn/project_templates/audit.ex",
@@ -461,32 +335,6 @@
     ["lib/storyarn/shortcuts.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     ["lib/storyarn/shortcuts.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/versioning.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/versioning/builders/flow_builder.ex", "lib/storyarn/localization.ex", "runtime"],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/localization/html_handler.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/localization/locale_code.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/localization/localizable_words.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/localization/runtime_key.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
     ["lib/storyarn/versioning/builders/flow_builder.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/versioning/builders/flow_builder.ex", "lib/storyarn/sheets.ex", "runtime"],
     [
@@ -498,16 +346,6 @@
     [
       "lib/storyarn/versioning/builders/flow_builder.ex",
       "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/project_snapshot_builder.ex",
-      "lib/storyarn/localization.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/project_snapshot_builder.ex",
-      "lib/storyarn/localization/source_contract.ex",
       "runtime"
     ],
     [
@@ -559,21 +397,6 @@
     [
       "lib/storyarn/versioning/builders/scene_builder.ex",
       "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/localization.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/localization/localizable_words.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/localization/text_crud.ex",
       "runtime"
     ],
     [
@@ -631,26 +454,6 @@
     ],
     [
       "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/localization/locale_code.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
       "lib/storyarn/sheets/sheet.ex",
       "runtime"
     ],
@@ -667,26 +470,6 @@
     ],
     ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/accounts/user.ex", "runtime"],
     ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/billing.ex", "runtime"],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/localization/glossary_entry.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
     ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     [
       "lib/storyarn/versioning/project_recovery.ex",
@@ -839,21 +622,6 @@
     ],
     [
       "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/localization/glossary_entry.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/localization/project_language.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
       "lib/storyarn/scenes.ex",
       "runtime"
     ],
@@ -947,11 +715,6 @@
       "lib/storyarn/workers/restore_project_snapshot_worker.ex",
       "compile"
     ],
-    [
-      "lib/storyarn/versioning/referenced_tombstones.ex",
-      "lib/storyarn/localization/localized_text.ex",
-      "runtime"
-    ],
     ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     [
       "lib/storyarn/versioning/referenced_tombstones.ex",
@@ -965,21 +728,6 @@
     ],
     ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
-    [
-      "lib/storyarn/versioning/sheet_localization_snapshot_validator.ex",
-      "lib/storyarn/localization/html_handler.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/sheet_localization_snapshot_validator.ex",
-      "lib/storyarn/localization/locale_code.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/sheet_localization_snapshot_validator.ex",
-      "lib/storyarn/localization/source_contract.ex",
-      "runtime"
-    ],
     [
       "lib/storyarn/versioning/snapshot_archive_smoke.ex",
       "lib/storyarn/assets/storage/r2.ex",
@@ -1069,11 +817,6 @@
     ],
     [
       "lib/storyarn_web/live/project_live/components/settings_components.ex",
-      "lib/storyarn/localization.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/project_live/components/settings_components.ex",
       "lib/storyarn/shared/validations.ex",
       "runtime"
     ],
@@ -1085,11 +828,6 @@
     ],
     ["lib/storyarn_web/live/project_live/show.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/project_live/show.ex", "lib/storyarn/sheets.ex", "runtime"],
-    [
-      "lib/storyarn_web/live/project_settings_live/general.ex",
-      "lib/storyarn/localization.ex",
-      "runtime"
-    ],
     ["lib/storyarn_web/live/project_settings_live/trash.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/project_settings_live/trash.ex", "lib/storyarn/sheets.ex", "runtime"],
     [

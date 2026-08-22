@@ -17,6 +17,7 @@ defmodule Storyarn.Workspaces do
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Workspaces.Invitations
   alias Storyarn.Workspaces.Memberships
+  alias Storyarn.Workspaces.SourceLocaleCatalog
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceCrud
   alias Storyarn.Workspaces.WorkspaceInvitation
@@ -43,6 +44,10 @@ defmodule Storyarn.Workspaces do
           | :use_ai
           | :run_bulk_ai
           | :view
+
+  @doc "Returns the source locales supported by workspace defaults."
+  @spec source_locale_options() :: [%{code: String.t(), name: String.t()}]
+  defdelegate source_locale_options(), to: SourceLocaleCatalog, as: :all
 
   # =============================================================================
   # Workspace CRUD

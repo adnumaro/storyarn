@@ -30,6 +30,7 @@ defmodule Storyarn.Projects.Persistence.LocalizedTextRecord do
     field :lock_version, :integer, default: 1
     field :archived_at, :utc_datetime
     field :archive_reason, :string
+    field :localization_key, :string, virtual: true
 
     timestamps(type: :utc_datetime)
   end

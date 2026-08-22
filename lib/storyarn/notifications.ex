@@ -104,6 +104,26 @@ defmodule Storyarn.Notifications do
   end
 
   @doc """
+  Inserts an asynchronous outcome using scalar identities.
+
+  Product contexts can keep their own Project and User read models while
+  Platform resolves the canonical notification recipients. Parent rows are
+  locked in the same Project -> User order used by existing async producers.
+  """
+  @spec deliver_async_result_by_ids(integer() | nil, integer(), map()) ::
+          {:ok, delivery_outcome()} | {:error, Changeset.t()}
+  def deliver_async_result_by_ids(requested_by_id, project_id, attrs) when is_map(attrs) do
+    ensure_inside_transaction!("deliver_async_result_by_ids/3")
+
+    with %Project{} = project <- lock_async_project(project_id),
+         %User{} = requester <- lock_async_requester(requested_by_id) do
+      deliver_async_result(Scope.for_user(requester), project, attrs)
+    else
+      _missing_parent -> {:ok, :suppressed}
+    end
+  end
+
+  @doc """
   Inserts a notification for every other member with effective project access.
 
   Direct project members and users inheriting access from the workspace are
@@ -193,6 +213,31 @@ defmodule Storyarn.Notifications do
 
       {:error, _reason} ->
         {:error, :not_found}
+    end
+  end
+
+  @doc """
+  Inserts structural content activity using scalar actor and project identities.
+
+  This is the boundary-safe contract for product contexts that own local read
+  models instead of importing Accounts or Projects schemas.
+  """
+  @spec deliver_content_activity_by_ids(
+          integer(),
+          integer(),
+          content_action(),
+          String.t(),
+          %{required(:id) => integer(), required(:name) => String.t()}
+        ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
+  def deliver_content_activity_by_ids(actor_id, project_id, action, entity_type, entity)
+      when is_integer(actor_id) and is_integer(project_id) do
+    ensure_inside_transaction!("deliver_content_activity_by_ids/5")
+
+    with %Project{} = project <- lock_async_project(project_id),
+         %User{} = actor <- lock_async_requester(actor_id) do
+      deliver_content_activity(Scope.for_user(actor), project, action, entity_type, entity)
+    else
+      _missing_parent -> {:error, :not_found}
     end
   end
 
@@ -362,6 +407,18 @@ defmodule Storyarn.Notifications do
       {:error, changeset} -> {:error, changeset}
     end
   end
+
+  defp lock_async_project(project_id) when is_integer(project_id) and project_id > 0 do
+    Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR SHARE"))
+  end
+
+  defp lock_async_project(_project_id), do: nil
+
+  defp lock_async_requester(user_id) when is_integer(user_id) and user_id > 0 do
+    Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE"))
+  end
+
+  defp lock_async_requester(_user_id), do: nil
 
   defp insert_for_effective_members(actor, project, attrs) do
     with {:ok, validated} <- validate_fanout_attrs(actor, project, attrs) do

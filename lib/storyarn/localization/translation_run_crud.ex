@@ -4,15 +4,14 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   import Ecto.Query, warn: false
 
   alias Ecto.Multi
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
+  alias Storyarn.Localization.NotificationDelivery
+  alias Storyarn.Localization.Persistence.ProjectRecord
+  alias Storyarn.Localization.Persistence.UserRecord
   alias Storyarn.Localization.TextCrud
+  alias Storyarn.Localization.TranslationJobQueue
   alias Storyarn.Localization.TranslationRun
-  alias Storyarn.Notifications
-  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workers.LocalizationBatchTranslationWorker
 
   @active_statuses ~w(queued running)
 
@@ -35,8 +34,8 @@ defmodule Storyarn.Localization.TranslationRunCrud do
     Multi.new()
     |> Multi.insert(:run, TranslationRun.create_changeset(%TranslationRun{project_id: project_id}, attrs))
     |> Multi.run(:job, fn _repo, %{run: run} ->
-      %{run_id: run.id}
-      |> LocalizationBatchTranslationWorker.new()
+      run.id
+      |> TranslationJobQueue.new()
       |> Oban.insert()
     end)
     |> Multi.run(:run_with_job, fn _repo, %{run: run, job: job} ->
@@ -158,7 +157,7 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   end
 
   defp lock_terminal_notification_parents(%{project_id: project_id, requested_by_id: requested_by_id}) do
-    with %Project{} = project <- lock_notification_project(project_id),
+    with %ProjectRecord{} = project <- lock_notification_project(project_id),
          {:ok, requester} <- lock_notification_user(requested_by_id) do
       {:ok, {project, requester}}
     else
@@ -168,14 +167,14 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   end
 
   defp lock_notification_project(project_id) do
-    Repo.one(from(project in Project, where: project.id == ^project_id, lock: "FOR SHARE"))
+    Repo.one(from(project in ProjectRecord, where: project.id == ^project_id, lock: "FOR SHARE"))
   end
 
   defp lock_notification_user(nil), do: {:ok, nil}
 
   defp lock_notification_user(user_id) when is_integer(user_id) do
-    case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
-      %User{} = user -> {:ok, user}
+    case Repo.one(from(user in UserRecord, where: user.id == ^user_id, lock: "FOR KEY SHARE")) do
+      %UserRecord{} = user -> {:ok, user}
       nil -> {:ok, nil}
     end
   end
@@ -201,7 +200,7 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   defp validate_terminal_run_identity(
          %TranslationRun{id: run_id, project_id: project_id, requested_by_id: requested_by_id},
          %{run_id: run_id, project_id: project_id, requested_by_id: requested_by_id},
-         %User{id: requested_by_id}
+         %UserRecord{id: requested_by_id}
        ), do: :ok
 
   defp validate_terminal_run_identity(
@@ -224,9 +223,9 @@ defmodule Storyarn.Localization.TranslationRunCrud do
        when status in ["completed", "failed"] do
     notification_status = notification_status(run)
 
-    Notifications.deliver_async_result(
-      Scope.for_user(requester),
-      project,
+    NotificationDelivery.deliver_async_result(
+      requester_id(requester),
+      project.id,
       %{
         entity_type: "localization_batch",
         entity_id: run.id,
@@ -239,6 +238,9 @@ defmodule Storyarn.Localization.TranslationRunCrud do
 
   defp notification_status(%TranslationRun{status: "completed"}), do: "success"
   defp notification_status(%TranslationRun{status: "failed"}), do: "failure"
+
+  defp requester_id(%UserRecord{id: id}), do: id
+  defp requester_id(nil), do: nil
 
   defp maybe_add(opts, _key, nil), do: opts
   defp maybe_add(opts, key, value), do: Keyword.put(opts, key, value)

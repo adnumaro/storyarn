@@ -5,7 +5,7 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   Provides variable collection from sheets, HTML stripping, speaker lookup,
   identifier sanitization, CSV escaping, and flow graph indexing.
   """
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
 
   # ---------------------------------------------------------------------------
   # Variable collection from sheets

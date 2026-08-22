@@ -60,7 +60,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         workspace-description={@workspace.description || ""}
         workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
-        language-options={LanguagePickerOption.all()}
+        language-options={source_locale_options()}
         is-owner={@membership.role == "owner"}
         can-edit-workspace={Workspaces.can?(@membership.role, :manage_workspace)}
         ai={serialize_ai_settings(assigns)}
@@ -199,6 +199,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   defp split_banner_data(data) when is_binary(data), do: String.split(data, ",", parts: 2)
   defp split_banner_data(_data), do: []
+
+  defp source_locale_options do
+    Enum.map(Workspaces.source_locale_options(), fn locale ->
+      LanguagePickerOption.from_code(locale.code, label: locale.name)
+    end)
+  end
 
   defp validate_banner_metadata(profile, filename, content_type, header)
        when is_binary(filename) and is_binary(content_type) and is_binary(header) do

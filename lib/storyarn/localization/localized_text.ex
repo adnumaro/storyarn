@@ -20,13 +20,13 @@ defmodule Storyarn.Localization.LocalizedText do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Accounts.User
-  alias Storyarn.Assets.Asset
   alias Storyarn.Localization.HtmlHandler
   alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.Persistence.AssetRecord
+  alias Storyarn.Localization.Persistence.ProjectRecord
+  alias Storyarn.Localization.Persistence.SheetRecord
+  alias Storyarn.Localization.Persistence.UserRecord
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Projects.Project
-  alias Storyarn.Sheets.Sheet
 
   @valid_statuses ~w(pending draft in_progress review final)
   @valid_vo_statuses ~w(none needed recorded approved)
@@ -37,7 +37,7 @@ defmodule Storyarn.Localization.LocalizedText do
   @type t :: %__MODULE__{
           id: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | NotLoaded.t() | nil,
+          project: ProjectRecord.t() | NotLoaded.t() | nil,
           source_type: String.t() | nil,
           source_id: integer() | nil,
           source_field: String.t() | nil,
@@ -49,11 +49,11 @@ defmodule Storyarn.Localization.LocalizedText do
           status: String.t(),
           vo_status: String.t(),
           vo_asset_id: integer() | nil,
-          vo_asset: Asset.t() | NotLoaded.t() | nil,
+          vo_asset: AssetRecord.t() | NotLoaded.t() | nil,
           translator_notes: String.t() | nil,
           reviewer_notes: String.t() | nil,
           speaker_sheet_id: integer() | nil,
-          speaker_sheet: Sheet.t() | NotLoaded.t() | nil,
+          speaker_sheet: SheetRecord.t() | NotLoaded.t() | nil,
           word_count: integer() | nil,
           content_role: String.t(),
           vo_eligible: boolean(),
@@ -61,9 +61,9 @@ defmodule Storyarn.Localization.LocalizedText do
           last_translated_at: DateTime.t() | nil,
           last_reviewed_at: DateTime.t() | nil,
           translated_by_id: integer() | nil,
-          translated_by: User.t() | NotLoaded.t() | nil,
+          translated_by: UserRecord.t() | NotLoaded.t() | nil,
           reviewed_by_id: integer() | nil,
-          reviewed_by: User.t() | NotLoaded.t() | nil,
+          reviewed_by: UserRecord.t() | NotLoaded.t() | nil,
           lock_version: integer(),
           archived_at: DateTime.t() | nil,
           archive_reason: String.t() | nil,
@@ -96,11 +96,11 @@ defmodule Storyarn.Localization.LocalizedText do
     field :archive_reason, :string
     field :localization_key, :string, virtual: true
 
-    belongs_to :project, Project
-    belongs_to :vo_asset, Asset, where: [deleted_at: nil]
-    belongs_to :speaker_sheet, Sheet
-    belongs_to :translated_by, User
-    belongs_to :reviewed_by, User
+    belongs_to :project, ProjectRecord
+    belongs_to :vo_asset, AssetRecord, where: [deleted_at: nil]
+    belongs_to :speaker_sheet, SheetRecord
+    belongs_to :translated_by, UserRecord
+    belongs_to :reviewed_by, UserRecord
 
     timestamps(type: :utc_datetime)
   end

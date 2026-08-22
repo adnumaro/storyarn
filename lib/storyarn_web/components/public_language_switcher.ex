@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Components.PublicLanguageSwitcher do
   use StoryarnWeb, :html
 
   alias Phoenix.LiveView.JS
-  alias Storyarn.Localization.Languages
+  alias StoryarnWeb.PublicLanguageMetadata
 
   attr :id, :string, required: true
   attr :current_locale, :string, required: true
@@ -141,7 +141,7 @@ defmodule StoryarnWeb.Components.PublicLanguageSwitcher do
     locale = link.language_tag || link.locale
 
     link
-    |> Map.put(:flag_code, Languages.flag_code(locale))
-    |> Map.put(:short_label, Languages.short_label(locale))
+    |> Map.put(:flag_code, PublicLanguageMetadata.flag_code(locale))
+    |> Map.put(:short_label, PublicLanguageMetadata.short_label(locale))
   end
 end

@@ -49,14 +49,20 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
     assert run.oban_job_id
     assert_enqueued(worker: LocalizationBatchTranslationWorker, args: %{run_id: run.id})
 
+    queued_job = Storyarn.Repo.get!(Oban.Job, run.oban_job_id)
+    assert queued_job.worker == inspect(LocalizationBatchTranslationWorker)
+    assert queued_job.queue == "localization"
+    assert queued_job.max_attempts == 3
+
     {lock_marker, lock_handler_id} = attach_terminal_lock_probe("localization_translation_runs")
     on_exit(fn -> :telemetry.detach(lock_handler_id) end)
 
     assert :ok = perform_job(LocalizationBatchTranslationWorker, %{run_id: run.id})
 
-    assert_receive {^lock_marker, :project}
-    assert_receive {^lock_marker, :requester}
-    assert_receive {^lock_marker, :run}
+    assert_receive {^lock_marker, first_lock}
+    assert_receive {^lock_marker, second_lock}
+    assert_receive {^lock_marker, third_lock}
+    assert [first_lock, second_lock, third_lock] == [:project, :requester, :run]
 
     completed = Localization.get_translation_run(project.id, run.id)
     assert completed.status == "completed"

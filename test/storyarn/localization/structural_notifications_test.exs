@@ -272,6 +272,34 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
     assert Notifications.list_notifications(outsider_scope) == []
   end
 
+  test "scoped writers reject a missing actor without raising", %{project: project} do
+    _source = source_language_fixture(project, %{locale_code: "en", name: "English"})
+    target = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    missing_actor_scope = %{user: nil}
+
+    assert {:error, :not_found} =
+             Localization.add_language(missing_actor_scope, project, %{
+               locale_code: "fr",
+               name: "French"
+             })
+
+    assert {:error, :not_found} =
+             Localization.add_language_with_count(missing_actor_scope, project, %{
+               locale_code: "de",
+               name: "German"
+             })
+
+    assert {:error, :not_found} = Localization.remove_language(missing_actor_scope, target)
+    assert {:error, :not_found} = Localization.change_source_language(missing_actor_scope, project, "fr")
+
+    assert {:error, :not_found} =
+             Localization.change_source_language(missing_actor_scope, project, "fr", reset_translations: true)
+
+    assert Localization.get_language(project.id, target.id).archived_at == nil
+    assert Localization.get_language_by_locale(project.id, "fr") == nil
+    assert Localization.get_language_by_locale(project.id, "de") == nil
+  end
+
   defp content_activity_marker_count(project) do
     Repo.one(
       from(marker in "notification_content_activity_markers",

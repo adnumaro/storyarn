@@ -20,9 +20,9 @@ defmodule Storyarn.Exports.Serializers.Yarn do
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Localization.ExportPolicy
-  alias Storyarn.Localization.LocaleCode
-  alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Projects.LocalizationExportPolicy, as: ExportPolicy
+  alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
+  alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
   alias Storyarn.Shared.StringUtils
 
   @impl true

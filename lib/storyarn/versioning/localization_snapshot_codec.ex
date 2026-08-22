@@ -5,10 +5,10 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
-  alias Storyarn.Localization.LocaleCode
-  alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.ProjectLanguage
-  alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
+  alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.TimeHelpers

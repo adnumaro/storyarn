@@ -24,11 +24,11 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
-  alias Storyarn.Localization
-  alias Storyarn.Localization.LocaleCode
-  alias Storyarn.Localization.RuntimeKey
-  alias Storyarn.Localization.SourceContract
   alias Storyarn.Projects.FlowImportPersistence
+  alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
+  alias Storyarn.Projects.LocalizationReconstitution
+  alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
+  alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
@@ -1623,7 +1623,7 @@ defmodule Storyarn.Imports.Materializer do
 
       lang =
         facade_insert_or_rollback!(
-          Localization.import_language(project_id, attrs),
+          LocalizationReconstitution.import_language(project_id, attrs),
           {:language, lang_data["locale_code"]}
         )
 
@@ -1654,7 +1654,7 @@ defmodule Storyarn.Imports.Materializer do
         end
       end)
 
-    Localization.bulk_import_texts(Enum.reverse(valid_attrs))
+    LocalizationReconstitution.bulk_import_texts(Enum.reverse(valid_attrs))
   end
 
   defp build_translation_attrs(acc, entry, translations, project_id, source_id, id_map, now, source_runtime?) do
@@ -1803,7 +1803,7 @@ defmodule Storyarn.Imports.Materializer do
         end)
       end)
 
-    Localization.bulk_import_glossary_entries(Enum.reverse(valid_attrs))
+    LocalizationReconstitution.bulk_import_glossary_entries(Enum.reverse(valid_attrs))
   end
 
   # =============================================================================

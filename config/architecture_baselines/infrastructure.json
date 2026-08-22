@@ -185,31 +185,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/workers/localization_batch_translation_worker.ex",
-      "lib/storyarn/localization/batch_translator.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/localization_batch_translation_worker.ex",
-      "lib/storyarn/localization/language_crud.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/localization_batch_translation_worker.ex",
-      "lib/storyarn/localization/providers/deepl.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/localization_batch_translation_worker.ex",
-      "lib/storyarn/localization/translation_run_crud.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/localization_batch_translation_worker.ex",
-      "lib/storyarn/notifications.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/workers/project_snapshot_retention_worker.ex",
       "lib/storyarn/versioning.ex",
       "runtime"

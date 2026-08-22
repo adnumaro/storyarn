@@ -67,7 +67,7 @@ defmodule Storyarn.Assets.ActiveAssetAssociationsTest do
     assert %Asset{id: ^image_id} = Repo.preload(scene, :background_asset).background_asset
     assert %Asset{id: ^image_id} = Repo.preload(pin, :icon_asset).icon_asset
     assert %Asset{id: ^image_id} = Repo.preload(zone, :label_icon_asset).label_icon_asset
-    assert %Asset{id: ^audio_id} = Repo.preload(voiced_text, :vo_asset).vo_asset
+    assert %{id: ^audio_id} = Repo.preload(voiced_text, :vo_asset).vo_asset
 
     trash_asset_rows!([image.id, audio.id], user.id)
 

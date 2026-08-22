@@ -17,7 +17,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
   import Ecto.Changeset
 
   alias Storyarn.Localization.LocaleCode
-  alias Storyarn.Projects.Project
+  alias Storyarn.Localization.Persistence.ProjectRecord
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -27,7 +27,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
           position: integer(),
           archived_at: DateTime.t() | nil,
           project_id: integer() | nil,
-          project: Project.t() | Ecto.Association.NotLoaded.t() | nil,
+          project: ProjectRecord.t() | Ecto.Association.NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -39,7 +39,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
     field :position, :integer, default: 0
     field :archived_at, :utc_datetime
 
-    belongs_to :project, Project
+    belongs_to :project, ProjectRecord
 
     timestamps(type: :utc_datetime)
   end
