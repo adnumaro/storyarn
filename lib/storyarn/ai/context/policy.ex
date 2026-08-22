@@ -6,8 +6,8 @@ defmodule Storyarn.AI.Context.Policy do
   context scope declared by the registered task.
   """
 
-  @scopes [:none, :dialogue, :flow_neighborhood, :sheet]
-  @field_groups [:dialogue, :speaker_blocks, :sheet_blocks]
+  alias Storyarn.AI.Context.Contract
+
   @hard_limits %{
     max_depth: 12,
     max_fan_out: 50,
@@ -18,6 +18,7 @@ defmodule Storyarn.AI.Context.Policy do
   @enforce_keys [:scope]
   defstruct [
     :scope,
+    :contract,
     :max_depth,
     :max_fan_out,
     :max_entities,
@@ -26,15 +27,22 @@ defmodule Storyarn.AI.Context.Policy do
     fields: %{}
   ]
 
-  @type scope :: :none | :dialogue | :flow_neighborhood | :sheet
+  @type scope :: atom()
   @type t :: %__MODULE__{}
 
-  @spec new(map() | t()) :: {:ok, t()} | {:error, :invalid_context_policy}
-  def new(%__MODULE__{} = policy), do: validate(policy)
+  @spec new(map() | t(), module() | nil) :: {:ok, t()} | {:error, :invalid_context_policy}
+  def new(attrs, contract \\ nil)
 
-  def new(%{} = attrs) do
+  def new(%__MODULE__{} = policy, contract) do
+    policy
+    |> Map.put(:contract, contract || policy.contract)
+    |> validate()
+  end
+
+  def new(%{} = attrs, contract) do
     policy = %__MODULE__{
       scope: value(attrs, :scope),
+      contract: contract,
       max_depth: value(attrs, :max_depth),
       max_fan_out: value(attrs, :max_fan_out),
       max_entities: value(attrs, :max_entities),
@@ -46,18 +54,18 @@ defmodule Storyarn.AI.Context.Policy do
     validate(policy)
   end
 
-  def new(_attrs), do: {:error, :invalid_context_policy}
+  def new(_attrs, _contract), do: {:error, :invalid_context_policy}
 
-  @spec valid?(map() | t()) :: boolean()
-  def valid?(value), do: match?({:ok, %__MODULE__{}}, new(value))
+  @spec valid?(map() | t(), module() | nil) :: boolean()
+  def valid?(value, contract \\ nil), do: match?({:ok, %__MODULE__{}}, new(value, contract))
 
   @spec none() :: t()
-  def none, do: %__MODULE__{scope: :none}
+  def none, do: %__MODULE__{scope: :none, contract: nil}
 
   defp validate(%__MODULE__{scope: :none} = policy) do
     if is_nil(policy.max_depth) and is_nil(policy.max_fan_out) and
          is_nil(policy.max_entities) and is_nil(policy.max_bytes) and
-         is_nil(policy.tokenizer) and policy.fields == %{} do
+         is_nil(policy.tokenizer) and policy.fields == %{} and is_nil(policy.contract) do
       {:ok, policy}
     else
       {:error, :invalid_context_policy}
@@ -65,22 +73,30 @@ defmodule Storyarn.AI.Context.Policy do
   end
 
   defp validate(%__MODULE__{} = policy) do
-    if policy.scope in (@scopes -- [:none]) and
-         bounded_nonnegative_integer?(policy.max_depth, @hard_limits.max_depth) and
-         bounded_positive_integer?(policy.max_fan_out, @hard_limits.max_fan_out) and
-         bounded_positive_integer?(policy.max_entities, @hard_limits.max_entities) and
-         bounded_positive_integer?(policy.max_bytes, @hard_limits.max_bytes) and
-         valid_tokenizer?(policy.tokenizer) and
-         valid_fields?(policy.fields) do
+    with true <- valid_contextual_policy_shape?(policy),
+         :ok <- policy.contract.validate_policy(policy) do
       {:ok, policy}
     else
-      {:error, :invalid_context_policy}
+      _invalid -> {:error, :invalid_context_policy}
     end
+  end
+
+  defp valid_contextual_policy_shape?(policy) do
+    Enum.all?([
+      contextual_scope?(policy.scope),
+      Contract.valid?(policy.contract),
+      bounded_nonnegative_integer?(policy.max_depth, @hard_limits.max_depth),
+      bounded_positive_integer?(policy.max_fan_out, @hard_limits.max_fan_out),
+      bounded_positive_integer?(policy.max_entities, @hard_limits.max_entities),
+      bounded_positive_integer?(policy.max_bytes, @hard_limits.max_bytes),
+      valid_tokenizer?(policy.tokenizer),
+      valid_fields?(policy.fields)
+    ])
   end
 
   defp valid_fields?(fields) when is_map(fields) do
     Enum.all?(fields, fn
-      {group, values} when group in @field_groups and is_list(values) ->
+      {group, values} when is_atom(group) and is_list(values) ->
         values != [] and Enum.uniq(values) == values and Enum.all?(values, &bounded_string?/1)
 
       _other ->
@@ -97,6 +113,8 @@ defmodule Storyarn.AI.Context.Policy do
   end
 
   defp valid_tokenizer?(_module), do: false
+
+  defp contextual_scope?(scope), do: is_atom(scope) and scope != :none
 
   defp value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
   defp bounded_positive_integer?(value, maximum), do: is_integer(value) and value > 0 and value <= maximum

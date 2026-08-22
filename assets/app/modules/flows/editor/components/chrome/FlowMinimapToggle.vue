@@ -3,13 +3,27 @@ import { LayoutGrid, Maximize2, Minus, Plus } from "@lucide/vue";
 import type { NodeEditor } from "rete";
 import type { AreaPlugin } from "rete-area-plugin";
 import { AreaExtensions } from "rete-area-plugin";
-import { onUnmounted, ref } from "vue";
-import { registerPaletteCommands } from "@shared/command-palette/registry";
+import { onUnmounted, ref, type Component } from "vue";
 import type { FlowSchemes, FlowAreaExtra } from "../../lib/rete-schemes";
 
-const { area = null, editor = null } = defineProps<{
+interface FlowPaletteCommand {
+  id: string;
+  labelKey: string;
+  groupKey: string;
+  icon?: Component;
+  run: () => void;
+}
+
+type RegisterPaletteCommands = (surface: string, commands: FlowPaletteCommand[]) => () => void;
+
+const {
+  area = null,
+  editor = null,
+  registerCommands = null,
+} = defineProps<{
   area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null;
   editor: NodeEditor<FlowSchemes> | null;
+  registerCommands?: RegisterPaletteCommands | null;
 }>();
 
 const minimapVisible = ref(true);
@@ -33,22 +47,23 @@ function fitToView() {
   }
 }
 
-const unregisterPaletteCommands = registerPaletteCommands("flows", [
-  {
-    id: "flows.toggle-minimap",
-    labelKey: "flows.minimap.toggle",
-    groupKey: "palette.groups.view",
-    icon: LayoutGrid,
-    run: toggleMinimap,
-  },
-  {
-    id: "flows.fit-to-view",
-    labelKey: "flows.minimap.fit_view",
-    groupKey: "palette.groups.view",
-    icon: Maximize2,
-    run: fitToView,
-  },
-]);
+const unregisterPaletteCommands =
+  registerCommands?.("flows", [
+    {
+      id: "flows.toggle-minimap",
+      labelKey: "flows.minimap.toggle",
+      groupKey: "palette.groups.view",
+      icon: LayoutGrid,
+      run: toggleMinimap,
+    },
+    {
+      id: "flows.fit-to-view",
+      labelKey: "flows.minimap.fit_view",
+      groupKey: "palette.groups.view",
+      icon: Maximize2,
+      run: fitToView,
+    },
+  ]) ?? (() => {});
 
 onUnmounted(unregisterPaletteCommands);
 

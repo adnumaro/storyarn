@@ -51,6 +51,64 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlersTest do
       assert state.currentNode.speaker == nil
       assert state.currentNode.speakerInitials == "?"
     end
+
+    test "fails closed when the requested node does not exist" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      socket = build_socket(flow, project)
+
+      assert {:noreply, result} =
+               PreviewHandlers.handle_start_preview(%{"id" => -1}, socket)
+
+      assert result.assigns == socket.assigns
+    end
+
+    test "renders Flow-owned namespaced reference tokens after sanitization" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<script>unsafe()</script><p>{hero.health}</p>",
+            "speaker_sheet_id" => nil,
+            "responses" => []
+          }
+        })
+
+      assert {:noreply, result} =
+               PreviewHandlers.handle_start_preview(
+                 %{"id" => dialogue.id},
+                 build_socket(flow, project)
+               )
+
+      text = PreviewHandlers.serialize_preview_state(result).currentNode.text
+      refute text =~ "<script>"
+      assert text =~ "[hero.health]"
+    end
+  end
+
+  describe "preview traversal guards" do
+    test "continue is a no-op when no preview node is active" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      socket = build_socket(flow, project)
+
+      assert {:noreply, result} = PreviewHandlers.handle_continue(%{}, socket)
+      assert result.assigns == socket.assigns
+    end
+
+    test "response selection is a no-op when no preview node is active" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      socket = build_socket(flow, project)
+
+      assert {:noreply, result} =
+               PreviewHandlers.handle_select_response(%{"response_id" => "missing"}, socket)
+
+      assert result.assigns == socket.assigns
+    end
   end
 
   defp dialogue_fixture(flow, speaker_id) do

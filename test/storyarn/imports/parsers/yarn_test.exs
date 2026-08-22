@@ -5,8 +5,6 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Evaluator.ConditionEval
-  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
@@ -15,8 +13,9 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.SourceBundle
+  alias Storyarn.Projects.FlowNodeConnectionRules, as: NodeConnectionRules
+  alias Storyarn.Projects.FlowWordCount, as: WordCount
   alias Storyarn.Repo
-  alias Storyarn.Shared.WordCount
   alias Storyarn.Sheets
 
   @project """
@@ -877,7 +876,7 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
 
       [flow] = plan.data["flows"]
       condition = Enum.find(flow["nodes"], &(&1["type"] == "condition"))["data"]["condition"]
-      assert {false, [_rule]} = ConditionEval.evaluate(condition, %{})
+      assert {false, [_rule]} = Flows.evaluate_condition(condition, %{})
       refute inspect(plan.issues) =~ "SecretNode"
 
       assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
@@ -899,7 +898,8 @@ defmodule Storyarn.Imports.Parsers.YarnTest do
       [flow] = plan.data["flows"]
       dialogue = Enum.find(flow["nodes"], &(&1["type"] == "dialogue"))
       secret = Enum.find(dialogue["data"]["responses"], &(&1["text"] == "Secret"))
-      assert {false, [_rule]} = ConditionEval.evaluate_string(secret["condition"], %{})
+      parsed_condition = Flows.condition_parse(secret["condition"])
+      assert {false, [_rule]} = Flows.evaluate_condition(parsed_condition, %{})
 
       assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
     end

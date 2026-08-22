@@ -14,16 +14,16 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.AssetReferences
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.AssetRecord
+  alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()
@@ -80,6 +80,21 @@ defmodule Storyarn.Flows.SequenceCrud do
       from(n in FlowNode,
         where: n.id == ^id and n.flow_id == ^flow_id and n.type == "sequence",
         preload: [:sequence_config]
+      )
+    )
+  end
+
+  @doc "Gets the sequence-specific configuration for an active sequence node."
+  @spec get_sequence_config(integer()) :: SequenceConfig.t() | nil
+  def get_sequence_config(sequence_id) do
+    Repo.one(
+      from(config in SequenceConfig,
+        join: node in FlowNode,
+        on: node.id == config.flow_node_id,
+        where:
+          config.flow_node_id == ^sequence_id and node.type == "sequence" and
+            is_nil(node.deleted_at),
+        select: config
       )
     )
   end
@@ -222,7 +237,7 @@ defmodule Storyarn.Flows.SequenceCrud do
                )
              ),
            :ok <-
-             Assets.lock_active_asset_references_for_restore(project_id,
+             AssetReferences.lock_active_for_restore(project_id,
                flow_node_ids: [locked_node.id]
              ),
            {:ok, restored_node} <-
@@ -787,7 +802,7 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp validate_asset_content_type(project_id, context, asset_id, content_type_pattern) do
     if Repo.exists?(
-         from(asset in Asset,
+         from(asset in AssetRecord,
            where:
              asset.id == ^asset_id and asset.project_id == ^project_id and
                is_nil(asset.deleted_at) and

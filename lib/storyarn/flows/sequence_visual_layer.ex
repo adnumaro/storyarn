@@ -12,8 +12,8 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.AssetRecord
 
   @kinds ~w(backdrop character prop overlay)
   @slots [
@@ -39,7 +39,7 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
           flow_node_id: integer() | nil,
           flow_node: FlowNode.t() | NotLoaded.t() | nil,
           asset_id: integer() | nil,
-          asset: Asset.t() | NotLoaded.t() | nil,
+          asset: AssetRecord.t() | NotLoaded.t() | nil,
           kind: String.t() | nil,
           label: String.t() | nil,
           z_index: integer(),
@@ -59,7 +59,7 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
 
   schema "flow_node_sequence_visual_layers" do
     belongs_to :flow_node, FlowNode
-    belongs_to :asset, Asset, where: [deleted_at: nil]
+    belongs_to :asset, AssetRecord, where: [deleted_at: nil]
 
     field :kind, :string
     field :label, :string

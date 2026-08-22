@@ -1023,8 +1023,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
         project_id: project.id,
         workspace_id: project.workspace_id,
         project_type: project.project_type,
-        project_subtype: project.project_subtype,
-        project_type_other: project.project_type_other
+        project_subtype: project.project_subtype
       })
     end
 

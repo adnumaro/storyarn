@@ -10,9 +10,9 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -99,7 +99,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   defp build_consistent_snapshot(project, localization_scope, mode) do
     project_id = project.id
     sheets = Sheets.list_sheets_for_export(project_id)
-    flows = Flows.list_flows_for_export(project_id)
+    flows = FlowReadModel.list_flows_for_export(project_id)
     scenes = Scenes.list_scenes_for_export(project_id)
 
     {languages, texts} = localization_inventory(project_id, localization_scope, mode)

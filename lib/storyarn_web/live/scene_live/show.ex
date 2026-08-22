@@ -33,12 +33,10 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Versioning
-  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.VersionEventHelpers
   alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
@@ -47,6 +45,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.SceneLive.Handlers.LayerHandlers
   alias StoryarnWeb.SceneLive.Handlers.TreeHandlers
   alias StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SceneLive.PickerSearch
 
   @lock_heartbeat_interval 10_000
   @zone_label_icon_max_size 256 * 1024
@@ -690,9 +689,9 @@ defmodule StoryarnWeb.SceneLive.Show do
     start_async(socket, :load_sidebar_data, fn ->
       %{
         project_scenes: Scenes.list_scenes(project.id),
-        project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
-        project_flows: Storyarn.Flows.list_flows(project.id),
-        project_variables: VariableHelpers.list_all_variables(project.id),
+        project_sheets: Scenes.list_sheets_tree(project.id),
+        project_flows: Scenes.list_flows(project.id),
+        project_variables: Scenes.list_referenceable_variables(project.id),
         project_asset_ids: Assets.list_asset_ids(project.id, images_only: true)
       }
     end)
@@ -1569,7 +1568,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id}, socket) do
-    case Storyarn.Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+    case Scenes.get_flow_brief(socket.assigns.project.id, flow_id) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Flow not found."))}
 

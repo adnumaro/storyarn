@@ -9,7 +9,7 @@ defmodule Storyarn.Versioning.ReferencedTombstonesTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Scenes
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ReferencedTombstones

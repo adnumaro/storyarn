@@ -4,7 +4,6 @@ defmodule Storyarn.Sheets.TableCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.Flows
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.FormulaEngine
@@ -16,6 +15,7 @@ defmodule Storyarn.Sheets.TableCrud do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableUsage
 
   # =============================================================================
   # Column Operations
@@ -1191,7 +1191,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
     if name do
       current_slug = Ecto.Changeset.get_field(changeset, :slug)
-      referenced? = Flows.count_variable_usage(block_id) != %{}
+      referenced? = VariableUsage.count_variable_usage(block_id) != %{}
 
       new_slug =
         NameNormalizer.maybe_regenerate(

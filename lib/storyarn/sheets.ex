@@ -25,9 +25,11 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.Constraints.Number
   alias Storyarn.Sheets.ContextQueries
+  alias Storyarn.Sheets.DialogueAudio
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.HealthSnapshots
+  alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
@@ -38,6 +40,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.TableCrud
   alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableCatalog
+  alias Storyarn.Sheets.VariableUsage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.EntityVersion
 
@@ -56,6 +59,14 @@ defmodule Storyarn.Sheets do
           | :parent_not_found
           | :parent_different_project
           | :would_create_cycle
+
+  @doc "Lists dialogue lines spoken by a Sheet for its audio workspace."
+  defdelegate list_dialogue_audio_lines(project_id, sheet_id), to: DialogueAudio, as: :list_lines
+
+  @doc "Updates the audio asset assigned to one dialogue line spoken by a Sheet."
+  defdelegate update_dialogue_audio(project_id, sheet_id, node_id, audio_asset_id),
+    to: DialogueAudio,
+    as: :update_audio
 
   # =============================================================================
   # Sheets - Tree Operations
@@ -844,7 +855,7 @@ defmodule Storyarn.Sheets do
   Returns {:ok, target} or {:error, reason}.
   """
   @spec validate_reference_target(String.t(), id(), id()) ::
-          {:ok, Sheet.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
+          {:ok, Sheet.t() | FlowRecord.t()} | {:error, :not_found | :invalid_type}
   defdelegate validate_reference_target(target_type, target_id, project_id), to: SheetQueries
 
   @doc """
@@ -874,7 +885,7 @@ defmodule Storyarn.Sheets do
 
     results =
       if "flow" in allowed_types do
-        flows = Storyarn.Flows.search_flows(project_id, query)
+        flows = SheetQueries.search_reference_flows(project_id, query)
 
         flow_results =
           Enum.map(flows, fn flow ->
@@ -908,7 +919,7 @@ defmodule Storyarn.Sheets do
   end
 
   def get_reference_target("flow", target_id, project_id) do
-    case Storyarn.Flows.get_flow(project_id, target_id) do
+    case SheetQueries.get_reference_flow(project_id, target_id) do
       nil -> nil
       flow -> %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
     end
@@ -921,6 +932,19 @@ defmodule Storyarn.Sheets do
 
   @doc "Returns block IDs with stale tracked sheet/flow entity references."
   defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: ReferenceTracker
+
+  @doc "Counts tracked variable usages by kind for one block."
+  defdelegate count_variable_usage(block_id), to: VariableUsage
+
+  @doc "Counts stale tracked variable references for multiple blocks in one query."
+  defdelegate count_stale_variable_references(block_ids, project_id),
+    to: VariableUsage,
+    as: :count_stale_references
+
+  @doc "Lists tracked variable usages and their current staleness for one block."
+  defdelegate check_stale_variable_references(block_id, project_id),
+    to: VariableUsage,
+    as: :check_stale_references
 
   # =============================================================================
   # Reference Tracking (Backlinks)
@@ -1109,7 +1133,7 @@ defmodule Storyarn.Sheets do
   @doc """
   Returns the canonical health findings for the one sheet open in the editor.
 
-  The sibling of `Scenes.scene_health_findings/3` and `Flows.flow_health_findings/2`,
+  The Sheets counterpart to the Scene and Flow entity health readers,
   and the same composition point `list_dashboard_health_findings/2` enters: the
   editor and the dashboard cannot feed the checker differently for the same sheet.
 

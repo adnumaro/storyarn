@@ -19,8 +19,10 @@ defmodule Storyarn.AI.ContextExecutionTest do
   alias Storyarn.AI.UsageEvent
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
+  alias Storyarn.Sheets.AI.ContextContract
   alias Storyarn.Sheets.Block
   alias StoryarnTest.AI.ContractTask
+  alias StoryarnTest.Sheets.AI.ContextTask, as: SheetContextTask
 
   @validation_stub StoryarnTest.AI.OpenAI
 
@@ -101,7 +103,7 @@ defmodule Storyarn.AI.ContextExecutionTest do
     task = Enum.find(AI.registered_tasks(), &(&1.id == "contract.echo"))
 
     assert {:ok, subject_ref} =
-             SubjectRef.sheet(other_workspace.id, other_project.id, other_sheet.id)
+             ContextContract.sheet(other_workspace.id, other_project.id, other_sheet.id)
 
     assert {:ok, persisted_subject} = SubjectRef.persisted_map(subject_ref)
 
@@ -262,6 +264,7 @@ defmodule Storyarn.AI.ContextExecutionTest do
     Application.put_env(:storyarn, ContractTask,
       scenario: :success,
       execution_mode: execution_mode,
+      context_adapter: SheetContextTask,
       allowed_lanes: Keyword.get(overrides, :allowed_lanes, [:managed]),
       personal_byok_allowed?: Keyword.get(overrides, :personal_byok_allowed?, false),
       personal_cost_class: Keyword.get(overrides, :personal_cost_class),

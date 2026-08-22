@@ -177,6 +177,7 @@ config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
 # limits above. Durable multipart cleanup uses this same value as its minimum
 # quiescence window, so one policy bounds both sides of the handoff.
 config :storyarn, Storyarn.Assets.Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
+config :storyarn, Storyarn.Flows.Versioning.RestorePolicy, flow_version_restore: false
 
 # Configure Gettext locales
 config :storyarn, Storyarn.Gettext,
@@ -225,7 +226,6 @@ config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
 # always available to authorized project managers.
 config :storyarn, Storyarn.Versioning.RestorePolicy,
   sheet_version_restore: false,
-  flow_version_restore: false,
   scene_version_restore: false
 
 # Configures the endpoint

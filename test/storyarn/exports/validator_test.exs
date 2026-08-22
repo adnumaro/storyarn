@@ -5,14 +5,16 @@ defmodule Storyarn.Exports.ValidatorTest do
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Exports.Validator.ValidationResult
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Repo
+  alias Storyarn.Scenes
 
   # =============================================================================
   # Setup
@@ -526,14 +528,16 @@ defmodule Storyarn.Exports.ValidatorTest do
         })
 
       # B references A (circular) — insert directly to bypass circular reference check
-      {:ok, subflow_b} =
-        Repo.insert(%FlowNode{
+      inserted_subflow_b =
+        Repo.insert!(%FlowNode{
           flow_id: flow_b.id,
           type: "subflow",
           data: %{"referenced_flow_id" => flow_a.id},
           position_x: 100.0,
           position_y: 100.0
         })
+
+      subflow_b = Storyarn.Flows.get_node!(flow_b.id, inserted_subflow_b.id)
 
       connect_from_entry(flow_a, subflow_a)
       connect_from_entry(flow_b, subflow_b)
@@ -578,6 +582,30 @@ defmodule Storyarn.Exports.ValidatorTest do
       orphans = Enum.filter(result.info, &(&1.rule == :orphan_sheets))
       assert length(orphans) == 1
       assert hd(orphans).sheet_name == "Unused Sheet"
+    end
+
+    test "does not report a Sheet referenced only by a Scene variable condition", %{project: project} do
+      sheet = sheet_fixture(project, %{name: "Scene State", shortcut: "scene.state"})
+
+      block =
+        block_fixture(sheet, %{
+          type: "number",
+          config: %{"label" => "Alert level", "placeholder" => "0"}
+        })
+
+      scene = scene_fixture(project)
+      pin = pin_fixture(scene)
+
+      assert {:ok, _pin} =
+               Scenes.update_pin(pin, %{
+                 "condition" => condition(sheet.shortcut, block.variable_name, "greater_than")
+               })
+
+      result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
+
+      refute Enum.any?(result.info, fn finding ->
+               finding.rule == :orphan_sheets and finding.sheet_id == sheet.id
+             end)
     end
   end
 
@@ -720,9 +748,12 @@ defmodule Storyarn.Exports.ValidatorTest do
   end
 
   defp corrupt_node_fixture(flow, attrs) do
-    %FlowNode{flow_id: flow.id}
-    |> FlowNode.create_changeset(attrs)
-    |> Repo.insert!()
+    inserted =
+      %FlowNode{flow_id: flow.id}
+      |> FlowNode.create_changeset(attrs)
+      |> Repo.insert!()
+
+    Storyarn.Flows.get_node!(flow.id, inserted.id)
   end
 
   defp connect_from_entry(flow, node) do

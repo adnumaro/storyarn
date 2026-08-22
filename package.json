@@ -15,7 +15,8 @@
     "arch:links": "node scripts/verify-live-links.mjs",
     "arch:sessions": "node scripts/verify-live-sessions.mjs",
     "arch:layouts": "node scripts/verify-live-layouts.mjs",
-    "build:grammar": "node_modules/.bin/lezer-generator assets/app/plugins/expression-editor/storyarn-expr.grammar -o assets/app/plugins/expression-editor/parser-generated.js",
+    "build:grammar": "node_modules/.bin/lezer-generator assets/app/plugins/expression-editor/storyarn-expr.grammar -o assets/app/plugins/expression-editor/parser-generated.js && node_modules/.bin/lezer-generator assets/app/modules/flows/editor/expression/language/storyarn-expr.grammar -o assets/app/modules/flows/editor/expression/language/parser-generated.js",
+    "build:grammar:flows": "node_modules/.bin/lezer-generator assets/app/modules/flows/editor/expression/language/storyarn-expr.grammar -o assets/app/modules/flows/editor/expression/language/parser-generated.js",
     "test": "node_modules/.bin/vitest run",
     "test:watch": "node_modules/.bin/vitest",
     "knip": "knip"

@@ -13,9 +13,9 @@ defmodule Storyarn.Assets.AssetTrashTest do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
+  alias Storyarn.Assets.Persistence.EntityTrashRefRecord
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Billing
-  alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Localization
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -138,7 +138,7 @@ defmodule Storyarn.Assets.AssetTrashTest do
     asset = image_asset_fixture(project, user)
 
     {1, _} =
-      Repo.insert_all(EntityTrashRef, [
+      Repo.insert_all(EntityTrashRefRecord, [
         %{
           source_type: "flow_sequence",
           source_id: 99_999,
@@ -159,7 +159,7 @@ defmodule Storyarn.Assets.AssetTrashTest do
              )
 
     assert Repo.get!(Asset, asset.id).deleted_at
-    assert Repo.aggregate(EntityTrashRef, :count) == 1
+    assert Repo.aggregate(EntityTrashRefRecord, :count) == 1
   end
 
   test "original and variants move and restore as one metadata-preserving family", %{

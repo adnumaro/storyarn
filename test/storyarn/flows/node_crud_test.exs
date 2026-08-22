@@ -1504,7 +1504,13 @@ defmodule Storyarn.Flows.NodeCrudTest do
 
       assert deleted.id == node.id
       assert deleted.deleted_at
-      assert meta == %{orphaned_jumps: 0}
+
+      assert meta == %{
+               orphaned_jumps: 0,
+               graph_changed?: false,
+               refresh_scope: :node
+             }
+
       assert Flows.get_node(flow.id, node.id) == nil
     end
 

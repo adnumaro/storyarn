@@ -10,12 +10,12 @@ defmodule Storyarn.Sheets.ReferenceWriterConcurrencyTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
+  alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Workspaces.Workspace
 
@@ -221,7 +221,7 @@ defmodule Storyarn.Sheets.ReferenceWriterConcurrencyTest do
       [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
 
       Repo.one!(
-        from(flow in Flow,
+        from(flow in FlowRecord,
           where: flow.id == ^flow_id,
           select: flow.id,
           lock: "FOR UPDATE"

@@ -22,8 +22,17 @@ defmodule Storyarn.Scenes do
   alias Storyarn.Repo
   alias Storyarn.Scenes.AmbientFlowCrud
   alias Storyarn.Scenes.AnnotationCrud
+  alias Storyarn.Scenes.AssetCatalog
   alias Storyarn.Scenes.ConnectionCrud
   alias Storyarn.Scenes.ExplorationSessionCrud
+  alias Storyarn.Scenes.FlowCatalog
+  alias Storyarn.Scenes.FlowRuntime.ConditionEval
+  alias Storyarn.Scenes.FlowRuntime.Engine
+  alias Storyarn.Scenes.FlowRuntime.EngineHelpers
+  alias Storyarn.Scenes.FlowRuntime.InstructionExec
+  alias Storyarn.Scenes.FlowRuntime.PlayerEngine
+  alias Storyarn.Scenes.FlowRuntime.Slide
+  alias Storyarn.Scenes.FlowRuntime.Variables
   alias Storyarn.Scenes.HealthSnapshots
   alias Storyarn.Scenes.LayerCrud
   alias Storyarn.Scenes.PinCrud
@@ -36,7 +45,9 @@ defmodule Storyarn.Scenes do
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneStats
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.SheetCatalog
   alias Storyarn.Scenes.TreeOperations
+  alias Storyarn.Scenes.VariableCatalog
   alias Storyarn.Scenes.ZoneCrud
   alias Storyarn.Scenes.ZoneImageExtractor
 
@@ -553,6 +564,105 @@ defmodule Storyarn.Scenes do
       end
 
     %{zones: zones, pins: pins}
+  end
+
+  # =============================================================================
+  # Scene-owned Flow and Sheet projections
+  # =============================================================================
+
+  @doc "Returns a bounded page of active assets for Scene pickers."
+  defdelegate search_asset_options(project_id, kind, opts \\ []), to: AssetCatalog, as: :asset_options
+
+  @doc "Builds an initial Scene asset picker page retaining every selected asset."
+  defdelegate initial_asset_options(project_id, kind, selected_ids), to: AssetCatalog
+
+  @doc "Lists the active Flow identities visible to Scenes."
+  defdelegate list_flows(project_id), to: FlowCatalog
+
+  @doc "Searches active Flow identities for Scene pickers."
+  defdelegate search_flows(project_id, query, opts \\ []), to: FlowCatalog
+
+  @doc "Gets an active Flow identity scoped to the Scene project."
+  defdelegate get_flow(project_id, flow_id), to: FlowCatalog
+
+  @doc "Gets a lightweight active Flow identity scoped to the Scene project."
+  def get_flow_brief(project_id, flow_id), do: FlowCatalog.get_flow(project_id, flow_id)
+
+  @doc "Loads the executable graph projection owned by Scene exploration."
+  defdelegate get_runtime_flow(project_id, flow_id), to: FlowCatalog, as: :get_runtime_graph
+
+  @doc "Loads the active node map for a Scene-owned Flow runtime graph."
+  defdelegate runtime_nodes(project_id, flow_id), to: FlowCatalog
+
+  @doc "Loads the connections for a Scene-owned Flow runtime graph."
+  defdelegate runtime_connections(project_id, flow_id), to: FlowCatalog
+
+  @doc "Lists active Sheets as a tree for Scene editor selectors."
+  defdelegate list_sheets_tree(project_id), to: SheetCatalog
+
+  @doc "Lists active Sheet speaker records for Scene exploration."
+  defdelegate list_all_sheets(project_id), to: SheetCatalog
+
+  @doc "Searches active Sheet identities for Scene pickers."
+  defdelegate search_sheets(project_id, query, opts \\ []), to: SheetCatalog
+
+  @doc "Gets an active Sheet identity scoped to the Scene project."
+  defdelegate get_sheet(project_id, sheet_id), to: SheetCatalog
+
+  @doc "Returns every variable addressable by Scene conditions and instructions."
+  defdelegate list_referenceable_variables(project_id), to: VariableCatalog, as: :list_referenceable
+
+  @doc "Builds the in-memory variable state used by Scene exploration."
+  defdelegate build_runtime_variables(project_id), to: Variables, as: :build_variables
+
+  # =============================================================================
+  # Scene exploration Flow runtime
+  # =============================================================================
+
+  @doc "Initializes Scene-owned Flow execution state."
+  defdelegate runtime_init(variables, entry_id), to: Engine, as: :init
+
+  @doc "Advances execution until the next interactive node."
+  defdelegate runtime_step_until_interactive(state, nodes, connections, opts \\ []),
+    to: PlayerEngine,
+    as: :step_until_interactive
+
+  @doc "Selects a dialogue response in Scene exploration."
+  defdelegate runtime_choose_response(state, response_id, connections),
+    to: Engine,
+    as: :choose_response
+
+  @doc "Steps Scene exploration back to its previous execution snapshot."
+  defdelegate runtime_step_back(state), to: Engine, as: :step_back
+
+  @doc "Pushes a parent graph before entering a nested Flow."
+  defdelegate runtime_push_flow_context(state, node_id, nodes, connections, flow_name),
+    to: Engine,
+    as: :push_flow_context
+
+  @doc "Restores the parent graph after returning from a nested Flow."
+  defdelegate runtime_pop_flow_context(state), to: Engine, as: :pop_flow_context
+
+  @doc "Finds the parent connection associated with a returned Flow exit."
+  defdelegate runtime_find_return_connection(connections, return_node_id, returned_exit_node_id),
+    to: EngineHelpers,
+    as: :find_return_connection
+
+  @doc "Evaluates a condition against the Scene exploration variable state."
+  defdelegate evaluate_runtime_condition(condition, variables), to: ConditionEval, as: :evaluate
+
+  @doc "Executes variable assignments in the Scene exploration variable state."
+  defdelegate execute_runtime_instructions(assignments, variables), to: InstructionExec, as: :execute
+
+  @doc "Builds the browser-neutral slide projected by Scene exploration."
+  defdelegate build_runtime_slide(node, state, speakers_map, project_id), to: Slide, as: :build
+
+  @doc "Formats a runtime value for Scene presentation."
+  defdelegate format_runtime_value(value), to: Storyarn.Scenes.FlowRuntime.Helpers, as: :format_value
+
+  @doc "Returns the entry node ID from a Scene-owned runtime graph."
+  def runtime_entry_node(nodes) when is_map(nodes) do
+    Enum.find_value(nodes, fn {id, node} -> if node.type == "entry", do: id end)
   end
 
   # =============================================================================

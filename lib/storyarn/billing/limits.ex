@@ -6,11 +6,11 @@ defmodule Storyarn.Billing.Limits do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing.Persistence.FlowNodeRecord
+  alias Storyarn.Billing.Persistence.FlowRecord
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
@@ -240,7 +240,7 @@ defmodule Storyarn.Billing.Limits do
       },
       item_breakdown: %{
         sheets: count_active(Sheet, project.id),
-        flows: count_active(Flow, project.id),
+        flows: count_active(FlowRecord, project.id),
         scenes: count_active(Scene, project.id),
         flow_nodes: count_nodes(project.id)
       },
@@ -506,14 +506,14 @@ defmodule Storyarn.Billing.Limits do
   def count_project_items(project_id) do
     count_nodes(project_id) +
       count_active(Sheet, project_id) +
-      count_active(Flow, project_id) +
+      count_active(FlowRecord, project_id) +
       count_active(Scene, project_id)
   end
 
   defp count_nodes(project_id) do
     Repo.aggregate(
-      from(n in FlowNode,
-        join: f in Flow,
+      from(n in FlowNodeRecord,
+        join: f in FlowRecord,
         on: n.flow_id == f.id,
         where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
       ),

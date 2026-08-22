@@ -2,16 +2,13 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
-  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
@@ -34,7 +31,6 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   test "exact full-project restore is always available independently of entity switches" do
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: false,
-      flow_version_restore: false,
       scene_version_restore: false
     )
 
@@ -51,7 +47,6 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: "true",
-      flow_version_restore: 1,
       scene_version_restore: nil
     )
 
@@ -68,7 +63,6 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   test "entity restore surfaces are enabled independently only by literal true" do
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: true,
-      flow_version_restore: false,
       scene_version_restore: false
     )
 
@@ -90,7 +84,6 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: false,
-      flow_version_restore: false,
       scene_version_restore: false
     )
 
@@ -114,11 +107,6 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     sheet_snapshot = SheetBuilder.build_snapshot(sheet)
     sheet_block_ids = Enum.map(Sheets.list_blocks(sheet.id), & &1.id)
 
-    flow = flow_fixture(project)
-    _node = node_fixture(flow)
-    flow_snapshot = FlowBuilder.build_snapshot(flow)
-    flow_node_ids = Enum.map(Flows.list_nodes(flow.id), & &1.id)
-
     scene = scene_fixture(project)
     _layer = layer_fixture(scene)
     scene_snapshot = SceneBuilder.build_snapshot(scene)
@@ -126,13 +114,11 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: true,
-      flow_version_restore: true,
       scene_version_restore: true
     )
 
     for {builder, entity, snapshot} <- [
           {SheetBuilder, sheet, sheet_snapshot},
-          {FlowBuilder, flow, flow_snapshot},
           {SceneBuilder, scene, scene_snapshot}
         ] do
       assert {:error, :restore_temporarily_disabled} =
@@ -145,11 +131,9 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     end
 
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == sheet_block_ids
-    assert Enum.map(Flows.list_nodes(flow.id), & &1.id) == flow_node_ids
     assert Enum.map(Scenes.list_layers(scene.id), & &1.id) == scene_layer_ids
   end
 
   defp entity_type(%Storyarn.Sheets.Sheet{}), do: "sheet"
-  defp entity_type(%Storyarn.Flows.Flow{}), do: "flow"
   defp entity_type(%Storyarn.Scenes.Scene{}), do: "scene"
 end

@@ -5,7 +5,6 @@ defmodule Storyarn.AI.Results do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.AI.Context
-  alias Storyarn.AI.Context.SourceLocks
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PersonalConsents
@@ -180,7 +179,7 @@ defmodule Storyarn.AI.Results do
            {:ok, task} <- TaskRegistry.get(operation.task_id),
            :ok <- task_contract_current(operation, task),
            {:ok, _decision} <- PolicyDecision.reauthorize(operation, task, :apply, lock_policy: true),
-           :ok <- SourceLocks.acquire(operation),
+           :ok <- Task.acquire_source_locks(task, operation),
            :ok <- Context.operation_current?(scope, task, operation),
            {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
            :ok <- PersonalConsents.authorize_operation(operation, task, route, lock: true),

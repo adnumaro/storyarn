@@ -173,7 +173,13 @@ defmodule Storyarn.Projects.DashboardTest do
   describe "real findings from the three checkers" do
     test "a flow with no entry node surfaces as an actionable flow error", %{project: project} do
       flow = flow_fixture(project)
-      entry = Repo.get_by(Storyarn.Flows.FlowNode, flow_id: flow.id, type: "entry")
+
+      entry =
+        Repo.get_by(Storyarn.Projects.Persistence.FlowNodeRecord,
+          flow_id: flow.id,
+          type: "entry"
+        )
+
       Repo.delete!(entry)
 
       summary =

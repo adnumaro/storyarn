@@ -220,6 +220,21 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       assert flash["error"] =~ "access"
     end
 
+    test "does not load a flow through another authorized project", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      other_project = user |> project_fixture() |> Repo.preload(:workspace)
+      {other_flow, _entry, _dialogue} = create_basic_flow(other_project)
+
+      {:error, {:redirect, %{to: path, flash: flash}}} =
+        live(conn, player_url(project, other_flow))
+
+      assert path =~ "/projects/#{project.slug}/flows"
+      assert flash["error"] =~ "Flow not found"
+    end
+
     test "shows outcome when flow goes directly to exit", %{conn: conn, project: project} do
       {flow, _entry, _exit} = create_entry_exit_flow(project)
 

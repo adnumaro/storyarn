@@ -4,18 +4,6 @@ defmodule Storyarn.Versioning.SnapshotDiffTest do
   alias Storyarn.Versioning.SnapshotDiff
 
   describe "diff/3" do
-    test "returns structured result for flow snapshots" do
-      old = %{"name" => "Old", "shortcut" => "old", "nodes" => [], "connections" => []}
-      new = %{"name" => "New", "shortcut" => "old", "nodes" => [], "connections" => []}
-
-      result = SnapshotDiff.diff("flow", old, new)
-
-      assert %{changes: [_change], stats: stats, has_changes: true} = result
-      assert stats.modified == 1
-      assert stats.added == 0
-      assert stats.removed == 0
-    end
-
     test "returns structured result for sheet snapshots" do
       old = %{"name" => "S", "blocks" => []}
       new = %{"name" => "S", "blocks" => [%{"position" => 0, "type" => "number"}]}
@@ -35,65 +23,6 @@ defmodule Storyarn.Versioning.SnapshotDiffTest do
 
       assert %{has_changes: true} = result
       assert Enum.any?(result.changes, &(&1.category == :layer))
-    end
-
-    test "returns no changes for identical snapshots" do
-      snapshot = %{"name" => "F", "shortcut" => "f", "nodes" => [], "connections" => []}
-
-      result = SnapshotDiff.diff("flow", snapshot, snapshot)
-
-      assert %{changes: [], stats: %{added: 0, modified: 0, removed: 0}, has_changes: false} =
-               result
-    end
-
-    test "computes correct stats with mixed change types" do
-      old = %{
-        "name" => "F",
-        "nodes" => [
-          %{
-            "type" => "dialogue",
-            "original_id" => 1,
-            "data" => %{"text" => "Hello"},
-            "position_x" => 0,
-            "position_y" => 0
-          },
-          %{
-            "type" => "hub",
-            "original_id" => 2,
-            "data" => %{},
-            "position_x" => 0,
-            "position_y" => 0
-          }
-        ],
-        "connections" => []
-      }
-
-      new = %{
-        "name" => "F",
-        "nodes" => [
-          %{
-            "type" => "dialogue",
-            "original_id" => 1,
-            "data" => %{"text" => "Goodbye"},
-            "position_x" => 0,
-            "position_y" => 0
-          },
-          %{
-            "type" => "condition",
-            "original_id" => 3,
-            "data" => %{},
-            "position_x" => 0,
-            "position_y" => 0
-          }
-        ],
-        "connections" => []
-      }
-
-      result = SnapshotDiff.diff("flow", old, new)
-
-      assert result.stats.modified >= 1
-      assert result.stats.added >= 1
-      assert result.stats.removed >= 1
     end
   end
 

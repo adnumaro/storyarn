@@ -5,38 +5,7 @@ defmodule Storyarn.Versioning.SnapshotViewer do
   any database queries.
   """
 
-  alias Storyarn.Flows.HubColors
   alias Storyarn.Scenes.RoutePoints
-
-  @doc """
-  Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
-  Uses negative IDs to avoid collisions with live data.
-  """
-  @spec serialize_flow(map()) :: map()
-  def serialize_flow(snapshot) do
-    nodes = snapshot["nodes"] || []
-
-    id_map =
-      nodes
-      |> Enum.with_index()
-      |> Map.new(fn {_node, idx} -> {idx, -(idx + 1)} end)
-
-    serialized_nodes = Enum.map(Enum.with_index(nodes), &serialize_flow_node(&1, id_map))
-
-    serialized_connections =
-      snapshot
-      |> Map.get("connections", [])
-      |> Enum.with_index()
-      |> Enum.map(&serialize_flow_connection(&1, id_map))
-      |> Enum.filter(fn conn -> conn.source_node_id != nil and conn.target_node_id != nil end)
-
-    %{
-      id: -1,
-      name: snapshot["name"],
-      nodes: serialized_nodes,
-      connections: serialized_connections
-    }
-  end
 
   @doc """
   Serializes a scene snapshot into the shape expected by the SceneCanvas JS hook.
@@ -70,36 +39,6 @@ defmodule Storyarn.Versioning.SnapshotViewer do
     |> Enum.with_index()
     |> Enum.map(&serialize_block/1)
   end
-
-  # ========== Flow Helpers ==========
-
-  defp serialize_flow_node({node, idx}, id_map) do
-    data = maybe_add_hub_color(node["data"] || %{})
-
-    %{
-      id: Map.fetch!(id_map, idx),
-      type: node["type"],
-      position: %{x: node["position_x"] || 0, y: node["position_y"] || 0},
-      data: data
-    }
-  end
-
-  defp serialize_flow_connection({conn, idx}, id_map) do
-    %{
-      id: -(idx + 1),
-      source_node_id: Map.get(id_map, conn["source_node_index"]),
-      target_node_id: Map.get(id_map, conn["target_node_index"]),
-      source_pin: conn["source_pin"],
-      target_pin: conn["target_pin"],
-      label: conn["label"]
-    }
-  end
-
-  defp maybe_add_hub_color(%{"color" => color} = data) when is_binary(color) do
-    Map.put(data, "color_hex", HubColors.resolve(color))
-  end
-
-  defp maybe_add_hub_color(data), do: data
 
   # ========== Scene Helpers ==========
 

@@ -7,8 +7,8 @@ defmodule Storyarn.Localization.CanonicalSnapshotInventoryTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
+  alias Storyarn.Localization.Persistence.FlowNodeRecord
   alias Storyarn.Repo
 
   test "lists every active row deterministically without engine source or locale filtering" do
@@ -78,7 +78,7 @@ defmodule Storyarn.Localization.CanonicalSnapshotInventoryTest do
   defp sheet_without_flow_node_id(project) do
     sheet = sheet_fixture(project)
 
-    if Repo.get(FlowNode, sheet.id),
+    if Repo.get(FlowNodeRecord, sheet.id),
       do: sheet_without_flow_node_id(project),
       else: sheet
   end

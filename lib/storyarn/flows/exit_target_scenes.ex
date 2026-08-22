@@ -3,7 +3,7 @@ defmodule Storyarn.Flows.ExitTargetScenes do
   Consumer-owned scene lookup for Exit node targets.
 
   This read model intentionally maps the shared `scenes` table without using
-  the Scenes context or leaking its Ecto schema. Callers receive only the
+  another bounded context or leaking its Ecto schema. Callers receive only the
   fields the Exit node picker consumes.
   """
 

@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Shared.FormulaRuntime
+  alias Storyarn.Flows.FormulaRuntime
 
   @doc """
   Evaluate a dialogue node. Returns one of:

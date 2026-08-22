@@ -3,7 +3,14 @@ defmodule Storyarn.AnalyticsTest do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Analytics
+  alias Storyarn.Platform.ProductMetrics
 
+  @legacy_version_events [
+    "version compared",
+    "version created",
+    "version panel opened",
+    "version restored"
+  ]
   @posthog_keys [:enable, :api_key, :api_host, :enable_error_tracking, :in_app_otp_apps, :test_mode]
 
   defmodule TestAdapter do
@@ -42,6 +49,8 @@ defmodule Storyarn.AnalyticsTest do
       auth_method: "password",
       project_id: 7,
       workspace_id: 3,
+      project_type: String.duplicate("private", 30),
+      project_type_other: "user-authored private category",
       name: "Private project",
       slug: "private-project",
       email: "owner@example.com",
@@ -62,15 +71,107 @@ defmodule Storyarn.AnalyticsTest do
     refute_receive {:analytics_capture, _payload}
   end
 
-  test "track supports product usage events without content properties" do
-    Analytics.track(%User{id: 42}, "flow node created", %{
-      content: "private dialogue",
+  test "project creation deliberately excludes free-form project type details" do
+    Analytics.track(%User{id: 42}, "project created", %{
+      project_id: 7,
+      project_subtype: "other",
+      project_type: "other",
+      project_type_other: "private user-authored category",
+      workspace_id: 3
+    })
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "project created",
+                      properties: %{
+                        "project_id" => 7,
+                        "project_subtype" => "other",
+                        "project_type" => "other",
+                        "workspace_id" => 3
+                      }
+                    }}
+  end
+
+  test "legacy version events reject values that bypass the product contract through track/3" do
+    for event_name <- @legacy_version_events,
+        invalid_properties <- [
+          %{entity_type: "private user-authored content", project_id: 7},
+          %{entity_type: "sheet", project_id: 0}
+        ] do
+      Analytics.track(%User{id: 42}, event_name, invalid_properties)
+      refute_receive {:analytics_capture, %{event: ^event_name}}
+    end
+  end
+
+  test "legacy version events remain compatible for bounded entity types and positive project ids" do
+    entity_types = ["flow", "sheet", "scene", "sheet"]
+
+    for {event_name, entity_type} <- Enum.zip(@legacy_version_events, entity_types) do
+      Analytics.track(%User{id: 42}, event_name, %{
+        content: "private story content",
+        entity_type: entity_type,
+        project_id: 7
+      })
+
+      assert_receive {:analytics_capture,
+                      %{
+                        event: ^event_name,
+                        properties: %{
+                          "entity_type" => ^entity_type,
+                          "project_id" => 7
+                        }
+                      }}
+    end
+  end
+
+  test "track supports consumer-owned event contracts without content properties" do
+    Analytics.track(%User{id: 42}, StoryarnTest.AnalyticsEventContract, :usage, %{
+      content: "private content",
+      item_id: 11,
+      mode: "create",
+      slug: "private-slug"
+    })
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "test usage event",
+                      properties: %{
+                        "item_id" => 11,
+                        "mode" => "create"
+                      }
+                    }}
+  end
+
+  test "track drops events a consumer contract did not declare" do
+    Analytics.track(%User{id: 42}, StoryarnTest.AnalyticsEventContract, :unknown, %{item_id: 11})
+
+    refute_receive {:analytics_capture, _payload}
+  end
+
+  test "track contains a broken consumer contract" do
+    assert Analytics.track(%User{id: 42}, StoryarnTest.AnalyticsBrokenEventContract, :usage, %{item_id: 11}) == :ok
+
+    refute_receive {:analytics_capture, _payload}
+  end
+
+  test "track cannot bypass a consumer contract's value validation" do
+    Analytics.track(%User{id: 42}, ProductMetrics, {:flows, :node_created}, %{
       creation_method: "create",
       flow_id: 11,
       has_parent: true,
-      node_type: "sequence",
-      project_id: 7,
-      slug: "private-slug"
+      node_type: "private user-authored content",
+      project_id: 7
+    })
+
+    refute_receive {:analytics_capture, _payload}
+
+    Analytics.track(%User{id: 42}, ProductMetrics, {:flows, :node_created}, %{
+      content: "private story content",
+      creation_method: "create",
+      flow_id: 11,
+      has_parent: true,
+      node_type: "dialogue",
+      project_id: 7
     })
 
     assert_receive {:analytics_capture,
@@ -80,7 +181,7 @@ defmodule Storyarn.AnalyticsTest do
                         "creation_method" => "create",
                         "flow_id" => 11,
                         "has_parent" => true,
-                        "node_type" => "sequence",
+                        "node_type" => "dialogue",
                         "project_id" => 7
                       }
                     }}

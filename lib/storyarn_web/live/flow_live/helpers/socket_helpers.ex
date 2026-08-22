@@ -16,8 +16,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
-  alias Storyarn.Localization.SourceContract
-  alias Storyarn.Shared.WordCount
   alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
 
   @doc """
@@ -53,14 +51,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SocketHelpers do
   @spec assign_flow_stats(Socket.t(), map(), map()) ::
           Socket.t()
   def assign_flow_stats(socket, flow, flow_data) do
-    localizable_node_types = SourceContract.localizable_flow_node_types()
-
-    word_count =
-      flow.nodes
-      |> Enum.filter(&(&1.type in localizable_node_types))
-      |> Enum.reduce(0, fn node, total ->
-        total + WordCount.for_node_data(node.type, node.data)
-      end)
+    word_count = Flows.flow_word_count(flow)
 
     # ONE health surface, and the SAME composition point the dashboard calls, so
     # the two cannot disagree. Zero extra node queries: the serializer's output is

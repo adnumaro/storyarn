@@ -4,10 +4,12 @@ defmodule Storyarn.Flows.EditorCatalogTest do
   import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
@@ -176,6 +178,140 @@ defmodule Storyarn.Flows.EditorCatalogTest do
       )
 
       assert Flows.get_preview_speaker_name(project.id, speaker.id) == nil
+    end
+  end
+
+  describe "search_mentions/2" do
+    test "returns active Sheet and Flow mentions in stable name order within one project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      other_project = project_fixture(user)
+
+      sheet = sheet_fixture(project, %{name: "Alpha sheet", shortcut: "alpha"})
+      flow = flow_fixture(project, %{name: "Zulu flow", shortcut: "zulu"})
+      deleted_sheet = sheet_fixture(project, %{name: "Deleted sheet", shortcut: "deleted-sheet"})
+      deleted_flow = flow_fixture(project, %{name: "Deleted flow", shortcut: "deleted-flow"})
+      _foreign_sheet = sheet_fixture(other_project, %{name: "Foreign sheet", shortcut: "foreign"})
+      _foreign_flow = flow_fixture(other_project, %{name: "Foreign flow", shortcut: "foreign-flow"})
+
+      Repo.update_all(
+        from(record in SheetRecord, where: record.id == ^deleted_sheet.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
+
+      Repo.update_all(
+        from(record in Flow, where: record.id == ^deleted_flow.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
+
+      assert Flows.search_mentions(project.id, "") == [
+               %{id: sheet.id, type: "sheet", name: "Alpha sheet", shortcut: "alpha"},
+               %{id: flow.id, type: "flow", name: "Zulu flow", shortcut: "zulu"}
+             ]
+    end
+
+    test "searches names and shortcuts and caps the combined result" do
+      project = project_fixture(user_fixture())
+
+      for index <- 1..21 do
+        sheet_fixture(project, %{
+          name: "Candidate #{String.pad_leading(to_string(index), 2, "0")}",
+          shortcut: "candidate-#{index}"
+        })
+      end
+
+      shortcut_match = flow_fixture(project, %{name: "A shortcut match", shortcut: "candidate-flow"})
+      results = Flows.search_mentions(project.id, "candidate")
+
+      assert length(results) == 20
+      assert Enum.map(results, & &1.name) == Enum.sort(Enum.map(results, & &1.name))
+      assert Enum.any?(results, &(&1.id == shortcut_match.id and &1.type == "flow"))
+    end
+  end
+
+  describe "speaker picker read model" do
+    test "searches active speakers within one project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      other_project = project_fixture(user)
+      matching = sheet_fixture(project, %{name: "Hero Sheet", shortcut: "hero"})
+      deleted = sheet_fixture(project, %{name: "Hero Deleted", shortcut: "hero-deleted"})
+      _foreign = sheet_fixture(other_project, %{name: "Hero Foreign", shortcut: "hero-foreign"})
+
+      Repo.update_all(
+        from(record in SheetRecord, where: record.id == ^deleted.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
+
+      assert Flows.search_speaker_options(project.id, "hero", limit: 10) ==
+               {[%{id: matching.id, name: matching.name}], false}
+    end
+
+    test "retains a selected speaker outside the bounded first page" do
+      project = project_fixture(user_fixture())
+      selected = sheet_fixture(project, %{name: "Selected speaker"})
+
+      Repo.update_all(
+        from(record in SheetRecord, where: record.id == ^selected.id),
+        set: [updated_at: ~U[2020-01-01 00:00:00Z]]
+      )
+
+      for index <- 1..3 do
+        sheet_fixture(project, %{name: "Newer speaker #{index}"})
+      end
+
+      {results, has_more} =
+        Flows.search_speaker_options(project.id, "", limit: 1, selected_id: selected.id)
+
+      assert has_more
+      assert length(results) == 2
+      assert Enum.any?(results, &(&1.id == selected.id))
+    end
+  end
+
+  describe "asset picker read model" do
+    test "searches active assets by project and media kind" do
+      user = user_fixture()
+      project = project_fixture(user)
+      other_project = project_fixture(user)
+      matching = image_asset_fixture(project, user, %{filename: "hero-portrait.png"})
+      deleted = image_asset_fixture(project, user, %{filename: "hero-deleted.png"})
+      _audio = audio_asset_fixture(project, user, %{filename: "hero-theme.mp3"})
+      _foreign = image_asset_fixture(other_project, user, %{filename: "hero-foreign.png"})
+
+      assert {:ok, _deleted} = Assets.delete_asset(deleted)
+
+      assert Flows.search_asset_options(project.id, "image", query: "hero", limit: 10) ==
+               {[
+                  %{
+                    id: matching.id,
+                    filename: matching.filename,
+                    content_type: matching.content_type,
+                    metadata: matching.metadata
+                  }
+                ], false}
+    end
+
+    test "retains selected assets outside the bounded first page" do
+      user = user_fixture()
+      project = project_fixture(user)
+      selected = image_asset_fixture(project, user, %{filename: "selected.png"})
+
+      Repo.update_all(
+        from(record in Asset, where: record.id == ^selected.id),
+        set: [inserted_at: ~U[2020-01-01 00:00:00Z]]
+      )
+
+      for index <- 1..3 do
+        image_asset_fixture(project, user, %{filename: "newer-#{index}.png"})
+      end
+
+      {results, has_more} =
+        Flows.search_asset_options(project.id, "image", limit: 1, selected_id: selected.id)
+
+      assert has_more
+      assert length(results) == 2
+      assert Enum.any?(results, &(&1.id == selected.id))
     end
   end
 

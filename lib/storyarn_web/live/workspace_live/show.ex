@@ -6,7 +6,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Billing
-  alias Storyarn.ProductMetrics.Taxonomy
+  alias Storyarn.Platform
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
@@ -82,7 +82,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             failures: @template_installation_failures
           }
         }
-        project-metrics-options={Taxonomy.project_options()}
+        project-metrics-options={Platform.product_metric_project_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>

@@ -310,6 +310,41 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
       assert speaker_ref.source_id == node.id
     end
 
+    test "resolves flow-node backlinks through the Sheets-owned read models" do
+      %{project: project} = setup_project()
+      target_sheet = sheet_fixture(project, %{name: "Speaker"})
+      flow = flow_fixture(project, %{name: "Local projection", shortcut: "local-projection"})
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
+        })
+
+      assert :ok =
+               ReferenceTracker.update_flow_node_references(node,
+                 project_id: project.id
+               )
+
+      assert [backlink] =
+               ReferenceTracker.get_backlinks_with_sources(
+                 "sheet",
+                 target_sheet.id,
+                 project.id
+               )
+
+      assert backlink.source_type == "flow_node"
+      assert backlink.source_id == node.id
+
+      assert backlink.source_info == %{
+               type: :flow,
+               flow_id: flow.id,
+               flow_name: "Local projection",
+               flow_shortcut: "local-projection",
+               node_type: "dialogue"
+             }
+    end
+
     test "creates mention references from dialogue text" do
       %{project: project} = setup_project()
       target_sheet = sheet_fixture(project, %{name: "Mentioned"})

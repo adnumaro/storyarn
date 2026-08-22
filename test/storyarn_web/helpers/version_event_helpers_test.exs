@@ -2,8 +2,8 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
   use Storyarn.DataCase, async: false
 
   import Storyarn.AccountsFixtures
-  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Accounts.Scope
@@ -28,25 +28,25 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
 
     user = user_fixture()
     project = user |> project_fixture() |> Repo.preload(:workspace)
-    flow = flow_fixture(project, %{name: "Restore Flow"})
+    scene = scene_fixture(project, %{name: "Restore Scene"})
 
     {:ok, version} =
-      Versioning.create_version("flow", flow, project.id, user.id, title: "Restore target")
+      Versioning.create_version("scene", scene, project.id, user.id, title: "Restore target")
 
-    %{user: user, project: project, flow: flow, version: version}
+    %{user: user, project: project, scene: scene, version: version}
   end
 
   describe "handle_review_restore/3" do
     test "shows the restore modal without creating an early race-prone safety version", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
@@ -55,7 +55,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_review_restore(
                  restore_params(version, "review-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert event = pushed_event(result, "show_restore_modal")
@@ -65,13 +65,13 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       refute Map.has_key?(payload, :skipPreSnapshot)
       refute Map.has_key?(payload, "skipPreSnapshot")
 
-      assert Versioning.count_versions("flow", flow.id) == 1
+      assert Versioning.count_versions("scene", scene.id) == 1
     end
 
     test "defers actor validation and backup creation until final confirmation", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       invalid_user = %{user | id: -1}
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(invalid_user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
@@ -88,17 +88,17 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_review_restore(
                  restore_params(version, "actor-review-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert pushed_event(result, "show_restore_modal")
-      assert Versioning.count_versions("flow", flow.id) == 1
+      assert Versioning.count_versions("scene", scene.id) == 1
     end
 
     test "all forged restore events are inert while containment is active", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       policy =
@@ -107,19 +107,19 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       Application.put_env(
         :storyarn,
         RestorePolicy,
-        Keyword.put(policy, :flow_version_restore, false)
+        Keyword.put(policy, :scene_version_restore, false)
       )
 
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
 
       params = restore_params(version, "contained-request")
-      config = flow_version_config()
+      config = scene_version_config()
 
       assert {:noreply, preview_socket} =
                VersionEventHelpers.handle_preview_restore(params, socket, config)
@@ -141,19 +141,19 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
         refute pushed_event(result, "version_restored")
       end
 
-      assert Versioning.count_versions("flow", flow.id) == 1
+      assert Versioning.count_versions("scene", scene.id) == 1
     end
 
     test "a viewer cannot forge a restore preview while the feature is enabled", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "viewer"},
           project: project
         })
@@ -162,7 +162,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_preview_restore(
                  restore_params(version, "viewer-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert result.assigns.flash["error"] ==
@@ -175,13 +175,13 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
     test "echoes the exact request ID through preview, review, and confirmation", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
@@ -190,7 +190,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_preview_restore(
                  restore_params(version, "preview-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert preview_event =
@@ -203,7 +203,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_review_restore(
                  restore_params(version, "review-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert review_event = pushed_event(review_result, "show_restore_modal")
@@ -213,7 +213,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_confirm_restore(
                  restore_params(version, "confirm-request"),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert confirm_event = pushed_event(confirm_result, "version_restored")
@@ -223,13 +223,13 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
     test "accepts and echoes the 64-byte request ID boundary", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
@@ -240,7 +240,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
                VersionEventHelpers.handle_review_restore(
                  restore_params(version, request_id),
                  socket,
-                 flow_version_config()
+                 scene_version_config()
                )
 
       assert event = pushed_event(result, "show_restore_modal")
@@ -250,13 +250,13 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
     test "omits request IDs from all response payloads for legacy clients", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "editor"},
           project: project
         })
@@ -264,13 +264,13 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       params = %{"version_number" => to_string(version.version_number)}
 
       assert {:noreply, preview_result} =
-               VersionEventHelpers.handle_preview_restore(params, socket, flow_version_config())
+               VersionEventHelpers.handle_preview_restore(params, socket, scene_version_config())
 
       assert {:noreply, review_result} =
-               VersionEventHelpers.handle_review_restore(params, socket, flow_version_config())
+               VersionEventHelpers.handle_review_restore(params, socket, scene_version_config())
 
       assert {:noreply, confirm_result} =
-               VersionEventHelpers.handle_confirm_restore(params, socket, flow_version_config())
+               VersionEventHelpers.handle_confirm_restore(params, socket, scene_version_config())
 
       assert preview_event =
                pushed_event(preview_result, "show_unsaved_modal") ||
@@ -285,24 +285,24 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
         refute Map.has_key?(payload, "request_id")
       end
 
-      assert Versioning.count_versions("flow", flow.id) == 3
+      assert Versioning.count_versions("scene", scene.id) == 3
     end
 
     test "rejects present malformed request IDs before authorization or restore", %{
       user: user,
       project: project,
-      flow: flow,
+      scene: scene,
       version: version
     } do
       socket =
         build_socket(%{
           current_scope: Scope.for_user(user),
-          flow: flow,
+          scene: scene,
           membership: %{role: "viewer"},
           project: project
         })
 
-      config = flow_version_config()
+      config = scene_version_config()
 
       for request_id <- [nil, 42, %{}, "", String.duplicate("x", 65)],
           handler <- [
@@ -320,7 +320,7 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
       refute pushed_event(socket, "show_unsaved_modal")
       refute pushed_event(socket, "show_restore_modal")
       refute pushed_event(socket, "version_restored")
-      assert Versioning.count_versions("flow", flow.id) == 1
+      assert Versioning.count_versions("scene", scene.id) == 1
     end
   end
 
@@ -330,10 +330,10 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpersTest do
     }
   end
 
-  defp flow_version_config do
+  defp scene_version_config do
     %{
-      entity_key: :flow,
-      entity_type: "flow",
+      entity_key: :scene,
+      entity_type: "scene",
       restore_path: fn _socket -> "/restored" end
     }
   end

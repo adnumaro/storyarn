@@ -42,7 +42,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
       flow = Storyarn.Repo.preload(flow, [:nodes, :connections], force: true)
 
       {:ok, version} = Storyarn.Flows.maybe_create_version(flow, user.id)
-      assert %EntityVersion{is_auto: true} = version
+      assert version.is_auto
     end
   end
 

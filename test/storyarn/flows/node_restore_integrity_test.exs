@@ -100,13 +100,13 @@ defmodule Storyarn.Flows.NodeRestoreIntegrityTest do
       })
 
     assert {:ok, tracked_node, _meta} = Flows.update_node_data(node, node.data)
-    assert Flows.count_variable_usage(block.id)["write"] == 1
+    assert References.count_variable_usage(block.id)["write"] == 1
 
     assert {:ok, _deleted, _meta} = Flows.delete_node(tracked_node)
-    assert Flows.count_variable_usage(block.id) == %{}
+    assert References.count_variable_usage(block.id) == %{}
 
     assert {:ok, restored} = Flows.restore_node(flow.id, node.id)
-    assert Flows.count_variable_usage(block.id)["write"] == 1
+    assert References.count_variable_usage(block.id)["write"] == 1
 
     assert Repo.exists?(
              from(reference in VariableReference,

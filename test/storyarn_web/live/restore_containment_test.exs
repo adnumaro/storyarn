@@ -7,35 +7,41 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows.Versioning.RestorePolicy, as: FlowRestorePolicy
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Versioning.RestorePolicy, as: ProjectRestorePolicy
 
   setup :register_and_log_in_user
 
   setup do
-    original_config =
-      Application.get_env(:storyarn, RestorePolicy)
+    original_project_config = Application.get_env(:storyarn, ProjectRestorePolicy)
+    original_flow_config = Application.get_env(:storyarn, FlowRestorePolicy)
 
     Application.put_env(
       :storyarn,
-      RestorePolicy,
+      ProjectRestorePolicy,
       sheet_version_restore: false,
-      flow_version_restore: false,
       scene_version_restore: false
     )
 
+    Application.put_env(
+      :storyarn,
+      FlowRestorePolicy,
+      flow_version_restore: false
+    )
+
     on_exit(fn ->
-      if is_nil(original_config) do
-        Application.delete_env(:storyarn, RestorePolicy)
-      else
-        Application.put_env(:storyarn, RestorePolicy, original_config)
-      end
+      restore_config(ProjectRestorePolicy, original_project_config)
+      restore_config(FlowRestorePolicy, original_flow_config)
     end)
 
     :ok
   end
+
+  defp restore_config(module, nil), do: Application.delete_env(:storyarn, module)
+  defp restore_config(module, config), do: Application.put_env(:storyarn, module, config)
 
   test "Sheet, Flow, and Scene expose an explicit disabled restore capability", %{
     conn: conn,

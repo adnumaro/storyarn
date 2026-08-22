@@ -9,9 +9,9 @@ defmodule Storyarn.Assets.AssetOwnerRestoreIntegrityTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
+  alias Storyarn.Assets.Persistence.FlowNodeRecord
+  alias Storyarn.Assets.Persistence.FlowRecord
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -85,7 +85,7 @@ defmodule Storyarn.Assets.AssetOwnerRestoreIntegrityTest do
     assert {:ok, _trashed_asset} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
 
     assert_inactive_asset_error(Flows.restore_sequence(deleted_sequence), asset.id)
-    assert Repo.get!(FlowNode, sequence.id).deleted_at
+    assert Repo.get!(FlowNodeRecord, sequence.id).deleted_at
   end
 
   test "flow restore validates sequence assets before publishing the flow", %{
@@ -101,7 +101,7 @@ defmodule Storyarn.Assets.AssetOwnerRestoreIntegrityTest do
     assert {:ok, _trashed_asset} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
 
     assert_inactive_asset_error(Flows.restore_flow(deleted_flow), asset.id)
-    assert Repo.get!(Flow, flow.id).deleted_at
+    assert Repo.get!(FlowRecord, flow.id).deleted_at
   end
 
   test "generic node restore cannot bypass sequence asset validation", %{
@@ -117,7 +117,7 @@ defmodule Storyarn.Assets.AssetOwnerRestoreIntegrityTest do
     assert {:ok, _trashed_asset} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
 
     assert_inactive_asset_error(Flows.restore_node(flow.id, sequence.id), asset.id)
-    assert Repo.get!(FlowNode, sequence.id).deleted_at
+    assert Repo.get!(FlowNodeRecord, sequence.id).deleted_at
   end
 
   defp assert_inactive_asset_error(result, asset_id) do

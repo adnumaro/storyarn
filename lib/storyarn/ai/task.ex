@@ -1,7 +1,9 @@
 defmodule Storyarn.AI.Task do
   @moduledoc "Immutable, validated definition of one AI product task."
 
+  alias Storyarn.AI.Context.Contract, as: ContextContract
   alias Storyarn.AI.Context.Policy, as: ContextPolicy
+  alias Storyarn.AI.Context.SubjectRef
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
 
@@ -66,6 +68,7 @@ defmodule Storyarn.AI.Task do
     :managed_price,
     :enabled?,
     :command_ids,
+    :context_contract,
     :context_policy,
     provider_options: %{}
   ]
@@ -75,7 +78,12 @@ defmodule Storyarn.AI.Task do
   @spec new(module(), map()) :: {:ok, t()} | {:error, [atom()]}
   def new(module, attrs) when is_atom(module) and is_map(attrs) do
     attrs = Map.put_new(attrs, :context_policy, %{scope: :none})
-    task = struct(__MODULE__, Map.put(attrs, :module, module))
+    context_contract = declared_context_contract(module, attrs.context_policy)
+
+    task =
+      __MODULE__
+      |> struct(Map.put(attrs, :module, module))
+      |> Map.put(:context_contract, context_contract)
 
     case validation_errors(task) do
       [] -> {:ok, task}
@@ -125,13 +133,36 @@ defmodule Storyarn.AI.Task do
   end
 
   @spec context_subject(t(), ExecutionIntent.t() | Operation.t()) ::
-          {:ok, Storyarn.AI.Context.SubjectRef.t()} | {:error, atom()}
-  def context_subject(%__MODULE__{context_policy: policy, module: module}, intent_or_operation) do
-    case ContextPolicy.new(policy) do
+          {:ok, SubjectRef.t()} | {:error, atom()}
+  def context_subject(%__MODULE__{module: module} = task, intent_or_operation) do
+    case context_policy(task) do
       {:ok, %ContextPolicy{scope: :none}} -> {:error, :context_not_required}
       {:ok, %ContextPolicy{}} -> module.context_subject(intent_or_operation)
       {:error, reason} -> {:error, reason}
     end
+  end
+
+  @doc "Builds domain evidence through the task module owned by the consuming context."
+  @spec build_context(t(), map(), SubjectRef.t(), ContextPolicy.t(), Storyarn.AI.Context.Entity.builder()) ::
+          {:ok, map()} | {:error, atom()}
+  def build_context(%__MODULE__{module: module}, project, subject_ref, %ContextPolicy{} = policy, entity_builder) do
+    module.build_context(project, subject_ref, policy, entity_builder)
+  end
+
+  @doc "Locks source rows through the task module owned by the consuming context."
+  @spec acquire_source_locks(t(), Operation.t()) :: :ok | {:error, :stale_context}
+  def acquire_source_locks(%__MODULE__{module: module} = task, %Operation{} = operation) do
+    case context_policy(task) do
+      {:ok, %ContextPolicy{scope: :none}} -> :ok
+      {:ok, %ContextPolicy{}} -> module.acquire_source_locks(operation)
+      {:error, _reason} -> {:error, :stale_context}
+    end
+  end
+
+  @doc "Returns the validated technical envelope plus its consumer-owned contract."
+  @spec context_policy(t()) :: {:ok, ContextPolicy.t()} | {:error, :invalid_context_policy}
+  def context_policy(%__MODULE__{context_policy: policy, context_contract: contract}) do
+    ContextPolicy.new(policy, contract)
   end
 
   defp validation_errors(task) do
@@ -161,7 +192,8 @@ defmodule Storyarn.AI.Task do
     |> require(is_boolean(task.enabled?) or is_function(task.enabled?, 0), :invalid_enabled)
     |> require(valid_command_ids?(task.command_ids), :invalid_command_ids)
     |> require(is_map(task.provider_options), :invalid_provider_options)
-    |> require(ContextPolicy.valid?(task.context_policy), :invalid_context_policy)
+    |> require(valid_context_contract?(task), :invalid_context_contract)
+    |> require(ContextPolicy.valid?(task.context_policy, task.context_contract), :invalid_context_policy)
     |> require(valid_context_data_scope?(task), :invalid_context_data_scope)
     |> require(
       task.data_scope != :entity or function_exported?(task.module, :authorize_subject, 3),
@@ -223,16 +255,23 @@ defmodule Storyarn.AI.Task do
 
   defp valid_command_ids?(_ids), do: false
 
-  defp valid_context_builder?(%{context_policy: policy, module: module}) do
-    case ContextPolicy.new(policy) do
-      {:ok, %ContextPolicy{scope: :none}} -> true
-      {:ok, %ContextPolicy{}} -> function_exported?(module, :context_subject, 1)
-      {:error, _reason} -> false
+  defp valid_context_builder?(%__MODULE__{module: module} = task) do
+    case context_policy(task) do
+      {:ok, %ContextPolicy{scope: :none}} ->
+        true
+
+      {:ok, %ContextPolicy{}} ->
+        function_exported?(module, :context_subject, 1) and
+          function_exported?(module, :build_context, 4) and
+          function_exported?(module, :acquire_source_locks, 1)
+
+      {:error, _reason} ->
+        false
     end
   end
 
-  defp valid_context_data_scope?(%{context_policy: policy, data_scope: data_scope}) do
-    case ContextPolicy.new(policy) do
+  defp valid_context_data_scope?(%__MODULE__{data_scope: data_scope} = task) do
+    case context_policy(task) do
       {:ok, %ContextPolicy{scope: :none}} -> true
       {:ok, %ContextPolicy{}} -> data_scope in [:project, :entity]
       {:error, _reason} -> false
@@ -244,4 +283,20 @@ defmodule Storyarn.AI.Task do
 
   defp require(errors, true, _error), do: errors
   defp require(errors, false, error), do: [error | errors]
+
+  defp declared_context_contract(module, policy) do
+    if function_exported?(module, :context_contract, 1),
+      do: module.context_contract(policy)
+  end
+
+  defp valid_context_contract?(%__MODULE__{context_policy: policy, context_contract: contract}) do
+    case context_scope(policy) do
+      :none -> is_nil(contract)
+      _contextual -> ContextContract.valid?(contract)
+    end
+  end
+
+  defp context_scope(%ContextPolicy{scope: scope}), do: scope
+  defp context_scope(%{} = policy), do: Map.get(policy, :scope, Map.get(policy, "scope"))
+  defp context_scope(_policy), do: nil
 end

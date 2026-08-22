@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
 
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Shared.FormulaRuntime
+  alias Storyarn.Flows.FormulaRuntime
 
   @doc """
   Evaluate an instruction node: execute all assignments and follow the output.

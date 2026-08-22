@@ -21,10 +21,10 @@ import {
 import { computed, ref, type Component } from "vue";
 import { useI18n } from "vue-i18n";
 
-import AudioAsset from "../../../../../components/forms/assets/AudioAsset.vue";
-import ImageAsset from "../../../../../components/forms/assets/ImageAsset.vue";
-import ImageFit from "../../../../../components/forms/assets/ImageFit.vue";
-import ImagePosition from "../../../../../components/forms/assets/ImagePosition.vue";
+import AudioAsset from "../assets/AudioAsset.vue";
+import ImageAsset from "../assets/ImageAsset.vue";
+import ImageFit from "../assets/ImageFit.vue";
+import ImagePosition from "../assets/ImagePosition.vue";
 import { Button } from "../../../../../components/ui/button";
 import {
   Command,

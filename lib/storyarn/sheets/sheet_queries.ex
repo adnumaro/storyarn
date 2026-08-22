@@ -8,9 +8,6 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
@@ -18,6 +15,9 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.Persistence.FlowNodeRecord
+  alias Storyarn.Sheets.Persistence.FlowRecord
+  alias Storyarn.Sheets.Persistence.VariableReferenceRecord
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -810,12 +810,60 @@ defmodule Storyarn.Sheets.SheetQueries do
   # Reference Validation
   # =============================================================================
 
+  @doc false
+  @spec search_reference_flows(integer(), String.t(), keyword()) :: [FlowRecord.t()]
+  def search_reference_flows(project_id, query, opts \\ []) when is_binary(query) do
+    limit = Keyword.get(opts, :limit, 25)
+    offset = Keyword.get(opts, :offset, 0)
+    query = String.trim(query)
+
+    base =
+      from(flow in FlowRecord,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at)
+      )
+
+    if query == "" do
+      Repo.all(
+        from(flow in base,
+          order_by: [desc: flow.updated_at],
+          limit: ^limit,
+          offset: ^offset
+        ),
+        log: false
+      )
+    else
+      search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
+
+      Repo.all(
+        from(flow in base,
+          where: ilike(flow.name, ^search_term) or ilike(flow.shortcut, ^search_term),
+          order_by: [asc: flow.name],
+          limit: ^limit,
+          offset: ^offset
+        ),
+        log: false
+      )
+    end
+  end
+
+  @doc false
+  @spec get_reference_flow(integer(), integer()) :: FlowRecord.t() | nil
+  def get_reference_flow(project_id, flow_id) do
+    Repo.one(
+      from(flow in FlowRecord,
+        where:
+          flow.project_id == ^project_id and flow.id == ^flow_id and
+            is_nil(flow.deleted_at)
+      )
+    )
+  end
+
   @doc """
   Validates that a reference target (sheet or flow) exists in the project.
   Returns `{:ok, entity}` or `{:error, reason}`.
   """
   @spec validate_reference_target(String.t(), integer(), integer()) ::
-          {:ok, Sheet.t() | Flow.t()} | {:error, :not_found | :invalid_type}
+          {:ok, Sheet.t() | FlowRecord.t()} | {:error, :not_found | :invalid_type}
   def validate_reference_target(target_type, target_id, project_id) do
     case target_type do
       "sheet" ->
@@ -825,7 +873,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         end
 
       "flow" ->
-        case Storyarn.Flows.get_flow(project_id, target_id) do
+        case get_reference_flow(project_id, target_id) do
           nil -> {:error, :not_found}
           flow -> {:ok, flow}
         end
@@ -1187,14 +1235,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   Returns stale variable reference data for flow nodes.
   Joins variable_references with flow_nodes, flows, blocks, and sheets
   to detect staleness via SQL comparison of stored vs current names.
-  Used by the Flows.VariableReferenceTracker for stale reference detection.
+  Used by the project integrity workflow for stale reference detection.
   """
   def check_stale_flow_node_variable_references(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
-        join: n in FlowNode,
+      from(vr in VariableReferenceRecord,
+        join: n in FlowNodeRecord,
         on: vr.source_type == "flow_node" and n.id == vr.source_id,
-        join: f in Flow,
+        join: f in FlowRecord,
         on: f.id == n.flow_id,
         join: b in Block,
         on: b.id == vr.block_id,
@@ -1252,14 +1300,14 @@ defmodule Storyarn.Sheets.SheetQueries do
   @doc """
   Returns variable references with current block info for stale repair.
   Joins variable_references with flow_nodes, flows, blocks, and sheets.
-  Used by the Flows.VariableReferenceTracker for stale reference repair.
+  Used by the project integrity workflow for stale reference repair.
   """
   def list_variable_refs_with_block_info_for_repair(project_id) do
     Repo.all(
-      from(vr in VariableReference,
-        join: n in FlowNode,
+      from(vr in VariableReferenceRecord,
+        join: n in FlowNodeRecord,
         on: vr.source_type == "flow_node" and n.id == vr.source_id,
-        join: f in Flow,
+        join: f in FlowRecord,
         on: f.id == n.flow_id,
         join: b in Block,
         on: b.id == vr.block_id,
@@ -1339,8 +1387,8 @@ defmodule Storyarn.Sheets.SheetQueries do
   # its sheet, or the variable no longer carries its name.
   defp stale_regular_refs(flow_ids) do
     Repo.all(
-      from(vr in VariableReference,
-        join: n in FlowNode,
+      from(vr in VariableReferenceRecord,
+        join: n in FlowNodeRecord,
         on: vr.source_type == "flow_node" and n.id == vr.source_id,
         join: b in Block,
         on: b.id == vr.block_id,
@@ -1380,9 +1428,9 @@ defmodule Storyarn.Sheets.SheetQueries do
       )
 
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         as: :vr,
-        join: n in FlowNode,
+        join: n in FlowNodeRecord,
         on: vr.source_type == "flow_node" and n.id == vr.source_id,
         join: b in Block,
         as: :block,
@@ -1510,7 +1558,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   Used by the export Validator for orphan sheet detection.
   """
   def list_variable_referenced_sheet_ids(project_id) do
-    from(vr in VariableReference,
+    from(vr in VariableReferenceRecord,
       join: b in Block,
       on: vr.block_id == b.id,
       join: s in Sheet,

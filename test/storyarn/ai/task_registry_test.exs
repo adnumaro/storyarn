@@ -7,6 +7,7 @@ defmodule Storyarn.AI.TaskRegistryTest do
   alias Storyarn.AI.InferenceProviders
   alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
+  alias Storyarn.AI.Tasks.ManagedDiagnostic
   alias Storyarn.AI.Telemetry
   alias Storyarn.Shared.CanonicalJSON
   alias StoryarnTest.AI.ContractTask
@@ -68,6 +69,26 @@ defmodule Storyarn.AI.TaskRegistryTest do
              })
 
     assert :invalid_context_data_scope in errors
+  end
+
+  test "contextual definitions fail closed without a consumer contract, builder and locks" do
+    attrs =
+      ManagedDiagnostic.definition()
+      |> Map.put(:data_scope, :project)
+      |> Map.put(:context_policy, %{
+        scope: :consumer_owned_scope,
+        max_depth: 0,
+        max_fan_out: 1,
+        max_entities: 10,
+        max_bytes: 4_096,
+        tokenizer: nil,
+        fields: %{}
+      })
+
+    assert {:error, errors} = Task.new(ManagedDiagnostic, attrs)
+    assert :invalid_context_contract in errors
+    assert :invalid_context_policy in errors
+    assert :missing_context_subject_builder in errors
   end
 
   test "canonical structured hashing ignores map insertion order and rejects structs" do

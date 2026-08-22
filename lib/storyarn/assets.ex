@@ -14,18 +14,18 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.AssetTrash
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.ImageProcessor
+  alias Storyarn.Assets.Persistence.EntityTrashRefRecord, as: EntityTrashRef
+  alias Storyarn.Assets.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Assets.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Assets.Persistence.SequenceConfigRecord, as: SequenceConfig
+  alias Storyarn.Assets.Persistence.SequenceTrackRecord, as: SequenceTrack
+  alias Storyarn.Assets.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Flows.EntityTrashRef
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.SequenceConfig
-  alias Storyarn.Flows.SequenceTrack
-  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity

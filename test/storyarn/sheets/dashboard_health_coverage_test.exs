@@ -28,7 +28,6 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -741,7 +740,6 @@ defmodule Storyarn.Sheets.DashboardHealthCoverageTest do
     }
 
     node = node_fixture(flow, %{type: "instruction", data: %{"assignments" => [assignment]}})
-    :ok = VariableReferenceTracker.update_references(node)
     node
   end
 end

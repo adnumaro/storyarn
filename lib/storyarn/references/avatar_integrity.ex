@@ -11,9 +11,9 @@ defmodule Storyarn.References.AvatarIntegrity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.EntityTrashRef
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.Persistence.EntityTrashRefRecord
+  alias Storyarn.References.Persistence.FlowNodeRecord
+  alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
@@ -186,7 +186,7 @@ defmodule Storyarn.References.AvatarIntegrity do
 
     pending_ref_ids =
       Repo.all(
-        from(ref in EntityTrashRef,
+        from(ref in EntityTrashRefRecord,
           where: ref.target_sheet_avatar_id == ^avatar_id,
           order_by: [asc: ref.id],
           lock: "FOR UPDATE",
@@ -203,7 +203,7 @@ defmodule Storyarn.References.AvatarIntegrity do
 
   defp active_flow_project_id(flow_id) do
     case Repo.one(
-           from(flow in Flow,
+           from(flow in FlowRecord,
              where: flow.id == ^flow_id and is_nil(flow.deleted_at),
              select: flow.project_id
            )
@@ -331,7 +331,7 @@ defmodule Storyarn.References.AvatarIntegrity do
 
     count =
       Repo.aggregate(
-        from(node in FlowNode,
+        from(node in FlowNodeRecord,
           where: fragment("?->>? = ?", node.data, "avatar_id", ^avatar_id_string)
         ),
         :count,

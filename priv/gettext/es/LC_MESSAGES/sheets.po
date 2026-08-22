@@ -73,12 +73,12 @@ msgstr "No se pudieron reordenar los bloques."
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:70
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:66
 #, elixir-autogen, elixir-format
 msgid "Could not update audio."
 msgstr "No se pudo actualizar el bloque."
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:98
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:91
 #, elixir-autogen, elixir-format
 msgid "Could not upload audio file."
 msgstr "No se pudo subir el banner."
@@ -115,12 +115,11 @@ msgstr "Ficha no encontrada."
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:87
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:80
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:460
 #: lib/storyarn_web/live/hooks/palette.ex:585
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:93
 #, elixir-autogen, elixir-format
@@ -269,7 +268,7 @@ msgstr "Bloque %{type} eliminado"
 msgid "Removed %{type} block \"%{name}\""
 msgstr "Bloque %{type} \"%{name}\" eliminado"
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:94
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:87
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr "Límite de almacenamiento alcanzado. Mejora tu plan."

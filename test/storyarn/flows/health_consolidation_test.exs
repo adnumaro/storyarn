@@ -168,8 +168,7 @@ defmodule Storyarn.Flows.HealthConsolidationTest do
         source_pin: "exit_#{excluded_exit.id}"
       })
 
-      [selected_flow] =
-        Flows.list_flows_for_export(project.id, filter_ids: [selected.id])
+      selected_flow = Flows.get_flow!(project.id, selected.id)
 
       selected_flows = [%{selected_flow | name: "Loaded selection"}]
 

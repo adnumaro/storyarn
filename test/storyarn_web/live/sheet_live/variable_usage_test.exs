@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
 
   # ===========================================================================
@@ -87,7 +86,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "set operator shows '= value'",
          %{conn: conn, project: project, sheet: sheet, flow: flow} do
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -104,8 +103,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           }
         })
 
-      VariableReferenceTracker.update_references(node)
-
       {_view, html} = mount_references_tab(conn, project, sheet)
 
       assert html =~ "= 42"
@@ -113,7 +110,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "add operator shows '+= value'",
          %{conn: conn, project: project, sheet: sheet, flow: flow} do
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -130,8 +127,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           }
         })
 
-      VariableReferenceTracker.update_references(node)
-
       {_view, html} = mount_references_tab(conn, project, sheet)
 
       assert html =~ "+= 5"
@@ -139,7 +134,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "subtract operator shows '-= value'",
          %{conn: conn, project: project, sheet: sheet, flow: flow} do
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -155,8 +150,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -175,7 +168,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       _ = bool_block
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -191,8 +184,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -210,7 +201,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       _ = bool_block
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -226,8 +217,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -245,7 +234,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       _ = bool_block
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -261,8 +250,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -280,7 +267,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       _ = text_block
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -296,8 +283,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -316,7 +301,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           value: %{"content" => "10"}
         })
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -334,8 +319,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           }
         })
 
-      VariableReferenceTracker.update_references(node)
-
       {_view, html} = mount_references_tab(conn, project, sheet)
 
       assert html =~ "= src.base_score"
@@ -352,7 +335,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           value: %{"content" => "5"}
         })
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -370,8 +353,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           }
         })
 
-      VariableReferenceTracker.update_references(node)
-
       {_view, html} = mount_references_tab(conn, project, sheet)
 
       assert html =~ "+= bonus.modifier"
@@ -388,7 +369,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           value: %{"content" => "2"}
         })
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -405,8 +386,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -515,7 +494,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
       _ = block
 
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -531,8 +510,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             ]
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 
@@ -559,7 +536,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "instruction node shows zap icon",
          %{conn: conn, project: project, sheet: sheet, flow: flow} do
-      node =
+      _node =
         node_fixture(flow, %{
           type: "instruction",
           data: %{
@@ -576,8 +553,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
           }
         })
 
-      VariableReferenceTracker.update_references(node)
-
       {_view, html} = mount_references_tab(conn, project, sheet)
 
       # The icon component renders with the name attribute
@@ -586,7 +561,7 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
 
     test "condition node shows git-branch icon",
          %{conn: conn, project: project, sheet: sheet, flow: flow} do
-      node =
+      _node =
         node_fixture(flow, %{
           type: "condition",
           data: %{
@@ -611,8 +586,6 @@ defmodule StoryarnWeb.SheetLive.VariableUsageTest do
             }
           }
         })
-
-      VariableReferenceTracker.update_references(node)
 
       {_view, html} = mount_references_tab(conn, project, sheet)
 

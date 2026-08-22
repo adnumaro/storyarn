@@ -1,14 +1,13 @@
 defmodule Storyarn.Shortcuts do
   @moduledoc """
-  Utilities for generating and managing shortcuts for sheets and flows.
+  Legacy utilities for generating and managing shortcuts outside Flows.
 
   Shortcuts are unique identifiers within a project that can be used to
-  reference sheets and flows (e.g., #mc.jaime, #chapter-1).
+  reference entities (e.g., #mc.jaime).
   """
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
@@ -24,9 +23,6 @@ defmodule Storyarn.Shortcuts do
   """
   def generate_sheet_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_entity_shortcuts(Sheet, project_id, &1), exclude_id)
-
-  def generate_flow_shortcut(name, project_id, exclude_id \\ nil),
-    do: generate_unique(name, &list_entity_shortcuts(Flow, project_id, &1), exclude_id)
 
   def generate_scene_shortcut(name, project_id, exclude_id \\ nil),
     do: generate_unique(name, &list_entity_shortcuts(Scene, project_id, &1), exclude_id)

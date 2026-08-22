@@ -12,19 +12,19 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.RichTextMentions
+  alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow

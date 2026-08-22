@@ -17,11 +17,10 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.Instruction
   alias Storyarn.Repo
   alias Storyarn.Scenes.HealthChecker
+  alias Storyarn.Scenes.Instruction
+  alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
@@ -30,6 +29,7 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.VariableCatalog
   alias Storyarn.Sheets.Sheet
 
   @collection_keys [:layers, :zones, :pins, :connections, :annotations, :ambient_flows]
@@ -165,7 +165,7 @@ defmodule Storyarn.Scenes.HealthSnapshots do
       # reaches it through `VariableHelpers.list_all_variables/1`, which
       # delegates to the same function; a surface that only read sheet variables
       # would report every pin/zone property reference as stale.
-      variables: Flows.list_referenceable_variables(project_id)
+      variables: VariableCatalog.list_referenceable(project_id)
     })
   end
 
@@ -174,7 +174,7 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   end
 
   defp flow_names(project_id) do
-    from(f in Flow,
+    from(f in FlowRecord,
       where: f.project_id == ^project_id and is_nil(f.deleted_at),
       select: {f.id, f.name}
     )

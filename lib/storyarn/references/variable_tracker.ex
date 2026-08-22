@@ -6,7 +6,7 @@ defmodule Storyarn.References.VariableTracker do
   while callers migrate to the `Storyarn.References` facade.
   """
 
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.References.VariableReferenceTracker
 
   @spec rebuild_project_variable_references(integer()) :: :ok | {:error, term()}
   def rebuild_project_variable_references(project_id),

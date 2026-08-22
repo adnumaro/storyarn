@@ -24,9 +24,9 @@ defmodule Storyarn.Flows.StructuralAnalysis do
 
   alias Storyarn.Flows.HealthChecker
   alias Storyarn.Flows.NodeConnectionRules
+  alias Storyarn.Flows.Severity
   alias Storyarn.Flows.StructuralAnalysis.Graph
   alias Storyarn.Flows.StructuralAnalysis.Topology
-  alias Storyarn.Shared.Severity
   alias Storyarn.Shared.StringUtils
 
   defmodule Analysis do
@@ -114,7 +114,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   # Every rule here emits through the ONE flow-health vocabulary. There is no
   # occurrence identity and no evidence fingerprint any more: both existed to
   # anchor a dismissal or an AI explanation to an exact occurrence, and both are
-  # gone. Sheets and Scenes never had them either.
+  # gone because no Flow surface consumes them.
   defp flow_finding(code, topology, details) do
     HealthChecker.finding(code, %{
       flow_id: topology.flow_id,

@@ -3,11 +3,11 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.Persistence.FlowNodeRecord
+  alias Storyarn.Localization.Persistence.FlowRecord
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
   alias Storyarn.References.ProjectReferenceIntegrity
@@ -29,8 +29,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   def flow_word_counts(project_id) do
     localizable_node_types = SourceContract.localizable_flow_node_types()
 
-    from(node in FlowNode,
-      join: flow in Flow,
+    from(node in FlowNodeRecord,
+      join: flow in FlowRecord,
       on: flow.id == node.flow_id,
       where:
         flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at) and
@@ -137,16 +137,16 @@ defmodule Storyarn.Localization.LocalizableWords do
     end
   end
 
-  @spec extract_flow_node(FlowNode.t()) :: :ok | {:error, term()}
-  def extract_flow_node(%FlowNode{} = node) do
+  @spec extract_flow_node(map() | struct()) :: :ok | {:error, term()}
+  def extract_flow_node(%{id: node_id, flow_id: flow_id}) do
     case_result =
-      case flow_project_id(node.flow_id) do
+      case flow_project_id(flow_id) do
         nil ->
           :ok
 
         project_id ->
-          with_source_lock(project_id, @flow_node_lock_namespace, node.id, fn ->
-            reconcile_flow_node(project_id, node.id)
+          with_source_lock(project_id, @flow_node_lock_namespace, node_id, fn ->
+            reconcile_flow_node(project_id, node_id)
           end)
       end
 
@@ -154,13 +154,13 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   @doc false
-  @spec flow_node_texts_current?(FlowNode.t(), integer()) :: boolean()
-  def flow_node_texts_current?(%FlowNode{} = node, project_id) when is_integer(project_id) do
+  @spec flow_node_texts_current?(map() | struct(), integer()) :: boolean()
+  def flow_node_texts_current?(%{id: _id} = node, project_id) when is_integer(project_id) do
     node.id in flow_node_texts_current_ids([node], project_id)
   end
 
   @doc false
-  @spec flow_node_texts_current_ids([FlowNode.t()], integer()) :: MapSet.t(integer())
+  @spec flow_node_texts_current_ids([map() | struct()], integer()) :: MapSet.t(integer())
   def flow_node_texts_current_ids([], project_id) when is_integer(project_id), do: MapSet.new()
 
   def flow_node_texts_current_ids(nodes, project_id) when is_list(nodes) and is_integer(project_id) do
@@ -244,8 +244,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp reconcile_flow_node(project_id, node_id) do
-    case Repo.get(FlowNode, node_id) do
-      %FlowNode{deleted_at: nil} = current ->
+    case Repo.get(FlowNodeRecord, node_id) do
+      %FlowNodeRecord{deleted_at: nil} = current ->
         upsert_source_fields(project_id, "flow_node", current.id, flow_node_source_fields(current))
 
       _missing_or_deleted ->
@@ -317,7 +317,7 @@ defmodule Storyarn.Localization.LocalizableWords do
       project_id ->
         project_id
         |> with_inventory_lock(fn ->
-          from(n in FlowNode, where: n.flow_id == ^flow_id)
+          from(n in FlowNodeRecord, where: n.flow_id == ^flow_id)
           |> Repo.all()
           |> Enum.each(&reconcile_flow_node(project_id, &1.id))
 
@@ -384,7 +384,7 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   def delete_flow_node_texts_for_flows(flow_ids) do
     with_source_project_lock(flow_project_id(List.first(flow_ids)), fn ->
-      node_ids = Repo.all(from(n in FlowNode, where: n.flow_id in ^flow_ids, select: n.id))
+      node_ids = Repo.all(from(n in FlowNodeRecord, where: n.flow_id in ^flow_ids, select: n.id))
       TextCrud.delete_texts_for_sources("flow_node", node_ids)
     end)
 
@@ -430,7 +430,7 @@ defmodule Storyarn.Localization.LocalizableWords do
   # Private — Runtime Source Contract
   # =============================================================================
 
-  defp flow_node_source_fields(%FlowNode{type: "dialogue", data: data}) do
+  defp flow_node_source_fields(%{type: "dialogue", data: data}) do
     speaker_sheet_id = data["speaker_sheet_id"]
 
     optional_field("text", data["text"], "dialogue",
@@ -442,7 +442,7 @@ defmodule Storyarn.Localization.LocalizableWords do
       indexed_response_fields(list_value(data["responses"]), speaker_sheet_id)
   end
 
-  defp flow_node_source_fields(%FlowNode{type: "exit", data: data}) do
+  defp flow_node_source_fields(%{type: "exit", data: data}) do
     optional_field("label", data["label"], "exit")
   end
 
@@ -591,8 +591,8 @@ defmodule Storyarn.Localization.LocalizableWords do
 
   defp project_flow_nodes(project_id) do
     Repo.all(
-      from(n in FlowNode,
-        join: f in Flow,
+      from(n in FlowNodeRecord,
+        join: f in FlowRecord,
         on: n.flow_id == f.id,
         where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(n.deleted_at),
         order_by: [asc: n.id]
@@ -618,13 +618,13 @@ defmodule Storyarn.Localization.LocalizableWords do
   end
 
   defp flow_project_id(flow_id) do
-    Repo.one(from(f in Flow, where: f.id == ^flow_id and is_nil(f.deleted_at), select: f.project_id))
+    Repo.one(from(f in FlowRecord, where: f.id == ^flow_id and is_nil(f.deleted_at), select: f.project_id))
   end
 
   defp flow_node_project_id(node_id) do
     Repo.one(
-      from(n in FlowNode,
-        join: f in Flow,
+      from(n in FlowNodeRecord,
+        join: f in FlowRecord,
         on: f.id == n.flow_id,
         where: n.id == ^node_id,
         select: f.project_id

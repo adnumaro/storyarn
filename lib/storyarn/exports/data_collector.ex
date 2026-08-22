@@ -14,15 +14,15 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Localization
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
+  alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -165,7 +165,7 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp load_flow_shortcuts_by_id(project_id) do
     project_id
-    |> Flows.list_flows()
+    |> FlowReadModel.list_flows()
     |> Map.new(&{to_string(&1.id), &1.shortcut})
   end
 
@@ -201,7 +201,7 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp maybe_load(:flows, project_id, opts) do
     filter_ids = if opts.flow_ids == :all, do: :all, else: opts.flow_ids
-    Flows.list_flows_for_export(project_id, filter_ids: filter_ids)
+    FlowReadModel.list_flows_for_export(project_id, filter_ids: filter_ids)
   end
 
   defp maybe_load(:scenes, _project_id, %{include_scenes: false}), do: []
@@ -302,7 +302,7 @@ defmodule Storyarn.Exports.DataCollector do
     |> Repo.aggregate(:count)
   end
 
-  defp count_flows(project_id, %{flow_ids: :all}), do: Flows.count_flows(project_id)
+  defp count_flows(project_id, %{flow_ids: :all}), do: FlowReadModel.count_flows(project_id)
 
   defp count_flows(_project_id, %{flow_ids: []}), do: 0
 
@@ -316,7 +316,7 @@ defmodule Storyarn.Exports.DataCollector do
   end
 
   defp count_nodes(_project_id, %{include_flows: false}), do: 0
-  defp count_nodes(project_id, %{flow_ids: :all}), do: Flows.count_nodes_for_project(project_id)
+  defp count_nodes(project_id, %{flow_ids: :all}), do: FlowReadModel.count_nodes_for_project(project_id)
   defp count_nodes(_project_id, %{flow_ids: []}), do: 0
 
   defp count_nodes(project_id, %{flow_ids: flow_ids}) do

@@ -19,7 +19,7 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   alias Ecto.Multi
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo

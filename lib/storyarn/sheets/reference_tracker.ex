@@ -29,8 +29,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
@@ -38,6 +36,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
+  alias Storyarn.Sheets.Persistence.FlowNodeRecord
+  alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.VariableNamespaceResolver
 
@@ -339,7 +339,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
     flow_targets =
       Repo.all(
-        from(flow in Flow,
+        from(flow in FlowRecord,
           where:
             flow.project_id == ^project_id and flow.id in ^flow_ids and
               is_nil(flow.deleted_at),
@@ -395,7 +395,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
       on:
         reference.target_type == "sheet" and reference.target_id == target_sheet.id and
           target_sheet.project_id == ^project_id and is_nil(target_sheet.deleted_at),
-      left_join: target_flow in Flow,
+      left_join: target_flow in FlowRecord,
       as: :target_flow,
       on:
         reference.target_type == "flow" and reference.target_id == target_flow.id and
@@ -481,7 +481,45 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp query_flow_node_backlinks(target_type, target_id, project_id) do
-    Storyarn.Flows.query_flow_node_backlinks(target_type, target_id, project_id)
+    from(reference in EntityReference,
+      join: node in FlowNodeRecord,
+      on: reference.source_type == "flow_node" and reference.source_id == node.id,
+      join: flow in FlowRecord,
+      on: node.flow_id == flow.id,
+      where: reference.target_type == ^target_type and reference.target_id == ^target_id,
+      where:
+        flow.project_id == ^project_id and
+          is_nil(node.deleted_at) and is_nil(flow.deleted_at),
+      select: %{
+        id: reference.id,
+        source_type: reference.source_type,
+        source_id: reference.source_id,
+        context: reference.context,
+        inserted_at: reference.inserted_at,
+        node_type: node.type,
+        flow_id: flow.id,
+        flow_name: flow.name,
+        flow_shortcut: flow.shortcut
+      },
+      order_by: [desc: reference.inserted_at]
+    )
+    |> Repo.all()
+    |> Enum.map(fn reference ->
+      %{
+        id: reference.id,
+        source_type: "flow_node",
+        source_id: reference.source_id,
+        context: reference.context,
+        inserted_at: reference.inserted_at,
+        source_info: %{
+          type: :flow,
+          flow_id: reference.flow_id,
+          flow_name: reference.flow_name,
+          flow_shortcut: reference.flow_shortcut,
+          node_type: reference.node_type
+        }
+      }
+    end)
   end
 
   @doc """
@@ -645,8 +683,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp resolve_flow_node_project(node_id, requested_project_id) when is_integer(node_id) do
     source_identity =
       Repo.one(
-        from node in FlowNode,
-          join: flow in Flow,
+        from node in FlowNodeRecord,
+          join: flow in FlowRecord,
           on: flow.id == node.flow_id,
           where: node.id == ^node_id,
           select: {node.flow_id, flow.project_id}
@@ -667,17 +705,17 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   defp lock_active_flow_node(node_id, flow_id, project_id, requested_project_id) do
     with {:ok, _project} <- ProjectReferenceIntegrity.lock_active_project(project_id),
-         %Flow{} <-
+         %FlowRecord{} <-
            Repo.one(
-             from flow in Flow,
+             from flow in FlowRecord,
                where:
                  flow.id == ^flow_id and flow.project_id == ^project_id and
                    is_nil(flow.deleted_at),
                lock: "FOR SHARE"
            ),
-         %FlowNode{} = node <-
+         %FlowNodeRecord{} = node <-
            Repo.one(
-             from current_node in FlowNode,
+             from current_node in FlowNodeRecord,
                where:
                  current_node.id == ^node_id and current_node.flow_id == ^flow_id and
                    is_nil(current_node.deleted_at),
@@ -701,7 +739,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp replace_flow_node_references(node_id, opts) do
     requested_project_id = Keyword.get(opts, :project_id)
 
-    with {:ok, {%FlowNode{data: data}, project_id}} <-
+    with {:ok, {%FlowNodeRecord{data: data}, project_id}} <-
            resolve_flow_node_project(node_id, requested_project_id) do
       do_replace_flow_node_references(
         node_id,
@@ -745,29 +783,30 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     entries = Enum.filter(entries, &(&1.target_type in allowed_types))
 
     allowed_targets =
-      Enum.reduce([{"sheet", Sheet}, {"flow", Flow}, {"scene", Scene}], MapSet.new(), fn {target_type, schema}, allowed ->
-        target_ids =
-          entries
-          |> Enum.filter(&(&1.target_type == target_type))
-          |> Enum.map(& &1.target_id)
-          |> Enum.uniq()
+      Enum.reduce([{"sheet", Sheet}, {"flow", FlowRecord}, {"scene", Scene}], MapSet.new(), fn
+        {target_type, schema}, allowed ->
+          target_ids =
+            entries
+            |> Enum.filter(&(&1.target_type == target_type))
+            |> Enum.map(& &1.target_id)
+            |> Enum.uniq()
 
-        active_ids =
-          if target_ids == [] do
-            []
-          else
-            Repo.all(
-              from target in schema,
-                where:
-                  target.id in ^target_ids and target.project_id == ^project_id and
-                    is_nil(target.deleted_at),
-                order_by: [asc: target.id],
-                lock: "FOR SHARE",
-                select: target.id
-            )
-          end
+          active_ids =
+            if target_ids == [] do
+              []
+            else
+              Repo.all(
+                from target in schema,
+                  where:
+                    target.id in ^target_ids and target.project_id == ^project_id and
+                      is_nil(target.deleted_at),
+                  order_by: [asc: target.id],
+                  lock: "FOR SHARE",
+                  select: target.id
+              )
+            end
 
-        Enum.reduce(active_ids, allowed, &MapSet.put(&2, {target_type, &1}))
+          Enum.reduce(active_ids, allowed, &MapSet.put(&2, {target_type, &1}))
       end)
 
     Enum.filter(entries, &MapSet.member?(allowed_targets, {&1.target_type, &1.target_id}))

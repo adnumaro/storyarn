@@ -21,6 +21,8 @@ defmodule StoryarnWeb.PrivateMedia do
     end
   end
 
+  def asset_url(%{metadata: %{"web_asset_id" => id}}) when is_integer(id), do: ~p"/media/assets/#{id}"
+
   def asset_url(%{id: id}) when is_integer(id), do: ~p"/media/assets/#{id}"
   def asset_url(_asset), do: nil
 

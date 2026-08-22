@@ -5,7 +5,11 @@ defmodule Storyarn.FlowsFixtures do
   """
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.FlowNode
   alias Storyarn.ProjectsFixtures
+  alias Storyarn.Repo
+  alias Storyarn.Shared.MapUtils
 
   def unique_flow_name, do: "Flow #{System.unique_integer([:positive])}"
 
@@ -31,6 +35,27 @@ defmodule Storyarn.FlowsFixtures do
   end
 
   @doc """
+  Inserts a Flow record without the domain creation side effects.
+
+  Use only when a test deliberately needs an incomplete or corrupt persistence
+  fixture, such as a Flow with no entry node. Project import/reconstitution has
+  its own writer and must not be reached through the Flow facade.
+  """
+  def raw_flow_fixture(project, attrs \\ %{}) do
+    unique = System.unique_integer([:positive])
+
+    attrs =
+      Enum.into(attrs, %{
+        name: "Raw Flow #{unique}",
+        shortcut: "raw-flow-#{unique}"
+      })
+
+    %Flow{project_id: project.id}
+    |> Flow.create_changeset(attrs)
+    |> Repo.insert!()
+  end
+
+  @doc """
   Creates a node within a flow.
   """
   def node_fixture(flow, attrs \\ %{}) do
@@ -44,6 +69,30 @@ defmodule Storyarn.FlowsFixtures do
 
     {:ok, node} = Flows.create_node(flow, attrs)
     node
+  end
+
+  @doc """
+  Inserts a Flow node without reference-integrity or domain side effects.
+
+  This is intentionally test-only and should be reserved for malformed legacy
+  values or other persistence states that the regular Flow writer rejects.
+  """
+  def raw_node_fixture(flow, attrs \\ %{}) do
+    attrs =
+      Enum.into(attrs, %{
+        type: "dialogue",
+        position_x: 100.0,
+        position_y: 100.0,
+        data: %{"speaker" => "Character", "text" => "Hello!"}
+      })
+
+    type = MapUtils.get_flexible(attrs, :type)
+    data = MapUtils.get_flexible(attrs, :data)
+
+    %FlowNode{flow_id: flow.id}
+    |> FlowNode.create_changeset(attrs)
+    |> Ecto.Changeset.put_change(:word_count, Flows.node_word_count(type, data))
+    |> Repo.insert!()
   end
 
   @doc """

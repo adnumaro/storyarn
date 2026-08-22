@@ -1,8 +1,8 @@
 defmodule Storyarn.References.VariableUsageDelegationTest do
   @moduledoc """
   `References.list_stale_node_ids_by_flow/1` used to travel
-  `References → VariableUsage → Flows.VariableReferenceTracker → Sheets → SheetQueries`.
-  Hop 3 was a **Flows** submodule bouncing out to the **Sheets** facade for a
+  `References → VariableUsage → legacy variable tracker → Sheets → SheetQueries`.
+  Hop 3 was a compatibility submodule bouncing out to the **Sheets** facade for a
   batched sheet-blocks query: no body, no work, and a context inversion.
 
   Both hops are gone. The behaviour is asserted end-to-end because a pure
@@ -151,7 +151,6 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
         }
       })
 
-    :ok = Storyarn.Flows.VariableReferenceTracker.update_references(node)
     node
   end
 end

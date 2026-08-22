@@ -14,14 +14,13 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Flows
-  alias Storyarn.Flows.EntityTrashRef
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.VariableReference
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
   alias Storyarn.Projects.Project
+  alias Storyarn.References.Persistence.EntityTrashRefRecord, as: EntityTrashRef
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -1033,8 +1032,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
           "action_data" => %{"assignments" => [assignment]}
         })
 
-      assert :ok = VariableReferenceTracker.update_references(node)
-
       expected_sources =
         MapSet.new([
           {"flow_node", node.id},
@@ -2043,7 +2040,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
         })
 
       assert {:ok, 1} =
-               Flows.sweep_trash_refs_jsonb(
+               EntityTrashRefs.sweep_jsonb_field(
                  FlowNode,
                  "flow_node",
                  :data,
@@ -2067,7 +2064,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
              )
 
       assert {:ok, %{restored: 1, skipped: 0}} =
-               Flows.restore_trash_refs(:sheet_avatar, pending_avatar.id)
+               EntityTrashRefs.restore(:sheet_avatar, pending_avatar.id)
 
       assert Repo.get!(FlowNode, node.id).data["avatar_id"] == pending_avatar.id
     end

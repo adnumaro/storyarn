@@ -7,13 +7,13 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.HealthChecker
+  alias Storyarn.Sheets.Persistence.VariableReferenceRecord
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetStats
 
@@ -284,7 +284,7 @@ defmodule Storyarn.Sheets.SheetStatsTest do
       block = block_fixture(sheet, %{type: "number", is_constant: false})
 
       # Insert a variable reference directly
-      Repo.insert!(%VariableReference{
+      Repo.insert!(%VariableReferenceRecord{
         source_type: "flow_node",
         source_id: System.unique_integer([:positive]),
         flow_node_id: nil,
@@ -521,7 +521,12 @@ defmodule Storyarn.Sheets.SheetStatsTest do
   end
 
   defp reference_source_types(block) do
-    Repo.all(from(vr in VariableReference, where: vr.block_id == ^block.id, select: vr.source_type))
+    Repo.all(
+      from(vr in VariableReferenceRecord,
+        where: vr.block_id == ^block.id,
+        select: vr.source_type
+      )
+    )
   end
 
   defp variable_condition(sheet, block) do

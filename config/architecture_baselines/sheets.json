@@ -1,36 +1,12 @@
 {
   "consumer": "sheets",
   "edges": [
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/projects/project.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/references.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/accounts/user.ex", "export"],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/localization.ex", "runtime"],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/projects.ex", "runtime"],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/projects/project.ex", "export"],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/references.ex", "runtime"],
+    ["lib/storyarn/sheets.ex", "lib/storyarn/versioning.ex", "runtime"],
     [
       "lib/storyarn/sheets/avatar_crud.ex",
       "lib/storyarn/references/avatar_integrity.ex",
@@ -41,56 +17,37 @@
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/block_crud.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/block_crud.ex",
-      "lib/storyarn/references.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/block.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/assets.ex", "runtime"],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/localization.ex", "runtime"],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/references.ex", "runtime"],
     [
       "lib/storyarn/sheets/block_crud.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/block_gallery_image.ex",
-      "lib/storyarn/assets/asset.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
+    ["lib/storyarn/sheets/block_crud.ex", "lib/storyarn/shared/word_count.ex", "runtime"],
+    ["lib/storyarn/sheets/block_gallery_image.ex", "lib/storyarn/assets/asset.ex", "runtime"],
+    ["lib/storyarn/sheets/formula_resolver.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
     [
       "lib/storyarn/sheets/gallery_crud.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/health_snapshots.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/health_checker.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
     [
       "lib/storyarn/sheets/property_inheritance.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
     [
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "lib/storyarn/flows.ex",
+      "lib/storyarn/sheets/property_inheritance.ex",
+      "lib/storyarn/shared/name_normalizer.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "lib/storyarn/flows/flow.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "lib/storyarn/flows/flow_node.ex",
-      "export"
-    ],
+    ["lib/storyarn/sheets/property_inheritance.ex", "lib/storyarn/shared/word_count.ex", "runtime"],
     [
       "lib/storyarn/sheets/reference_tracker.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
@@ -101,114 +58,74 @@
       "lib/storyarn/references/rich_text_mentions.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "lib/storyarn/scenes.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "lib/storyarn/scenes/scene.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet.ex",
-      "lib/storyarn/assets/asset.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet.ex",
-      "lib/storyarn/projects/project.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet.ex",
-      "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "lib/storyarn/assets/asset.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/projects/project.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/references.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/reference_tracker.ex", "lib/storyarn/scenes.ex", "runtime"],
+    ["lib/storyarn/sheets/reference_tracker.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/assets/asset.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/projects/project.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/shared/hierarchical_schema.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/shared/validations.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/versioning/entity_version.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_avatar.ex", "lib/storyarn/assets/asset.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_avatar.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/accounts/scope.ex", "export"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/assets.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/billing.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/localization.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/notifications.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/projects/project.ex", "export"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/references.ex", "runtime"],
     [
       "lib/storyarn/sheets/sheet_crud.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/shortcuts.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_queries.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_queries.ex",
-      "lib/storyarn/flows/flow.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_queries.ex",
-      "lib/storyarn/flows/flow_node.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_queries.ex",
-      "lib/storyarn/flows/variable_reference.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_queries.ex",
-      "lib/storyarn/scenes.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_stats.ex",
-      "lib/storyarn/flows/variable_reference.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/shared/shortcut_helpers.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/shortcuts.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/versioning/entity_version.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/scenes.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
+    ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
     [
       "lib/storyarn/sheets/sheet_stats.ex",
       "lib/storyarn/localization/localizable_words.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/table_crud.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
+    ["lib/storyarn/sheets/table_column.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     [
       "lib/storyarn/sheets/table_crud.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn/sheets/tree_operations.ex",
-      "lib/storyarn/projects/project.ex",
-      "export"
-    ],
+    ["lib/storyarn/sheets/table_crud.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
+    ["lib/storyarn/sheets/table_crud.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
+    ["lib/storyarn/sheets/table_crud.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
+    ["lib/storyarn/sheets/table_row.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
+    ["lib/storyarn/sheets/tree_operations.ex", "lib/storyarn/projects/project.ex", "export"],
     [
       "lib/storyarn/sheets/tree_operations.ex",
       "lib/storyarn/references/project_reference_integrity.ex",
+      "runtime"
+    ],
+    ["lib/storyarn/sheets/tree_operations.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
+    [
+      "lib/storyarn_web/live/sheet_live/handlers/block_handlers.ex",
+      "lib/storyarn/analytics.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex",
+      "lib/storyarn/assets.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex",
+      "lib/storyarn/assets.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex",
+      "lib/storyarn/analytics.ex",
       "runtime"
     ],
     [
@@ -217,8 +134,23 @@
       "runtime"
     ],
     [
+      "lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex",
+      "lib/storyarn/shared/formula_engine.ex",
+      "runtime"
+    ],
+    [
       "lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex",
-      "lib/storyarn/flows.ex",
+      "lib/storyarn/assets.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex",
+      "lib/storyarn/shared/formula_engine.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex",
+      "lib/storyarn/billing.ex",
       "runtime"
     ],
     [
@@ -228,24 +160,13 @@
     ],
     [
       "lib/storyarn_web/live/sheet_live/helpers/references_data_helpers.ex",
-      "lib/storyarn/flows.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/helpers/references_data_helpers.ex",
       "lib/storyarn/scenes.ex",
       "runtime"
     ],
-    [
-      "lib/storyarn_web/live/sheet_live/show.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheets_sidebar_live.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ]
+    ["lib/storyarn_web/live/sheet_live/index.ex", "lib/storyarn/shared/severity.ex", "runtime"],
+    ["lib/storyarn_web/live/sheet_live/show.ex", "lib/storyarn/analytics.ex", "runtime"],
+    ["lib/storyarn_web/live/sheet_live/show.ex", "lib/storyarn/versioning.ex", "runtime"],
+    ["lib/storyarn_web/live/sheets_sidebar_live.ex", "lib/storyarn/projects.ex", "runtime"]
   ],
   "version": 1
 }

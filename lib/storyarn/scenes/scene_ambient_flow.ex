@@ -14,7 +14,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Flows.Flow
+  alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.Scene
 
   @type t :: %__MODULE__{
@@ -27,7 +27,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
           scene_id: integer() | nil,
           scene: Scene.t() | NotLoaded.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | NotLoaded.t() | nil,
+          flow: FlowRecord.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -44,7 +44,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
     field :position, :integer, default: 0
 
     belongs_to :scene, Scene
-    belongs_to :flow, Flow
+    belongs_to :flow, FlowRecord
 
     timestamps(type: :utc_datetime)
   end

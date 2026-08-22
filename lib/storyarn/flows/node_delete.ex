@@ -3,13 +3,14 @@ defmodule Storyarn.Flows.NodeDelete do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.AssetReferences
+  alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.LocalizationProjection, as: Localization
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.Localization
-  alias Storyarn.References
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
 
   def delete_node(%FlowNode{} = node_hint) do
@@ -85,7 +86,7 @@ defmodule Storyarn.Flows.NodeDelete do
              data
            ),
          :ok <-
-           Assets.lock_active_asset_references_for_restore(project_id,
+           AssetReferences.lock_active_for_restore(project_id,
              flow_node_ids: [node.id]
            ),
          :ok <- validate_restored_node_identity(node, type, data),
@@ -140,12 +141,12 @@ defmodule Storyarn.Flows.NodeDelete do
   defp rebuild_references(node, project_id) do
     with :ok <-
            normalize_reference_rebuild_result(
-             References.update_flow_node_entity_references(
+             EntityReferenceTracker.update_references(
                node,
                project_id: project_id
              )
            ) do
-      normalize_reference_rebuild_result(References.update_flow_node_variable_references(node))
+      normalize_reference_rebuild_result(VariableReferenceTracker.update_references(node))
     end
   end
 
@@ -187,8 +188,8 @@ defmodule Storyarn.Flows.NodeDelete do
          :ok <- validate_deletable_node(node) do
       orphaned_count = maybe_clear_orphaned_jumps(node)
 
-      References.delete_flow_node_entity_references(node.id)
-      References.delete_flow_node_variable_references(node.id)
+      EntityReferenceTracker.delete_references(node.id)
+      VariableReferenceTracker.delete_references(node.id)
       Localization.delete_flow_node_texts(node.id)
 
       soft_delete_locked_node(node, orphaned_count, project_id)
@@ -198,7 +199,15 @@ defmodule Storyarn.Flows.NodeDelete do
   defp soft_delete_locked_node(node, orphaned_count, project_id) do
     case node |> FlowNode.soft_delete_changeset() |> Repo.update() do
       {:ok, deleted_node} ->
-        {:ok, {deleted_node, %{orphaned_jumps: orphaned_count}, project_id}}
+        graph_changed? = orphaned_count > 0 or node.type == "sequence"
+
+        meta = %{
+          orphaned_jumps: orphaned_count,
+          graph_changed?: graph_changed?,
+          refresh_scope: if(graph_changed?, do: :flow, else: :node)
+        }
+
+        {:ok, {deleted_node, meta, project_id}}
 
       {:error, changeset} ->
         {:error, changeset}

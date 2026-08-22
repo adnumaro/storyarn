@@ -15,8 +15,8 @@ defmodule Storyarn.References.VariableReference do
 
   import Ecto.Changeset
 
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Sheets.Block
+  alias Storyarn.References.Persistence.BlockRecord
+  alias Storyarn.References.Persistence.FlowNodeRecord
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -36,8 +36,8 @@ defmodule Storyarn.References.VariableReference do
   schema "variable_references" do
     field :source_type, :string, default: "flow_node"
     field :source_id, :integer
-    belongs_to :flow_node, FlowNode
-    belongs_to :block, Block
+    belongs_to :flow_node, FlowNodeRecord
+    belongs_to :block, BlockRecord
     field :kind, :string
     field :source_sheet, :string
     field :source_variable, :string

@@ -10,8 +10,8 @@ defmodule Storyarn.Exports.Validator do
 
   alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Flows
   alias Storyarn.Localization
+  alias Storyarn.Projects.FlowReadModel
   alias Storyarn.References
   alias Storyarn.Sheets
 
@@ -161,7 +161,7 @@ defmodule Storyarn.Exports.Validator do
     active_flows = load_active_flows(project_id, opts, flows)
 
     referenceable_variables =
-      if flows == [], do: [], else: Flows.list_referenceable_variables(project_id)
+      if flows == [], do: [], else: FlowReadModel.list_referenceable_variables(project_id)
 
     stale_node_variable_refs_by_flow =
       flows
@@ -185,20 +185,20 @@ defmodule Storyarn.Exports.Validator do
 
   defp load_active_flows(_project_id, %{include_flows: true, flow_ids: :all}, flows), do: flows
 
-  defp load_active_flows(project_id, _opts, flows) when flows != [], do: Flows.list_flows(project_id)
+  defp load_active_flows(project_id, _opts, flows) when flows != [], do: FlowReadModel.list_flows(project_id)
 
   defp load_active_flows(_project_id, _opts, _flows), do: []
 
   defp load_flows_data(_project_id, %ExportOptions{include_flows: false}), do: []
 
   defp load_flows_data(project_id, %ExportOptions{flow_ids: :all}) do
-    Flows.list_flows_for_export(project_id)
+    FlowReadModel.list_flows_for_export(project_id)
   end
 
   defp load_flows_data(_project_id, %ExportOptions{flow_ids: []}), do: []
 
   defp load_flows_data(project_id, %ExportOptions{flow_ids: flow_ids}) do
-    Flows.list_flows_for_export(project_id, filter_ids: flow_ids)
+    FlowReadModel.list_flows_for_export(project_id, filter_ids: flow_ids)
   end
 
   defp load_sheets(_project_id, %ExportOptions{include_sheets: false}), do: []
@@ -227,7 +227,7 @@ defmodule Storyarn.Exports.Validator do
 
     health_findings =
       project_id
-      |> Flows.list_export_health_findings(flows, context)
+      |> FlowReadModel.list_export_health_findings(flows, context)
       |> Enum.filter(&effective_health_finding?(&1, effective_nodes))
 
     artifact_findings =
@@ -524,10 +524,21 @@ defmodule Storyarn.Exports.Validator do
 
   defp check_orphan_sheets(project_id, sheets) do
     # Find sheets referenced by flow nodes (speaker_sheet_id)
-    referenced_sheet_ids = Flows.list_speaker_sheet_ids(project_id)
+    referenced_sheet_ids = FlowReadModel.list_speaker_sheet_ids(project_id)
 
-    # Also check variable_references — blocks referenced by flow nodes
-    block_sheet_ids = Flows.list_variable_referenced_sheet_ids(project_id)
+    # Variable references belong to the Project-wide integrity model. Resolve
+    # them from the already-loaded active Sheet blocks so Flow autonomy cannot
+    # accidentally hide references authored by Scenes.
+    block_id_to_sheet_id =
+      for sheet <- sheets, block <- sheet.blocks, into: %{} do
+        {block.id, sheet.id}
+      end
+
+    block_sheet_ids =
+      block_id_to_sheet_id
+      |> Map.keys()
+      |> References.referenced_block_ids()
+      |> MapSet.new(&Map.fetch!(block_id_to_sheet_id, &1))
 
     all_referenced = MapSet.union(referenced_sheet_ids, block_sheet_ids)
 

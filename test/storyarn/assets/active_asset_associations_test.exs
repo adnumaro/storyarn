@@ -62,8 +62,8 @@ defmodule Storyarn.Assets.ActiveAssetAssociationsTest do
     assert %Asset{id: ^image_id} = Repo.preload(sheet, :banner_asset).banner_asset
     assert [%{asset: %Asset{id: ^image_id}}] = Repo.preload(sheet, avatars: :asset).avatars
     assert %Asset{id: ^image_id} = Repo.preload(gallery_image, :asset).asset
-    assert %Asset{id: ^image_id} = Repo.preload(visual_layer, :asset).asset
-    assert %Asset{id: ^audio_id} = Repo.preload(track, :asset).asset
+    assert %{id: ^image_id} = Repo.preload(visual_layer, :asset).asset
+    assert %{id: ^audio_id} = Repo.preload(track, :asset).asset
     assert %Asset{id: ^image_id} = Repo.preload(scene, :background_asset).background_asset
     assert %Asset{id: ^image_id} = Repo.preload(pin, :icon_asset).icon_asset
     assert %Asset{id: ^image_id} = Repo.preload(zone, :label_icon_asset).label_icon_asset

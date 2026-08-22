@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
 import { useLive } from "@shared/composables/useLive";
+import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useFlowCanvas } from "@modules/flows/editor/composables/useFlowCanvas";
 import FlowCursors from "@modules/flows/editor/components/chrome/FlowCursors.vue";
 import FlowMinimapToggle from "@modules/flows/editor/components/chrome/FlowMinimapToggle.vue";
@@ -99,6 +100,11 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
       :container-el="containerRef"
     />
 
-    <FlowMinimapToggle v-if="area && editor" :area="area" :editor="editor" />
+    <FlowMinimapToggle
+      v-if="area && editor"
+      :area="area"
+      :editor="editor"
+      :register-commands="registerPaletteCommands"
+    />
   </div>
 </template>

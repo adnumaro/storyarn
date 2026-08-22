@@ -8,8 +8,8 @@ defmodule Storyarn.Flows.ConnectionCrud do
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeConnectionRules
+  alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   def list_connections(flow_id) do

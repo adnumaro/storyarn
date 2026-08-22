@@ -7,6 +7,7 @@ defmodule Storyarn.AI.Context do
   """
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Finalizer
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy
@@ -23,12 +24,12 @@ defmodule Storyarn.AI.Context do
     started = System.monotonic_time()
 
     result =
-      with {:ok, policy} <- Policy.new(task.context_policy),
+      with {:ok, policy} <- Task.context_policy(task),
            :ok <- contextual_policy(policy),
            {:ok, subject_ref} <- SubjectRef.validate(subject_ref),
            :ok <- matching_scope(policy, subject_ref),
            {:ok, project, _membership} <- authorize_project(scope, subject_ref),
-           {:ok, draft} <- builder(policy.scope).build(project, subject_ref, policy) do
+           {:ok, draft} <- Task.build_context(task, project, subject_ref, policy, &Entity.new/4) do
         Finalizer.finalize(
           policy,
           task.context_version,
@@ -48,7 +49,7 @@ defmodule Storyarn.AI.Context do
   @spec prepare(Scope.t(), Task.t(), ExecutionIntent.t() | Operation.t()) ::
           {:ok, nil | %{package: Package.t(), subject: map() | nil}} | {:error, atom()}
   def prepare(%Scope{} = scope, %Task{} = task, intent_or_operation) do
-    with {:ok, policy} <- Policy.new(task.context_policy) do
+    with {:ok, policy} <- Task.context_policy(task) do
       case policy.scope do
         :none -> {:ok, nil}
         _scope -> prepare_context(scope, task, intent_or_operation)
@@ -80,7 +81,8 @@ defmodule Storyarn.AI.Context do
         %Operation{context_hash: hash, context_manifest: %{}, context_subject: %{} = persisted} = operation
       )
       when is_binary(hash) do
-    with {:ok, subject_ref} <- SubjectRef.from_persisted_map(persisted),
+    with {:ok, policy} <- Task.context_policy(task),
+         {:ok, subject_ref} <- SubjectRef.from_persisted_map(persisted, policy.contract),
          :ok <- matching_owner(subject_ref, operation) do
       current?(scope, task, subject_ref, hash)
     end
@@ -117,21 +119,23 @@ defmodule Storyarn.AI.Context do
   defp contextual_policy(%Policy{scope: :none}), do: {:error, :context_not_required}
   defp contextual_policy(%Policy{}), do: :ok
 
-  defp matching_scope(%Policy{scope: scope}, %SubjectRef{kind: scope}), do: :ok
-  defp matching_scope(_policy, _subject_ref), do: {:error, :context_scope_mismatch}
+  defp matching_scope(%Policy{contract: contract} = policy, %SubjectRef{contract: contract} = subject_ref) do
+    if contract.subject_matches_policy?(subject_ref, policy),
+      do: :ok,
+      else: {:error, :context_scope_mismatch}
+  end
 
-  defp builder(:dialogue), do: Storyarn.AI.Context.Builders.Dialogue
-  defp builder(:flow_neighborhood), do: Storyarn.AI.Context.Builders.FlowNeighborhood
-  defp builder(:sheet), do: Storyarn.AI.Context.Builders.Sheet
+  defp matching_scope(_policy, _subject_ref), do: {:error, :context_scope_mismatch}
 
   defp prepare_context(scope, task, intent_or_operation) do
     with {:ok, subject_ref} <- Task.context_subject(task, intent_or_operation),
          :ok <- matching_owner(subject_ref, intent_or_operation),
-         {:ok, package} <- build_context(scope, task, subject_ref) do
+         {:ok, package} <- build_context(scope, task, subject_ref),
+         {:ok, persisted_subject} <- SubjectRef.persisted_map(subject_ref) do
       {:ok,
        %{
          package: package,
-         subject: persistable_subject(subject_ref)
+         subject: persisted_subject
        }}
     end
   end
@@ -149,11 +153,6 @@ defmodule Storyarn.AI.Context do
   defp matching_owner(%SubjectRef{}, %ExecutionIntent{}), do: {:error, :unauthorized_context}
   defp matching_owner(%SubjectRef{}, %Operation{}), do: {:error, :unauthorized_context}
   defp matching_owner(%SubjectRef{}, _intent_or_operation), do: {:error, :invalid_context_subject}
-
-  defp persistable_subject(subject_ref) do
-    {:ok, persisted} = SubjectRef.persisted_map(subject_ref)
-    persisted
-  end
 
   defp emit_telemetry(task, result, started) do
     duration = System.monotonic_time() - started
@@ -196,7 +195,7 @@ defmodule Storyarn.AI.Context do
   end
 
   defp context_scope(%Task{} = task) do
-    case Policy.new(task.context_policy) do
+    case Task.context_policy(task) do
       {:ok, %Policy{scope: scope}} -> Atom.to_string(scope)
       {:error, :invalid_context_policy} -> "invalid"
     end

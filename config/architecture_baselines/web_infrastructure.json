@@ -1,0 +1,82 @@
+{
+  "consumer": "web_infrastructure",
+  "edges": [
+    [
+      "lib/storyarn_web/components/docs_layout.ex",
+      "lib/storyarn/localization/languages.ex",
+      "runtime"
+    ],
+    ["lib/storyarn_web/components/project_layout.ex", "lib/storyarn/projects.ex", "runtime"],
+    [
+      "lib/storyarn_web/components/public_language_switcher.ex",
+      "lib/storyarn/localization/languages.ex",
+      "runtime"
+    ],
+    ["lib/storyarn_web/components/sheet_components.ex", "lib/storyarn/assets.ex", "runtime"],
+    ["lib/storyarn_web/components/sheet_components.ex", "lib/storyarn/assets/asset.ex", "export"],
+    [
+      "lib/storyarn_web/controllers/llms_controller.ex",
+      "lib/storyarn/localization/languages.ex",
+      "runtime"
+    ],
+    ["lib/storyarn_web/endpoint.ex", "lib/storyarn/assets/upload_policy.ex", "compile"],
+    ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/accounts/scope.ex", "export"],
+    ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/accounts/user.ex", "export"],
+    ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/projects.ex", "runtime"],
+    ["lib/storyarn_web/helpers/authorize.ex", "lib/storyarn/workspaces.ex", "runtime"],
+    ["lib/storyarn_web/helpers/version_event_helpers.ex", "lib/storyarn/versioning.ex", "runtime"],
+    ["lib/storyarn_web/helpers/version_history_helpers.ex", "lib/storyarn/billing.ex", "runtime"],
+    [
+      "lib/storyarn_web/helpers/version_history_helpers.ex",
+      "lib/storyarn/versioning.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/language_picker_option.ex",
+      "lib/storyarn/localization/languages.ex",
+      "runtime"
+    ],
+    ["lib/storyarn_web/live/hooks/notifications.ex", "lib/storyarn/notifications.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/notifications.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/scenes.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/sheets.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/workspaces.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/project_scope.ex", "lib/storyarn/projects.ex", "runtime"],
+    ["lib/storyarn_web/live/hooks/workspace_scope.ex", "lib/storyarn/workspaces.ex", "runtime"],
+    ["lib/storyarn_web/live/landing_live/index.ex", "lib/storyarn/accounts/user.ex", "export"],
+    ["lib/storyarn_web/live/landing_live/index.ex", "lib/storyarn/workspaces.ex", "runtime"],
+    [
+      "lib/storyarn_web/live/landing_live/index.ex",
+      "lib/storyarn/workspaces/workspace.ex",
+      "export"
+    ],
+    [
+      "lib/storyarn_web/live/settings_live/ai_team.ex",
+      "lib/storyarn_web/live/settings_live/sudo.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/settings_live/integration_detail.ex",
+      "lib/storyarn_web/live/settings_live/sudo.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/shared/notification_helpers.ex",
+      "lib/storyarn/notifications.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/shared/notification_helpers.ex",
+      "lib/storyarn/notifications/notification.ex",
+      "export"
+    ],
+    ["lib/storyarn_web/private_media.ex", "lib/storyarn/assets/asset.ex", "export"],
+    ["lib/storyarn_web/public_urls.ex", "lib/storyarn/localization/languages.ex", "runtime"],
+    ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts.ex", "runtime"],
+    ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts/scope.ex", "export"],
+    ["lib/storyarn_web/user_auth.ex", "lib/storyarn/accounts/user.ex", "export"],
+    ["lib/storyarn_web/user_auth.ex", "lib/storyarn/workspaces.ex", "runtime"],
+    ["lib/storyarn_web/user_auth.ex", "lib/storyarn/workspaces/workspace.ex", "export"]
+  ],
+  "version": 1
+}

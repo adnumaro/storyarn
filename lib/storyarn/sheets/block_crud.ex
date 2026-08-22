@@ -5,7 +5,6 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
@@ -19,6 +18,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableUsage
 
   # =============================================================================
   # Query Operations
@@ -863,7 +863,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     label = Map.get(config, "label")
 
     if label do
-      referenced? = Flows.count_variable_usage(block.id) != %{}
+      referenced? = VariableUsage.count_variable_usage(block.id) != %{}
 
       new_name =
         NameNormalizer.maybe_regenerate(

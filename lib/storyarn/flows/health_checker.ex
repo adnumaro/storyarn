@@ -7,12 +7,10 @@ defmodule Storyarn.Flows.HealthChecker do
   behavior (`:info`). It operates on `Flows.serialize_for_canvas/2` output so
   resolved references and graph-derived flags share one contract.
 
-  Same shape as `Storyarn.Sheets.HealthChecker` and `Storyarn.Scenes.HealthChecker`:
-  severity is declared once in `@severity_by_code` rather than at each detection
-  site, and `finding/2` is the only constructor, so a bulk adapter (the dashboard)
-  cannot invent its own vocabulary. `entity_type` is `"flow"` for flow-level
-  findings and the node's type for node-level ones, exactly as Scenes uses
-  `"scene"` for its container and the element kind for everything else.
+  Severity is declared once in `@severity_by_code` rather than at each detection
+  site, and `finding/2` is the only constructor, so bulk consumers cannot invent
+  their own vocabulary. `entity_type` is `"flow"` for flow-level findings and the
+  node's type for node-level ones.
   """
 
   alias Storyarn.Flows.Condition
@@ -30,8 +28,8 @@ defmodule Storyarn.Flows.HealthChecker do
           required(:details) => map()
         }
 
-  # ONE catalog for flow health, exactly like sheets and scenes. Detection is
-  # split by what it needs — editorial checks read a node in isolation and live
+  # One catalog owns all flow-health severities. Detection is split by what it
+  # needs — editorial checks read a node in isolation and live
   # in this module; structural checks need the whole graph and live in
   # `StructuralAnalysis`, which emits through `finding/2` — but the vocabulary,
   # the severities and the shape are owned here and nowhere else. That is what
@@ -158,8 +156,8 @@ defmodule Storyarn.Flows.HealthChecker do
   defp maybe_add(codes, true, code), do: [code | codes]
   defp maybe_add(codes, false, _code), do: codes
 
-  # The node's own type is the `entity_type`, exactly as Scenes uses the element
-  # kind — it is what the label helper and the popover render.
+  # The node's own type is the `entity_type`; it is what the label helper and
+  # the popover render.
   defp node_finding(code, node, flow_id) do
     finding(code, %{flow_id: flow_id, entity_type: node.type, entity_id: node.id})
   end

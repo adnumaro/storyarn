@@ -10,7 +10,6 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.SerializerRegistry
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
@@ -168,7 +167,7 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
 
     updated_node =
       node
-      |> FlowNode.data_changeset(%{data: %{"text" => "New source", "responses" => []}})
+      |> Ecto.Changeset.change(data: Map.merge(node.data, %{"text" => "New source", "responses" => []}))
       |> Repo.update!()
 
     assert :ok = Localization.extract_flow_node(updated_node)
@@ -189,7 +188,7 @@ defmodule Storyarn.Exports.LocalizationEngineContractTest do
     language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
     stale_node
-    |> FlowNode.data_changeset(%{data: %{"text" => "Current database source", "responses" => []}})
+    |> Ecto.Changeset.change(data: Map.merge(stale_node.data, %{"text" => "Current database source", "responses" => []}))
     |> Repo.update!()
 
     assert :ok = Localization.extract_flow_node(stale_node)

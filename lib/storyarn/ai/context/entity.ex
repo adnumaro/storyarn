@@ -7,6 +7,9 @@ defmodule Storyarn.AI.Context.Entity do
   defstruct [:type, :id, :content, :required?, :priority, :revision, :hash, :serialized_bytes]
 
   @type t :: %__MODULE__{}
+  @type builder ::
+          (String.t(), integer() | String.t(), map(), keyword() ->
+             {:ok, t()} | {:error, :context_serialization_failed})
 
   @spec new(String.t(), integer() | String.t(), map(), keyword()) ::
           {:ok, t()} | {:error, :context_serialization_failed}

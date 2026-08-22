@@ -172,10 +172,13 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
           end)
         end
 
-      Enum.each(tasks, fn task ->
-        assert_receive {^barrier, :ready, task_pid}, 5_000
-        assert task_pid == task.pid
-      end)
+      ready_pids =
+        Enum.map(tasks, fn _task ->
+          assert_receive {^barrier, :ready, task_pid}, 5_000
+          task_pid
+        end)
+
+      assert MapSet.new(ready_pids) == MapSet.new(tasks, & &1.pid)
 
       Enum.each(tasks, &send(&1.pid, {barrier, :go}))
       results = Enum.map(tasks, &Task.await(&1, 10_000))

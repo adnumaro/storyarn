@@ -237,12 +237,12 @@ defmodule StoryarnWeb.Router do
            :play
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/compare/:version_number",
-           CompareLive.Flow,
+           FlowLive.Compare,
            :compare
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/versions/:version_number/viewer",
-           VersionViewerLive,
-           :flow
+           FlowLive.VersionViewer,
+           :view
 
       # Scenes — immersive exploration keeps its chromeless layout while
       # sharing the authenticated app live_session for fast nav.

@@ -12,9 +12,14 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
   alias Storyarn.AI.Context.ModelLimits
 
   @impl true
-  def generate(_credential, %{input: input, contextual?: contextual?, provider_options: options})
+  def generate(_credential, %{
+        input: input,
+        contextual?: contextual?,
+        context_policy: context_policy,
+        provider_options: options
+      })
       when is_boolean(contextual?) do
-    with {:ok, echo_input} <- unwrap_context_input(input, contextual?) do
+    with {:ok, echo_input} <- unwrap_context_input(input, contextual?, context_policy) do
       case Map.get(options, :scenario, Map.get(options, "scenario", default_scenario(options))) do
         # A task that declares a response schema and no test scenario gets a
         # minimal instance OF ITS OWN CONTRACT back, so a deterministic run
@@ -117,13 +122,13 @@ defmodule Storyarn.AI.InferenceProviders.Fake do
 
   defp bounded_text(key, _max_length), do: bounded_text(key, nil)
 
-  defp unwrap_context_input(input, false), do: {:ok, input}
+  defp unwrap_context_input(input, false, _context_policy), do: {:ok, input}
 
-  defp unwrap_context_input(%{"request" => request} = input, true) do
-    if ModelLimits.contextual_input?(input),
+  defp unwrap_context_input(%{"request" => request} = input, true, context_policy) do
+    if ModelLimits.contextual_input?(input, context_policy),
       do: {:ok, request},
       else: {:error, :provider_error}
   end
 
-  defp unwrap_context_input(_input, true), do: {:error, :provider_error}
+  defp unwrap_context_input(_input, true, _context_policy), do: {:error, :provider_error}
 end

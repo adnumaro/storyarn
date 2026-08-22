@@ -20,7 +20,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
 
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Flows.NodeConnectionRules
+  alias Storyarn.Projects.FlowNodeConnectionRules
 
   @type instruction ::
           {:label, node :: map(), label :: String.t()}
@@ -479,7 +479,7 @@ defmodule Storyarn.Exports.Serializers.GraphTraversal do
     |> outgoing_by_pin(node.id)
     |> Enum.reduce(%{}, fn {source_pin, targets}, acc ->
       canonical_pin =
-        NodeConnectionRules.canonical_output_pin(
+        FlowNodeConnectionRules.canonical_output_pin(
           "dialogue",
           node.data || %{},
           source_pin

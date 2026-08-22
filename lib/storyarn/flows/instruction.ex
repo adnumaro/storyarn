@@ -118,12 +118,10 @@ defmodule Storyarn.Flows.Instruction do
   @doc """
   The `"shortcut.name" => block_type` lookup the type-warning check reads.
 
-  Built from an ALREADY-LOADED variable list, never from a project id: there are
-  three legitimate variable sets behind one key format — sheets only
-  (`Sheets.health_variable_types/1`), sheets plus scene pins and zones
-  (`Flows.list_referenceable_variables/1`), and whatever a scene snapshot
-  carries — and picking the wrong one makes `variable_type_mismatch` appear and
-  disappear depending on which surface asked.
+  Built from an already-loaded variable list, never from a project id. The
+  caller chooses the exact variable set for its Flow surface; using a different
+  set would make `variable_type_mismatch` appear or disappear depending on
+  which surface asked.
   """
   @spec variable_type_map([map()]) :: %{String.t() => String.t()}
   def variable_type_map(project_variables) when is_list(project_variables) do

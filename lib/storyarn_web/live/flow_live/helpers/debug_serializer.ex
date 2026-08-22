@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.FlowLive.Helpers.DebugSerializer do
   @moduledoc """
-  Serializes `Storyarn.Flows.Evaluator.State` into a Vue-friendly map.
+  Serializes Flow evaluator state into a Vue-friendly map.
 
   Transforms that matter for JSON/LiveVue transport:
   - `breakpoints` (MapSet) → list

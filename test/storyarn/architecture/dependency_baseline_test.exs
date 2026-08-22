@@ -51,6 +51,54 @@ defmodule Storyarn.Architecture.DependencyBaselineTest do
     end
   end
 
+  @tag :tmp_dir
+  test "rejects missing and unexpected baseline partitions", %{tmp_dir: tmp_dir} do
+    File.write!(
+      Path.join(tmp_dir, "flows.json"),
+      DependencyBaseline.encode(:flows, MapSet.new())
+    )
+
+    File.write!(
+      Path.join(tmp_dir, "orphan.json"),
+      DependencyBaseline.encode(:orphan, MapSet.new())
+    )
+
+    assert_raise ArgumentError,
+                 ~r/baseline file set mismatch.*missing: \["scenes.json"\].*unexpected: \["orphan.json"\]/,
+                 fn ->
+                   DependencyBaseline.load_all!(tmp_dir, [:flows, :scenes])
+                 end
+  end
+
+  @tag :tmp_dir
+  test "rejects multiple dependency kinds for the same source-target pair", %{tmp_dir: tmp_dir} do
+    source = "lib/storyarn/flows/query.ex"
+    target = "lib/storyarn/scenes/scene.ex"
+    path = Path.join(tmp_dir, "flows.json")
+
+    File.write!(
+      path,
+      Jason.encode!(%{
+        "version" => 1,
+        "consumer" => "flows",
+        "edges" => [
+          [source, target, "compile"],
+          [source, target, "runtime"]
+        ]
+      })
+    )
+
+    assert_raise ArgumentError, ~r/multiple dependency kinds for the same source-target pair/, fn ->
+      DependencyBaseline.load!(path, :flows)
+    end
+
+    edges = MapSet.new([{source, target, "compile"}, {source, target, "runtime"}])
+
+    assert_raise ArgumentError, ~r/multiple dependency kinds for the same source-target pair/, fn ->
+      DependencyBaseline.encode(:flows, edges)
+    end
+  end
+
   test "the committed policy has one valid baseline partition per protected consumer" do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
     consumers = policy.forbidden_dependencies |> Map.keys() |> Enum.sort()

@@ -169,6 +169,34 @@ defmodule Storyarn.Notifications do
   end
 
   @doc """
+  Inserts structural content activity using a scalar project identity.
+
+  Producers that own their own project read model do not need to exchange a
+  `Storyarn.Projects.Project` schema with the notification context. This
+  function resolves and authorizes the canonical project internally before
+  applying the same delivery contract as `deliver_content_activity/5`.
+  """
+  @spec deliver_content_activity_by_project_id(
+          Scope.t(),
+          integer(),
+          content_action(),
+          String.t(),
+          %{required(:id) => integer(), required(:name) => String.t()}
+        ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
+  def deliver_content_activity_by_project_id(%Scope{} = actor_scope, project_id, action, entity_type, entity)
+      when is_integer(project_id) do
+    ensure_inside_transaction!("deliver_content_activity_by_project_id/5")
+
+    case Projects.get_project(actor_scope, project_id) do
+      {:ok, project, _membership} ->
+        deliver_content_activity(actor_scope, project, action, entity_type, entity)
+
+      {:error, _reason} ->
+        {:error, :not_found}
+    end
+  end
+
+  @doc """
   Lists the scoped user's recent, currently visible notifications.
 
   Supported options are `:unread_only` and `:limit`. The default limit is 20

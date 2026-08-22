@@ -6,7 +6,6 @@ defmodule Storyarn.Flows.EntityTrashRefsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.FlowNode
@@ -259,32 +258,6 @@ defmodule Storyarn.Flows.EntityTrashRefsTest do
       {:ok, _} = Sheets.permanently_delete_sheet(sheet)
 
       assert Repo.aggregate(EntityTrashRef, :count) == 0
-    end
-  end
-
-  # ===========================================================================
-  # Facade delegates
-  # ===========================================================================
-
-  describe "Flows facade delegates" do
-    test "sweep_trash_refs_jsonb works through facade" do
-      user = user_fixture()
-      project = project_fixture(user)
-      flow = flow_fixture(project)
-      sheet = sheet_fixture(project)
-      _n1 = make_node_with_speaker(flow, sheet.id)
-
-      assert {:ok, 1} =
-               Flows.sweep_trash_refs_jsonb(
-                 FlowNode,
-                 "flow_node",
-                 :data,
-                 "speaker_sheet_id",
-                 :sheet,
-                 sheet.id
-               )
-
-      assert {:ok, %{restored: 1}} = Flows.restore_trash_refs(:sheet, sheet.id)
     end
   end
 end

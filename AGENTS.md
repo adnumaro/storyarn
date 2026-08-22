@@ -219,7 +219,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 - Fields which are set programatically, such as `user_id`, must not be listed in `cast` calls or similar for security purposes. Instead they must be explicitly set when creating the struct
 - **Always** filter soft-deleted rows: `where: is_nil(e.deleted_at)`
 - **Never** interpolate into a query — `convention.check` flags `from x in … #{}` and `Repo.query` interpolation. Pin with `^`
-- Any schema passed to Vue as a `<.vue>` prop needs `Protocol.derive(LiveVue.Encoder, …)` in `lib/storyarn/live_vue_encoders.ex`. Tests will not catch a missing derive
+- Any schema passed to Vue as a `<.vue>` prop needs `Protocol.derive(LiveVue.Encoder, …)` in `lib/storyarn_web/live_vue_encoders.ex`. Tests will not catch a missing derive
 
 <!-- phoenix:ecto-end -->
 
@@ -309,7 +309,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 ## Phoenix LiveView guidelines
 
 - **Never** use the deprecated `live_redirect` and `live_patch` functions, instead **always** use the `<.link navigate={href}>` and `<.link patch={href}>` in templates, and `push_navigate` and `push_patch` functions LiveViews
-- **Avoid LiveComponent's.** Only two remain in the codebase (`project_live/form.ex`, `flow_live/form.ex`). Render a Vue component instead
+- **Avoid LiveComponents.** Only `project_live/form.ex` remains in the codebase. Render a Vue component instead
 - LiveViews should be named like `AppWeb.WeatherLive`, with a `Live` suffix
 - **Never** write embedded `<script>` tags in HEEx
 - Every mutating `handle_event` **must** be authorized with `StoryarnWeb.Helpers.Authorize` (`with_authorization(socket, :edit_content, fn …)`). Hiding a button in Vue is not a permission check
@@ -358,37 +358,54 @@ mix test --cover            # Coverage summary (threshold: 85)
 
 ### Current Contexts
 
-Facade at `lib/storyarn/{context}.ex`, submodules under `lib/storyarn/{context}/`. LiveViews call `Context.fun()`; calling `Context.SubModule.fun()` from `storyarn_web` is a `facade_bypass` violation.
+The declared bounded contexts are listed below. The target structure gives each context a public facade at
+`lib/storyarn/{context}.ex` and its business code under `lib/storyarn/{context}/`. LiveViews call the facade;
+calling `Context.SubModule.fun()` from `storyarn_web` is a `facade_bypass` violation. Legacy namespaces remain
+only while their owning context is being migrated.
 
-| Context          | Facade                      | Key Submodules                                                                                                                                      |
-| ---------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Passwords`, `Profiles`, `Emails`, `Scope`, `UserToken`                                                        |
-| Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations`                                                                                                       |
-| Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash`                                                                            |
-| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `PropertyInheritance`, `ReferenceTracker`, `HealthChecker`, `FormulaResolver` |
-| Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (→ `NodeCreate/Update/Delete`), `ConnectionCrud`, `SequenceCrud`, `HealthChecker`, `StructuralAnalysis`, `Evaluator`         |
-| Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `ExplorationSession`, `HealthChecker`                          |
-| Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`                     |
-| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                      |
-| Assets           | `Storyarn.Assets`           | `Asset`, `Storage` (behaviour + `Local`/`R2`), `BlobStore`, `ImageProcessor`, `StorageCompensation`, `UploadPolicy`                                 |
-| AI               | `Storyarn.AI`               | `Executor`, `Runtime`, `Operations`, `Tasks`/`TaskRegistry`, `Providers`, `RouteResolver`, `Allowance*`, `Settlement`, `Policy`, `Audit`            |
-| CommandPalette   | `Storyarn.CommandPalette`   | `Operation`                                                                                                                                         |
-| References       | `Storyarn.References`       | `EntityTracker`, `VariableTracker`, `Backlinks`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                     |
-| ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Authorization`                                         |
-| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `ProjectSnapshot*`, `RestorePolicy`, `ConflictDetector`                       |
-| Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`                              |
-| Imports          | `Storyarn.Imports`          | `Parsers`, `ParserRegistry`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                       |
-| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`                                                                                                |
-| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                      |
-| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                  |
-| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                               |
-| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                             |
-| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                     |
-| Publication      | (no facade)                 | `Locales`, `PathLocalizer`, `HtmlLinkLocalizer` — called as `Storyarn.Publication.Locales`                                                          |
-| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types                                                                                                |
-| FeatureFlags     | `Storyarn.FeatureFlags`     | Single module                                                                                                                                       |
+| Bounded context | Facade                  | Owned business capabilities                                                                                                                  |
+| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication and profiles                                                                                                           |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships and invitations                                                                                                      |
+| Platform        | `Storyarn.Platform`     | Product metrics/event reactions, notification inbox/delivery, commercial catalog, subscriptions, entitlements and truly platform-wide policy |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboards, trash, assets, templates, project import/export, snapshots/reconstitution and AI settings            |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions, usages and Sheet-owned AI behavior                                        |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                              |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                                    |
+| Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                                   |
 
-Background jobs are Oban workers in `lib/storyarn/workers/`.
+AI is not a bounded context or a shared business layer. Projects is the only writer of AI model, team and
+configuration records. Each consuming bounded context owns its prompts, context construction and AI operations,
+and reads the Project-owned configuration through consumer-local read models. Provider clients and execution
+plumbing may be shared only as technical adapters without consumer-specific business rules.
+
+`Platform` is a supporting control-plane context, not an umbrella for arbitrary shared code. Mail transport remains
+infrastructure, while each initiating context owns its email intent and copy. Accounts, Workspaces and Projects own
+their resource-specific roles and authorization rules; Platform owns only policies that are genuinely global. The
+notification inbox and delivery lifecycle belong to Platform, while producers retain the semantic decision to notify.
+Platform owns catalog, subscriptions and entitlements; each consumer owns how it applies a quota to its own model.
+Business contexts own the facts and payloads they emit; Platform owns the cross-cutting reaction policy. Product
+analytics is best-effort. Notification and email reactions must use persisted, idempotent delivery with retries rather
+than being added as synchronous callbacks to the event tracker.
+
+### Application and infrastructure modules
+
+Code may remain outside the eight context directories only when it is an application coordinator or a technical
+adapter and owns no domain model or business rule:
+
+- `StoryarnWeb` is the presentation adapter. It may compose public context facades but never call their internals.
+- `Storyarn.Repo`, storage providers, mail delivery, PubSub/presence, telemetry, rate limiting, feature flags and
+  Oban workers are infrastructure. Workers orchestrate through public facades.
+- Global search, command palette and dashboard caches are application/query coordinators. They may own optimized,
+  read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
+- `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It
+  must never become a catch-all for business behavior.
+- Legacy namespaces such as `Storyarn.AI`, `Storyarn.Assets`, `Storyarn.Billing`, `Storyarn.Emails`,
+  `Storyarn.Notifications`, `Storyarn.References`, `Storyarn.Versioning`, `Storyarn.Imports`, `Storyarn.Exports` and
+  `Storyarn.ProjectTemplates` are not additional bounded contexts. Business code in them must move to its owner
+  above; only compatibility facades or technical adapters may remain during migration.
+
+Background jobs are Oban workers in `lib/storyarn/workers/`; they are application adapters, not bounded contexts.
 
 ## Event Contracts
 
@@ -407,13 +424,13 @@ Other Vue islands register their own `handleEvent` names; grep the island's comp
 
 ### Passing Data to Vue
 
-Data reaches Vue as **props on `<.vue>`**, not `data-*` attributes. There are no canvas data attributes (`data-flow`, `data-sheets`, `data-locks`, `data-user-id`, … were removed with the JS hooks). Any Ecto struct in a prop needs a `Protocol.derive(LiveVue.Encoder, …)` entry in `lib/storyarn/live_vue_encoders.ex`.
+Data reaches Vue as **props on `<.vue>`**, not `data-*` attributes. There are no canvas data attributes (`data-flow`, `data-sheets`, `data-locks`, `data-user-id`, … were removed with the JS hooks). Any Ecto struct in a prop needs a `Protocol.derive(LiveVue.Encoder, …)` entry in `lib/storyarn_web/live_vue_encoders.ex`.
 
 ### Node Data Shape by Type
 
-`lib/storyarn_web/live/flow_live/node_type_registry.ex` is the single source of truth: it maps a type string to `Nodes.{Type}.Node`, which owns `default_data/0`, `extract_form_data/1`, `on_select/2`, `on_double_click/1`, `duplicate_data_cleanup/1`, `icon_name/0`, `label/0` and `description/0`. Vue renders each type from `assets/app/modules/flows/editor/components/entities/nodes/{Type}Node.vue`.
+`lib/storyarn/flows/node_types.ex` is the domain source of truth for the node vocabulary, default data, form normalization and duplication semantics. `lib/storyarn_web/live/flow_live/node_type_registry.ex` maps those types to presentation modules only: labels, icons and socket/navigation behavior. Vue renders each type from `assets/app/modules/flows/editor/components/entities/nodes/{Type}Node.vue`.
 
-| Type          | `default_data/0`                                                                                                                                                            |
+| Type          | `Storyarn.Flows.NodeTypes.default_data/1`                                                                                                                                   |
 | ------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `annotation`  | `%{text, color, font_size}` — `font_size` in `sm \| md \| lg`                                                                                                               |
 | `entry`       | `%{}`                                                                                                                                                                       |
@@ -440,7 +457,7 @@ Nothing enforces a line limit — Credo checks line _length_ (120), not file len
 Before changing the flow editor:
 
 1. **Read both sides of the event** — `show.ex` and `flowCanvasServerEvents.ts`. Adding one half ships a silent no-op
-2. **Check the node registry** — a new field belongs in `default_data/0` _and_ `extract_form_data/1` in `nodes/{type}/node.ex`
+2. **Check the Flow domain contract** — a new field belongs in `Storyarn.Flows.NodeTypes` and in the closed authoring operations of `Storyarn.Flows.NodeEditor`; Web must not define its defaults or mutation rules
 3. **Check the Vue node component** — `entities/nodes/{Type}Node.vue` renders it
 4. **Authorize the handler** — every mutating `handle_event` goes through `Authorize`
 5. Run `mix compile --warnings-as-errors`, then `mix test`

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Localization
-  alias Storyarn.ProductMetrics.Taxonomy
+  alias Storyarn.Platform
   alias Storyarn.Projects
   alias Storyarn.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
@@ -38,7 +38,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         v-inject="settings-layout"
         id="project-settings-general"
         project-details={serialize_project_details(@project)}
-        project-metrics-options={Taxonomy.project_options()}
+        project-metrics-options={Platform.product_metric_project_options()}
         source-language={serialize_source_language(@source_language)}
         source-language-options={LanguagePickerOption.all()}
         theme-primary={@theme_primary}

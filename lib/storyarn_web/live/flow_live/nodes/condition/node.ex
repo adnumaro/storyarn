@@ -16,23 +16,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
   def label, do: dgettext("flows", "Condition")
   def description, do: dgettext("flows", "Branch based on variable conditions")
 
-  def default_data do
-    %{
-      "condition" => %{"logic" => "all", "rules" => []},
-      "switch_mode" => false
-    }
-  end
-
-  def extract_form_data(data) do
-    %{
-      "condition" => data["condition"] || %{"logic" => "all", "rules" => []},
-      "switch_mode" => data["switch_mode"] || false
-    }
-  end
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   def on_select(_node, socket), do: socket
   def on_double_click(_node), do: :builder
-  def duplicate_data_cleanup(data), do: data
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 
   # -- Condition-specific event handlers --
 
@@ -41,9 +30,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
     node = socket.assigns.selected_node
 
     if node && node.type == "condition" do
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "condition", Flows.condition_sanitize(condition_data))
-      end)
+      NodeHelpers.persist_node_update(socket, node.id, :put_condition, %{
+        condition: condition_data
+      })
     else
       {:noreply, socket}
     end
@@ -59,9 +48,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
         socket
       ) do
     if node_id && response_id do
-      NodeHelpers.persist_node_update(socket, node_id, fn data ->
-        update_response_condition(data, response_id, condition_data)
-      end)
+      NodeHelpers.persist_node_update(socket, node_id, :put_response_condition_builder, %{
+        response_id: response_id,
+        condition: condition_data
+      })
     else
       {:noreply, socket}
     end
@@ -76,49 +66,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Condition.Node do
     node = socket.assigns.selected_node
 
     if node && node.type == "condition" do
-      NodeHelpers.persist_node_update(socket, node.id, &toggle_switch_data/1)
+      NodeHelpers.persist_node_update(socket, node.id, :toggle_condition_switch_mode)
     else
       {:noreply, socket}
     end
   end
-
-  # -- Private helpers --
-
-  defp update_response_condition(data, response_id, condition_data) do
-    Map.update(data, "responses", [], fn responses ->
-      Enum.map(responses, fn
-        %{"id" => ^response_id} = resp ->
-          Map.put(resp, "condition", Flows.condition_sanitize(condition_data))
-
-        resp ->
-          resp
-      end)
-    end)
-  end
-
-  defp toggle_switch_data(data) do
-    new_switch_mode = !(data["switch_mode"] || false)
-    updated_condition = maybe_add_labels(data["condition"], new_switch_mode)
-
-    data
-    |> Map.put("switch_mode", new_switch_mode)
-    |> Map.put("condition", updated_condition)
-  end
-
-  defp maybe_add_labels(condition, true) do
-    condition = condition || Flows.condition_new()
-
-    # Block format: add labels to blocks, not individual rules
-    if condition["blocks"] do
-      blocks = condition["blocks"] || []
-      updated_blocks = Enum.map(blocks, fn block -> Map.put_new(block, "label", "") end)
-      Map.put(condition, "blocks", updated_blocks)
-    else
-      rules = condition["rules"] || []
-      updated_rules = Enum.map(rules, fn rule -> Map.put_new(rule, "label", "") end)
-      Map.put(condition, "rules", updated_rules)
-    end
-  end
-
-  defp maybe_add_labels(condition, false), do: condition
 end

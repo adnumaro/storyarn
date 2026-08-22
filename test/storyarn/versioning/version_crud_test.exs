@@ -49,7 +49,7 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert {:error, :entity_scope_mismatch} =
                Versioning.create_version("sheet", sheet, other_project.id, user.id)
 
-      assert {:error, :entity_scope_mismatch} =
+      assert {:error, :unknown_entity_type} =
                Versioning.create_version("flow", sheet, sheet.project_id, user.id)
 
       assert Versioning.count_versions("sheet", sheet.id) == 0

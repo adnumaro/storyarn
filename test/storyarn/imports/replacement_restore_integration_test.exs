@@ -10,11 +10,11 @@ defmodule Storyarn.Imports.ReplacementRestoreIntegrationTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage.Local
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneLayer

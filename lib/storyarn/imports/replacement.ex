@@ -13,13 +13,13 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Billing
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Telemetry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -592,7 +592,10 @@ defmodule Storyarn.Imports.Replacement do
 
     snapshot =
       project.id
-      |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
+      |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(
+        localization_scope: :active,
+        include_referenced_tombstones: true
+      )
       |> put_asset_capture_contract(assets)
 
     case SnapshotArchiveStorage.canonical_project_checksum(snapshot, assets) do
@@ -631,7 +634,7 @@ defmodule Storyarn.Imports.Replacement do
   end
 
   defp trash_active_graph(roots) do
-    with :ok <- trash_roots(roots.flows, &Flows.delete_flow_subtree_for_project_restore_in_transaction/1),
+    with :ok <- trash_roots(roots.flows, &FlowProjectTrash.delete_subtree_in_transaction/1),
          :ok <- trash_roots(roots.scenes, &Scenes.delete_scene_subtree_in_transaction/1) do
       trash_roots(roots.sheets, &Sheets.delete_sheet_subtree_in_transaction/1)
     end

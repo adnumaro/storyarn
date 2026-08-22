@@ -35,10 +35,10 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.HubColors
+  alias Storyarn.Flows.RuntimeKey
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
-  alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)

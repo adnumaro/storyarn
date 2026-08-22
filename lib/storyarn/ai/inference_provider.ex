@@ -8,6 +8,7 @@ defmodule Storyarn.AI.InferenceProvider do
           required(:model) => String.t(),
           required(:input) => map() | list(),
           required(:contextual?) => boolean(),
+          required(:context_policy) => Storyarn.AI.Context.Policy.t() | nil,
           required(:max_output_bytes) => pos_integer(),
           required(:provider_options) => map(),
           required(:provider_configuration) => map()

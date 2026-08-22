@@ -291,7 +291,10 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
 
                snapshot =
                  project.id
-                 |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
+                 |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(
+                   localization_scope: :active,
+                   include_referenced_tombstones: true
+                 )
                  |> Map.put(
                    "asset_restore_contract_version",
                    AssetHashResolver.exact_restore_contract_version()

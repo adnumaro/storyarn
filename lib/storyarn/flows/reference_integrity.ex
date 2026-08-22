@@ -3,14 +3,14 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Flows.AvatarIntegrity
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCreate
-  alias Storyarn.References.AvatarIntegrity
-  alias Storyarn.References.ProjectReferenceIntegrity
-  alias Storyarn.References.RichTextMentions
+  alias Storyarn.Flows.Persistence.AssetRecord
+  alias Storyarn.Flows.ProjectReferenceIntegrity
+  alias Storyarn.Flows.RichTextMentions
   alias Storyarn.Repo
 
   @project_lock_modes [:key_share, :share, :update]
@@ -548,7 +548,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
     if audio_asset_ids == [] do
       MapSet.new()
     else
-      from(asset in Asset,
+      from(asset in AssetRecord,
         where:
           asset.id in ^audio_asset_ids and asset.project_id == ^project_id and
             is_nil(asset.deleted_at) and
@@ -761,7 +761,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
 
   defp validate_audio_asset(project_id, asset_id) do
     case Repo.one(
-           from(asset in Asset,
+           from(asset in AssetRecord,
              where:
                asset.id == ^asset_id and asset.project_id == ^project_id and
                  is_nil(asset.deleted_at) and

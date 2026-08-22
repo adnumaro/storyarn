@@ -32,7 +32,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   alias Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator
   alias Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator
   alias Storyarn.Flows.Evaluator.State
-  alias Storyarn.Shared.FormulaRuntime
+  alias Storyarn.Flows.FormulaRuntime
 
   # =============================================================================
   # Public API

@@ -2,7 +2,6 @@ defmodule Storyarn.ShortcutsTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
-  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -46,24 +45,6 @@ defmodule Storyarn.ShortcutsTest do
     test "returns nil for empty name" do
       %{project: project} = create_project()
       assert Shortcuts.generate_sheet_shortcut("", project.id) == nil
-    end
-  end
-
-  describe "generate_flow_shortcut/2" do
-    test "generates shortcutified name" do
-      %{project: project} = create_project()
-
-      shortcut = Shortcuts.generate_flow_shortcut("Main Quest", project.id)
-      assert shortcut == "main-quest"
-    end
-
-    test "appends numeric suffix on collision" do
-      %{project: project} = create_project()
-
-      flow_fixture(project, %{name: "Prologue"})
-
-      shortcut = Shortcuts.generate_flow_shortcut("Prologue", project.id)
-      assert shortcut == "prologue-1"
     end
   end
 

@@ -4,15 +4,15 @@ defmodule Storyarn.Flows.FlowStats do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.ContentContract
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.SheetRecord
   alias Storyarn.Flows.SpeakerSheetId
   alias Storyarn.Flows.StructuralAnalysis
   alias Storyarn.Flows.StructuralAnalysis.Topology
-  alias Storyarn.Localization.LocalizableWords
-  alias Storyarn.References
+  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
 
   require SpeakerSheetId
 
@@ -51,7 +51,32 @@ defmodule Storyarn.Flows.FlowStats do
   Returns per-flow counts for all localizable words in each flow.
   Returns `%{flow_id => word_count}`.
   """
-  defdelegate flow_word_counts(project_id), to: LocalizableWords
+  @spec flow_word_counts(integer()) :: %{integer() => non_neg_integer()}
+  def flow_word_counts(project_id) when is_integer(project_id) do
+    localizable_node_types = ContentContract.localizable_node_types()
+
+    from(node in FlowNode,
+      join: flow in Flow,
+      on: flow.id == node.flow_id,
+      where:
+        flow.project_id == ^project_id and is_nil(flow.deleted_at) and
+          is_nil(node.deleted_at) and node.type in ^localizable_node_types,
+      group_by: node.flow_id,
+      select: {node.flow_id, coalesce(sum(node.word_count), 0)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  @doc "Returns the player-facing word count for an already-loaded Flow."
+  @spec flow_word_count(Flow.t()) :: non_neg_integer()
+  def flow_word_count(%Flow{nodes: nodes}) when is_list(nodes) do
+    localizable_node_types = ContentContract.localizable_node_types()
+
+    Enum.reduce(nodes, 0, fn node, total ->
+      if node.type in localizable_node_types, do: total + (node.word_count || 0), else: total
+    end)
+  end
 
   @doc """
   Returns the node type distribution across every flow in a project.
@@ -85,7 +110,7 @@ defmodule Storyarn.Flows.FlowStats do
       from(n in FlowNode,
         join: f in Flow,
         on: n.flow_id == f.id,
-        left_join: s in Sheet,
+        left_join: s in SheetRecord,
         on: SpeakerSheetId.safe_query_value(n.data) == s.id,
         where:
           f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at) and n.type == "dialogue" and
@@ -109,9 +134,7 @@ defmodule Storyarn.Flows.FlowStats do
   @doc """
   Project-wide flow health findings for the dashboard.
 
-  The sibling of `Sheets.list_dashboard_health_findings/2` and
-  `Scenes.list_dashboard_health_findings/1`, and it reads the SAME findings the
-  editor shows through the SAME composition point
+  It reads the same findings the editor shows through the same composition point
   (`StructuralAnalysis.findings/1`) — the dashboard reimplements nothing of the
   vocabulary, so the two surfaces cannot disagree.
 
@@ -119,10 +142,10 @@ defmodule Storyarn.Flows.FlowStats do
   into 3 coarse buckets, dropped every reference-integrity error, and never ran
   the editorial checks at all. Counts therefore go UP: that is the correction.
 
-  Cost is flat in flow count, like the sheets and scenes sweeps: one
-  project-variable query, the topology load, and ONE batched stale-reference
+  Cost is flat in flow count: one project-variable query, the topology load,
+  and one batched stale-reference
   query for every flow at once. The per-flow pair this used to issue is what
-  made it the only O(N) sweep of the three. The dashboard also caches it for 30s.
+  made it an O(N) sweep. The dashboard also caches it for 30s.
   """
   def list_dashboard_health_findings(project_id) do
     project_id
@@ -163,7 +186,7 @@ defmodule Storyarn.Flows.FlowStats do
       Map.get_lazy(context, :stale_node_ids_by_flow, fn ->
         topologies
         |> Enum.map(& &1.flow_id)
-        |> References.list_stale_node_ids_by_flow()
+        |> VariableReferenceTracker.list_stale_node_ids_by_flow()
       end)
 
     Enum.flat_map(topologies, fn topology ->

@@ -2,23 +2,20 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   @moduledoc """
   Full-screen cinematic story player for flows.
 
-  Reuses the Flows evaluator state machine with a
-  `PlayerEngine.step_until_interactive/3` wrapper that auto-advances
-  through non-interactive nodes (conditions, instructions, hubs, etc.).
+  Reuses the player runtime exposed by the `Storyarn.Flows` facade, which
+  auto-advances through non-interactive nodes (conditions, instructions,
+  hubs, etc.).
   """
 
   use StoryarnWeb, :live_view
 
   import StoryarnWeb.Layouts, only: [flash_group: 1]
 
-  alias Storyarn.Analytics
   alias Storyarn.Flows
-  alias Storyarn.Projects
-  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-  alias StoryarnWeb.FlowLive.Player.PlayerEngine
   alias StoryarnWeb.FlowLive.Player.Slide
+  alias StoryarnWeb.PrivateMedia
 
   # ===========================================================================
   # Render
@@ -53,11 +50,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   # ===========================================================================
 
   @impl true
-  def mount(
-        %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => flow_id} = params,
-        _session,
-        socket
-      ) do
+  def mount(%{"id" => flow_id} = params, _session, %{assigns: %{project: project}} = socket) do
     session_id = params["player_session"] || Ecto.UUID.generate()
 
     socket =
@@ -65,16 +58,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
       |> assign(:player_session_id, session_id)
       |> assign(:player_tab_id, player_tab_id(socket, session_id))
 
-    case Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug) do
-      {:ok, project, _membership} ->
-        mount_player(socket, project, flow_id)
-
-      {:error, _reason} ->
-        {:ok,
-         socket
-         |> put_flash(:error, dgettext("flows", "You don't have access to this project."))
-         |> redirect(to: ~p"/workspaces")}
-    end
+    mount_player(socket, project, flow_id)
   end
 
   defp mount_player(socket, project, flow_id) do
@@ -91,67 +75,32 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp mount_flow_player(socket, project, flow) do
-    nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
-    connections = DebugExecutionHandlers.build_connections(flow.id)
     speakers = Flows.load_player_speakers(project.id)
     speakers_map = FormHelpers.player_speakers_map(speakers)
     variables = VariableHelpers.build_variables(project.id)
 
-    case init_and_step(nodes_map, connections, variables, flow.id) do
+    case Flows.start_player_session(flow, variables) do
       {:error, reason} ->
         {:ok,
          socket
-         |> put_flash(:error, reason)
+         |> put_flash(:error, player_start_error(reason))
          |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")}
 
-      {:ok, engine_state} ->
-        node = Map.get(nodes_map, engine_state.current_node_id)
-        slide = Slide.build(node, engine_state, speakers_map, project.id)
-
-        scene_id = Flows.resolve_scene_id(flow)
-
+      {:ok, player_session} ->
         socket =
           maybe_restore_player_session(socket, project) ||
             socket
-            |> assign(:engine_state, engine_state)
-            |> assign(:nodes, nodes_map)
-            |> assign(:connections, connections)
             |> assign(:speakers_map, speakers_map)
-            |> assign(:flow, flow)
             |> assign(:project, project)
             |> assign(:workspace, project.workspace)
-            |> assign(:slide, slide)
             |> assign(:player_mode, :player)
-            |> assign(:can_go_back, can_go_back?(engine_state, nodes_map))
-            |> assign(:current_scene_id, scene_id)
+            |> assign_player_session(player_session)
 
         if connected?(socket) do
-          Analytics.track(socket.assigns.current_scope, "flow player started", %{
-            flow_id: flow.id,
-            project_id: project.id
-          })
+          Flows.record_player_started(socket.assigns.current_scope, flow)
         end
 
         {:ok, socket, layout: false}
-    end
-  end
-
-  defp init_and_step(nodes_map, connections, variables, flow_id) do
-    case DebugExecutionHandlers.find_entry_node(nodes_map) do
-      nil ->
-        {:error, dgettext("flows", "No entry node found in this flow.")}
-
-      entry_node_id ->
-        state = Flows.evaluator_init(variables, entry_node_id)
-        state = %{state | current_flow_id: flow_id}
-
-        case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
-          {:error, _state, _skipped} ->
-            {:error, dgettext("flows", "Error advancing through flow.")}
-
-          {_status, new_state, _skipped} ->
-            {:ok, new_state}
-        end
     end
   end
 
@@ -174,23 +123,28 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
       restored ->
         if Map.has_key?(restored, :player_mode) do
           speakers_map = restored[:speakers_map] || restored[:sheets_map] || %{}
-          node = Map.get(restored.nodes, restored.engine_state.current_node_id)
-          slide = Slide.build(node, restored.engine_state, speakers_map, project.id)
+          player_session = restore_player_session(restored)
 
           socket
-          |> assign(:engine_state, restored.engine_state)
-          |> assign(:nodes, restored.nodes)
-          |> assign(:connections, restored.connections)
           |> assign(:speakers_map, speakers_map)
-          |> assign(:flow, restored.flow)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
-          |> assign(:slide, slide)
           |> assign(:player_mode, restored.player_mode)
-          |> assign(:can_go_back, can_go_back?(restored.engine_state, restored.nodes))
-          |> assign(:current_scene_id, restored[:current_scene_id])
+          |> assign_player_session(player_session)
         end
     end
+  end
+
+  defp restore_player_session(%{player_session: player_session}), do: player_session
+
+  defp restore_player_session(restored) do
+    Flows.restore_player_session(
+      restored.flow,
+      restored.engine_state,
+      restored.nodes,
+      restored.connections,
+      restored[:current_scene_id]
+    )
   end
 
   # ===========================================================================
@@ -199,73 +153,30 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   @impl true
   def handle_event("continue", _params, socket) do
-    %{engine_state: state, nodes: nodes, connections: connections} = socket.assigns
-
-    if state.status in [:finished, :waiting_input] and state.pending_choices != nil do
-      {:noreply, socket}
-    else
-      case PlayerEngine.step_until_interactive(state, nodes, connections, advance_current_dialogue: true) do
-        {:flow_jump, new_state, target_flow_id, _skipped} ->
-          handle_flow_jump(socket, new_state, target_flow_id)
-
-        {:flow_return, new_state, _skipped} ->
-          handle_flow_return(socket, new_state)
-
-        {_status, new_state, _skipped} ->
-          {:noreply, update_slide(socket, new_state)}
-      end
-    end
+    socket.assigns.player_session
+    |> Flows.continue_player_session()
+    |> handle_player_result(socket)
   end
 
   def handle_event("choose_response", %{"id" => response_id}, socket) do
-    %{engine_state: state, connections: connections, nodes: nodes} = socket.assigns
-
-    case Flows.evaluator_choose_response(state, response_id, connections) do
-      {:ok, new_state} ->
-        case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
-          {:flow_jump, stepped_state, target_flow_id, _skipped} ->
-            handle_flow_jump(socket, stepped_state, target_flow_id)
-
-          {:flow_return, stepped_state, _skipped} ->
-            handle_flow_return(socket, stepped_state)
-
-          {_status, stepped_state, _skipped} ->
-            {:noreply, update_slide(socket, stepped_state)}
-        end
-
-      {:error, _state, _reason} ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
-    end
+    socket.assigns.player_session
+    |> Flows.choose_player_response(response_id)
+    |> handle_player_result(socket)
   end
 
   def handle_event("choose_response_by_number", %{"number" => number}, socket) do
     responses = socket.assigns.slide[:responses] || []
 
-    visible =
-      if socket.assigns.player_mode == :player do
-        Enum.filter(responses, & &1.valid)
-      else
-        responses
-      end
-
-    case Enum.at(visible, number - 1) do
-      nil -> {:noreply, socket}
-      resp -> handle_event("choose_response", %{"id" => resp.id}, socket)
+    case Flows.player_response_id_by_number(responses, socket.assigns.player_mode, number) do
+      {:ok, response_id} -> handle_event("choose_response", %{"id" => response_id}, socket)
+      {:error, :response_not_found} -> {:noreply, socket}
     end
   end
 
   def handle_event("go_back", _params, socket) do
-    if can_go_back?(socket.assigns.engine_state, socket.assigns.nodes) do
-      case Flows.evaluator_step_back(socket.assigns.engine_state) do
-        {:ok, new_state} ->
-          {:noreply, update_slide_after_back(socket, new_state)}
-
-        {:error, :no_history} ->
-          {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
-    end
+    socket.assigns.player_session
+    |> Flows.go_back_player_session()
+    |> handle_player_result(socket)
   end
 
   def handle_event("toggle_mode", _params, socket) do
@@ -274,20 +185,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   def handle_event("restart", _params, socket) do
-    %{engine_state: state, nodes: nodes, connections: connections} = socket.assigns
-
-    new_state = Flows.evaluator_reset(state)
-
-    case PlayerEngine.step_until_interactive(new_state, nodes, connections) do
-      {:flow_jump, stepped_state, target_flow_id, _skipped} ->
-        handle_flow_jump(socket, stepped_state, target_flow_id)
-
-      {:flow_return, stepped_state, _skipped} ->
-        handle_flow_return(socket, stepped_state)
-
-      {_status, stepped_state, _skipped} ->
-        {:noreply, update_slide(socket, stepped_state)}
-    end
+    socket.assigns.player_session
+    |> Flows.restart_player_session()
+    |> handle_player_result(socket)
   end
 
   def handle_event("exit_player", _params, socket) do
@@ -296,161 +196,22 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     {:noreply, push_navigate(socket, to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow.id}")}
   end
 
-  # ===========================================================================
-  # Cross-flow navigation
-  # ===========================================================================
-
-  defp handle_flow_jump(socket, state, target_flow_id) do
-    %{nodes: nodes, connections: connections, flow: flow} = socket.assigns
-
-    state =
-      Flows.evaluator_push_flow_context(
-        state,
-        state.current_node_id,
-        nodes,
-        connections,
-        flow.name
-      )
-
-    target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
-    target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
-
-    # Resolve scene for target flow (pass current as caller context)
-    target_flow = Flows.get_flow_brief(socket.assigns.project.id, target_flow_id)
-
-    new_scene_id =
-      if target_flow do
-        Flows.resolve_scene_id(target_flow,
-          caller_scene_id: socket.assigns.current_scene_id
-        )
-      end
-
-    socket = assign_current_scene(socket, new_scene_id)
-
-    case DebugExecutionHandlers.find_entry_node(target_nodes) do
-      nil ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Target flow has no entry node."))}
-
-      entry_id ->
-        new_state = %{
-          state
-          | current_node_id: entry_id,
-            current_flow_id: target_flow_id,
-            status: :paused
-        }
-
-        case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
-          {:flow_jump, stepped_state, next_flow_id, _skipped} ->
-            socket
-            |> assign(:nodes, target_nodes)
-            |> assign(:connections, target_connections)
-            |> handle_flow_jump(
-              stepped_state,
-              next_flow_id
-            )
-
-          {:flow_return, stepped_state, _skipped} ->
-            socket
-            |> assign(:nodes, target_nodes)
-            |> assign(:connections, target_connections)
-            |> handle_flow_return(stepped_state)
-
-          {_status, stepped_state, _skipped} ->
-            store_and_navigate_player(
-              socket,
-              stepped_state,
-              target_nodes,
-              target_connections,
-              target_flow_id
-            )
-        end
-    end
-  end
-
-  defp handle_flow_return(socket, state) do
-    case Flows.evaluator_pop_flow_context(state) do
-      {:ok, frame, new_state} ->
-        parent_nodes = frame.nodes
-        parent_connections = frame.connections
-        parent_flow_id = frame.flow_id
-
-        # Restore parent flow's scene
-        parent_flow = Flows.get_flow_brief(socket.assigns.project.id, parent_flow_id)
-        parent_scene_id = if parent_flow, do: Flows.resolve_scene_id(parent_flow)
-        socket = assign_current_scene(socket, parent_scene_id)
-
-        # Find the connection after the return node to advance.
-        conn =
-          Flows.evaluator_find_return_connection(
-            parent_connections,
-            frame.return_node_id,
-            new_state.current_node_id
-          )
-
-        new_state =
-          if conn do
-            %{
-              new_state
-              | current_node_id: conn.target_node_id,
-                current_flow_id: parent_flow_id,
-                status: :paused
-            }
-          else
-            %{new_state | status: :finished, current_flow_id: parent_flow_id}
-          end
-
-        case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
-          {:flow_jump, stepped_state, next_flow_id, _skipped} ->
-            socket
-            |> assign(:nodes, parent_nodes)
-            |> assign(:connections, parent_connections)
-            |> handle_flow_jump(
-              stepped_state,
-              next_flow_id
-            )
-
-          {:flow_return, stepped_state, _skipped} ->
-            socket
-            |> assign(:nodes, parent_nodes)
-            |> assign(:connections, parent_connections)
-            |> handle_flow_return(stepped_state)
-
-          {_status, stepped_state, _skipped} ->
-            store_and_navigate_player(
-              socket,
-              stepped_state,
-              parent_nodes,
-              parent_connections,
-              parent_flow_id
-            )
-        end
-
-      {:error, :empty_stack} ->
-        {:noreply, update_slide(socket, %{state | status: :finished})}
-    end
-  end
-
-  defp store_and_navigate_player(socket, state, nodes, connections, flow_id) do
+  defp store_and_navigate_player(socket, player_session) do
     %{workspace: ws, project: proj, speakers_map: speakers_map, player_mode: mode} = socket.assigns
     user_id = socket.assigns.current_scope.user.id
     session_id = socket.assigns.player_session_id
     tab_id = socket.assigns.player_tab_id
 
-    target_flow = Flows.get_flow_brief(proj.id, flow_id)
-
     Flows.debug_session_store({:player, user_id, proj.id, session_id, tab_id}, %{
-      engine_state: state,
-      nodes: nodes,
-      connections: connections,
+      player_session: player_session,
       speakers_map: speakers_map,
-      flow: target_flow,
-      player_mode: mode,
-      current_scene_id: socket.assigns.current_scene_id
+      player_mode: mode
     })
 
     {:noreply,
      push_navigate(socket,
-       to: ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{flow_id}/play?player_session=#{session_id}"
+       to:
+         ~p"/workspaces/#{ws.slug}/projects/#{proj.slug}/flows/#{player_session.flow.id}/play?player_session=#{session_id}"
      )}
   end
 
@@ -466,46 +227,51 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end
   end
 
-  defp update_slide(socket, new_state) do
-    %{nodes: nodes, speakers_map: speakers_map, project: project} = socket.assigns
-    node = Map.get(nodes, new_state.current_node_id)
-    slide = Slide.build(node, new_state, speakers_map, project.id)
+  defp handle_player_result({:ok, player_session}, socket) do
+    if player_session.flow.id == socket.assigns.flow.id do
+      {:noreply, assign_player_session(socket, player_session)}
+    else
+      store_and_navigate_player(socket, player_session)
+    end
+  end
+
+  defp handle_player_result({:error, :no_history, _player_session}, socket) do
+    {:noreply, socket}
+  end
+
+  defp handle_player_result({:error, :invalid_response, _player_session}, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("flows", "Could not select that response."))}
+  end
+
+  defp handle_player_result({:error, {:target_entry_not_found, _flow_id}, _player_session}, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("flows", "Target flow has no entry node."))}
+  end
+
+  defp handle_player_result({:error, _reason, _player_session}, socket) do
+    {:noreply, put_flash(socket, :error, dgettext("flows", "Error advancing through flow."))}
+  end
+
+  defp assign_player_session(socket, player_session) do
+    state = player_session.state
+    node = Map.get(player_session.nodes, state.current_node_id)
+    slide = Slide.build(node, state, socket.assigns.speakers_map, socket.assigns.project.id)
 
     socket
-    |> assign(:engine_state, new_state)
+    |> assign(:player_session, player_session)
+    |> assign(:engine_state, state)
+    |> assign(:nodes, player_session.nodes)
+    |> assign(:connections, player_session.connections)
+    |> assign(:flow, player_session.flow)
     |> assign(:slide, slide)
-    |> assign(:can_go_back, can_go_back?(new_state, nodes))
+    |> assign(:can_go_back, Flows.player_session_can_go_back?(player_session))
+    |> assign(:current_scene_id, player_session.scene_id)
   end
 
-  defp update_slide_after_back(socket, new_state) do
-    node = Map.get(socket.assigns.nodes, new_state.current_node_id)
+  defp player_start_error(:entry_not_found), do: dgettext("flows", "No entry node found in this flow.")
 
-    if renderable_node?(node) do
-      update_slide(socket, new_state)
-    else
-      case PlayerEngine.step_until_interactive(new_state, socket.assigns.nodes, socket.assigns.connections) do
-        {_status, resolved_state, _skipped} -> update_slide(socket, resolved_state)
-        _ -> update_slide(socket, new_state)
-      end
-    end
-  end
+  defp player_start_error({:target_entry_not_found, _flow_id}), do: dgettext("flows", "Target flow has no entry node.")
 
-  defp can_go_back?(state, nodes) do
-    Enum.any?(state.snapshots, fn snapshot ->
-      snapshot.node_id != state.current_node_id and renderable_node?(Map.get(nodes, snapshot.node_id))
-    end)
-  end
-
-  defp renderable_node?(%{type: type}) when type in ["dialogue", "exit"], do: true
-  defp renderable_node?(_), do: false
-
-  defp assign_current_scene(socket, new_scene_id) do
-    if new_scene_id == socket.assigns.current_scene_id do
-      socket
-    else
-      assign(socket, :current_scene_id, new_scene_id)
-    end
-  end
+  defp player_start_error(_reason), do: dgettext("flows", "Error advancing through flow.")
 
   defp show_continue?(%{type: :dialogue, responses: []}), do: true
   defp show_continue?(%{type: :dialogue}), do: false
@@ -561,119 +327,85 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     end)
   end
 
-  defp player_visual_layers(assigns) do
-    assigns
-    |> active_sequence_chain()
-    |> Enum.with_index()
-    |> Enum.flat_map(fn {sequence, depth} -> serialize_visual_layers(sequence, depth) end)
-    |> Enum.sort_by(&{&1.sequence_depth, &1.z_index, &1.id})
+  defp player_visual_layers(%{engine_state: state, nodes: nodes}) do
+    state
+    |> Flows.compose_player_sequences(nodes)
+    |> Map.fetch!(:visual_layers)
+    |> Enum.flat_map(&serialize_visual_layer/1)
   end
 
-  defp player_audio_tracks(assigns) do
-    assigns
-    |> active_sequence_chain()
-    |> Enum.with_index()
-    |> Enum.flat_map(fn {sequence, depth} ->
-      (Map.get(sequence, :sequence_tracks, []) || [])
-      |> Enum.sort_by(&{track_kind_order(&1), &1.position || 0, &1.id || 0})
-      |> Enum.flat_map(&serialize_audio_track(&1, sequence.id, depth))
-    end)
+  defp player_visual_layers(_assigns), do: []
+
+  defp player_audio_tracks(%{engine_state: state, nodes: nodes}) do
+    state
+    |> Flows.compose_player_sequences(nodes)
+    |> Map.fetch!(:audio_tracks)
+    |> Enum.flat_map(&serialize_audio_track/1)
   end
 
-  defp active_sequence_chain(%{engine_state: state, nodes: nodes}) do
-    nodes
-    |> Map.get(state.current_node_id)
-    |> sequence_chain_for_node(nodes)
-  end
+  defp player_audio_tracks(_assigns), do: []
 
-  defp active_sequence_chain(_), do: []
+  defp serialize_visual_layer(%{item: layer, sequence_id: sequence_id, depth: depth}) do
+    url = media_url(layer)
 
-  defp sequence_chain_for_node(%{parent_id: parent_id}, nodes), do: sequence_chain(parent_id, nodes)
-  defp sequence_chain_for_node(_, _nodes), do: []
-
-  defp sequence_chain(parent_id, nodes), do: do_sequence_chain(parent_id, nodes, MapSet.new(), [])
-
-  defp do_sequence_chain(nil, _nodes, _visited, acc), do: acc
-
-  defp do_sequence_chain(sequence_id, nodes, visited, acc) do
-    if MapSet.member?(visited, sequence_id) do
-      acc
+    if is_binary(url) and url != "" do
+      [
+        %{
+          id: layer.id,
+          sequence_id: sequence_id,
+          sequence_depth: depth,
+          kind: layer.kind,
+          label: Map.get(layer, :label),
+          url: url,
+          z_index: layer_value(layer, :z_index, 0),
+          slot: Map.get(layer, :slot),
+          x: layer_value(layer, :x, 0.0),
+          y: layer_value(layer, :y, 0.0),
+          width: layer_value(layer, :width, 1.0),
+          height: layer_value(layer, :height, 1.0),
+          anchor_x: layer_value(layer, :anchor_x, 0.0),
+          anchor_y: layer_value(layer, :anchor_y, 0.0),
+          fit: layer_value(layer, :fit, "contain"),
+          opacity: layer_value(layer, :opacity, 1.0)
+        }
+      ]
     else
-      visited = MapSet.put(visited, sequence_id)
-
-      case Map.get(nodes, sequence_id) do
-        %{type: "sequence", parent_id: parent_id} = sequence ->
-          do_sequence_chain(parent_id, nodes, visited, [sequence | acc])
-
-        %{parent_id: parent_id} ->
-          do_sequence_chain(parent_id, nodes, visited, acc)
-
-        _ ->
-          acc
-      end
+      []
     end
   end
-
-  defp serialize_visual_layers(%{id: sequence_id} = sequence, depth) do
-    sequence
-    |> Map.get(:sequence_visual_layers, [])
-    |> case do
-      layers when is_list(layers) -> layers
-      _ -> []
-    end
-    |> Enum.flat_map(&serialize_visual_layer(&1, sequence_id, depth))
-  end
-
-  defp serialize_visual_layer(%{url: url, visible: visible} = layer, sequence_id, depth)
-       when is_binary(url) and url != "" and visible != false do
-    [
-      %{
-        id: layer.id,
-        sequence_id: sequence_id,
-        sequence_depth: depth,
-        kind: layer.kind,
-        label: Map.get(layer, :label),
-        url: url,
-        z_index: layer_value(layer, :z_index, 0),
-        slot: Map.get(layer, :slot),
-        x: layer_value(layer, :x, 0.0),
-        y: layer_value(layer, :y, 0.0),
-        width: layer_value(layer, :width, 1.0),
-        height: layer_value(layer, :height, 1.0),
-        anchor_x: layer_value(layer, :anchor_x, 0.0),
-        anchor_y: layer_value(layer, :anchor_y, 0.0),
-        fit: layer_value(layer, :fit, "contain"),
-        opacity: layer_value(layer, :opacity, 1.0)
-      }
-    ]
-  end
-
-  defp serialize_visual_layer(_layer, _sequence_id, _depth), do: []
 
   defp layer_value(layer, key, default), do: Map.get(layer, key) || default
 
-  defp serialize_audio_track(%{url: url} = track, sequence_id, depth) when is_binary(url) and url != "" do
-    [
-      %{
-        id: track.id,
-        sequence_id: sequence_id,
-        kind: track.kind,
-        position: track.position || 0,
-        url: url,
-        volume: Map.get(track, :volume) || 1.0,
-        content_type: Map.get(track, :content_type),
-        filename: Map.get(track, :filename),
-        depth: depth
-      }
-    ]
+  defp serialize_audio_track(%{item: track, sequence_id: sequence_id, depth: depth}) do
+    url = media_url(track)
+    asset = Map.get(track, :asset)
+
+    if is_binary(url) and url != "" do
+      [
+        %{
+          id: track.id,
+          sequence_id: sequence_id,
+          kind: track.kind,
+          position: track.position || 0,
+          url: url,
+          volume: serialize_volume(Map.get(track, :volume)),
+          content_type: Map.get(track, :content_type) || (asset && Map.get(asset, :content_type)),
+          filename: Map.get(track, :filename) || (asset && Map.get(asset, :filename)),
+          depth: depth
+        }
+      ]
+    else
+      []
+    end
   end
 
-  defp serialize_audio_track(_track, _sequence_id, _depth), do: []
+  defp media_url(item) do
+    Map.get(item, :url) || PrivateMedia.asset_url(Map.get(item, :asset))
+  end
 
-  defp track_kind_order(%{kind: "ambience"}), do: 0
-  defp track_kind_order(%{kind: "music"}), do: 1
-  defp track_kind_order(%{kind: "sfx"}), do: 2
-  defp track_kind_order(_), do: 3
+  defp serialize_volume(nil), do: 1.0
+  defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
+  defp serialize_volume(volume) when is_number(volume), do: volume
 
   defp editor_url(assigns) do
     ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}"

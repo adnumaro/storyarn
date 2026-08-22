@@ -14,14 +14,15 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Localization
+  alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -1283,7 +1284,7 @@ defmodule Storyarn.Imports.MaterializerTest do
       "project" => %{"id" => to_string(project.id), "name" => project.name},
       "sheets" => project.id |> Sheets.list_sheets_for_export() |> Enum.map(&sheet_entry/1),
       "scenes" => project.id |> Scenes.list_scenes_for_export() |> Enum.map(&scene_entry/1),
-      "flows" => project.id |> Flows.list_flows_for_export() |> Enum.map(&flow_entry/1),
+      "flows" => project.id |> FlowReadModel.list_flows_for_export() |> Enum.map(&flow_entry/1),
       "localization" => localization_entry(project.id)
     })
   end

@@ -3,12 +3,12 @@ defmodule Storyarn.Sheets.SheetStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.HealthChecker
   alias Storyarn.Sheets.HealthSnapshots
+  alias Storyarn.Sheets.Persistence.VariableReferenceRecord
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -96,7 +96,7 @@ defmodule Storyarn.Sheets.SheetStats do
   """
   def referenced_block_ids_for_project(project_id) do
     tracked_ids =
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: b in Block,
         on: vr.block_id == b.id,
         join: s in Sheet,
@@ -118,8 +118,8 @@ defmodule Storyarn.Sheets.SheetStats do
   @doc """
   Project-wide sheet health findings for the dashboard.
 
-  The sibling of `Flows.list_dashboard_health_findings/1` and
-  `Scenes.list_dashboard_health_findings/1`: it runs the SAME `HealthChecker` over
+  The Sheets counterpart to the other tool health sweeps runs the SAME
+  `HealthChecker` over
   the SAME snapshot the editor checks, so every one of the 26 codes the popover can
   show can also reach the dashboard. Nothing here re-detects anything.
 

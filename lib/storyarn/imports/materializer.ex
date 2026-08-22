@@ -18,9 +18,6 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Parsers.Yarn.Expression
   alias Storyarn.Imports.Parsers.Yarn.Layout
@@ -31,6 +28,9 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Projects.FlowImportPersistence
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
@@ -429,7 +429,7 @@ defmodule Storyarn.Imports.Materializer do
     do: Sheets.detect_sheet_shortcut_conflicts(project_id, shortcuts)
 
   defp detect_conflicts_for_type(:flow, project_id, shortcuts),
-    do: Flows.detect_flow_shortcut_conflicts(project_id, shortcuts)
+    do: FlowImportPersistence.detect_shortcut_conflicts(project_id, shortcuts)
 
   defp detect_conflicts_for_type(:scene, project_id, shortcuts),
     do: Scenes.detect_scene_shortcut_conflicts(project_id, shortcuts)
@@ -675,7 +675,7 @@ defmodule Storyarn.Imports.Materializer do
   defp preload_existing_shortcuts(project_id) do
     %{
       sheet: Sheets.list_sheet_shortcuts(project_id),
-      flow: Flows.list_flow_shortcuts(project_id),
+      flow: FlowImportPersistence.list_shortcuts(project_id),
       scene: Scenes.list_scene_shortcuts(project_id)
     }
   end
@@ -1085,7 +1085,7 @@ defmodule Storyarn.Imports.Materializer do
 
     flow =
       project.id
-      |> Flows.import_flow(attrs)
+      |> FlowImportPersistence.import_flow(attrs)
       |> reject_duplicate_main_flow()
       |> facade_insert_or_rollback!({:flow, flow_data["name"]})
 
@@ -1157,7 +1157,7 @@ defmodule Storyarn.Imports.Materializer do
         }
 
         node =
-          facade_insert_or_rollback!(Flows.import_node(flow_id, attrs), {:node, node_data["type"]})
+          facade_insert_or_rollback!(FlowImportPersistence.import_node(flow_id, attrs), {:node, node_data["type"]})
 
         {Map.put(map, {:node, node_data["id"]}, node.id), [node | results], dialogue_ids}
       end)
@@ -1176,7 +1176,7 @@ defmodule Storyarn.Imports.Materializer do
            parent_id when is_integer(parent_id) <- Map.get(id_map, {:node, parent_source_id}),
            %FlowNode{} = node <- Map.get(imported_nodes_by_id, node_id) do
         facade_insert_or_rollback!(
-          Flows.link_node_import_parent(node, parent_id),
+          FlowImportPersistence.link_node_parent(node, parent_id),
           {:node_parent, node_data["id"]}
         )
       else
@@ -1255,7 +1255,7 @@ defmodule Storyarn.Imports.Materializer do
   defp clean_responses(data), do: data
 
   defp normalize_legacy_hub_color(data, type) when type in ["hub", "hub_marker"] and is_map(data) do
-    Map.put(data, "color", Flows.resolve_legacy_hub_color(data["color"]))
+    Map.put(data, "color", FlowImportPersistence.resolve_legacy_hub_color(data["color"]))
   end
 
   defp normalize_legacy_hub_color(data, _type), do: data
@@ -1287,7 +1287,7 @@ defmodule Storyarn.Imports.Materializer do
         end
       end)
 
-    results = Flows.bulk_import_connections(Enum.reverse(valid_attrs))
+    results = FlowImportPersistence.bulk_insert_connections(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -1896,7 +1896,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp overwrite_existing(shortcut, project_id, :flow) do
-    Flows.soft_delete_flow_by_shortcut(project_id, shortcut)
+    FlowImportPersistence.soft_delete_by_shortcut(project_id, shortcut)
     shortcut
   end
 
@@ -1966,7 +1966,7 @@ defmodule Storyarn.Imports.Materializer do
 
   defp link_import_parent(:sheet, entity, parent_id), do: Sheets.link_sheet_import_parent(entity, parent_id)
 
-  defp link_import_parent(:flow, entity, parent_id), do: Flows.link_flow_import_parent(entity, parent_id)
+  defp link_import_parent(:flow, entity, parent_id), do: FlowImportPersistence.link_flow_parent(entity, parent_id)
 
   defp link_import_parent(:scene, entity, parent_id), do: Scenes.link_scene_import_parent(entity, parent_id)
 
@@ -2045,7 +2045,7 @@ defmodule Storyarn.Imports.Materializer do
 
       existing_node ->
         updated_data = Map.merge(existing_node.data || %{}, remapped_fields)
-        Flows.link_node_import_data(node_id, updated_data)
+        FlowImportPersistence.link_node_data(node_id, updated_data)
     end
   end
 

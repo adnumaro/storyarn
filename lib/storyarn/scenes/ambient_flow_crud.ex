@@ -4,10 +4,10 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.Flows.Flow
   alias Storyarn.References
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Shared.MapUtils
@@ -178,7 +178,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
 
   defp lock_active_flow_for_project(flow_id, project_id) do
     case Repo.one(
-           from(flow in Flow,
+           from(flow in FlowRecord,
              where: flow.id == ^flow_id,
              lock: "FOR UPDATE"
            )
@@ -186,13 +186,13 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
       nil ->
         {:error, :flow_not_found}
 
-      %Flow{deleted_at: nil, project_id: ^project_id} ->
+      %FlowRecord{deleted_at: nil, project_id: ^project_id} ->
         :ok
 
-      %Flow{deleted_at: nil} ->
+      %FlowRecord{deleted_at: nil} ->
         {:error, :cross_project}
 
-      %Flow{} ->
+      %FlowRecord{} ->
         {:error, :flow_not_active}
     end
   end

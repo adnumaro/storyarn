@@ -2,9 +2,10 @@ defmodule Storyarn.Versioning do
   @moduledoc """
   The Versioning context.
 
-  Manages entity version history for sheets, flows, and scenes. Versions are
-  snapshots stored as compressed JSON in object storage (R2/Local), with
-  metadata tracked in the database.
+  Manages the legacy entity version history for Sheets and Scenes. Flow version
+  history belongs exclusively to `Storyarn.Flows`. Versions are snapshots
+  stored as compressed JSON in object storage (R2/Local), with metadata tracked
+  in the database.
 
   This module serves as a facade, delegating to specialized submodules:
   - `VersionCrud` - CRUD operations for versions
@@ -110,7 +111,10 @@ defmodule Storyarn.Versioning do
   Detects conflicts that would occur when restoring from a snapshot.
   Returns a report with blocking reference conflicts and shortcut collisions.
   """
-  defdelegate detect_restore_conflicts(entity_type, snapshot, entity), to: ConflictDetector, as: :detect_conflicts
+  def detect_restore_conflicts(entity_type, snapshot, entity) when entity_type in ["sheet", "scene"],
+    do: ConflictDetector.detect_conflicts(entity_type, snapshot, entity)
+
+  def detect_restore_conflicts(_entity_type, _snapshot, _entity), do: {:error, :unknown_entity_type}
 
   @doc """
   Loads a version's snapshot from storage and restores the entity.
@@ -582,11 +586,6 @@ defmodule Storyarn.Versioning do
   defdelegate format_diff_summary(diff_result), to: SnapshotDiff, as: :format_summary
 
   # ========== Snapshot Viewer ==========
-
-  @doc """
-  Serializes a flow snapshot into the shape expected by the FlowCanvas JS hook.
-  """
-  defdelegate serialize_flow(snapshot), to: SnapshotViewer
 
   @doc """
   Serializes a scene snapshot into the shape expected by the SceneCanvas JS hook.

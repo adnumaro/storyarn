@@ -10,11 +10,11 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   import Storyarn.VersioningFixtures
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Imports
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Shared
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.ExportImportLive.Index

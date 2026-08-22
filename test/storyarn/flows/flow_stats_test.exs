@@ -120,18 +120,16 @@ defmodule Storyarn.Flows.FlowStatsTest do
       flow = flow_fixture(project)
 
       for speaker_id <- ["", "not-an-id", "9223372036854775808", String.duplicate("9", 100)] do
-        assert {:ok, _node} =
-                 Flows.import_node(flow.id, %{
-                   type: "dialogue",
-                   data: %{"text" => "Invalid", "speaker_sheet_id" => speaker_id}
-                 })
+        raw_node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Invalid", "speaker_sheet_id" => speaker_id}
+        })
       end
 
-      assert {:ok, _node} =
-               Flows.import_node(flow.id, %{
-                 type: "dialogue",
-                 data: %{"text" => "Valid", "speaker_sheet_id" => "000#{speaker.id}"}
-               })
+      raw_node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "Valid", "speaker_sheet_id" => "000#{speaker.id}"}
+      })
 
       assert [%{sheet_id: sheet_id, sheet_name: "Valid", line_count: 1}] =
                Flows.count_dialogue_lines_by_speaker(project.id)
@@ -154,31 +152,6 @@ defmodule Storyarn.Flows.FlowStatsTest do
 
       assert [%{sheet_name: nil, line_count: 1}] =
                Flows.count_dialogue_lines_by_speaker(project.id)
-    end
-  end
-
-  describe "list_speaker_sheet_ids/1" do
-    test "returns only safely representable imported speaker IDs", %{project: project} do
-      speaker = sheet_fixture(project)
-      flow = flow_fixture(project)
-
-      for speaker_id <- [
-            speaker.id,
-            "000#{speaker.id}",
-            "9223372036854775807",
-            "",
-            "legacy-id",
-            "9223372036854775808"
-          ] do
-        assert {:ok, _node} =
-                 Flows.import_node(flow.id, %{
-                   type: "dialogue",
-                   data: %{"text" => "Line", "speaker_sheet_id" => speaker_id}
-                 })
-      end
-
-      assert Flows.list_speaker_sheet_ids(project.id) ==
-               MapSet.new([speaker.id, 9_223_372_036_854_775_807])
     end
   end
 end

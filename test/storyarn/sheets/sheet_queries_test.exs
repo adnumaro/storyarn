@@ -894,6 +894,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       flow = flow_fixture(project)
 
       assert {:ok, result} = SheetQueries.validate_reference_target("flow", flow.id, project.id)
+      assert %Storyarn.Sheets.Persistence.FlowRecord{} = result
       assert result.id == flow.id
     end
 
@@ -1966,7 +1967,6 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
         }
       })
 
-    :ok = Storyarn.Flows.VariableReferenceTracker.update_references(node)
     node
   end
 end

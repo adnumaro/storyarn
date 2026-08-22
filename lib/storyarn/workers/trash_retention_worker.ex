@@ -21,7 +21,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
-  alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Shared.TimeHelpers
@@ -88,7 +87,7 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   end
 
   defp permanently_delete_item(%{type: "flow"} = item) do
-    Projects.delete_retention_candidate(item, &Flows.hard_delete_flow/1)
+    Projects.delete_retention_candidate(item, &Projects.permanently_delete_trashed_flow/1)
   end
 
   defp permanently_delete_item(%{type: "scene"} = item) do

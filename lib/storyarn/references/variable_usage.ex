@@ -2,18 +2,18 @@ defmodule Storyarn.References.VariableUsage do
   @moduledoc """
   Read paths for variable usage and stale-reference repair.
 
-  Legacy editor reads remain delegated to `Flows.VariableReferenceTracker`;
+  Legacy editor reads remain delegated to the cross-context projection owner;
   bounded, normalized lookup reads live here under the canonical References
   context.
   """
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Condition
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.References.FlowCondition
+  alias Storyarn.References.Persistence.FlowNodeRecord
+  alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.References.VariableReference
+  alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
@@ -76,10 +76,10 @@ defmodule Storyarn.References.VariableUsage do
 
   defp flow_usages(project_id, definition, limit) do
     VariableReference
-    |> join(:inner, [reference], node in FlowNode,
+    |> join(:inner, [reference], node in FlowNodeRecord,
       on: reference.source_type == "flow_node" and reference.source_id == node.id
     )
-    |> join(:inner, [_reference, node], flow in Flow, on: flow.id == node.flow_id)
+    |> join(:inner, [_reference, node], flow in FlowRecord, on: flow.id == node.flow_id)
     |> where(
       [_reference, node, flow],
       flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at)
@@ -219,7 +219,7 @@ defmodule Storyarn.References.VariableUsage do
           reference.source_id == ambient_flow.id
     )
     |> join(:inner, [_reference, ambient_flow], scene in Scene, on: scene.id == ambient_flow.scene_id)
-    |> join(:inner, [_reference, ambient_flow, _scene], flow in Flow, on: flow.id == ambient_flow.flow_id)
+    |> join(:inner, [_reference, ambient_flow, _scene], flow in FlowRecord, on: flow.id == ambient_flow.flow_id)
     |> where(
       [_reference, _ambient_flow, scene, _flow],
       scene.project_id == ^project_id and is_nil(scene.deleted_at)
@@ -335,7 +335,7 @@ defmodule Storyarn.References.VariableUsage do
   defp expand_condition_usage(usage, definition, condition, limit) do
     condition
     |> normalize_condition()
-    |> Condition.extract_all_rules()
+    |> FlowCondition.extract_all_rules()
     |> Stream.filter(&targets_definition?(&1, definition))
     |> Stream.with_index()
     |> Stream.map(fn {rule, index} ->
@@ -437,7 +437,7 @@ defmodule Storyarn.References.VariableUsage do
   defp legacy_assignments(_response), do: []
 
   defp normalize_condition(condition) when is_map(condition), do: condition
-  defp normalize_condition(condition) when is_binary(condition), do: Condition.parse(condition)
+  defp normalize_condition(condition) when is_binary(condition), do: FlowCondition.parse(condition)
   defp normalize_condition(_condition), do: nil
 
   defp prefer_specific_occurrences([], usage), do: [Map.delete(usage, :source_data)]

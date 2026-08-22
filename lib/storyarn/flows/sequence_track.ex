@@ -33,8 +33,8 @@ defmodule Storyarn.Flows.SequenceTrack do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.AssetRecord
 
   @kinds ~w(music ambience sfx)
 
@@ -45,7 +45,7 @@ defmodule Storyarn.Flows.SequenceTrack do
           kind: String.t() | nil,
           position: integer(),
           asset_id: integer() | nil,
-          asset: Asset.t() | NotLoaded.t() | nil,
+          asset: AssetRecord.t() | NotLoaded.t() | nil,
           start_time: Decimal.t() | nil,
           end_time: Decimal.t() | nil,
           volume: Decimal.t() | nil,
@@ -55,7 +55,7 @@ defmodule Storyarn.Flows.SequenceTrack do
 
   schema "flow_node_sequence_tracks" do
     belongs_to :flow_node, FlowNode
-    belongs_to :asset, Asset, where: [deleted_at: nil]
+    belongs_to :asset, AssetRecord, where: [deleted_at: nil]
 
     field :kind, :string
     field :position, :integer, default: 0

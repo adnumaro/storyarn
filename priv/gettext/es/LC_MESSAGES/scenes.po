@@ -32,7 +32,7 @@ msgstr "Anotación duplicada."
 msgid "Annotation pasted."
 msgstr "Anotación pegada."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2004
+#: lib/storyarn_web/live/scene_live/show.ex:2003
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr "Imagen de fondo actualizada."
@@ -210,7 +210,7 @@ msgstr "No se pudo renombrar la capa."
 msgid "Could not save scene name."
 msgstr "No se pudo guardar el nombre de la escena."
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:350
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:344
 #, elixir-autogen, elixir-format
 msgid "Could not select that response."
 msgstr "No se pudo seleccionar esa respuesta."
@@ -231,7 +231,7 @@ msgstr "No se pudo subir el banner."
 msgid "Could not update annotation."
 msgstr "No se pudo actualizar la anotación."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2008
+#: lib/storyarn_web/live/scene_live/show.ex:2007
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr "No se pudo actualizar el bloque."
@@ -246,15 +246,15 @@ msgstr "No se pudo actualizar la conexión."
 msgid "Could not update fog settings."
 msgstr "No se pudieron actualizar los ajustes de fog."
 
-#: lib/storyarn_web/live/scene_live/show.ex:1705
+#: lib/storyarn_web/live/scene_live/show.ex:1704
 #, elixir-autogen, elixir-format
 msgid "Could not update pin icon."
 msgstr "No se pudo actualizar el icono del pin."
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:870
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:892
-#: lib/storyarn_web/live/scene_live/show.ex:1643
-#: lib/storyarn_web/live/scene_live/show.ex:1666
+#: lib/storyarn_web/live/scene_live/show.ex:1642
+#: lib/storyarn_web/live/scene_live/show.ex:1665
 #, elixir-autogen, elixir-format
 msgid "Could not update pin."
 msgstr "No se pudo actualizar el pin."
@@ -275,7 +275,7 @@ msgstr "No se pudieron actualizar los waypoints."
 msgid "Could not update zone."
 msgstr "No se pudo actualizar la zona."
 
-#: lib/storyarn_web/live/scene_live/show.ex:1989
+#: lib/storyarn_web/live/scene_live/show.ex:1988
 #, elixir-autogen, elixir-format
 msgid "Could not upload background."
 msgstr "No se pudo subir el fondo."
@@ -285,13 +285,13 @@ msgstr "No se pudo subir el fondo."
 msgid "Display"
 msgstr "Mostrar"
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:673
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:666
 #, elixir-autogen, elixir-format
 msgid "Flow has no entry node."
 msgstr "El flujo no tiene nodo de entrada."
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:597
-#: lib/storyarn_web/live/scene_live/show.ex:1574
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:591
+#: lib/storyarn_web/live/scene_live/show.ex:1573
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
@@ -370,8 +370,8 @@ msgstr "Marcador eliminado. Pulsa Ctrl+Z para deshacer."
 msgid "Pin duplicated."
 msgstr "Marcador duplicado."
 
-#: lib/storyarn_web/live/scene_live/show.ex:985
-#: lib/storyarn_web/live/scene_live/show.ex:1701
+#: lib/storyarn_web/live/scene_live/show.ex:984
+#: lib/storyarn_web/live/scene_live/show.ex:1700
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr "Icono del marcador actualizado."
@@ -387,8 +387,8 @@ msgstr "Marcador pegado."
 msgid "Scene moved to trash."
 msgstr "Escena movida a la papelera."
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:145
-#: lib/storyarn_web/live/scene_live/show.ex:493
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:139
+#: lib/storyarn_web/live/scene_live/show.ex:492
 #, elixir-autogen, elixir-format
 msgid "Scene not found."
 msgstr "Escena no encontrada."
@@ -398,7 +398,7 @@ msgstr "Escena no encontrada."
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:717
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:710
 #, elixir-autogen, elixir-format
 msgid "Target flow has no entry node."
 msgstr "El flujo destino no tiene nodo de entrada."
@@ -465,7 +465,7 @@ msgstr "Deshacer: zona restaurada."
 msgid "Untitled"
 msgstr "Sin título"
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:135
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:129
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
@@ -636,23 +636,23 @@ msgstr "Escena no encontrada"
 msgid "Collection"
 msgstr "Colección"
 
-#: lib/storyarn_web/live/scene_live/show.ex:1261
-#: lib/storyarn_web/live/scene_live/show.ex:1277
+#: lib/storyarn_web/live/scene_live/show.ex:1260
+#: lib/storyarn_web/live/scene_live/show.ex:1276
 #, elixir-autogen, elixir-format
 msgid "Could not add ambient flow."
 msgstr "No se pudo añadir el flujo ambiental."
 
-#: lib/storyarn_web/live/scene_live/show.ex:564
+#: lib/storyarn_web/live/scene_live/show.ex:563
 #, elixir-autogen, elixir-format
 msgid "Could not remove ambient flow."
 msgstr "No se pudo eliminar el flujo ambiental."
 
-#: lib/storyarn_web/live/scene_live/show.ex:604
+#: lib/storyarn_web/live/scene_live/show.ex:603
 #, elixir-autogen, elixir-format
 msgid "Could not reorder ambient flows."
 msgstr "No se pudieron reordenar los flujos ambientales."
 
-#: lib/storyarn_web/live/scene_live/show.ex:582
+#: lib/storyarn_web/live/scene_live/show.ex:581
 #, elixir-autogen, elixir-format
 msgid "Could not update ambient flow."
 msgstr "No se pudo actualizar el flujo ambiental."
@@ -662,7 +662,7 @@ msgstr "No se pudo actualizar el flujo ambiental."
 msgid "Could not update display mode."
 msgstr "No se pudo actualizar el modo de visualización."
 
-#: lib/storyarn_web/live/scene_live/show.ex:630
+#: lib/storyarn_web/live/scene_live/show.ex:629
 #, elixir-autogen, elixir-format
 msgid "Could not update trigger."
 msgstr "No se pudo actualizar el disparador."
@@ -672,7 +672,7 @@ msgstr "No se pudo actualizar el disparador."
 msgid "Defines traversable ground for character movement in exploration mode"
 msgstr "Define el suelo transitable para el movimiento del personaje en modo exploración"
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:316
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:310
 #, elixir-autogen, elixir-format
 msgid "Failed to save progress."
 msgstr "Error al guardar el progreso."
@@ -682,12 +682,12 @@ msgstr "Error al guardar el progreso."
 msgid "Opens a collection modal with items the player can take"
 msgstr "Abre un modal de colección con objetos que el jugador puede recoger"
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:313
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:307
 #, elixir-autogen, elixir-format
 msgid "Progress saved."
 msgstr "Progreso guardado."
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:495
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:489
 #, elixir-autogen, elixir-format
 msgid "Saved scene no longer exists. Starting on current scene."
 msgstr "La escena guardada ya no existe. Iniciando en la escena actual."
@@ -717,17 +717,17 @@ msgstr "Área transitable"
 msgid "this flow is already linked to this scene"
 msgstr "este flujo ya está vinculado a esta escena"
 
-#: lib/storyarn_web/live/scene_live/show.ex:2133
+#: lib/storyarn_web/live/scene_live/show.ex:2132
 #, elixir-autogen, elixir-format
 msgid "Could not upload file."
 msgstr "No se pudo subir el archivo."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2124
+#: lib/storyarn_web/live/scene_live/show.ex:2123
 #, elixir-autogen, elixir-format
 msgid "File is too large. Maximum size is 50 MB."
 msgstr "El archivo es demasiado grande. El tamaño máximo es 50 MB."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2127
+#: lib/storyarn_web/live/scene_live/show.ex:2126
 #, elixir-autogen, elixir-format
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr "Tipo de archivo no compatible. Sube una imagen JPEG, PNG, GIF o WebP."
@@ -737,17 +737,17 @@ msgstr "Tipo de archivo no compatible. Sube una imagen JPEG, PNG, GIF o WebP."
 msgid "timed trigger requires interval_ms >= 1000"
 msgstr "el disparador temporizado requiere interval_ms >= 1000"
 
-#: lib/storyarn_web/live/scene_live/show.ex:995
+#: lib/storyarn_web/live/scene_live/show.ex:994
 #, elixir-autogen, elixir-format
 msgid "Could not upload pin icon."
 msgstr "No se pudo subir el icono del pin."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2114
+#: lib/storyarn_web/live/scene_live/show.ex:2113
 #, elixir-autogen, elixir-format
 msgid "Only SVG, PNG, or GIF icons are allowed."
 msgstr "Solo se permiten iconos SVG, PNG o GIF."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2118
+#: lib/storyarn_web/live/scene_live/show.ex:2117
 #, elixir-autogen, elixir-format
 msgid "Icon is too large. Maximum size is 256 KB."
 msgstr "El icono es demasiado grande. El máximo es 256 KB."
@@ -794,8 +794,8 @@ msgstr "Ubicación"
 msgid "Solid"
 msgstr "Sólida"
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:699
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:753
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:692
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:746
 #, elixir-autogen, elixir-format
 msgid "Too many nested subflows. Stopping execution."
 msgstr "Demasiados subflujos anidados. Deteniendo la ejecución."
@@ -805,7 +805,7 @@ msgstr "Demasiados subflujos anidados. Deteniendo la ejecución."
 msgid "You don't have permission to edit."
 msgstr "No tienes permiso para editar."
 
-#: lib/storyarn_web/live/scene_live/show.ex:1218
+#: lib/storyarn_web/live/scene_live/show.ex:1217
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr "Recurso no encontrado."
@@ -820,7 +820,7 @@ msgstr "Diseño de fog cambiado"
 msgid "Could not update fog design."
 msgstr "No se pudo actualizar el diseño de fog."
 
-#: lib/storyarn_web/live/scene_live/show.ex:1048
+#: lib/storyarn_web/live/scene_live/show.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Could not upload zone icon."
 msgstr "No se pudo subir el icono de la zona."
@@ -830,7 +830,7 @@ msgstr "No se pudo subir el icono de la zona."
 msgid "Runs optional variable instructions and can navigate to another scene or launch a flow"
 msgstr "Ejecuta instrucciones de variables opcionales y puede navegar a otra escena o lanzar un flujo"
 
-#: lib/storyarn_web/live/scene_live/show.ex:1038
+#: lib/storyarn_web/live/scene_live/show.ex:1037
 #, elixir-autogen, elixir-format
 msgid "Zone icon updated."
 msgstr "Icono de la zona actualizado."
@@ -889,3 +889,13 @@ msgstr "Flujo ambiental %{flow_id} modificado"
 #, elixir-autogen, elixir-format
 msgid "Removed ambient flow %{flow_id}"
 msgstr "Flujo ambiental %{flow_id} eliminado"
+
+#: lib/storyarn/scenes/flow_runtime/engine.ex:65
+#, elixir-autogen, elixir-format
+msgid "Debug session started"
+msgstr "Sesión de depuración iniciada"
+
+#: lib/storyarn/scenes/flow_runtime/slide.ex:83
+#, elixir-autogen, elixir-format
+msgid "The End"
+msgstr "Fin"

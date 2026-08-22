@@ -24,12 +24,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   import Storyarn.VersioningFixtures
 
   alias Storyarn.Billing.StorageReservation
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions

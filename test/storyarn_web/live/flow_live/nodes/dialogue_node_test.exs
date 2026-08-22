@@ -319,10 +319,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.NodeTest do
           Map.put(node.data, "speaker_sheet_id", sheet.id)
         )
 
-      socket = %{
-        socket
-        | assigns: %{socket.assigns | all_sheets: [sheet], selected_node: updated_node}
-      }
+      socket = %{socket | assigns: %{socket.assigns | all_sheets: [], selected_node: updated_node}}
 
       {:noreply, result} = DialogueNode.handle_generate_technical_id(socket)
 

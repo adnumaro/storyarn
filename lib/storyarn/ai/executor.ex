@@ -45,11 +45,14 @@ defmodule Storyarn.AI.Executor do
   defp normalize_attempt({:error, reason}), do: {:error, reason}
 
   defp call_provider(provider, credential, task, route, input, operation) do
+    context_policy = context_policy(task, operation)
+
     request = %{
       task_id: task.id,
       model: route.model,
       input: input,
       contextual?: is_binary(operation.context_hash),
+      context_policy: context_policy,
       max_output_bytes: task.max_output_bytes,
       provider_options: task.provider_options,
       provider_configuration: route.provider_configuration
@@ -66,6 +69,15 @@ defmodule Storyarn.AI.Executor do
       {:exit, _reason} -> {:error, {:unknown, :provider_process_exit}}
     end
   end
+
+  defp context_policy(task, %{context_hash: hash}) when is_binary(hash) do
+    case Task.context_policy(task) do
+      {:ok, policy} -> policy
+      {:error, :invalid_context_policy} -> nil
+    end
+  end
+
+  defp context_policy(_task, _operation), do: nil
 
   defp finalize({:ok, response}, operation, task, usage, latency) when is_map(response) do
     output = response[:output]

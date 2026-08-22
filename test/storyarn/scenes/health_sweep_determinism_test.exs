@@ -1,7 +1,7 @@
 defmodule Storyarn.Scenes.HealthSweepDeterminismTest do
   @moduledoc """
   The scenes health sweep must return the same rows in the same order on every
-  run, the way `Storyarn.Flows.StructuralAnalysis.Topology.load_project/2` does.
+  run, as the equivalent Flow topology loader does.
 
   `position` is not a unique key — siblings created together share it, and every
   child table defaults it — so an `order_by` that stops there leaves the rest to

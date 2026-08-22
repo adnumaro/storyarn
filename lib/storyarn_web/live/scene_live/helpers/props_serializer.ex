@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows
+  alias Storyarn.Scenes
   alias Storyarn.Scenes.RoutePoints
   alias StoryarnWeb.PrivateMedia
 
@@ -17,11 +17,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     if value == trunc(value) do
       Integer.to_string(trunc(value))
     else
-      Flows.evaluator_format_value(value)
+      Scenes.format_runtime_value(value)
     end
   end
 
-  def format_display_value(value), do: Flows.evaluator_format_value(value)
+  def format_display_value(value), do: Scenes.format_runtime_value(value)
 
   def prepare_scene_for_vue(nil), do: nil
 

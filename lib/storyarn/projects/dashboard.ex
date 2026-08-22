@@ -17,9 +17,9 @@ defmodule Storyarn.Projects.Dashboard do
 
   import Ecto.Query
 
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.FlowReadModel
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Shared.Severity
@@ -42,7 +42,7 @@ defmodule Storyarn.Projects.Dashboard do
     %{
       sheet_count: Sheets.count_sheets(project_id),
       variable_count: count_variables(project_id),
-      flow_count: Flows.count_flows(project_id),
+      flow_count: FlowReadModel.count_flows(project_id),
       dialogue_count: count_dialogue_nodes(project_id),
       scene_count: Scenes.count_scenes(project_id),
       total_word_count: count_total_words(project_id)
@@ -172,7 +172,7 @@ defmodule Storyarn.Projects.Dashboard do
   defp count_total_words(project_id) do
     flow_words =
       project_id
-      |> Flows.flow_word_counts()
+      |> FlowReadModel.flow_word_counts()
       |> Map.values()
       |> Enum.sum()
 

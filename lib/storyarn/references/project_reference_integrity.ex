@@ -14,8 +14,8 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
   alias Storyarn.Projects.Project
+  alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Sheet
@@ -216,7 +216,7 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
   end
 
   defp lock_reference_ids(:flow, project_id, ids) do
-    lock_active_hierarchical_ids(Flow, project_id, ids)
+    lock_active_hierarchical_ids(FlowRecord, project_id, ids)
   end
 
   defp lock_reference_ids(:scene, project_id, ids) do

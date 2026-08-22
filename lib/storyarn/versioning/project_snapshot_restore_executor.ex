@@ -20,24 +20,24 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.SequenceConfig
-  alias Storyarn.Flows.SequenceTrack
-  alias Storyarn.Flows.SequenceVisualLayer
-  alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
+  alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
+  alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
+  alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
   alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReference
+  alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -752,7 +752,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
     with :ok <-
            trash_roots(
              previous.flow_roots,
-             &Flows.delete_flow_subtree_for_project_restore_in_transaction/1
+             &FlowProjectTrash.delete_subtree_in_transaction/1
            ),
          :ok <- trash_roots(previous.scene_roots, &trash_scene/1) do
       trash_roots(previous.sheet_roots, &Sheets.delete_sheet_subtree_in_transaction/1)

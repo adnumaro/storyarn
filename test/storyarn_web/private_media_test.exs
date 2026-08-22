@@ -21,6 +21,16 @@ defmodule StoryarnWeb.PrivateMediaTest do
       assert PrivateMedia.asset_url(asset) == "/media/assets/84"
     end
 
+    test "prefers the optimized variant for consumer-owned asset-shaped records" do
+      asset_record = %{
+        id: 42,
+        filename: "original.png",
+        metadata: %{"web_asset_id" => 84}
+      }
+
+      assert PrivateMedia.asset_url(asset_record) == "/media/assets/84"
+    end
+
     test "returns nil without an asset" do
       assert PrivateMedia.asset_url(nil) == nil
     end

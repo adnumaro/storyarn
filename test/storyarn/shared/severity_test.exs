@@ -1,7 +1,7 @@
 defmodule Storyarn.Shared.SeverityTest do
   @moduledoc """
   `severity_rank/1` was hand-rolled in five places. The copies were split on the
-  key type — `Storyarn.Flows.StructuralAnalysis` and `Storyarn.Projects.Dashboard`
+  key type — the Flow analyzer and Project dashboard
   rank atoms, the three dashboard LiveViews rank the strings that cross the
   LiveVue boundary — and split again on the catch-all, which two copies had and
   two did not.

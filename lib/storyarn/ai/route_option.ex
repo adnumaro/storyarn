@@ -128,8 +128,9 @@ defmodule Storyarn.AI.RouteOption do
     hash = get_field(changeset, :context_hash)
     manifest = get_field(changeset, :context_manifest)
     subject = get_field(changeset, :context_subject)
+    task_id = get_field(changeset, :task_id)
 
-    if PersistenceContract.valid?(hash, manifest, subject) do
+    if PersistenceContract.valid?(task_id, hash, manifest, subject) do
       changeset
     else
       add_error(

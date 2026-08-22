@@ -3,7 +3,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Flows
   alias Storyarn.Scenes
   alias Storyarn.Sheets
 
@@ -28,7 +27,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
     all_blocks
     |> Enum.filter(&variable_block?/1)
     |> Enum.map(fn block ->
-      usage = Flows.check_stale_references(block.id, project_id)
+      usage = Sheets.check_stale_variable_references(block.id, project_id)
       reads = Enum.filter(usage, &(&1.kind == "read"))
       writes = Enum.filter(usage, &(&1.kind == "write"))
 

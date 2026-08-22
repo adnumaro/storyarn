@@ -3,8 +3,6 @@ defmodule StoryarnWeb.VersionViewerLive do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -24,28 +22,6 @@ defmodule StoryarnWeb.VersionViewerLive do
         id="version-viewer-error"
         class="w-full h-full"
         reason={@view_error}
-      />
-    </StoryarnWeb.Components.CompareLayout.compare>
-    """
-  end
-
-  def render(%{entity_type: :flow} = assigns) do
-    ~H"""
-    <StoryarnWeb.Components.CompareLayout.compare socket={@socket} flash={@flash}>
-      <.vue
-        v-component="live/flow/show/FlowCanvas"
-        v-socket={@socket}
-        v-inject="compare-layout"
-        id={"flow-version-viewer-#{@entity_id}-#{@version_number}"}
-        class="w-full h-full"
-        flow-data={Jason.encode!(@flow_data)}
-        variable-map={Jason.encode!(@variable_map)}
-        loading={false}
-        readonly={true}
-        user-id={@current_scope.user.id}
-        user-color={Collaboration.user_color(@current_scope.user.id)}
-        canvas-id={"flow-version-canvas-#{@entity_id}-#{@version_number}"}
-        toolbar-data={Jason.encode!(@toolbar_data)}
       />
     </StoryarnWeb.Components.CompareLayout.compare>
     """
@@ -120,7 +96,7 @@ defmodule StoryarnWeb.VersionViewerLive do
            Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug),
          {:ok, entity} <- fetch_entity(entity_type, project.id, entity_id),
          {:ok, version} <- fetch_version(entity_type, entity_id, version_number),
-         {:ok, snapshot} <- Versioning.load_version_snapshot(version) do
+         {:ok, snapshot} <- load_version_snapshot(entity_type, version) do
       {:ok,
        socket
        |> assign(:entity_type, entity_type)
@@ -180,7 +156,6 @@ defmodule StoryarnWeb.VersionViewerLive do
     end
   end
 
-  defp fetch_entity(:flow, project_id, entity_id), do: fetch_present(Flows.get_flow_brief(project_id, entity_id))
   defp fetch_entity(:scene, project_id, entity_id), do: fetch_present(Scenes.get_scene_brief(project_id, entity_id))
   defp fetch_entity(:sheet, project_id, entity_id), do: fetch_present(Sheets.get_sheet(project_id, entity_id))
 
@@ -194,14 +169,7 @@ defmodule StoryarnWeb.VersionViewerLive do
     end
   end
 
-  defp assign_viewer(socket, :flow, _flow, snapshot) do
-    referenced_sheets = snapshot["referenced_sheets"] || %{}
-
-    socket
-    |> assign(:flow_data, Versioning.serialize_flow(snapshot))
-    |> assign(:variable_map, flow_variable_map(referenced_sheets, socket.assigns.project.id))
-    |> assign(:toolbar_data, flow_toolbar_data(referenced_sheets))
-  end
+  defp load_version_snapshot(_entity_type, version), do: Versioning.load_version_snapshot(version)
 
   defp assign_viewer(socket, :scene, _scene, snapshot) do
     viewer = Versioning.serialize_scene(snapshot)
@@ -223,35 +191,6 @@ defmodule StoryarnWeb.VersionViewerLive do
     else
       "v#{version.version_number} — #{version.change_summary || gettext("Auto-snapshot")}"
     end
-  end
-
-  defp flow_variable_map(referenced_sheets, project_id) do
-    Map.new(referenced_sheets, fn {id, sheet} ->
-      {to_string(id),
-       %{
-         id: sheet["id"],
-         name: sheet["name"],
-         avatar_url: PrivateMedia.project_url_from_stored(project_id, sheet["avatar_url"]),
-         banner_url: PrivateMedia.project_url_from_stored(project_id, sheet["banner_url"]),
-         color: sheet["color"],
-         avatars: [],
-         gallery_images: []
-       }}
-    end)
-  end
-
-  defp flow_toolbar_data(referenced_sheets) do
-    %{
-      hubs: [],
-      projectFlows: [],
-      sheetAvatars:
-        Enum.map(referenced_sheets, fn {_id, sheet} ->
-          %{id: sheet["id"], name: sheet["name"], color: sheet["color"], avatars: []}
-        end),
-      subflowExits: [],
-      referencingJumps: [],
-      referencingFlows: []
-    }
   end
 
   defp scene_surface(assigns, viewer) do

@@ -15,12 +15,12 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotReferencedTombstonesIntegrationTe
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes

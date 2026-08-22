@@ -3,11 +3,10 @@ defmodule Storyarn.Shared.Severity do
   The single ordering of the health severity catalog.
 
   Health findings carry `:error | :warning | :info`. Everything that sorts them
-  needs the same three-line ordering, and five modules had hand-rolled it:
-  the flows/sheets/scenes dashboards rank the **strings** that cross the LiveVue
-  boundary, `Storyarn.Flows.StructuralAnalysis` and `Storyarn.Projects.Dashboard`
-  rank the **atoms** on the server side. `rank/1` accepts both so neither side has
-  to normalise before sorting.
+  needs the same three-line ordering. UI consumers rank the **strings** that
+  cross the LiveVue boundary while domain consumers rank the **atoms** on the
+  server side. `rank/1` accepts both so neither side has to normalise before
+  sorting.
 
   It is strict on purpose. Severity is a closed catalog produced by
   `severity_for/1` in the health checkers, so a value outside it means the caller

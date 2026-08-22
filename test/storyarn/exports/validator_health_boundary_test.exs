@@ -9,8 +9,8 @@ defmodule Storyarn.Exports.ValidatorHealthBoundaryTest do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Validator
   alias Storyarn.Flows
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Repo
 
   setup do

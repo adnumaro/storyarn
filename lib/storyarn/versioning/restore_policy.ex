@@ -13,7 +13,6 @@ defmodule Storyarn.Versioning.RestorePolicy do
 
   @entity_actions %{
     "sheet" => :sheet_version_restore,
-    "flow" => :flow_version_restore,
     "scene" => :scene_version_restore
   }
   @spec enabled?(action()) :: boolean()

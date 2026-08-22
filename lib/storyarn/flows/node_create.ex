@@ -2,16 +2,17 @@ defmodule Storyarn.Flows.NodeCreate do
   @moduledoc false
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Limits
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.NodeUpdate
+  alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Flows.WordCount
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.WordCount
 
   # Prevents infinite recursion in circular reference detection
   @max_reference_depth 20
@@ -94,6 +95,13 @@ defmodule Storyarn.Flows.NodeCreate do
   end
 
   defp create_node_in_transaction(flow, attrs) do
+    attrs =
+      if is_map(attrs["data"]) do
+        attrs
+      else
+        Map.put(attrs, "data", NodeTypes.default_data(attrs["type"]))
+      end
+
     with {:ok,
           %{
             project: locked_project,
@@ -101,7 +109,7 @@ defmodule Storyarn.Flows.NodeCreate do
             flow: locked_flow
           }} <-
            ReferenceIntegrity.lock_active_flow_for_write(flow),
-         :ok <- Billing.can_create_item?(locked_project),
+         :ok <- Limits.can_create_item?(locked_project),
          {:ok, parent_id} <-
            ReferenceIntegrity.lock_node_parent(
              locked_flow.id,
@@ -112,7 +120,7 @@ defmodule Storyarn.Flows.NodeCreate do
              project_id,
              locked_flow.id,
              attrs["type"],
-             attrs["data"] || %{}
+             attrs["data"]
            ) do
       attrs
       |> Map.put("parent_id", parent_id)

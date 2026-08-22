@@ -12,8 +12,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   alias Storyarn.Flows
   alias Storyarn.Shared.HtmlSanitizer
 
-  @max_traversal_depth 50
-
   # ============================================================================
   # Public handlers
   # ============================================================================
@@ -21,17 +19,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   @spec handle_start_preview(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_start_preview(%{"id" => node_id}, socket) do
-    case Flows.get_node(socket.assigns.flow.id, node_id) do
-      nil ->
+    case Flows.start_dialogue_preview(socket.assigns.flow.id, node_id) do
+      :not_found ->
         {:noreply, socket}
 
-      node ->
+      {:ok, preview} ->
         socket =
           socket
           |> assign(preview_show: true, preview_history: [])
-          |> load_node(node)
+          |> assign_preview(preview)
 
         {:noreply, socket}
+
+      :empty ->
+        {:noreply,
+         socket
+         |> assign(preview_show: true, preview_history: [])
+         |> assign_empty_node()}
     end
   end
 
@@ -39,44 +43,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
           {:noreply, Socket.t()}
   def handle_select_response(%{"response_id" => response_id}, socket) do
     current_node = socket.assigns.preview_current_node
-    connections = Flows.get_outgoing_connections(current_node.id)
-    next_connection = Enum.find(connections, fn conn -> conn.source_pin == response_id end)
-
-    if next_connection do
-      history = [current_node.id | socket.assigns.preview_history]
-      next_node = Flows.get_node_by_id!(current_node.flow_id, next_connection.target_node_id)
-
-      socket =
-        socket
-        |> assign(preview_history: history)
-        |> load_node(next_node)
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+    follow_preview(socket, current_node, response_id)
   end
 
   @spec handle_continue(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_continue(_params, socket) do
     current_node = socket.assigns.preview_current_node
-    connections = Flows.get_outgoing_connections(current_node.id)
-    next_connection = Enum.find(connections, fn conn -> conn.source_pin == "output" end)
-
-    if next_connection do
-      history = [current_node.id | socket.assigns.preview_history]
-      next_node = Flows.get_node_by_id!(current_node.flow_id, next_connection.target_node_id)
-
-      socket =
-        socket
-        |> assign(preview_history: history)
-        |> load_node(next_node)
-
-      {:noreply, socket}
-    else
-      {:noreply, socket}
-    end
+    follow_preview(socket, current_node, "output")
   end
 
   @spec handle_go_back(map(), Socket.t()) ::
@@ -84,15 +58,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   def handle_go_back(_params, socket) do
     case socket.assigns.preview_history do
       [prev_node_id | rest] ->
-        prev_node =
-          Flows.get_node_by_id!(socket.assigns.preview_current_node.flow_id, prev_node_id)
+        flow_id = socket.assigns.flow.id
 
-        socket =
-          socket
-          |> assign(preview_history: rest)
-          |> load_node(prev_node)
+        case Flows.start_dialogue_preview(flow_id, prev_node_id) do
+          {:ok, preview} ->
+            {:noreply,
+             socket
+             |> assign(preview_history: rest)
+             |> assign_preview(preview)}
 
-        {:noreply, socket}
+          :empty ->
+            {:noreply,
+             socket
+             |> assign(preview_history: rest)
+             |> assign_empty_node()}
+
+          :not_found ->
+            {:noreply, socket}
+        end
 
       [] ->
         {:noreply, socket}
@@ -133,85 +116,44 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   end
 
   # ============================================================================
-  # Private — node loading (ported from PreviewComponent)
+  # Private — adapter state
   # ============================================================================
 
-  defp load_node(socket, node) do
-    if node.type == "dialogue" do
-      load_dialogue_node(socket, node)
-    else
-      skip_to_next_dialogue(socket, node, MapSet.new(), 0)
-    end
-  end
-
-  defp load_dialogue_node(socket, node) do
+  defp assign_preview(socket, %{node: node, has_next?: has_next?}) do
     speaker_name = resolve_speaker(socket.assigns, node.data["speaker_sheet_id"])
     responses = node.data["responses"] || []
-    connections = Flows.get_outgoing_connections(node.id)
-    has_next = responses == [] && has_output_connection?(connections)
 
     assign(socket,
       preview_current_node: node,
       preview_speaker: speaker_name,
       preview_responses: responses,
-      preview_has_next: has_next
+      preview_has_next: has_next?
     )
   end
 
-  defp skip_to_next_dialogue(socket, _node, _visited, depth) when depth >= @max_traversal_depth do
-    assign_empty_node(socket)
-  end
+  defp follow_preview(socket, nil, _source_pin), do: {:noreply, socket}
 
-  defp skip_to_next_dialogue(socket, %{type: "jump"} = node, visited, depth) do
-    if MapSet.member?(visited, node.id) do
-      assign_empty_node(socket)
-    else
-      visited = MapSet.put(visited, node.id)
-      follow_jump_target(socket, node, visited, depth)
+  defp follow_preview(socket, current_node, source_pin) do
+    case Flows.follow_dialogue_preview(socket.assigns.flow.id, current_node.id, source_pin) do
+      result when result in [:no_transition, :not_found] ->
+        {:noreply, socket}
+
+      {:ok, preview} ->
+        {:noreply,
+         socket
+         |> remember_preview_node(current_node.id)
+         |> assign_preview(preview)}
+
+      :empty ->
+        {:noreply,
+         socket
+         |> remember_preview_node(current_node.id)
+         |> assign_empty_node()}
     end
   end
 
-  defp skip_to_next_dialogue(socket, node, visited, depth) do
-    if MapSet.member?(visited, node.id) do
-      assign_empty_node(socket)
-    else
-      visited = MapSet.put(visited, node.id)
-      follow_first_connection(socket, node, visited, depth)
-    end
-  end
-
-  defp follow_jump_target(socket, node, visited, depth) do
-    target_hub_id = node.data["target_hub_id"]
-
-    if target_hub_id && target_hub_id != "" do
-      case Flows.get_hub_by_hub_id(node.flow_id, target_hub_id) do
-        nil -> assign_empty_node(socket)
-        hub -> skip_to_next_dialogue(socket, hub, visited, depth + 1)
-      end
-    else
-      assign_empty_node(socket)
-    end
-  end
-
-  defp follow_first_connection(socket, node, visited, depth) do
-    connections = Flows.get_outgoing_connections(node.id)
-
-    case List.first(connections) do
-      nil ->
-        assign_empty_node(socket)
-
-      next_conn ->
-        next_node = Flows.get_node_by_id!(node.flow_id, next_conn.target_node_id)
-        load_or_skip(socket, next_node, visited, depth)
-    end
-  end
-
-  defp load_or_skip(socket, %{type: "dialogue"} = node, _visited, _depth) do
-    load_dialogue_node(socket, node)
-  end
-
-  defp load_or_skip(socket, node, visited, depth) do
-    skip_to_next_dialogue(socket, node, visited, depth + 1)
+  defp remember_preview_node(socket, node_id) do
+    assign(socket, preview_history: [node_id | socket.assigns.preview_history])
   end
 
   defp assign_empty_node(socket) do
@@ -221,10 +163,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
       preview_responses: [],
       preview_has_next: false
     )
-  end
-
-  defp has_output_connection?(connections) do
-    Enum.any?(connections, fn conn -> conn.source_pin == "output" end)
   end
 
   # ============================================================================
@@ -300,12 +238,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
   defp sanitize_and_interpolate(text) when is_binary(text) do
     text
     |> HtmlSanitizer.sanitize_html()
-    |> interpolate_variables()
+    |> Flows.map_player_rich_text_references(&render_preview_reference/1)
   end
 
-  defp interpolate_variables(text) when is_binary(text) do
-    Regex.replace(~r/\{(\w+)\}/, text, fn _, var_name ->
-      "<span class=\"text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono\">[#{var_name}]</span>"
-    end)
+  defp render_preview_reference(reference) do
+    "<span class=\"text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono\">[#{reference}]</span>"
   end
 end

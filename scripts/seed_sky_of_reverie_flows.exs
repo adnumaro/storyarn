@@ -6,7 +6,6 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.Flows.{Condition, Flow}
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -127,28 +126,23 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
         {:ok, flow} = Flows.create_flow(project, attrs)
         flow
 
-      %Flow{} = flow ->
+      flow ->
         {:ok, flow} = Flows.update_flow(flow, attrs)
         flow
     end
   end
 
   defp get_flow_by_shortcut(project_id, shortcut) do
-    Repo.one(
-      from f in Flow,
-        where:
-          f.project_id == ^project_id and
-            f.shortcut == ^shortcut and
-            is_nil(f.deleted_at) and
-            is_nil(f.draft_id)
-    )
+    project_id
+    |> Flows.list_flows()
+    |> Enum.find(&(&1.shortcut == shortcut and is_nil(&1.draft_id)))
   end
 
   defp get_flow_by_shortcut!(project_id, shortcut) do
     get_flow_by_shortcut(project_id, shortcut) || raise "Flow #{shortcut} not found"
   end
 
-  defp reset_flow_canvas(%Project{} = project, %Flow{} = flow, exit_label) do
+  defp reset_flow_canvas(%Project{} = project, flow, exit_label) do
     full_flow = Flows.get_flow!(project.id, flow.id)
 
     Enum.each(full_flow.connections, fn connection ->
@@ -205,7 +199,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
     }
   end
 
-  defp create_node!(%Flow{} = flow, type, x, y, data) do
+  defp create_node!(flow, type, x, y, data) do
     {:ok, node} =
       Flows.create_node(flow, %{
         type: type,
@@ -217,7 +211,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
     node
   end
 
-  defp create_dialogue!(%Flow{} = flow, x, y, speaker_sheet_id, text, responses \\ []) do
+  defp create_dialogue!(flow, x, y, speaker_sheet_id, text, responses \\ []) do
     create_node!(flow, "dialogue", x, y, %{
       "speaker_sheet_id" => speaker_sheet_id,
       "text" => text,
@@ -225,14 +219,14 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
     })
   end
 
-  defp create_instruction!(%Flow{} = flow, x, y, description, assignments) do
+  defp create_instruction!(flow, x, y, description, assignments) do
     create_node!(flow, "instruction", x, y, %{
       "description" => description,
       "assignments" => assignments
     })
   end
 
-  defp create_condition!(%Flow{} = flow, x, y, condition, switch_mode \\ false) do
+  defp create_condition!(flow, x, y, condition, switch_mode \\ false) do
     create_node!(flow, "condition", x, y, %{
       "condition" => condition,
       "switch_mode" => switch_mode
@@ -240,7 +234,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
   end
 
   defp connect!(
-         %Flow{} = flow,
+         flow,
          source_node,
          target_node,
          source_pin \\ "output",
@@ -253,7 +247,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
       })
   end
 
-  defp apply_positions!(%Flow{} = flow, nodes_with_positions) do
+  defp apply_positions!(flow, nodes_with_positions) do
     positions =
       Enum.map(nodes_with_positions, fn {node, {x, y}} ->
         %{id: node.id, position_x: x, position_y: y}
@@ -286,7 +280,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverieFlows do
     condition =
       case Keyword.get(opts, :condition) do
         nil -> ""
-        condition_map -> Condition.to_json(condition_map)
+        condition_map -> Flows.condition_to_json(condition_map)
       end
 
     %{

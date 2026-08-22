@@ -22,7 +22,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   """
 
   alias Storyarn.Flows.Instruction
-  alias Storyarn.Sheets
+  alias Storyarn.Flows.VariableConstraints
 
   @type change :: %{
           variable_ref: String.t(),
@@ -224,10 +224,10 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
     old_n - val_n
   end
 
-  # -- Constraint clamping (delegates to Sheets facade) --
+  # -- Constraint clamping through the Flow-owned variable contract --
 
   defp clamp_to_constraints(value, %{block_type: block_type, constraints: constraints}),
-    do: Sheets.clamp_to_constraints(value, constraints, block_type)
+    do: VariableConstraints.clamp(value, constraints, block_type)
 
   defp clamp_to_constraints(value, _), do: value
 end

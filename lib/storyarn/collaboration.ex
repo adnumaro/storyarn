@@ -62,6 +62,9 @@ defmodule Storyarn.Collaboration do
     Presence.track_user(pid, topic, user)
   end
 
+  @doc false
+  def presence_event_source?(source), do: source == Presence
+
   @doc """
   Subscribes to presence updates for an editor.
   Subscribes to the proxy topic for efficient join/leave events.

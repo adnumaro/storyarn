@@ -4,9 +4,9 @@ defmodule Storyarn.Localization.TextCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.Persistence.FlowNodeRecord
+  alias Storyarn.Localization.Persistence.FlowRecord
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
@@ -754,8 +754,8 @@ defmodule Storyarn.Localization.TextCrud do
   defp engine_flow_node_ids(project_id, opts) do
     if export_option(opts, :include_flows, true) do
       query =
-        from(n in FlowNode,
-          join: f in Flow,
+        from(n in FlowNodeRecord,
+          join: f in FlowRecord,
           on: f.id == n.flow_id,
           where: f.project_id == ^project_id and is_nil(f.deleted_at) and is_nil(n.deleted_at),
           select: n.id
@@ -846,7 +846,7 @@ defmodule Storyarn.Localization.TextCrud do
   defp flow_node_runtime_refs(ids) do
     ids = Enum.uniq(ids)
 
-    from(node in FlowNode,
+    from(node in FlowNodeRecord,
       where: node.id in ^ids,
       select: {node.id, fragment("?->>'localization_id'", node.data)}
     )

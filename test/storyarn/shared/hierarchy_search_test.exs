@@ -3,8 +3,8 @@ defmodule Storyarn.Shared.HierarchySearchTest do
 
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Flows.Flow
   alias Storyarn.FlowsFixtures
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Scenes.Scene
   alias Storyarn.ScenesFixtures
   alias Storyarn.Shared.HierarchySearch

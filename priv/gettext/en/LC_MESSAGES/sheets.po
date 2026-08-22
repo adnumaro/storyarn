@@ -73,12 +73,12 @@ msgstr ""
 msgid "Could not save shortcut."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:70
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:66
 #, elixir-autogen, elixir-format
 msgid "Could not update audio."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:98
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:91
 #, elixir-autogen, elixir-format
 msgid "Could not upload audio file."
 msgstr ""
@@ -115,12 +115,11 @@ msgstr ""
 msgid "Shortcut %{error}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:87
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:80
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:460
 #: lib/storyarn_web/live/hooks/palette.ex:585
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:93
 #, elixir-autogen, elixir-format
@@ -269,7 +268,7 @@ msgstr ""
 msgid "Removed %{type} block \"%{name}\""
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:94
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:87
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr ""

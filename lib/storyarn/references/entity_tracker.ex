@@ -16,8 +16,8 @@ defmodule Storyarn.References.EntityTracker do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.References.Persistence.FlowNodeRecord
+  alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -116,8 +116,8 @@ defmodule Storyarn.References.EntityTracker do
   end
 
   defp active_project_flow_nodes_query(project_id) do
-    from node in FlowNode,
-      join: flow in Flow,
+    from node in FlowNodeRecord,
+      join: flow in FlowRecord,
       on: flow.id == node.flow_id,
       where:
         flow.project_id == ^project_id and

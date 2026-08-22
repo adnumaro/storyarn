@@ -11,7 +11,6 @@ defmodule StoryarnWeb.ProjectLive.Show do
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -228,7 +227,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
       Projects.tool_health_summary(%{
         flows:
           DashboardCache.fetch(project_id, :flow_issues, fn ->
-            Flows.list_dashboard_health_findings(project_id)
+            Projects.list_flow_dashboard_health_findings(project_id)
           end),
         sheets:
           DashboardCache.fetch(project_id, :sheet_issues, fn ->

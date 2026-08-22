@@ -15,6 +15,8 @@ defmodule Storyarn.Projects do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Dashboard
+  alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Invitations
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
@@ -182,6 +184,24 @@ defmodule Storyarn.Projects do
           {:ok, Asset.t()} | {:error, term()}
   defdelegate purge_asset_trash_candidate(item, actor_id), to: ProjectTrash
 
+  @doc "Returns a Project-owned Flow record, including recoverable trash state."
+  defdelegate get_flow_including_deleted(project_id, flow_id), to: FlowReadModel
+
+  @doc "Restores a trashed Flow through the Project lifecycle boundary."
+  defdelegate restore_trashed_flow(project_id, flow_id),
+    to: FlowProjectTrash,
+    as: :restore
+
+  @doc false
+  defdelegate permanently_delete_trashed_flow(flow),
+    to: FlowProjectTrash,
+    as: :hard_delete
+
+  @doc "Permanently deletes a trashed Flow through the Project lifecycle boundary."
+  defdelegate permanently_delete_trashed_flow(project_id, flow_id),
+    to: FlowProjectTrash,
+    as: :hard_delete
+
   # =============================================================================
   # Memberships
   # =============================================================================
@@ -336,6 +356,11 @@ defmodule Storyarn.Projects do
   # =============================================================================
 
   defdelegate project_stats(project_id), to: Dashboard
+
+  defdelegate list_flow_dashboard_health_findings(project_id),
+    to: FlowReadModel,
+    as: :list_dashboard_health_findings
+
   defdelegate tool_health_summary(findings_by_tool), to: Dashboard
   defdelegate recent_activity(project_id, limit \\ 10), to: Dashboard
 end

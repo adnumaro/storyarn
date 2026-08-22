@@ -3,7 +3,7 @@ defmodule Storyarn.Versioning.ChangeDetector do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Flow
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers

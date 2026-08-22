@@ -20,7 +20,6 @@ defmodule Storyarn.Sheets.HealthSnapshots do
   each other sheet by sheet.
   """
 
-  alias Storyarn.Flows
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
@@ -30,6 +29,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
   alias Storyarn.Sheets.SheetQueries
   alias Storyarn.Sheets.SheetStats
   alias Storyarn.Sheets.TableCrud
+  alias Storyarn.Sheets.VariableUsage
 
   @doc """
   Checks the sheet open in the editor: build its snapshot, then run the checker.
@@ -53,7 +53,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     block_ids = Enum.map(blocks, & &1.id)
 
     # Project-wide on purpose: a variable bound by a table formula IS used, and
-    # `Flows.referenced_block_ids/1` — which only sees tracked variable references —
+    # The tracked-reference projection only sees explicit variable references and
     # does not know that, so the editor header used to claim "no internal usages"
     # for a block the dashboard correctly reported as used.
     referenced_block_ids = SheetStats.referenced_block_ids_for_project(project.id)
@@ -178,7 +178,7 @@ defmodule Storyarn.Sheets.HealthSnapshots do
     blocks
     |> Enum.filter(&(MapSet.member?(referenced_block_ids, &1.id) and Block.variable?(&1)))
     |> Enum.map(& &1.id)
-    |> Flows.count_stale_references(project_id)
+    |> VariableUsage.count_stale_references(project_id)
   end
 
   defp reference_targets(blocks, project_id) do

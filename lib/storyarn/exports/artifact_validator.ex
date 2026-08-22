@@ -17,11 +17,11 @@ defmodule Storyarn.Exports.ArtifactValidator do
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers, as: SerializerHelpers
   alias Storyarn.Exports.Serializers.Yarn
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Condition
-  alias Storyarn.Flows.Instruction
-  alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Projects.FlowCondition
+  alias Storyarn.Projects.FlowInstruction
+  alias Storyarn.Projects.FlowNodeConnectionRules
+  alias Storyarn.Projects.FlowReadModel
   alias Storyarn.References
   alias Storyarn.Shared.StringUtils
   alias Storyarn.Sheets
@@ -147,7 +147,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
           flow.nodes
           |> Enum.filter(
             &(not MapSet.member?(reachable_node_ids, &1.id) and
-                NodeConnectionRules.can_be_unreachable?(&1.type))
+                FlowNodeConnectionRules.can_be_unreachable?(&1.type))
           )
           |> Enum.map(&unreachable_node_finding(format, flow, &1))
 
@@ -193,7 +193,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
       dgettext(
         "projects",
         ~s("%{node}" in flow "%{flow}" is not reachable from Entry and will not be included in the %{format} export),
-        node: Flows.node_label(node),
+        node: FlowReadModel.node_label(node),
         flow: flow.name,
         format: format_label(format)
       ),
@@ -449,7 +449,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
               dgettext(
                 "projects",
                 ~s(Hub "%{node}" in flow "%{flow}" has no valid target identifier for %{format}),
-                node: Flows.node_label(hub),
+                node: FlowReadModel.node_label(hub),
                 flow: flow.name,
                 format: format_label(format)
               ),
@@ -698,7 +698,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
             dgettext(
               "projects",
               ~s(Dialogue "%{node}" in flow "%{flow}" has a localization ID that cannot be exported),
-              node: Flows.node_label(node),
+              node: FlowReadModel.node_label(node),
               flow: flow.name
             )
           )
@@ -717,7 +717,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
             dgettext(
               "projects",
               ~s(Dialogue "%{node}" in flow "%{flow}" needs a valid localization ID),
-              node: Flows.node_label(node),
+              node: FlowReadModel.node_label(node),
               flow: flow.name
             )
           )
@@ -788,7 +788,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
             ~s(Dialogue "%{node}" in flow "%{flow}" has one response without a valid ID),
             ~s(Dialogue "%{node}" in flow "%{flow}" has %{count} responses without valid IDs),
             count,
-            node: Flows.node_label(node),
+            node: FlowReadModel.node_label(node),
             flow: flow.name,
             count: count
           )
@@ -799,7 +799,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
             ~s(Dialogue "%{node}" in flow "%{flow}" repeats one response ID),
             ~s(Dialogue "%{node}" in flow "%{flow}" repeats %{count} response IDs),
             count,
-            node: Flows.node_label(node),
+            node: FlowReadModel.node_label(node),
             flow: flow.name,
             count: count
           )
@@ -812,7 +812,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
     dgettext(
       "projects",
       ~s(Dialogue "%{node}" in flow "%{flow}" has response data that cannot be exported),
-      node: Flows.node_label(node),
+      node: FlowReadModel.node_label(node),
       flow: flow.name
     )
   end
@@ -1100,7 +1100,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
             dgettext(
               "projects",
               ~s("%{node}" in flow "%{flow}" targets flow "%{target}", which needs a valid shortcut for the %{format} export),
-              node: Flows.node_label(node),
+              node: FlowReadModel.node_label(node),
               flow: flow.name,
               target: target.name,
               format: format_label(format)
@@ -1276,7 +1276,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}" has no configured target; %{format} cannot preserve the transition),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name,
           format: format_label(format)
         )
@@ -1285,7 +1285,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}" targets a flow outside this partial export),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name
         )
 
@@ -1293,7 +1293,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}" has target data that cannot be exported),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name
         )
 
@@ -1301,7 +1301,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}" targets content that no longer exists; %{format} cannot preserve the transition),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name,
           format: format_label(format)
         )
@@ -1374,7 +1374,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}" references a variable that no longer exists),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name
         ),
         format: format,
@@ -1434,7 +1434,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
   defp condition_variable_references(raw_condition) do
     raw_condition
     |> decode_condition()
-    |> Condition.extract_all_rules()
+    |> FlowCondition.extract_all_rules()
     |> Enum.filter(&condition_export_candidate?/1)
     |> Enum.flat_map(fn rule ->
       variable_reference(rule["sheet"], rule["variable"])
@@ -1490,7 +1490,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
           dgettext(
             "projects",
             ~s("%{node}" in flow "%{flow}" contains an expression that cannot be exported to %{format}),
-            node: Flows.node_label(node),
+            node: FlowReadModel.node_label(node),
             flow: flow.name,
             format: format_label(:yarn)
           ),
@@ -1528,7 +1528,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
     case node.type do
       "instruction" ->
-        Instruction.has_type_warnings?(data["assignments"] || [], type_map)
+        FlowInstruction.has_type_warnings?(data["assignments"] || [], type_map)
 
       "dialogue" ->
         data
@@ -1536,7 +1536,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         |> list_or_empty()
         |> Enum.any?(fn
           response when is_map(response) ->
-            Instruction.has_type_warnings?(response_assignments(response), type_map)
+            FlowInstruction.has_type_warnings?(response_assignments(response), type_map)
 
           _response ->
             false
@@ -1858,7 +1858,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
       dgettext(
         "projects",
         ~s("%{node}" in flow "%{flow}" loses behavior in %{format}: %{detail}),
-        node: Flows.node_label(node),
+        node: FlowReadModel.node_label(node),
         flow: flow.name,
         format: format_label(format),
         detail: detail
@@ -1928,7 +1928,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         rules =
           condition
           |> decode_condition()
-          |> Condition.extract_all_rules()
+          |> FlowCondition.extract_all_rules()
 
         export_candidates = Enum.filter(rules, &condition_export_candidate?/1)
 
@@ -1990,7 +1990,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
       export_candidates == [] ->
         []
 
-      Enum.any?(export_candidates, &(not Instruction.complete_assignment?(&1))) ->
+      Enum.any?(export_candidates, &(not FlowInstruction.complete_assignment?(&1))) ->
         [
           expression_error_finding(
             flow,
@@ -2048,7 +2048,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
       dgettext(
         "projects",
         ~s("%{node}" in flow "%{flow}" contains an expression that cannot be exported to %{format}),
-        node: Flows.node_label(node),
+        node: FlowReadModel.node_label(node),
         flow: flow.name,
         format: format_label(format)
       ),
@@ -2068,7 +2068,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         dgettext(
           "projects",
           ~s("%{node}" in flow "%{flow}": %{warning}),
-          node: Flows.node_label(node),
+          node: FlowReadModel.node_label(node),
           flow: flow.name,
           warning: warning.message
         ),
@@ -2091,7 +2091,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
         node_type: node.type,
         entity_type: node.type,
         entity_id: node.id,
-        entity_label: Flows.node_label(node)
+        entity_label: FlowReadModel.node_label(node)
       },
       Map.new(extra)
     )
@@ -2112,12 +2112,12 @@ defmodule Storyarn.Exports.ArtifactValidator do
   end
 
   defp referenceable_variables(_project_id, []), do: []
-  defp referenceable_variables(project_id, _flows), do: Flows.list_referenceable_variables(project_id)
+  defp referenceable_variables(project_id, _flows), do: FlowReadModel.list_referenceable_variables(project_id)
 
   defp active_flows(_project_id, [], _validation_context), do: []
 
   defp active_flows(project_id, _artifact_flows, validation_context) do
-    Map.get_lazy(validation_context, :active_flows, fn -> Flows.list_flows(project_id) end)
+    Map.get_lazy(validation_context, :active_flows, fn -> FlowReadModel.list_flows(project_id) end)
   end
 
   defp stale_node_variable_refs_by_flow(flows) do
@@ -2155,7 +2155,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp noop_condition?(%{"logic" => logic, "blocks" => blocks} = condition)
        when logic in ["all", "any"] and is_list(blocks) do
-    Condition.extract_all_rules(condition) == []
+    FlowCondition.extract_all_rules(condition) == []
   end
 
   defp noop_condition?(json) when is_binary(json) do
@@ -2169,7 +2169,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
 
   defp condition_structure_invalid?(condition) do
     case decode_condition(condition) do
-      %{} = decoded -> match?({:error, _reason}, Condition.validate(decoded))
+      %{} = decoded -> match?({:error, _reason}, FlowCondition.validate(decoded))
       nil -> not noop_condition?(condition)
     end
   end
@@ -2178,8 +2178,8 @@ defmodule Storyarn.Exports.ArtifactValidator do
     operator = rule["operator"]
 
     complete_reference?(rule["sheet"], rule["variable"]) and
-      Condition.valid_operator?(operator) and
-      (not Condition.operator_requires_value?(operator) or
+      FlowCondition.valid_operator?(operator) and
+      (not FlowCondition.operator_requires_value?(operator) or
          exportable_condition_value?(rule["value"]))
   end
 
@@ -2205,14 +2205,14 @@ defmodule Storyarn.Exports.ArtifactValidator do
   defp impossible_condition_field?(value), do: not (is_nil(value) or is_binary(value))
 
   defp impossible_condition_operator?(operator) when operator in [nil, ""], do: false
-  defp impossible_condition_operator?(operator) when is_binary(operator), do: not Condition.valid_operator?(operator)
+  defp impossible_condition_operator?(operator) when is_binary(operator), do: not FlowCondition.valid_operator?(operator)
   defp impossible_condition_operator?(_operator), do: true
 
   defp impossible_condition_value?(_operator, value) when value in [nil, ""], do: false
 
   defp impossible_condition_value?(operator, value) do
-    Condition.valid_operator?(operator) and
-      Condition.operator_requires_value?(operator) and
+    FlowCondition.valid_operator?(operator) and
+      FlowCondition.operator_requires_value?(operator) and
       not exportable_condition_value?(value)
   end
 

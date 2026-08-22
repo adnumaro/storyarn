@@ -5,14 +5,14 @@ defmodule Storyarn.Flows.Flow do
   A flow is a visual graph representing narrative structure, dialogue trees,
   or game logic. Each flow belongs to a project and contains nodes and connections.
 
-  Flows are organized in a tree structure (like Sheets) with:
+  Flows are organized in a tree structure with:
   - `parent_id` - FK to parent flow (nil for root level)
   - `position` - Order among siblings
   - `description` - Rich text for annotations
   - `deleted_at` - Soft delete support
 
   Any flow can have children AND content (nodes). The UI adapts based on what
-  the flow contains. This matches the Sheets model for consistency.
+  the flow contains.
   """
   use Ecto.Schema
 
@@ -21,8 +21,9 @@ defmodule Storyarn.Flows.Flow do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Shared.HierarchicalSchema
-  alias Storyarn.Shared.Validations
+  alias Storyarn.Shared.TimeHelpers
+
+  @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -80,8 +81,8 @@ defmodule Storyarn.Flows.Flow do
       :position,
       :scene_id
     ])
-    |> HierarchicalSchema.validate_core_fields()
-    |> HierarchicalSchema.validate_description()
+    |> validate_core_fields()
+    |> validate_description()
     |> validate_shortcut()
     |> validate_single_main_flow()
     |> foreign_key_constraint(:parent_id)
@@ -103,8 +104,8 @@ defmodule Storyarn.Flows.Flow do
       :position,
       :scene_id
     ])
-    |> HierarchicalSchema.validate_core_fields()
-    |> HierarchicalSchema.validate_description()
+    |> validate_core_fields()
+    |> validate_description()
     |> validate_shortcut()
     |> validate_single_main_flow()
     |> foreign_key_constraint(:parent_id)
@@ -123,17 +124,21 @@ defmodule Storyarn.Flows.Flow do
   @doc """
   Changeset for moving a flow (changing parent or position).
   """
-  def move_changeset(flow, attrs), do: HierarchicalSchema.move_changeset(flow, attrs)
+  def move_changeset(flow, attrs) do
+    flow
+    |> cast(attrs, [:parent_id, :position])
+    |> foreign_key_constraint(:parent_id)
+  end
 
   @doc """
   Changeset for soft deleting a flow.
   """
-  def delete_changeset(flow), do: HierarchicalSchema.delete_changeset(flow)
+  def delete_changeset(flow), do: change(flow, %{deleted_at: TimeHelpers.now()})
 
   @doc """
   Changeset for restoring a soft-deleted flow.
   """
-  def restore_changeset(flow), do: HierarchicalSchema.restore_changeset(flow)
+  def restore_changeset(flow), do: change(flow, %{deleted_at: nil})
 
   @doc """
   Changeset for updating the current version pointer.
@@ -147,7 +152,7 @@ defmodule Storyarn.Flows.Flow do
   @doc """
   Returns true if the flow is soft-deleted.
   """
-  def deleted?(flow), do: HierarchicalSchema.deleted?(flow)
+  def deleted?(%__MODULE__{deleted_at: deleted_at}), do: not is_nil(deleted_at)
 
   # Private functions
 
@@ -165,10 +170,21 @@ defmodule Storyarn.Flows.Flow do
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)")
+    |> validate_length(:shortcut, min: 1, max: 50)
+    |> validate_format(:shortcut, @shortcut_format,
+      message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., chapter-1)"
+    )
     |> unique_constraint(:shortcut,
       name: :flows_project_shortcut_unique,
       message: "is already taken in this project"
     )
   end
+
+  defp validate_core_fields(changeset) do
+    changeset
+    |> validate_required([:name])
+    |> validate_length(:name, min: 1, max: 200)
+  end
+
+  defp validate_description(changeset), do: validate_length(changeset, :description, max: 2000)
 end

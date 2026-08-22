@@ -2,9 +2,6 @@ defmodule StoryarnTest.AI.ContractTask do
   @moduledoc false
   @behaviour Storyarn.AI.TaskDefinition
 
-  alias Storyarn.AI.Context.SubjectRef
-  alias Storyarn.AI.ExecutionIntent
-
   @impl true
   def definition do
     config = Application.get_env(:storyarn, __MODULE__, [])
@@ -67,20 +64,45 @@ defmodule StoryarnTest.AI.ContractTask do
   def validate_output(_output), do: {:error, :invalid_contract_output}
 
   @impl true
-  def context_subject(%ExecutionIntent{} = intent) do
-    case intent.input do
-      %{"context_kind" => "sheet", "sheet_id" => sheet_id} = input ->
-        SubjectRef.sheet(
-          Map.get(input, "context_workspace_id", intent.workspace_id),
-          Map.get(input, "context_project_id", intent.project_id),
-          sheet_id,
-          block_ids: Map.get(input, "block_ids", [])
-        )
-
-      _input ->
-        {:error, :invalid_context_subject}
+  def context_contract(policy) do
+    with adapter when is_atom(adapter) <- context_adapter(),
+         true <- Code.ensure_loaded?(adapter),
+         true <- function_exported?(adapter, :context_contract, 1) do
+      adapter.context_contract(policy)
+    else
+      _missing_adapter -> nil
     end
   end
 
-  def context_subject(_operation), do: {:error, :invalid_context_subject}
+  @impl true
+  def context_subject(intent_or_operation),
+    do: delegate_context(:context_subject, [intent_or_operation], {:error, :invalid_context_subject})
+
+  @impl true
+  def build_context(project, subject_ref, policy, entity_builder) do
+    delegate_context(
+      :build_context,
+      [project, subject_ref, policy, entity_builder],
+      {:error, :invalid_context_subject}
+    )
+  end
+
+  @impl true
+  def acquire_source_locks(operation), do: delegate_context(:acquire_source_locks, [operation], {:error, :stale_context})
+
+  defp delegate_context(function, args, fallback) do
+    with adapter when is_atom(adapter) <- context_adapter(),
+         true <- Code.ensure_loaded?(adapter),
+         true <- function_exported?(adapter, function, length(args)) do
+      apply(adapter, function, args)
+    else
+      _missing_adapter -> fallback
+    end
+  end
+
+  defp context_adapter do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:context_adapter)
+  end
 end

@@ -7,7 +7,7 @@ defmodule Storyarn.Scenes.PinCrudTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.VariableReference
+  alias Storyarn.Scenes.Persistence.VariableReferenceRecord
   alias Storyarn.Scenes.PinCrud
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Sheets.EntityReference
@@ -111,13 +111,13 @@ defmodule Storyarn.Scenes.PinCrudTest do
       assert target_id == flow.id
 
       assert [
-               %VariableReference{
+               %VariableReferenceRecord{
                  block_id: block_id,
                  kind: "read"
                }
              ] =
                Repo.all(
-                 from(reference in VariableReference,
+                 from(reference in VariableReferenceRecord,
                    where:
                      reference.source_type == "scene_pin" and
                        reference.source_id == ^pin.id

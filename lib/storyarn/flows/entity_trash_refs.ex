@@ -25,27 +25,17 @@ defmodule Storyarn.Flows.EntityTrashRefs do
 
   All operations run in `Repo.transaction`.
 
-  ## Cross-domain callers
-
-  External contexts (Sheets, Assets) that hold soft-deletable targets must
-  call through the `Storyarn.Flows` facade:
-
-      Flows.sweep_trash_refs_jsonb(FlowNode, "flow_node", :data,
-        "speaker_sheet_id", :sheet, sheet.id)
-      Flows.restore_trash_refs(:sheet, sheet.id)
-
-  This crosses domain boundaries (flagged by static analysis) but is
-  necessary for referential integrity — see
-  `project_entity_trash_refs_pattern.md` in user memory for the full
-  rationale.
+  This module is the Flow-owned implementation for Flow lifecycle operations.
+  Other bounded contexts that need to reconcile the shared table use their own
+  persistence records and lifecycle code; they do not import this module.
   """
 
   import Ecto.Query
 
+  alias Storyarn.Flows.AvatarIntegrity
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.References.AvatarIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 

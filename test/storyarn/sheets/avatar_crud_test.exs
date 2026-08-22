@@ -8,10 +8,10 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Persistence.FlowNodeRecord
 
   setup do
     user = user_fixture()
@@ -296,7 +296,7 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
 
       assert avatar_id == avatar.id
       assert Sheets.get_avatar(avatar.id)
-      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == avatar.id
+      assert Repo.get!(FlowNodeRecord, node.id).data["avatar_id"] == avatar.id
     end
 
     test "keeps an avatar needed to restore a soft-deleted node", %{

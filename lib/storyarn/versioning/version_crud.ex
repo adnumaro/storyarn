@@ -23,15 +23,15 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   @builders %{
     "sheet" => Storyarn.Versioning.Builders.SheetBuilder,
-    "flow" => Storyarn.Versioning.Builders.FlowBuilder,
     "scene" => Storyarn.Versioning.Builders.SceneBuilder
   }
 
   @entity_type_to_schema %{
     "sheet" => Storyarn.Sheets.Sheet,
-    "flow" => Storyarn.Flows.Flow,
     "scene" => Storyarn.Scenes.Scene
   }
+
+  @supported_entity_types Map.keys(@builders)
 
   # Default rate-limit interval: 10 minutes
   @default_min_interval_seconds 600
@@ -209,18 +209,22 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec list_versions(String.t(), integer(), keyword()) :: [EntityVersion.t()]
   def list_versions(entity_type, entity_id, opts \\ []) do
-    limit = Keyword.get(opts, :limit, 50)
-    offset = Keyword.get(opts, :offset, 0)
+    if supported_entity_type?(entity_type) do
+      limit = Keyword.get(opts, :limit, 50)
+      offset = Keyword.get(opts, :offset, 0)
 
-    Repo.all(
-      from(v in EntityVersion,
-        where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
-        order_by: [desc: v.version_number],
-        limit: ^limit,
-        offset: ^offset,
-        preload: [:created_by]
+      Repo.all(
+        from(v in EntityVersion,
+          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
+          order_by: [desc: v.version_number],
+          limit: ^limit,
+          offset: ^offset,
+          preload: [:created_by]
+        )
       )
-    )
+    else
+      []
+    end
   end
 
   @doc """
@@ -228,11 +232,13 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec get_version(String.t(), integer(), integer()) :: EntityVersion.t() | nil
   def get_version(entity_type, entity_id, version_number) do
-    Repo.get_by(EntityVersion,
-      entity_type: entity_type,
-      entity_id: entity_id,
-      version_number: version_number
-    )
+    if supported_entity_type?(entity_type) do
+      Repo.get_by(EntityVersion,
+        entity_type: entity_type,
+        entity_id: entity_id,
+        version_number: version_number
+      )
+    end
   end
 
   @doc """
@@ -240,13 +246,15 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec get_latest_version(String.t(), integer()) :: EntityVersion.t() | nil
   def get_latest_version(entity_type, entity_id) do
-    Repo.one(
-      from(v in EntityVersion,
-        where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
-        order_by: [desc: v.version_number],
-        limit: 1
+    if supported_entity_type?(entity_type) do
+      Repo.one(
+        from(v in EntityVersion,
+          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
+          order_by: [desc: v.version_number],
+          limit: 1
+        )
       )
-    )
+    end
   end
 
   @doc """
@@ -254,9 +262,16 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec count_versions(String.t(), integer()) :: integer()
   def count_versions(entity_type, entity_id) do
-    Repo.one(
-      from(v in EntityVersion, where: v.entity_type == ^entity_type and v.entity_id == ^entity_id, select: count(v.id))
-    )
+    if supported_entity_type?(entity_type) do
+      Repo.one(
+        from(v in EntityVersion,
+          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
+          select: count(v.id)
+        )
+      )
+    else
+      0
+    end
   end
 
   @doc """
@@ -268,27 +283,31 @@ defmodule Storyarn.Versioning.VersionCrud do
   @spec get_adjacent_version_numbers(String.t(), integer(), integer()) ::
           {integer() | nil, integer() | nil}
   def get_adjacent_version_numbers(entity_type, entity_id, current_number) do
-    prev =
-      Repo.one(
-        from(v in EntityVersion,
-          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.version_number < ^current_number,
-          order_by: [desc: v.version_number],
-          limit: 1,
-          select: v.version_number
+    if supported_entity_type?(entity_type) do
+      prev =
+        Repo.one(
+          from(v in EntityVersion,
+            where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.version_number < ^current_number,
+            order_by: [desc: v.version_number],
+            limit: 1,
+            select: v.version_number
+          )
         )
-      )
 
-    next =
-      Repo.one(
-        from(v in EntityVersion,
-          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.version_number > ^current_number,
-          order_by: [asc: v.version_number],
-          limit: 1,
-          select: v.version_number
+      next =
+        Repo.one(
+          from(v in EntityVersion,
+            where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.version_number > ^current_number,
+            order_by: [asc: v.version_number],
+            limit: 1,
+            select: v.version_number
+          )
         )
-      )
 
-    {prev, next}
+      {prev, next}
+    else
+      {nil, nil}
+    end
   end
 
   @doc """
@@ -296,12 +315,16 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec count_versions_since(String.t(), integer(), DateTime.t()) :: non_neg_integer()
   def count_versions_since(entity_type, entity_id, since) do
-    Repo.aggregate(
-      from(v in EntityVersion,
-        where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.inserted_at > ^since
-      ),
-      :count
-    )
+    if supported_entity_type?(entity_type) do
+      Repo.aggregate(
+        from(v in EntityVersion,
+          where: v.entity_type == ^entity_type and v.entity_id == ^entity_id and v.inserted_at > ^since
+        ),
+        :count
+      )
+    else
+      0
+    end
   end
 
   # ========== Update ==========
@@ -311,11 +334,13 @@ defmodule Storyarn.Versioning.VersionCrud do
   Used to promote auto-snapshots to named versions.
   """
   @spec update_version(EntityVersion.t(), map()) ::
-          {:ok, EntityVersion.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, EntityVersion.t()} | {:error, Ecto.Changeset.t() | atom()}
   def update_version(%EntityVersion{} = version, attrs) do
-    version
-    |> EntityVersion.update_changeset(attrs)
-    |> Repo.update()
+    with {:ok, persisted_version} <- fetch_supported_version(version) do
+      persisted_version
+      |> EntityVersion.update_changeset(attrs)
+      |> Repo.update()
+    end
   end
 
   @doc """
@@ -338,10 +363,14 @@ defmodule Storyarn.Versioning.VersionCrud do
   @spec delete_version(EntityVersion.t()) :: {:ok, EntityVersion.t()} | {:error, term()}
   def delete_version(%EntityVersion{id: version_id}) when is_integer(version_id) and version_id > 0 do
     case Repo.get(EntityVersion, version_id) do
-      %EntityVersion{} = persisted_version ->
+      %EntityVersion{entity_type: entity_type} = persisted_version
+      when entity_type in @supported_entity_types ->
         with :ok <- validate_version_storage_key(persisted_version) do
           delete_persisted_version(persisted_version)
         end
+
+      %EntityVersion{} ->
+        {:error, :unknown_entity_type}
 
       nil ->
         {:error, :entity_version_not_found}
@@ -618,8 +647,6 @@ defmodule Storyarn.Versioning.VersionCrud do
     )
   end
 
-  defp broadcast_dashboard_change("flow", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :flows)
-
   defp broadcast_dashboard_change("sheet", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
 
   defp broadcast_dashboard_change("scene", project_id), do: Collaboration.broadcast_dashboard_change(project_id, :scenes)
@@ -631,7 +658,7 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec load_version_snapshot(EntityVersion.t()) :: {:ok, map()} | {:error, term()}
   def load_version_snapshot(%EntityVersion{} = version) do
-    with {:ok, persisted_version} <- fetch_persisted_version(version),
+    with {:ok, persisted_version} <- fetch_supported_version(version),
          :ok <- validate_version_storage_key(persisted_version),
          {:ok, snapshot, _actual_checksum} <-
            load_verified_version(persisted_version) do
@@ -639,17 +666,28 @@ defmodule Storyarn.Versioning.VersionCrud do
     end
   end
 
-  defp fetch_persisted_version(%EntityVersion{} = version) do
-    case Repo.get_by(EntityVersion,
-           id: version.id,
-           entity_type: version.entity_type,
-           entity_id: version.entity_id,
-           project_id: version.project_id,
-           version_number: version.version_number
-         ) do
-      %EntityVersion{} = persisted_version -> {:ok, persisted_version}
-      nil -> {:error, :entity_version_not_found}
+  defp fetch_supported_version(%EntityVersion{id: version_id} = version) when is_integer(version_id) and version_id > 0 do
+    case Repo.get(EntityVersion, version_id) do
+      %EntityVersion{entity_type: entity_type} when entity_type not in @supported_entity_types ->
+        {:error, :unknown_entity_type}
+
+      %EntityVersion{} = persisted_version ->
+        if same_version_identity?(persisted_version, version),
+          do: {:ok, persisted_version},
+          else: {:error, :entity_version_scope_mismatch}
+
+      nil ->
+        {:error, :entity_version_not_found}
     end
+  end
+
+  defp fetch_supported_version(%EntityVersion{}), do: {:error, :entity_version_not_found}
+
+  defp same_version_identity?(persisted, supplied) do
+    persisted.entity_type == supplied.entity_type and
+      persisted.entity_id == supplied.entity_id and
+      persisted.project_id == supplied.project_id and
+      persisted.version_number == supplied.version_number
   end
 
   # ========== Helpers ==========
@@ -665,6 +703,10 @@ defmodule Storyarn.Versioning.VersionCrud do
   """
   @spec next_version_number(String.t(), integer()) :: integer()
   def next_version_number(entity_type, entity_id) do
+    if !supported_entity_type?(entity_type) do
+      raise ArgumentError, "unknown entity type: #{inspect(entity_type)}"
+    end
+
     query =
       from(v in EntityVersion,
         where: v.entity_type == ^entity_type and v.entity_id == ^entity_id,
@@ -684,6 +726,8 @@ defmodule Storyarn.Versioning.VersionCrud do
       :error -> raise ArgumentError, "unknown entity type: #{inspect(entity_type)}"
     end
   end
+
+  defp supported_entity_type?(entity_type), do: entity_type in @supported_entity_types
 
   defp maybe_resolve_shortcut_collision(entity_type, entity, snapshot) do
     shortcut = snapshot["shortcut"]

@@ -8,6 +8,7 @@ defmodule Storyarn.Analytics do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Analytics.EventContract
   alias Storyarn.Analytics.NoopAdapter
   alias Storyarn.Analytics.PostHogAdapter
 
@@ -15,9 +16,6 @@ defmodule Storyarn.Analytics do
 
   @event_property_keys %{
     "asset uploaded" => MapSet.new(~w(asset_type content_type created_variant project_id purpose size_bucket)),
-    "flow debug started" => MapSet.new(~w(flow_id project_id)),
-    "flow node created" => MapSet.new(~w(creation_method flow_id has_parent node_type project_id)),
-    "flow player started" => MapSet.new(~w(flow_id project_id)),
     "onboarding tutorial interacted" => MapSet.new(~w(action guide source)),
     "page viewed" => MapSet.new(~w(route_family)),
     "palette command executed" => MapSet.new(~w(command_id surface)),
@@ -26,7 +24,9 @@ defmodule Storyarn.Analytics do
     "palette operation completed" => MapSet.new(~w(operation_id surface)),
     "palette operation selected" => MapSet.new(~w(operation_id surface)),
     "palette search no results" => MapSet.new(~w(query_length surface)),
-    "project created" => MapSet.new(~w(project_id project_subtype project_type project_type_other workspace_id)),
+    # `project_type_other` is deliberately excluded: it is user-authored free
+    # text, not a bounded product dimension, and must never leave Storyarn.
+    "project created" => MapSet.new(~w(project_id project_subtype project_type workspace_id)),
     "project template installation requested" =>
       MapSet.new(~w(installation_id source template_id template_version_id visibility workspace_id)),
     "project template installation completed" =>
@@ -34,11 +34,6 @@ defmodule Storyarn.Analytics do
     "project template installation failed" =>
       MapSet.new(~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)),
     "scene exploration started" => MapSet.new(~w(has_saved_session project_id scene_id)),
-    "sequence track updated" =>
-      MapSet.new(~w(changed_asset changed_volume flow_id has_asset project_id sequence_id track_kind)),
-    "sequence visual layer created" => MapSet.new(~w(flow_id has_asset layer_kind project_id sequence_id slot)),
-    "sequence visual layer updated" =>
-      MapSet.new(~w(changed_asset flow_id has_asset layer_kind project_id sequence_id slot)),
     "sheet block created" => MapSet.new(~w(block_type creation_method project_id scope sheet_id)),
     "user logged in" => MapSet.new(~w(auth_method)),
     "user signed up" => MapSet.new(~w(auth_method)),
@@ -56,6 +51,15 @@ defmodule Storyarn.Analytics do
     is_super_admin
     locale
   ))
+
+  @legacy_version_events [
+    "version compared",
+    "version created",
+    "version panel opened",
+    "version restored"
+  ]
+  @legacy_version_entity_types ~w(flow sheet scene)
+  @max_property_string_bytes 120
 
   @type properties :: %{optional(atom() | String.t()) => term()}
 
@@ -76,6 +80,34 @@ defmodule Storyarn.Analytics do
   end
 
   def track(_scope_or_user, _event_name, _properties), do: :ok
+
+  @doc """
+  Captures an event declared by a consumer-owned product contract.
+
+  The analytics adapter owns privacy-safe transport and scalar filtering; the
+  consumer owns its event names, exact property vocabulary, and value-level
+  validation. Unknown events and invalid contracts fail closed before reaching
+  the adapter.
+  """
+  @spec track(Scope.t() | User.t() | nil, module(), term(), properties()) :: :ok
+  def track(scope_or_user, contract, event, properties)
+
+  def track(%Scope{user: user}, contract, event, properties), do: track(user, contract, event, properties)
+
+  def track(%User{} = user, contract, event, properties) when is_map(properties) do
+    with {:ok, event_name, allowed_keys} <- EventContract.resolve(contract, event),
+         {:ok, safe_properties} <- EventContract.sanitize(contract, event, properties) do
+      capture_declared(%{
+        event: event_name,
+        distinct_id: distinct_id(user),
+        properties: filter_properties(safe_properties, allowed_keys)
+      })
+    else
+      :error -> :ok
+    end
+  end
+
+  def track(_scope_or_user, _contract, _event, _properties), do: :ok
 
   @doc """
   Captures an event that is not attributable to a logged-in user.
@@ -179,13 +211,15 @@ defmodule Storyarn.Analytics do
     end)
   end
 
-  defp capture(%{event: event_name} = payload) do
-    if allowed_event?(event_name) do
+  defp capture(%{event: event_name, properties: properties} = payload) do
+    if allowed_event?(event_name) and valid_event_properties?(event_name, properties) do
       dispatch(:capture, payload)
     else
       :ok
     end
   end
+
+  defp capture_declared(payload), do: dispatch(:capture, payload)
 
   defp identify(payload), do: dispatch(:identify, payload)
 
@@ -268,6 +302,18 @@ defmodule Storyarn.Analytics do
 
   defp allowed_event?(event_name), do: Map.has_key?(@event_property_keys, event_name)
 
+  defp valid_event_properties?(event_name, properties) when event_name in @legacy_version_events do
+    case properties do
+      %{"entity_type" => entity_type, "project_id" => project_id} ->
+        entity_type in @legacy_version_entity_types and is_integer(project_id) and project_id > 0
+
+      _invalid ->
+        false
+    end
+  end
+
+  defp valid_event_properties?(_event_name, _properties), do: true
+
   defp default_person_properties(user) do
     %{
       "created_at" => normalize_value(user.inserted_at),
@@ -282,8 +328,9 @@ defmodule Storyarn.Analytics do
   defp normalize_key(key) when is_binary(key), do: key
   defp normalize_key(_key), do: nil
 
-  defp allowed_value?(value)
-       when is_binary(value) or is_integer(value) or is_float(value) or is_boolean(value) or is_nil(value), do: true
+  defp allowed_value?(value) when is_binary(value), do: byte_size(value) <= @max_property_string_bytes
+
+  defp allowed_value?(value) when is_integer(value) or is_float(value) or is_boolean(value) or is_nil(value), do: true
 
   defp allowed_value?(%DateTime{}), do: true
   defp allowed_value?(%NaiveDateTime{}), do: true

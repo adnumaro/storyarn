@@ -15,23 +15,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
   def label, do: dgettext("flows", "Instruction")
   def description, do: dgettext("flows", "Set or modify variable values")
 
-  def default_data do
-    %{
-      "assignments" => [],
-      "description" => ""
-    }
-  end
-
-  def extract_form_data(data) do
-    %{
-      "assignments" => data["assignments"] || [],
-      "description" => data["description"] || ""
-    }
-  end
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   def on_select(_node, socket), do: socket
   def on_double_click(_node), do: :builder
-  def duplicate_data_cleanup(data), do: data
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 
   # -- Instruction-specific event handlers --
 
@@ -40,9 +29,9 @@ defmodule StoryarnWeb.FlowLive.Nodes.Instruction.Node do
     node = socket.assigns.selected_node
 
     if node && node.type == "instruction" do
-      NodeHelpers.persist_node_update(socket, node.id, fn data ->
-        Map.put(data, "assignments", Flows.instruction_sanitize(assignments))
-      end)
+      NodeHelpers.persist_node_update(socket, node.id, :put_instruction_assignments, %{
+        assignments: assignments
+      })
     else
       {:noreply, socket}
     end

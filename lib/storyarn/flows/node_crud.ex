@@ -33,6 +33,22 @@ defmodule Storyarn.Flows.NodeCrud do
     )
   end
 
+  @doc "Lists active nodes with the sequence runtime graph preloaded."
+  @spec list_runtime_nodes(integer()) :: [FlowNode.t()]
+  def list_runtime_nodes(flow_id) do
+    Repo.all(
+      from(node in FlowNode,
+        where: node.flow_id == ^flow_id and is_nil(node.deleted_at),
+        order_by: [asc: node.inserted_at, asc: node.id],
+        preload: [
+          :sequence_config,
+          sequence_tracks: [:asset],
+          sequence_visual_layers: [:asset]
+        ]
+      )
+    )
+  end
+
   @doc false
   def lock_flow_nodes_for_update(%Flow{} = flow) do
     with {:ok, %{flow: locked_flow}} <-
@@ -507,6 +523,7 @@ defmodule Storyarn.Flows.NodeCrud do
   defdelegate batch_update_positions(flow_id, positions), to: NodeUpdate
   defdelegate update_node_data(node, data), to: NodeUpdate
   defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeUpdate
+  defdelegate edit_node(flow_id, node_id, operation, payload), to: NodeUpdate
   defdelegate data_and_derivatives_current?(node, data, project_id), to: NodeUpdate
   defdelegate data_and_derivatives_current_ids(node_data_pairs, project_id), to: NodeUpdate
   defdelegate change_node(node, attrs \\ %{}), to: NodeUpdate

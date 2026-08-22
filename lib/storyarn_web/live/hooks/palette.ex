@@ -594,7 +594,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     do: Sheets.delete_sheet_subtree_in_transaction(scope, entity)
 
   defp delete_entity_subtree_in_transaction(scope, "flow", entity),
-    do: Flows.delete_flow_subtree_in_transaction(scope, entity)
+    do: Flows.delete_flow_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp delete_entity_subtree_in_transaction(scope, "scene", entity),
     do: Scenes.delete_scene_subtree_in_transaction(scope, entity)

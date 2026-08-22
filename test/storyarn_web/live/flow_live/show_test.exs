@@ -9,8 +9,8 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
   alias Storyarn.Repo
-  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Show
+  alias StoryarnWeb.FlowSidebarLive
 
   describe "flow editor layout" do
     setup :register_and_log_in_user
@@ -331,6 +331,101 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     end
   end
 
+  describe "picker search" do
+    setup :register_and_log_in_user
+
+    test "routes Sheet speaker searches through the Flows-owned catalog", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Speaker Picker Flow"})
+      speaker = sheet_fixture(project, %{name: "Hero Speaker", shortcut: "hero"})
+      speaker_id = speaker.id
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_hook(view, "picker_search", %{
+        "resource" => "entity",
+        "kind" => "sheet",
+        "query" => "hero",
+        "limit" => 10,
+        "request_id" => "speaker-search"
+      })
+
+      assert_push_event(view, "picker_search_results", %{
+        request_id: "speaker-search",
+        results: [%{id: ^speaker_id, name: "Hero Speaker"}],
+        has_more: false
+      })
+    end
+  end
+
+  describe "Flow sidebar autonomy" do
+    setup :register_and_log_in_user
+
+    test "uses the canonical membership for every mutation even if can_edit is stale" do
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          membership: %{role: "viewer"},
+          can_edit: true
+        }
+      }
+
+      mutations = [
+        {"create_flow", %{}},
+        {"create_child_flow", %{"parent_id" => "1"}},
+        {"set_main_flow", %{"id" => "1"}},
+        {"set_pending_delete_flow", %{"id" => "1"}},
+        {"confirm_delete_flow", %{}},
+        {"move_to_parent", %{"item_id" => "1", "new_parent_id" => nil, "position" => 0}}
+      ]
+
+      for {event, params} <- mutations do
+        assert {:noreply, result} = FlowSidebarLive.handle_event(event, params, socket)
+
+        assert result.assigns.flash["error"] ==
+                 "You don't have permission to perform this action."
+
+        refute Map.has_key?(result.assigns, :pending_delete_id)
+      end
+    end
+
+    test "moves a Flow without requiring a Project schema assign", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      current = flow_fixture(project, %{name: "Current"})
+      parent = flow_fixture(project, %{name: "Parent"})
+      child = flow_fixture(project, %{name: "Child"})
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{current.id}"
+      view = mount_flow(conn, url)
+      sidebar = find_live_child(view, "sidebar-flows-#{project.id}")
+
+      render_click(sidebar, "move_to_parent", %{
+        "item_id" => child.id,
+        "new_parent_id" => parent.id,
+        "position" => 0
+      })
+
+      assert Flows.get_flow(project.id, child.id).parent_id == parent.id
+    end
+
+    test "moves a Flow to trash without requiring a Project schema assign", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      current = flow_fixture(project, %{name: "Current"})
+      victim = flow_fixture(project, %{name: "Victim"})
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{current.id}"
+      view = mount_flow(conn, url)
+      sidebar = find_live_child(view, "sidebar-flows-#{project.id}")
+
+      render_click(sidebar, "set_pending_delete_flow", %{"id" => victim.id})
+      render_click(sidebar, "confirm_delete_flow")
+
+      assert Flows.get_flow(project.id, victim.id) == nil
+    end
+  end
+
   describe "version history events" do
     setup :register_and_log_in_user
 
@@ -342,6 +437,42 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       %{project: project, flow: flow, url: url}
     end
 
+    test "publishes and refreshes named-version capacity in the Flow panel", %{
+      conn: conn,
+      user: user,
+      url: url,
+      flow: flow
+    } do
+      for number <- 1..9 do
+        assert {:ok, _version} =
+                 Flows.create_version(flow, user.id,
+                   title: "Checkpoint #{number}",
+                   skip_diff: true
+                 )
+      end
+
+      view = mount_flow(conn, url)
+      render_click(view, "open_versions_panel")
+
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      versions = panels.props["panels"]["versions"]
+
+      assert versions["open"]
+      assert versions["canNameVersion"]
+      assert length(versions["namedVersions"]) == 9
+
+      render_click(view, "create_version", %{
+        "title" => "Final free checkpoint",
+        "description" => "Consumes the last named-version slot"
+      })
+
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      versions = panels.props["panels"]["versions"]
+
+      refute versions["canNameVersion"]
+      assert length(versions["namedVersions"]) == 10
+    end
+
     test "creates a named version", %{conn: conn, url: url, flow: flow} do
       view = mount_flow(conn, url)
 
@@ -350,7 +481,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
         "description" => "Initial playable flow"
       })
 
-      version = Versioning.get_version("flow", flow.id, 1)
+      version = Flows.get_version(flow.id, 1)
       assert version.title == "First milestone"
       assert version.description == "Initial playable flow"
       refute version.is_auto
@@ -361,18 +492,16 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       render_click(view, "create_version", %{"title" => "", "description" => "Ignored"})
 
-      assert Versioning.count_versions("flow", flow.id) == 0
+      assert Flows.count_versions(flow.id) == 0
     end
 
     test "updates version title and description", %{
       conn: conn,
       user: user,
-      project: project,
       url: url,
       flow: flow
     } do
-      {:ok, version} =
-        Versioning.create_version("flow", flow, project.id, user.id, is_auto: true)
+      {:ok, version} = Flows.create_version(flow, user.id, is_auto: true)
 
       view = mount_flow(conn, url)
 
@@ -382,20 +511,19 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
         "description" => "Ready for review"
       })
 
-      updated = Versioning.get_version("flow", flow.id, version.version_number)
+      updated = Flows.get_version(flow.id, version.version_number)
       assert updated.title == "Named checkpoint"
       assert updated.description == "Ready for review"
     end
 
-    test "deletes an existing version", %{conn: conn, user: user, project: project, url: url, flow: flow} do
-      {:ok, version} =
-        Versioning.create_version("flow", flow, project.id, user.id, title: "Disposable")
+    test "deletes an existing version", %{conn: conn, user: user, url: url, flow: flow} do
+      {:ok, version} = Flows.create_version(flow, user.id, title: "Disposable")
 
       view = mount_flow(conn, url)
 
       render_click(view, "delete_version", %{"version_number" => to_string(version.version_number)})
 
-      refute Versioning.get_version("flow", flow.id, version.version_number)
+      refute Flows.get_version(flow.id, version.version_number)
     end
 
     test "restores the flow from the selected version", %{
@@ -405,8 +533,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       url: url,
       flow: flow
     } do
-      {:ok, version} =
-        Versioning.create_version("flow", flow, project.id, user.id, title: "Before rename")
+      {:ok, version} = Flows.create_version(flow, user.id, title: "Before rename")
 
       {:ok, _changed_flow} = Flows.update_flow(flow, %{name: "Changed Flow"})
       view = mount_flow(conn, url)

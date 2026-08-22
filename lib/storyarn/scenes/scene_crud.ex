@@ -13,11 +13,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Notifications
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Persistence.FlowRecord
+  alias Storyarn.Scenes.Persistence.VariableReferenceRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
@@ -87,7 +87,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   The id is a tiebreak, not decoration: siblings created together share a
   position and may share a name, and this feeds the project-wide health sweep —
   whose results must not reorder between runs on `Repo.all`'s unspecified order.
-  Same reasoning as `Flows.StructuralAnalysis.Topology.load_project/2`.
+  The same deterministic ordering is required by the structural health sweep.
   """
   def list_scenes(project_id) do
     Repo.all(
@@ -461,7 +461,7 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   It matters beyond the ≤30s cache TTL, for two different reasons depending on
   the child table. Pin and zone shortcuts ARE referenceable variables
-  (`Flows.list_referenceable_variables/1`), so a write that adds or removes one
+  (`Scenes.VariableCatalog.list_referenceable/1`), so a write that adds or removes one
   changes the vocabulary every health surface type-checks against. Layers carry
   no shortcut and are not vocabulary, but their existence and `is_default` are
   finding inputs (`missing_scene_layer`, `missing_default_layer`,
@@ -924,11 +924,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   @doc """
   Returns variable usage for a block from scene zones.
   Joins variable_references with scene_zones and scenes to return enriched data.
-  Used by the Flows.VariableReferenceTracker to avoid cross-context schema queries.
+  Exposes the Scene-owned projection consumed by project-wide integrity reads.
   """
   def get_scene_zone_variable_usage(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: z in SceneZone,
         on: vr.source_type == "scene_zone" and z.id == vr.source_id,
         join: m in Scene,
@@ -953,11 +953,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   @doc """
   Returns variable usage for a block from scene pins.
   Joins variable_references with scene_pins and scenes to return enriched data.
-  Used by the Flows.VariableReferenceTracker to avoid cross-context schema queries.
+  Exposes the Scene-owned projection consumed by project-wide integrity reads.
   """
   def get_scene_pin_variable_usage(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: p in ScenePin,
         on: vr.source_type == "scene_pin" and p.id == vr.source_id,
         join: m in Scene,
@@ -987,14 +987,14 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def get_scene_ambient_flow_variable_usage(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: ambient_flow in SceneAmbientFlow,
         on:
           vr.source_type == "scene_ambient_flow" and
             ambient_flow.id == vr.source_id,
         join: scene in Scene,
         on: scene.id == ambient_flow.scene_id,
-        join: flow in Flow,
+        join: flow in FlowRecord,
         on:
           flow.id == ambient_flow.flow_id and
             flow.project_id == scene.project_id,
@@ -1019,11 +1019,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   Returns stale variable reference data for scene zones.
   Joins variable_references with scene_zones, scenes, blocks, and sheets
   to detect staleness via SQL comparison of stored vs current names.
-  Used by the Flows.VariableReferenceTracker for stale reference detection.
+  Used by the project integrity workflow for stale reference detection.
   """
   def check_stale_scene_zone_variable_references(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: z in SceneZone,
         on: vr.source_type == "scene_zone" and z.id == vr.source_id,
         join: m in Scene,
@@ -1058,11 +1058,11 @@ defmodule Storyarn.Scenes.SceneCrud do
   Returns stale variable reference data for scene pins.
   Joins variable_references with scene_pins, scenes, blocks, and sheets
   to detect staleness via SQL comparison of stored vs current names.
-  Used by the Flows.VariableReferenceTracker for stale reference detection.
+  Used by the project integrity workflow for stale reference detection.
   """
   def check_stale_scene_pin_variable_references(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: p in ScenePin,
         on: vr.source_type == "scene_pin" and p.id == vr.source_id,
         join: m in Scene,
@@ -1101,14 +1101,14 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def check_stale_scene_ambient_flow_variable_references(block_id, project_id) do
     Repo.all(
-      from(vr in VariableReference,
+      from(vr in VariableReferenceRecord,
         join: ambient_flow in SceneAmbientFlow,
         on:
           vr.source_type == "scene_ambient_flow" and
             ambient_flow.id == vr.source_id,
         join: scene in Scene,
         on: scene.id == ambient_flow.scene_id,
-        join: flow in Flow,
+        join: flow in FlowRecord,
         on:
           flow.id == ambient_flow.flow_id and
             flow.project_id == scene.project_id,

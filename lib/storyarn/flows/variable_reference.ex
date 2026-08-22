@@ -15,7 +15,7 @@ defmodule Storyarn.Flows.VariableReference do
   import Ecto.Changeset
 
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Sheets.Block
+  alias Storyarn.Flows.Persistence.BlockRecord
 
   # What `VariableReferenceTracker.replace_references/4` actually writes.
   # `"map_zone"` was here from before the Maps→Scenes rename and matches no row;
@@ -40,7 +40,7 @@ defmodule Storyarn.Flows.VariableReference do
     field :source_type, :string, default: "flow_node"
     field :source_id, :integer
     belongs_to :flow_node, FlowNode
-    belongs_to :block, Block
+    belongs_to :block, BlockRecord
     field :kind, :string
     field :source_sheet, :string
     field :source_variable, :string

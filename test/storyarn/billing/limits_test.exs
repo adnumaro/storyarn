@@ -7,7 +7,6 @@ defmodule Storyarn.Billing.LimitsTest do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Billing
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
 
@@ -179,7 +178,7 @@ defmodule Storyarn.Billing.LimitsTest do
           }
         end
 
-      Repo.insert_all(FlowNode, entries)
+      Repo.insert_all("flow_nodes", entries)
 
       assert Billing.count_project_items(project.id) == 698
       assert :ok = Billing.can_create_item?(project)
@@ -220,16 +219,22 @@ defmodule Storyarn.Billing.LimitsTest do
 
       # Insert enough nodes to reach the limit of 700
       # Current items: 1 flow + 2 nodes = 3. Need 697 more.
-      for i <- 1..697 do
-        %FlowNode{flow_id: flow.id}
-        |> FlowNode.create_changeset(%{
-          type: "dialogue",
-          position_x: i * 1.0,
-          position_y: 0.0,
-          data: %{}
-        })
-        |> Repo.insert!()
-      end
+      now = DateTime.utc_now(:second)
+
+      entries =
+        for i <- 1..697 do
+          %{
+            flow_id: flow.id,
+            type: "dialogue",
+            position_x: i * 1.0,
+            position_y: 0.0,
+            data: %{},
+            inserted_at: now,
+            updated_at: now
+          }
+        end
+
+      Repo.insert_all("flow_nodes", entries)
 
       assert {:error, :limit_reached, %{resource: :items_per_project}} =
                Billing.can_create_item?(project)
@@ -323,7 +328,7 @@ defmodule Storyarn.Billing.LimitsTest do
           }
         end
 
-      Repo.insert_all(FlowNode, entries)
+      Repo.insert_all("flow_nodes", entries)
 
       %{project: project, flow: flow}
     end
@@ -338,7 +343,7 @@ defmodule Storyarn.Billing.LimitsTest do
       flow: flow
     } do
       # Get an existing node to link
-      [node | _] = Repo.all(FlowNode)
+      [node | _] = Storyarn.Flows.list_nodes(flow.id)
 
       assert {:error, :limit_reached, %{resource: :items_per_project}} =
                Storyarn.Flows.create_linked_flow(project, flow, node)

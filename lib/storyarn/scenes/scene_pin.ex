@@ -13,7 +13,7 @@ defmodule Storyarn.Scenes.ScenePin do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
+  alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
@@ -51,7 +51,7 @@ defmodule Storyarn.Scenes.ScenePin do
           layer_id: integer() | nil,
           layer: SceneLayer.t() | NotLoaded.t() | nil,
           flow_id: integer() | nil,
-          flow: Flow.t() | NotLoaded.t() | nil,
+          flow: FlowRecord.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -82,7 +82,7 @@ defmodule Storyarn.Scenes.ScenePin do
     belongs_to :layer, SceneLayer
     belongs_to :sheet, Sheet
     belongs_to :icon_asset, Asset, where: [deleted_at: nil]
-    belongs_to :flow, Flow
+    belongs_to :flow, FlowRecord
 
     has_many :outgoing_connections, SceneConnection, foreign_key: :from_pin_id
     has_many :incoming_connections, SceneConnection, foreign_key: :to_pin_id

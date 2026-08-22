@@ -4,17 +4,19 @@ defmodule Storyarn.Flows.NodeUpdate do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.LocalizationProjection, as: Localization
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeEditor
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.Localization
-  alias Storyarn.References
+  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows.WordCount
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.WordCount
 
   # This is a write-path certification, not a hash of the derivative rows.
   # Increment it whenever the canonical derivative contract changes. A nil or
@@ -250,6 +252,56 @@ defmodule Storyarn.Flows.NodeUpdate do
     result
   end
 
+  @doc """
+  Applies a closed authoring operation to the latest locked node state.
+
+  Unlike the legacy read-transform-write adapter, the transition is derived
+  only after the node row has been locked. Concurrent edits to different
+  fields therefore compose instead of overwriting one another with stale JSON.
+  """
+  @spec edit_node(pos_integer(), pos_integer(), NodeEditor.operation(), map()) ::
+          {:ok,
+           %{
+             node: FlowNode.t(),
+             previous_data: map(),
+             current_data: map(),
+             changed?: boolean(),
+             graph_changed?: boolean(),
+             renamed_jumps: non_neg_integer(),
+             connections_changed?: boolean()
+           }}
+          | {:error, term()}
+  def edit_node(flow_id, node_id, operation, payload)
+      when is_integer(flow_id) and flow_id > 0 and is_integer(node_id) and node_id > 0 and is_atom(operation) and
+             is_map(payload) do
+    identity = %FlowNode{id: node_id, flow_id: flow_id}
+
+    case Repo.transaction(fn -> edit_node_transaction(identity, operation, payload) end) do
+      {:ok, %{changed?: true, node: node} = result} ->
+        broadcast_dashboard(node)
+        {:ok, result}
+
+      {:ok, result} ->
+        {:ok, result}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  def edit_node(flow_id, node_id, operation, payload)
+      when is_integer(flow_id) and flow_id > 0 and is_binary(node_id) and is_atom(operation) and is_map(payload) do
+    case Integer.parse(node_id) do
+      {parsed_node_id, ""} when parsed_node_id > 0 ->
+        edit_node(flow_id, parsed_node_id, operation, payload)
+
+      _invalid ->
+        {:error, :node_not_found}
+    end
+  end
+
+  def edit_node(_flow_id, _node_id, _operation, _payload), do: {:error, :node_not_found}
+
   @doc false
   def update_node_data_without_dashboard_broadcast(%FlowNode{} = node, data) do
     case Repo.transaction(fn -> update_node_data_transaction(node, data) end) do
@@ -329,10 +381,10 @@ defmodule Storyarn.Flows.NodeUpdate do
       |> keep_active_project_nodes(project_id)
 
     localized_text_ids = Localization.flow_node_texts_current_ids(candidates, project_id)
-    entity_reference_ids = References.flow_node_entity_references_current_ids(candidates)
+    entity_reference_ids = EntityReferenceTracker.references_current_ids(candidates)
 
     variable_reference_ids =
-      References.flow_node_variable_references_current_ids(
+      VariableReferenceTracker.flow_node_references_current_ids(
         candidates,
         project_id
       )
@@ -493,6 +545,69 @@ defmodule Storyarn.Flows.NodeUpdate do
     end
   end
 
+  defp edit_node_transaction(identity, operation, payload) do
+    with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
+           ReferenceIntegrity.lock_active_node_for_write(identity, :key_share),
+         {:ok, authored_data} <-
+           NodeEditor.apply_operation(locked_node, flow, project_id, operation, payload),
+         {:ok, _parent_id} <-
+           ReferenceIntegrity.lock_node_parent(
+             flow.id,
+             locked_node.parent_id,
+             locked_node.id
+           ),
+         {:ok, normalized_data} <-
+           ReferenceIntegrity.lock_and_normalize_node_references(
+             project_id,
+             flow.id,
+             locked_node.type,
+             authored_data
+           ),
+         :ok <- validate_hub_id(locked_node, locked_node.type, normalized_data) do
+      persist_authored_node_data(locked_node, normalized_data, project_id)
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp persist_authored_node_data(%FlowNode{data: data} = node, data, _project_id) do
+    edit_result(node, node, data, false, 0, false)
+  end
+
+  defp persist_authored_node_data(%FlowNode{} = locked_node, normalized_data, project_id) do
+    {updated_node, connections_changed?} =
+      persist_node_data(normalized_data, locked_node, project_id)
+
+    renamed_count =
+      maybe_cascade_hub_id_rename(
+        locked_node,
+        locked_node.type,
+        normalized_data,
+        project_id
+      )
+
+    edit_result(
+      locked_node,
+      updated_node,
+      normalized_data,
+      true,
+      renamed_count,
+      connections_changed?
+    )
+  end
+
+  defp edit_result(previous_node, current_node, current_data, changed?, renamed_jumps, connections_changed?) do
+    %{
+      node: current_node,
+      previous_data: previous_node.data || %{},
+      current_data: current_data,
+      changed?: changed?,
+      graph_changed?: renamed_jumps > 0 or connections_changed?,
+      renamed_jumps: renamed_jumps,
+      connections_changed?: connections_changed?
+    }
+  end
+
   defp validate_hub_id(%FlowNode{} = node, "hub", data) do
     hub_id = data["hub_id"]
 
@@ -551,13 +666,13 @@ defmodule Storyarn.Flows.NodeUpdate do
   defp handle_persisted_node_data({:ok, updated_node}, project_id) do
     with :ok <-
            normalize_reference_write_result(
-             References.update_flow_node_entity_references(
+             EntityReferenceTracker.update_references(
                updated_node,
                project_id: project_id
              )
            ),
          :ok <-
-           normalize_reference_write_result(References.update_flow_node_variable_references(updated_node)),
+           normalize_reference_write_result(VariableReferenceTracker.update_references(updated_node)),
          :ok <- Localization.extract_flow_node(updated_node) do
       updated_node
     else

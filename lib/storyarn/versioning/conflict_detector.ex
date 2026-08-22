@@ -12,7 +12,7 @@ defmodule Storyarn.Versioning.ConflictDetector do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.ProjectReferenceIntegrity
@@ -34,7 +34,6 @@ defmodule Storyarn.Versioning.ConflictDetector do
 
   @entity_type_to_schema %{
     "sheet" => Sheet,
-    "flow" => Flow,
     "scene" => Scene
   }
 

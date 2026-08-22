@@ -3,38 +3,29 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Flows.AssetReferences
+  alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.FlowTrash
+  alias Storyarn.Flows.Limits
+  alias Storyarn.Flows.LocalizationProjection, as: Localization
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeTypes
+  alias Storyarn.Flows.Persistence.ProjectRecord
   alias Storyarn.Flows.ReferenceIntegrity
-  alias Storyarn.Flows.SequenceConfig
-  alias Storyarn.Flows.SpeakerSheetId
+  alias Storyarn.Flows.ShortcutGenerator
   alias Storyarn.Flows.TreeOperations
-  alias Storyarn.Localization
-  alias Storyarn.Notifications
-  alias Storyarn.Projects.Project
-  alias Storyarn.References
+  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Shared.ImportHelpers
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.SearchHelpers
-  alias Storyarn.Shared.ShortcutHelpers
-  alias Storyarn.Shared.SoftDelete
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.Trashable
-  alias Storyarn.Shared.TreeOperations, as: SharedTree
-  alias Storyarn.Shared.WordCount
-  alias Storyarn.Sheets
-  alias Storyarn.Shortcuts
-
-  require SpeakerSheetId
 
   @restore_sources_locked_event [
     :storyarn,
@@ -69,7 +60,7 @@ defmodule Storyarn.Flows.FlowCrud do
         )
       )
 
-    SharedTree.build_tree_from_flat_list(all_flows)
+    TreeOperations.build_tree_from_flat_list(all_flows)
   end
 
   @default_search_limit 25
@@ -293,32 +284,35 @@ defmodule Storyarn.Flows.FlowCrud do
   Used by exit (flow_reference mode) and subflow nodes.
   Returns `{:ok, %{flow: flow, node: node}}` or `{:error, step, reason, changes}`.
   """
-  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node) do
+  def create_linked_flow(project, %Flow{} = parent_flow, %FlowNode{} = node) do
     create_linked_flow(project, parent_flow, node, [])
   end
 
-  def create_linked_flow(%Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts) do
-    create_linked_flow_for_actor(nil, project, parent_flow, node, opts)
-  end
-
-  def create_linked_flow(%Scope{} = actor_scope, %Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node) do
+  def create_linked_flow(%{user: %{id: actor_id}} = actor_scope, project, %Flow{} = parent_flow, %FlowNode{} = node)
+      when is_integer(actor_id) and actor_id > 0 do
     create_linked_flow_for_actor(actor_scope, project, parent_flow, node, [])
   end
 
-  def create_linked_flow(%Scope{} = actor_scope, %Project{} = project, %Flow{} = parent_flow, %FlowNode{} = node, opts) do
+  def create_linked_flow(project, %Flow{} = parent_flow, %FlowNode{} = node, opts) when is_list(opts) do
+    create_linked_flow_for_actor(nil, project, parent_flow, node, opts)
+  end
+
+  def create_linked_flow(%{user: %{id: actor_id}} = actor_scope, project, %Flow{} = parent_flow, %FlowNode{} = node, opts)
+      when is_integer(actor_id) and actor_id > 0 and is_list(opts) do
     create_linked_flow_for_actor(actor_scope, project, parent_flow, node, opts)
   end
 
   defp create_linked_flow_for_actor(actor_scope, project, parent_flow, node, opts) do
+    project_id = project_id!(project)
     name = opts[:name] || derive_linked_flow_name(parent_flow, node)
 
     multi =
       Ecto.Multi.new()
       |> Ecto.Multi.run(:source, fn _repo, _changes ->
-        lock_linked_flow_source(project, parent_flow, node)
+        lock_linked_flow_source(project_id, parent_flow, node)
       end)
       |> Ecto.Multi.run(:flow, fn _repo, _ ->
-        create_linked_flow_record(project, parent_flow, name)
+        create_linked_flow_record(project_id, parent_flow, name)
       end)
       |> Ecto.Multi.run(:node, fn _repo, %{flow: new_flow, source: %{node: locked_node}} ->
         link_node_to_new_flow(locked_node, new_flow)
@@ -326,9 +320,9 @@ defmodule Storyarn.Flows.FlowCrud do
 
     multi =
       case actor_scope do
-        %Scope{} ->
+        %{user: %{id: actor_id}} when is_integer(actor_id) and actor_id > 0 ->
           Ecto.Multi.run(multi, :notification, fn _repo, %{flow: flow} ->
-            Notifications.deliver_content_activity(actor_scope, project, :created, "flow", flow)
+            Platform.deliver_content_activity(actor_scope, project_id, :created, "flow", flow)
           end)
 
         nil ->
@@ -350,13 +344,13 @@ defmodule Storyarn.Flows.FlowCrud do
 
     result
     |> strip_linked_flow_notification()
-    |> broadcast_flow_dashboard_result(project.id)
+    |> broadcast_flow_dashboard_result(project_id)
   end
 
-  defp lock_linked_flow_source(project, parent_flow, node) do
+  defp lock_linked_flow_source(project_id, parent_flow, node) do
     with {:ok, %{flow: locked_parent}} <-
            ReferenceIntegrity.lock_active_flow_for_write(parent_flow),
-         true <- locked_parent.project_id == project.id,
+         true <- locked_parent.project_id == project_id,
          {:ok, %{node: locked_node}} <-
            ReferenceIntegrity.lock_active_node_for_write(node),
          true <- locked_node.flow_id == locked_parent.id do
@@ -367,8 +361,8 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  defp create_linked_flow_record(project, parent_flow, name) do
-    case do_create_flow(project, %{name: name, parent_id: parent_flow.id}) do
+  defp create_linked_flow_record(project_id, parent_flow, name) do
+    case do_create_flow(project_id, %{name: name, parent_id: parent_flow.id}) do
       {:ok, flow} -> {:ok, flow}
       {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}
       {:error, reason} -> {:error, reason}
@@ -398,19 +392,21 @@ defmodule Storyarn.Flows.FlowCrud do
     if label && label != "", do: label, else: "#{parent_flow.name} - Sub"
   end
 
-  def create_flow(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def create_flow(%{user: %{id: actor_id}} = actor_scope, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
+
     result =
       fn ->
-        flow = create_flow_in_transaction(project, attrs)
-        {flow, deliver_content_activity!(actor_scope, project, :created, flow)}
+        flow = create_flow_in_transaction(project_id, attrs)
+        {flow, deliver_content_activity!(actor_scope, project_id, :created, flow)}
       end
       |> Repo.transaction()
       |> normalize_item_limit_result()
 
     case result do
       {:ok, {flow, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
-        Collaboration.broadcast_dashboard_change(project.id, :flows)
+        Platform.publish_notification_delivery(notification_outcome)
+        Collaboration.broadcast_dashboard_change(project_id, :flows)
         {:ok, flow}
 
       other ->
@@ -418,55 +414,66 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  def create_flow(%Project{} = project, attrs) do
+  def create_flow(project, attrs) do
+    project_id = project_id!(project)
+
     project
     |> do_create_flow(attrs)
-    |> broadcast_flow_dashboard_result(project.id)
+    |> broadcast_flow_dashboard_result(project_id)
   end
 
-  defp do_create_flow(%Project{} = project, attrs) do
+  defp do_create_flow(project, attrs) do
     fn -> create_flow_in_transaction(project, attrs) end
     |> Repo.transaction()
     |> normalize_item_limit_result()
   end
 
   @doc false
-  def create_flow_in_transaction(%Project{} = project, attrs) do
-    locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
+  def create_flow_in_transaction(project, attrs) do
+    project_id = project_id!(project)
+
+    locked_project =
+      Repo.one!(
+        from candidate in ProjectRecord,
+          where: candidate.id == ^project_id,
+          lock: "FOR UPDATE"
+      )
 
     if not is_nil(locked_project.deleted_at),
       do: Repo.rollback(:project_not_active)
 
     # A flow consumes quota for the flow plus its entry and exit nodes.
-    case Billing.can_create_items?(locked_project, 3) do
+    case Limits.can_create_items?(locked_project, 3) do
       :ok -> :ok
       {:error, reason, details} -> Repo.rollback({reason, details})
     end
 
     attrs = stringify_keys(attrs)
-    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+    attrs = maybe_generate_shortcut(attrs, locked_project.id, nil)
 
     with {:ok, parent_id} <-
-           ReferenceIntegrity.lock_flow_parent(project.id, nil, attrs["parent_id"]),
+           ReferenceIntegrity.lock_flow_parent(locked_project.id, nil, attrs["parent_id"]),
          {:ok, scene_id} <-
-           ReferenceIntegrity.lock_flow_scene(project.id, attrs["scene_id"]) do
+           ReferenceIntegrity.lock_flow_scene(locked_project.id, attrs["scene_id"]) do
       attrs =
         attrs
         |> Map.put("parent_id", parent_id)
         |> Map.put("scene_id", scene_id)
-        |> maybe_assign_position(project.id, parent_id)
+        |> maybe_assign_position(locked_project.id, parent_id)
 
-      insert_flow_with_default_nodes(project.id, attrs)
+      insert_flow_with_default_nodes(locked_project.id, attrs)
     else
       {:error, reason} ->
-        Repo.rollback(flow_reference_changeset(%Flow{project_id: project.id}, attrs, reason))
+        Repo.rollback(flow_reference_changeset(%Flow{project_id: locked_project.id}, attrs, reason))
     end
   end
 
   @doc false
-  def create_flow_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def create_flow_in_transaction(%{user: %{id: actor_id}} = actor_scope, project, attrs)
+      when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
     flow = create_flow_in_transaction(project, attrs)
-    {flow, deliver_content_activity!(actor_scope, project, :created, flow)}
+    {flow, deliver_content_activity!(actor_scope, project_id, :created, flow)}
   end
 
   defp insert_flow_with_default_nodes(project_id, attrs) do
@@ -474,8 +481,8 @@ defmodule Storyarn.Flows.FlowCrud do
          |> Flow.create_changeset(attrs)
          |> Repo.insert() do
       {:ok, flow} ->
-        insert_default_node!(flow.id, "entry", 100.0, 300.0, %{})
-        insert_default_node!(flow.id, "exit", 500.0, 300.0, default_exit_data())
+        insert_default_node!(flow.id, "entry", 100.0, 300.0, NodeTypes.default_data("entry"))
+        insert_default_node!(flow.id, "exit", 500.0, 300.0, NodeTypes.default_data("exit"))
         flow
 
       {:error, changeset} ->
@@ -565,31 +572,19 @@ defmodule Storyarn.Flows.FlowCrud do
     end
   end
 
-  defp default_exit_data do
-    %{
-      "label" => "",
-      "technical_id" => "",
-      "outcome_tags" => [],
-      "outcome_color" => "#22c55e",
-      "exit_mode" => "terminal",
-      "referenced_flow_id" => nil
-    }
-  end
-
   @doc """
   Soft-deletes a flow by setting deleted_at.
   Also soft-deletes all children recursively.
 
   Inbound refs (`flow_nodes.data["referenced_flow_id"]` from subflow + exit
-  nodes) are swept to the entity trash refs table via `Trashable.soft_delete/1`.
-  Note: cascade-soft-deleted children do NOT get their own inbound refs swept
-  — that requires recursion through Trashable, tracked as follow-up.
+  nodes) are swept to the Flow-owned entity trash refs table for the root and
+  every cascade-soft-deleted descendant.
   """
   def delete_flow(%Flow{} = flow) do
     with {:ok, %{entity: entity}} <- delete_flow_subtree(flow), do: {:ok, entity}
   end
 
-  def delete_flow(%Scope{} = actor_scope, %Flow{} = flow) do
+  def delete_flow(%{user: %{id: actor_id}} = actor_scope, %Flow{} = flow) when is_integer(actor_id) and actor_id > 0 do
     with {:ok, %{entity: entity}} <- delete_flow_subtree(actor_scope, flow), do: {:ok, entity}
   end
 
@@ -616,7 +611,8 @@ defmodule Storyarn.Flows.FlowCrud do
     result
   end
 
-  def delete_flow_subtree(%Scope{} = actor_scope, %Flow{} = flow) do
+  def delete_flow_subtree(%{user: %{id: actor_id}} = actor_scope, %Flow{} = flow)
+      when is_integer(actor_id) and actor_id > 0 do
     result = Repo.transaction(fn -> delete_flow_subtree_in_transaction(actor_scope, flow) end)
 
     case result do
@@ -626,7 +622,7 @@ defmodule Storyarn.Flows.FlowCrud do
          affected_flow_ids: affected_flow_ids,
          notification_outcome: notification_outcome
        } = deleted} ->
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         broadcast_flow_refreshes(affected_flow_ids)
         Collaboration.broadcast_dashboard_change(deleted_flow.project_id, :flows)
         {:ok, Map.delete(deleted, :notification_outcome)}
@@ -642,35 +638,27 @@ defmodule Storyarn.Flows.FlowCrud do
   end
 
   @doc false
-  def delete_flow_subtree_in_transaction(%Scope{} = actor_scope, %Flow{} = flow) do
+  def delete_flow_subtree_in_transaction(%{user: %{id: actor_id}} = actor_scope, %Flow{} = flow)
+      when is_integer(actor_id) and actor_id > 0 do
     deleted = delete_flow_subtree_in_transaction(flow)
-    project = Repo.get!(Project, deleted.entity.project_id)
-    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+
+    outcome =
+      deliver_content_activity!(
+        actor_scope,
+        deleted.entity.project_id,
+        :deleted,
+        deleted.entity
+      )
+
     Map.put(deleted, :notification_outcome, outcome)
   end
 
   @doc false
-  def delete_flow_subtree_for_project_restore_in_transaction(%Flow{} = flow) do
-    case ReferenceIntegrity.lock_active_flow_for_write(flow) do
-      {:ok, %{flow: locked_flow}} ->
-        affected_flow_ids =
-          locked_flow.id
-          |> NodeCrud.list_subflow_nodes_referencing(locked_flow.project_id)
-          |> Enum.map(& &1.flow_id)
-          |> Enum.uniq()
-
-        case EntityTrashRefs.sweep_project_flow_references(locked_flow.project_id, locked_flow.id) do
-          {:ok, _swept_count} ->
-            locked_flow
-            |> soft_delete_locked_flow_without_global_sweep()
-            |> Map.put(:affected_flow_ids, affected_flow_ids)
-
-          {:error, reason} ->
-            Repo.rollback(reason)
-        end
-
-      {:error, reason} ->
-        Repo.rollback(reason)
+  def delete_flow_subtree_by_id_in_transaction(%{user: %{id: actor_id}} = actor_scope, project_id, flow_id)
+      when is_integer(actor_id) and actor_id > 0 do
+    case get_flow_brief(project_id, flow_id) do
+      %Flow{} = flow -> delete_flow_subtree_in_transaction(actor_scope, flow)
+      nil -> Repo.rollback(:not_found)
     end
   end
 
@@ -695,36 +683,33 @@ defmodule Storyarn.Flows.FlowCrud do
   defp soft_delete_locked_flow(locked_flow) do
     Localization.delete_flow_node_texts_for_flows([locked_flow.id])
 
-    case Trashable.soft_delete(locked_flow) do
+    case soft_delete_flow_and_sweep_references(locked_flow) do
       {:ok, deleted_flow} ->
         child_ids =
-          SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
-            pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
-          )
+          FlowTrash.soft_delete_descendants(locked_flow.project_id, locked_flow.id)
 
         %{entity: deleted_flow, deleted_ids: [deleted_flow.id | child_ids]}
 
-      {:error, changeset} ->
-        Repo.rollback(changeset)
+      {:error, reason} ->
+        Repo.rollback(reason)
     end
   end
 
-  defp soft_delete_locked_flow_without_global_sweep(locked_flow) do
-    Localization.delete_flow_node_texts_for_flows([locked_flow.id])
-
-    case locked_flow
-         |> Ecto.Changeset.change(%{deleted_at: TimeHelpers.now()})
-         |> Repo.update() do
-      {:ok, deleted_flow} ->
-        child_ids =
-          SoftDelete.soft_delete_children(Flow, locked_flow.project_id, locked_flow.id,
-            pre_delete: &Localization.delete_flow_node_texts_for_flows([&1.id])
-          )
-
-        %{entity: deleted_flow, deleted_ids: [deleted_flow.id | child_ids]}
-
-      {:error, changeset} ->
-        Repo.rollback(changeset)
+  defp soft_delete_flow_and_sweep_references(flow) do
+    with {:ok, deleted_flow} <-
+           flow
+           |> Ecto.Changeset.change(%{deleted_at: TimeHelpers.now()})
+           |> Repo.update(),
+         {:ok, _swept_count} <-
+           EntityTrashRefs.sweep_jsonb_field(
+             FlowNode,
+             "flow_node",
+             :data,
+             "referenced_flow_id",
+             :flow,
+             deleted_flow.id
+           ) do
+      {:ok, deleted_flow}
     end
   end
 
@@ -813,7 +798,7 @@ defmodule Storyarn.Flows.FlowCrud do
     with :ok <- validate_no_pending_node_trash_refs(restored_nodes),
          :ok <- validate_flow_trash_refs(trash_refs),
          :ok <-
-           Assets.lock_active_asset_references_for_restore(project_id,
+           AssetReferences.lock_active_for_restore(project_id,
              flow_node_ids: Enum.map(restored_nodes, & &1.id)
            ),
          {:ok, source_nodes} <-
@@ -862,13 +847,13 @@ defmodule Storyarn.Flows.FlowCrud do
 
   defp lock_restore_project!(project_id) do
     case Repo.one(
-           from(project in Project,
+           from(project in ProjectRecord,
              where: project.id == ^project_id and is_nil(project.deleted_at),
              lock: "FOR UPDATE"
            )
          ) do
       nil -> Repo.rollback(:project_not_active)
-      %Project{} -> :ok
+      %ProjectRecord{} -> :ok
     end
   end
 
@@ -1187,12 +1172,12 @@ defmodule Storyarn.Flows.FlowCrud do
   defp rebuild_node_references(node, project_id) do
     with :ok <-
            normalize_reference_rebuild_result(
-             References.update_flow_node_entity_references(
+             EntityReferenceTracker.update_references(
                node,
                project_id: project_id
              )
            ) do
-      normalize_reference_rebuild_result(References.update_flow_node_variable_references(node))
+      normalize_reference_rebuild_result(VariableReferenceTracker.update_references(node))
     end
   end
 
@@ -1217,7 +1202,7 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Lists all soft-deleted flows for a project (trash).
   """
-  def list_deleted_flows(project_id), do: SoftDelete.list_deleted(Flow, project_id)
+  def list_deleted_flows(project_id), do: FlowTrash.list_deleted(project_id)
 
   @doc false
   def broadcast_flow_refreshes(affected_flow_ids) when is_list(affected_flow_ids) do
@@ -1312,33 +1297,35 @@ defmodule Storyarn.Flows.FlowCrud do
   defp maybe_generate_shortcut(attrs, project_id, exclude_flow_id) do
     attrs
     |> stringify_keys()
-    |> ShortcutHelpers.maybe_generate_shortcut(
-      project_id,
-      exclude_flow_id,
-      &Shortcuts.generate_flow_shortcut/3
-    )
+    |> ShortcutGenerator.prepare_create(project_id, exclude_flow_id)
   end
 
   defp maybe_generate_shortcut_on_update(%Flow{} = flow, attrs) do
-    ShortcutHelpers.maybe_generate_shortcut_on_update(
+    ShortcutGenerator.prepare_update(
       flow,
       attrs,
-      &Shortcuts.generate_flow_shortcut/3,
-      check_backlinks_fn: &(Sheets.count_backlinks("flow", &1.id) > 0)
+      fn -> EntityReferenceTracker.count_backlinks("flow", flow.id) > 0 end
     )
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
-  defp deliver_content_activity!(actor_scope, project, action, flow) do
-    case Notifications.deliver_content_activity(actor_scope, project, action, "flow", flow) do
+  defp project_id!(%{id: project_id}), do: project_id!(project_id)
+  defp project_id!(project_id) when is_integer(project_id) and project_id > 0, do: project_id
+
+  defp project_id!(project) do
+    raise ArgumentError, "expected a Flow project identity, got: #{inspect(project)}"
+  end
+
+  defp deliver_content_activity!(actor_scope, project_id, action, flow) do
+    case Platform.deliver_content_activity(actor_scope, project_id, action, "flow", flow) do
       {:ok, outcome} -> outcome
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
   defp publish_linked_flow_notification({:ok, %{notification: outcome}}) do
-    Notifications.publish_committed(outcome)
+    Platform.publish_notification_delivery(outcome)
   end
 
   defp publish_linked_flow_notification(_result), do: :ok
@@ -1350,50 +1337,7 @@ defmodule Storyarn.Flows.FlowCrud do
   defp strip_linked_flow_notification(result), do: result
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
-    ShortcutHelpers.maybe_assign_position(
-      attrs,
-      project_id,
-      parent_id,
-      &TreeOperations.next_position/2
-    )
-  end
-
-  # =============================================================================
-  # Export / Import helpers
-  # =============================================================================
-
-  @doc """
-  Returns the project_id for a flow by its ID.
-  Used by the Localization TextExtractor to resolve project scope.
-  """
-  def get_flow_project_id(flow_id) do
-    Repo.one(from(f in Flow, where: f.id == ^flow_id, select: f.project_id))
-  end
-
-  @doc """
-  Lists all non-deleted flows for a project with nodes and connections preloaded.
-  Used by the export DataCollector and Validator.
-  """
-  def list_flows_for_export(project_id, opts \\ []) do
-    nodes_query =
-      from(n in FlowNode,
-        where: is_nil(n.deleted_at),
-        order_by: [asc: n.id],
-        preload: [:sequence_config]
-      )
-
-    filter_ids = Keyword.get(opts, :filter_ids, :all)
-
-    query =
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        preload: [nodes: ^nodes_query, connections: []],
-        order_by: [asc: f.position, asc: f.name]
-      )
-
-    query
-    |> maybe_filter_export_ids(filter_ids)
-    |> Repo.all()
+    ShortcutGenerator.assign_position(attrs, project_id, parent_id)
   end
 
   @doc """
@@ -1415,280 +1359,6 @@ defmodule Storyarn.Flows.FlowCrud do
       ),
       :count
     )
-  end
-
-  @doc """
-  Lists all non-deleted nodes for the given flow IDs.
-  Used by the Localization TextExtractor for bulk extraction.
-  """
-  def list_nodes_for_flow_ids(flow_ids) do
-    Repo.all(from(n in FlowNode, where: n.flow_id in ^flow_ids and is_nil(n.deleted_at)))
-  end
-
-  @doc """
-  Lists flow nodes using a specific asset (audio_asset_id in data).
-  Used by the Assets context for usage tracking.
-  Returns a list of maps with node and flow info.
-  """
-  def list_nodes_using_asset(project_id, asset_id) do
-    asset_id_str = to_string(asset_id)
-
-    Repo.all(
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: f.project_id == ^project_id,
-        where: is_nil(n.deleted_at),
-        where: fragment("?->>'audio_asset_id' = ?", n.data, ^asset_id_str),
-        order_by: [asc: f.name],
-        select: %{node_id: n.id, node_type: n.type, flow_id: f.id, flow_name: f.name}
-      )
-    )
-  end
-
-  @doc """
-  Resolves flow node source info for entity reference backlinks.
-  Joins entity_references with flow_nodes and flows to return enriched backlink data.
-  Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
-  """
-  def query_flow_node_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.EntityReference
-
-    from(r in EntityReference,
-      join: n in FlowNode,
-      on: r.source_type == "flow_node" and r.source_id == n.id,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where:
-        f.project_id == ^project_id and
-          is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        node_type: n.type,
-        flow_id: f.id,
-        flow_name: f.name,
-        flow_shortcut: f.shortcut
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "flow_node",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :flow,
-          flow_id: ref.flow_id,
-          flow_name: ref.flow_name,
-          flow_shortcut: ref.flow_shortcut,
-          node_type: ref.node_type
-        }
-      }
-    end)
-  end
-
-  @doc """
-  Lists sheet IDs referenced by flow nodes as speakers, across all active flows.
-  Used by the export Validator for orphan sheet detection.
-  """
-  def list_speaker_sheet_ids(project_id) do
-    from(n in FlowNode,
-      join: f in Flow,
-      on: n.flow_id == f.id,
-      where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      where: not is_nil(SpeakerSheetId.safe_query_value(n.data)),
-      select: SpeakerSheetId.safe_query_value(n.data)
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Lists sheet IDs referenced through variable_references in a project.
-  Delegates to the Sheets context to avoid cross-context schema queries.
-  """
-  def list_variable_referenced_sheet_ids(project_id) do
-    Sheets.list_variable_referenced_sheet_ids(project_id)
-  end
-
-  @doc """
-  Lists existing shortcuts of the given schema type for a project.
-  Used by the import parser for conflict detection.
-  """
-  def list_shortcuts(project_id) do
-    from(f in Flow,
-      where: f.project_id == ^project_id and is_nil(f.deleted_at),
-      select: f.shortcut
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Detects shortcut conflicts between imported flows and existing ones.
-  Returns a list of conflicting shortcuts.
-  """
-  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
-    ImportHelpers.detect_shortcut_conflicts(Flow, project_id, shortcuts)
-  end
-
-  @doc """
-  Soft-deletes existing entities with the given shortcut (for overwrite import strategy).
-  """
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    ImportHelpers.soft_delete_by_shortcut(Flow, project_id, shortcut)
-  end
-
-  @doc """
-  Bulk-inserts flow connections from a list of attr maps.
-  Returns the inserted records.
-  """
-  def bulk_import_connections(attrs_list) do
-    ImportHelpers.bulk_insert(FlowConnection, attrs_list)
-  end
-
-  # =============================================================================
-  # Import helpers (raw insert, no side effects)
-  # =============================================================================
-
-  @doc """
-  Creates a flow for import. Raw insert — no auto-shortcut, no auto-position,
-  no auto-entry/exit nodes. Returns `{:ok, flow}` or `{:error, changeset}`.
-  """
-  def import_flow(project_id, attrs) do
-    %Flow{project_id: project_id}
-    |> Flow.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a flow node for import. Raw insert — no entry-node generation and no
-  subflow validation. Imported hub identifiers still preserve the flow-wide
-  uniqueness invariant.
-  Returns `{:ok, node}` or `{:error, changeset}`.
-  """
-  def import_node(flow_id, attrs) do
-    type = MapUtils.get_flexible(attrs, :type)
-    data = MapUtils.get_flexible(attrs, :data)
-    sequence_config = MapUtils.get_flexible(attrs, :sequence_config)
-
-    Repo.transaction(fn ->
-      validate_import_node_invariants!(flow_id, type, data)
-
-      flow_id
-      |> insert_import_node!(attrs, type, data)
-      |> maybe_insert_import_sequence_config!(type, sequence_config)
-    end)
-  end
-
-  defp validate_import_node_invariants!(flow_id, "entry", _data) do
-    lock_import_flow(flow_id)
-
-    if Repo.exists?(
-         from(node in FlowNode,
-           where:
-             node.flow_id == ^flow_id and node.type == "entry" and
-               is_nil(node.deleted_at)
-         )
-       ) do
-      Repo.rollback(:entry_node_exists)
-    end
-  end
-
-  defp validate_import_node_invariants!(flow_id, "hub", data) do
-    lock_import_flow(flow_id)
-    hub_id = if is_map(data), do: MapUtils.get_flexible(data, :hub_id)
-
-    cond do
-      not is_binary(hub_id) or String.trim(hub_id) == "" ->
-        Repo.rollback(:hub_id_required)
-
-      NodeCrud.hub_id_exists?(flow_id, hub_id, nil) ->
-        Repo.rollback(:hub_id_not_unique)
-
-      true ->
-        :ok
-    end
-  end
-
-  defp validate_import_node_invariants!(_flow_id, _type, _data), do: :ok
-
-  # Serialize import writers with regular node CRUD before validating
-  # flow-wide identities. Both paths lock the same Flow row.
-  defp lock_import_flow(flow_id) do
-    Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR UPDATE"))
-  end
-
-  defp insert_import_node!(flow_id, attrs, type, data) do
-    %FlowNode{flow_id: flow_id}
-    |> FlowNode.create_changeset(attrs)
-    |> Ecto.Changeset.put_change(:word_count, WordCount.for_node_data(type, data))
-    |> Repo.insert()
-    |> case do
-      {:ok, node} -> node
-      {:error, changeset} -> Repo.rollback(changeset)
-    end
-  end
-
-  defp maybe_insert_import_sequence_config!(node, "sequence", config_attrs) do
-    config_attrs =
-      config_attrs
-      |> then(fn
-        attrs when is_map(attrs) -> attrs
-        _invalid_or_missing -> %{}
-      end)
-      |> MapUtils.stringify_keys()
-      |> Map.put("flow_node_id", node.id)
-
-    %SequenceConfig{}
-    |> SequenceConfig.create_changeset(config_attrs)
-    |> Repo.insert()
-    |> case do
-      {:ok, config} -> %{node | sequence_config: config}
-      {:error, changeset} -> Repo.rollback(changeset)
-    end
-  end
-
-  defp maybe_insert_import_sequence_config!(node, _type, _config_attrs), do: node
-
-  @doc """
-  Updates a flow's parent_id after import (two-pass parent linking).
-  """
-  def link_import_parent(%Flow{} = flow, parent_id) do
-    flow
-    |> Ecto.Changeset.change(%{parent_id: parent_id})
-    |> Repo.update!()
-  end
-
-  @doc """
-  Updates an imported node's parent after all source node IDs have been
-  remapped. Parent scope, type, and cycle invariants are validated by the
-  regular node reparenting path.
-  """
-  def link_node_import_parent(%FlowNode{} = node, parent_id) do
-    NodeCrud.update_node_parent(node, parent_id)
-  end
-
-  @doc """
-  Updates a node's data map after import (deferred ID remapping).
-  Used for flow-to-flow references that can't be resolved until all flows are imported.
-  """
-  def link_node_import_data(node_id, data) do
-    Repo.update_all(from(n in FlowNode, where: n.id == ^node_id), set: [data: data])
-  end
-
-  defp maybe_filter_export_ids(query, :all), do: query
-
-  defp maybe_filter_export_ids(query, ids) when is_list(ids) do
-    from(q in query, where: q.id in ^ids)
   end
 
   defp broadcast_flow_dashboard_result({:ok, _value} = result, project_id) do

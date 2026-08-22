@@ -26,46 +26,6 @@ msgstr ""
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/storyarn_web/components/collaboration_components.ex:71
-#, elixir-autogen, elixir-format
-msgid "added a connection"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:63
-#, elixir-autogen, elixir-format
-msgid "added a node"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:72
-#, elixir-autogen, elixir-format
-msgid "deleted a connection"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:64
-#, elixir-autogen, elixir-format
-msgid "deleted a node"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:73
-#, elixir-autogen, elixir-format
-msgid "joined the flow"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:74
-#, elixir-autogen, elixir-format
-msgid "left the flow"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:75
-#, elixir-autogen, elixir-format
-msgid "made a change"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:65
-#, elixir-autogen, elixir-format
-msgid "moved a node"
-msgstr ""
-
 #: lib/storyarn_web/controllers/export_controller.ex:54
 #: lib/storyarn_web/controllers/export_controller.ex:60
 #: lib/storyarn_web/controllers/export_controller.ex:105
@@ -88,56 +48,32 @@ msgstr ""
 msgid "Unknown format"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/form.ex:57
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:470
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:188
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:264
-#: lib/storyarn_web/live/flow_live/show.ex:1678
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:187
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:243
+#: lib/storyarn_web/live/flow_live/show.ex:1701
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:99
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:116
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
 
-#: lib/storyarn_web/components/collaboration_components.ex:69
-#, elixir-autogen, elixir-format
-msgid "finished editing"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:68
-#, elixir-autogen, elixir-format
-msgid "is editing a node"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:67
-#, elixir-autogen, elixir-format
-msgid "restored a node"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:66
-#, elixir-autogen, elixir-format
-msgid "updated a node"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:70
-#, elixir-autogen, elixir-format
-msgid "updated the flow"
-msgstr ""
-
-#: lib/storyarn_web/live/compare_live/flow.ex:79
 #: lib/storyarn_web/live/compare_live/scene.ex:79
 #: lib/storyarn_web/live/compare_live/sheet.ex:80
-#: lib/storyarn_web/live/version_viewer_live.ex:224
+#: lib/storyarn_web/live/flow_live/compare.ex:101
+#: lib/storyarn_web/live/flow_live/version_viewer.ex:138
+#: lib/storyarn_web/live/version_viewer_live.ex:192
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:740
+#: lib/storyarn/flows/versioning.ex:663
+#: lib/storyarn/versioning/version_crud.ex:784
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr ""
 
-#: lib/storyarn/versioning/version_crud.ex:727
+#: lib/storyarn/flows/versioning.ex:647
+#: lib/storyarn/versioning/version_crud.ex:771
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr ""
@@ -152,16 +88,11 @@ msgstr ""
 msgid "Sheet not found"
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/flow.ex:103
 #: lib/storyarn_web/live/compare_live/scene.ex:103
 #: lib/storyarn_web/live/compare_live/sheet.ex:104
+#: lib/storyarn_web/live/flow_live/compare.ex:84
 #, elixir-autogen, elixir-format
 msgid "Version not found"
-msgstr ""
-
-#: lib/storyarn_web/components/collaboration_components.ex:82
-#, elixir-autogen, elixir-format
-msgid "Someone"
 msgstr ""
 
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:161
@@ -189,4 +120,14 @@ msgstr ""
 #: lib/storyarn_web/controllers/export_controller.ex:42
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
+msgstr ""
+
+#: lib/storyarn/flows/versioning.ex:674
+#, elixir-autogen, elixir-format
+msgid "%{added} added, %{modified} modified, %{removed} removed"
+msgstr ""
+
+#: lib/storyarn/flows/versioning.ex:667
+#, elixir-autogen, elixir-format
+msgid "No changes"
 msgstr ""

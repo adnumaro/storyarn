@@ -8,8 +8,8 @@ defmodule Storyarn.Scenes.HealthChecker do
   callers provide the active project references and variable descriptors.
   """
 
-  alias Storyarn.Flows.Condition
-  alias Storyarn.Flows.Instruction
+  alias Storyarn.Scenes.Condition
+  alias Storyarn.Scenes.Instruction
   alias Storyarn.Scenes.RoutePoints
 
   @type severity :: :error | :warning | :info

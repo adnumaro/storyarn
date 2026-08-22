@@ -9,6 +9,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   alias Storyarn.Collaboration
   alias Storyarn.References.VariableReference
   alias Storyarn.Scenes.AmbientFlowCrud
+  alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.SceneAmbientFlow
 
   describe "dashboard invalidation" do
@@ -140,6 +141,22 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   end
 
   describe "create_ambient_flow/2" do
+    test "preloads the linked flow through the Scenes-owned read model" do
+      project = project_fixture()
+      scene = scene_fixture(project)
+      flow = flow_fixture(project, %{name: "Ambient narrative"})
+
+      assert {:ok, _ambient_flow} =
+               AmbientFlowCrud.create_ambient_flow(scene.id, %{"flow_id" => flow.id})
+
+      assert [%SceneAmbientFlow{flow: %FlowRecord{} = linked_flow}] =
+               AmbientFlowCrud.list_ambient_flows(scene.id)
+
+      assert linked_flow.id == flow.id
+      assert linked_flow.name == "Ambient narrative"
+      assert linked_flow.project_id == project.id
+    end
+
     test "creates a link only when both scene and flow are active in the same project" do
       project = project_fixture()
       scene = scene_fixture(project)

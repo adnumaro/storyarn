@@ -13,7 +13,6 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
-  alias Storyarn.Flows.Flow
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.ProjectImportAttempt
@@ -23,6 +22,7 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
@@ -945,7 +945,10 @@ defmodule Storyarn.Imports.ReplacementTest do
 
                snapshot =
                  project.id
-                 |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(localization_scope: :active)
+                 |> ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(
+                   localization_scope: :active,
+                   include_referenced_tombstones: true
+                 )
                  |> Map.put(
                    "asset_restore_contract_version",
                    AssetHashResolver.exact_restore_contract_version()

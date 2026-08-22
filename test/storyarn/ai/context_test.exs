@@ -11,12 +11,12 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.AI.Context.Finalizer
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy
-  alias Storyarn.AI.Context.SubjectRef
   alias Storyarn.AI.Task
   alias Storyarn.Flows
   alias Storyarn.Shared.CanonicalJSON
   alias Storyarn.Sheets.Block
-  alias StoryarnTest.AI.ContextTask
+  alias StoryarnTest.Flows.AI.ContextTask, as: FlowContextTask
+  alias StoryarnTest.Sheets.AI.ContextTask, as: SheetContextTask
 
   setup do
     scope = user_scope_fixture()
@@ -49,7 +49,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       task =
-        task(%{
+        flow_task(%{
           scope: :dialogue,
           max_depth: 0,
           max_fan_out: 1,
@@ -60,7 +60,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       {:ok, ref} =
-        SubjectRef.dialogue(project.workspace_id, project.id, node.id, response_id: "z")
+        FlowContextTask.dialogue_subject(project.workspace_id, project.id, node.id, response_id: "z")
 
       assert {:ok, first} = Context.build_context(scope, task, ref)
       assert {:ok, second} = Context.build_context(scope, task, ref)
@@ -95,7 +95,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       task =
-        task(%{
+        flow_task(%{
           scope: :dialogue,
           max_depth: 0,
           max_fan_out: 1,
@@ -105,7 +105,7 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{}
         })
 
-      {:ok, ref} = SubjectRef.dialogue(project.workspace_id, project.id, node.id)
+      {:ok, ref} = FlowContextTask.dialogue_subject(project.workspace_id, project.id, node.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert length(package.manifest.excluded) == 4
@@ -140,7 +140,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       task =
-        task(%{
+        flow_task(%{
           scope: :dialogue,
           max_depth: 0,
           max_fan_out: 1,
@@ -150,7 +150,7 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{speaker_blocks: ["Summary", "Biography"]}
         })
 
-      {:ok, ref} = SubjectRef.dialogue(project.workspace_id, project.id, node.id)
+      {:ok, ref} = FlowContextTask.dialogue_subject(project.workspace_id, project.id, node.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert "optional_context_truncated" in package.warnings
@@ -173,7 +173,8 @@ defmodule Storyarn.AI.ContextTest do
       foreign_scope = user_scope_fixture()
       task = flow_task()
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, node.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, node.id)
 
       assert {:error, :unauthorized_context} = Context.build_context(foreign_scope, task, ref)
     end
@@ -192,7 +193,7 @@ defmodule Storyarn.AI.ContextTest do
       _connection_c = connection_fixture(flow, first, third)
 
       task =
-        task(%{
+        flow_task(%{
           scope: :flow_neighborhood,
           max_depth: 1,
           max_fan_out: 1,
@@ -202,7 +203,8 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{}
         })
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, selected.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert "depth_limit_reached" in package.warnings
@@ -236,7 +238,7 @@ defmodule Storyarn.AI.ContextTest do
       second_connection = connection_fixture(flow, first, second)
 
       task =
-        task(%{
+        flow_task(%{
           scope: :flow_neighborhood,
           max_depth: 2,
           max_fan_out: 1,
@@ -246,7 +248,8 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{}
         })
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, selected.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
 
@@ -275,7 +278,7 @@ defmodule Storyarn.AI.ContextTest do
         end
 
       task =
-        task(%{
+        flow_task(%{
           scope: :flow_neighborhood,
           max_depth: 1,
           max_fan_out: 1,
@@ -285,7 +288,8 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{}
         })
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, selected.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
 
@@ -315,7 +319,7 @@ defmodule Storyarn.AI.ContextTest do
       end
 
       task =
-        task(%{
+        flow_task(%{
           scope: :flow_neighborhood,
           max_depth: 1,
           max_fan_out: 1,
@@ -340,7 +344,8 @@ defmodule Storyarn.AI.ContextTest do
 
       on_exit(fn -> :telemetry.detach(handler_id) end)
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, selected.id)
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert length(package.manifest.excluded) == 5
@@ -383,7 +388,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [first.id, second.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [first.id, second.id])
 
       assert {:error, :context_too_large} = Context.build_context(scope, entity_limited, ref)
 
@@ -401,7 +406,7 @@ defmodule Storyarn.AI.ContextTest do
       Repo.update!(Block.delete_changeset(deleted))
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [active.id, deleted.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [active.id, deleted.id])
 
       assert {:ok, package} = Context.build_context(scope, sheet_task(), ref)
       assert package.warnings == ["stale_reference"]
@@ -418,7 +423,7 @@ defmodule Storyarn.AI.ContextTest do
       task = sheet_task()
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
 
@@ -437,7 +442,7 @@ defmodule Storyarn.AI.ContextTest do
       selected = node_fixture(flow)
 
       task =
-        task(%{
+        flow_task(%{
           scope: :flow_neighborhood,
           max_depth: 0,
           max_fan_out: 5,
@@ -447,7 +452,8 @@ defmodule Storyarn.AI.ContextTest do
           fields: %{}
         })
 
-      {:ok, ref} = SubjectRef.flow_neighborhood(project.workspace_id, project.id, selected.id)
+      {:ok, ref} =
+        FlowContextTask.flow_neighborhood_subject(project.workspace_id, project.id, selected.id)
 
       assert {:ok, before_package} = Context.build_context(scope, task, ref)
       assert before_package.warnings == []
@@ -477,7 +483,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
       assert {:ok, encoded} = CanonicalJSON.encode(package.payload)
@@ -498,7 +504,7 @@ defmodule Storyarn.AI.ContextTest do
       end
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, selected.id, block_ids: [selected_block.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, selected.id, block_ids: [selected_block.id])
 
       assert {:ok, package} = Context.build_context(scope, sheet_task(), ref)
       assert length(package.manifest.included) == 2
@@ -546,7 +552,7 @@ defmodule Storyarn.AI.ContextTest do
       |> Repo.update!()
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, source.id,
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, source.id,
           block_ids: [sheet_reference.id, flow_reference.id, stale_reference.id]
         )
 
@@ -577,7 +583,7 @@ defmodule Storyarn.AI.ContextTest do
         })
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [reference.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [reference.id])
 
       assert {:ok, package} = Context.build_context(scope, sheet_task(), ref)
 
@@ -589,28 +595,34 @@ defmodule Storyarn.AI.ContextTest do
     end
 
     test "rejects task policies that could request project-scale context" do
-      refute Policy.valid?(%{
-               scope: :flow_neighborhood,
-               max_depth: 13,
-               max_fan_out: 50,
-               max_entities: 500,
-               max_bytes: 524_288,
-               tokenizer: nil,
-               fields: %{}
-             })
+      refute Policy.valid?(
+               %{
+                 scope: :flow_neighborhood,
+                 max_depth: 13,
+                 max_fan_out: 50,
+                 max_entities: 500,
+                 max_bytes: 524_288,
+                 tokenizer: nil,
+                 fields: %{}
+               },
+               FlowContextTask.context_contract(%{scope: :flow_neighborhood})
+             )
     end
 
     test "final serialization and hash are invariant to builder entity order" do
       assert {:ok, policy} =
-               Policy.new(%{
-                 scope: :sheet,
-                 max_depth: 0,
-                 max_fan_out: 5,
-                 max_entities: 5,
-                 max_bytes: 4_096,
-                 tokenizer: nil,
-                 fields: %{}
-               })
+               Policy.new(
+                 %{
+                   scope: :sheet,
+                   max_depth: 0,
+                   max_fan_out: 5,
+                   max_entities: 5,
+                   max_bytes: 4_096,
+                   tokenizer: nil,
+                   fields: %{}
+                 },
+                 SheetContextTask.context_contract(%{scope: :sheet})
+               )
 
       assert {:ok, sheet} =
                Entity.new("sheet", 2, %{"name" => "B"}, required: true, priority: 1)
@@ -637,15 +649,18 @@ defmodule Storyarn.AI.ContextTest do
 
     test "finalization rejects duplicate entity identities" do
       assert {:ok, policy} =
-               Policy.new(%{
-                 scope: :sheet,
-                 max_depth: 0,
-                 max_fan_out: 5,
-                 max_entities: 5,
-                 max_bytes: 4_096,
-                 tokenizer: nil,
-                 fields: %{}
-               })
+               Policy.new(
+                 %{
+                   scope: :sheet,
+                   max_depth: 0,
+                   max_fan_out: 5,
+                   max_entities: 5,
+                   max_bytes: 4_096,
+                   tokenizer: nil,
+                   fields: %{}
+                 },
+                 SheetContextTask.context_contract(%{scope: :sheet})
+               )
 
       assert {:ok, selected} =
                Entity.new("sheet", 7, %{"name" => "Selected"}, required: true, priority: 1)
@@ -679,7 +694,7 @@ defmodule Storyarn.AI.ContextTest do
       on_exit(fn -> :telemetry.detach(handler_id) end)
 
       {:ok, ref} =
-        SubjectRef.sheet(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
+        SheetContextTask.sheet_subject(project.workspace_id, project.id, sheet.id, block_ids: [block.id])
 
       assert {:ok, package} = Context.build_context(scope, task, ref)
 
@@ -703,16 +718,22 @@ defmodule Storyarn.AI.ContextTest do
     end
   end
 
-  defp flow_task do
-    task(%{
-      scope: :flow_neighborhood,
-      max_depth: 2,
-      max_fan_out: 5,
-      max_entities: 20,
-      max_bytes: 16_384,
-      tokenizer: nil,
-      fields: %{}
-    })
+  defp flow_task(overrides \\ %{}) do
+    policy =
+      Map.merge(
+        %{
+          scope: :flow_neighborhood,
+          max_depth: 2,
+          max_fan_out: 5,
+          max_entities: 20,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        },
+        overrides
+      )
+
+    task(FlowContextTask, policy)
   end
 
   defp sheet_task(overrides \\ %{}) do
@@ -730,12 +751,12 @@ defmodule Storyarn.AI.ContextTest do
         overrides
       )
 
-    task(policy)
+    task(SheetContextTask, policy)
   end
 
-  defp task(policy) do
-    attrs = Map.put(ContextTask.definition(), :context_policy, policy)
-    assert {:ok, task} = Task.new(ContextTask, attrs)
+  defp task(task_module, policy) do
+    attrs = Map.put(task_module.definition(), :context_policy, policy)
+    assert {:ok, task} = Task.new(task_module, attrs)
     task
   end
 end

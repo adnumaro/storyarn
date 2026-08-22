@@ -11,8 +11,8 @@ defmodule Storyarn.Versioning.EntityRestoreLockConcurrencyTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
   alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowNode
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes

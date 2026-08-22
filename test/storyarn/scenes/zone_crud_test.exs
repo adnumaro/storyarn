@@ -7,7 +7,7 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Flows.VariableReference
+  alias Storyarn.Scenes.Persistence.VariableReferenceRecord
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.ZoneCrud
   alias Storyarn.Sheets.EntityReference
@@ -181,13 +181,13 @@ defmodule Storyarn.Scenes.ZoneCrudTest do
                ])
 
       assert [
-               %VariableReference{
+               %VariableReferenceRecord{
                  block_id: block_id,
                  kind: "write"
                }
              ] =
                Repo.all(
-                 from(reference in VariableReference,
+                 from(reference in VariableReferenceRecord,
                    where:
                      reference.source_type == "scene_zone" and
                        reference.source_id == ^zone.id

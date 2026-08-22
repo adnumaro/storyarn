@@ -3,11 +3,8 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Analytics
   alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
   alias Storyarn.Flows
-  alias Storyarn.Versioning
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
@@ -29,11 +26,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Nodes.Instruction
   alias StoryarnWeb.FlowLive.Nodes.Subflow
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
+  alias StoryarnWeb.FlowLive.PickerSearch
+  alias StoryarnWeb.FlowLive.VersionEvents
+  alias StoryarnWeb.FlowLive.VersionHistory
   alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Helpers.VersionEventHelpers
-  alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
 
@@ -69,6 +66,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           "project_slug" => @project.slug,
           "flow_id" => @flow && to_string(@flow.id),
           "can_edit" => @can_edit,
+          "membership" => @membership,
           "active_tool" => "flows",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
           "current_scope" => @current_scope,
@@ -431,9 +429,8 @@ defmodule StoryarnWeb.FlowLive.Show do
 
     socket =
       if is_nil(socket.assigns.history_data) do
-        VersionHistoryHelpers.load_history_data(
+        VersionHistory.load_history_data(
           socket,
-          "flow",
           socket.assigns.flow,
           socket.assigns.project.id,
           socket.assigns.workspace.id
@@ -450,35 +447,35 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, flow_version_config())
+    VersionEvents.handle_create(%{"title" => title, "description" => description}, socket, flow_version_config())
   end
 
   def handle_event("promote_version", params, socket) do
-    VersionEventHelpers.handle_promote(params, socket, flow_version_config())
+    VersionEvents.handle_promote(params, socket, flow_version_config())
   end
 
   def handle_event("delete_version", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, flow_version_config())
+    VersionEvents.handle_delete(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("load_more_versions", _params, socket) do
-    VersionEventHelpers.handle_load_more(socket, flow_version_config())
+    VersionEvents.handle_load_more(socket, flow_version_config())
   end
 
   def handle_event("preview_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_preview_restore(params, socket, flow_version_config())
+    VersionEvents.handle_preview_restore(params, socket, flow_version_config())
   end
 
   def handle_event("review_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_review_restore(params, socket, flow_version_config())
+    VersionEvents.handle_review_restore(params, socket, flow_version_config())
   end
 
   def handle_event("confirm_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_confirm_restore(params, socket, flow_version_config())
+    VersionEvents.handle_confirm_restore(params, socket, flow_version_config())
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, flow_version_config())
+    VersionEvents.handle_compare(%{"version_number" => vn}, socket, flow_version_config())
   end
 
   def handle_event("wrap_selection_in_sequence", %{"node_ids" => node_ids} = params, socket) do
@@ -592,12 +589,6 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_deselect_node(socket)
   end
 
-  def handle_event("create_sheet", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      GenericNodeHandlers.handle_create_sheet(socket)
-    end)
-  end
-
   def handle_event("node_dragging", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_node_dragging(params, socket)
@@ -673,7 +664,50 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("picker_search", params, socket) do
-    {:noreply, PickerSearch.handle_search(socket, params)}
+    query = picker_query(params["query"])
+    selected_id = params["selected_id"]
+    resource = picker_resource(params)
+    kind = picker_kind(params)
+
+    {results, has_more} =
+      case {resource, kind} do
+        {"asset", kind} when kind in ["image", "audio"] ->
+          PickerSearch.asset_options(socket.assigns.project.id, kind,
+            query: query,
+            limit: picker_limit(params["limit"], PickerSearch.asset_limit()),
+            selected_id: selected_id
+          )
+
+        {"entity", "sheet"} ->
+          Flows.search_speaker_options(socket.assigns.project.id, query,
+            limit: picker_limit(params["limit"], PickerSearch.entity_limit()),
+            selected_id: selected_id
+          )
+
+        {"entity", "flow"} ->
+          PickerSearch.flow_options(socket.assigns.project.id,
+            query: query,
+            limit: picker_limit(params["limit"], PickerSearch.entity_limit()),
+            selected_id: selected_id
+          )
+
+        {"entity", "variable"} ->
+          PickerSearch.variable_options(socket.assigns[:project_variables] || [],
+            query: query,
+            limit: picker_limit(params["limit"], PickerSearch.entity_limit()),
+            selected_id: selected_id
+          )
+
+        _other ->
+          {[], false}
+      end
+
+    {:noreply,
+     push_event(socket, "picker_search_results", %{
+       request_id: params["request_id"],
+       results: results,
+       has_more: has_more
+     })}
   end
 
   def handle_event("toggle_deep_search", _params, socket) do
@@ -750,13 +784,13 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("update_annotation_color", %{"value" => color}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      update_selected_node_data(socket, "color", color)
+      update_selected_node_data(socket, :put_annotation_color, %{value: color})
     end)
   end
 
-  def handle_event("update_annotation_font_size", %{"value" => size}, socket) when size in ["sm", "md", "lg"] do
+  def handle_event("update_annotation_font_size", %{"value" => size}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      update_selected_node_data(socket, "font_size", size)
+      update_selected_node_data(socket, :put_annotation_font_size, %{value: size})
     end)
   end
 
@@ -971,8 +1005,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         %{type: "hub"} ->
           update_selected_node_data(
             authorized_socket,
-            "color",
-            Flows.resolve_hub_color(color)
+            :put_hub_color,
+            %{value: color}
           )
 
         _other_node ->
@@ -1137,10 +1171,13 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp wrap_selection_in_sequence(socket, node_ids, params) do
     ids = parse_node_ids(node_ids)
 
-    case Flows.wrap_selection_in_sequence(socket.assigns.flow, ids, sequence_wrap_attrs(params)) do
-      {:ok, sequence} ->
-        track_sequence_created_from_wrap(socket, sequence)
-
+    case Flows.wrap_editor_selection(
+           socket.assigns.current_scope,
+           socket.assigns.flow,
+           ids,
+           sequence_wrap_attrs(params)
+         ) do
+      {:ok, _sequence} ->
         flow = Flows.get_flow!(socket.assigns.project.id, socket.assigns.flow.id)
         flow_data = Flows.serialize_for_canvas(flow, project_variables: socket.assigns.project_variables)
 
@@ -1166,44 +1203,28 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  defp track_sequence_created_from_wrap(socket, sequence) do
-    Analytics.track(socket.assigns.current_scope, "flow node created", %{
-      creation_method: "wrap_selection",
-      flow_id: socket.assigns.flow.id,
-      has_parent: not is_nil(sequence.parent_id),
-      node_type: "sequence",
-      project_id: socket.assigns.project.id
-    })
-  end
-
   # Tree mutations (create_flow, create_child_flow, set_main_flow,
   # set_pending_delete_flow, confirm_delete_flow, delete_flow, move_to_parent)
   # now live in FlowSidebarLive — they never reach this LV because the tree
   # is rendered by FlowSidebarLive which is a separate nested LV.
 
   defp reload_history_data(socket) do
-    VersionHistoryHelpers.load_history_data(
+    VersionHistory.load_history_data(
       socket,
-      "flow",
       socket.assigns.flow,
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
   end
 
-  defp maybe_track_version_panel_opened(socket, entity_type) do
+  defp maybe_track_version_panel_opened(socket, _entity_type) do
     if !socket.assigns[:versions_panel_open] do
-      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
-        entity_type: entity_type,
-        project_id: socket.assigns.project.id
-      })
+      Flows.record_version_panel_opened(socket.assigns.current_scope, socket.assigns.flow)
     end
   end
 
   defp flow_version_config do
     %{
-      entity_type: "flow",
-      entity_key: :flow,
       reload_history: &reload_history_data/1,
       restore_path: &flow_restore_path/1,
       compare_path: &flow_compare_path/2
@@ -1394,16 +1415,11 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:variable_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_variable_suggestions(query, component_cid, socket)
 
-  def handle_info({:resolve_variable_defaults, refs, component_cid}, socket),
-    do: EditorInfoHandlers.handle_resolve_variable_defaults(refs, component_cid, socket)
-
   def handle_info(:debug_auto_step, socket), do: DebugHandlers.handle_debug_auto_step(socket)
 
-  def handle_info({Presence, {:join, _} = event}, socket),
-    do: CollaborationEventHandlers.handle_presence_event(event, socket)
+  def handle_info({source, {:join, _} = event}, socket), do: handle_presence_event(source, event, socket)
 
-  def handle_info({Presence, {:leave, _} = event}, socket),
-    do: CollaborationEventHandlers.handle_presence_event(event, socket)
+  def handle_info({source, {:leave, _} = event}, socket), do: handle_presence_event(source, event, socket)
 
   def handle_info({:cursor_update, cursor_data}, socket),
     do: CollaborationEventHandlers.handle_cursor_update(cursor_data, socket)
@@ -1422,9 +1438,10 @@ defmodule StoryarnWeb.FlowLive.Show do
         {:noreply, socket}
 
       node ->
-        NodeHelpers.persist_node_update(socket, node.id, fn data ->
-          Map.put(data, "audio_asset_id", asset_id)
-        end)
+        NodeHelpers.persist_node_update(socket, node.id, :put_field, %{
+          field: "audio_asset_id",
+          value: asset_id
+        })
     end
   end
 
@@ -1446,6 +1463,12 @@ defmodule StoryarnWeb.FlowLive.Show do
     else
       {:noreply, socket}
     end
+  end
+
+  defp handle_presence_event(source, event, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: CollaborationEventHandlers.handle_presence_event(event, socket),
+      else: {:noreply, socket}
   end
 
   @impl true
@@ -1561,7 +1584,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       canEdit: assigns.can_edit,
       restoreEnabled:
         assigns.can_edit &&
-          Versioning.restore_enabled?({:entity_version_restore, "flow"}),
+          Flows.restore_enabled?(),
       loading: assigns.versions_panel_open && is_nil(history_data)
     }
   end
@@ -1653,17 +1676,17 @@ defmodule StoryarnWeb.FlowLive.Show do
     Flows.nav_history_put({user_id, project_id}, history)
   end
 
-  defp update_selected_node_data(socket, field, value) do
+  defp update_selected_node_data(socket, operation, payload) do
     case socket.assigns.selected_node do
       nil -> {:noreply, socket}
-      node -> NodeHelpers.persist_node_update(socket, node.id, &Map.put(&1, field, value))
+      node -> NodeHelpers.persist_node_update(socket, node.id, operation, payload)
     end
   end
 
   defp do_create_linked_flow(socket, node) do
     case Flows.create_linked_flow(
            socket.assigns.current_scope,
-           socket.assigns.project,
+           socket.assigns.project.id,
            socket.assigns.flow,
            node
          ) do
@@ -1700,4 +1723,31 @@ defmodule StoryarnWeb.FlowLive.Show do
       if scene.id == resolved_id, do: scene.name
     end)
   end
+
+  defp picker_query(query) when is_binary(query), do: String.trim(query)
+  defp picker_query(_query), do: ""
+
+  defp picker_resource(params), do: params["resource"] || params["type"]
+
+  defp picker_kind(params) do
+    params["kind"] || params["asset_kind"] || params["entity_kind"]
+  end
+
+  defp picker_limit(limit, default) do
+    case parse_picker_integer(limit) do
+      parsed when is_integer(parsed) and parsed > 0 -> min(parsed, 100)
+      _invalid -> default
+    end
+  end
+
+  defp parse_picker_integer(value) when is_integer(value), do: value
+
+  defp parse_picker_integer(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} -> parsed
+      _invalid -> nil
+    end
+  end
+
+  defp parse_picker_integer(_value), do: nil
 end

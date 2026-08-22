@@ -1,9 +1,11 @@
 defmodule Storyarn.AI.InferenceProviders.FireworksTest do
   use ExUnit.Case, async: false
 
+  alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.InferenceProviders.Fireworks
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.ResolvedCredential
+  alias Storyarn.Sheets.AI.ContextContract
 
   @stub StoryarnTest.AI.Fireworks
 
@@ -48,7 +50,12 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
   end
 
   test "does not call the provider for contextual input without a curated model contract" do
-    request = %{request() | input: contextual_input(), contextual?: true}
+    request = %{
+      request()
+      | input: contextual_input(),
+        contextual?: true,
+        context_policy: context_policy()
+    }
 
     assert {:error, :model_context_limits_unavailable} =
              Fireworks.generate(credential(), request)
@@ -67,7 +74,8 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
       request()
       | model: "accounts/fireworks/models/qwen3p7-plus",
         input: contextual_input(),
-        contextual?: true
+        contextual?: true,
+        context_policy: context_policy()
     }
 
     with_default_catalog(fn ->
@@ -96,6 +104,7 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
       model: "accounts/fireworks/models/test-model",
       input: %{"probe" => "storyarn-managed-ai-diagnostic-v1"},
       contextual?: false,
+      context_policy: nil,
       max_output_bytes: 256,
       provider_options: %{
         system_prompt: "Return JSON.",
@@ -137,6 +146,24 @@ defmodule Storyarn.AI.InferenceProviders.FireworksTest do
         "entities" => []
       }
     }
+  end
+
+  defp context_policy do
+    {:ok, policy} =
+      Policy.new(
+        %{
+          scope: :sheet,
+          max_depth: 0,
+          max_fan_out: 10,
+          max_entities: 20,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        },
+        ContextContract
+      )
+
+    policy
   end
 
   defp with_request_overrides(overrides, callback) do

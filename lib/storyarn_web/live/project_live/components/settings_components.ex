@@ -12,9 +12,9 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
   alias Storyarn.Billing
-  alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Projects
+  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.Validations
   alias Storyarn.Versioning
@@ -206,7 +206,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   def do_repair_variable_references(socket) do
-    do_repair_variable_references(socket, &Flows.repair_stale_references/1)
+    do_repair_variable_references(socket, &References.repair_stale_variable_references/1)
   end
 
   @doc false

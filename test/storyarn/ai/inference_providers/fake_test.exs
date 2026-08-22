@@ -1,8 +1,10 @@
 defmodule Storyarn.AI.InferenceProviders.FakeTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.InferenceProviders.Fake
   alias Storyarn.AI.Tasks.ManagedDiagnostic
+  alias Storyarn.Sheets.AI.ContextContract
   alias StoryarnTest.AI.ContractTask
 
   test "unwraps only the exact context envelope emitted by execution" do
@@ -27,6 +29,7 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
     assert {:error, :provider_error} =
              Fake.generate(nil, %{
                input: %{"text" => "ordinary"},
+               context_policy: nil,
                provider_options: %{scenario: :success}
              })
   end
@@ -40,8 +43,9 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
 
       assert {:ok, %{output: output}} =
                Fake.generate(nil, %{
-                 input: contextual_input(%{"text" => "hello"}, scope: "dialogue"),
+                 input: contextual_input(%{"text" => "hello"}),
                  contextual?: true,
+                 context_policy: context_policy(),
                  provider_options: options
                })
 
@@ -58,6 +62,7 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
                Fake.generate(nil, %{
                  input: %{"probe" => ManagedDiagnostic.probe()},
                  contextual?: false,
+                 context_policy: nil,
                  provider_options: options
                })
 
@@ -77,7 +82,12 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
       }
 
       assert {:ok, %{output: %{"tight" => tight, "items" => [item]}}} =
-               Fake.generate(nil, %{input: %{}, contextual?: false, provider_options: options})
+               Fake.generate(nil, %{
+                 input: %{},
+                 contextual?: false,
+                 context_policy: nil,
+                 provider_options: options
+               })
 
       assert String.length(tight) <= 4
       assert String.length(item) <= 3
@@ -94,6 +104,7 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
                  Fake.generate(nil, %{
                    input: %{},
                    contextual?: false,
+                   context_policy: nil,
                    provider_options: %{response_schema: schema}
                  })
       end
@@ -116,7 +127,26 @@ defmodule Storyarn.AI.InferenceProviders.FakeTest do
     Fake.generate(nil, %{
       input: input,
       contextual?: contextual?,
+      context_policy: if(contextual?, do: context_policy()),
       provider_options: %{scenario: :success}
     })
+  end
+
+  defp context_policy do
+    {:ok, policy} =
+      Policy.new(
+        %{
+          scope: :sheet,
+          max_depth: 0,
+          max_fan_out: 10,
+          max_entities: 20,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        },
+        ContextContract
+      )
+
+    policy
   end
 end

@@ -13,21 +13,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [push_event: 3, push_navigate: 2, push_patch: 2, put_flash: 3]
+  import Phoenix.LiveView, only: [push_event: 3, push_patch: 2, put_flash: 3]
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Analytics
   alias Storyarn.Flows
-  alias Storyarn.Flows.SequenceConfig
-  alias Storyarn.Repo
-  alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
-  alias StoryarnWeb.Live.Shared.PickerSearch
+  alias StoryarnWeb.FlowLive.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
 
@@ -230,7 +226,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
     project_id = socket.assigns.project.id
-    config = Repo.get_by(SequenceConfig, flow_node_id: seq_id)
+    config = Flows.get_sequence_config(seq_id)
     visual_layers = Flows.list_sequence_visual_layers(seq_id)
     tracks = Flows.list_sequence_tracks(seq_id)
     image_asset_ids = selected_asset_ids(visual_layers)
@@ -248,7 +244,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp serialize_sequence_config(nil), do: nil
 
-  defp serialize_sequence_config(%SequenceConfig{} = cfg) do
+  defp serialize_sequence_config(%{} = cfg) do
     %{
       name: cfg.name,
       width: cfg.width,
@@ -256,7 +252,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     }
   end
 
-  defp serialize_sequence_visual_layer(%Storyarn.Flows.SequenceVisualLayer{} = layer) do
+  defp serialize_sequence_visual_layer(%{} = layer) do
     %{
       id: layer.id,
       kind: layer.kind,
@@ -277,7 +273,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     }
   end
 
-  defp serialize_sequence_track(%Storyarn.Flows.SequenceTrack{} = track) do
+  defp serialize_sequence_track(%{} = track) do
     %{
       kind: track.kind,
       asset_id: track.asset_id,
@@ -321,7 +317,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       audioAssetId: data["audio_asset_id"],
       avatarId: data["avatar_id"],
       responses: serialize_dialogue_responses(data["responses"] || []),
-      allSheets: PickerSearch.initial_sheet_options(project_id, [data["speaker_sheet_id"]]),
+      allSheets: Flows.initial_speaker_options(project_id, [data["speaker_sheet_id"]]),
       audioAssets: PickerSearch.initial_asset_options(project_id, "audio", [data["audio_asset_id"]]),
       projectVariables: socket.assigns[:project_variables] || []
     }
@@ -449,29 +445,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:node_form, nil)
      |> assign(:editing_mode, nil)
      |> assign(:sequence_panel_data, nil)}
-  end
-
-  @spec handle_create_sheet(Socket.t()) ::
-          {:noreply, Socket.t()}
-  def handle_create_sheet(socket) do
-    case Sheets.create_sheet(
-           socket.assigns.current_scope,
-           socket.assigns.project,
-           %{name: dgettext("sheets", "Untitled")}
-         ) do
-      {:ok, new_sheet} ->
-        {:noreply,
-         push_navigate(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/sheets/#{new_sheet.id}"
-         )}
-
-      {:error, :limit_reached, _details} ->
-        {:noreply, put_flash(socket, :error, gettext("Item limit reached for your plan"))}
-
-      {:error, _changeset} ->
-        {:noreply, put_flash(socket, :error, dgettext("flows", "Could not create sheet."))}
-    end
   end
 
   @spec handle_batch_update_positions(map(), Socket.t()) ::
@@ -720,9 +693,13 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, layer} <- Flows.create_sequence_visual_layer(parsed_id, attrs) do
-      track_sequence_visual_layer(socket, "sequence visual layer created", parsed_id, layer, %{changed_asset: true})
-
+         {:ok, _layer} <-
+           Flows.create_editor_sequence_visual_layer(
+             socket.assigns.current_scope,
+             socket.assigns.flow,
+             parsed_id,
+             attrs
+           ) do
       {:noreply,
        socket
        |> mark_saved()
@@ -746,11 +723,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, layer} <- Flows.update_sequence_visual_layer(layer, attrs) do
-      track_sequence_visual_layer(socket, "sequence visual layer updated", parsed_id, layer, %{
-        changed_asset: Map.has_key?(params, "asset_id")
-      })
-
+         {:ok, _layer} <-
+           Flows.update_editor_sequence_visual_layer(
+             socket.assigns.current_scope,
+             socket.assigns.flow,
+             parsed_id,
+             layer,
+             attrs
+           ) do
       {:noreply,
        socket
        |> mark_saved()
@@ -823,12 +803,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          attrs = track_attrs_from_params(params),
-         {:ok, track} <- Flows.upsert_sequence_track(parsed_id, kind, attrs) do
-      track_sequence_audio(socket, parsed_id, track, %{
-        changed_asset: Map.has_key?(params, "asset_id"),
-        changed_volume: Map.has_key?(params, "volume")
-      })
-
+         {:ok, _track} <-
+           Flows.upsert_editor_sequence_track(
+             socket.assigns.current_scope,
+             socket.assigns.flow,
+             parsed_id,
+             kind,
+             attrs
+           ) do
       {:noreply,
        socket
        |> mark_saved()
@@ -897,30 +879,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp parse_optional_int(_), do: :error
 
-  defp track_sequence_visual_layer(socket, event_name, sequence_id, layer, extra) do
-    Analytics.track(socket.assigns.current_scope, event_name, %{
-      changed_asset: extra[:changed_asset],
-      flow_id: socket.assigns.flow.id,
-      has_asset: not is_nil(layer.asset_id),
-      layer_kind: layer.kind,
-      project_id: socket.assigns.project.id,
-      sequence_id: sequence_id,
-      slot: layer.slot
-    })
-  end
-
-  defp track_sequence_audio(socket, sequence_id, track, extra) do
-    Analytics.track(socket.assigns.current_scope, "sequence track updated", %{
-      changed_asset: extra.changed_asset,
-      changed_volume: extra.changed_volume,
-      flow_id: socket.assigns.flow.id,
-      has_asset: not is_nil(track.asset_id),
-      project_id: socket.assigns.project.id,
-      sequence_id: sequence_id,
-      track_kind: track.kind
-    })
-  end
-
   @spec handle_update_node_data(map(), Socket.t()) ::
           {:noreply, Socket.t()}
   def handle_update_node_data(%{"node" => node_params}, socket) do
@@ -937,7 +895,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Socket.t()}
   def handle_mention_suggestions(%{"query" => query}, socket) do
     project_id = socket.assigns.project.id
-    results = Sheets.search_referenceable(project_id, query, ["sheet", "flow"])
+    results = Flows.search_mentions(project_id, query)
 
     items =
       Enum.map(results, fn result ->

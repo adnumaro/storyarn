@@ -2,7 +2,9 @@ defmodule Storyarn.AI.Context.ModelLimitsTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.AI.Context.ModelLimits
+  alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.ModelCatalog
+  alias Storyarn.Sheets.AI.ContextContract
 
   setup do
     original = Application.fetch_env(:storyarn, ModelCatalog)
@@ -129,6 +131,7 @@ defmodule Storyarn.AI.Context.ModelLimitsTest do
       model: model,
       input: input,
       contextual?: contextual?,
+      context_policy: if(contextual?, do: context_policy()),
       provider_options: %{max_output_tokens: max_output_tokens}
     }
   end
@@ -153,5 +156,23 @@ defmodule Storyarn.AI.Context.ModelLimitsTest do
       ],
       max_tokens: max_output_tokens
     }
+  end
+
+  defp context_policy do
+    {:ok, policy} =
+      Policy.new(
+        %{
+          scope: :sheet,
+          max_depth: 0,
+          max_fan_out: 10,
+          max_entities: 20,
+          max_bytes: 16_384,
+          tokenizer: nil,
+          fields: %{}
+        },
+        ContextContract
+      )
+
+    policy
   end
 end

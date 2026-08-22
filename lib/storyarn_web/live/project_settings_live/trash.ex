@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.Flows
   alias Storyarn.Projects
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -291,7 +290,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   end
 
   defp fetch_trashed_item(project_id, "sheet", id), do: fetch_item(:sheet, Sheets.get_trashed_sheet(project_id, id))
-  defp fetch_trashed_item(project_id, "flow", id), do: fetch_item(:flow, Flows.get_flow_including_deleted(project_id, id))
+
+  defp fetch_trashed_item(project_id, "flow", id),
+    do: fetch_item(:flow, Projects.get_flow_including_deleted(project_id, id))
 
   defp fetch_trashed_item(project_id, "scene", id),
     do: fetch_item(:scene, Scenes.get_scene_including_deleted(project_id, id))
@@ -338,7 +339,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp normalize_page(_page), do: 1
 
   defp restore_item(%{type: :sheet, entity: sheet}), do: Sheets.restore_sheet(sheet)
-  defp restore_item(%{type: :flow, entity: flow}), do: Flows.restore_flow(flow)
+
+  defp restore_item(%{type: :flow, entity: %{id: flow_id, project_id: project_id}}) do
+    Projects.restore_trashed_flow(project_id, flow_id)
+  end
+
   defp restore_item(%{type: :scene, entity: scene}), do: Scenes.restore_scene(scene)
 
   defp restore_error_message({:invalid_project_reference, _context, _value}), do: unavailable_reference_message()
@@ -374,7 +379,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp asset_purge_error_message(_reason), do: dgettext("projects", "Failed to delete item.")
 
   defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
-  defp permanently_delete_item(%{type: :flow, entity: flow}), do: Flows.hard_delete_flow(flow)
+
+  defp permanently_delete_item(%{type: :flow, entity: flow}),
+    do: Projects.permanently_delete_trashed_flow(flow.project_id, flow.id)
+
   defp permanently_delete_item(%{type: :scene, entity: scene}), do: Scenes.hard_delete_scene(scene)
 
   defp purge_asset_items([], _project_id, _actor_id), do: []

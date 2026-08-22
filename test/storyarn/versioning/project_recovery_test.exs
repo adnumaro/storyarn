@@ -13,13 +13,13 @@ defmodule Storyarn.Versioning.ProjectRecoveryTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
-  alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
-  alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.TextCrud
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
+  alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene

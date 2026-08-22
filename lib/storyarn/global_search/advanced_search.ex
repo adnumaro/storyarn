@@ -9,9 +9,9 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
   """
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Flows
-  alias Storyarn.Flows.Flow
   alias Storyarn.GlobalSearch.Destinations
+  alias Storyarn.GlobalSearch.FlowSearch
+  alias Storyarn.GlobalSearch.Persistence.FlowRecord
   alias Storyarn.GlobalSearch.VariableSearch
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -97,7 +97,7 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
   end
 
   defp run(project_id, :flows, query, opts) do
-    hierarchy_page(Flow, :flow, ">", project_id, query, opts)
+    hierarchy_page(FlowRecord, :flow, ">", project_id, query, opts)
   end
 
   defp run(project_id, :scenes, query, opts) do
@@ -111,7 +111,7 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
     candidates =
       [
         {:sheet, Sheets.search_sheets_deep(project_id, query, limit: fetch_limit)},
-        {:flow, Flows.search_flows_deep(project_id, query, limit: fetch_limit)},
+        {:flow, FlowSearch.search_deep(project_id, query, limit: fetch_limit)},
         {:scene, Scenes.search_scenes_deep(project_id, query, limit: fetch_limit)}
       ]
 

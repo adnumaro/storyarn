@@ -11,13 +11,14 @@ defmodule Storyarn.Flows do
   - `ConnectionCrud` - CRUD operations for connections
   """
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.ConnectionCrud
+  alias Storyarn.Flows.ContentContract
   alias Storyarn.Flows.ContextQueries
+  alias Storyarn.Flows.DebugSession
   alias Storyarn.Flows.DebugSessionStore
+  alias Storyarn.Flows.DialoguePreview
   alias Storyarn.Flows.EditorCatalog
-  alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Flows.Evaluator.EngineHelpers
@@ -29,27 +30,54 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.FlowCrud
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.FlowStats
+  alias Storyarn.Flows.FormulaRuntime
   alias Storyarn.Flows.HubColors
   alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows.Limits
   alias Storyarn.Flows.NavigationHistoryStore
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeEditor
   alias Storyarn.Flows.NodeLabel
+  alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.PlayerCatalog
+  alias Storyarn.Flows.PlayerEngine
+  alias Storyarn.Flows.PlayerOutcome
+  alias Storyarn.Flows.PlayerSession
+  alias Storyarn.Flows.PlayerText
+  alias Storyarn.Flows.RuntimeGraph
+  alias Storyarn.Flows.RuntimeKey
+  alias Storyarn.Flows.RuntimeVariables
   alias Storyarn.Flows.SceneResolver
+  alias Storyarn.Flows.SequenceComposition
   alias Storyarn.Flows.SequenceCrud
+  alias Storyarn.Flows.Severity
   alias Storyarn.Flows.StructuralAnalysis
+  alias Storyarn.Flows.TrackedCommands
   alias Storyarn.Flows.TreeOperations
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Project
-  alias Storyarn.References
+  alias Storyarn.Flows.VariableCatalog
+  alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Flows.VariableSearch
+  alias Storyarn.Flows.Versioning, as: FlowVersioning
+  alias Storyarn.Flows.Versioning.SnapshotViewer, as: FlowSnapshotViewer
+  alias Storyarn.Flows.WordCount
   alias Storyarn.Repo
+
+  @doc false
+  def child_spec(opts) do
+    %{
+      id: __MODULE__,
+      start: {__MODULE__, :start_link, [opts]},
+      type: :supervisor
+    }
+  end
+
+  @doc false
+  def start_link(opts), do: Storyarn.Flows.Supervisor.start_link(opts)
 
   # =============================================================================
   # Type Definitions
   # =============================================================================
-
-  alias Storyarn.Versioning
 
   @type flow :: Flow.t()
   @type flow_node :: FlowNode.t()
@@ -57,6 +85,7 @@ defmodule Storyarn.Flows do
   @type sequence :: FlowNode.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type project_identity :: pos_integer() | %{required(:id) => pos_integer()}
   @type linked_flow_result ::
           {:ok, map()}
           | {:error, :limit_reached, term()}
@@ -73,6 +102,120 @@ defmodule Storyarn.Flows do
   defdelegate node_types(), to: FlowNode
   defdelegate node_label(node), to: NodeLabel, as: :for_node
   defdelegate node_specific_label(node), to: NodeLabel, as: :specific_for_node
+
+  @doc "Returns the node types represented by the Flow editor catalog."
+  defdelegate editor_node_types(), to: NodeTypes, as: :editor_types
+
+  @doc "Returns the editor node types users may create directly."
+  defdelegate user_addable_node_types(), to: NodeTypes, as: :user_addable_types
+
+  @doc "Returns the authored default data for an editor node type."
+  defdelegate default_node_data(type), to: NodeTypes, as: :default_data
+
+  @doc "Normalizes authored node data for the editor form contract."
+  defdelegate node_form_data(type, data), to: NodeTypes, as: :form_data
+
+  @doc "Applies the Flow-owned identity rules for duplicated node data."
+  defdelegate duplicate_node_data(type, data), to: NodeTypes, as: :duplicate_data
+
+  @doc "Sanitizes and stores a condition in node data."
+  defdelegate put_node_condition(data, condition), to: NodeEditor, as: :put_condition
+
+  @doc "Sanitizes and stores a dialogue response condition."
+  defdelegate put_response_condition(data, response_id, condition), to: NodeEditor
+
+  @doc "Toggles condition switch mode and applies its output-label contract."
+  defdelegate toggle_condition_switch_mode(data), to: NodeEditor
+
+  @doc "Returns the sequence number for the next dialogue response."
+  defdelegate next_dialogue_response_number(data), to: NodeEditor
+
+  @doc "Appends a response using Flow-owned response identity and shape."
+  defdelegate append_dialogue_response(data, default_text), to: NodeEditor
+
+  defdelegate remove_dialogue_response(data, response_id), to: NodeEditor
+  defdelegate put_dialogue_response_text(data, response_id, text), to: NodeEditor
+  defdelegate put_dialogue_response_condition(data, response_id, condition), to: NodeEditor
+  defdelegate put_dialogue_response_instruction(data, response_id, instruction), to: NodeEditor
+  defdelegate put_dialogue_response_assignments(data, response_id, assignments), to: NodeEditor
+  defdelegate dialogue_technical_id(flow, node, speaker_name), to: NodeEditor
+
+  defdelegate put_exit_mode(data, mode), to: NodeEditor
+  defdelegate exit_mode(mode), to: NodeEditor
+  defdelegate validate_exit_flow_reference(project_id, current_flow_id, value), to: NodeEditor
+  defdelegate put_exit_flow_reference(data, flow_id), to: NodeEditor
+  defdelegate add_exit_outcome_tag(data, tag), to: NodeEditor
+  defdelegate remove_exit_outcome_tag(data, tag), to: NodeEditor
+  defdelegate put_exit_color(data, color), to: NodeEditor
+  defdelegate put_exit_target(data, type, id), to: NodeEditor
+  defdelegate exit_technical_id(flow, node), to: NodeEditor
+
+  defdelegate validate_subflow_reference(value, current_flow_id), to: NodeEditor
+  defdelegate put_subflow_reference(data, flow_id), to: NodeEditor
+  defdelegate put_instruction_assignments(data, assignments), to: NodeEditor
+  defdelegate put_annotation_color(data, color), to: NodeEditor
+  defdelegate put_annotation_font_size(data, size), to: NodeEditor
+  defdelegate put_hub_color(data, color), to: NodeEditor
+
+  @doc "Creates an editor node and emits its Flow-owned creation fact on success."
+  defdelegate create_editor_node(scope, flow, attrs, creation_method),
+    to: TrackedCommands,
+    as: :create_node
+
+  @doc "Duplicates an editor node using Flow-owned data and placement rules."
+  defdelegate duplicate_editor_node(scope, flow, node), to: TrackedCommands, as: :duplicate_node
+
+  @doc "Creates an editor sequence and emits its Flow-owned creation fact."
+  defdelegate create_editor_sequence(scope, flow, attrs, creation_method),
+    to: TrackedCommands,
+    as: :create_sequence
+
+  @doc "Wraps editor nodes and emits the resulting Flow-owned creation fact."
+  defdelegate wrap_editor_selection(scope, flow, node_ids, attrs),
+    to: TrackedCommands,
+    as: :wrap_selection_in_sequence
+
+  defdelegate create_editor_sequence_visual_layer(scope, flow, sequence_id, attrs),
+    to: TrackedCommands,
+    as: :create_sequence_visual_layer
+
+  defdelegate update_editor_sequence_visual_layer(scope, flow, sequence_id, layer, attrs),
+    to: TrackedCommands,
+    as: :update_sequence_visual_layer
+
+  defdelegate upsert_editor_sequence_track(scope, flow, sequence_id, kind, attrs),
+    to: TrackedCommands,
+    as: :upsert_sequence_track
+
+  defdelegate create_named_version(scope, flow, opts), to: TrackedCommands
+
+  defdelegate restore_tracked_version(scope, flow, version, opts),
+    to: TrackedCommands,
+    as: :restore_version
+
+  defdelegate record_version_panel_opened(scope, flow), to: TrackedCommands
+  defdelegate record_version_compared(scope, flow), to: TrackedCommands
+
+  @doc "Returns the node types that contribute player-facing runtime text."
+  defdelegate localizable_node_types(), to: ContentContract
+
+  @doc "Recomputes formula values according to the Flow runtime contract."
+  defdelegate recompute_formula_variables(variables), to: FormulaRuntime, as: :recompute_formulas
+
+  @doc "Translates a same-row binding into the variable key consumed by Flows."
+  defdelegate translate_same_row_binding(formula_ref, bindings), to: FormulaRuntime, as: :translate_same_row
+
+  @doc "Computes the player-facing word count for one Flow node."
+  defdelegate node_word_count(type, data), to: WordCount, as: :for_node_data
+
+  @doc "Returns the Flow-owned sort rank for one health severity."
+  defdelegate health_severity_rank(severity), to: Severity, as: :rank
+
+  @doc "Creates a stable runtime identity for a dialogue node."
+  defdelegate new_dialogue_id(), to: RuntimeKey
+
+  @doc "Creates a stable runtime identity for a dialogue response."
+  defdelegate new_response_id(), to: RuntimeKey
 
   # =============================================================================
   # Flows - CRUD Operations
@@ -157,27 +300,28 @@ defmodule Storyarn.Flows do
   Creates a child flow and assigns it to a node's referenced_flow_id.
   Used by exit (flow_reference mode) and subflow nodes.
   """
-  @spec create_linked_flow(Project.t(), flow(), flow_node()) :: linked_flow_result()
+  @spec create_linked_flow(project_identity(), flow(), flow_node()) :: linked_flow_result()
   defdelegate create_linked_flow(project, parent_flow, node), to: FlowCrud
 
-  @spec create_linked_flow(Project.t(), flow(), flow_node(), keyword()) :: linked_flow_result()
-  def create_linked_flow(%Project{} = project, parent_flow, node, opts) do
+  @spec create_linked_flow(project_identity(), flow(), flow_node(), keyword()) :: linked_flow_result()
+  def create_linked_flow(project, parent_flow, node, opts) when is_list(opts) do
     FlowCrud.create_linked_flow(project, parent_flow, node, opts)
   end
 
-  @spec create_linked_flow(Scope.t(), Project.t(), flow(), flow_node()) :: linked_flow_result()
-  def create_linked_flow(%Scope{} = actor_scope, project, parent_flow, node) do
+  @spec create_linked_flow(map(), project_identity(), flow(), flow_node()) :: linked_flow_result()
+  def create_linked_flow(%{user: %{id: actor_id}} = actor_scope, project, parent_flow, node)
+      when is_integer(actor_id) and actor_id > 0 do
     FlowCrud.create_linked_flow(actor_scope, project, parent_flow, node)
   end
 
-  @spec create_linked_flow(Scope.t(), Project.t(), flow(), flow_node(), keyword()) :: linked_flow_result()
+  @spec create_linked_flow(map(), project_identity(), flow(), flow_node(), keyword()) :: linked_flow_result()
   defdelegate create_linked_flow(actor_scope, project, parent_flow, node, opts), to: FlowCrud
 
   @doc """
   Creates a new flow in a project.
   Any flow can have children AND content (nodes). Use parent_id to create nested flows.
   """
-  @spec create_flow(Project.t(), attrs()) :: {:ok, flow()} | {:error, changeset()}
+  @spec create_flow(project_identity(), attrs()) :: {:ok, flow()} | {:error, changeset()}
   defdelegate create_flow(project, attrs), to: FlowCrud
   defdelegate create_flow(actor_scope, project, attrs), to: FlowCrud
 
@@ -212,8 +356,8 @@ defmodule Storyarn.Flows do
   defdelegate delete_flow_subtree_in_transaction(flow), to: FlowCrud
   defdelegate delete_flow_subtree_in_transaction(actor_scope, flow), to: FlowCrud
 
-  @doc false
-  defdelegate delete_flow_subtree_for_project_restore_in_transaction(flow), to: FlowCrud
+  defdelegate delete_flow_subtree_by_id_in_transaction(actor_scope, project_id, flow_id),
+    to: FlowCrud
 
   @doc false
   defdelegate broadcast_flow_refreshes(affected_flow_ids), to: FlowCrud
@@ -266,7 +410,7 @@ defmodule Storyarn.Flows do
   Searches active scene options for Exit node targets.
 
   The returned maps contain only `:id` and `:name` and are owned by Flows;
-  callers do not receive a Scenes schema.
+  callers never receive a foreign persistence record.
   """
   @spec search_exit_target_scenes(integer(), String.t(), keyword()) ::
           [ExitTargetScenes.scene_option()]
@@ -283,10 +427,36 @@ defmodule Storyarn.Flows do
   @spec load_editor_catalog(integer()) :: EditorCatalog.t()
   defdelegate load_editor_catalog(project_id), to: EditorCatalog, as: :load
 
+  @doc "Searches Flow-owned mention candidates from the shared persistence tables."
+  @spec search_mentions(integer(), String.t()) :: [EditorCatalog.mention()]
+  defdelegate search_mentions(project_id, query), to: EditorCatalog
+
+  @doc "Returns a bounded page of Flow-owned speaker options."
+  @spec search_speaker_options(integer(), String.t(), keyword()) ::
+          {[EditorCatalog.speaker_option()], boolean()}
+  defdelegate search_speaker_options(project_id, query, opts \\ []),
+    to: EditorCatalog,
+    as: :speaker_options
+
+  @doc "Builds the initial Flow speaker picker options, retaining selected rows."
+  @spec initial_speaker_options(integer(), [term()]) :: [EditorCatalog.speaker_option()]
+  defdelegate initial_speaker_options(project_id, selected_ids), to: EditorCatalog
+
+  @doc "Returns a bounded page of Flow-owned asset picker options."
+  @spec search_asset_options(integer(), String.t(), keyword()) ::
+          {[EditorCatalog.asset_option()], boolean()}
+  defdelegate search_asset_options(project_id, kind, opts \\ []),
+    to: EditorCatalog,
+    as: :asset_options
+
+  @doc "Builds initial Flow asset picker options, retaining selected rows."
+  @spec initial_asset_options(integer(), String.t(), [term()]) :: [EditorCatalog.asset_option()]
+  defdelegate initial_asset_options(project_id, kind, selected_ids), to: EditorCatalog
+
   @doc """
   Loads the speaker presentation data required by the Flow player.
 
-  Speakers are Flows-owned DTOs and do not expose Sheets schemas.
+  Speakers are Flows-owned DTOs and do not expose foreign persistence records.
   """
   @spec load_player_speakers(integer()) :: [PlayerCatalog.speaker()]
   defdelegate load_player_speakers(project_id), to: PlayerCatalog, as: :load_speakers
@@ -348,6 +518,10 @@ defmodule Storyarn.Flows do
   """
   @spec list_nodes(integer()) :: [flow_node()]
   defdelegate list_nodes(flow_id), to: NodeCrud
+
+  @doc "Lists active nodes with every sequence runtime association preloaded."
+  @spec list_runtime_nodes(integer()) :: [flow_node()]
+  defdelegate list_runtime_nodes(flow_id), to: NodeCrud
 
   @doc false
   @spec lock_flow_nodes_for_update(flow()) ::
@@ -434,6 +608,9 @@ defmodule Storyarn.Flows do
   @doc false
   defdelegate update_node_data_without_dashboard_broadcast(node, data), to: NodeCrud
 
+  @doc "Applies a typed editor operation after locking the latest node state."
+  defdelegate edit_node(flow_id, node_id, operation, payload), to: NodeCrud
+
   @doc false
   @spec node_data_and_derivatives_current?(flow_node(), map(), integer()) :: boolean()
   defdelegate node_data_and_derivatives_current?(node, data, project_id),
@@ -465,6 +642,36 @@ defmodule Storyarn.Flows do
   @spec restore_node(integer(), integer()) ::
           {:ok, flow_node()} | {:ok, :already_active} | {:error, atom()}
   defdelegate restore_node(flow_id, node_id), to: NodeCrud
+
+  @doc "Restores a node and returns the active graph fragment needed by the editor adapter."
+  def restore_editor_node(%Flow{} = flow, node_id) do
+    case NodeCrud.restore_node(flow.id, node_id) do
+      {:ok, %FlowNode{} = node} ->
+        connections =
+          flow.id
+          |> ConnectionCrud.list_connections()
+          |> Enum.filter(&(&1.source_node_id == node.id or &1.target_node_id == node.id))
+          |> Enum.map(fn connection ->
+            %{
+              id: connection.id,
+              source_node_id: connection.source_node_id,
+              source_pin: connection.source_pin,
+              target_node_id: connection.target_node_id,
+              target_pin: connection.target_pin,
+              label: connection.label
+            }
+          end)
+
+        {:ok,
+         %{
+           node: serialize_editor_node(node, flow.project_id),
+           connections: connections
+         }}
+
+      other ->
+        other
+    end
+  end
 
   @doc """
   Returns a changeset for tracking node changes.
@@ -554,83 +761,12 @@ defmodule Storyarn.Flows do
   defdelegate safe_to_integer(value), to: NodeCrud
 
   # =============================================================================
-  # Variable Reference Tracking
+  # Flow variable-reference projection
   # =============================================================================
 
-  @doc """
-  Counts variable references for a block, grouped by kind.
-  Returns %{"read" => N, "write" => M}.
-  """
-  @spec count_variable_usage(integer()) :: map()
-  defdelegate count_variable_usage(block_id), to: References
-
-  @doc """
-  Returns a MapSet of block IDs that have at least one variable reference.
-  """
-  @spec referenced_block_ids([integer()]) :: MapSet.t()
-  defdelegate referenced_block_ids(block_ids), to: References
-
-  @doc "Returns stale variable-reference counts for multiple blocks."
-  @spec count_stale_references([integer()], integer()) :: %{integer() => non_neg_integer()}
-  defdelegate count_stale_references(block_ids, project_id),
-    to: References,
-    as: :count_stale_variable_references
-
-  @doc """
-  Returns variable usage for a block with stale detection.
-  Each ref map gets an additional `:stale` boolean.
-  """
-  @spec check_stale_references(integer(), integer()) :: [map()]
-  defdelegate check_stale_references(block_id, project_id),
-    to: References,
-    as: :check_stale_variable_references
-
-  @doc """
-  Repairs all stale variable references across a project.
-  Returns `{:ok, count}` of repaired nodes.
-  """
-  @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
-  defdelegate repair_stale_references(project_id),
-    to: References,
-    as: :repair_stale_variable_references
-
-  @doc """
-  Returns a MapSet of node IDs in a flow that have at least one stale reference.
-  """
-  @spec list_stale_node_ids(integer()) :: MapSet.t()
-  defdelegate list_stale_node_ids(flow_id), to: References
-
-  @doc """
-  Updates variable references for a scene zone after its action_data changes.
-  """
-  @spec update_scene_zone_references(map(), keyword()) :: :ok
-  defdelegate update_scene_zone_references(zone, opts \\ []),
-    to: References,
-    as: :update_scene_zone_variable_references
-
-  @doc """
-  Deletes all variable references for a scene zone.
-  """
-  @spec delete_map_zone_references(integer()) :: :ok
-  defdelegate delete_map_zone_references(zone_id),
-    to: References,
-    as: :delete_scene_zone_variable_references
-
-  @doc """
-  Updates variable references for a scene pin after its action_data changes.
-  """
-  @spec update_scene_pin_references(map(), keyword()) :: :ok
-  defdelegate update_scene_pin_references(pin, opts \\ []),
-    to: References,
-    as: :update_scene_pin_variable_references
-
-  @doc """
-  Deletes all variable references for a scene pin.
-  """
-  @spec delete_map_pin_references(integer()) :: :ok
-  defdelegate delete_map_pin_references(pin_id),
-    to: References,
-    as: :delete_scene_pin_variable_references
+  @doc "Returns Flow-node IDs with stale variable references."
+  @spec list_stale_node_ids(integer()) :: MapSet.t(integer())
+  defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
 
   # =============================================================================
   # Connections - CRUD Operations
@@ -762,6 +898,70 @@ defmodule Storyarn.Flows do
   @doc "Initialize an evaluator state for a flow."
   defdelegate evaluator_init(variables, start_node_id), to: Engine, as: :init
 
+  @doc "Advance a player session until it reaches player-facing interaction."
+  defdelegate player_step_until_interactive(state, nodes, connections, opts \\ []),
+    to: PlayerEngine,
+    as: :step_until_interactive
+
+  @doc "Creates and advances a Flow-owned player runtime session."
+  defdelegate start_player_session(flow, variables), to: PlayerSession, as: :start
+
+  @doc "Reconstitutes a previously stored ephemeral player session."
+  defdelegate restore_player_session(flow, state, nodes, connections, scene_id),
+    to: PlayerSession,
+    as: :restore
+
+  @doc "Records the Flow-owned fact that a player session started."
+  defdelegate record_player_started(scope_or_user, flow),
+    to: PlayerSession,
+    as: :record_started
+
+  @doc "Advances a player session after an explicit continue action."
+  defdelegate continue_player_session(session), to: PlayerSession, as: :continue
+
+  @doc "Chooses a response and advances the player session."
+  defdelegate choose_player_response(session, response_id),
+    to: PlayerSession,
+    as: :choose_response
+
+  @doc "Resolves the response selected by a numbered player shortcut."
+  defdelegate player_response_id_by_number(responses, mode, number),
+    to: PlayerSession,
+    as: :response_id_by_number
+
+  @doc "Restores the previous renderable player state."
+  defdelegate go_back_player_session(session), to: PlayerSession, as: :go_back
+
+  @doc "Restarts a complete player run at its root Flow."
+  defdelegate restart_player_session(session), to: PlayerSession, as: :restart
+
+  @doc "Returns whether a player session can restore a renderable snapshot."
+  defdelegate player_session_can_go_back?(session), to: PlayerSession, as: :can_go_back?
+
+  @doc "Composes the active nested sequences for the current player frame."
+  defdelegate compose_player_sequences(state, nodes), to: SequenceComposition, as: :compose
+
+  @doc "Interprets rich player text references with adapter-owned rendering."
+  defdelegate interpolate_player_rich_text(text, variables, renderer),
+    to: PlayerText,
+    as: :interpolate_rich_text
+
+  @doc "Maps authored player references with adapter-owned presentation."
+  defdelegate map_player_rich_text_references(text, renderer),
+    to: PlayerText,
+    as: :map_rich_text_references
+
+  @doc "Interpolates plain player response references."
+  defdelegate interpolate_player_response_text(text, variables),
+    to: PlayerText,
+    as: :interpolate_response_text
+
+  @doc "Formats a player variable without presentation-specific escaping."
+  defdelegate format_player_value(value), to: PlayerText, as: :format_value
+
+  @doc "Builds semantic metadata and statistics for a player outcome."
+  defdelegate build_player_outcome(node, state), to: PlayerOutcome, as: :build
+
   @doc "Advance the evaluator by one step."
   defdelegate evaluator_step(state, nodes, connections), to: Engine, as: :step
 
@@ -834,13 +1034,60 @@ defmodule Storyarn.Flows do
   # =============================================================================
 
   @doc """
+  Projects one node into the stable editor-canvas contract.
+
+  This is intentionally Flow-owned: color resolution and assignment type
+  warnings must be identical for an incremental node event and a full canvas
+  reload. Web only decides which LiveView event carries this DTO.
+  """
+  @spec serialize_editor_node(flow_node(), pos_integer()) :: map()
+  def serialize_editor_node(%FlowNode{type: "sequence"} = node, _project_id) do
+    node = Repo.preload(node, :sequence_config)
+    config = node.sequence_config
+
+    %{
+      id: node.id,
+      type: node.type,
+      parent_id: node.parent_id,
+      position: %{x: node.position_x, y: node.position_y},
+      data: %{
+        "name" => config && config.name,
+        "width" => config && config.width,
+        "height" => config && config.height
+      }
+    }
+  end
+
+  def serialize_editor_node(%FlowNode{} = node, project_id) when is_integer(project_id) and project_id > 0 do
+    variable_types =
+      if node.type in ["instruction", "dialogue"] do
+        project_id
+        |> list_referenceable_variables()
+        |> Instruction.variable_type_map()
+      else
+        %{}
+      end
+
+    %{
+      id: node.id,
+      type: node.type,
+      parent_id: node.parent_id,
+      position: %{x: node.position_x, y: node.position_y},
+      data:
+        node.type
+        |> resolve_node_colors(node.data || %{})
+        |> maybe_add_type_warning_flag(node.type, variable_types)
+    }
+  end
+
+  @doc """
   Serializes a flow with its nodes and connections for the Rete.js canvas.
   Returns a map with `nodes` and `connections` arrays in the format expected
   by the JavaScript flow canvas hook.
   """
   @spec serialize_for_canvas(flow(), keyword()) :: map()
   def serialize_for_canvas(%Flow{} = flow, opts \\ []) do
-    stale_node_ids = References.list_stale_node_ids(flow.id)
+    stale_node_ids = VariableReferenceTracker.list_stale_node_ids(flow.id)
 
     # Defaults to the FULL referenceable set, not just sheet blocks: a caller that
     # forgets the option would otherwise silently type-check against a smaller
@@ -1134,6 +1381,73 @@ defmodule Storyarn.Flows do
   defdelegate variable_type_map(project_variables), to: Instruction
 
   # =============================================================================
+  # Dialogue preview and debug runtime
+  # =============================================================================
+
+  @doc "Builds Flow-owned evaluator variables from the shared persistence read model."
+  defdelegate build_runtime_variables(project_id), to: RuntimeVariables, as: :build
+
+  @doc "Starts the editor dialogue preview at a Flow node."
+  defdelegate start_dialogue_preview(flow_id, node_id), to: DialoguePreview, as: :start
+
+  @doc "Follows a dialogue preview output pin."
+  defdelegate follow_dialogue_preview(flow_id, node_id, source_pin),
+    to: DialoguePreview,
+    as: :follow
+
+  @doc "Loads the runtime graph used by Flow execution."
+  defdelegate load_runtime_graph(flow_id), to: RuntimeGraph, as: :load
+
+  @doc "Returns the entry node in a Flow runtime graph."
+  defdelegate runtime_entry_node_id(nodes), to: RuntimeGraph, as: :entry_node_id
+
+  @doc "Returns the active edge represented by a debugger execution path."
+  defdelegate debug_active_connection(path, connections),
+    to: RuntimeGraph,
+    as: :active_connection
+
+  @doc "Starts a complete Flow-owned debug session."
+  defdelegate start_debug_session(scope_or_user, flow),
+    to: DebugSession,
+    as: :start
+
+  @doc "Changes the start node and resets a debug session."
+  defdelegate debug_select_start_node(state, nodes, node_id),
+    to: DebugSession,
+    as: :select_start_node
+
+  @doc "Advances a debug session, including cross-Flow transitions."
+  defdelegate debug_step(state, nodes, connections, flow_name), to: DebugSession, as: :step
+
+  @doc "Advances an auto-playing debug session and returns its scheduling action."
+  defdelegate debug_auto_step(state, nodes, connections, flow_name),
+    to: DebugSession,
+    as: :auto_step
+
+  @doc "Restores the previous debug evaluator snapshot."
+  defdelegate debug_step_back(state), to: DebugSession, as: :step_back
+
+  @doc "Chooses a response in a waiting debug session."
+  defdelegate debug_choose_response(state, response_id, connections),
+    to: DebugSession,
+    as: :choose_response
+
+  @doc "Resets a debug session, returning to its root Flow when nested."
+  defdelegate reset_debug_session(state, nodes, connections), to: DebugSession, as: :reset
+
+  @doc "Returns the Flow-owned empty state for a stopped debug session."
+  defdelegate stop_debug_session(), to: DebugSession, as: :stop
+
+  @doc "Coerces and applies a debug variable override."
+  defdelegate set_debug_variable(state, key, raw_value), to: DebugSession, as: :set_variable
+
+  @doc "Extends a debug session step limit."
+  defdelegate extend_debug_step_limit(state), to: DebugSession, as: :extend_step_limit
+
+  @doc "Toggles a debug breakpoint."
+  defdelegate toggle_debug_breakpoint(state, node_id), to: DebugSession, as: :toggle_breakpoint
+
+  # =============================================================================
   # DebugSessionStore
   # =============================================================================
 
@@ -1148,16 +1462,6 @@ defmodule Storyarn.Flows do
   defdelegate nav_history_put(key, data), to: NavigationHistoryStore, as: :put
   defdelegate nav_history_clear(key), to: NavigationHistoryStore, as: :clear
 
-  # =============================================================================
-  # Export / Import helpers
-  # =============================================================================
-
-  @doc "Returns the project_id for a flow by its ID."
-  defdelegate get_flow_project_id(flow_id), to: FlowCrud
-
-  @doc "Lists flows with nodes and connections preloaded. Opts: [filter_ids: :all | [ids]]."
-  defdelegate list_flows_for_export(project_id, opts \\ []), to: FlowCrud
-
   @doc "Counts non-deleted flows for a project."
   defdelegate count_flows(project_id), to: FlowCrud
 
@@ -1166,6 +1470,9 @@ defmodule Storyarn.Flows do
 
   @doc "Returns per-flow localizable word counts from runtime flow-node fields. %{flow_id => word_count}."
   defdelegate flow_word_counts(project_id), to: FlowStats
+
+  @doc "Returns the player-facing word count for an already-loaded Flow."
+  defdelegate flow_word_count(flow), to: FlowStats
 
   @doc """
   Project-wide node type distribution. `%{node_type => count}`.
@@ -1211,11 +1518,16 @@ defmodule Storyarn.Flows do
   delegates here.
   """
   @spec list_referenceable_variables(integer()) :: [map()]
-  def list_referenceable_variables(project_id) do
-    Storyarn.Sheets.list_project_variables(project_id) ++
-      Storyarn.Scenes.list_pin_variables(project_id) ++
-      Storyarn.Scenes.list_zone_variables(project_id)
-  end
+  defdelegate list_referenceable_variables(project_id), to: VariableCatalog, as: :list_referenceable
+
+  @doc "Searches and projects Flow variable suggestions for the dialogue editor."
+  @spec search_variable_suggestions([map()], String.t()) :: [VariableSearch.suggestion()]
+  defdelegate search_variable_suggestions(variables, query), to: VariableSearch, as: :suggestions
+
+  @doc "Returns a bounded page of Flow-owned variable picker options."
+  @spec search_variable_options([map()], keyword()) ::
+          {[VariableSearch.picker_option()], boolean()}
+  defdelegate search_variable_options(variables, opts \\ []), to: VariableSearch, as: :picker_options
 
   @doc """
   Every health finding of a flow from already-serialized canvas data.
@@ -1234,52 +1546,6 @@ defmodule Storyarn.Flows do
   @doc "Counts non-deleted flow nodes across all flows in a project."
   defdelegate count_nodes_for_project(project_id), to: FlowCrud
 
-  @doc "Lists all non-deleted nodes for the given flow IDs."
-  defdelegate list_nodes_for_flow_ids(flow_ids), to: FlowCrud
-
-  @doc "Lists flow nodes using a specific asset (audio_asset_id in data)."
-  defdelegate list_nodes_using_asset(project_id, asset_id), to: FlowCrud
-
-  @doc "Resolves flow node backlinks for entity reference tracking."
-  defdelegate query_flow_node_backlinks(target_type, target_id, project_id), to: FlowCrud
-
-  @doc "Lists sheet IDs referenced as speakers by flow nodes in a project."
-  defdelegate list_speaker_sheet_ids(project_id), to: FlowCrud
-
-  @doc "Lists sheet IDs referenced through variable_references in a project."
-  defdelegate list_variable_referenced_sheet_ids(project_id), to: FlowCrud
-
-  @doc "Lists existing flow shortcuts for a project."
-  defdelegate list_flow_shortcuts(project_id), to: FlowCrud, as: :list_shortcuts
-
-  @doc "Detects shortcut conflicts between imported flows and existing ones."
-  defdelegate detect_flow_shortcut_conflicts(project_id, shortcuts),
-    to: FlowCrud,
-    as: :detect_shortcut_conflicts
-
-  @doc "Soft-deletes existing flows with the given shortcut (overwrite import strategy)."
-  defdelegate soft_delete_flow_by_shortcut(project_id, shortcut),
-    to: FlowCrud,
-    as: :soft_delete_by_shortcut
-
-  @doc "Bulk-inserts flow connections from a list of attr maps."
-  defdelegate bulk_import_connections(attrs_list), to: FlowCrud
-
-  @doc "Creates a flow for import (raw insert, no side effects)."
-  defdelegate import_flow(project_id, attrs), to: FlowCrud
-
-  @doc "Creates a flow node for import (raw insert, no side effects)."
-  defdelegate import_node(flow_id, attrs), to: FlowCrud
-
-  @doc "Updates a flow's parent_id after import."
-  defdelegate link_flow_import_parent(flow, parent_id), to: FlowCrud, as: :link_import_parent
-
-  @doc "Updates an imported node's parent_id after source node IDs have been remapped."
-  defdelegate link_node_import_parent(node, parent_id), to: FlowCrud
-
-  @doc "Updates a node's data map after import (deferred flow ID remapping)."
-  defdelegate link_node_import_data(node_id, data), to: FlowCrud
-
   # =============================================================================
   # Versioning
   # =============================================================================
@@ -1288,64 +1554,99 @@ defmodule Storyarn.Flows do
   Creates a new version snapshot of the given flow.
   """
   def create_version(%Flow{} = flow, user_id, opts \\ []) do
-    Versioning.create_version("flow", flow, flow.project_id, user_id, opts)
+    FlowVersioning.create_version(flow, user_id, opts)
   end
 
   @doc """
   Lists all versions for a flow.
   """
   def list_versions(flow_id, opts \\ []) do
-    Versioning.list_versions("flow", flow_id, opts)
+    FlowVersioning.list_versions(flow_id, opts)
   end
 
   @doc """
   Gets a specific version by flow_id and version_number.
   """
   def get_version(flow_id, version_number) do
-    Versioning.get_version("flow", flow_id, version_number)
+    FlowVersioning.get_version(flow_id, version_number)
   end
 
   @doc """
   Gets the latest version for a flow.
   """
   def get_latest_version(flow_id) do
-    Versioning.get_latest_version("flow", flow_id)
+    FlowVersioning.get_latest_version(flow_id)
   end
 
   @doc """
   Returns the total number of versions for a flow.
   """
   def count_versions(flow_id) do
-    Versioning.count_versions("flow", flow_id)
+    FlowVersioning.count_versions(flow_id)
   end
 
   @doc """
   Creates a version if enough time has passed since the last version.
   """
   def maybe_create_version(%Flow{} = flow, user_id, opts \\ []) do
-    opts = Keyword.put_new(opts, :is_auto, true)
-
-    if Keyword.get(opts, :is_auto) and
-         not Projects.auto_versioning_enabled?(flow.project_id, :flow) do
-      {:skipped, :auto_versioning_disabled}
-    else
-      Versioning.maybe_create_version("flow", flow, flow.project_id, user_id, opts)
-    end
+    FlowVersioning.maybe_create_version(flow, user_id, opts)
   end
 
   @doc """
   Deletes a version and its snapshot.
   """
   def delete_version(version) do
-    Versioning.delete_version(version)
+    FlowVersioning.delete_version(version)
   end
+
+  @doc "Updates the name and description of a Flow version."
+  def update_version(version, attrs), do: FlowVersioning.update_version(version, attrs)
+
+  @doc false
+  def load_version_snapshot(version), do: FlowVersioning.load_version_snapshot(version)
+
+  @doc "Decides whether restore must first warn about unsaved changes or can show its conflict report."
+  def prepare_version_restore(%Flow{} = flow, version), do: FlowVersioning.prepare_restore(flow, version)
+
+  @doc "Loads a target Flow version and builds its restore conflict report."
+  def prepare_version_restore_conflicts(%Flow{} = flow, version),
+    do: FlowVersioning.prepare_restore_conflicts(flow, version)
 
   @doc """
   Restores a flow to a specific version.
   """
-  def restore_version(%Flow{} = flow, version) do
-    Versioning.restore_version("flow", flow, version)
+  def restore_version(%Flow{} = flow, version, opts \\ []) do
+    FlowVersioning.restore_version(flow, version, opts)
   end
+
+  @doc "Returns whether Flow version restore is currently enabled."
+  def restore_enabled?, do: FlowVersioning.restore_enabled?()
+
+  @doc "Ensures that Flow version restore is currently enabled."
+  def ensure_version_restore_enabled, do: FlowVersioning.ensure_restore_enabled()
+
+  @doc "Builds the current Flow snapshot used for change detection."
+  def build_version_snapshot(%Flow{} = flow), do: FlowVersioning.build_snapshot(flow)
+
+  @doc "Returns whether two Flow version snapshots differ."
+  def version_snapshot_has_changes?(previous, current), do: FlowVersioning.snapshot_has_changes?(previous, current)
+
+  @doc "Builds the Flow-owned restore-conflict preview."
+  def detect_version_restore_conflicts(snapshot, %Flow{} = flow),
+    do: FlowVersioning.detect_restore_conflicts(snapshot, flow)
+
+  @doc "Returns the previous and next stored Flow version numbers."
+  def get_adjacent_version_numbers(flow_id, current_number),
+    do: FlowVersioning.get_adjacent_version_numbers(flow_id, current_number)
+
+  @doc "Counts stored Flow versions created since the given instant."
+  def count_versions_since(flow_id, since), do: FlowVersioning.count_versions_since(flow_id, since)
+
+  @doc "Returns whether this project can create or promote another named Flow version."
+  defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
+
+  @doc "Serializes a Flow snapshot for the read-only comparison canvas."
+  def serialize_version_snapshot(snapshot), do: FlowSnapshotViewer.serialize(snapshot)
 
   @doc """
   Sets the current version for a flow.
@@ -1373,6 +1674,9 @@ defmodule Storyarn.Flows do
 
   @doc "Fetches a sequence by id scoped to a flow. Raises if absent."
   defdelegate get_sequence!(flow_id, id), to: SequenceCrud
+
+  @doc "Gets the sequence-specific configuration for an active sequence node."
+  defdelegate get_sequence_config(sequence_id), to: SequenceCrud
 
   @doc "Creates a sequence for a flow."
   defdelegate create_sequence(flow_id, attrs), to: SequenceCrud
@@ -1418,65 +1722,4 @@ defmodule Storyarn.Flows do
 
   @doc "Clears the track for `(sequence_id, kind)`. No-op if already empty."
   defdelegate clear_sequence_track(sequence_id, kind), to: SequenceCrud
-
-  # =============================================================================
-  # Entity trash refs — sweep + restore for cross-entity references
-  # =============================================================================
-  # See `project_entity_trash_refs_pattern.md` in user memory.
-  # Cross-domain callers (Sheets, Assets, ...) should use these functions
-  # to maintain referential integrity on their own soft-delete / restore paths.
-
-  @doc "Sweep all rows of `source_schema` where a column equals `target_id`."
-  defdelegate sweep_trash_refs_column(
-                source_schema,
-                source_type,
-                source_column,
-                target_type,
-                target_id
-              ),
-              to: EntityTrashRefs,
-              as: :sweep_column
-
-  @doc "Sweep all rows of `source_schema` where a JSONB field equals `target_id`."
-  defdelegate sweep_trash_refs_jsonb(
-                source_schema,
-                source_type,
-                jsonb_column,
-                jsonb_key,
-                target_type,
-                target_id
-              ),
-              to: EntityTrashRefs,
-              as: :sweep_jsonb_field
-
-  @doc """
-  Sweep Flow references only from nodes whose owning Flow belongs to the
-  supplied project.
-
-  This is the containment boundary used by project snapshot restore.
-  """
-  defdelegate sweep_project_flow_references(project_id, target_flow_id),
-    to: EntityTrashRefs
-
-  @doc """
-  Reconcile refs for Flows proven to have been reactivated from trash, while
-  failing closed on pending refs to targets that were already active.
-  """
-  defdelegate reconcile_project_restore_flow_refs(
-                project_id,
-                target_flow_ids,
-                target_snapshot_node_ids
-              ),
-              to: EntityTrashRefs
-
-  defdelegate reconcile_project_restore_flow_refs(
-                project_id,
-                target_flow_ids,
-                target_snapshot_node_ids,
-                reactivated_target_flow_ids
-              ),
-              to: EntityTrashRefs
-
-  @doc "Restore trash refs conservatively; Flow targets use the validated Flow restore path."
-  defdelegate restore_trash_refs(target_type, target_id), to: EntityTrashRefs, as: :restore
 end

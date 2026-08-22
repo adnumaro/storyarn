@@ -15,13 +15,15 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
+  alias Storyarn.Assets.Persistence.FlowNodeRecord
+  alias Storyarn.Assets.Persistence.SequenceVisualLayerRecord
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
@@ -370,7 +372,7 @@ defmodule Storyarn.AssetsTest do
       assert Assets.get_asset(project.id, asset.id)
       assert Repo.get(SheetAvatar, referenced_avatar.id)
       assert Repo.get(SheetAvatar, other_avatar.id)
-      assert Repo.get!(FlowNode, node.id).data["avatar_id"] == referenced_avatar.id
+      assert Repo.get!(FlowNodeRecord, node.id).data["avatar_id"] == referenced_avatar.id
     end
 
     test "delete_asset/1 preserves and rejects active flow audio references", %{
@@ -388,7 +390,7 @@ defmodule Storyarn.AssetsTest do
 
       assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
-      refreshed = Repo.get!(FlowNode, node.id)
+      refreshed = Repo.get!(FlowNodeRecord, node.id)
       assert refreshed.data["audio_asset_id"] == asset.id
     end
 
@@ -421,7 +423,7 @@ defmodule Storyarn.AssetsTest do
 
       assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
 
-      assert Repo.get(Storyarn.Flows.SequenceVisualLayer, layer.id)
+      assert Repo.get(SequenceVisualLayerRecord, layer.id)
       assert Repo.get(Storyarn.Sheets.BlockGalleryImage, gallery_image.id)
       assert Repo.reload!(zone).label_icon_asset_id == asset.id
     end
@@ -739,7 +741,7 @@ defmodule Storyarn.AssetsTest do
                })
 
       sequence
-      |> FlowNode.soft_delete_changeset()
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
       |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, image.id)
@@ -971,7 +973,7 @@ defmodule Storyarn.AssetsTest do
 
       # Soft-delete the node
       node
-      |> FlowNode.soft_delete_changeset()
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
       |> Repo.update!()
 
       usages = Assets.get_asset_usages(project.id, audio.id)

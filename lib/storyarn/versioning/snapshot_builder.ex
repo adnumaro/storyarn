@@ -2,7 +2,7 @@ defmodule Storyarn.Versioning.SnapshotBuilder do
   @moduledoc """
   Behaviour for entity-specific snapshot building and restoration.
 
-  Each entity type (sheet, flow, scene) implements this behaviour to define
+  The legacy Sheet and Scene versioning implementations use this behaviour to define
   how snapshots are captured, restored, and compared.
   """
 

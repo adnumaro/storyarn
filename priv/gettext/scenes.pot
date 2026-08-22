@@ -32,7 +32,7 @@ msgstr ""
 msgid "Annotation pasted."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2004
+#: lib/storyarn_web/live/scene_live/show.ex:2003
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr ""
@@ -210,7 +210,7 @@ msgstr ""
 msgid "Could not save scene name."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:350
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:344
 #, elixir-autogen, elixir-format
 msgid "Could not select that response."
 msgstr ""
@@ -231,7 +231,7 @@ msgstr ""
 msgid "Could not update annotation."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2008
+#: lib/storyarn_web/live/scene_live/show.ex:2007
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr ""
@@ -246,15 +246,15 @@ msgstr ""
 msgid "Could not update fog settings."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1705
+#: lib/storyarn_web/live/scene_live/show.ex:1704
 #, elixir-autogen, elixir-format
 msgid "Could not update pin icon."
 msgstr ""
 
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:870
 #: lib/storyarn_web/live/scene_live/handlers/element_handlers.ex:892
-#: lib/storyarn_web/live/scene_live/show.ex:1643
-#: lib/storyarn_web/live/scene_live/show.ex:1666
+#: lib/storyarn_web/live/scene_live/show.ex:1642
+#: lib/storyarn_web/live/scene_live/show.ex:1665
 #, elixir-autogen, elixir-format
 msgid "Could not update pin."
 msgstr ""
@@ -275,7 +275,7 @@ msgstr ""
 msgid "Could not update zone."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1989
+#: lib/storyarn_web/live/scene_live/show.ex:1988
 #, elixir-autogen, elixir-format
 msgid "Could not upload background."
 msgstr ""
@@ -285,13 +285,13 @@ msgstr ""
 msgid "Display"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:673
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:666
 #, elixir-autogen, elixir-format
 msgid "Flow has no entry node."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:597
-#: lib/storyarn_web/live/scene_live/show.ex:1574
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:591
+#: lib/storyarn_web/live/scene_live/show.ex:1573
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr ""
@@ -370,8 +370,8 @@ msgstr ""
 msgid "Pin duplicated."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:985
-#: lib/storyarn_web/live/scene_live/show.ex:1701
+#: lib/storyarn_web/live/scene_live/show.ex:984
+#: lib/storyarn_web/live/scene_live/show.ex:1700
 #, elixir-autogen, elixir-format
 msgid "Pin icon updated."
 msgstr ""
@@ -387,8 +387,8 @@ msgstr ""
 msgid "Scene moved to trash."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:145
-#: lib/storyarn_web/live/scene_live/show.ex:493
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:139
+#: lib/storyarn_web/live/scene_live/show.ex:492
 #, elixir-autogen, elixir-format
 msgid "Scene not found."
 msgstr ""
@@ -398,7 +398,7 @@ msgstr ""
 msgid "Sheet not found."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:717
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:710
 #, elixir-autogen, elixir-format
 msgid "Target flow has no entry node."
 msgstr ""
@@ -465,7 +465,7 @@ msgstr ""
 msgid "Untitled"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:135
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:129
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""
@@ -636,23 +636,23 @@ msgstr ""
 msgid "Collection"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1261
-#: lib/storyarn_web/live/scene_live/show.ex:1277
+#: lib/storyarn_web/live/scene_live/show.ex:1260
+#: lib/storyarn_web/live/scene_live/show.ex:1276
 #, elixir-autogen, elixir-format
 msgid "Could not add ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:564
+#: lib/storyarn_web/live/scene_live/show.ex:563
 #, elixir-autogen, elixir-format
 msgid "Could not remove ambient flow."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:604
+#: lib/storyarn_web/live/scene_live/show.ex:603
 #, elixir-autogen, elixir-format
 msgid "Could not reorder ambient flows."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:582
+#: lib/storyarn_web/live/scene_live/show.ex:581
 #, elixir-autogen, elixir-format
 msgid "Could not update ambient flow."
 msgstr ""
@@ -662,7 +662,7 @@ msgstr ""
 msgid "Could not update display mode."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:630
+#: lib/storyarn_web/live/scene_live/show.ex:629
 #, elixir-autogen, elixir-format
 msgid "Could not update trigger."
 msgstr ""
@@ -672,7 +672,7 @@ msgstr ""
 msgid "Defines traversable ground for character movement in exploration mode"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:316
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:310
 #, elixir-autogen, elixir-format
 msgid "Failed to save progress."
 msgstr ""
@@ -682,12 +682,12 @@ msgstr ""
 msgid "Opens a collection modal with items the player can take"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:313
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:307
 #, elixir-autogen, elixir-format
 msgid "Progress saved."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:495
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:489
 #, elixir-autogen, elixir-format
 msgid "Saved scene no longer exists. Starting on current scene."
 msgstr ""
@@ -717,17 +717,17 @@ msgstr ""
 msgid "this flow is already linked to this scene"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2133
+#: lib/storyarn_web/live/scene_live/show.ex:2132
 #, elixir-autogen, elixir-format
 msgid "Could not upload file."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2124
+#: lib/storyarn_web/live/scene_live/show.ex:2123
 #, elixir-autogen, elixir-format
 msgid "File is too large. Maximum size is 50 MB."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2127
+#: lib/storyarn_web/live/scene_live/show.ex:2126
 #, elixir-autogen, elixir-format
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr ""
@@ -737,17 +737,17 @@ msgstr ""
 msgid "timed trigger requires interval_ms >= 1000"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:995
+#: lib/storyarn_web/live/scene_live/show.ex:994
 #, elixir-autogen, elixir-format
 msgid "Could not upload pin icon."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2114
+#: lib/storyarn_web/live/scene_live/show.ex:2113
 #, elixir-autogen, elixir-format
 msgid "Only SVG, PNG, or GIF icons are allowed."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:2118
+#: lib/storyarn_web/live/scene_live/show.ex:2117
 #, elixir-autogen, elixir-format
 msgid "Icon is too large. Maximum size is 256 KB."
 msgstr ""
@@ -794,8 +794,8 @@ msgstr ""
 msgid "Solid"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:699
-#: lib/storyarn_web/live/scene_live/exploration_live.ex:753
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:692
+#: lib/storyarn_web/live/scene_live/exploration_live.ex:746
 #, elixir-autogen, elixir-format
 msgid "Too many nested subflows. Stopping execution."
 msgstr ""
@@ -805,7 +805,7 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1218
+#: lib/storyarn_web/live/scene_live/show.ex:1217
 #, elixir-autogen, elixir-format
 msgid "Asset not found."
 msgstr ""
@@ -820,7 +820,7 @@ msgstr ""
 msgid "Could not update fog design."
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1048
+#: lib/storyarn_web/live/scene_live/show.ex:1047
 #, elixir-autogen, elixir-format
 msgid "Could not upload zone icon."
 msgstr ""
@@ -830,7 +830,7 @@ msgstr ""
 msgid "Runs optional variable instructions and can navigate to another scene or launch a flow"
 msgstr ""
 
-#: lib/storyarn_web/live/scene_live/show.ex:1038
+#: lib/storyarn_web/live/scene_live/show.ex:1037
 #, elixir-autogen, elixir-format
 msgid "Zone icon updated."
 msgstr ""
@@ -888,4 +888,14 @@ msgstr ""
 #: lib/storyarn/versioning/builders/scene_builder.ex:3814
 #, elixir-autogen, elixir-format
 msgid "Removed ambient flow %{flow_id}"
+msgstr ""
+
+#: lib/storyarn/scenes/flow_runtime/engine.ex:65
+#, elixir-autogen, elixir-format
+msgid "Debug session started"
+msgstr ""
+
+#: lib/storyarn/scenes/flow_runtime/slide.ex:83
+#, elixir-autogen, elixir-format
+msgid "The End"
 msgstr ""
