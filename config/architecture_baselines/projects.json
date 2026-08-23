@@ -572,16 +572,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/shortcuts.ex",
-      "lib/storyarn/shared/name_normalizer.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/shortcuts.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning.ex",
       "lib/storyarn/billing.ex",
       "runtime"
