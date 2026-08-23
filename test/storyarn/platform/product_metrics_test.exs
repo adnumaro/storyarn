@@ -25,6 +25,8 @@ defmodule Storyarn.Platform.ProductMetricsTest do
     {:scenes, :version_created} => {"version created", ~w(entity_type project_id)},
     {:scenes, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
     {:scenes, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:sheets, :asset_uploaded} =>
+      {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
     {:sheets, :block_created} => {"sheet block created", ~w(block_type creation_method project_id scope sheet_id)}
   }
 

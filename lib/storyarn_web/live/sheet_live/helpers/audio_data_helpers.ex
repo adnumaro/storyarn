@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Sheets
   alias StoryarnWeb.PrivateMedia
@@ -15,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     %{sheet: sheet, project: project} = socket.assigns
     nodes = Sheets.list_dialogue_audio_lines(project.id, sheet.id)
 
-    audio_assets = Assets.list_assets(project.id, content_type: "audio/")
+    audio_assets = Sheets.list_assets(project.id, content_type: "audio/")
     audio_assets_by_id = Map.new(audio_assets, &{&1.id, &1})
 
     voice_lines =
@@ -105,13 +104,13 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   end
 
   defp validate_audio_content_type(content_type) do
-    if Assets.allowed_content_type?(content_type),
+    if Sheets.allowed_asset_content_type?(content_type),
       do: :ok,
       else: {:error, :unsupported_file_type}
   end
 
   defp upload_audio_asset(binary_data, filename, content_type, project, user) do
-    Assets.upload_binary_and_create_asset(
+    Sheets.create_binary_asset(
       binary_data,
       %{filename: filename, content_type: content_type},
       project,

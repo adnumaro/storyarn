@@ -3,12 +3,12 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Platform
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.AssetReferences
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.Limits
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
@@ -254,7 +254,7 @@ defmodule Storyarn.Sheets.SheetCrud do
         _normalized_references =
           lock_and_normalize_sheet_references!(project_id, locked_sheet, %{})
 
-        case Assets.lock_active_asset_references_for_restore(project_id,
+        case AssetReferences.lock_active_for_restore(project_id,
                sheet_ids: [locked_sheet.id]
              ) do
           :ok -> :ok

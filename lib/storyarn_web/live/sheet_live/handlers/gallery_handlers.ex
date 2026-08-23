@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Assets
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -78,7 +77,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlers do
   end
 
   defp attach_asset_to_gallery({:ok, block}, socket, asset_id, helpers) do
-    case Assets.get_asset(socket.assigns.project.id, asset_id) do
+    case Sheets.get_asset(socket.assigns.project.id, asset_id) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
 

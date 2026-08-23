@@ -15,7 +15,6 @@ defmodule Storyarn.Projects.Persistence.SceneRecord do
   alias Storyarn.Projects.Persistence.SceneZoneRecord
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.SceneChangesetHelpers
-  alias Storyarn.Versioning.EntityVersion
 
   @type t :: %__MODULE__{}
 
@@ -39,7 +38,7 @@ defmodule Storyarn.Projects.Persistence.SceneRecord do
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
     belongs_to :background_asset, Asset, where: [deleted_at: nil]
-    belongs_to :current_version, EntityVersion
+    field :current_version_id, :id
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :layers, SceneLayerRecord, foreign_key: :scene_id, preload_order: [asc: :position, asc: :id]
     has_many :zones, SceneZoneRecord, foreign_key: :scene_id

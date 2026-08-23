@@ -27,33 +27,13 @@
       "runtime"
     ],
     [
-      "lib/storyarn/sheets/block_crud.ex",
-      "lib/storyarn/assets.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/sheets/sheet.ex",
       "lib/storyarn/versioning/entity_version.ex",
       "runtime"
     ],
     [
       "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/assets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
       "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex",
-      "lib/storyarn/assets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex",
-      "lib/storyarn/assets.ex",
       "runtime"
     ],
     [
@@ -64,11 +44,6 @@
     [
       "lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex",
       "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex",
-      "lib/storyarn/assets.ex",
       "runtime"
     ],
     [

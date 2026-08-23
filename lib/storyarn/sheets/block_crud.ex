@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Repo
+  alias Storyarn.Sheets.AssetReferences
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.Naming
@@ -439,7 +439,7 @@ defmodule Storyarn.Sheets.BlockCrud do
     lock_active_inheritance_source!(block, sheet.project_id)
     inherited_instance_ids = lock_restorable_inherited_instance_ids!(block, sheet.project_id)
 
-    case Assets.lock_active_asset_references_for_restore(sheet.project_id,
+    case AssetReferences.lock_active_for_restore(sheet.project_id,
            block_ids: [block.id | inherited_instance_ids]
          ) do
       :ok -> :ok

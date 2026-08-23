@@ -489,6 +489,12 @@ forbidden_dependencies =
       reason: "Scenes applies Platform-owned commercial entitlements to Scene operations"
     },
     %{
+      source: "lib/storyarn/sheets/asset_commands.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheets applies the Platform-owned storage entitlement to Sheet asset writes and restores"
+    },
+    %{
       source: "lib/storyarn/sheets/events.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],

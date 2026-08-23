@@ -19,6 +19,8 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Sheets.AssetCatalog
+  alias Storyarn.Sheets.AssetCommands
   alias Storyarn.Sheets.AvatarCrud
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
@@ -700,6 +702,20 @@ defmodule Storyarn.Sheets do
 
   @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
   defdelegate enrich_table_formulas(table_data, project_id), to: FormulaResolver, as: :enrich_table_data
+
+  @doc "Gets an asset through the Sheet-owned read projection."
+  defdelegate get_asset(project_id, asset_id), to: AssetCatalog
+
+  @doc "Lists active assets through the Sheet-owned read projection."
+  defdelegate list_assets(project_id, opts \\ []), to: AssetCatalog
+
+  @doc "Checks whether a content type is allowed for direct Sheet uploads."
+  defdelegate allowed_asset_content_type?(content_type),
+    to: Storyarn.Sheets.Persistence.AssetRecord,
+    as: :allowed_content_type?
+
+  @doc "Creates a binary asset through the Sheet-owned asset command."
+  defdelegate create_binary_asset(binary, attrs, project, user), to: AssetCommands
 
   @doc "Returns a Sheet-owned project projection after authorization."
   defdelegate get_project(scope, project_id), to: ProjectAccess
