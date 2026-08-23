@@ -9,16 +9,16 @@ defmodule Storyarn.References.VariableUsage do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord, as: SceneAmbientFlow
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.References.FlowCondition
   alias Storyarn.References.Persistence.FlowNodeRecord
   alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.References.VariableReference
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAmbientFlow
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets
 
   @default_limit 25

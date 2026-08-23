@@ -101,30 +101,30 @@ defmodule Storyarn.Versioning.EntityRestoreSafetyTest do
     end
 
     test "compares the locked snapshot and preserves the builder-specific error" do
-      assert {:error, :scene_changed_since_pre_restore_snapshot} =
+      assert {:error, :sheet_changed_since_pre_restore_snapshot} =
                EntityRestoreSafety.verify_pre_restore_baseline(
-                 "scene",
+                 "sheet",
                  entity(),
                  [
-                   restore_action: {:entity_version_restore, "scene"},
+                   restore_action: {:entity_version_restore, "sheet"},
                    pre_restore_snapshot: %{"name" => "before"}
                  ],
                  fn _entity -> %{"name" => "after"} end,
-                 :scene_changed_since_pre_restore_snapshot
+                 :sheet_changed_since_pre_restore_snapshot
                )
     end
 
     test "normalizes every builder snapshot through its persisted JSON representation" do
       assert :ok =
                EntityRestoreSafety.verify_pre_restore_baseline(
-                 "flow",
+                 "sheet",
                  entity(),
                  [
-                   restore_action: {:entity_version_restore, "flow"},
+                   restore_action: {:entity_version_restore, "sheet"},
                    pre_restore_snapshot: %{"name" => "same", "weight" => "1.50"}
                  ],
                  fn _entity -> %{name: "same", weight: Decimal.new("1.50")} end,
-                 :flow_changed_since_pre_restore_snapshot
+                 :sheet_changed_since_pre_restore_snapshot
                )
     end
 

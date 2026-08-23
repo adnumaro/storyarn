@@ -251,12 +251,12 @@ defmodule StoryarnWeb.Router do
            :explore
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",
-           CompareLive.Scene,
+           SceneLive.Compare,
            :compare
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/versions/:version_number/viewer",
-           VersionViewerLive,
-           :scene
+           SceneLive.VersionViewer,
+           :view
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets",
            SheetLive.Index,

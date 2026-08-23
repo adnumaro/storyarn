@@ -1,13 +1,15 @@
 defmodule Storyarn.Scenes.SceneCrudTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
+  alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Scenes.Persistence.EntityReferenceRecord
   alias Storyarn.Scenes.SceneCrud
-  alias Storyarn.Shared.TimeHelpers
 
   # Shared setup that creates a user and project for most tests
   defp create_project(_context \\ %{}) do
@@ -388,51 +390,6 @@ defmodule Storyarn.Scenes.SceneCrudTest do
   end
 
   # =============================================================================
-  # get_scene_backdrop/1
-  # =============================================================================
-
-  describe "get_scene_backdrop/1" do
-    test "returns scene with background_asset preloaded" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      result = SceneCrud.get_scene_backdrop(scene.id)
-      assert result.id == scene.id
-      # background_asset should be nil (no asset set) but loaded (not NotLoaded)
-      assert result.background_asset == nil
-    end
-
-    test "returns nil for deleted scene" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-      {:ok, _} = Scenes.delete_scene(scene)
-
-      assert SceneCrud.get_scene_backdrop(scene.id) == nil
-    end
-
-    test "returns nil for non-existent scene" do
-      assert SceneCrud.get_scene_backdrop(-1) == nil
-    end
-  end
-
-  # =============================================================================
-  # get_scene_project_id/1
-  # =============================================================================
-
-  describe "get_scene_project_id/1" do
-    test "returns the project_id for a scene" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      assert SceneCrud.get_scene_project_id(scene.id) == project.id
-    end
-
-    test "returns nil for non-existent scene" do
-      assert SceneCrud.get_scene_project_id(-1) == nil
-    end
-  end
-
-  # =============================================================================
   # create_scene/2
   # =============================================================================
 
@@ -544,6 +501,27 @@ defmodule Storyarn.Scenes.SceneCrudTest do
       assert scene.shortcut == "original-name"
 
       {:ok, updated} = SceneCrud.update_scene(scene, %{name: "Changed Name"})
+      assert updated.shortcut == "changed-name"
+    end
+
+    test "regenerates shortcut when a referenced Scene changes name" do
+      %{project: project} = create_project()
+      source = scene_fixture(project, %{name: "Source"})
+      referenced = scene_fixture(project, %{name: "Original Name"})
+
+      zone_fixture(source, %{
+        "target_type" => "scene",
+        "target_id" => referenced.id
+      })
+
+      assert Repo.exists?(
+               from reference in EntityReferenceRecord,
+                 where:
+                   reference.target_type == "scene" and
+                     reference.target_id == ^referenced.id
+             )
+
+      assert {:ok, updated} = SceneCrud.update_scene(referenced, %{name: "Changed Name"})
       assert updated.shortcut == "changed-name"
     end
 
@@ -793,344 +771,6 @@ defmodule Storyarn.Scenes.SceneCrudTest do
   end
 
   # =============================================================================
-  # Export helpers
-  # =============================================================================
-
-  describe "list_scenes_for_export/2" do
-    test "returns all scenes with associations preloaded" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project, %{name: "Export Scene"})
-      _zone = zone_fixture(scene)
-      _pin = pin_fixture(scene)
-
-      scenes = SceneCrud.list_scenes_for_export(project.id)
-      assert length(scenes) == 1
-
-      exported = hd(scenes)
-      assert is_list(exported.layers)
-      assert is_list(exported.zones)
-      assert is_list(exported.pins)
-      assert is_list(exported.connections)
-      assert is_list(exported.annotations)
-    end
-
-    test "filters by specific scene IDs when filter_ids provided" do
-      %{project: project} = create_project()
-      scene1 = scene_fixture(project, %{name: "Scene 1"})
-      _scene2 = scene_fixture(project, %{name: "Scene 2"})
-      scene3 = scene_fixture(project, %{name: "Scene 3"})
-
-      scenes = SceneCrud.list_scenes_for_export(project.id, filter_ids: [scene1.id, scene3.id])
-      assert length(scenes) == 2
-      ids = MapSet.new(scenes, & &1.id)
-      assert MapSet.member?(ids, scene1.id)
-      assert MapSet.member?(ids, scene3.id)
-    end
-
-    test "returns all when filter_ids is :all" do
-      %{project: project} = create_project()
-      _scene1 = scene_fixture(project, %{name: "Scene 1"})
-      _scene2 = scene_fixture(project, %{name: "Scene 2"})
-
-      scenes = SceneCrud.list_scenes_for_export(project.id, filter_ids: :all)
-      assert length(scenes) == 2
-    end
-
-    test "excludes deleted scenes" do
-      %{project: project} = create_project()
-      _active = scene_fixture(project, %{name: "Active"})
-      deleted = scene_fixture(project, %{name: "Deleted"})
-      {:ok, _} = Scenes.delete_scene(deleted)
-
-      scenes = SceneCrud.list_scenes_for_export(project.id)
-      assert length(scenes) == 1
-    end
-  end
-
-  describe "count_scenes/1" do
-    test "returns 0 for empty project" do
-      %{project: project} = create_project()
-      assert SceneCrud.count_scenes(project.id) == 0
-    end
-
-    test "counts only non-deleted scenes" do
-      %{project: project} = create_project()
-      _scene1 = scene_fixture(project, %{name: "Active 1"})
-      _scene2 = scene_fixture(project, %{name: "Active 2"})
-      deleted = scene_fixture(project, %{name: "Deleted"})
-      {:ok, _} = Scenes.delete_scene(deleted)
-
-      assert SceneCrud.count_scenes(project.id) == 2
-    end
-  end
-
-  describe "list_active_scene_ids/1" do
-    test "returns MapSet of active scene IDs" do
-      %{project: project} = create_project()
-      scene1 = scene_fixture(project, %{name: "Scene 1"})
-      scene2 = scene_fixture(project, %{name: "Scene 2"})
-      deleted = scene_fixture(project, %{name: "Deleted"})
-      {:ok, _} = Scenes.delete_scene(deleted)
-
-      ids = SceneCrud.list_active_scene_ids(project.id)
-      assert MapSet.member?(ids, scene1.id)
-      assert MapSet.member?(ids, scene2.id)
-      refute MapSet.member?(ids, deleted.id)
-    end
-
-    test "returns empty MapSet for empty project" do
-      %{project: project} = create_project()
-      assert SceneCrud.list_active_scene_ids(project.id) == MapSet.new()
-    end
-  end
-
-  describe "list_shortcuts/1" do
-    test "returns MapSet of shortcuts" do
-      %{project: project} = create_project()
-      _scene1 = scene_fixture(project, %{name: "World Map"})
-      _scene2 = scene_fixture(project, %{name: "City Map"})
-
-      shortcuts = SceneCrud.list_shortcuts(project.id)
-      assert MapSet.member?(shortcuts, "world-map")
-      assert MapSet.member?(shortcuts, "city-map")
-    end
-
-    test "excludes deleted scene shortcuts" do
-      %{project: project} = create_project()
-      _active = scene_fixture(project, %{name: "Active Scene"})
-      deleted = scene_fixture(project, %{name: "Deleted Scene"})
-      {:ok, _} = Scenes.delete_scene(deleted)
-
-      shortcuts = SceneCrud.list_shortcuts(project.id)
-      assert MapSet.member?(shortcuts, "active-scene")
-      refute MapSet.member?(shortcuts, "deleted-scene")
-    end
-  end
-
-  describe "detect_shortcut_conflicts/2" do
-    test "returns conflicting shortcuts" do
-      %{project: project} = create_project()
-      _scene = scene_fixture(project, %{name: "World Map"})
-
-      conflicts = SceneCrud.detect_shortcut_conflicts(project.id, ["world-map", "city-map"])
-      assert "world-map" in conflicts
-      refute "city-map" in conflicts
-    end
-
-    test "returns empty list for no conflicts" do
-      %{project: project} = create_project()
-      _scene = scene_fixture(project, %{name: "World Map"})
-
-      assert SceneCrud.detect_shortcut_conflicts(project.id, ["city-map"]) == []
-    end
-
-    test "returns empty list for empty shortcut list" do
-      %{project: project} = create_project()
-      assert SceneCrud.detect_shortcut_conflicts(project.id, []) == []
-    end
-  end
-
-  describe "soft_delete_by_shortcut/2" do
-    test "soft-deletes scenes matching shortcut" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project, %{name: "World Map"})
-
-      {count, _} = SceneCrud.soft_delete_by_shortcut(project.id, "world-map")
-      assert count == 1
-
-      assert SceneCrud.get_scene(project.id, scene.id) == nil
-    end
-
-    test "does nothing for non-matching shortcut" do
-      %{project: project} = create_project()
-      _scene = scene_fixture(project, %{name: "World Map"})
-
-      {count, _} = SceneCrud.soft_delete_by_shortcut(project.id, "nonexistent")
-      assert count == 0
-    end
-  end
-
-  # =============================================================================
-  # Import helpers
-  # =============================================================================
-
-  describe "import_scene/2" do
-    test "creates scene without default layer or auto-shortcut" do
-      %{project: project} = create_project()
-
-      {:ok, scene} =
-        SceneCrud.import_scene(project.id, %{
-          "name" => "Imported Scene",
-          "shortcut" => "imported-scene",
-          "position" => 0
-        })
-
-      assert scene.name == "Imported Scene"
-      assert scene.shortcut == "imported-scene"
-
-      # import_scene does NOT create a default layer
-      layers = Scenes.list_layers(scene.id)
-      assert layers == []
-    end
-
-    test "returns error for invalid attrs" do
-      %{project: project} = create_project()
-
-      {:error, changeset} = SceneCrud.import_scene(project.id, %{})
-      assert "can't be blank" in errors_on(changeset).name
-    end
-  end
-
-  describe "import_layer/2" do
-    test "creates layer for given scene" do
-      %{project: project} = create_project()
-
-      {:ok, scene} =
-        SceneCrud.import_scene(project.id, %{
-          "name" => "Scene",
-          "shortcut" => "scene",
-          "position" => 0
-        })
-
-      {:ok, layer} =
-        SceneCrud.import_layer(scene.id, %{
-          "name" => "Imported Layer",
-          "position" => 0,
-          "is_default" => true
-        })
-
-      assert layer.name == "Imported Layer"
-      assert layer.scene_id == scene.id
-      assert layer.is_default == true
-    end
-  end
-
-  describe "import_pin/2" do
-    test "creates pin for given scene" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      {:ok, pin} =
-        SceneCrud.import_pin(scene.id, %{
-          "position_x" => 25.0,
-          "position_y" => 75.0,
-          "label" => "Imported Pin"
-        })
-
-      assert pin.label == "Imported Pin"
-      assert pin.scene_id == scene.id
-    end
-  end
-
-  describe "import_zone/2" do
-    test "creates zone for given scene" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      {:ok, zone} =
-        SceneCrud.import_zone(scene.id, %{
-          "name" => "Imported Zone",
-          "vertices" => [
-            %{"x" => 10.0, "y" => 10.0},
-            %{"x" => 50.0, "y" => 10.0},
-            %{"x" => 30.0, "y" => 50.0}
-          ]
-        })
-
-      assert zone.name == "Imported Zone"
-      assert zone.scene_id == scene.id
-    end
-  end
-
-  describe "link_import_parent/2" do
-    test "sets parent_id on scene" do
-      %{project: project} = create_project()
-
-      {:ok, parent} =
-        SceneCrud.import_scene(project.id, %{
-          "name" => "Parent",
-          "shortcut" => "parent",
-          "position" => 0
-        })
-
-      {:ok, child} =
-        SceneCrud.import_scene(project.id, %{
-          "name" => "Child",
-          "shortcut" => "child",
-          "position" => 0
-        })
-
-      updated = SceneCrud.link_import_parent(child, parent.id)
-      assert updated.parent_id == parent.id
-    end
-  end
-
-  # =============================================================================
-  # Bulk import helpers
-  # =============================================================================
-
-  describe "bulk_import_connections/1" do
-    test "inserts connections in bulk" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-      pin1 = pin_fixture(scene, %{"label" => "A"})
-      pin2 = pin_fixture(scene, %{"label" => "B"})
-
-      now = TimeHelpers.now()
-
-      attrs_list = [
-        %{
-          scene_id: scene.id,
-          from_pin_id: pin1.id,
-          to_pin_id: pin2.id,
-          inserted_at: now,
-          updated_at: now
-        }
-      ]
-
-      result = SceneCrud.bulk_import_connections(attrs_list)
-      assert length(result) == 1
-    end
-  end
-
-  describe "bulk_import_annotations/1" do
-    test "inserts annotations in bulk" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      now = TimeHelpers.now()
-
-      attrs_list = [
-        %{
-          scene_id: scene.id,
-          text: "Bulk note",
-          position_x: 50.0,
-          position_y: 50.0,
-          inserted_at: now,
-          updated_at: now
-        }
-      ]
-
-      result = SceneCrud.bulk_import_annotations(attrs_list)
-      assert length(result) == 1
-    end
-  end
-
-  # =============================================================================
-  # list_pin_referenced_sheet_ids/1
-  # =============================================================================
-
-  describe "list_pin_referenced_sheet_ids/1" do
-    test "returns empty MapSet when no pins reference sheets" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-      _pin = pin_fixture(scene)
-
-      assert SceneCrud.list_pin_referenced_sheet_ids(project.id) == MapSet.new()
-    end
-  end
-
-  # =============================================================================
   # Scene.deleted?/1
   # =============================================================================
 
@@ -1150,180 +790,6 @@ defmodule Storyarn.Scenes.SceneCrudTest do
 
       {:ok, deleted_scene} = Scenes.delete_scene(scene)
       assert Scene.deleted?(deleted_scene)
-    end
-  end
-
-  # =============================================================================
-  # list_pin_variables/1
-  # =============================================================================
-
-  describe "list_pin_variables/1" do
-    test "returns empty list when project has no pins" do
-      %{project: project} = create_project()
-      _scene = scene_fixture(project)
-
-      assert SceneCrud.list_pin_variables(project.id) == []
-    end
-
-    test "returns 3 boolean variables per pin with correct structure" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      pin =
-        pin_fixture(scene, %{
-          "shortcut" => "guard.west",
-          "label" => "West Guard",
-          "hidden" => true,
-          "is_playable" => true,
-          "is_leader" => false
-        })
-
-      vars = SceneCrud.list_pin_variables(project.id)
-
-      assert length(vars) == 3
-
-      hidden_var = Enum.find(vars, &(&1.variable_name == "hidden"))
-      assert hidden_var.source_type == "pin"
-      assert hidden_var.source_id == pin.id
-      assert hidden_var.sheet_shortcut == "guard.west"
-      assert hidden_var.sheet_name == "West Guard"
-      assert hidden_var.block_type == "boolean"
-      assert hidden_var.value == %{"content" => true}
-      assert hidden_var.block_id == nil
-      assert hidden_var.options == nil
-      assert hidden_var.constraints == nil
-
-      playable_var = Enum.find(vars, &(&1.variable_name == "is_playable"))
-      assert playable_var.value == %{"content" => true}
-
-      leader_var = Enum.find(vars, &(&1.variable_name == "is_leader"))
-      assert leader_var.value == %{"content" => false}
-    end
-
-    test "uses shortcut as sheet_name when label is nil" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      _pin =
-        pin_fixture(scene, %{
-          "shortcut" => "npc.ghost",
-          "label" => nil
-        })
-
-      vars = SceneCrud.list_pin_variables(project.id)
-      assert hd(vars).sheet_name == "npc.ghost"
-    end
-
-    test "aggregates pins from multiple scenes" do
-      %{project: project} = create_project()
-      scene1 = scene_fixture(project, %{name: "Forest"})
-      scene2 = scene_fixture(project, %{name: "Cave"})
-
-      pin_fixture(scene1, %{"shortcut" => "forest.npc", "label" => "Elf"})
-      pin_fixture(scene2, %{"shortcut" => "cave.npc", "label" => "Goblin"})
-
-      vars = SceneCrud.list_pin_variables(project.id)
-      shortcuts = vars |> Enum.map(& &1.sheet_shortcut) |> Enum.uniq()
-      assert Enum.sort(shortcuts) == ["cave.npc", "forest.npc"]
-    end
-
-    test "excludes pins from deleted scenes" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      _pin =
-        pin_fixture(scene, %{
-          "shortcut" => "guard.east",
-          "label" => "East Guard"
-        })
-
-      {:ok, _} = Scenes.delete_scene(scene)
-
-      assert SceneCrud.list_pin_variables(project.id) == []
-    end
-
-    test "isolates variables to the given project" do
-      %{project: project1} = create_project()
-      %{project: project2} = create_project()
-
-      scene1 = scene_fixture(project1)
-      scene2 = scene_fixture(project2)
-
-      pin_fixture(scene1, %{"shortcut" => "p1.pin", "label" => "P1"})
-      pin_fixture(scene2, %{"shortcut" => "p2.pin", "label" => "P2"})
-
-      vars = SceneCrud.list_pin_variables(project1.id)
-      assert Enum.all?(vars, &(&1.sheet_shortcut == "p1.pin"))
-    end
-  end
-
-  # =============================================================================
-  # list_zone_variables/1
-  # =============================================================================
-
-  describe "list_zone_variables/1" do
-    test "returns empty list when project has no zones" do
-      %{project: project} = create_project()
-      _scene = scene_fixture(project)
-
-      assert SceneCrud.list_zone_variables(project.id) == []
-    end
-
-    test "returns the hidden boolean variable per zone with correct structure" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      zone =
-        zone_fixture(scene, %{
-          "shortcut" => "tavern.door",
-          "name" => "Tavern Door",
-          "hidden" => false,
-          "action_type" => "walkable",
-          "action_data" => %{},
-          "is_walkable" => true
-        })
-
-      vars = SceneCrud.list_zone_variables(project.id)
-
-      assert length(vars) == 1
-
-      hidden_var = Enum.find(vars, &(&1.variable_name == "hidden"))
-      assert hidden_var.source_type == "zone"
-      assert hidden_var.source_id == zone.id
-      assert hidden_var.sheet_shortcut == "tavern.door"
-      assert hidden_var.sheet_name == "Tavern Door"
-      assert hidden_var.block_type == "boolean"
-      assert hidden_var.value == %{"content" => false}
-      assert hidden_var.block_id == nil
-    end
-
-    test "excludes zones from deleted scenes" do
-      %{project: project} = create_project()
-      scene = scene_fixture(project)
-
-      _zone =
-        zone_fixture(scene, %{
-          "shortcut" => "tavern.door",
-          "name" => "Tavern Door"
-        })
-
-      {:ok, _} = Scenes.delete_scene(scene)
-
-      assert SceneCrud.list_zone_variables(project.id) == []
-    end
-
-    test "isolates variables to the given project" do
-      %{project: project1} = create_project()
-      %{project: project2} = create_project()
-
-      scene1 = scene_fixture(project1)
-      scene2 = scene_fixture(project2)
-
-      zone_fixture(scene1, %{"shortcut" => "p1.zone", "name" => "Z1"})
-      zone_fixture(scene2, %{"shortcut" => "p2.zone", "name" => "Z2"})
-
-      vars = SceneCrud.list_zone_variables(project1.id)
-      assert Enum.all?(vars, &(&1.sheet_shortcut == "p1.zone"))
     end
   end
 end

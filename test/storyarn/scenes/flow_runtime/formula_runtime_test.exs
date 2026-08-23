@@ -60,6 +60,15 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
     end
   end
 
+  test "Scenes-owned formula runtime preserves nil-bindings fallback" do
+    variables = %{
+      "sheet.table.row.total" => variable(7, "formula", formula: %{expression: "", bindings: nil})
+    }
+
+    assert FormulaRuntime.recompute_formulas(variables) ==
+             PreviousFormulaRuntime.recompute_formulas(variables)
+  end
+
   test "Scenes-owned runtime preserves same-row binding translation" do
     bindings = %{
       "same" => %{"type" => "same_row", "column_slug" => "base"},

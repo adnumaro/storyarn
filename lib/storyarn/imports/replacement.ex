@@ -20,10 +20,10 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Repo
-  alias Storyarn.Scenes
-  alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
@@ -635,7 +635,7 @@ defmodule Storyarn.Imports.Replacement do
 
   defp trash_active_graph(roots) do
     with :ok <- trash_roots(roots.flows, &FlowProjectTrash.delete_subtree_in_transaction/1),
-         :ok <- trash_roots(roots.scenes, &Scenes.delete_scene_subtree_in_transaction/1) do
+         :ok <- trash_roots(roots.scenes, &SceneProjectTrash.delete_subtree_in_transaction/1) do
       trash_roots(roots.sheets, &Sheets.delete_sheet_subtree_in_transaction/1)
     end
   end

@@ -117,58 +117,58 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:257
+#: lib/storyarn_web/live/project_settings_live/trash.ex:256
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:26
+#: lib/storyarn_web/live/project_settings_live/trash.ex:25
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Papelera"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:28
+#: lib/storyarn_web/live/project_settings_live/trash.ex:27
 #, elixir-autogen, elixir-format
 msgid "Restore deleted project items or remove them permanently."
 msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:93
+#: lib/storyarn_web/live/project_settings_live/trash.ex:92
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:166
-#: lib/storyarn_web/live/project_settings_live/trash.ex:181
+#: lib/storyarn_web/live/project_settings_live/trash.ex:165
+#: lib/storyarn_web/live/project_settings_live/trash.ex:180
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:169
-#: lib/storyarn_web/live/project_settings_live/trash.ex:354
-#: lib/storyarn_web/live/project_settings_live/trash.ex:357
+#: lib/storyarn_web/live/project_settings_live/trash.ex:168
+#: lib/storyarn_web/live/project_settings_live/trash.ex:353
+#: lib/storyarn_web/live/project_settings_live/trash.ex:356
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:188
-#: lib/storyarn_web/live/project_settings_live/trash.ex:227
+#: lib/storyarn_web/live/project_settings_live/trash.ex:187
+#: lib/storyarn_web/live/project_settings_live/trash.ex:226
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:205
-#: lib/storyarn_web/live/project_settings_live/trash.ex:220
+#: lib/storyarn_web/live/project_settings_live/trash.ex:204
+#: lib/storyarn_web/live/project_settings_live/trash.ex:219
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:223
-#: lib/storyarn_web/live/project_settings_live/trash.ex:379
+#: lib/storyarn_web/live/project_settings_live/trash.ex:222
+#: lib/storyarn_web/live/project_settings_live/trash.ex:378
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:261
+#: lib/storyarn_web/live/project_settings_live/trash.ex:260
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
@@ -1222,12 +1222,12 @@ msgstr "La eliminación de la snapshot ha comenzado."
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:364
+#: lib/storyarn_web/live/project_settings_live/trash.ex:363
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:373
+#: lib/storyarn_web/live/project_settings_live/trash.ex:372
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."

@@ -54,7 +54,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
         Storyarn.Repo.preload(scene, [:layers, :zones, :pins, :connections, :annotations], force: true)
 
       {:ok, version} = Storyarn.Scenes.maybe_create_version(scene, user.id)
-      assert %EntityVersion{is_auto: true} = version
+      assert version.is_auto
     end
   end
 

@@ -12,7 +12,6 @@ defmodule StoryarnWeb.SceneSidebarLive do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Collaboration
-  alias Storyarn.Projects
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SceneLive.Helpers.PropsSerializer
@@ -25,7 +24,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
 
     project =
       if project_id && current_scope do
-        case Projects.get_project(current_scope, project_id) do
+        case Scenes.get_project(current_scope, project_id) do
           {:ok, project, _membership} -> project
           _ -> nil
         end

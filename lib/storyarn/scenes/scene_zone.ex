@@ -12,10 +12,10 @@ defmodule Storyarn.Scenes.SceneZone do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Scenes.Persistence.AssetRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Shared.Validations
+  alias Storyarn.Scenes.Schema
 
   @valid_border_styles ~w(solid dashed dotted)
   @valid_target_types ~w(flow scene)
@@ -52,7 +52,7 @@ defmodule Storyarn.Scenes.SceneZone do
           label_font_weight: String.t(),
           label_font_style: String.t(),
           label_icon_asset_id: integer() | nil,
-          label_icon_asset: Asset.t() | NotLoaded.t() | nil,
+          label_icon_asset: AssetRecord.t() | NotLoaded.t() | nil,
           condition: map() | nil,
           condition_effect: String.t(),
           is_walkable: boolean(),
@@ -84,7 +84,7 @@ defmodule Storyarn.Scenes.SceneZone do
     field :label_font_family, :string, default: "system"
     field :label_font_weight, :string, default: "600"
     field :label_font_style, :string, default: "normal"
-    belongs_to :label_icon_asset, Asset, where: [deleted_at: nil]
+    belongs_to :label_icon_asset, AssetRecord, where: [deleted_at: nil]
     field :condition, :map
     field :condition_effect, :string, default: "hide"
     field :is_walkable, :boolean, default: false
@@ -160,7 +160,7 @@ defmodule Storyarn.Scenes.SceneZone do
     |> validate_color(:border_color)
     |> validate_length(:tooltip, max: 500)
     |> foreign_key_constraint(:label_icon_asset_id)
-    |> Validations.validate_shortcut()
+    |> Schema.validate_shortcut()
     |> unique_constraint(:shortcut, name: :scene_zones_scene_id_shortcut_index)
     |> validate_vertices()
     |> foreign_key_constraint(:layer_id)

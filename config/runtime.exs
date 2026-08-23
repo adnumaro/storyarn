@@ -90,10 +90,10 @@ if config_env() != :test do
   config :storyarn, Storyarn.Flows.Versioning.RestorePolicy,
     flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED")
 
-  config :storyarn, Storyarn.Versioning.RestorePolicy,
-    sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
+  config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy,
     scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED")
 
+  config :storyarn, Storyarn.Versioning.RestorePolicy, sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED")
   config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
 

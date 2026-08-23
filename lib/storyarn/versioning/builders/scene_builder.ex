@@ -1,43 +1,38 @@
 defmodule Storyarn.Versioning.Builders.SceneBuilder do
   @moduledoc """
-  Snapshot builder for scenes.
+  Project-owned snapshot codec for Scene data.
 
-  Captures scene metadata, layers (sorted by position), and per-layer
-  zones, pins, and annotations. Connections reference pins by
-  (layer_index, pin_index_within_layer) for portability.
+  It captures, validates, compares, and materializes Scene data as part of
+  whole-project snapshots. Entity-version capture, diff, and restore belong to
+  `Storyarn.Scenes.Versioning.SceneSnapshot`.
 
   Scenes are editor metadata and intentionally have no localization payload;
   runtime-localizable sources are limited to sheets, blocks, and flow nodes.
   """
-
-  @behaviour Storyarn.Versioning.SnapshotBuilder
 
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
   import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
-  alias Ecto.Multi
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord, as: SceneAmbientFlow
+  alias Storyarn.Projects.Persistence.SceneAnnotationRecord, as: SceneAnnotation
+  alias Storyarn.Projects.Persistence.SceneConnectionRecord, as: SceneConnection
+  alias Storyarn.Projects.Persistence.SceneLayerRecord, as: SceneLayer
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.SceneRoutePoints, as: RoutePoints
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Scenes.RoutePoints
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAmbientFlow
-  alias Storyarn.Scenes.SceneAnnotation
-  alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
-  alias Storyarn.Versioning.EntityRestoreSafety
   alias Storyarn.Versioning.MaterializationHelpers
-  alias Storyarn.Versioning.RestorePolicy
 
   @scene_restore_root_fields ~w(
     original_id name shortcut description width height default_zoom
@@ -74,7 +69,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   # ========== Build Snapshot ==========
 
-  @impl true
   def build_snapshot(%Scene{} = scene) do
     {:ok, snapshot} =
       Repo.transaction(
@@ -708,7 +702,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   @spec validate_portable_snapshot(term()) :: :ok | {:error, term()}
   def validate_portable_snapshot(snapshot), do: validate_portable_scene_snapshot(snapshot)
 
-  @impl true
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
     with :ok <- validate_instantiation_snapshot(snapshot, opts) do
       run_scene_instantiation(project_id, snapshot, opts)
@@ -899,401 +892,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     else
       :ok
     end
-  end
-
-  @impl true
-  def restore_snapshot(%Scene{} = scene, snapshot, opts \\ []) do
-    with :ok <-
-           RestorePolicy.ensure_builder_enabled(
-             "scene",
-             Keyword.get(opts, :restore_action)
-           ),
-         :ok <- validate_portable_scene_snapshot(snapshot) do
-      opts
-      |> MaterializationHelpers.with_asset_copy_tracker(&run_scene_restore_materialization(scene, snapshot, &1))
-      |> finalize_scene_restore()
-    end
-  end
-
-  defp run_scene_restore_materialization(scene, snapshot, opts) do
-    AssetMaterializationScope.run(opts, fn scoped_opts ->
-      execute_scene_restore_transaction(scene, snapshot, scoped_opts)
-    end)
-  end
-
-  defp execute_scene_restore_transaction(scene, snapshot, opts) do
-    MaterializationHelpers.with_project_storage_lock(scene.project_id, fn ->
-      execute_scene_restore_multi(scene, snapshot, opts)
-    end)
-  end
-
-  defp execute_scene_restore_multi(scene, snapshot, opts) do
-    Multi.new()
-    |> Multi.run(:lock_project, fn repo, _changes ->
-      lock_scene_materialization_project(repo, scene.project_id)
-    end)
-    |> Multi.run(:lock_scene, fn repo, %{lock_project: _project} ->
-      lock_scene_for_restore(repo, scene)
-    end)
-    |> Multi.run(:lock_pre_restore_version, fn repo, %{lock_scene: locked_scene} ->
-      case lock_pre_restore_version_record(repo, locked_scene, opts) do
-        :ok -> {:ok, :locked}
-        {:error, reason} -> {:error, reason}
-      end
-    end)
-    |> Multi.run(:lock_external_references, fn repo,
-                                               %{
-                                                 lock_scene: locked_scene,
-                                                 lock_pre_restore_version: _version
-                                               } ->
-      lock_scene_external_references(repo, locked_scene, snapshot)
-    end)
-    |> Multi.run(:lock_restore_scope, fn repo,
-                                         %{
-                                           lock_scene: locked_scene,
-                                           lock_external_references: _references
-                                         } ->
-      lock_scene_restore_scope(repo, locked_scene.id)
-    end)
-    |> Multi.run(:verify_pre_restore_baseline, fn _repo,
-                                                  %{
-                                                    lock_scene: locked_scene,
-                                                    lock_restore_scope: _scope,
-                                                    lock_external_references: _references
-                                                  } ->
-      case verify_pre_restore_scene_baseline(locked_scene, opts) do
-        :ok -> {:ok, :verified}
-        {:error, reason} -> {:error, reason}
-      end
-    end)
-    |> Multi.run(:validate_snapshot, fn repo,
-                                        %{
-                                          lock_scene: locked_scene,
-                                          lock_restore_scope: _scope,
-                                          lock_external_references: _references,
-                                          verify_pre_restore_baseline: _baseline
-                                        } ->
-      validate_scene_restore_snapshot(repo, locked_scene, snapshot)
-    end)
-    |> Multi.update(:scene, fn %{lock_scene: locked_scene} ->
-      Scene.update_changeset(locked_scene, %{
-        name: snapshot["name"],
-        shortcut: snapshot["shortcut"],
-        description: snapshot["description"],
-        width: snapshot["width"],
-        height: snapshot["height"],
-        default_zoom: snapshot["default_zoom"],
-        default_center_x: snapshot["default_center_x"],
-        default_center_y: snapshot["default_center_y"],
-        scale_unit: snapshot["scale_unit"],
-        scale_value: snapshot["scale_value"],
-        fog_color: snapshot_default(snapshot, "fog_color", "#000000"),
-        fog_opacity: snapshot_default(snapshot, "fog_opacity", 0.85),
-        exploration_display_mode: snapshot_default(snapshot, "exploration_display_mode", "fit"),
-        background_asset_id:
-          resolve_scene_background_asset(
-            snapshot["background_asset_id"],
-            snapshot,
-            locked_scene.project_id,
-            opts
-          )
-      })
-    end)
-    |> Multi.run(:restore_children, fn repo,
-                                       %{
-                                         lock_scene: locked_scene,
-                                         validate_snapshot: plan
-                                       } ->
-      reconcile_scene_children(repo, locked_scene, snapshot, plan, opts)
-    end)
-    |> Multi.run(:reconcile_references, fn _repo,
-                                           %{
-                                             lock_scene: locked_scene,
-                                             validate_snapshot: plan,
-                                             restore_children: restored
-                                           } ->
-      reconcile_scene_references(locked_scene.project_id, plan, restored)
-    end)
-    |> Repo.transaction(timeout: :infinity)
-  end
-
-  defp finalize_scene_restore({:ok, %{scene: updated_scene}}) do
-    {:ok,
-     Repo.preload(
-       updated_scene,
-       [
-         :background_asset,
-         :connections,
-         :annotations,
-         :zones,
-         [ambient_flows: :flow],
-         [pins: [:icon_asset, sheet: [avatars: :asset]]],
-         {:layers, [:zones, :pins]}
-       ],
-       force: true
-     )}
-  end
-
-  defp finalize_scene_restore({:error, _op, reason, _changes}), do: {:error, reason}
-  defp finalize_scene_restore({:error, reason}), do: {:error, reason}
-
-  defp lock_scene_for_restore(repo, %Scene{id: scene_id, project_id: project_id}) do
-    case repo.one(
-           from(scene in Scene,
-             where: scene.id == ^scene_id,
-             lock: "FOR UPDATE"
-           )
-         ) do
-      %Scene{project_id: ^project_id, deleted_at: nil} = locked_scene ->
-        {:ok, locked_scene}
-
-      %Scene{project_id: ^project_id} ->
-        {:error, {:scene_not_active, scene_id}}
-
-      %Scene{project_id: actual_project_id} ->
-        {:error, {:scene_project_mismatch, scene_id, project_id, actual_project_id}}
-
-      nil ->
-        {:error, {:scene_not_found, scene_id}}
-    end
-  end
-
-  defp lock_pre_restore_version_record(repo, scene, opts) do
-    case EntityRestoreSafety.lock_pre_restore_version(
-           repo,
-           "scene",
-           scene,
-           Keyword.get(opts, :user_id),
-           opts
-         ) do
-      {:ok, _version_or_not_required} -> :ok
-      {:error, _reason} = error -> error
-    end
-  end
-
-  defp verify_pre_restore_scene_baseline(scene, opts) do
-    EntityRestoreSafety.verify_pre_restore_baseline(
-      "scene",
-      scene,
-      opts,
-      &do_build_snapshot/1,
-      :scene_changed_since_pre_restore_snapshot
-    )
-  end
-
-  defp lock_scene_restore_scope(repo, scene_id) do
-    layer_ids = lock_scene_owned_rows(repo, SceneLayer, scene_id)
-
-    with {:ok, zone_ids} <-
-           lock_layer_scoped_scene_rows(repo, SceneZone, :scene_zone, scene_id, layer_ids),
-         {:ok, pin_ids} <-
-           lock_layer_scoped_scene_rows(repo, ScenePin, :scene_pin, scene_id, layer_ids),
-         {:ok, annotation_ids} <-
-           lock_layer_scoped_scene_rows(
-             repo,
-             SceneAnnotation,
-             :scene_annotation,
-             scene_id,
-             layer_ids
-           ) do
-      {:ok,
-       %{
-         SceneLayer => layer_ids,
-         SceneZone => zone_ids,
-         ScenePin => pin_ids,
-         SceneAnnotation => annotation_ids,
-         SceneConnection => lock_scene_owned_rows(repo, SceneConnection, scene_id),
-         SceneAmbientFlow => lock_scene_owned_rows(repo, SceneAmbientFlow, scene_id)
-       }}
-    end
-  end
-
-  defp lock_scene_owned_rows(repo, schema, scene_id) do
-    repo.all(
-      from(row in schema,
-        where: row.scene_id == ^scene_id,
-        order_by: [asc: row.id],
-        lock: "FOR UPDATE",
-        select: row.id
-      )
-    )
-  end
-
-  defp lock_layer_scoped_scene_rows(repo, schema, label, scene_id, layer_ids) do
-    rows =
-      repo.all(
-        from(row in schema,
-          where: row.scene_id == ^scene_id or row.layer_id in ^layer_ids,
-          order_by: [asc: row.id],
-          lock: "FOR UPDATE",
-          select: {row.id, row.scene_id, row.layer_id}
-        )
-      )
-
-    case Enum.find(rows, fn {_id, owner_scene_id, layer_id} ->
-           (owner_scene_id == scene_id and not is_nil(layer_id) and
-              layer_id not in layer_ids) or
-             (owner_scene_id != scene_id and layer_id in layer_ids)
-         end) do
-      nil ->
-        {:ok,
-         rows
-         |> Enum.filter(fn {_id, owner_scene_id, _layer_id} -> owner_scene_id == scene_id end)
-         |> Enum.map(&elem(&1, 0))}
-
-      {id, owner_scene_id, layer_id} ->
-        {:error, {:scene_layer_ownership_mismatch, label, id, owner_scene_id, layer_id, scene_id}}
-    end
-  end
-
-  defp lock_scene_external_references(repo, scene, snapshot) do
-    with {:ok, plan} <- validate_scene_snapshot_structure(snapshot) do
-      references = scene_snapshot_reference_ids(plan, snapshot)
-
-      owners_by_schema =
-        Map.new(
-          [
-            {Flow, references.flow_ids},
-            {Sheet, references.sheet_ids},
-            {Scene, references.scene_ids}
-          ],
-          fn {schema, ids} ->
-            owners =
-              from(row in schema,
-                where: row.id in ^Enum.sort(ids) and is_nil(row.deleted_at),
-                order_by: [asc: row.id],
-                lock: "FOR UPDATE",
-                select: {row.id, row.project_id}
-              )
-              |> repo.all()
-              |> Map.new()
-
-            {schema, owners}
-          end
-        )
-
-      asset_owners =
-        from(asset in Asset,
-          where:
-            asset.id in ^Enum.sort(references.asset_ids) and
-              is_nil(asset.deleted_at),
-          order_by: [asc: asset.id],
-          lock: "FOR UPDATE",
-          select: {asset.id, {asset.project_id, asset.content_type}}
-        )
-        |> repo.all()
-        |> Map.new()
-
-      with :ok <-
-             validate_scene_external_reference_ownership_from_locked(
-               scene,
-               snapshot,
-               plan,
-               references,
-               owners_by_schema,
-               asset_owners
-             ) do
-        {:ok, references}
-      end
-    end
-  end
-
-  defp validate_scene_restore_snapshot(repo, %Scene{} = scene, snapshot) when is_map(snapshot) do
-    with :ok <- validate_scene_root_id(scene, snapshot),
-         {:ok, plan} <- validate_scene_snapshot_structure(snapshot),
-         :ok <- validate_scene_snapshot_variable_references(scene.project_id, plan),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             SceneLayer,
-             plan.layer_ids,
-             scene.id,
-             :scene_layer
-           ),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             SceneZone,
-             plan.zone_ids,
-             scene.id,
-             :scene_zone
-           ),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             ScenePin,
-             plan.pin_ids,
-             scene.id,
-             :scene_pin
-           ),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             SceneAnnotation,
-             plan.annotation_ids,
-             scene.id,
-             :scene_annotation
-           ),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             SceneConnection,
-             plan.connection_ids,
-             scene.id,
-             :scene_connection
-           ),
-         :ok <-
-           validate_ids_belong_to_scene(
-             repo,
-             SceneAmbientFlow,
-             plan.ambient_flow_ids,
-             scene.id,
-             :scene_ambient_flow
-           ),
-         :ok <- validate_scene_external_reference_ownership(repo, scene, snapshot, plan) do
-      {:ok,
-       Map.merge(plan, %{
-         removed_zone_ids: removed_scene_child_ids(repo, SceneZone, scene.id, plan.zone_ids),
-         removed_pin_ids: removed_scene_child_ids(repo, ScenePin, scene.id, plan.pin_ids),
-         removed_ambient_flow_ids:
-           removed_scene_child_ids(
-             repo,
-             SceneAmbientFlow,
-             scene.id,
-             plan.ambient_flow_ids
-           )
-       })}
-    end
-  end
-
-  defp validate_scene_restore_snapshot(_repo, _scene, snapshot), do: {:error, {:invalid_scene_snapshot, snapshot}}
-
-  defp validate_scene_snapshot_variable_references(project_id, plan) do
-    sources =
-      Enum.map(plan.pins, &scene_snapshot_variable_source("scene_pin", &1)) ++
-        Enum.map(plan.zones, &scene_snapshot_variable_source("scene_zone", &1)) ++
-        Enum.map(plan.ambient_flows, &scene_ambient_snapshot_variable_source/1)
-
-    References.validate_snapshot_variable_references(project_id, sources)
-  end
-
-  defp scene_snapshot_variable_source(source_type, {element, _layer_id}) do
-    %{
-      source_type: source_type,
-      source_id: element["original_id"],
-      action_type: element["action_type"],
-      action_data: element["action_data"],
-      condition: element["condition"]
-    }
-  end
-
-  defp scene_ambient_snapshot_variable_source(ambient_flow) do
-    %{
-      source_type: "scene_ambient_flow",
-      source_id: ambient_flow["original_id"],
-      trigger_type: ambient_flow["trigger_type"],
-      trigger_config: ambient_flow["trigger_config"]
-    }
   end
 
   defp validate_portable_scene_snapshot(snapshot) do
@@ -1763,11 +1361,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp non_empty_string?(value), do: is_binary(value) and String.trim(value) != ""
   defp optional_string?(value), do: is_nil(value) or is_binary(value)
 
-  defp validate_scene_root_id(%Scene{id: scene_id}, %{"original_id" => scene_id}) when is_integer(scene_id), do: :ok
-
-  defp validate_scene_root_id(%Scene{id: scene_id}, snapshot),
-    do: {:error, {:scene_snapshot_root_mismatch, scene_id, snapshot["original_id"]}}
-
   defp collect_scene_restore_data(snapshot) do
     with {:ok, layers} <- snapshot_map_list(snapshot, "layers"),
          {:ok, orphan_zones} <- snapshot_map_list(snapshot, "orphan_zones"),
@@ -1845,23 +1438,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp restore_entry_data({data, _parent_id}), do: data
   defp restore_entry_data(data), do: data
-
-  defp validate_ids_belong_to_scene(_repo, _schema, [], _scene_id, _label), do: :ok
-
-  defp validate_ids_belong_to_scene(repo, schema, ids, scene_id, label) do
-    conflicting_id =
-      repo.one(
-        from(row in schema,
-          where: row.id in ^ids and row.scene_id != ^scene_id,
-          select: row.id,
-          limit: 1
-        )
-      )
-
-    if conflicting_id,
-      do: {:error, {:snapshot_original_id_ownership_mismatch, label, conflicting_id, scene_id}},
-      else: :ok
-  end
 
   defp snapshot_pin_ids_by_index(snapshot) do
     layered_pin_ids =
@@ -2108,54 +1684,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
           {:ok, actual_project_id} ->
             {:error, {:scene_ambient_flow_flow_project_mismatch, flow_id, scene.project_id, actual_project_id}}
         end
-    end
-  end
-
-  defp validate_scene_external_reference_ownership_from_locked(
-         scene,
-         snapshot,
-         plan,
-         references,
-         owners_by_schema,
-         asset_owners
-       ) do
-    with true <- references == scene_snapshot_reference_ids(plan, snapshot),
-         :ok <-
-           validate_scene_ambient_flow_owners(
-             Map.fetch!(owners_by_schema, Flow),
-             plan.ambient_flows,
-             scene
-           ),
-         :ok <-
-           validate_scene_project_owned_reference_owners(
-             Map.fetch!(owners_by_schema, Flow),
-             references.flow_ids,
-             scene.project_id,
-             :flow
-           ),
-         :ok <-
-           validate_scene_project_owned_reference_owners(
-             Map.fetch!(owners_by_schema, Sheet),
-             references.sheet_ids,
-             scene.project_id,
-             :sheet
-           ),
-         :ok <-
-           validate_scene_project_owned_reference_owners(
-             Map.fetch!(owners_by_schema, Scene),
-             references.scene_ids,
-             scene.project_id,
-             :scene
-           ) do
-      validate_scene_asset_reference_owners(
-        asset_owners,
-        references.asset_ids,
-        scene.project_id,
-        snapshot
-      )
-    else
-      false -> {:error, :scene_locked_reference_set_mismatch}
-      {:error, _reason} = error -> error
     end
   end
 
@@ -2428,135 +1956,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       else: {:error, {:duplicate_scene_snapshot_value, label}}
   end
 
-  defp removed_scene_child_ids(repo, schema, scene_id, target_ids) do
-    current_ids =
-      repo.all(from(row in schema, where: row.scene_id == ^scene_id, select: row.id))
-
-    current_ids -- target_ids
-  end
-
-  defp reconcile_scene_children(repo, scene, snapshot, plan, opts) do
-    delete_scene_children_absent_from_snapshot(repo, scene.id, plan)
-    neutralize_scene_unique_fields(repo, scene.id)
-
-    with {:ok, layer_data} <-
-           restore_layers(
-             repo,
-             scene.id,
-             snapshot["layers"] || [],
-             snapshot,
-             scene.project_id,
-             opts
-           ),
-         {:ok, orphan_data} <-
-           restore_orphan_entities(
-             repo,
-             scene.id,
-             snapshot,
-             scene.project_id,
-             opts
-           ),
-         {:ok, _connection_count} <-
-           restore_connections(
-             repo,
-             scene.id,
-             snapshot["connections"] || [],
-             Map.put(layer_data, -1, %{pin_ids: orphan_data.pin_ids})
-           ),
-         :ok <-
-           reconcile_scene_ambient_flows(
-             repo,
-             scene.id,
-             snapshot["ambient_flows"] || []
-           ) do
-      {:ok,
-       %{
-         pin_ids: plan.pin_ids,
-         zone_ids: plan.zone_ids,
-         ambient_flow_ids: plan.ambient_flow_ids
-       }}
-    end
-  end
-
-  defp delete_scene_children_absent_from_snapshot(repo, scene_id, plan) do
-    delete_absent_scene_rows(
-      repo,
-      SceneConnection,
-      scene_id,
-      plan.connection_ids
-    )
-
-    delete_absent_scene_rows(
-      repo,
-      SceneAnnotation,
-      scene_id,
-      plan.annotation_ids
-    )
-
-    delete_absent_scene_rows(repo, ScenePin, scene_id, plan.pin_ids)
-    delete_absent_scene_rows(repo, SceneZone, scene_id, plan.zone_ids)
-    delete_absent_scene_rows(repo, SceneLayer, scene_id, plan.layer_ids)
-  end
-
-  defp delete_absent_scene_rows(repo, schema, scene_id, []) do
-    repo.delete_all(from(row in schema, where: row.scene_id == ^scene_id))
-  end
-
-  defp delete_absent_scene_rows(repo, schema, scene_id, target_ids) do
-    repo.delete_all(
-      from(row in schema,
-        where: row.scene_id == ^scene_id and row.id not in ^target_ids
-      )
-    )
-  end
-
-  defp neutralize_scene_unique_fields(repo, scene_id) do
-    repo.update_all(
-      from(pin in ScenePin, where: pin.scene_id == ^scene_id),
-      set: [shortcut: nil, is_leader: false]
-    )
-
-    repo.update_all(
-      from(zone in SceneZone, where: zone.scene_id == ^scene_id),
-      set: [shortcut: nil]
-    )
-  end
-
-  defp reconcile_scene_references(project_id, plan, restored) do
-    with :ok <-
-           reconcile_reference_items(
-             plan.removed_pin_ids,
-             &delete_scene_pin_references/1
-           ),
-         :ok <-
-           reconcile_reference_items(
-             plan.removed_zone_ids,
-             &delete_scene_zone_references/1
-           ),
-         :ok <-
-           reconcile_reference_items(
-             plan.removed_ambient_flow_ids,
-             &delete_scene_ambient_flow_references/1
-           ),
-         :ok <-
-           reconcile_reference_items(
-             scene_rows_by_id(restored.pin_ids, ScenePin),
-             &update_scene_pin_references(&1, project_id)
-           ),
-         :ok <-
-           reconcile_reference_items(
-             scene_rows_by_id(restored.zone_ids, SceneZone),
-             &update_scene_zone_references(&1, project_id)
-           ),
-         :ok <-
-           reconcile_reference_items(
-             scene_rows_by_id(restored.ambient_flow_ids, SceneAmbientFlow),
-             &update_scene_ambient_flow_references(&1, project_id)
-           ) do
-      {:ok, :reconciled}
-    end
-  end
-
   defp update_scene_pin_references(pin, project_id) do
     with :ok <-
            References.update_scene_pin_entity_references(
@@ -2587,24 +1986,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     )
   end
 
-  defp delete_scene_pin_references(pin_id) do
-    with :ok <-
-           normalize_reference_delete_result(References.delete_scene_pin_entity_references(pin_id)) do
-      References.delete_scene_pin_variable_references(pin_id)
-    end
-  end
-
-  defp delete_scene_zone_references(zone_id) do
-    with :ok <-
-           normalize_reference_delete_result(References.delete_scene_zone_entity_references(zone_id)) do
-      References.delete_scene_zone_variable_references(zone_id)
-    end
-  end
-
-  defp delete_scene_ambient_flow_references(ambient_flow_id) do
-    References.delete_scene_ambient_flow_variable_references(ambient_flow_id)
-  end
-
   defp reconcile_reference_items(items, reconcile_fun) do
     Enum.reduce_while(items, :ok, fn item, :ok ->
       case reconcile_fun.(item) do
@@ -2613,124 +1994,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
         result -> {:halt, {:error, {:unexpected_reference_reconcile_result, result}}}
       end
     end)
-  end
-
-  defp normalize_reference_delete_result(:ok), do: :ok
-
-  defp normalize_reference_delete_result({count, nil}) when is_integer(count) and count >= 0, do: :ok
-
-  defp normalize_reference_delete_result({:error, _reason} = error), do: error
-
-  defp normalize_reference_delete_result(result), do: {:error, {:unexpected_reference_delete_result, result}}
-
-  defp scene_rows_by_id([], _schema), do: []
-
-  defp scene_rows_by_id(ids, schema) do
-    Repo.all(from(row in schema, where: row.id in ^ids))
-  end
-
-  defp restore_layers(_repo, _scene_id, [], _snapshot, _project_id, _opts), do: {:ok, %{}}
-
-  defp restore_layers(repo, scene_id, layers_data, snapshot, project_id, opts) do
-    now = MaterializationHelpers.now()
-
-    layer_data =
-      layers_data
-      |> Enum.with_index()
-      |> Enum.reduce(%{}, fn {layer_data, layer_idx}, acc ->
-        {layer_id, pin_ids} =
-          restore_single_layer(
-            repo,
-            scene_id,
-            layer_data,
-            layer_idx,
-            now,
-            snapshot,
-            project_id,
-            opts
-          )
-
-        Map.put(acc, layer_idx, %{layer_id: layer_id, pin_ids: pin_ids})
-      end)
-
-    {:ok, layer_data}
-  end
-
-  defp restore_single_layer(repo, scene_id, layer_data, layer_idx, now, snapshot, project_id, opts) do
-    layer_id = insert_layer(repo, scene_id, layer_data, layer_idx, now)
-    insert_layer_zones(repo, scene_id, layer_id, layer_data["zones"] || [], now, snapshot, project_id, opts)
-
-    pin_ids =
-      insert_layer_pins(
-        repo,
-        scene_id,
-        layer_id,
-        layer_data["pins"] || [],
-        now,
-        snapshot,
-        project_id,
-        opts
-      )
-
-    insert_layer_annotations(repo, scene_id, layer_id, layer_data["annotations"] || [], now)
-    {layer_id, pin_ids}
-  end
-
-  defp insert_layer(repo, scene_id, layer_data, layer_idx, now) do
-    attrs = %{
-      id: layer_data["original_id"],
-      scene_id: scene_id,
-      name: layer_data["name"],
-      is_default: Map.get(layer_data, "is_default", false),
-      position: Map.get(layer_data, "position", layer_idx),
-      visible: Map.get(layer_data, "visible", true),
-      fog_enabled: Map.get(layer_data, "fog_enabled", false),
-      inserted_at: now,
-      updated_at: now
-    }
-
-    case upsert_restore_rows(repo, SceneLayer, [attrs]) do
-      {1, _} -> layer_data["original_id"]
-      {0, _} -> raise "Failed to upsert scene layer during restore"
-    end
-  end
-
-  defp insert_layer_zones(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: :ok
-
-  defp insert_layer_zones(repo, scene_id, layer_id, zones_data, now, snapshot, project_id, opts) do
-    Enum.each(zones_data, fn zone_data ->
-      attrs =
-        zone_data
-        |> build_zone_attrs(
-          scene_id,
-          layer_id,
-          now,
-          snapshot,
-          project_id,
-          opts
-        )
-        |> Map.put(:id, zone_data["original_id"])
-
-      insert_single!(repo, SceneZone, attrs, "scene zone")
-    end)
-  end
-
-  defp build_zone_attrs(zone_data, scene_id, layer_id, now, snapshot, project_id, opts) do
-    zone_data
-    |> zone_restore_attrs()
-    |> Map.merge(%{
-      scene_id: scene_id,
-      layer_id: layer_id,
-      label_icon_asset_id:
-        resolve_scene_zone_label_icon_asset(
-          zone_data["label_icon_asset_id"],
-          snapshot,
-          project_id,
-          opts
-        ),
-      inserted_at: now,
-      updated_at: now
-    })
   end
 
   defp zone_restore_attrs(d) do
@@ -2845,55 +2108,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   defp normalize_zone_target(_target_type, _target_id), do: {nil, nil}
 
-  defp insert_single!(repo, schema, attrs, label) do
-    case upsert_restore_rows(repo, schema, [attrs]) do
-      {1, _} -> :ok
-      {0, _} -> raise "Failed to upsert #{label} during restore"
-    end
-  end
-
-  defp insert_layer_pins(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: []
-
-  defp insert_layer_pins(repo, scene_id, layer_id, pins_data, now, snapshot, project_id, opts) do
-    Enum.map(pins_data, fn pin_data ->
-      attrs =
-        pin_data
-        |> build_pin_attrs(
-          scene_id,
-          layer_id,
-          now,
-          snapshot,
-          project_id,
-          opts
-        )
-        |> Map.put(:id, pin_data["original_id"])
-
-      case upsert_restore_rows(repo, ScenePin, [attrs]) do
-        {1, _} -> pin_data["original_id"]
-        {0, _} -> raise "Failed to upsert scene pin during restore"
-      end
-    end)
-  end
-
-  defp build_pin_attrs(pin_data, scene_id, layer_id, now, snapshot, project_id, opts) do
-    pin_data
-    |> pin_base_attrs()
-    |> Map.merge(%{
-      scene_id: scene_id,
-      layer_id: layer_id,
-      sheet_id: resolve_scene_sheet_id(pin_data["sheet_id"], project_id, opts),
-      icon_asset_id:
-        resolve_scene_pin_icon_asset(
-          pin_data["icon_asset_id"],
-          snapshot,
-          project_id,
-          opts
-        ),
-      inserted_at: now,
-      updated_at: now
-    })
-  end
-
   defp pin_base_attrs(d) do
     Map.merge(
       %{
@@ -2936,24 +2150,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     }
   end
 
-  defp insert_layer_annotations(_repo, _scene_id, _layer_id, [], _now), do: :ok
-
-  defp insert_layer_annotations(repo, scene_id, layer_id, annotations_data, now) do
-    Enum.each(annotations_data, fn ann_data ->
-      attrs =
-        ann_data
-        |> annotation_restore_attrs(layer_id)
-        |> Map.merge(%{
-          id: ann_data["original_id"],
-          scene_id: scene_id,
-          inserted_at: now,
-          updated_at: now
-        })
-
-      insert_single!(repo, SceneAnnotation, attrs, "scene annotation")
-    end)
-  end
-
   defp annotation_restore_attrs(annotation, layer_id) do
     %{
       layer_id: layer_id,
@@ -2965,30 +2161,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       position: Map.get(annotation, "position", 0),
       locked: Map.get(annotation, "locked", false)
     }
-  end
-
-  defp restore_connections(_repo, _scene_id, [], _layer_data), do: {:ok, 0}
-
-  defp restore_connections(repo, scene_id, connections_data, _layer_data) do
-    now = MaterializationHelpers.now()
-
-    entries =
-      Enum.map(connections_data, fn conn ->
-        conn
-        |> connection_restore_attrs(
-          conn["from_pin_original_id"],
-          conn["to_pin_original_id"]
-        )
-        |> Map.merge(%{
-          id: conn["original_id"],
-          scene_id: scene_id,
-          inserted_at: now,
-          updated_at: now
-        })
-      end)
-
-    {count, _} = upsert_restore_rows(repo, SceneConnection, entries)
-    {:ok, count}
   end
 
   defp connection_restore_attrs(conn, from_pin_id, to_pin_id) do
@@ -3009,30 +2181,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     }
   end
 
-  defp reconcile_scene_ambient_flows(repo, scene_id, ambient_flows) do
-    repo.delete_all(
-      from(ambient_flow in SceneAmbientFlow,
-        where: ambient_flow.scene_id == ^scene_id
-      )
-    )
-
-    now = MaterializationHelpers.now()
-
-    entries =
-      Enum.map(ambient_flows, fn ambient_flow ->
-        ambient_flow
-        |> ambient_flow_restore_attrs()
-        |> Map.merge(%{
-          id: ambient_flow["original_id"],
-          scene_id: scene_id,
-          inserted_at: now,
-          updated_at: now
-        })
-      end)
-
-    MaterializationHelpers.insert_all(repo, SceneAmbientFlow, entries)
-  end
-
   defp ambient_flow_restore_attrs(ambient_flow) do
     %{
       flow_id: ambient_flow["flow_id"],
@@ -3042,41 +2190,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
       enabled: ambient_flow["enabled"],
       position: ambient_flow["position"]
     }
-  end
-
-  defp upsert_restore_rows(_repo, _schema, []), do: {0, nil}
-
-  defp upsert_restore_rows(repo, schema, entries) do
-    Enum.each(entries, &upsert_restore_row(repo, schema, &1))
-
-    {length(entries), nil}
-  end
-
-  defp upsert_restore_row(repo, schema, entry) do
-    id = Map.fetch!(entry, :id)
-    scene_id = Map.fetch!(entry, :scene_id)
-
-    updates =
-      entry
-      |> Map.drop([:id, :scene_id, :inserted_at])
-      |> Map.to_list()
-
-    case repo.update_all(
-           from(row in schema,
-             where: row.id == ^id and row.scene_id == ^scene_id
-           ),
-           set: updates
-         ) do
-      {1, _} -> :ok
-      {0, _} -> insert_restore_row!(repo, schema, entry)
-    end
-  end
-
-  defp insert_restore_row!(repo, schema, entry) do
-    case repo.insert_all(schema, [entry]) do
-      {1, _} -> :ok
-      {count, _} -> raise "Expected one restored #{inspect(schema)} row, got #{count}"
-    end
   end
 
   defp insert_scene_layers(_repo, _scene_id, [], _now), do: {:ok, %{}}
@@ -3218,33 +2331,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   defp put_layer_pin_ids(results, layer_idx, pins_data, pin_id_map) do
     pin_ids = Enum.map(pins_data, &Map.fetch!(pin_id_map, &1["original_id"]))
     Map.update!(results, :pin_ids_by_layer, &Map.put(&1, layer_idx, pin_ids))
-  end
-
-  defp restore_orphan_entities(repo, scene_id, snapshot, project_id, opts) do
-    now = MaterializationHelpers.now()
-
-    with :ok <- insert_layer_zones(repo, scene_id, nil, snapshot["orphan_zones"] || [], now, snapshot, project_id, opts),
-         orphan_pin_ids =
-           insert_layer_pins(
-             repo,
-             scene_id,
-             nil,
-             snapshot["orphan_pins"] || [],
-             now,
-             snapshot,
-             project_id,
-             opts
-           ),
-         :ok <-
-           insert_layer_annotations(
-             repo,
-             scene_id,
-             nil,
-             snapshot["orphan_annotations"] || [],
-             now
-           ) do
-      {:ok, %{pin_ids: orphan_pin_ids}}
-    end
   end
 
   defp insert_layer_zones_with_ids(_repo, _scene_id, _layer_id, [], _now, _snapshot, _project_id, _opts), do: {:ok, %{}}
@@ -3698,7 +2784,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
     flow_id trigger_type trigger_config priority enabled position
   )
 
-  @impl true
   def diff_snapshots(old_snapshot, new_snapshot) do
     []
     |> DiffHelpers.check_field_change(
@@ -4137,7 +3222,6 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
 
   # ========== Scan References ==========
 
-  @impl true
   def scan_references(snapshot) do
     refs = []
 

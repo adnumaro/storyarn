@@ -1389,58 +1389,6 @@ defmodule Storyarn.ScenesTest do
   end
 
   # =============================================================================
-  # Target Queries
-  # =============================================================================
-
-  describe "target queries" do
-    test "get_elements_for_target/2 returns zones by target_type/target_id" do
-      user = user_fixture()
-      project = project_fixture(user)
-      scene = scene_fixture(project)
-      target_scene = scene_fixture(project)
-
-      _zone =
-        zone_fixture(scene, %{
-          "name" => "Kingdom Zone",
-          "target_type" => "scene",
-          "target_id" => target_scene.id
-        })
-
-      result = Scenes.get_elements_for_target("scene", target_scene.id)
-
-      assert length(result.zones) == 1
-      assert hd(result.zones).name == "Kingdom Zone"
-      assert hd(result.zones).scene.id == scene.id
-    end
-
-    test "get_elements_for_target/2 returns pins by flow_id" do
-      user = user_fixture()
-      project = project_fixture(user)
-      scene = scene_fixture(project)
-      flow = flow_fixture(project)
-
-      _pin =
-        pin_fixture(scene, %{
-          "label" => "Flow Pin",
-          "flow_id" => flow.id
-        })
-
-      result = Scenes.get_elements_for_target("flow", flow.id)
-
-      assert length(result.pins) == 1
-      assert hd(result.pins).label == "Flow Pin"
-      assert hd(result.pins).scene.id == scene.id
-    end
-
-    test "get_elements_for_target/2 returns empty for unlinked targets" do
-      result = Scenes.get_elements_for_target("sheet", 999_999)
-
-      assert result.zones == []
-      assert result.pins == []
-    end
-  end
-
-  # =============================================================================
   # Scene Annotations
   # =============================================================================
 

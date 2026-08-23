@@ -3,17 +3,17 @@ defmodule Storyarn.Scenes.LayerCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
+  alias Storyarn.Scenes.ProjectReferenceIntegrity
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.TreeOperations
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.TreeOperations
 
   @doc """
   Lists all layers for a map, ordered by position.

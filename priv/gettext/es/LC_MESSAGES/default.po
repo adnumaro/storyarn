@@ -57,22 +57,25 @@ msgstr "Formato desconocido"
 msgid "Item limit reached for your plan"
 msgstr "Límite de elementos alcanzado para tu plan"
 
-#: lib/storyarn_web/live/compare_live/scene.ex:79
 #: lib/storyarn_web/live/compare_live/sheet.ex:80
 #: lib/storyarn_web/live/flow_live/compare.ex:101
 #: lib/storyarn_web/live/flow_live/version_viewer.ex:138
-#: lib/storyarn_web/live/version_viewer_live.ex:192
+#: lib/storyarn_web/live/scene_live/compare.ex:101
+#: lib/storyarn_web/live/scene_live/version_viewer.ex:127
+#: lib/storyarn_web/live/version_viewer_live.ex:149
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr "Auto-snapshot"
 
 #: lib/storyarn/flows/versioning.ex:663
+#: lib/storyarn/scenes/versioning.ex:658
 #: lib/storyarn/versioning/version_crud.ex:784
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr "Cambios respecto a la versión anterior"
 
 #: lib/storyarn/flows/versioning.ex:647
+#: lib/storyarn/scenes/versioning.ex:642
 #: lib/storyarn/versioning/version_crud.ex:771
 #, elixir-autogen, elixir-format
 msgid "Initial version"
@@ -88,9 +91,9 @@ msgstr "No se detectaron cambios"
 msgid "Sheet not found"
 msgstr "Ficha no encontrada"
 
-#: lib/storyarn_web/live/compare_live/scene.ex:103
 #: lib/storyarn_web/live/compare_live/sheet.ex:104
 #: lib/storyarn_web/live/flow_live/compare.ex:84
+#: lib/storyarn_web/live/scene_live/compare.ex:84
 #, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr "Versión no encontrada"
@@ -123,11 +126,13 @@ msgid "You do not have permission to export this project"
 msgstr "No tienes permiso para exportar este proyecto"
 
 #: lib/storyarn/flows/versioning.ex:674
+#: lib/storyarn/scenes/versioning.ex:669
 #, elixir-autogen, elixir-format
 msgid "%{added} added, %{modified} modified, %{removed} removed"
 msgstr "%{added} añadidos, %{modified} modificados, %{removed} eliminados"
 
 #: lib/storyarn/flows/versioning.ex:667
+#: lib/storyarn/scenes/versioning.ex:662
 #, elixir-autogen, elixir-format
 msgid "No changes"
 msgstr "Sin cambios"

@@ -32,10 +32,11 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.SceneImportPersistence
+  alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SceneRoutePoints, as: RoutePoints
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Scenes
-  alias Storyarn.Scenes.RoutePoints
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
@@ -432,7 +433,7 @@ defmodule Storyarn.Imports.Materializer do
     do: FlowImportPersistence.detect_shortcut_conflicts(project_id, shortcuts)
 
   defp detect_conflicts_for_type(:scene, project_id, shortcuts),
-    do: Scenes.detect_scene_shortcut_conflicts(project_id, shortcuts)
+    do: SceneReadModel.detect_shortcut_conflicts(project_id, shortcuts)
 
   # =============================================================================
   # Execute
@@ -676,7 +677,7 @@ defmodule Storyarn.Imports.Materializer do
     %{
       sheet: Sheets.list_sheet_shortcuts(project_id),
       flow: FlowImportPersistence.list_shortcuts(project_id),
-      scene: Scenes.list_scene_shortcuts(project_id)
+      scene: SceneReadModel.list_shortcuts(project_id)
     }
   end
 
@@ -1354,7 +1355,7 @@ defmodule Storyarn.Imports.Materializer do
 
     scene =
       facade_insert_or_rollback!(
-        Scenes.import_scene(project.id, attrs),
+        SceneImportPersistence.import_scene(project.id, attrs),
         {:scene, scene_data["name"]}
       )
 
@@ -1385,7 +1386,7 @@ defmodule Storyarn.Imports.Materializer do
 
       layer =
         facade_insert_or_rollback!(
-          Scenes.import_layer(scene_id, attrs),
+          SceneImportPersistence.import_layer(scene_id, attrs),
           {:layer, layer_data["name"]}
         )
 
@@ -1422,7 +1423,7 @@ defmodule Storyarn.Imports.Materializer do
       }
 
       pin =
-        facade_insert_or_rollback!(Scenes.import_pin(scene_id, attrs), {:pin, pin_data["label"]})
+        facade_insert_or_rollback!(SceneImportPersistence.import_pin(scene_id, attrs), {:pin, pin_data["label"]})
 
       {Map.put(map, {:pin, pin_data["id"]}, pin.id), [pin | results]}
     end)
@@ -1435,7 +1436,7 @@ defmodule Storyarn.Imports.Materializer do
 
       zone =
         facade_insert_or_rollback!(
-          Scenes.import_zone(scene_id, attrs),
+          SceneImportPersistence.import_zone(scene_id, attrs),
           {:zone, zone_data["name"]}
         )
 
@@ -1552,7 +1553,7 @@ defmodule Storyarn.Imports.Materializer do
         end
       end)
 
-    results = Scenes.bulk_import_scene_connections(Enum.reverse(valid_attrs))
+    results = SceneImportPersistence.bulk_insert_connections(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -1584,7 +1585,7 @@ defmodule Storyarn.Imports.Materializer do
         [attrs | acc]
       end)
 
-    results = Scenes.bulk_import_scene_annotations(Enum.reverse(valid_attrs))
+    results = SceneImportPersistence.bulk_insert_annotations(Enum.reverse(valid_attrs))
 
     {id_map, results}
   end
@@ -1901,7 +1902,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp overwrite_existing(shortcut, project_id, :scene) do
-    Scenes.soft_delete_scene_by_shortcut(project_id, shortcut)
+    SceneImportPersistence.soft_delete_by_shortcut(project_id, shortcut)
     shortcut
   end
 
@@ -1968,7 +1969,7 @@ defmodule Storyarn.Imports.Materializer do
 
   defp link_import_parent(:flow, entity, parent_id), do: FlowImportPersistence.link_flow_parent(entity, parent_id)
 
-  defp link_import_parent(:scene, entity, parent_id), do: Scenes.link_scene_import_parent(entity, parent_id)
+  defp link_import_parent(:scene, entity, parent_id), do: SceneImportPersistence.link_parent(entity, parent_id)
 
   # Scenes are imported before flows, so flow references in pins and zones
   # are nil at creation time. This pass links them after flows exist in the id_map.
@@ -1980,7 +1981,7 @@ defmodule Storyarn.Imports.Materializer do
           not is_nil(flow_id),
           pin_new_id = Map.get(id_map, {:pin, pin_data["id"]}),
           not is_nil(pin_new_id) do
-        Scenes.link_pin_import_flow_id(pin_new_id, flow_id)
+        SceneImportPersistence.link_pin_flow_id(pin_new_id, flow_id)
       end
 
       # Link zone target_ids that reference flows
@@ -1991,7 +1992,7 @@ defmodule Storyarn.Imports.Materializer do
           not is_nil(target_id),
           zone_new_id = Map.get(id_map, {:zone, zone_data["id"]}),
           not is_nil(zone_new_id) do
-        Scenes.link_zone_import_target(zone_new_id, "flow", target_id)
+        SceneImportPersistence.link_zone_target(zone_new_id, "flow", target_id)
       end
     end
   end

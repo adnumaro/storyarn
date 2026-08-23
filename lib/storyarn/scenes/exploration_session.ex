@@ -11,8 +11,8 @@ defmodule Storyarn.Scenes.ExplorationSession do
   import Ecto.Changeset
 
   schema "exploration_sessions" do
-    belongs_to :user, Storyarn.Accounts.User
-    belongs_to :project, Storyarn.Projects.Project
+    belongs_to :user, Storyarn.Scenes.Persistence.UserRecord
+    belongs_to :project, Storyarn.Scenes.Persistence.ProjectRecord
     belongs_to :scene, Storyarn.Scenes.Scene
 
     field :variable_values, :map, default: %{}

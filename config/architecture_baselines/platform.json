@@ -14,7 +14,6 @@
     ["lib/storyarn/billing/limits.ex", "lib/storyarn/projects/project.ex", "export"],
     ["lib/storyarn/billing/limits.ex", "lib/storyarn/projects/project_invitation.ex", "runtime"],
     ["lib/storyarn/billing/limits.ex", "lib/storyarn/projects/project_membership.ex", "runtime"],
-    ["lib/storyarn/billing/limits.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/billing/limits.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/billing/limits.ex", "lib/storyarn/versioning.ex", "runtime"],
     [

@@ -47,13 +47,4 @@ defmodule Storyarn.ShortcutsTest do
       assert Shortcuts.generate_sheet_shortcut("", project.id) == nil
     end
   end
-
-  describe "generate_scene_shortcut/2" do
-    test "generates shortcutified name" do
-      %{project: project} = create_project()
-
-      shortcut = Shortcuts.generate_scene_shortcut("Forest Clearing", project.id)
-      assert shortcut == "forest-clearing"
-    end
-  end
 end

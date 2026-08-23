@@ -52,13 +52,11 @@ defmodule Storyarn.Shared.TreeOperations do
   """
   def batch_set_positions(_table, [], _opts), do: :ok
 
-  @allowed_scope_fields ~w(project_id sheet_id flow_id scene_id workspace_id block_id)
+  @allowed_scope_fields ~w(project_id sheet_id flow_id workspace_id block_id)
   @allowed_tables ~w(
     blocks
     flows
     project_languages
-    scene_layers
-    scenes
     sheets
     table_columns
     table_rows

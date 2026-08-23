@@ -23,6 +23,7 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
+  alias Storyarn.Projects.SceneReadModel
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -1283,7 +1284,7 @@ defmodule Storyarn.Imports.MaterializerTest do
     plan_data(%{
       "project" => %{"id" => to_string(project.id), "name" => project.name},
       "sheets" => project.id |> Sheets.list_sheets_for_export() |> Enum.map(&sheet_entry/1),
-      "scenes" => project.id |> Scenes.list_scenes_for_export() |> Enum.map(&scene_entry/1),
+      "scenes" => project.id |> SceneReadModel.list_for_export() |> Enum.map(&scene_entry/1),
       "flows" => project.id |> FlowReadModel.list_flows_for_export() |> Enum.map(&flow_entry/1),
       "localization" => localization_entry(project.id)
     })

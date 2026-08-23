@@ -71,7 +71,8 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntime do
     Map.new(formula_entries, fn {key, entry} ->
       dependencies =
         entry.formula
-        |> Map.get(:bindings, %{})
+        |> Map.get(:bindings)
+        |> Kernel.||(%{})
         |> Map.values()
         |> Enum.reject(&is_nil/1)
 

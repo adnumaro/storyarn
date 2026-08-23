@@ -174,6 +174,16 @@ defmodule Storyarn.Shared.TreeOperationsTest do
   end
 
   describe "batch_set_positions/3" do
+    test "rejects Scene-owned tables and scopes" do
+      assert_raise ArgumentError, ~r/table must be one of/, fn ->
+        TreeOperations.batch_set_positions("scenes", [{1, 0}], scope: {"project_id", 1})
+      end
+
+      assert_raise ArgumentError, ~r/table must be one of/, fn ->
+        TreeOperations.batch_set_positions("scene_layers", [{1, 0}], scope: {"scene_id", 1})
+      end
+    end
+
     test "rejects non-allowlisted table names before executing SQL" do
       assert_raise ArgumentError, ~r/table must be one of/, fn ->
         TreeOperations.batch_set_positions("sheets; DROP TABLE users;", [{1, 0}], scope: {"project_id", 1})

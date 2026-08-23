@@ -5,6 +5,7 @@ defmodule Storyarn.References.EntityTrackerTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.References
@@ -53,6 +54,52 @@ defmodule Storyarn.References.EntityTrackerTest do
     assert Repo.reload!(second_node).deleted_at == nil
     assert reference_count(first_node.id, original_target.id) == 1
     assert reference_count(first_node.id, replacement_target.id) == 0
+  end
+
+  test "rebuild deduplicates Scene read and write backlinks to the same Sheet" do
+    user = user_fixture()
+    project = project_fixture(user)
+    sheet = sheet_fixture(project, %{shortcut: "hero"})
+    scene = scene_fixture(project)
+
+    zone =
+      zone_fixture(scene, %{
+        "action_type" => "action",
+        "action_data" => %{
+          "assignments" => [
+            %{
+              "sheet" => "hero",
+              "variable" => "health",
+              "operator" => "set",
+              "value_type" => "variable_ref",
+              "value_sheet" => "hero",
+              "value_variable" => "maximum_health"
+            }
+          ]
+        }
+      })
+
+    Repo.delete_all(
+      from reference in EntityReference,
+        where:
+          reference.source_type == "scene_zone" and
+            reference.source_id == ^zone.id
+    )
+
+    assert :ok = References.rebuild_project_entity_references(project.id)
+
+    contexts =
+      Repo.all(
+        from reference in EntityReference,
+          where:
+            reference.source_type == "scene_zone" and
+              reference.source_id == ^zone.id and
+              reference.target_type == "sheet" and
+              reference.target_id == ^sheet.id,
+          select: reference.context
+      )
+
+    assert contexts == ["assignment"]
   end
 
   defp reference_count(source_id, target_id) do

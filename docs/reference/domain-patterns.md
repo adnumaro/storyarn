@@ -122,8 +122,11 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   # Entity-specific shortcut policy is also consumer-owned. Existing calls to
   # the global Storyarn.Shortcuts module are migration debt, not a template:
   alias Storyarn.{Context}.Shortcuts, as: ContextShortcuts
-  # Import only what you need — not all CRUD modules use the same set:
-  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
+  # Import only what you need — not all CRUD modules use the same set.
+  # Soft delete is consumer-owned (e.g. Storyarn.Scenes.SoftDelete); there is
+  # no Storyarn.Shared.SoftDelete anymore:
+  alias Storyarn.{Context}.SoftDelete
+  alias Storyarn.Shared.{MapUtils, ShortcutHelpers}
   alias Storyarn.Shared.SearchHelpers  # only if search is needed
 
   # ========== Queries ==========
@@ -179,9 +182,7 @@ defmodule Storyarn.{Context}.{Entity}Crud do
 
   # ========== Delete (soft) ==========
   def delete_{entity}(entity) do
-    SoftDelete.soft_delete_children(Entity, entity.project_id, entity.id,
-      pre_delete: &clean_references/1  # optional cleanup callback
-    )
+    SoftDelete.soft_delete_children(Entity, entity.project_id, entity.id)
   end
 end
 ```

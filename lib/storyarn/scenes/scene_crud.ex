@@ -9,76 +9,23 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Notifications
-  alias Storyarn.Projects.Project
+  alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Persistence.FlowRecord
-  alias Storyarn.Scenes.Persistence.VariableReferenceRecord
+  alias Storyarn.Scenes.AssetReferences
+  alias Storyarn.Scenes.Limits
   alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.ShortcutGenerator
+  alias Storyarn.Scenes.SoftDelete
   alias Storyarn.Scenes.TreeOperations
-  alias Storyarn.Shared.ImportHelpers
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.SearchHelpers
-  alias Storyarn.Shared.ShortcutHelpers
-  alias Storyarn.Shared.SoftDelete
-  alias Storyarn.Shared.TreeOperations, as: SharedTree
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.VariableNamespaceResolver
-  alias Storyarn.Shortcuts
-
-  require VariableNamespaceResolver
-
-  @stale_variable_reference_sql """
-  CASE WHEN ? = 'table' THEN
-    ? != ? OR NOT EXISTS (
-      SELECT 1 FROM table_rows tr
-      JOIN table_columns tc ON tc.block_id = tr.block_id
-      WHERE tr.block_id = ?
-        AND ? = ? || '.' || tr.slug || '.' || tc.slug
-    )
-  ELSE
-    ? != ? OR ? != ?
-  END
-  """
-
-  defmacrop stale_variable_reference(block, reference, sheet) do
-    sql = @stale_variable_reference_sql
-
-    quote do
-      not VariableNamespaceResolver.authoritative_namespace_owner?(unquote(sheet)) or
-        fragment(
-          unquote(sql),
-          unquote(block).type,
-          unquote(reference).source_sheet,
-          coalesce(
-            unquote(sheet).shortcut,
-            fragment("CAST(? AS TEXT)", unquote(sheet).id)
-          ),
-          unquote(block).id,
-          unquote(reference).source_variable,
-          unquote(block).variable_name,
-          unquote(reference).source_sheet,
-          coalesce(
-            unquote(sheet).shortcut,
-            fragment("CAST(? AS TEXT)", unquote(sheet).id)
-          ),
-          unquote(reference).source_variable,
-          unquote(block).variable_name
-        )
-    end
-  end
 
   @doc """
   Lists all non-deleted scenes for a project.
@@ -104,7 +51,7 @@ defmodule Storyarn.Scenes.SceneCrud do
   """
   def list_scenes_tree(project_id) do
     all_scenes = project_id |> base_scenes_query() |> Repo.all()
-    SharedTree.build_tree_from_flat_list(all_scenes)
+    TreeOperations.build_tree_from_flat_list(all_scenes)
   end
 
   @sidebar_element_limit 10
@@ -133,7 +80,7 @@ defmodule Storyarn.Scenes.SceneCrud do
         |> Elixir.Map.put(:pin_count, Elixir.Map.get(pin_counts, scene.id, 0))
       end)
 
-    SharedTree.build_tree_from_flat_list(all_scenes)
+    TreeOperations.build_tree_from_flat_list(all_scenes)
   end
 
   defp load_sidebar_zones([]), do: %{}
@@ -192,47 +139,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   @default_search_limit 20
   @max_deep_search_limit 50
   @max_deep_search_offset 10_000
-
-  @doc """
-  Searches scenes by name or shortcut across a pre-authorized set of projects.
-
-  Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
-  this function never widens the set. Empty queries list the most recently
-  updated scenes — pickers browse before typing.
-  """
-  @spec search_scenes_in_projects([integer()], String.t(), keyword()) :: [Scene.t()]
-  def search_scenes_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
-    limit = Keyword.get(opts, :limit, @default_search_limit)
-    query_str = String.trim(query)
-
-    cond do
-      project_ids == [] ->
-        []
-
-      query_str == "" ->
-        Repo.all(
-          from(m in Scene,
-            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
-            order_by: [desc: m.updated_at, desc: m.id],
-            limit: ^limit
-          ),
-          log: false
-        )
-
-      true ->
-        search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
-
-        Repo.all(
-          from(m in Scene,
-            where: m.project_id in ^project_ids and is_nil(m.deleted_at),
-            where: ilike(m.name, ^search_term) or ilike(m.shortcut, ^search_term),
-            order_by: [asc: m.name],
-            limit: ^limit
-          ),
-          log: false
-        )
-    end
-  end
 
   @doc """
   Searches scenes by name or shortcut for reference selection.
@@ -494,19 +400,21 @@ defmodule Storyarn.Scenes.SceneCrud do
   Creates a scene with auto-generated shortcut and default layer.
   Auto-assigns position if not provided.
   """
-  def create_scene(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def create_scene(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
+
     result =
       fn ->
-        scene = create_scene_in_transaction(project, attrs)
-        {scene, deliver_content_activity!(actor_scope, project, :created, scene)}
+        scene = create_scene_in_transaction(project_id, attrs)
+        {scene, deliver_content_activity!(actor_id, project_id, :created, scene)}
       end
       |> Repo.transaction()
       |> normalize_item_limit_result()
 
     case result do
       {:ok, {scene, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
-        Collaboration.broadcast_dashboard_change(project.id, :scenes)
+        Platform.publish_notification_delivery(notification_outcome)
+        Collaboration.broadcast_dashboard_change(project_id, :scenes)
         {:ok, scene}
 
       other ->
@@ -514,12 +422,13 @@ defmodule Storyarn.Scenes.SceneCrud do
     end
   end
 
-  def create_scene(%Project{} = project, attrs) do
+  def create_scene(project, attrs) do
+    project_id = project_id!(project)
     result = do_create_scene(project, attrs)
 
     case result do
       {:ok, _scene} ->
-        Collaboration.broadcast_dashboard_change(project.id, :scenes)
+        Collaboration.broadcast_dashboard_change(project_id, :scenes)
 
       _ ->
         :ok
@@ -529,16 +438,18 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   defp do_create_scene(project, attrs) do
-    fn -> create_scene_in_transaction(project, attrs) end
+    fn -> create_scene_in_transaction(project_id!(project), attrs) end
     |> Repo.transaction()
     |> normalize_item_limit_result()
   end
 
   @doc false
   def create_scene_in_transaction(project, attrs) do
+    project_id = project_id!(project)
+
     with {:ok, locked_project} <-
-           SceneReferenceIntegrity.lock_active_project(project.id, :update),
-         :ok <- Billing.can_create_item?(locked_project),
+           SceneReferenceIntegrity.lock_active_project(project_id, :update),
+         :ok <- Limits.can_create_item?(locked_project),
          attrs = maybe_generate_shortcut(attrs, locked_project.id, nil),
          {:ok, attrs} <-
            SceneReferenceIntegrity.lock_scene_root_references(
@@ -554,9 +465,10 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   @doc false
-  def create_scene_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
-    scene = create_scene_in_transaction(project, attrs)
-    {scene, deliver_content_activity!(actor_scope, project, :created, scene)}
+  def create_scene_in_transaction(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
+    scene = create_scene_in_transaction(project_id, attrs)
+    {scene, deliver_content_activity!(actor_id, project_id, :created, scene)}
   end
 
   defp insert_scene_with_default_layer(project_id, attrs) do
@@ -613,7 +525,7 @@ defmodule Storyarn.Scenes.SceneCrud do
     with {:ok, %{entity: entity}} <- delete_scene_subtree(scene), do: {:ok, entity}
   end
 
-  def delete_scene(%Scope{} = actor_scope, %Scene{} = scene) do
+  def delete_scene(%{user: %{id: actor_id}} = actor_scope, %Scene{} = scene) when is_integer(actor_id) and actor_id > 0 do
     with {:ok, %{entity: entity}} <- delete_scene_subtree(actor_scope, scene), do: {:ok, entity}
   end
 
@@ -637,12 +549,13 @@ defmodule Storyarn.Scenes.SceneCrud do
     result
   end
 
-  def delete_scene_subtree(%Scope{} = actor_scope, %Scene{} = scene) do
+  def delete_scene_subtree(%{user: %{id: actor_id}} = actor_scope, %Scene{} = scene)
+      when is_integer(actor_id) and actor_id > 0 do
     result = Repo.transaction(fn -> delete_scene_subtree_in_transaction(actor_scope, scene) end)
 
     case result do
       {:ok, %{entity: deleted_scene, notification_outcome: notification_outcome} = deleted} ->
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         Collaboration.broadcast_dashboard_change(deleted_scene.project_id, :scenes)
         {:ok, Map.delete(deleted, :notification_outcome)}
 
@@ -676,15 +589,27 @@ defmodule Storyarn.Scenes.SceneCrud do
   end
 
   @doc false
-  def delete_scene_subtree_in_transaction(%Scope{} = actor_scope, %Scene{} = scene) do
+  def delete_scene_subtree_in_transaction(%{user: %{id: actor_id}}, %Scene{} = scene)
+      when is_integer(actor_id) and actor_id > 0 do
     deleted = delete_scene_subtree_in_transaction(scene)
-    project = Repo.get!(Project, deleted.entity.project_id)
-    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+
+    outcome =
+      deliver_content_activity!(actor_id, deleted.entity.project_id, :deleted, deleted.entity)
+
     Map.put(deleted, :notification_outcome, outcome)
   end
 
-  defp deliver_content_activity!(actor_scope, project, action, scene) do
-    case Notifications.deliver_content_activity(actor_scope, project, action, "scene", scene) do
+  @doc false
+  def delete_scene_subtree_by_id_in_transaction(%{user: %{id: actor_id}} = actor_scope, project_id, scene_id)
+      when is_integer(actor_id) and actor_id > 0 do
+    case get_scene_brief(project_id, scene_id) do
+      %Scene{} = scene -> delete_scene_subtree_in_transaction(actor_scope, scene)
+      nil -> Repo.rollback(:not_found)
+    end
+  end
+
+  defp deliver_content_activity!(actor_id, project_id, action, scene) do
+    case Platform.deliver_content_activity_by_ids(actor_id, project_id, action, "scene", scene) do
       {:ok, outcome} -> outcome
       {:error, reason} -> Repo.rollback(reason)
     end
@@ -725,7 +650,7 @@ defmodule Storyarn.Scenes.SceneCrud do
                locked_scene.deleted_at
              ),
            :ok <-
-             Assets.lock_active_asset_references_for_restore(project_id,
+             AssetReferences.lock_active_for_restore(project_id,
                scene_ids: [locked_scene.id | Enum.map(restore_children, & &1.id)]
              ),
            {:ok, restored_scene} <-
@@ -849,633 +774,23 @@ defmodule Storyarn.Scenes.SceneCrud do
   defp maybe_generate_shortcut(attrs, project_id, exclude_scene_id) do
     attrs
     |> stringify_keys()
-    |> ShortcutHelpers.maybe_generate_shortcut(
-      project_id,
-      exclude_scene_id,
-      &Shortcuts.generate_scene_shortcut/3
-    )
+    |> ShortcutGenerator.prepare_create(project_id, exclude_scene_id)
   end
 
   defp maybe_generate_shortcut_on_update(%Scene{} = scene, attrs) do
-    ShortcutHelpers.maybe_generate_shortcut_on_update(
-      scene,
-      attrs,
-      &Shortcuts.generate_scene_shortcut/3
-    )
+    ShortcutGenerator.prepare_update(scene, attrs)
   end
 
   defp stringify_keys(attrs), do: MapUtils.stringify_keys(attrs)
 
-  @doc """
-  Gets a scene with only background_asset preloaded.
-  Used for rendering scene backdrops in the flow player.
-  """
-  def get_scene_backdrop(scene_id) do
-    Repo.one(from(m in Scene, where: m.id == ^scene_id and is_nil(m.deleted_at), preload: [:background_asset]))
-  end
-
-  @doc """
-  Returns the project_id for a given scene_id.
-  Used by reference trackers that need the project scope from a scene.
-  """
-  def get_scene_project_id(scene_id) do
-    Repo.one(from(m in Scene, where: m.id == ^scene_id, select: m.project_id))
-  end
-
   defp maybe_assign_position(attrs, project_id, parent_id) do
-    ShortcutHelpers.maybe_assign_position(
-      attrs,
-      project_id,
-      parent_id,
-      &TreeOperations.next_position/2
-    )
+    ShortcutGenerator.assign_position(attrs, project_id, parent_id)
   end
 
-  # =============================================================================
-  # Export / Import helpers
-  # =============================================================================
+  defp project_id!(%{id: project_id}), do: project_id!(project_id)
+  defp project_id!(project_id) when is_integer(project_id) and project_id > 0, do: project_id
 
-  @doc """
-  Lists all non-deleted scenes with all associations preloaded.
-  Used by the export DataCollector.
-  """
-  def list_scenes_for_export(project_id, opts \\ []) do
-    filter_ids = Keyword.get(opts, :filter_ids, :all)
-
-    query =
-      from(s in Scene,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        preload: [:layers, :pins, :zones, :connections, :annotations],
-        order_by: [asc: s.position, asc: s.name]
-      )
-
-    query
-    |> maybe_filter_export_ids(filter_ids)
-    |> Repo.all()
-  end
-
-  @doc """
-  Counts non-deleted scenes for a project.
-  """
-  def count_scenes(project_id) do
-    Repo.aggregate(from(s in Scene, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
-  end
-
-  @doc """
-  Returns variable usage for a block from scene zones.
-  Joins variable_references with scene_zones and scenes to return enriched data.
-  Exposes the Scene-owned projection consumed by project-wide integrity reads.
-  """
-  def get_scene_zone_variable_usage(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: z in SceneZone,
-        on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-        join: m in Scene,
-        on: m.id == z.scene_id,
-        where: vr.block_id == ^block_id,
-        where: m.project_id == ^project_id,
-        where: is_nil(m.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: m.id,
-          scene_name: m.name,
-          zone_id: z.id,
-          zone_name: z.name,
-          zone_action_data: z.action_data
-        },
-        order_by: [asc: vr.kind, asc: m.name]
-      )
-    )
-  end
-
-  @doc """
-  Returns variable usage for a block from scene pins.
-  Joins variable_references with scene_pins and scenes to return enriched data.
-  Exposes the Scene-owned projection consumed by project-wide integrity reads.
-  """
-  def get_scene_pin_variable_usage(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: p in ScenePin,
-        on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-        join: m in Scene,
-        on: m.id == p.scene_id,
-        where: vr.block_id == ^block_id,
-        where: m.project_id == ^project_id,
-        where: is_nil(m.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: m.id,
-          scene_name: m.name,
-          pin_id: p.id,
-          pin_label: p.label
-        },
-        order_by: [asc: vr.kind, asc: m.name]
-      )
-    )
-  end
-
-  @doc """
-  Returns variable usage for a block from active Scene ambient flows.
-
-  Ambient flow references belong to the Scene that owns the link. The linked
-  Flow is joined only to provide a useful label; a soft-deleted linked Flow
-  does not hide the authored variable usage from integrity reads.
-  """
-  def get_scene_ambient_flow_variable_usage(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: ambient_flow in SceneAmbientFlow,
-        on:
-          vr.source_type == "scene_ambient_flow" and
-            ambient_flow.id == vr.source_id,
-        join: scene in Scene,
-        on: scene.id == ambient_flow.scene_id,
-        join: flow in FlowRecord,
-        on:
-          flow.id == ambient_flow.flow_id and
-            flow.project_id == scene.project_id,
-        where: vr.block_id == ^block_id,
-        where: scene.project_id == ^project_id,
-        where: is_nil(scene.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: scene.id,
-          scene_name: scene.name,
-          ambient_flow_id: ambient_flow.id,
-          ambient_flow_name: flow.name,
-          trigger_config: ambient_flow.trigger_config
-        },
-        order_by: [asc: vr.kind, asc: scene.name, asc: ambient_flow.id]
-      )
-    )
-  end
-
-  @doc """
-  Returns stale variable reference data for scene zones.
-  Joins variable_references with scene_zones, scenes, blocks, and sheets
-  to detect staleness via SQL comparison of stored vs current names.
-  Used by the project integrity workflow for stale reference detection.
-  """
-  def check_stale_scene_zone_variable_references(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: z in SceneZone,
-        on: vr.source_type == "scene_zone" and z.id == vr.source_id,
-        join: m in Scene,
-        on: m.id == z.scene_id,
-        join: b in Block,
-        on: b.id == vr.block_id,
-        join: s in Sheet,
-        on: s.id == b.sheet_id,
-        where: vr.block_id == ^block_id,
-        where: m.project_id == ^project_id,
-        where: is_nil(m.deleted_at),
-        where: is_nil(s.deleted_at),
-        where: is_nil(b.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: m.id,
-          scene_name: m.name,
-          zone_id: z.id,
-          zone_name: z.name,
-          zone_action_data: z.action_data,
-          source_sheet: vr.source_sheet,
-          source_variable: vr.source_variable,
-          stale: stale_variable_reference(b, vr, s)
-        },
-        order_by: [asc: vr.kind, asc: m.name]
-      )
-    )
-  end
-
-  @doc """
-  Returns stale variable reference data for scene pins.
-  Joins variable_references with scene_pins, scenes, blocks, and sheets
-  to detect staleness via SQL comparison of stored vs current names.
-  Used by the project integrity workflow for stale reference detection.
-  """
-  def check_stale_scene_pin_variable_references(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: p in ScenePin,
-        on: vr.source_type == "scene_pin" and p.id == vr.source_id,
-        join: m in Scene,
-        on: m.id == p.scene_id,
-        join: b in Block,
-        on: b.id == vr.block_id,
-        join: s in Sheet,
-        on: s.id == b.sheet_id,
-        where: vr.block_id == ^block_id,
-        where: m.project_id == ^project_id,
-        where: is_nil(m.deleted_at),
-        where: is_nil(s.deleted_at),
-        where: is_nil(b.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: m.id,
-          scene_name: m.name,
-          pin_id: p.id,
-          pin_label: p.label,
-          source_sheet: vr.source_sheet,
-          source_variable: vr.source_variable,
-          stale: stale_variable_reference(b, vr, s)
-        },
-        order_by: [asc: vr.kind, asc: m.name]
-      )
-    )
-  end
-
-  @doc """
-  Returns stale variable reference data for active Scene ambient flows.
-
-  Staleness is computed with the same table-cell-aware comparison used by
-  pins and zones. This keeps the legacy Sheet references panel aligned with
-  the normalized global-search usage reader.
-  """
-  def check_stale_scene_ambient_flow_variable_references(block_id, project_id) do
-    Repo.all(
-      from(vr in VariableReferenceRecord,
-        join: ambient_flow in SceneAmbientFlow,
-        on:
-          vr.source_type == "scene_ambient_flow" and
-            ambient_flow.id == vr.source_id,
-        join: scene in Scene,
-        on: scene.id == ambient_flow.scene_id,
-        join: flow in FlowRecord,
-        on:
-          flow.id == ambient_flow.flow_id and
-            flow.project_id == scene.project_id,
-        join: block in Block,
-        on: block.id == vr.block_id,
-        join: sheet in Sheet,
-        on: sheet.id == block.sheet_id,
-        where: vr.block_id == ^block_id,
-        where: scene.project_id == ^project_id,
-        where: is_nil(scene.deleted_at),
-        where: is_nil(sheet.deleted_at),
-        where: is_nil(block.deleted_at),
-        select: %{
-          source_type: vr.source_type,
-          kind: vr.kind,
-          scene_id: scene.id,
-          scene_name: scene.name,
-          ambient_flow_id: ambient_flow.id,
-          ambient_flow_name: flow.name,
-          trigger_config: ambient_flow.trigger_config,
-          source_sheet: vr.source_sheet,
-          source_variable: vr.source_variable,
-          stale: stale_variable_reference(block, vr, sheet)
-        },
-        order_by: [asc: vr.kind, asc: scene.name, asc: ambient_flow.id]
-      )
-    )
-  end
-
-  @doc """
-  Resolves scene pin source info for entity reference backlinks.
-  Joins entity_references with scene_pins and scenes to return enriched backlink data.
-  Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
-  """
-  def query_scene_pin_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.EntityReference
-
-    from(r in EntityReference,
-      join: p in ScenePin,
-      on: r.source_type == "scene_pin" and r.source_id == p.id,
-      join: m in Scene,
-      on: p.scene_id == m.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        pin_label: p.label,
-        scene_id: m.id,
-        scene_name: m.name
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "scene_pin",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :scene,
-          scene_id: ref.scene_id,
-          scene_name: ref.scene_name,
-          element_type: "pin",
-          element_label: ref.pin_label
-        }
-      }
-    end)
-  end
-
-  @doc """
-  Resolves scene zone source info for entity reference backlinks.
-  Joins entity_references with scene_zones and scenes to return enriched backlink data.
-  Used by the Sheets.ReferenceTracker to avoid cross-context schema queries.
-  """
-  def query_scene_zone_backlinks(target_type, target_id, project_id) do
-    alias Storyarn.Sheets.EntityReference
-
-    from(r in EntityReference,
-      join: z in SceneZone,
-      on: r.source_type == "scene_zone" and r.source_id == z.id,
-      join: m in Scene,
-      on: z.scene_id == m.id,
-      where: r.target_type == ^target_type and r.target_id == ^target_id,
-      where: m.project_id == ^project_id and is_nil(m.deleted_at),
-      select: %{
-        id: r.id,
-        source_type: r.source_type,
-        source_id: r.source_id,
-        context: r.context,
-        inserted_at: r.inserted_at,
-        zone_name: z.name,
-        scene_id: m.id,
-        scene_name: m.name
-      },
-      order_by: [desc: r.inserted_at]
-    )
-    |> Repo.all()
-    |> Enum.map(fn ref ->
-      %{
-        id: ref.id,
-        source_type: "scene_zone",
-        source_id: ref.source_id,
-        context: ref.context,
-        inserted_at: ref.inserted_at,
-        source_info: %{
-          type: :scene,
-          scene_id: ref.scene_id,
-          scene_name: ref.scene_name,
-          element_type: "zone",
-          element_label: ref.zone_name
-        }
-      }
-    end)
-  end
-
-  @doc """
-  Lists sheet IDs referenced by scene pins in a project.
-  Used by the export Validator for orphan sheet detection.
-  """
-  def list_pin_referenced_sheet_ids(project_id) do
-    from(p in ScenePin,
-      join: s in Scene,
-      on: p.scene_id == s.id,
-      where: s.project_id == ^project_id and not is_nil(p.sheet_id),
-      select: p.sheet_id
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Lists active scene IDs for a project.
-  Used by the export Validator.
-  """
-  def list_active_scene_ids(project_id) do
-    from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: s.id
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Lists existing shortcuts for scenes in a project.
-  """
-  def list_shortcuts(project_id) do
-    from(s in Scene,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: s.shortcut
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Detects shortcut conflicts between imported scenes and existing ones.
-  """
-  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
-    ImportHelpers.detect_shortcut_conflicts(Scene, project_id, shortcuts)
-  end
-
-  @doc """
-  Soft-deletes existing scenes with the given shortcut (for overwrite import strategy).
-  """
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    ImportHelpers.soft_delete_by_shortcut(Scene, project_id, shortcut)
-  end
-
-  @doc """
-  Bulk-inserts scene connections from a list of attr maps.
-  """
-  def bulk_import_connections(attrs_list) do
-    ImportHelpers.bulk_insert(SceneConnection, attrs_list)
-  end
-
-  @doc """
-  Bulk-inserts scene annotations from a list of attr maps.
-  """
-  def bulk_import_annotations(attrs_list) do
-    ImportHelpers.bulk_insert(SceneAnnotation, attrs_list)
-  end
-
-  # =============================================================================
-  # Import helpers (raw insert, no side effects)
-  # =============================================================================
-
-  @doc """
-  Creates a scene for import. Raw insert — no auto-shortcut, no auto-position,
-  no default layer creation. Returns `{:ok, scene}` or `{:error, changeset}`.
-  """
-  def import_scene(project_id, attrs) do
-    %Scene{project_id: project_id}
-    |> Scene.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a scene layer for import. Raw insert — no auto-position.
-  Returns `{:ok, layer}` or `{:error, changeset}`.
-  """
-  def import_layer(scene_id, attrs) do
-    %SceneLayer{scene_id: scene_id}
-    |> SceneLayer.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a scene pin for import. Raw insert — no auto-position,
-  no reference tracking. Returns `{:ok, pin}` or `{:error, changeset}`.
-  """
-  def import_pin(scene_id, attrs) do
-    %ScenePin{scene_id: scene_id}
-    |> ScenePin.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Creates a scene zone for import. Raw insert — no auto-position,
-  no reference tracking. Returns `{:ok, zone}` or `{:error, changeset}`.
-  """
-  def import_zone(scene_id, attrs) do
-    %SceneZone{scene_id: scene_id}
-    |> SceneZone.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Updates a scene's parent_id after import (two-pass parent linking).
-  """
-  def link_import_parent(%Scene{} = scene, parent_id) do
-    scene
-    |> Ecto.Changeset.change(%{parent_id: parent_id})
-    |> Repo.update!()
-  end
-
-  @doc """
-  Links a pin's flow_id after import. Used in the second pass since
-  scenes are imported before flows, so flow_id isn't available at pin creation time.
-  """
-  def link_pin_import_flow_id(pin_id, flow_id) do
-    ScenePin
-    |> Repo.get!(pin_id)
-    |> Ecto.Changeset.change(%{flow_id: flow_id})
-    |> Repo.update!()
-  end
-
-  @doc """
-  Links a zone's target_id after import. Used in the second pass since
-  scenes are imported before flows, so flow target_ids aren't available at zone creation time.
-  """
-  def link_zone_import_target(zone_id, target_type, target_id) do
-    SceneZone
-    |> Repo.get!(zone_id)
-    |> SceneZone.update_changeset(%{target_type: target_type, target_id: target_id})
-    |> Repo.update!()
-  end
-
-  # =============================================================================
-  # Variable Queries (for condition/instruction builders)
-  # =============================================================================
-
-  @doc """
-  Lists pin boolean properties as variable descriptors.
-  For each pin with a shortcut, emits entries for: hidden, is_playable, is_leader.
-  """
-  def list_pin_variables(project_id) do
-    from(p in ScenePin,
-      join: s in Scene,
-      on: p.scene_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          not is_nil(p.shortcut),
-      select: %{
-        id: p.id,
-        shortcut: p.shortcut,
-        label: p.label,
-        hidden: p.hidden,
-        is_playable: p.is_playable,
-        is_leader: p.is_leader
-      }
-    )
-    |> Repo.all()
-    |> Enum.flat_map(&expand_pin_variables/1)
-  end
-
-  defp expand_pin_variables(pin) do
-    base = %{
-      source_type: "pin",
-      source_id: pin.id,
-      sheet_shortcut: pin.shortcut,
-      sheet_name: pin.label || pin.shortcut,
-      block_id: nil,
-      options: nil,
-      constraints: nil
-    }
-
-    [
-      Map.merge(base, %{
-        variable_name: "hidden",
-        block_type: "boolean",
-        value: %{"content" => pin.hidden}
-      }),
-      Map.merge(base, %{
-        variable_name: "is_playable",
-        block_type: "boolean",
-        value: %{"content" => pin.is_playable}
-      }),
-      Map.merge(base, %{
-        variable_name: "is_leader",
-        block_type: "boolean",
-        value: %{"content" => pin.is_leader}
-      })
-    ]
-  end
-
-  @doc """
-  Lists zone boolean properties as variable descriptors.
-  For each zone with a shortcut, emits entries for: hidden.
-  """
-  def list_zone_variables(project_id) do
-    from(z in SceneZone,
-      join: s in Scene,
-      on: z.scene_id == s.id,
-      where:
-        s.project_id == ^project_id and is_nil(s.deleted_at) and
-          not is_nil(z.shortcut),
-      select: %{
-        id: z.id,
-        shortcut: z.shortcut,
-        name: z.name,
-        hidden: z.hidden
-      }
-    )
-    |> Repo.all()
-    |> Enum.flat_map(&expand_zone_variables/1)
-  end
-
-  defp expand_zone_variables(zone) do
-    base = %{
-      source_type: "zone",
-      source_id: zone.id,
-      sheet_shortcut: zone.shortcut,
-      sheet_name: zone.name || zone.shortcut,
-      block_id: nil,
-      options: nil,
-      constraints: nil
-    }
-
-    [
-      Map.merge(base, %{
-        variable_name: "hidden",
-        block_type: "boolean",
-        value: %{"content" => zone.hidden}
-      })
-    ]
-  end
-
-  defp maybe_filter_export_ids(query, :all), do: query
-
-  defp maybe_filter_export_ids(query, ids) when is_list(ids) do
-    from(q in query, where: q.id in ^ids)
+  defp project_id!(project) do
+    raise ArgumentError, "expected a Scene project identity, got: #{inspect(project)}"
   end
 end

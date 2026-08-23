@@ -11,6 +11,25 @@ defmodule Storyarn.Scenes.AssetCatalogTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes
 
+  test "reads active image identities and records through the Scene-owned projection" do
+    user = user_fixture()
+    project = project_fixture(user)
+    other_project = project_fixture(user)
+    active = image_asset_fixture(project, user, %{filename: "active-scene.png"})
+    deleted = image_asset_fixture(project, user, %{filename: "deleted-scene.png"})
+    _audio = audio_asset_fixture(project, user, %{filename: "scene-audio.mp3"})
+    foreign = image_asset_fixture(other_project, user, %{filename: "foreign-scene.png"})
+
+    assert {:ok, _deleted} = Assets.delete_asset(deleted)
+
+    assert Scenes.list_image_asset_ids(project.id) == [active.id]
+    assert Scenes.get_asset(project.id, active.id).id == active.id
+    assert Scenes.get_asset(project.id, deleted.id) == nil
+    assert Scenes.get_asset(project.id, foreign.id) == nil
+    assert Scenes.get_asset(other_project.id, foreign.id).id == foreign.id
+    assert Scenes.list_image_asset_ids(-1) == []
+  end
+
   test "searches active assets by project, media kind and filename" do
     user = user_fixture()
     project = project_fixture(user)

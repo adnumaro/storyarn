@@ -56,6 +56,14 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ScenePin)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.SceneZone)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ExplorationSession)
+  # Scene schemas associate to Scene-owned persistence records; derive them so
+  # a preloaded association cannot turn an encodable struct into a crash.
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.AssetRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.FlowRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.ProjectRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.SheetRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.UserRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Versioning.EntityVersionRecord)
 
   # Sheets
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Block)

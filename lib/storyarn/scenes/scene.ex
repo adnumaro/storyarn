@@ -20,17 +20,16 @@ defmodule Storyarn.Scenes.Scene do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Projects.Project
+  alias Storyarn.Scenes.Persistence.AssetRecord
+  alias Storyarn.Scenes.Persistence.ProjectRecord
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Shared.HierarchicalSchema
-  alias Storyarn.Shared.Validations
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Scenes.Schema
+  alias Storyarn.Scenes.Versioning.EntityVersionRecord
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -48,19 +47,19 @@ defmodule Storyarn.Scenes.Scene do
           fog_opacity: float(),
           position: integer() | nil,
           project_id: integer() | nil,
-          project: Project.t() | NotLoaded.t() | nil,
+          project: ProjectRecord.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
           parent: t() | NotLoaded.t() | nil,
           children: [t()] | NotLoaded.t(),
           background_asset_id: integer() | nil,
-          background_asset: Asset.t() | NotLoaded.t() | nil,
+          background_asset: AssetRecord.t() | NotLoaded.t() | nil,
           layers: [SceneLayer.t()] | NotLoaded.t(),
           zones: [SceneZone.t()] | NotLoaded.t(),
           pins: [ScenePin.t()] | NotLoaded.t(),
           connections: [SceneConnection.t()] | NotLoaded.t(),
           annotations: [SceneAnnotation.t()] | NotLoaded.t(),
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | NotLoaded.t() | nil,
+          current_version: EntityVersionRecord.t() | NotLoaded.t() | nil,
           exploration_display_mode: String.t(),
           deleted_at: DateTime.t() | nil,
           inserted_at: DateTime.t() | nil,
@@ -84,10 +83,10 @@ defmodule Storyarn.Scenes.Scene do
     field :exploration_display_mode, :string, default: "fit"
     field :deleted_at, :utc_datetime
 
-    belongs_to :project, Project
+    belongs_to :project, ProjectRecord
     belongs_to :parent, __MODULE__
-    belongs_to :background_asset, Asset, where: [deleted_at: nil]
-    belongs_to :current_version, EntityVersion
+    belongs_to :background_asset, AssetRecord, where: [deleted_at: nil]
+    belongs_to :current_version, EntityVersionRecord
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :layers, SceneLayer, preload_order: [asc: :position, asc: :id]
     has_many :zones, SceneZone
@@ -129,8 +128,8 @@ defmodule Storyarn.Scenes.Scene do
       :fog_opacity,
       :exploration_display_mode
     ])
-    |> HierarchicalSchema.validate_core_fields()
-    |> HierarchicalSchema.validate_description()
+    |> Schema.validate_core_fields()
+    |> Schema.validate_description()
     |> validate_number(:width, greater_than: 0)
     |> validate_number(:height, greater_than: 0)
     |> validate_number(:default_zoom, greater_than: 0)
@@ -150,17 +149,17 @@ defmodule Storyarn.Scenes.Scene do
   @doc """
   Changeset for moving a map (changing parent or position).
   """
-  def move_changeset(map, attrs), do: HierarchicalSchema.move_changeset(map, attrs)
+  def move_changeset(map, attrs), do: Schema.move_changeset(map, attrs)
 
   @doc """
   Changeset for soft deleting a map.
   """
-  def delete_changeset(map), do: HierarchicalSchema.delete_changeset(map)
+  def delete_changeset(map), do: Schema.delete_changeset(map)
 
   @doc """
   Changeset for restoring a soft-deleted map.
   """
-  def restore_changeset(map), do: HierarchicalSchema.restore_changeset(map)
+  def restore_changeset(map), do: Schema.restore_changeset(map)
 
   @doc """
   Changeset for updating the current version pointer.
@@ -174,13 +173,13 @@ defmodule Storyarn.Scenes.Scene do
   @doc """
   Returns true if the map is soft-deleted.
   """
-  def deleted?(map), do: HierarchicalSchema.deleted?(map)
+  def deleted?(map), do: Schema.deleted?(map)
 
   # Private functions
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)")
+    |> Schema.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., world-map)")
     |> unique_constraint(:shortcut,
       name: :scenes_project_shortcut_unique,
       message: "is already taken in this project"

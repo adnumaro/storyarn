@@ -18,17 +18,17 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SceneAnnotationRecord, as: SceneAnnotation
+  alias Storyarn.Projects.Persistence.SceneConnectionRecord, as: SceneConnection
+  alias Storyarn.Projects.Persistence.SceneLayerRecord, as: SceneLayer
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAnnotation
-  alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.Sheet

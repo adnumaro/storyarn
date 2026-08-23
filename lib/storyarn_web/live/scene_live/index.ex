@@ -26,7 +26,6 @@ defmodule StoryarnWeb.SceneLive.Index do
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Scenes
-  alias Storyarn.Shared.Severity
   alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers
@@ -462,7 +461,7 @@ defmodule StoryarnWeb.SceneLive.Index do
     end)
     |> Enum.sort_by(
       &{
-        Severity.rank(&1.severity),
+        Scenes.health_severity_rank(&1.severity),
         &1.label,
         &1.code,
         &1.scene_id,

@@ -2,10 +2,10 @@ defmodule Storyarn.Versioning do
   @moduledoc """
   The Versioning context.
 
-  Manages the legacy entity version history for Sheets and Scenes. Flow version
-  history belongs exclusively to `Storyarn.Flows`. Versions are snapshots
-  stored as compressed JSON in object storage (R2/Local), with metadata tracked
-  in the database.
+  Manages the legacy entity version history for Sheets. Flow and Scene version
+  history belong exclusively to `Storyarn.Flows` and `Storyarn.Scenes`.
+  Versions are snapshots stored as compressed JSON in object storage (R2/Local),
+  with metadata tracked in the database.
 
   This module serves as a facade, delegating to specialized submodules:
   - `VersionCrud` - CRUD operations for versions
@@ -111,7 +111,7 @@ defmodule Storyarn.Versioning do
   Detects conflicts that would occur when restoring from a snapshot.
   Returns a report with blocking reference conflicts and shortcut collisions.
   """
-  def detect_restore_conflicts(entity_type, snapshot, entity) when entity_type in ["sheet", "scene"],
+  def detect_restore_conflicts(entity_type, snapshot, entity) when entity_type == "sheet",
     do: ConflictDetector.detect_conflicts(entity_type, snapshot, entity)
 
   def detect_restore_conflicts(_entity_type, _snapshot, _entity), do: {:error, :unknown_entity_type}
@@ -119,11 +119,15 @@ defmodule Storyarn.Versioning do
   @doc """
   Loads a version's snapshot from storage and restores the entity.
   """
-  def restore_version(entity_type, entity, version, opts \\ []) do
+  def restore_version(entity_type, entity, version, opts \\ [])
+
+  def restore_version("sheet" = entity_type, entity, version, opts) do
     with :ok <- RestorePolicy.ensure_enabled({:entity_version_restore, entity_type}) do
       VersionCrud.restore_version(entity_type, entity, version, opts)
     end
   end
+
+  def restore_version(_entity_type, _entity, _version, _opts), do: {:error, :unknown_entity_type}
 
   @doc """
   Returns whether a mutating restore surface is currently enabled.
@@ -586,11 +590,6 @@ defmodule Storyarn.Versioning do
   defdelegate format_diff_summary(diff_result), to: SnapshotDiff, as: :format_summary
 
   # ========== Snapshot Viewer ==========
-
-  @doc """
-  Serializes a scene snapshot into the shape expected by the SceneCanvas JS hook.
-  """
-  defdelegate serialize_scene(snapshot), to: SnapshotViewer
 
   @doc """
   Serializes a sheet snapshot into a list of block maps for BlockComponents.

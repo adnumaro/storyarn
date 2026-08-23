@@ -54,8 +54,6 @@
       "lib/storyarn/references/rich_text_mentions.ex",
       "runtime"
     ],
-    ["lib/storyarn/sheets/reference_tracker.ex", "lib/storyarn/scenes.ex", "runtime"],
-    ["lib/storyarn/sheets/reference_tracker.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/assets/asset.ex", "runtime"],
     ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/projects/project.ex", "runtime"],
     ["lib/storyarn/sheets/sheet.ex", "lib/storyarn/shared/hierarchical_schema.ex", "runtime"],
@@ -78,7 +76,6 @@
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/shortcuts.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_crud.ex", "lib/storyarn/versioning/entity_version.ex", "runtime"],
-    ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/formula_engine.ex", "runtime"],
     ["lib/storyarn/sheets/sheet_queries.ex", "lib/storyarn/shared/tree_operations.ex", "runtime"],
     ["lib/storyarn/sheets/table_column.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
@@ -146,11 +143,6 @@
     [
       "lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex",
       "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/helpers/references_data_helpers.ex",
-      "lib/storyarn/scenes.ex",
       "runtime"
     ],
     ["lib/storyarn_web/live/sheet_live/index.ex", "lib/storyarn/shared/severity.ex", "runtime"],

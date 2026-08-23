@@ -27,12 +27,12 @@ defmodule Storyarn.Assets do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TimeHelpers
@@ -1515,8 +1515,21 @@ defmodule Storyarn.Assets do
           keyword()
         ) ::
           upload_result()
-  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts \\ []) do
+  def upload_and_create_asset(path, entry, project, user, opts \\ [])
+
+  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts) do
     do_upload_and_create_asset(path, entry, project, user, opts)
+  end
+
+  def upload_and_create_asset(path, entry, project_id, user_id, opts)
+      when is_integer(project_id) and project_id > 0 and is_integer(user_id) and user_id > 0 and is_list(opts) do
+    upload_and_create_asset(
+      path,
+      entry,
+      Repo.get!(Project, project_id),
+      Repo.get!(User, user_id),
+      opts
+    )
   end
 
   # sobelow_skip ["Traversal.FileModule"]
@@ -1643,11 +1656,13 @@ defmodule Storyarn.Assets do
   """
   @spec upload_binary_and_create_asset(binary(), map(), project(), user() | nil) ::
           upload_result()
+  def upload_binary_and_create_asset(binary_data, attrs, project, user \\ nil)
+
   def upload_binary_and_create_asset(
         binary_data,
         %{filename: filename, content_type: content_type} = attrs,
         %Project{} = project,
-        user \\ nil
+        user
       ) do
     with_upload_capacity(project, byte_size(binary_data), fn ->
       do_upload_binary_and_create_asset(
@@ -1660,6 +1675,16 @@ defmodule Storyarn.Assets do
     end)
   end
 
+  def upload_binary_and_create_asset(binary_data, attrs, project_id, user_id)
+      when is_integer(project_id) and project_id > 0 and (is_nil(user_id) or (is_integer(user_id) and user_id > 0)) do
+    upload_binary_and_create_asset(
+      binary_data,
+      attrs,
+      Repo.get!(Project, project_id),
+      if(user_id, do: Repo.get!(User, user_id))
+    )
+  end
+
   @doc """
   Sanitizes and uploads an SVG asset from a server-controlled SVG upload flow.
 
@@ -1669,7 +1694,9 @@ defmodule Storyarn.Assets do
   """
   @spec upload_sanitized_svg_and_create_asset(binary(), map(), project(), user() | nil) ::
           upload_result()
-  def upload_sanitized_svg_and_create_asset(binary_data, attrs, %Project{} = project, user \\ nil) when is_map(attrs) do
+  def upload_sanitized_svg_and_create_asset(binary_data, attrs, project, user \\ nil)
+
+  def upload_sanitized_svg_and_create_asset(binary_data, attrs, %Project{} = project, user) when is_map(attrs) do
     with content_type when content_type == @svg_content_type <-
            Map.get(attrs, :content_type, Map.get(attrs, "content_type")),
          {:ok, sanitized_svg} <- sanitize_svg_upload(binary_data) do
@@ -1684,6 +1711,17 @@ defmodule Storyarn.Assets do
     else
       _ -> {:error, :invalid_svg}
     end
+  end
+
+  def upload_sanitized_svg_and_create_asset(binary_data, attrs, project_id, user_id)
+      when is_map(attrs) and is_integer(project_id) and project_id > 0 and
+             (is_nil(user_id) or (is_integer(user_id) and user_id > 0)) do
+    upload_sanitized_svg_and_create_asset(
+      binary_data,
+      attrs,
+      Repo.get!(Project, project_id),
+      if(user_id, do: Repo.get!(User, user_id))
+    )
   end
 
   defp do_upload_binary_and_create_asset(

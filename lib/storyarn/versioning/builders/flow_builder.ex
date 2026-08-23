@@ -23,6 +23,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
@@ -31,7 +32,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker

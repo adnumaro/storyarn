@@ -22,16 +22,16 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SceneAnnotationRecord, as: SceneAnnotation
+  alias Storyarn.Projects.Persistence.SceneConnectionRecord, as: SceneConnection
+  alias Storyarn.Projects.Persistence.SceneLayerRecord, as: SceneLayer
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Repo
-  alias Storyarn.Scenes
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAnnotation
-  alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
@@ -208,7 +208,7 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp maybe_load(:scenes, project_id, opts) do
     filter_ids = if opts.scene_ids == :all, do: :all, else: opts.scene_ids
-    Scenes.list_scenes_for_export(project_id, filter_ids: filter_ids)
+    SceneReadModel.list_for_export(project_id, filter_ids: filter_ids)
   end
 
   defp maybe_load(:localization, _project_id, %{include_localization: false}),
@@ -340,7 +340,7 @@ defmodule Storyarn.Exports.DataCollector do
     |> Repo.aggregate(:count)
   end
 
-  defp count_scenes(project_id, %{scene_ids: :all}), do: Scenes.count_scenes(project_id)
+  defp count_scenes(project_id, %{scene_ids: :all}), do: SceneReadModel.count(project_id)
 
   defp count_scenes(_project_id, %{scene_ids: []}), do: 0
 

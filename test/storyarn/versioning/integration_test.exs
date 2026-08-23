@@ -1,7 +1,9 @@
 defmodule Storyarn.Versioning.IntegrationTest do
   @moduledoc """
-  Integration tests for the generalized versioning system.
-  Tests the full workflow through the owning domain facades (Sheets, Flows, Scenes).
+  Integration tests for the versioning systems owned by Sheets, Flows, and Scenes.
+
+  The legacy `Storyarn.Versioning` facade serves Sheets only. Flows and Scenes
+  expose their version lifecycle through their own bounded-context facades.
   """
   use Storyarn.DataCase, async: true
 
@@ -159,7 +161,7 @@ defmodule Storyarn.Versioning.IntegrationTest do
       # entity's id is a coin flip, not an isolation proof.)
       assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
       assert Flows.count_versions(sheet.id) == 0
-      assert Storyarn.Versioning.count_versions("scene", sheet.id) == 0
+      assert Scenes.count_versions(sheet.id) == 0
 
       {:ok, _} = Flows.create_version(flow, user.id)
 

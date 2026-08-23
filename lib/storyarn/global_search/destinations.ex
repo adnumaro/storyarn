@@ -11,8 +11,8 @@ defmodule Storyarn.GlobalSearch.Destinations do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.GlobalSearch.FlowSearch
+  alias Storyarn.GlobalSearch.SceneSearch
   alias Storyarn.Projects
-  alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Workspaces
 
@@ -167,7 +167,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
 
   defp get_entity(:sheet, project_id, id), do: Sheets.get_sheet(project_id, id)
   defp get_entity(:flow, project_id, id), do: FlowSearch.get(project_id, id)
-  defp get_entity(:scene, project_id, id), do: Scenes.get_scene(project_id, id)
+  defp get_entity(:scene, project_id, id), do: SceneSearch.get(project_id, id)
 
   defp authorized_entries(%Scope{} = scope) do
     workspace_entries = Workspaces.list_workspaces(scope)
@@ -251,7 +251,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
       [
         {:sheet, Sheets.search_sheets_in_projects(project_ids, query, search_opts)},
         {:flow, FlowSearch.search_in_projects(project_ids, query, search_opts)},
-        {:scene, Scenes.search_scenes_in_projects(project_ids, query, search_opts)}
+        {:scene, SceneSearch.search_in_projects(project_ids, query, search_opts)}
       ],
       fn {type, entities} ->
         Enum.map(entities, fn entity ->

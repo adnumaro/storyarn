@@ -3,14 +3,15 @@ defmodule Storyarn.Scenes.PinCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Scenes.EntityReferenceTracker
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneReferenceIntegrity
+  alias Storyarn.Scenes.ShortcutGenerator
+  alias Storyarn.Scenes.VariableReferenceTracker
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shortcuts
 
   @doc """
   Lists pins for a map, with optional layer_id filter.
@@ -201,7 +202,7 @@ defmodule Storyarn.Scenes.PinCrud do
     shortcut = attrs["shortcut"]
 
     if is_binary(label) && label != "" && is_nil(shortcut) do
-      Map.put(attrs, "shortcut", Shortcuts.generate_pin_shortcut(label, scene_id, exclude_id))
+      Map.put(attrs, "shortcut", ShortcutGenerator.generate_pin(label, scene_id, exclude_id))
     else
       attrs
     end
@@ -220,14 +221,14 @@ defmodule Storyarn.Scenes.PinCrud do
         Map.put(
           attrs,
           "shortcut",
-          Shortcuts.generate_pin_shortcut(new_label, pin.scene_id, pin.id)
+          ShortcutGenerator.generate_pin(new_label, pin.scene_id, pin.id)
         )
 
       shortcut_missing_for_existing_label?(pin, attrs) ->
         Map.put(
           attrs,
           "shortcut",
-          Shortcuts.generate_pin_shortcut(pin.label, pin.scene_id, pin.id)
+          ShortcutGenerator.generate_pin(pin.label, pin.scene_id, pin.id)
         )
 
       true ->
@@ -258,12 +259,12 @@ defmodule Storyarn.Scenes.PinCrud do
   defp persist_pin_with_references(changeset, project_id) do
     with {:ok, pin} <- Repo.insert_or_update(changeset),
          :ok <-
-           References.update_scene_pin_entity_references(
+           EntityReferenceTracker.update_pin_references(
              pin,
              project_id: project_id
            ),
          :ok <-
-           References.update_scene_pin_variable_references(
+           VariableReferenceTracker.update_pin_references(
              pin,
              project_id: project_id
            ) do
@@ -273,8 +274,8 @@ defmodule Storyarn.Scenes.PinCrud do
 
   defp delete_pin_references(pin_id) do
     with {count, nil} when is_integer(count) <-
-           References.delete_scene_pin_entity_references(pin_id),
-         :ok <- References.delete_scene_pin_variable_references(pin_id) do
+           EntityReferenceTracker.delete_pin_references(pin_id),
+         :ok <- VariableReferenceTracker.delete_pin_references(pin_id) do
       :ok
     else
       result -> {:error, {:pin_reference_delete_failed, pin_id, result}}

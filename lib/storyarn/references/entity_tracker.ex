@@ -16,13 +16,14 @@ defmodule Storyarn.References.EntityTracker do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
+  alias Storyarn.Projects.SceneEntityReferenceTracker
   alias Storyarn.References.Persistence.FlowNodeRecord
   alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
@@ -47,13 +48,15 @@ defmodule Storyarn.References.EntityTracker do
 
   def delete_flow_node_entity_references(node_id), do: ReferenceTracker.delete_flow_node_references(node_id)
 
-  def update_scene_pin_entity_references(pin, opts \\ []), do: ReferenceTracker.update_scene_pin_references(pin, opts)
+  def update_scene_pin_entity_references(pin, opts \\ []),
+    do: SceneEntityReferenceTracker.update_pin_references(pin, opts)
 
-  def delete_scene_pin_entity_references(pin_id), do: ReferenceTracker.delete_map_pin_references(pin_id)
+  def delete_scene_pin_entity_references(pin_id), do: SceneEntityReferenceTracker.delete_pin_references(pin_id)
 
-  def update_scene_zone_entity_references(zone, opts \\ []), do: ReferenceTracker.update_scene_zone_references(zone, opts)
+  def update_scene_zone_entity_references(zone, opts \\ []),
+    do: SceneEntityReferenceTracker.update_zone_references(zone, opts)
 
-  def delete_scene_zone_entity_references(zone_id), do: ReferenceTracker.delete_map_zone_references(zone_id)
+  def delete_scene_zone_entity_references(zone_id), do: SceneEntityReferenceTracker.delete_zone_references(zone_id)
 
   @spec rebuild_project_entity_references(integer()) :: :ok | {:error, term()}
   def rebuild_project_entity_references(project_id) when is_integer(project_id) and project_id > 0 do
@@ -96,10 +99,10 @@ defmodule Storyarn.References.EntityTracker do
            end),
          :ok <-
            rebuild_sources(active_project_scene_rows_query(ScenePin, project_id), fn pin ->
-             ReferenceTracker.update_scene_pin_references(pin, project_id: project_id)
+             SceneEntityReferenceTracker.update_pin_references(pin, project_id: project_id)
            end) do
       rebuild_sources(active_project_scene_rows_query(SceneZone, project_id), fn zone ->
-        ReferenceTracker.update_scene_zone_references(zone, project_id: project_id)
+        SceneEntityReferenceTracker.update_zone_references(zone, project_id: project_id)
       end)
     end
   end

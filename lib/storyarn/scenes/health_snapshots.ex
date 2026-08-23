@@ -16,11 +16,12 @@ defmodule Storyarn.Scenes.HealthSnapshots do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Repo
   alias Storyarn.Scenes.HealthChecker
   alias Storyarn.Scenes.Instruction
+  alias Storyarn.Scenes.Persistence.AssetRecord
   alias Storyarn.Scenes.Persistence.FlowRecord
+  alias Storyarn.Scenes.Persistence.SheetRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
@@ -30,7 +31,6 @@ defmodule Storyarn.Scenes.HealthSnapshots do
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.VariableCatalog
-  alias Storyarn.Sheets.Sheet
 
   @collection_keys [:layers, :zones, :pins, :connections, :annotations, :ambient_flows]
 
@@ -157,9 +157,9 @@ defmodule Storyarn.Scenes.HealthSnapshots do
     references(%{
       loaded?: true,
       scene_ids: Enum.map(scenes, & &1.id),
-      sheet_ids: active_ids(Sheet, project_id),
+      sheet_ids: active_ids(SheetRecord, project_id),
       flow_ids: Map.keys(flow_names),
-      asset_ids: Assets.list_asset_ids(project_id, images_only: true),
+      asset_ids: active_image_asset_ids(project_id),
       # The ONE definition of what a reference can point at: sheet block and
       # table variables plus the pin and zone boolean properties. The editor
       # reaches it through `VariableHelpers.list_all_variables/1`, which
@@ -171,6 +171,16 @@ defmodule Storyarn.Scenes.HealthSnapshots do
 
   defp active_ids(schema, project_id) do
     Repo.all(from(e in schema, where: e.project_id == ^project_id and is_nil(e.deleted_at), select: e.id))
+  end
+
+  defp active_image_asset_ids(project_id) do
+    Repo.all(
+      from asset in AssetRecord,
+        where:
+          asset.project_id == ^project_id and is_nil(asset.deleted_at) and
+            ilike(asset.content_type, "image/%"),
+        select: asset.id
+    )
   end
 
   defp flow_names(project_id) do

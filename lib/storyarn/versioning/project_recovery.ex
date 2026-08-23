@@ -19,6 +19,11 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord, as: SceneAmbientFlow
+  alias Storyarn.Projects.Persistence.SceneConnectionRecord, as: SceneConnection
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References
@@ -26,11 +31,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAmbientFlow
-  alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block

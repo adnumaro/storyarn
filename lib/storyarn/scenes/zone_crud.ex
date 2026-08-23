@@ -3,14 +3,15 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Scenes.EntityReferenceTracker
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.SceneZone
+  alias Storyarn.Scenes.ShortcutGenerator
+  alias Storyarn.Scenes.VariableReferenceTracker
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shortcuts
 
   @doc """
   Lists zones for a map, with optional layer_id filter.
@@ -193,7 +194,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
     shortcut = attrs["shortcut"]
 
     if is_binary(name) && name != "" && is_nil(shortcut) do
-      Map.put(attrs, "shortcut", Shortcuts.generate_zone_shortcut(name, scene_id, exclude_id))
+      Map.put(attrs, "shortcut", ShortcutGenerator.generate_zone(name, scene_id, exclude_id))
     else
       attrs
     end
@@ -210,7 +211,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         Map.put(
           attrs,
           "shortcut",
-          Shortcuts.generate_zone_shortcut(new_name, zone.scene_id, zone.id)
+          ShortcutGenerator.generate_zone(new_name, zone.scene_id, zone.id)
         )
 
       # No shortcut exists but name does → generate
@@ -219,7 +220,7 @@ defmodule Storyarn.Scenes.ZoneCrud do
         Map.put(
           attrs,
           "shortcut",
-          Shortcuts.generate_zone_shortcut(zone.name, zone.scene_id, zone.id)
+          ShortcutGenerator.generate_zone(zone.name, zone.scene_id, zone.id)
         )
 
       true ->
@@ -242,12 +243,12 @@ defmodule Storyarn.Scenes.ZoneCrud do
   defp persist_zone_with_references(changeset, project_id) do
     with {:ok, zone} <- Repo.insert_or_update(changeset),
          :ok <-
-           References.update_scene_zone_entity_references(
+           EntityReferenceTracker.update_zone_references(
              zone,
              project_id: project_id
            ),
          :ok <-
-           References.update_scene_zone_variable_references(
+           VariableReferenceTracker.update_zone_references(
              zone,
              project_id: project_id
            ) do
@@ -257,8 +258,8 @@ defmodule Storyarn.Scenes.ZoneCrud do
 
   defp delete_zone_references(zone_id) do
     with {count, nil} when is_integer(count) <-
-           References.delete_scene_zone_entity_references(zone_id),
-         :ok <- References.delete_scene_zone_variable_references(zone_id) do
+           EntityReferenceTracker.delete_zone_references(zone_id),
+         :ok <- VariableReferenceTracker.delete_zone_references(zone_id) do
       :ok
     else
       result -> {:error, {:zone_reference_delete_failed, zone_id, result}}

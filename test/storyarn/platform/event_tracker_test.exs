@@ -68,6 +68,111 @@ defmodule Storyarn.Platform.EventTrackerTest do
     refute_receive {:analytics_capture, _payload}
   end
 
+  test "routes a Scene fact through the historical metric contract" do
+    Platform.react_to_event(%User{id: 42}, :scenes, :exploration_started, %{
+      authored_scene_name: "private",
+      has_saved_session: false,
+      project_id: 7,
+      scene_id: 11
+    })
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "scene exploration started",
+                      distinct_id: "user:42",
+                      properties: %{
+                        "has_saved_session" => false,
+                        "project_id" => 7,
+                        "scene_id" => 11
+                      }
+                    }}
+  end
+
+  test "routes Scene-owned asset facts from scalar and system actors" do
+    payload = %{
+      asset_type: "image",
+      content_type: "image/png",
+      created_variant: false,
+      filename: "private-background.png",
+      project_id: 7,
+      purpose: "scene_background",
+      size_bucket: "under_100kb"
+    }
+
+    Platform.react_to_event({:user_id, 42}, :scenes, :asset_uploaded, payload)
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "asset uploaded",
+                      distinct_id: "user:42",
+                      properties: %{
+                        "asset_type" => "image",
+                        "content_type" => "image/png",
+                        "created_variant" => false,
+                        "project_id" => 7,
+                        "purpose" => "scene_background",
+                        "size_bucket" => "under_100kb"
+                      }
+                    }}
+
+    Platform.react_to_event(:system, :scenes, :asset_uploaded, %{payload | purpose: nil})
+
+    assert_receive {:analytics_capture,
+                    %{
+                      event: "asset uploaded",
+                      distinct_id: "system",
+                      properties: %{
+                        "asset_type" => "image",
+                        "content_type" => "image/png",
+                        "created_variant" => false,
+                        "project_id" => 7,
+                        "purpose" => nil,
+                        "size_bucket" => "under_100kb"
+                      }
+                    }}
+  end
+
+  test "invalid scalar actors and authored asset dimensions fail closed" do
+    payload = %{
+      asset_type: "image",
+      content_type: "image/png",
+      created_variant: false,
+      project_id: 7,
+      purpose: "private-purpose",
+      size_bucket: "under_100kb"
+    }
+
+    Platform.react_to_event({:user_id, 0}, :scenes, :asset_uploaded, %{payload | purpose: nil})
+    Platform.react_to_event({:user_id, 42}, :scenes, :asset_uploaded, payload)
+
+    refute_receive {:analytics_capture, _payload}
+  end
+
+  test "routes Scene version facts through the historical metric contracts" do
+    for {event_type, event_name} <- [
+          version_compared: "version compared",
+          version_created: "version created",
+          version_panel_opened: "version panel opened",
+          version_restored: "version restored"
+        ] do
+      Platform.react_to_event(%User{id: 42}, :scenes, event_type, %{
+        entity_type: "scene",
+        project_id: 7,
+        version_name: "private"
+      })
+
+      assert_receive {:analytics_capture,
+                      %{
+                        event: ^event_name,
+                        distinct_id: "user:42",
+                        properties: %{
+                          "entity_type" => "scene",
+                          "project_id" => 7
+                        }
+                      }}
+    end
+  end
+
   test "EventTracker owns the reaction routing table" do
     routes = EventTracker.routes()
 

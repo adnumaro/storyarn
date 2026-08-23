@@ -164,10 +164,10 @@ config :storyarn, Storyarn.Repo,
   queue_target: 500,
   queue_interval: 1000
 
+config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restore: true
+
 # Entity restore contract tests exercise the guarded implementation directly.
-config :storyarn, Storyarn.Versioning.RestorePolicy,
-  sheet_version_restore: true,
-  scene_version_restore: true
+config :storyarn, Storyarn.Versioning.RestorePolicy, sheet_version_restore: true
 
 # Server is enabled for E2E tests (Playwright requires a running server)
 config :storyarn, StoryarnWeb.Endpoint,

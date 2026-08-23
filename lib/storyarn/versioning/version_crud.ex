@@ -22,13 +22,11 @@ defmodule Storyarn.Versioning.VersionCrud do
   require Logger
 
   @builders %{
-    "sheet" => Storyarn.Versioning.Builders.SheetBuilder,
-    "scene" => Storyarn.Versioning.Builders.SceneBuilder
+    "sheet" => Storyarn.Versioning.Builders.SheetBuilder
   }
 
   @entity_type_to_schema %{
-    "sheet" => Storyarn.Sheets.Sheet,
-    "scene" => Storyarn.Scenes.Scene
+    "sheet" => Storyarn.Sheets.Sheet
   }
 
   @supported_entity_types Map.keys(@builders)
@@ -753,7 +751,7 @@ defmodule Storyarn.Versioning.VersionCrud do
 
   defp validate_entity_scope(entity_type, entity, expected_project_id) do
     with {:ok, schema} <- Map.fetch(@entity_type_to_schema, entity_type),
-         true <- is_struct(entity, schema),
+         true <- valid_entity_shape?(entity_type, entity, schema),
          {:ok, actual_project_id} <- Map.fetch(entity, :project_id),
          true <-
            is_integer(expected_project_id) and expected_project_id > 0 and
@@ -764,6 +762,8 @@ defmodule Storyarn.Versioning.VersionCrud do
       false -> {:error, :entity_scope_mismatch}
     end
   end
+
+  defp valid_entity_shape?(_entity_type, entity, schema), do: is_struct(entity, schema)
 
   defp generate_change_data(entity_type, entity_id, current_snapshot) do
     case get_latest_version(entity_type, entity_id) do

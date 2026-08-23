@@ -91,25 +91,13 @@ TreeOperations.next_position(Map, project_id, parent_id)
 
 ---
 
-## `Storyarn.Shared.SoftDelete`
+## Soft delete (consumer-owned)
 
-**File:** `lib/storyarn/shared/soft_delete.ex`
-
-Recursive soft-delete for hierarchical entities. Sets `deleted_at` timestamp on entity and all descendants.
-
-| Function                   | Purpose                                 |
-| -------------------------- | --------------------------------------- |
-| `soft_delete_children/3-4` | Recursively soft-delete all children    |
-| `list_deleted/2`           | List soft-deleted entities for trash UI |
-
-Options: `:pre_delete` callback for cleanup before each deletion.
-
-```elixir
-SoftDelete.soft_delete_children(Flow, project_id, flow_id,
-  pre_delete: &Flows.clean_flow_references/1
-)
-deleted = SoftDelete.list_deleted(Flow, project_id)
-```
+`Storyarn.Shared.SoftDelete` was deleted during the ENG-92 bounded-context
+migration. Recursive soft-delete now lives inside each owning context (e.g.
+`Storyarn.Scenes.SoftDelete` — `soft_delete_children/3`, `list_deleted/2`;
+Flows uses its own `FlowTrash` cascade). Do not recreate a shared module —
+copy the pattern into the owning context instead.
 
 ---
 

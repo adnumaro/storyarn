@@ -18,7 +18,6 @@
     ],
     ["lib/storyarn_web/live/hooks/notifications.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/notifications.ex", "runtime"],
-    ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn_web/live/hooks/palette.ex", "lib/storyarn/workspaces.ex", "runtime"],
     ["lib/storyarn_web/live/hooks/project_scope.ex", "lib/storyarn/projects.ex", "runtime"],

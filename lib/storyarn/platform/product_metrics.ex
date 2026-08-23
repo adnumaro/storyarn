@@ -14,6 +14,13 @@ defmodule Storyarn.Platform.ProductMetrics do
   alias Storyarn.Platform.EventReaction
 
   @creation_methods ~w(create duplicate wrap_selection)
+  @asset_content_types ~w(
+    image/jpeg image/png image/gif image/webp image/svg+xml
+    audio/mpeg audio/wav audio/ogg audio/webm
+    application/pdf
+  )
+  @asset_purposes [nil, "scene_background"]
+  @asset_size_buckets ~w(under_100kb 100kb_to_1mb 1mb_to_10mb over_10mb)
   @flow_node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
   @sequence_track_kinds ~w(music ambience sfx)
   @visual_layer_kinds ~w(backdrop character prop overlay)
@@ -37,11 +44,27 @@ defmodule Storyarn.Platform.ProductMetrics do
     {:flows, :version_compared} => {"version compared", ~w(entity_type project_id)},
     {:flows, :version_created} => {"version created", ~w(entity_type project_id)},
     {:flows, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
-    {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)}
+    {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:scenes, :asset_uploaded} =>
+      {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
+    {:scenes, :exploration_started} => {"scene exploration started", ~w(has_saved_session project_id scene_id)},
+    {:scenes, :version_compared} => {"version compared", ~w(entity_type project_id)},
+    {:scenes, :version_created} => {"version created", ~w(entity_type project_id)},
+    {:scenes, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
+    {:scenes, :version_restored} => {"version restored", ~w(entity_type project_id)}
   }
 
   @impl EventReaction
   @spec handle(term(), atom(), atom(), map()) :: :ok
+  def handle(:system, source, event_type, payload) when is_atom(source) and is_atom(event_type) and is_map(payload) do
+    Analytics.track_system(__MODULE__, {source, event_type}, payload)
+  end
+
+  def handle({:user_id, user_id}, source, event_type, payload)
+      when is_integer(user_id) and user_id > 0 and is_atom(source) and is_atom(event_type) and is_map(payload) do
+    Analytics.track_user_id(user_id, __MODULE__, {source, event_type}, payload)
+  end
+
   def handle(scope_or_user, source, event_type, payload)
       when is_atom(source) and is_atom(event_type) and is_map(payload) do
     Analytics.track(scope_or_user, __MODULE__, {source, event_type}, payload)
@@ -152,7 +175,53 @@ defmodule Storyarn.Platform.ProductMetrics do
     if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
   end
 
+  def sanitize_payload(
+        {:scenes, :asset_uploaded},
+        %{
+          asset_type: asset_type,
+          content_type: content_type,
+          created_variant: created_variant,
+          project_id: project_id,
+          purpose: purpose,
+          size_bucket: size_bucket
+        } = payload
+      ) do
+    if content_type in @asset_content_types and asset_type == content_type_asset_type(content_type) and
+         is_boolean(created_variant) and valid_id?(project_id) and purpose in @asset_purposes and
+         size_bucket in @asset_size_buckets do
+      {:ok,
+       Map.take(payload, [
+         :asset_type,
+         :content_type,
+         :created_variant,
+         :project_id,
+         :purpose,
+         :size_bucket
+       ])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload(
+        {:scenes, :exploration_started},
+        %{has_saved_session: has_saved_session, project_id: project_id, scene_id: scene_id} = payload
+      ) do
+    if is_boolean(has_saved_session) and valid_ids?(scene_id, project_id) do
+      {:ok, Map.take(payload, [:has_saved_session, :project_id, :scene_id])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload({:scenes, event_type}, %{entity_type: "scene", project_id: project_id} = payload)
+      when event_type in [:version_compared, :version_created, :version_panel_opened, :version_restored] do
+    if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
+  end
+
   def sanitize_payload(_event, _payload), do: :error
+
+  defp content_type_asset_type(content_type), do: content_type |> String.split("/", parts: 2) |> List.first()
 
   defp valid_ids?(flow_id, project_id), do: valid_id?(flow_id) and valid_id?(project_id)
   defp valid_id?(id), do: is_integer(id) and id > 0

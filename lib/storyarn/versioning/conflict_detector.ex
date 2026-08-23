@@ -13,11 +13,11 @@ defmodule Storyarn.Versioning.ConflictDetector do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar

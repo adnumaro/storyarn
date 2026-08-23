@@ -4,9 +4,6 @@
     ["lib/storyarn/assets.ex", "lib/storyarn/accounts/user.ex", "export"],
     ["lib/storyarn/assets.ex", "lib/storyarn/analytics.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/assets.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/sheets/block_gallery_image.ex", "runtime"],
     ["lib/storyarn/assets.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
@@ -25,21 +22,6 @@
       "runtime"
     ],
     ["lib/storyarn/exports/artifact_validator.ex", "lib/storyarn/sheets.ex", "runtime"],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes.ex", "runtime"],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/scenes/scene_annotation.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/scenes/scene_connection.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes/scene_layer.ex", "runtime"],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/exports/data_collector.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
@@ -54,8 +36,6 @@
     ["lib/storyarn/imports/execution.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn/imports/expiration.ex", "lib/storyarn/notifications.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/imports/materializer.ex", "lib/storyarn/scenes.ex", "runtime"],
-    ["lib/storyarn/imports/materializer.ex", "lib/storyarn/scenes/route_points.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/imports/materializer.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
@@ -81,26 +61,10 @@
     ["lib/storyarn/imports/project_import_attempt.ex", "lib/storyarn/accounts/user.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/accounts/scope.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/imports/replacement.ex", "lib/storyarn/scenes.ex", "runtime"],
-    ["lib/storyarn/imports/replacement.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/imports/replacement.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/imports/resume.ex", "lib/storyarn/accounts/scope.ex", "export"],
     ["lib/storyarn/imports/resume.ex", "lib/storyarn/notifications.ex", "runtime"],
-    ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/scenes/scene_annotation.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/scenes/scene_connection.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/scenes/scene_layer.ex", "runtime"],
-    ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/project_templates/audit.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     [
       "lib/storyarn/project_templates/audit.ex",
@@ -244,7 +208,6 @@
       "lib/storyarn/workspaces/workspace_membership.ex",
       "runtime"
     ],
-    ["lib/storyarn/projects/dashboard.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/projects/dashboard.ex", "lib/storyarn/shared/severity.ex", "runtime"],
     ["lib/storyarn/projects/dashboard.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/projects/dashboard.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
@@ -290,7 +253,6 @@
     ],
     ["lib/storyarn/projects/project_membership.ex", "lib/storyarn/accounts/user.ex", "runtime"],
     ["lib/storyarn/projects/project_trash.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/projects/project_trash.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/projects/project_trash.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/references.ex", "lib/storyarn/sheets.ex", "runtime"],
     ["lib/storyarn/references/avatar_integrity.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
@@ -300,9 +262,6 @@
       "export"
     ],
     ["lib/storyarn/references/backlinks.ex", "lib/storyarn/sheets/reference_tracker.ex", "runtime"],
-    ["lib/storyarn/references/entity_tracker.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    ["lib/storyarn/references/entity_tracker.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/references/entity_tracker.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/references/entity_tracker.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     [
       "lib/storyarn/references/entity_tracker.ex",
@@ -312,30 +271,13 @@
     ["lib/storyarn/references/entity_tracker.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     [
       "lib/storyarn/references/project_reference_integrity.ex",
-      "lib/storyarn/scenes/scene.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/project_reference_integrity.ex",
       "lib/storyarn/sheets/sheet.ex",
       "runtime"
     ],
-    ["lib/storyarn/references/variable_usage.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    [
-      "lib/storyarn/references/variable_usage.ex",
-      "lib/storyarn/scenes/scene_ambient_flow.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/references/variable_usage.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/references/variable_usage.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/references/variable_usage.ex", "lib/storyarn/sheets.ex", "runtime"],
-    ["lib/storyarn/shortcuts.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    ["lib/storyarn/shortcuts.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/shortcuts.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     ["lib/storyarn/shortcuts.ex", "lib/storyarn/shared/name_normalizer.ex", "runtime"],
     ["lib/storyarn/shortcuts.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     ["lib/storyarn/versioning.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/versioning/builders/flow_builder.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/versioning/builders/flow_builder.ex", "lib/storyarn/sheets.ex", "runtime"],
     [
       "lib/storyarn/versioning/builders/flow_builder.ex",
@@ -350,49 +292,8 @@
     ],
     [
       "lib/storyarn/versioning/builders/project_snapshot_builder.ex",
-      "lib/storyarn/scenes.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/project_snapshot_builder.ex",
       "lib/storyarn/sheets.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/route_points.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/versioning/builders/scene_builder.ex", "lib/storyarn/scenes/scene.ex", "export"],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_ambient_flow.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_annotation.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_connection.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_layer.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_pin.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/scenes/scene_zone.ex",
-      "export"
     ],
     [
       "lib/storyarn/versioning/builders/scene_builder.ex",
@@ -436,9 +337,7 @@
       "lib/storyarn/sheets/table_row.ex",
       "export"
     ],
-    ["lib/storyarn/versioning/change_detector.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/versioning/change_detector.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
-    ["lib/storyarn/versioning/conflict_detector.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/versioning/conflict_detector.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/versioning/conflict_detector.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     [
@@ -470,19 +369,6 @@
     ],
     ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/accounts/user.ex", "runtime"],
     ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/billing.ex", "runtime"],
-    ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/scenes/scene_ambient_flow.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/scenes/scene_connection.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/scenes/scene_pin.ex", "runtime"],
-    ["lib/storyarn/versioning/project_recovery.ex", "lib/storyarn/scenes/scene_zone.ex", "runtime"],
     [
       "lib/storyarn/versioning/project_recovery.ex",
       "lib/storyarn/shared/name_normalizer.ex",
@@ -622,46 +508,6 @@
     ],
     [
       "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_ambient_flow.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_annotation.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_connection.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_layer.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_pin.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/scenes/scene_zone.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
       "lib/storyarn/sheets.ex",
       "runtime"
     ],
@@ -715,17 +561,6 @@
       "lib/storyarn/workers/restore_project_snapshot_worker.ex",
       "compile"
     ],
-    ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
-    [
-      "lib/storyarn/versioning/referenced_tombstones.ex",
-      "lib/storyarn/scenes/scene_ambient_flow.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/referenced_tombstones.ex",
-      "lib/storyarn/scenes/scene_pin.ex",
-      "runtime"
-    ],
     ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/sheets/block.ex", "runtime"],
     ["lib/storyarn/versioning/referenced_tombstones.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     [
@@ -743,12 +578,6 @@
       "lib/storyarn/billing/storage_reservation.ex",
       "export"
     ],
-    [
-      "lib/storyarn/versioning/snapshot_viewer.ex",
-      "lib/storyarn/scenes/route_points.ex",
-      "runtime"
-    ],
-    ["lib/storyarn/versioning/version_crud.ex", "lib/storyarn/scenes/scene.ex", "runtime"],
     ["lib/storyarn/versioning/version_crud.ex", "lib/storyarn/sheets/sheet.ex", "runtime"],
     [
       "lib/storyarn/versioning/workspace_snapshot_import.ex",
@@ -796,7 +625,6 @@
       "lib/storyarn/workspaces/workspace_membership.ex",
       "export"
     ],
-    ["lib/storyarn/workers/trash_retention_worker.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn/workers/trash_retention_worker.ex", "lib/storyarn/sheets.ex", "runtime"],
     [
       "lib/storyarn_web/controllers/export_controller.ex",
@@ -808,7 +636,6 @@
       "lib/storyarn/workspaces.ex",
       "runtime"
     ],
-    ["lib/storyarn_web/live/compare_live/scene.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/compare_live/sheet.ex", "lib/storyarn/sheets.ex", "runtime"],
     [
       "lib/storyarn_web/live/project_live/components/settings_components.ex",
@@ -826,9 +653,7 @@
       "lib/storyarn/publication/locales.ex",
       "runtime"
     ],
-    ["lib/storyarn_web/live/project_live/show.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/project_live/show.ex", "lib/storyarn/sheets.ex", "runtime"],
-    ["lib/storyarn_web/live/project_settings_live/trash.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/project_settings_live/trash.ex", "lib/storyarn/sheets.ex", "runtime"],
     [
       "lib/storyarn_web/live/project_settings_live/usage_limits.ex",
@@ -851,7 +676,6 @@
       "lib/storyarn/workspaces/workspace.ex",
       "export"
     ],
-    ["lib/storyarn_web/live/version_viewer_live.ex", "lib/storyarn/scenes.ex", "runtime"],
     ["lib/storyarn_web/live/version_viewer_live.ex", "lib/storyarn/sheets.ex", "runtime"]
   ],
   "version": 1

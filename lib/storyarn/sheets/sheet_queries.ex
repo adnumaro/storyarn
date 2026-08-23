@@ -18,6 +18,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.Persistence.VariableReferenceRecord
+  alias Storyarn.Sheets.SceneReadModel
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -1607,10 +1608,9 @@ defmodule Storyarn.Sheets.SheetQueries do
   @doc """
   Lists sheet IDs referenced by scene pins in a project.
   Used by the export Validator for orphan sheet detection.
-  Delegates to the Scenes context to avoid cross-context schema queries.
   """
   def list_pin_referenced_sheet_ids(project_id) do
-    Storyarn.Scenes.list_pin_referenced_sheet_ids(project_id)
+    SceneReadModel.list_pin_referenced_sheet_ids(project_id)
   end
 
   defp maybe_filter_export_ids(query, :all), do: query

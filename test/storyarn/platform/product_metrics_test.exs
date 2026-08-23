@@ -17,10 +17,17 @@ defmodule Storyarn.Platform.ProductMetricsTest do
     {:flows, :version_compared} => {"version compared", ~w(entity_type project_id)},
     {:flows, :version_created} => {"version created", ~w(entity_type project_id)},
     {:flows, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
-    {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)}
+    {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:scenes, :asset_uploaded} =>
+      {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
+    {:scenes, :exploration_started} => {"scene exploration started", ~w(has_saved_session project_id scene_id)},
+    {:scenes, :version_compared} => {"version compared", ~w(entity_type project_id)},
+    {:scenes, :version_created} => {"version created", ~w(entity_type project_id)},
+    {:scenes, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
+    {:scenes, :version_restored} => {"version restored", ~w(entity_type project_id)}
   }
 
-  test "Platform owns the complete Flow metric vocabulary and privacy allowlist" do
+  test "Platform owns the complete tool metric vocabulary and privacy allowlist" do
     expected_events = @events |> Map.keys() |> Enum.sort()
     assert ProductMetrics.events() == expected_events
 
@@ -60,5 +67,70 @@ defmodule Storyarn.Platform.ProductMetricsTest do
              {:flows, :node_created},
              %{payload | node_type: "private user-authored content"}
            ) == :error
+  end
+
+  test "Scene metrics preserve historical names while dropping authored content" do
+    assert {:ok,
+            %{
+              asset_type: "image",
+              content_type: "image/png",
+              created_variant: false,
+              project_id: 7,
+              purpose: "scene_background",
+              size_bucket: "under_100kb"
+            }} =
+             EventContract.sanitize(ProductMetrics, {:scenes, :asset_uploaded}, %{
+               asset_type: "image",
+               content_type: "image/png",
+               created_variant: false,
+               filename: "private-background.png",
+               project_id: 7,
+               purpose: "scene_background",
+               size_bucket: "under_100kb"
+             })
+
+    assert EventContract.sanitize(ProductMetrics, {:scenes, :asset_uploaded}, %{
+             asset_type: "image",
+             content_type: "image/png",
+             created_variant: false,
+             project_id: 7,
+             purpose: "private-user-authored-purpose",
+             size_bucket: "under_100kb"
+           }) == :error
+
+    assert {:ok, %{has_saved_session: true, project_id: 7, scene_id: 11}} =
+             EventContract.sanitize(ProductMetrics, {:scenes, :exploration_started}, %{
+               authored_scene_name: "private",
+               has_saved_session: true,
+               project_id: 7,
+               scene_id: 11
+             })
+
+    for event_type <- [:version_compared, :version_created, :version_panel_opened, :version_restored] do
+      assert {:ok, %{entity_type: "scene", project_id: 7}} =
+               EventContract.sanitize(ProductMetrics, {:scenes, event_type}, %{
+                 entity_type: "scene",
+                 project_id: 7,
+                 version_name: "private"
+               })
+    end
+
+    assert ProductMetrics.event({:scenes, :exploration_started}) ==
+             {:ok, "scene exploration started", ~w(has_saved_session project_id scene_id)}
+
+    assert ProductMetrics.event({:scenes, :asset_uploaded}) ==
+             {:ok, "asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)}
+
+    assert ProductMetrics.event({:scenes, :version_compared}) ==
+             {:ok, "version compared", ~w(entity_type project_id)}
+
+    assert ProductMetrics.event({:scenes, :version_created}) ==
+             {:ok, "version created", ~w(entity_type project_id)}
+
+    assert ProductMetrics.event({:scenes, :version_panel_opened}) ==
+             {:ok, "version panel opened", ~w(entity_type project_id)}
+
+    assert ProductMetrics.event({:scenes, :version_restored}) ==
+             {:ok, "version restored", ~w(entity_type project_id)}
   end
 end

@@ -20,8 +20,8 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Repo
-  alias Storyarn.Scenes
   alias Storyarn.Shared.Severity
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
@@ -44,7 +44,7 @@ defmodule Storyarn.Projects.Dashboard do
       variable_count: count_variables(project_id),
       flow_count: FlowReadModel.count_flows(project_id),
       dialogue_count: count_dialogue_nodes(project_id),
-      scene_count: Scenes.count_scenes(project_id),
+      scene_count: SceneReadModel.count(project_id),
       total_word_count: count_total_words(project_id)
     }
   end

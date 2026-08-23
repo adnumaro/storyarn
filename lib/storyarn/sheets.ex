@@ -32,6 +32,7 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
+  alias Storyarn.Sheets.SceneReadModel
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.SheetCrud
@@ -982,42 +983,6 @@ defmodule Storyarn.Sheets do
     as: :delete_flow_node_entity_references
 
   @doc """
-  Updates references from a scene zone.
-  Called after zone data is saved to track target references.
-  """
-  @spec update_scene_zone_references(map()) :: :ok
-  defdelegate update_scene_zone_references(zone),
-    to: References,
-    as: :update_scene_zone_entity_references
-
-  @doc """
-  Deletes all references from a scene zone.
-  Called when a zone is deleted.
-  """
-  @spec delete_map_zone_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_zone_references(zone_id),
-    to: References,
-    as: :delete_scene_zone_entity_references
-
-  @doc """
-  Updates references from a scene pin.
-  Called after pin data is saved to track target references.
-  """
-  @spec update_scene_pin_references(map()) :: :ok
-  defdelegate update_scene_pin_references(pin),
-    to: References,
-    as: :update_scene_pin_entity_references
-
-  @doc """
-  Deletes all references from a scene pin.
-  Called when a pin is deleted.
-  """
-  @spec delete_map_pin_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_pin_references(pin_id),
-    to: References,
-    as: :delete_scene_pin_entity_references
-
-  @doc """
   Deletes all references where a given entity is the target.
   Used for permanent deletion cleanup.
   """
@@ -1099,6 +1064,9 @@ defmodule Storyarn.Sheets do
 
   @doc "Lists sheet IDs referenced by scene pins in a project."
   defdelegate list_pin_referenced_sheet_ids(project_id), to: SheetQueries
+
+  @doc "Lists Scene-owned placements that display a Sheet."
+  defdelegate list_scene_appearances(sheet_id), to: SceneReadModel, as: :list_sheet_appearances
 
   @doc "Creates a sheet for import (raw insert, no side effects)."
   defdelegate import_sheet(project_id, attrs), to: SheetCrud

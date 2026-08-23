@@ -22,6 +22,35 @@ defmodule Storyarn.Scenes.AssetCatalog do
           metadata: map()
         }
 
+  @doc "Lists active image asset identities for Scene health and editor state."
+  def list_image_asset_ids(project_id) when is_integer(project_id) and project_id > 0 do
+    Repo.all(
+      from(asset in AssetRecord,
+        where:
+          asset.project_id == ^project_id and is_nil(asset.deleted_at) and
+            ilike(asset.content_type, "image/%"),
+        order_by: [desc: asset.inserted_at, desc: asset.id],
+        select: asset.id
+      )
+    )
+  end
+
+  def list_image_asset_ids(_project_id), do: []
+
+  @doc "Gets one active asset through the Scene-owned projection."
+  def get_asset(project_id, asset_id)
+      when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 do
+    Repo.one(
+      from(asset in AssetRecord,
+        where:
+          asset.project_id == ^project_id and asset.id == ^asset_id and
+            is_nil(asset.deleted_at)
+      )
+    )
+  end
+
+  def get_asset(_project_id, _asset_id), do: nil
+
   @doc "Returns a bounded page of active assets for a Scene-owned picker."
   @spec asset_options(integer(), String.t(), keyword()) :: {[asset_option()], boolean()}
   def asset_options(project_id, kind, opts \\ [])

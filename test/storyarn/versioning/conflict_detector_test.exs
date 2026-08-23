@@ -4,7 +4,6 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
   import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
@@ -20,98 +19,6 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
   end
 
   describe "detect_conflicts/3" do
-    test "blocks restore preview for malformed Scene variable collections", %{
-      project: project
-    } do
-      scene = scene_fixture(project)
-
-      scene_snapshot = %{
-        "shortcut" => scene.shortcut,
-        "background_asset_id" => nil,
-        "layers" => [
-          %{
-            "pins" => [],
-            "zones" => [
-              %{
-                "original_id" => 602,
-                "action_type" => "collection",
-                "action_data" => %{"items" => nil},
-                "condition" => nil,
-                "target_type" => nil,
-                "target_id" => nil,
-                "label_icon_asset_id" => nil
-              }
-            ]
-          }
-        ],
-        "orphan_pins" => [],
-        "orphan_zones" => [],
-        "ambient_flows" => []
-      }
-
-      scene_report = ConflictDetector.detect_conflicts("scene", scene_snapshot, scene)
-
-      assert scene_report.has_conflicts
-      assert [%{type: :variable, id: nil, contexts: [scene_context]}] = scene_report.conflicts
-      assert scene_context =~ "Scene zone #602"
-      assert scene_context =~ "malformed variable reference"
-    end
-
-    test "reports unresolved Scene display variables from layered zones", %{
-      project: project
-    } do
-      scene = scene_fixture(project)
-      sheet = sheet_fixture(project)
-      block = block_fixture(sheet)
-
-      zone = %{
-        "original_id" => 601,
-        "action_type" => "display",
-        "action_data" => %{
-          "variable_ref" => "#{sheet.shortcut}.#{block.variable_name}"
-        },
-        "condition" => nil,
-        "target_type" => nil,
-        "target_id" => nil,
-        "label_icon_asset_id" => nil
-      }
-
-      snapshot = %{
-        "shortcut" => scene.shortcut,
-        "background_asset_id" => nil,
-        "layers" => [%{"pins" => [], "zones" => [zone]}],
-        "orphan_pins" => [],
-        "orphan_zones" => [],
-        "ambient_flows" => []
-      }
-
-      valid_report = ConflictDetector.detect_conflicts("scene", snapshot, scene)
-      refute valid_report.has_conflicts
-
-      missing_variable = "missing_scene_preview_variable"
-
-      invalid_snapshot =
-        put_in(
-          snapshot,
-          ["layers", Access.at(0), "zones", Access.at(0), "action_data", "variable_ref"],
-          "#{sheet.shortcut}.#{missing_variable}"
-        )
-
-      report = ConflictDetector.detect_conflicts("scene", invalid_snapshot, scene)
-
-      assert [
-               %{
-                 type: :variable,
-                 id: qualified_id,
-                 contexts: [context]
-               }
-             ] = report.conflicts
-
-      assert qualified_id == "#{sheet.shortcut}.#{missing_variable}"
-      assert context =~ "Scene zone #601"
-      assert context =~ "unresolved read variable"
-    end
-
     test "does not block a deleted sheet asset with a complete portable catalog entry", %{
       user: user,
       project: project

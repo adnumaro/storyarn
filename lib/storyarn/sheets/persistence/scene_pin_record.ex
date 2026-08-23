@@ -8,6 +8,7 @@ defmodule Storyarn.Sheets.Persistence.ScenePinRecord do
   schema "scene_pins" do
     field :label, :string
     field :scene_id, :id
+    field :sheet_id, :id
 
     timestamps(type: :utc_datetime)
   end

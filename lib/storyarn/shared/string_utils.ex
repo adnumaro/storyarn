@@ -11,8 +11,8 @@ defmodule Storyarn.Shared.StringUtils do
 
   Three other modules define a `blank?/1` that also trims:
 
-    * `Storyarn.Sheets.HealthChecker`
-    * `Storyarn.Scenes.HealthChecker`
+    * the Sheets health checker
+    * the Scenes health checker
     * `Storyarn.Localization.GlossarySync` (which additionally raises on a
       non-binary, non-nil term)
 

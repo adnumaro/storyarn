@@ -21,10 +21,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       prepare_exploration_data_for_vue: 4
     ]
 
-  alias Storyarn.Analytics
-  alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Shared.FormulaRuntime
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.SceneLive.FlowPresenter
@@ -115,7 +112,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   @impl true
   def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => scene_id}, _session, socket) do
-    case Projects.get_project_by_slugs(
+    case Scenes.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
            project_slug
@@ -180,11 +177,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> maybe_start_ambient_flows(scene, existing_session)
 
         if connected?(socket) do
-          Analytics.track(socket.assigns.current_scope, "scene exploration started", %{
-            has_saved_session: not is_nil(existing_session),
-            project_id: project.id,
-            scene_id: scene.id
-          })
+          Scenes.record_exploration_started(
+            socket.assigns.current_scope,
+            scene,
+            not is_nil(existing_session)
+          )
         end
 
         {:ok, socket, layout: false}
@@ -460,7 +457,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         end
       end)
 
-    FormulaRuntime.recompute_formulas(variables)
+    Scenes.recompute_runtime_formulas(variables)
   end
 
   defp apply_restored_session(socket, session, variables) do
@@ -508,7 +505,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
     case Scenes.execute_runtime_instructions(assignments, socket.assigns.variables) do
       {:ok, new_variables, _changes, _errors, warnings} ->
-        new_variables = FormulaRuntime.recompute_formulas(new_variables)
+        new_variables = Scenes.recompute_runtime_formulas(new_variables)
         socket = refresh_exploration_state(socket, new_variables)
 
         if warnings == [] do
@@ -633,7 +630,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp apply_finished_flow(socket, state) do
     state.variables
-    |> FormulaRuntime.recompute_formulas()
+    |> Scenes.recompute_runtime_formulas()
     |> then(&{:ok, apply_variable_update(socket, &1)})
   end
 
@@ -1123,7 +1120,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     else
       case Scenes.execute_runtime_instructions(assignments, socket.assigns.variables) do
         {:ok, new_variables, _changes, _errors, _warnings} ->
-          new_variables = FormulaRuntime.recompute_formulas(new_variables)
+          new_variables = Scenes.recompute_runtime_formulas(new_variables)
           refresh_exploration_state(socket, new_variables)
 
         _ ->
@@ -1769,7 +1766,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     if new_variables == socket.assigns.variables do
       socket
     else
-      new_variables = FormulaRuntime.recompute_formulas(new_variables)
+      new_variables = Scenes.recompute_runtime_formulas(new_variables)
       apply_variable_update(socket, new_variables)
     end
   end

@@ -4,12 +4,12 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.References
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.FlowRecord
+  alias Storyarn.Scenes.ProjectReferenceIntegrity
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneReferenceIntegrity
+  alias Storyarn.Scenes.VariableReferenceTracker
   alias Storyarn.Shared.MapUtils
 
   @doc """
@@ -50,7 +50,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
              |> SceneAmbientFlow.changeset(Map.put(attrs, "flow_id", flow_id))
              |> Repo.insert(),
            :ok <-
-             References.update_scene_ambient_flow_variable_references(
+             VariableReferenceTracker.update_ambient_flow_references(
                ambient_flow,
                project_id: scene.project_id
              ) do
@@ -78,7 +78,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
              |> SceneAmbientFlow.changeset(Map.put(attrs, "flow_id", flow_id))
              |> update_ambient_flow_if_changed(locked_ambient_flow),
            :ok <-
-             References.update_scene_ambient_flow_variable_references(
+             VariableReferenceTracker.update_ambient_flow_references(
                updated_ambient_flow,
                project_id: scene.project_id
              ) do
@@ -98,7 +98,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
              lock_ambient_flow_for_scene(ambient_flow.id, scene.id),
            {:ok, deleted_ambient_flow} <- Repo.delete(locked_ambient_flow),
            :ok <-
-             References.delete_scene_ambient_flow_variable_references(locked_ambient_flow.id) do
+             VariableReferenceTracker.delete_ambient_flow_references(locked_ambient_flow.id) do
         {:ok, {deleted_ambient_flow, scene.project_id, true}}
       end
     end)

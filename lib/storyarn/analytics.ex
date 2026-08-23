@@ -109,6 +109,15 @@ defmodule Storyarn.Analytics do
 
   def track(_scope_or_user, _contract, _event, _properties), do: :ok
 
+  @doc "Captures a declared event from a bounded context that owns only a scalar user identity."
+  @spec track_user_id(pos_integer(), module(), term(), properties()) :: :ok
+  def track_user_id(user_id, contract, event, properties)
+      when is_integer(user_id) and user_id > 0 and is_map(properties) do
+    track_declared("user:#{user_id}", contract, event, properties)
+  end
+
+  def track_user_id(_user_id, _contract, _event, _properties), do: :ok
+
   @doc """
   Captures an event that is not attributable to a logged-in user.
   """
@@ -124,6 +133,14 @@ defmodule Storyarn.Analytics do
   end
 
   def track_system(_event_name, _properties), do: :ok
+
+  @doc "Captures a declared event that is not attributable to a logged-in user."
+  @spec track_system(module(), term(), properties()) :: :ok
+  def track_system(contract, event, properties) when is_map(properties) do
+    track_declared("system", contract, event, properties)
+  end
+
+  def track_system(_contract, _event, _properties), do: :ok
 
   @doc """
   Identifies the current user without exposing email or display name.
@@ -220,6 +237,19 @@ defmodule Storyarn.Analytics do
   end
 
   defp capture_declared(payload), do: dispatch(:capture, payload)
+
+  defp track_declared(distinct_id, contract, event, properties) do
+    with {:ok, event_name, allowed_keys} <- EventContract.resolve(contract, event),
+         {:ok, safe_properties} <- EventContract.sanitize(contract, event, properties) do
+      capture_declared(%{
+        event: event_name,
+        distinct_id: distinct_id,
+        properties: filter_properties(safe_properties, allowed_keys)
+      })
+    else
+      :error -> :ok
+    end
+  end
 
   defp identify(payload), do: dispatch(:identify, payload)
 

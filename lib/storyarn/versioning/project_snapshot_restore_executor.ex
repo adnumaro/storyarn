@@ -28,25 +28,25 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.GlossaryEntryRecord, as: GlossaryEntry
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord, as: SceneAmbientFlow
+  alias Storyarn.Projects.Persistence.SceneAnnotationRecord, as: SceneAnnotation
+  alias Storyarn.Projects.Persistence.SceneConnectionRecord, as: SceneConnection
+  alias Storyarn.Projects.Persistence.SceneLayerRecord, as: SceneLayer
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
+  alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.References
   alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReference
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Scenes
-  alias Storyarn.Scenes.Scene
-  alias Storyarn.Scenes.SceneAmbientFlow
-  alias Storyarn.Scenes.SceneAnnotation
-  alias Storyarn.Scenes.SceneConnection
-  alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Scenes.SceneZone
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -771,7 +771,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   end
 
   defp trash_scene(scene) do
-    Scenes.delete_scene_subtree_in_transaction(scene)
+    SceneProjectTrash.delete_subtree_in_transaction(scene)
   end
 
   defp reconcile_localization_before_materialization(project_id, _project_data) do

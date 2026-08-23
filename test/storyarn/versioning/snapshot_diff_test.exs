@@ -14,15 +14,14 @@ defmodule Storyarn.Versioning.SnapshotDiffTest do
       assert stats.added == 1
     end
 
-    test "returns structured result for scene snapshots" do
-      old = %{"name" => "S", "layers" => [], "connections" => []}
-      layer = %{"position" => 0, "name" => "L1", "pins" => [], "zones" => [], "annotations" => []}
-      new = %{"name" => "S", "layers" => [layer], "connections" => []}
+    test "returns structured result for sheet property changes" do
+      old = %{"name" => "Old", "shortcut" => "sheet", "blocks" => []}
+      new = %{"name" => "New", "shortcut" => "sheet", "blocks" => []}
 
-      result = SnapshotDiff.diff("scene", old, new)
+      result = SnapshotDiff.diff("sheet", old, new)
 
       assert %{has_changes: true} = result
-      assert Enum.any?(result.changes, &(&1.category == :layer))
+      assert Enum.any?(result.changes, &(&1.category == :property))
     end
   end
 
@@ -34,10 +33,10 @@ defmodule Storyarn.Versioning.SnapshotDiffTest do
     end
 
     test "returns true when properties differ" do
-      old = %{"name" => "Old", "layers" => [], "connections" => []}
-      new = %{"name" => "New", "layers" => [], "connections" => []}
+      old = %{"name" => "Old", "shortcut" => "sheet", "blocks" => []}
+      new = %{"name" => "New", "shortcut" => "sheet", "blocks" => []}
 
-      assert SnapshotDiff.has_changes?("scene", old, new)
+      assert SnapshotDiff.has_changes?("sheet", old, new)
     end
   end
 

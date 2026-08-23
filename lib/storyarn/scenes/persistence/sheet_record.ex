@@ -4,6 +4,7 @@ defmodule Storyarn.Scenes.Persistence.SheetRecord do
   use Ecto.Schema
 
   alias Storyarn.Scenes.Persistence.AssetRecord
+  alias Storyarn.Scenes.Persistence.BlockRecord
   alias Storyarn.Scenes.Persistence.SheetAvatarRecord
 
   @type t :: %__MODULE__{}
@@ -24,6 +25,7 @@ defmodule Storyarn.Scenes.Persistence.SheetRecord do
     belongs_to :banner_asset, AssetRecord, define_field: false, where: [deleted_at: nil]
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :avatars, SheetAvatarRecord, foreign_key: :sheet_id
+    has_many :blocks, BlockRecord, foreign_key: :sheet_id
 
     timestamps(type: :utc_datetime)
   end

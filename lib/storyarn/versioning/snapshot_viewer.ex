@@ -1,38 +1,10 @@
 defmodule Storyarn.Versioning.SnapshotViewer do
   @moduledoc """
-  Converts raw snapshot maps into editor-compatible data shapes for the
-  split-view comparison viewer. Operates entirely on snapshot data without
-  any database queries.
+  Converts raw Sheet snapshot maps into the read-only shape consumed by the
+  legacy Sheet comparison viewer.
   """
 
-  alias Storyarn.Scenes.RoutePoints
-
-  @doc """
-  Serializes a scene snapshot into the shape expected by the SceneCanvas JS hook.
-  Sets `can_edit: false` for readonly mode.
-  """
-  @spec serialize_scene(map()) :: map()
-  def serialize_scene(snapshot) do
-    asset_metadata = snapshot["asset_metadata"] || %{}
-
-    {serialized_layers, pin_id_map} =
-      serialize_scene_layers(snapshot["layers"] || [], asset_metadata)
-
-    serialized_connections =
-      snapshot
-      |> Map.get("connections", [])
-      |> Enum.with_index()
-      |> Enum.map(&serialize_scene_connection(&1, pin_id_map))
-      |> Enum.filter(&route_has_two_points?/1)
-
-    build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections)
-  end
-
-  @doc """
-  Serializes a sheet snapshot into a list of block maps compatible with
-  `BlockComponents.block_component/1` with `can_edit: false`.
-  """
-  @spec serialize_sheet(map()) :: list(map())
+  @spec serialize_sheet(map()) :: [map()]
   def serialize_sheet(snapshot) do
     snapshot
     |> Map.get("blocks", [])
@@ -40,213 +12,14 @@ defmodule Storyarn.Versioning.SnapshotViewer do
     |> Enum.map(&serialize_block/1)
   end
 
-  # ========== Scene Helpers ==========
-
-  defp serialize_scene_layers(layers, asset_metadata) do
-    # Use a global counter to generate unique negative IDs, avoiding
-    # collisions regardless of entity counts per layer.
-    {results, {pin_map, _counter}} =
-      layers
-      |> Enum.with_index()
-      |> Enum.map_reduce({%{}, 1}, fn {layer, layer_idx}, {pin_map, counter} ->
-        serialize_single_layer(layer, layer_idx, pin_map, counter, asset_metadata)
-      end)
-
-    {results, pin_map}
-  end
-
-  defp serialize_single_layer(layer, layer_idx, pin_map, counter, asset_metadata) do
-    layer_id = -(layer_idx + 1)
-
-    pins = Map.get(layer, "pins", [])
-    zones = Map.get(layer, "zones", [])
-    annotations = Map.get(layer, "annotations", [])
-
-    {serialized_pins, {updated_pin_map, counter}} =
-      pins
-      |> Enum.with_index()
-      |> Enum.map_reduce({pin_map, counter}, fn {pin, pin_idx}, {acc, c} ->
-        pin_id = -c
-        serialized = serialize_pin(pin, pin_id, layer_id, asset_metadata)
-        {serialized, {Map.put(acc, {layer_idx, pin_idx}, pin_id), c + 1}}
-      end)
-
-    {serialized_zones, counter} =
-      zones
-      |> Enum.with_index()
-      |> Enum.map_reduce(counter, fn {zone, _zone_idx}, c ->
-        {serialize_zone(zone, -c, layer_id), c + 1}
-      end)
-
-    {serialized_annotations, counter} =
-      annotations
-      |> Enum.with_index()
-      |> Enum.map_reduce(counter, fn {ann, _ann_idx}, c ->
-        {serialize_annotation(ann, -c, layer_id), c + 1}
-      end)
-
-    serialized_layer = %{
-      id: layer_id,
-      name: layer["name"],
-      visible: Map.get(layer, "visible", true),
-      is_default: layer["is_default"] || false,
-      position: layer["position"] || layer_idx,
-      fog_enabled: layer["fog_enabled"] || false
-    }
-
-    {{serialized_layer, serialized_pins, serialized_zones, serialized_annotations}, {updated_pin_map, counter}}
-  end
-
-  defp serialize_pin(pin, pin_id, layer_id, asset_metadata) do
-    %{
-      id: pin_id,
-      position_x: pin["position_x"],
-      position_y: pin["position_y"],
-      pin_type: pin["pin_type"] || "location",
-      icon: pin["icon"],
-      color: pin["color"],
-      opacity: pin["opacity"] || 1.0,
-      label: pin["label"],
-      tooltip: pin["tooltip"],
-      size: pin["size"] || "md",
-      layer_id: layer_id,
-      shortcut: pin["shortcut"],
-      hidden: pin["hidden"] || false,
-      flow_id: pin["flow_id"],
-      sheet_id: pin["sheet_id"],
-      avatar_url: nil,
-      icon_asset_id: pin["icon_asset_id"],
-      icon_asset_url: resolve_asset_url(pin["icon_asset_id"], asset_metadata),
-      position: pin["position"] || 0,
-      locked: pin["locked"] || false,
-      condition: pin["condition"],
-      condition_effect: pin["condition_effect"] || "hide"
-    }
-  end
-
-  @zone_view_defaults %{
-    "hidden" => false,
-    "border_width" => 2,
-    "border_style" => "solid",
-    "opacity" => 0.3,
-    "position" => 0,
-    "locked" => false,
-    "action_type" => "action",
-    "action_data" => %{"assignments" => []},
-    "label_mode" => "text",
-    "label_font_size" => 12,
-    "label_font_family" => "system",
-    "label_font_weight" => "600",
-    "label_font_style" => "normal",
-    "condition_effect" => "hide",
-    "is_walkable" => false
-  }
-
-  defp serialize_zone(zone, zone_id, layer_id) do
-    z = Map.merge(@zone_view_defaults, zone)
-
-    %{
-      id: zone_id,
-      name: z["name"],
-      shortcut: z["shortcut"],
-      hidden: z["hidden"],
-      vertices: z["vertices"],
-      fill_color: z["fill_color"],
-      border_color: z["border_color"],
-      border_width: z["border_width"],
-      border_style: z["border_style"],
-      opacity: z["opacity"],
-      tooltip: z["tooltip"],
-      layer_id: layer_id,
-      target_type: z["target_type"],
-      target_id: z["target_id"],
-      position: z["position"],
-      locked: z["locked"],
-      action_type: z["action_type"],
-      action_data: z["action_data"],
-      label_mode: z["label_mode"],
-      label_font_size: z["label_font_size"],
-      label_font_family: z["label_font_family"],
-      label_font_weight: z["label_font_weight"],
-      label_font_style: z["label_font_style"],
-      label_icon_asset_id: z["label_icon_asset_id"],
-      condition: z["condition"],
-      condition_effect: z["condition_effect"],
-      is_walkable: z["is_walkable"]
-    }
-  end
-
-  defp serialize_annotation(ann, ann_id, layer_id) do
-    %{
-      id: ann_id,
-      text: ann["text"],
-      position_x: ann["position_x"],
-      position_y: ann["position_y"],
-      font_size: ann["font_size"] || "md",
-      color: ann["color"],
-      layer_id: layer_id,
-      position: ann["position"] || 0,
-      locked: ann["locked"] || false
-    }
-  end
-
-  defp serialize_scene_connection({conn, idx}, pin_id_map) do
-    %{
-      id: -(idx + 1),
-      from_pin_id: Map.get(pin_id_map, {conn["from_layer_index"], conn["from_pin_index"]}),
-      to_pin_id: Map.get(pin_id_map, {conn["to_layer_index"], conn["to_pin_index"]}),
-      line_style: conn["line_style"] || "solid",
-      line_width: conn["line_width"] || 2,
-      color: conn["color"],
-      label: conn["label"],
-      show_label: Map.get(conn, "show_label", true),
-      bidirectional: Map.get(conn, "bidirectional", true),
-      waypoints: conn["waypoints"] || [],
-      from_stop: Map.get(conn, "from_stop", true),
-      to_stop: Map.get(conn, "to_stop", true),
-      from_pause_ms: conn["from_pause_ms"],
-      to_pause_ms: conn["to_pause_ms"]
-    }
-  end
-
-  defp route_has_two_points?(conn) do
-    RoutePoints.enough_points?(conn.from_pin_id, conn.to_pin_id, conn.waypoints)
-  end
-
-  defp build_scene_result(snapshot, asset_metadata, serialized_layers, serialized_connections) do
-    %{
-      id: -1,
-      name: snapshot["name"],
-      width: snapshot["width"] || 1920,
-      height: snapshot["height"] || 1080,
-      default_zoom: snapshot["default_zoom"],
-      default_center_x: snapshot["default_center_x"],
-      default_center_y: snapshot["default_center_y"],
-      background_url: resolve_asset_url(snapshot["background_asset_id"], asset_metadata),
-      scale_unit: snapshot["scale_unit"],
-      scale_value: snapshot["scale_value"],
-      fog_color: snapshot["fog_color"] || "#000000",
-      fog_opacity: snapshot["fog_opacity"] || 0.85,
-      can_edit: false,
-      boundary_vertices: nil,
-      layers: Enum.map(serialized_layers, &elem(&1, 0)),
-      pins: Enum.flat_map(serialized_layers, &elem(&1, 1)),
-      zones: Enum.flat_map(serialized_layers, &elem(&1, 2)),
-      connections: serialized_connections,
-      annotations: Enum.flat_map(serialized_layers, &elem(&1, 3))
-    }
-  end
-
-  # ========== Sheet Helpers ==========
-
-  defp serialize_block({block, idx}) do
-    block_id = -(idx + 1)
+  defp serialize_block({block, index}) do
+    block_id = -(index + 1)
     table_data = serialize_table_data(block["table_data"])
 
     %{
       id: block_id,
       type: block["type"],
-      position: block["position"] || idx,
+      position: block["position"] || index,
       config: block["config"] || %{},
       value: block["value"] || %{},
       is_constant: block["is_constant"] || false,
@@ -255,7 +28,6 @@ defmodule Storyarn.Versioning.SnapshotViewer do
       required: block["required"] || false,
       table_columns: table_data[:columns] || [],
       table_rows: table_data[:rows] || [],
-      # Fields required by BlockComponents but not present in snapshots
       inherited_from_block_id: nil,
       detached: nil,
       reference_target: nil
@@ -280,37 +52,26 @@ defmodule Storyarn.Versioning.SnapshotViewer do
     %{columns: columns, rows: rows}
   end
 
-  defp serialize_table_column({col, idx}) do
+  defp serialize_table_column({column, index}) do
     %{
-      id: -(idx + 1),
-      name: col["name"],
-      slug: col["slug"],
-      type: col["type"],
-      is_constant: col["is_constant"] || false,
-      required: col["required"] || false,
-      position: col["position"] || idx,
-      config: col["config"] || %{}
+      id: -(index + 1),
+      name: column["name"],
+      slug: column["slug"],
+      type: column["type"],
+      is_constant: column["is_constant"] || false,
+      required: column["required"] || false,
+      position: column["position"] || index,
+      config: column["config"] || %{}
     }
   end
 
-  defp serialize_table_row({row, idx}) do
+  defp serialize_table_row({row, index}) do
     %{
-      id: -(idx + 1),
+      id: -(index + 1),
       name: row["name"],
       slug: row["slug"],
-      position: row["position"] || idx,
+      position: row["position"] || index,
       cells: row["cells"] || %{}
     }
-  end
-
-  # ========== Shared Helpers ==========
-
-  defp resolve_asset_url(nil, _metadata), do: nil
-
-  defp resolve_asset_url(asset_id, metadata) do
-    case Map.get(metadata, to_string(asset_id)) do
-      %{"url" => url} when is_binary(url) -> url
-      _ -> nil
-    end
   end
 end

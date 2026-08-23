@@ -3,13 +3,10 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
-  import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Versioning
-  alias Storyarn.Versioning.Builders.SceneBuilder
   alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.RestorePolicy
   alias Storyarn.Versioning.VersionCrud
@@ -29,10 +26,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   end
 
   test "exact full-project restore is always available independently of entity switches" do
-    Application.put_env(:storyarn, RestorePolicy,
-      sheet_version_restore: false,
-      scene_version_restore: false
-    )
+    Application.put_env(:storyarn, RestorePolicy, sheet_version_restore: false)
 
     assert RestorePolicy.enabled?({:project_snapshot_restore, "full"})
     assert :ok = RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"})
@@ -47,7 +41,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: "true",
-      scene_version_restore: nil
+      scene_version_restore: true
     )
 
     refute RestorePolicy.enabled?({:entity_version_restore, "sheet"})
@@ -63,7 +57,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
   test "entity restore surfaces are enabled independently only by literal true" do
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: true,
-      scene_version_restore: false
+      scene_version_restore: true
     )
 
     assert RestorePolicy.enabled?({:entity_version_restore, "sheet"})
@@ -82,10 +76,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
 
     {:ok, changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed"})
 
-    Application.put_env(:storyarn, RestorePolicy,
-      sheet_version_restore: false,
-      scene_version_restore: false
-    )
+    Application.put_env(:storyarn, RestorePolicy, sheet_version_restore: false)
 
     assert {:error, :restore_temporarily_disabled} =
              Versioning.restore_version("sheet", changed_sheet, version, user_id: user.id)
@@ -98,7 +89,7 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     assert Versioning.count_versions("sheet", sheet.id) == 1
   end
 
-  test "entity builders require a policy-scoped entity action" do
+  test "the remaining legacy Sheet builder requires a policy-scoped entity action" do
     user = user_fixture()
     project = project_fixture(user)
 
@@ -107,33 +98,17 @@ defmodule Storyarn.Versioning.RestorePolicyTest do
     sheet_snapshot = SheetBuilder.build_snapshot(sheet)
     sheet_block_ids = Enum.map(Sheets.list_blocks(sheet.id), & &1.id)
 
-    scene = scene_fixture(project)
-    _layer = layer_fixture(scene)
-    scene_snapshot = SceneBuilder.build_snapshot(scene)
-    scene_layer_ids = Enum.map(Scenes.list_layers(scene.id), & &1.id)
-
     Application.put_env(:storyarn, RestorePolicy,
       sheet_version_restore: true,
       scene_version_restore: true
     )
 
-    for {builder, entity, snapshot} <- [
-          {SheetBuilder, sheet, sheet_snapshot},
-          {SceneBuilder, scene, scene_snapshot}
-        ] do
-      assert {:error, :restore_temporarily_disabled} =
-               builder.restore_snapshot(entity, snapshot)
+    assert {:error, :restore_temporarily_disabled} =
+             SheetBuilder.restore_snapshot(sheet, sheet_snapshot)
 
-      restore_opts = [restore_action: {:entity_version_restore, entity_type(entity)}]
-
-      assert {:ok, _restored} =
-               builder.restore_snapshot(entity, snapshot, restore_opts)
-    end
+    assert {:ok, _restored} =
+             SheetBuilder.restore_snapshot(sheet, sheet_snapshot, restore_action: {:entity_version_restore, "sheet"})
 
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == sheet_block_ids
-    assert Enum.map(Scenes.list_layers(scene.id), & &1.id) == scene_layer_ids
   end
-
-  defp entity_type(%Storyarn.Sheets.Sheet{}), do: "sheet"
-  defp entity_type(%Storyarn.Scenes.Scene{}), do: "scene"
 end

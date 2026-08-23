@@ -597,7 +597,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     do: Flows.delete_flow_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp delete_entity_subtree_in_transaction(scope, "scene", entity),
-    do: Scenes.delete_scene_subtree_in_transaction(scope, entity)
+    do: Scenes.delete_scene_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp create_error_reply({:limit_reached, _details}), do: %{error: "limit_reached"}
   defp create_error_reply(_reason), do: %{error: "create_failed"}

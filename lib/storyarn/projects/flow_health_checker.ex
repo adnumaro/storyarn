@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.FlowHealthChecker do
   behavior (`:info`). It operates on serialized Flow graph output so
   resolved references and graph-derived flags share one contract.
 
-  Same shape as `Storyarn.Sheets.HealthChecker` and `Storyarn.Scenes.HealthChecker`:
+  Same result shape as the other tool-owned health checkers:
   severity is declared once in `@severity_by_code` rather than at each detection
   site, and `finding/2` is the only constructor, so a bulk adapter (the dashboard)
   cannot invent its own vocabulary. `entity_type` is `"flow"` for flow-level

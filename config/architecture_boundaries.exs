@@ -231,6 +231,13 @@ boundaries = %{
     "lib/storyarn/global_search/persistence/flow_connection_record.ex",
     "lib/storyarn/global_search/persistence/flow_node_record.ex",
     "lib/storyarn/global_search/persistence/flow_record.ex",
+    "lib/storyarn/global_search/persistence/scene_annotation_record.ex",
+    "lib/storyarn/global_search/persistence/scene_connection_record.ex",
+    "lib/storyarn/global_search/persistence/scene_layer_record.ex",
+    "lib/storyarn/global_search/persistence/scene_pin_record.ex",
+    "lib/storyarn/global_search/persistence/scene_record.ex",
+    "lib/storyarn/global_search/persistence/scene_zone_record.ex",
+    "lib/storyarn/global_search/scene_search.ex",
     "lib/storyarn/global_search/variable_query.ex",
     "lib/storyarn/global_search/variable_search.ex",
     "lib/storyarn/mailer.ex",
@@ -262,7 +269,6 @@ boundaries = %{
     "lib/storyarn/shared/search_helpers.ex",
     "lib/storyarn/shared/severity.ex",
     "lib/storyarn/shared/shortcut_helpers.ex",
-    "lib/storyarn/shared/soft_delete.ex",
     "lib/storyarn/shared/string_utils.ex",
     "lib/storyarn/shared/time_helpers.ex",
     "lib/storyarn/shared/token_generator.ex",
@@ -366,12 +372,12 @@ forbidden_dependencies =
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
   # when the current xref graph contains the exact same edge.
-  zero_debt_consumers: [:flows, :localization],
+  zero_debt_consumers: [:flows, :scenes, :localization],
 
-  # Flows and Localization are sealed in both directions. Durable coordinator
+  # Flows, Scenes and Localization are sealed in both directions. Durable coordinator
   # access to their public facades must use an exact exception; it cannot be
   # accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:flows, :localization],
+  isolated_contexts: [:flows, :scenes, :localization],
 
   # Repo is deliberately shared during ENG-92. Ecto and other external
   # dependencies do not appear as repository paths in the xref JSON graph.
@@ -465,6 +471,30 @@ forbidden_dependencies =
       reason: "Localization requests durable cross-cutting delivery through the public Platform contract"
     },
     %{
+      source: "lib/storyarn/scenes/asset_commands.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scenes applies the Platform-owned storage entitlement to Scene asset writes and restores"
+    },
+    %{
+      source: "lib/storyarn/scenes/events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scenes publishes owned business facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/scenes/limits.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scenes applies Platform-owned commercial entitlements to Scene operations"
+    },
+    %{
+      source: "lib/storyarn/scenes/scene_crud.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scene mutations request durable notification delivery through the public Platform contract"
+    },
+    %{
       source: "lib/storyarn/projects/project.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
@@ -493,6 +523,12 @@ forbidden_dependencies =
       target: "lib/storyarn/flows.ex",
       kinds: ["runtime"],
       reason: "Authenticated command palette coordinates Flow creation and deletion through the public facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/scenes.ex",
+      kinds: ["runtime"],
+      reason: "Authenticated command palette coordinates Scene creation and deletion through the public facade"
     },
     %{
       source: "lib/storyarn_web/live/project_live/form.ex",

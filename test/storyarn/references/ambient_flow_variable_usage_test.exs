@@ -9,6 +9,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
 
   alias Storyarn.GlobalSearch
   alias Storyarn.References
+  alias Storyarn.References.VariableProjectionQueries
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -74,7 +75,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
 
   test "legacy get and stale reads support dotted Sheet shortcuts and active Scene filtering", context do
     assert [usage] =
-             Scenes.get_scene_ambient_flow_variable_usage(
+             VariableProjectionQueries.get_scene_ambient_flow_variable_usage(
                context.block.id,
                context.project.id
              )
@@ -85,7 +86,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
     assert usage.scene_id == context.scene.id
 
     assert [fresh] =
-             Scenes.check_stale_scene_ambient_flow_variable_references(
+             VariableProjectionQueries.check_stale_scene_ambient_flow_variable_references(
                context.block.id,
                context.project.id
              )
@@ -96,7 +97,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
       Sheets.update_sheet(context.sheet, %{shortcut: "protagonist.profile"})
 
     assert [stale] =
-             Scenes.check_stale_scene_ambient_flow_variable_references(
+             VariableProjectionQueries.check_stale_scene_ambient_flow_variable_references(
                context.block.id,
                context.project.id
              )
@@ -108,13 +109,13 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
     {:ok, _deleted_scene} = Scenes.delete_scene(context.scene)
 
     assert [] =
-             Scenes.get_scene_ambient_flow_variable_usage(
+             VariableProjectionQueries.get_scene_ambient_flow_variable_usage(
                context.block.id,
                context.project.id
              )
 
     assert [] =
-             Scenes.check_stale_scene_ambient_flow_variable_references(
+             VariableProjectionQueries.check_stale_scene_ambient_flow_variable_references(
                context.block.id,
                context.project.id
              )
@@ -161,13 +162,13 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
     assert malformed_ambient.flow_id == foreign_flow.id
 
     assert [] =
-             Scenes.get_scene_ambient_flow_variable_usage(
+             VariableProjectionQueries.get_scene_ambient_flow_variable_usage(
                context.block.id,
                context.project.id
              )
 
     assert [] =
-             Scenes.check_stale_scene_ambient_flow_variable_references(
+             VariableProjectionQueries.check_stale_scene_ambient_flow_variable_references(
                context.block.id,
                context.project.id
              )

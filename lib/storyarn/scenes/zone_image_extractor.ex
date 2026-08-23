@@ -12,7 +12,8 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   Returns {:error, :image_extraction_failed} on processing failures.
   """
 
-  alias Storyarn.Assets
+  alias Storyarn.Assets.Storage
+  alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.SceneZone
 
   require Logger
@@ -98,7 +99,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   end
 
   defp open_image(%{key: key}) when is_binary(key) do
-    case Assets.storage_download(key) do
+    case Storage.download(key) do
       {:ok, binary_data} ->
         case Image.open(binary_data) do
           {:ok, _} = ok -> ok
@@ -187,7 +188,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
 
     with {:ok, binary_data} <- File.read(temp_path) do
       attrs = %{filename: filename, content_type: content_type}
-      Assets.upload_binary_and_create_asset(binary_data, attrs, project, nil)
+      AssetCommands.create_generated_asset(binary_data, attrs, project)
     end
   end
 

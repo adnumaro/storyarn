@@ -12,13 +12,13 @@ defmodule Storyarn.Scenes.ScenePin do
   import Storyarn.Scenes.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Scenes.Persistence.AssetRecord
   alias Storyarn.Scenes.Persistence.FlowRecord
+  alias Storyarn.Scenes.Persistence.SheetRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
-  alias Storyarn.Shared.Validations
-  alias Storyarn.Sheets.Sheet
+  alias Storyarn.Scenes.Schema
 
   @valid_pin_types ~w(location character event custom)
   @valid_sizes ~w(sm md lg)
@@ -80,8 +80,8 @@ defmodule Storyarn.Scenes.ScenePin do
 
     belongs_to :scene, Scene
     belongs_to :layer, SceneLayer
-    belongs_to :sheet, Sheet
-    belongs_to :icon_asset, Asset, where: [deleted_at: nil]
+    belongs_to :sheet, SheetRecord
+    belongs_to :icon_asset, AssetRecord, where: [deleted_at: nil]
     belongs_to :flow, FlowRecord
 
     has_many :outgoing_connections, SceneConnection, foreign_key: :from_pin_id
@@ -139,7 +139,7 @@ defmodule Storyarn.Scenes.ScenePin do
       greater_than_or_equal_to: 0,
       less_than_or_equal_to: 30_000
     )
-    |> Validations.validate_shortcut()
+    |> Schema.validate_shortcut()
     |> unique_constraint(:shortcut, name: :scene_pins_scene_id_shortcut_index)
     |> unique_constraint(:scene_id, name: :scene_pins_single_leader_per_scene_index)
     |> validate_length(:label, max: 200)

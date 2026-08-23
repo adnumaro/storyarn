@@ -10,9 +10,9 @@ defmodule Storyarn.Scenes.SceneReferenceIntegrity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Projects.Project
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+  alias Storyarn.Scenes.Persistence.ProjectRecord
+  alias Storyarn.Scenes.ProjectReferenceIntegrity
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.ScenePin
@@ -66,14 +66,14 @@ defmodule Storyarn.Scenes.SceneReferenceIntegrity do
   common serialization point because their activity triggers update this row.
   """
   @spec lock_active_project(term(), project_lock()) ::
-          {:ok, Project.t()} | {:error, :project_not_found | :project_not_active | {:invalid_project_id, term()}}
+          {:ok, ProjectRecord.t()} | {:error, :project_not_found | :project_not_active | {:invalid_project_id, term()}}
   def lock_active_project(project_id, lock_mode \\ :share) do
     with {:ok, normalized_project_id} <- normalize_required_id(project_id, :project_id) do
-      query = apply_lock(from(project in Project, where: project.id == ^normalized_project_id), lock_mode)
+      query = apply_lock(from(project in ProjectRecord, where: project.id == ^normalized_project_id), lock_mode)
 
       case Repo.one(query) do
-        %Project{deleted_at: nil} = project -> {:ok, project}
-        %Project{} -> {:error, :project_not_active}
+        %ProjectRecord{deleted_at: nil} = project -> {:ok, project}
+        %ProjectRecord{} -> {:error, :project_not_active}
         nil -> {:error, :project_not_found}
       end
     end

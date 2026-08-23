@@ -62,18 +62,6 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end
   end
 
-  def handle_review_restore(%{"version_number" => version_number} = params, socket, config) do
-    case VersionHistoryHelpers.restore_request_id(params) do
-      {:ok, request_id} ->
-        with_authorized_restore(socket, config.entity_type, fn authorized_socket ->
-          review_restore(authorized_socket, config, version_number, request_id)
-        end)
-
-      :error ->
-        {:noreply, socket}
-    end
-  end
-
   def handle_confirm_restore(%{"version_number" => version_number} = params, socket, config) do
     case VersionHistoryHelpers.restore_request_id(params) do
       {:ok, request_id} ->
@@ -192,16 +180,6 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
     end
   end
 
-  defp show_restore_preview(socket, config, version, request_id) do
-    VersionHistoryHelpers.show_conflict_preview(
-      socket,
-      config.entity_type,
-      entity(socket, config),
-      version,
-      request_id
-    )
-  end
-
   defp preview_restore(socket, config, version_number, request_id) do
     with_version(socket, config, version_number, fn version ->
       VersionHistoryHelpers.detect_and_show_restore_preview(
@@ -212,16 +190,6 @@ defmodule StoryarnWeb.Helpers.VersionEventHelpers do
         request_id
       )
     end)
-  end
-
-  defp review_restore(socket, config, version_number, request_id) do
-    with_version(
-      socket,
-      config,
-      version_number,
-      fn version -> show_restore_preview(socket, config, version, request_id) end,
-      missing: :noop
-    )
   end
 
   defp confirm_restore(socket, config, version_number, request_id) do

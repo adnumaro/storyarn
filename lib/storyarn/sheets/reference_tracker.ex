@@ -32,20 +32,18 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Scene
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
   alias Storyarn.Sheets.Persistence.FlowRecord
+  alias Storyarn.Sheets.Persistence.SceneRecord
+  alias Storyarn.Sheets.SceneReadModel
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.VariableNamespaceResolver
 
   @project_target_types %{
     "block" => ~w(sheet flow),
-    "flow_node" => ~w(sheet flow),
-    "scene_pin" => ~w(sheet flow),
-    "scene_zone" => ~w(sheet flow scene)
+    "flow_node" => ~w(sheet flow)
   }
 
   @doc """
@@ -535,62 +533,10 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     )
   end
 
-  # ---------------------------------------------------------------------------
-  # Map element references (pins & zones)
-  # ---------------------------------------------------------------------------
-
   @doc """
-  Updates references from a map pin.
-  Tracks target_type/target_id and sheet_id references.
-  """
-  @spec update_scene_pin_references(map(), keyword()) :: :ok
-  def update_scene_pin_references(pin, opts \\ [])
-
-  def update_scene_pin_references(%{id: pin_id} = pin, opts) do
-    delete_map_pin_references(pin_id)
-
-    refs = extract_map_pin_refs(pin)
-    batch_insert_references("scene_pin", pin_id, refs, opts)
-  end
-
-  def update_scene_pin_references(_pin, _opts), do: :ok
-
-  @doc """
-  Deletes all references from a map pin.
-  """
-  @spec delete_map_pin_references(any()) :: {integer(), nil}
-  def delete_map_pin_references(pin_id) do
-    Repo.delete_all(from(r in EntityReference, where: r.source_type == "scene_pin" and r.source_id == ^pin_id))
-  end
-
-  @doc """
-  Updates references from a map zone.
-  Tracks target_type/target_id references.
-  """
-  @spec update_scene_zone_references(map(), keyword()) :: :ok
-  def update_scene_zone_references(zone, opts \\ [])
-
-  def update_scene_zone_references(%{id: zone_id} = zone, opts) do
-    delete_map_zone_references(zone_id)
-
-    refs = extract_map_zone_refs(zone)
-    batch_insert_references("scene_zone", zone_id, refs, opts)
-  end
-
-  def update_scene_zone_references(_zone, _opts), do: :ok
-
-  @doc """
-  Deletes all references from a map zone.
-  """
-  @spec delete_map_zone_references(any()) :: {integer(), nil}
-  def delete_map_zone_references(zone_id) do
-    Repo.delete_all(from(r in EntityReference, where: r.source_type == "scene_zone" and r.source_id == ^zone_id))
-  end
-
-  @doc """
-  Deletes references pointing to a target unless they originate from a live
-  block. Those rows are retained so health checks can report the now-missing
-  target in rich-text mentions and reference blocks.
+  Deletes Sheet-owned block references pointing to a target unless they
+  originate from a live block. Foreign source projections are retained for
+  their owning contexts to reconcile or report as dangling.
   """
   @spec delete_target_references(String.t(), any()) :: {integer(), nil}
   def delete_target_references(target_type, target_id) do
@@ -620,7 +566,9 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
     query =
       from(reference in EntityReference,
-        where: reference.target_type == ^target_type and reference.target_id == ^target_id
+        where:
+          reference.source_type == "block" and
+            reference.target_type == ^target_type and reference.target_id == ^target_id
       )
 
     query =
@@ -628,9 +576,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
         query
       else
         from(reference in query,
-          where:
-            reference.source_type != "block" or
-              reference.source_id not in ^retained_block_ids
+          where: reference.source_id not in ^retained_block_ids
         )
       end
 
@@ -638,11 +584,11 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   end
 
   defp query_scene_pin_backlinks(target_type, target_id, project_id) do
-    Storyarn.Scenes.query_scene_pin_backlinks(target_type, target_id, project_id)
+    SceneReadModel.pin_backlinks(target_type, target_id, project_id)
   end
 
   defp query_scene_zone_backlinks(target_type, target_id, project_id) do
-    Storyarn.Scenes.query_scene_zone_backlinks(target_type, target_id, project_id)
+    SceneReadModel.zone_backlinks(target_type, target_id, project_id)
   end
 
   # Private functions
@@ -783,7 +729,7 @@ defmodule Storyarn.Sheets.ReferenceTracker do
     entries = Enum.filter(entries, &(&1.target_type in allowed_types))
 
     allowed_targets =
-      Enum.reduce([{"sheet", Sheet}, {"flow", FlowRecord}, {"scene", Scene}], MapSet.new(), fn
+      Enum.reduce([{"sheet", Sheet}, {"flow", FlowRecord}, {"scene", SceneRecord}], MapSet.new(), fn
         {target_type, schema}, allowed ->
           target_ids =
             entries
@@ -943,137 +889,4 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   defp maybe_add_sheet_ref(refs, sheet_id, context) do
     [%{type: "sheet", id: sheet_id, context: context} | refs]
   end
-
-  defp extract_map_pin_refs(pin) do
-    refs = []
-
-    # Track flow_id (dedicated flow link)
-    refs =
-      if pin.flow_id do
-        [%{type: "flow", id: pin.flow_id, context: "target"} | refs]
-      else
-        refs
-      end
-
-    # Track sheet_id (avatar/display sheet)
-    refs =
-      if pin.sheet_id do
-        [%{type: "sheet", id: pin.sheet_id, context: "display"} | refs]
-      else
-        refs
-      end
-
-    refs
-  end
-
-  defp extract_map_zone_refs(zone) do
-    refs = []
-
-    # Track target_type/target_id (navigate link)
-    refs =
-      if zone.target_type && zone.target_id do
-        [%{type: zone.target_type, id: zone.target_id, context: "target"} | refs]
-      else
-        refs
-      end
-
-    # Track sheet references from action_data (action assignments, display variable_ref)
-    refs = refs ++ extract_zone_action_data_refs(zone)
-
-    refs
-  end
-
-  defp extract_zone_action_data_refs(%{action_type: "action", action_data: action_data} = zone)
-       when is_map(action_data) do
-    assignments = action_data["assignments"] || []
-    project_id = get_project_id_from_scene(zone.scene_id)
-
-    if project_id do
-      sheet_ids = resolve_assignment_sheet_ids(project_id, assignments)
-
-      assignments
-      |> Enum.flat_map(&extract_assignment_sheet_refs(&1, sheet_ids))
-      |> Enum.uniq_by(fn ref -> {ref.type, ref.id} end)
-    else
-      []
-    end
-  end
-
-  defp extract_zone_action_data_refs(%{action_type: "display", action_data: action_data} = zone)
-       when is_map(action_data) do
-    variable_ref = action_data["variable_ref"]
-    resolve_display_sheet_ref(zone.scene_id, variable_ref)
-  end
-
-  defp extract_zone_action_data_refs(%{action_type: "collection", action_data: %{"items" => items}})
-       when is_list(items) do
-    items
-    |> Enum.flat_map(fn
-      %{"sheet_id" => sheet_id} when is_integer(sheet_id) ->
-        [%{type: "sheet", id: sheet_id, context: "collection_item"}]
-
-      _item ->
-        []
-    end)
-    |> Enum.uniq_by(fn reference -> {reference.type, reference.id} end)
-  end
-
-  defp extract_zone_action_data_refs(_zone), do: []
-
-  defp resolve_display_sheet_ref(_scene_id, ref) when not is_binary(ref) or ref == "", do: []
-
-  defp resolve_display_sheet_ref(scene_id, variable_ref) do
-    with [sheet_shortcut, _variable] <- String.split(variable_ref, ".", parts: 2),
-         project_id when not is_nil(project_id) <- get_project_id_from_scene(scene_id) do
-      resolve_sheet_ref(project_id, sheet_shortcut, "display")
-    else
-      _ -> []
-    end
-  end
-
-  defp resolve_assignment_sheet_ids(project_id, assignments) do
-    namespaces =
-      Enum.flat_map(assignments, fn assignment ->
-        read_namespace = if assignment["value_type"] == "variable_ref", do: assignment["value_sheet"]
-        [assignment["sheet"], read_namespace]
-      end)
-
-    VariableNamespaceResolver.resolve_sheet_ids(project_id, namespaces)
-  end
-
-  defp extract_assignment_sheet_refs(assignment, sheet_ids) do
-    write_refs = resolved_sheet_ref(sheet_ids, assignment["sheet"], "assignment")
-
-    read_refs =
-      if assignment["value_type"] == "variable_ref" do
-        resolved_sheet_ref(sheet_ids, assignment["value_sheet"], "assignment_source")
-      else
-        []
-      end
-
-    write_refs ++ read_refs
-  end
-
-  defp resolved_sheet_ref(sheet_ids, namespace, context) do
-    case Map.fetch(sheet_ids, namespace) do
-      {:ok, sheet_id} -> [%{type: "sheet", id: sheet_id, context: context}]
-      :error -> []
-    end
-  end
-
-  defp resolve_sheet_ref(_project_id, nil, _context), do: []
-  defp resolve_sheet_ref(_project_id, "", _context), do: []
-
-  defp resolve_sheet_ref(project_id, sheet_shortcut, context) do
-    sheet_id = VariableNamespaceResolver.resolve_sheet_id(project_id, sheet_shortcut)
-
-    if sheet_id do
-      [%{type: "sheet", id: sheet_id, context: context}]
-    else
-      []
-    end
-  end
-
-  defp get_project_id_from_scene(nil), do: nil
-  defp get_project_id_from_scene(scene_id), do: Storyarn.Scenes.get_scene_project_id(scene_id)
 end

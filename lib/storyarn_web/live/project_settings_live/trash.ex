@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -295,7 +294,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     do: fetch_item(:flow, Projects.get_flow_including_deleted(project_id, id))
 
   defp fetch_trashed_item(project_id, "scene", id),
-    do: fetch_item(:scene, Scenes.get_scene_including_deleted(project_id, id))
+    do: fetch_item(:scene, Projects.get_scene_including_deleted(project_id, id))
 
   defp fetch_trashed_item(_project_id, _type, _id), do: :error
 
@@ -344,7 +343,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     Projects.restore_trashed_flow(project_id, flow_id)
   end
 
-  defp restore_item(%{type: :scene, entity: scene}), do: Scenes.restore_scene(scene)
+  defp restore_item(%{type: :scene, entity: scene}), do: Projects.restore_trashed_scene(scene)
 
   defp restore_error_message({:invalid_project_reference, _context, _value}), do: unavailable_reference_message()
 
@@ -383,7 +382,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   defp permanently_delete_item(%{type: :flow, entity: flow}),
     do: Projects.permanently_delete_trashed_flow(flow.project_id, flow.id)
 
-  defp permanently_delete_item(%{type: :scene, entity: scene}), do: Scenes.hard_delete_scene(scene)
+  defp permanently_delete_item(%{type: :scene, entity: scene}), do: Projects.permanently_delete_trashed_scene(scene)
 
   defp purge_asset_items([], _project_id, _actor_id), do: []
 

@@ -52,8 +52,12 @@ defmodule Storyarn.Versioning.VersionCrudTest do
       assert {:error, :unknown_entity_type} =
                Versioning.create_version("flow", sheet, sheet.project_id, user.id)
 
+      assert {:error, :unknown_entity_type} =
+               Versioning.create_version("scene", sheet, sheet.project_id, user.id)
+
       assert Versioning.count_versions("sheet", sheet.id) == 0
       assert Versioning.count_versions("flow", sheet.id) == 0
+      assert Versioning.count_versions("scene", sheet.id) == 0
     end
 
     test "increments version numbers", %{sheet: sheet, project: project, user: user} do
