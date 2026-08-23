@@ -3,42 +3,42 @@ defmodule Storyarn.Sheets.SheetCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Collaboration
-  alias Storyarn.Notifications
-  alias Storyarn.Projects.Project
-  alias Storyarn.References
-  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Platform
   alias Storyarn.Repo
   alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.ShortcutHelpers
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.BlockCrud
+  alias Storyarn.Sheets.Limits
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
+  alias Storyarn.Sheets.Persistence.ProjectRecord
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.PropertyInheritance
+  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Shortcuts
+  alias Storyarn.Sheets.ShortcutGenerator
+  alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Versioning.EntityVersion
 
   # =============================================================================
   # CRUD Operations
   # =============================================================================
 
-  def create_sheet(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def create_sheet(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
+
     result =
       Repo.transaction(fn ->
         sheet = create_sheet_in_transaction(project, attrs)
-        {sheet, deliver_content_activity!(actor_scope, project, :created, sheet)}
+        {sheet, deliver_content_activity!(actor_id, project_id, :created, sheet)}
       end)
 
     case result do
       {:ok, {sheet, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         sync_created_sheet_localization(sheet)
-        Collaboration.broadcast_dashboard_change(project.id, :sheets)
+        Collaboration.broadcast_dashboard_change(project_id, :sheets)
         {:ok, sheet}
 
       {:error, {:limit_reached, details}} ->
@@ -49,13 +49,14 @@ defmodule Storyarn.Sheets.SheetCrud do
     end
   end
 
-  def create_sheet(%Project{} = project, attrs) do
+  def create_sheet(project, attrs) do
+    project_id = project_id!(project)
     result = Repo.transaction(fn -> create_sheet_in_transaction(project, attrs) end)
 
     case result do
       {:ok, sheet} ->
         sync_created_sheet_localization(sheet)
-        Collaboration.broadcast_dashboard_change(project.id, :sheets)
+        Collaboration.broadcast_dashboard_change(project_id, :sheets)
 
       _ ->
         :ok
@@ -75,12 +76,14 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   @doc false
-  def create_sheet_in_transaction(%Project{} = project, attrs) do
+  def create_sheet_in_transaction(project, attrs) do
+    project_id = project_id!(project)
+
     # A project row is the serialization point for both quota accounting and
     # sibling position allocation.
-    locked_project = Repo.one!(from(p in Project, where: p.id == ^project.id, lock: "FOR UPDATE"))
+    locked_project = Repo.one!(from(p in ProjectRecord, where: p.id == ^project_id, lock: "FOR UPDATE"))
 
-    case Billing.can_create_item?(locked_project) do
+    case Limits.can_create_item?(locked_project) do
       :ok -> :ok
       {:error, reason, details} -> Repo.rollback({reason, details})
     end
@@ -89,15 +92,15 @@ defmodule Storyarn.Sheets.SheetCrud do
 
     # Normalize keys to strings for changeset
     attrs = stringify_keys(attrs)
-    attrs = lock_and_normalize_sheet_references!(project.id, nil, attrs)
+    attrs = lock_and_normalize_sheet_references!(project_id, nil, attrs)
     parent_id = attrs["parent_id"]
-    position = attrs["position"] || next_position(project.id, parent_id)
+    position = attrs["position"] || next_position(project_id, parent_id)
 
     # Auto-generate shortcut from name if not provided
-    attrs = maybe_generate_shortcut(attrs, project.id, nil)
+    attrs = maybe_generate_shortcut(attrs, project_id, nil)
 
     sheet_result =
-      %Sheet{project_id: project.id}
+      %Sheet{project_id: project_id}
       |> Sheet.create_changeset(Map.put(attrs, "position", position))
       |> Repo.insert()
 
@@ -110,9 +113,10 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   @doc false
-  def create_sheet_in_transaction(%Scope{} = actor_scope, %Project{} = project, attrs) do
+  def create_sheet_in_transaction(%{user: %{id: actor_id}}, project, attrs) when is_integer(actor_id) and actor_id > 0 do
+    project_id = project_id!(project)
     sheet = create_sheet_in_transaction(project, attrs)
-    {sheet, deliver_content_activity!(actor_scope, project, :created, sheet)}
+    {sheet, deliver_content_activity!(actor_id, project_id, :created, sheet)}
   end
 
   def update_sheet(%Sheet{} = sheet, attrs) do
@@ -151,7 +155,7 @@ defmodule Storyarn.Sheets.SheetCrud do
     trash_sheet(sheet)
   end
 
-  def delete_sheet(%Scope{} = actor_scope, %Sheet{} = sheet) do
+  def delete_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet) when is_integer(actor_id) and actor_id > 0 do
     trash_sheet(actor_scope, sheet)
   end
 
@@ -162,7 +166,7 @@ defmodule Storyarn.Sheets.SheetCrud do
     with {:ok, %{entity: entity}} <- delete_sheet_subtree(sheet), do: {:ok, entity}
   end
 
-  def trash_sheet(%Scope{} = actor_scope, %Sheet{} = sheet) do
+  def trash_sheet(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet) when is_integer(actor_id) and actor_id > 0 do
     with {:ok, %{entity: entity}} <- delete_sheet_subtree(actor_scope, sheet), do: {:ok, entity}
   end
 
@@ -178,13 +182,14 @@ defmodule Storyarn.Sheets.SheetCrud do
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
   end
 
-  def delete_sheet_subtree(%Scope{} = actor_scope, %Sheet{} = sheet) do
+  def delete_sheet_subtree(%{user: %{id: actor_id}} = actor_scope, %Sheet{} = sheet)
+      when is_integer(actor_id) and actor_id > 0 do
     result = Repo.transaction(fn -> delete_sheet_subtree_in_transaction(actor_scope, sheet) end)
 
     result =
       case result do
         {:ok, %{notification_outcome: outcome} = deleted} ->
-          Notifications.publish_committed(outcome)
+          Platform.publish_notification_delivery(outcome)
           {:ok, Map.delete(deleted, :notification_outcome)}
 
         other ->
@@ -223,10 +228,10 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   @doc false
-  def delete_sheet_subtree_in_transaction(%Scope{} = actor_scope, %Sheet{} = sheet) do
+  def delete_sheet_subtree_in_transaction(%{user: %{id: actor_id}}, %Sheet{} = sheet)
+      when is_integer(actor_id) and actor_id > 0 do
     deleted = delete_sheet_subtree_in_transaction(sheet)
-    project = Repo.get!(Project, deleted.entity.project_id)
-    outcome = deliver_content_activity!(actor_scope, project, :deleted, deleted.entity)
+    outcome = deliver_content_activity!(actor_id, deleted.entity.project_id, :deleted, deleted.entity)
     Map.put(deleted, :notification_outcome, outcome)
   end
 
@@ -302,7 +307,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       Repo.delete_all(from(v in EntityVersion, where: v.entity_type == "sheet" and v.entity_id == ^sheet.id))
 
       # Delete references where this sheet is the target
-      References.delete_target_references("sheet", sheet.id)
+      ReferenceTracker.delete_target_references("sheet", sheet.id)
       Localization.purge_texts_for_sources("block", block_ids)
       Localization.purge_texts_for_source("sheet", sheet.id)
 
@@ -402,31 +407,38 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   defp descendant?(potential_descendant_id, ancestor_id) do
-    SharedTree.descendant?(Sheet, potential_descendant_id, ancestor_id)
+    TreeOperations.descendant?(potential_descendant_id, ancestor_id)
   end
 
   defp next_position(project_id, parent_id) do
-    SharedTree.next_position(Sheet, project_id, parent_id)
+    TreeOperations.next_position(project_id, parent_id)
   end
 
   defp stringify_keys(map), do: MapUtils.stringify_keys(map)
 
-  defp deliver_content_activity!(actor_scope, project, action, sheet) do
-    case Notifications.deliver_content_activity(actor_scope, project, action, "sheet", sheet) do
+  defp deliver_content_activity!(actor_id, project_id, action, sheet) do
+    case Platform.deliver_content_activity_by_ids(actor_id, project_id, action, "sheet", sheet) do
       {:ok, outcome} -> outcome
       {:error, reason} -> Repo.rollback(reason)
     end
   end
 
+  defp project_id!(%{id: project_id}), do: project_id!(project_id)
+  defp project_id!(project_id) when is_integer(project_id) and project_id > 0, do: project_id
+
+  defp project_id!(project) do
+    raise ArgumentError, "expected a Sheet project identity, got: #{inspect(project)}"
+  end
+
   defp lock_active_project!(project_id) do
     case Repo.one(
-           from(project in Project,
+           from(project in ProjectRecord,
              where: project.id == ^project_id,
              lock: "FOR UPDATE"
            )
          ) do
-      %Project{deleted_at: nil} -> :ok
-      %Project{} -> Repo.rollback(:project_not_active)
+      %ProjectRecord{deleted_at: nil} -> :ok
+      %ProjectRecord{} -> Repo.rollback(:project_not_active)
       nil -> Repo.rollback(:project_not_found)
     end
   end
@@ -513,20 +525,11 @@ defmodule Storyarn.Sheets.SheetCrud do
   defp maybe_generate_shortcut(attrs, project_id, exclude_sheet_id) do
     attrs
     |> stringify_keys()
-    |> ShortcutHelpers.maybe_generate_shortcut(
-      project_id,
-      exclude_sheet_id,
-      &Shortcuts.generate_sheet_shortcut/3
-    )
+    |> ShortcutGenerator.prepare_create(project_id, exclude_sheet_id)
   end
 
   defp maybe_generate_shortcut_on_update(%Sheet{} = sheet, attrs) do
-    ShortcutHelpers.maybe_generate_shortcut_on_update(
-      sheet,
-      attrs,
-      &Shortcuts.generate_sheet_shortcut/3,
-      check_backlinks_fn: &(References.count_backlinks("sheet", &1.id) > 0)
-    )
+    ShortcutGenerator.prepare_update(sheet, attrs)
   end
 
   # =============================================================================

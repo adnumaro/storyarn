@@ -4,10 +4,10 @@ defmodule Storyarn.Sheets.GalleryCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.Sheet
 
   # ===========================================================================

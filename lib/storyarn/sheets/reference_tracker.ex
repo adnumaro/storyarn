@@ -29,8 +29,6 @@ defmodule Storyarn.Sheets.ReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.References.ProjectReferenceIntegrity
-  alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
@@ -38,6 +36,8 @@ defmodule Storyarn.Sheets.ReferenceTracker do
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.Persistence.SceneRecord
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
+  alias Storyarn.Sheets.RichTextMentions
   alias Storyarn.Sheets.SceneReadModel
   alias Storyarn.Sheets.Sheet
 

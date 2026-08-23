@@ -58,7 +58,7 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ExplorationSession)
   # Scene schemas associate to Scene-owned persistence records; derive them so
   # a preloaded association cannot turn an encodable struct into a crash.
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.AssetRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.AssetRecord, except: [:deleted_at, :deleted_by_id])
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.FlowRecord)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.ProjectRecord)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.SheetRecord)
@@ -72,6 +72,11 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.SheetAvatar)
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.TableColumn)
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.TableRow)
+  # Sheet schemas associate to Sheet-owned persistence records; derive them so
+  # a preloaded association cannot turn an encodable struct into a crash. The
+  # asset record filters deletion metadata exactly like Storyarn.Assets.Asset.
+  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Persistence.AssetRecord, except: [:deleted_at])
+  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Persistence.ProjectRecord)
 
   # Versioning
   Protocol.derive(LiveVue.Encoder, Storyarn.Versioning.EntityVersion)

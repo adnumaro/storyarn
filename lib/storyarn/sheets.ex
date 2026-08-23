@@ -25,11 +25,14 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.Constraints.Number
   alias Storyarn.Sheets.ContextQueries
   alias Storyarn.Sheets.DialogueAudio
+  alias Storyarn.Sheets.Events
+  alias Storyarn.Sheets.FormulaEngine
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.HealthSnapshots
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.Persistence.FlowRecord
+  alias Storyarn.Sheets.ProjectAccess
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.SceneReadModel
@@ -697,6 +700,34 @@ defmodule Storyarn.Sheets do
 
   @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
   defdelegate enrich_table_formulas(table_data, project_id), to: FormulaResolver, as: :enrich_table_data
+
+  @doc "Returns a Sheet-owned project projection after authorization."
+  defdelegate get_project(scope, project_id), to: ProjectAccess
+
+  @doc "Returns a Sheet-owned project projection by workspace and project slugs."
+  defdelegate get_project_by_slugs(scope, workspace_slug, project_slug), to: ProjectAccess
+
+  @doc "Publishes the product fact for a block created inside a Sheet."
+  defdelegate record_block_created(scope, sheet, block, creation_method, block_scope),
+    to: Events,
+    as: :block_created
+
+  @doc "Returns the Sheet-owned health severity ordering."
+  defdelegate health_severity_rank(severity), to: Storyarn.Sheets.Severity, as: :rank
+
+  @doc "Parses a table formula expression into an AST."
+  defdelegate parse_formula(expression), to: FormulaEngine, as: :parse
+
+  @doc "Extracts symbol names from a parsed formula AST."
+  defdelegate extract_formula_symbols(ast), to: FormulaEngine, as: :extract_symbols
+
+  @doc "Renders a parsed formula AST as LaTeX."
+  defdelegate formula_to_latex(ast), to: FormulaEngine, as: :to_latex
+
+  @doc "Renders a parsed formula AST as LaTeX with bound values substituted."
+  defdelegate formula_to_latex_substituted(ast, resolved),
+    to: FormulaEngine,
+    as: :to_latex_substituted
 
   # =============================================================================
   # Gallery Images

@@ -9,12 +9,11 @@ defmodule Storyarn.Sheets.SheetQueries do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Shared.SearchHelpers
-  alias Storyarn.Shared.TreeOperations, as: SharedTree
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
+  alias Storyarn.Sheets.FormulaEngine
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.Persistence.VariableReferenceRecord
@@ -22,6 +21,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableCatalog
   alias Storyarn.Sheets.VariableNamespaceResolver
 
@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.SheetQueries do
         )
       )
 
-    SharedTree.build_tree_from_flat_list(all_sheets)
+    TreeOperations.build_tree_from_flat_list(all_sheets)
   end
 
   @doc """
@@ -132,7 +132,7 @@ defmodule Storyarn.Sheets.SheetQueries do
             )
           )
 
-        children = SharedTree.build_tree_from_flat_list(all_sheets, sheet.id)
+        children = TreeOperations.build_tree_from_flat_list(all_sheets, sheet.id)
         %{sheet | children: children}
     end
   end

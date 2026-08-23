@@ -12,8 +12,8 @@ defmodule Storyarn.Sheets.TableColumn do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Naming
 
   @column_types ~w(number text boolean select multi_select date reference formula)
 
@@ -60,7 +60,7 @@ defmodule Storyarn.Sheets.TableColumn do
   defp generate_slug(changeset) do
     case get_change(changeset, :name) do
       nil -> changeset
-      name -> put_change(changeset, :slug, NameNormalizer.variablify(name))
+      name -> put_change(changeset, :slug, Naming.variablify(name))
     end
   end
 

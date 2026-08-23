@@ -16,7 +16,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
-  alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
@@ -396,8 +395,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
       # Clean stale bindings (symbols no longer in expression)
       symbols =
-        case FormulaEngine.parse(expression) do
-          {:ok, ast} -> FormulaEngine.extract_symbols(ast)
+        case Sheets.parse_formula(expression) do
+          {:ok, ast} -> Sheets.extract_formula_symbols(ast)
           {:error, _} -> []
         end
 

@@ -14,6 +14,7 @@ defmodule Storyarn.Platform.ProductMetrics do
   alias Storyarn.Platform.EventReaction
 
   @creation_methods ~w(create duplicate wrap_selection)
+  @sheet_block_types ~w(text rich_text number select multi_select date boolean reference table gallery)
   @asset_content_types ~w(
     image/jpeg image/png image/gif image/webp image/svg+xml
     audio/mpeg audio/wav audio/ogg audio/webm
@@ -51,7 +52,8 @@ defmodule Storyarn.Platform.ProductMetrics do
     {:scenes, :version_compared} => {"version compared", ~w(entity_type project_id)},
     {:scenes, :version_created} => {"version created", ~w(entity_type project_id)},
     {:scenes, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
-    {:scenes, :version_restored} => {"version restored", ~w(entity_type project_id)}
+    {:scenes, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:sheets, :block_created} => {"sheet block created", ~w(block_type creation_method project_id scope sheet_id)}
   }
 
   @impl EventReaction
@@ -217,6 +219,24 @@ defmodule Storyarn.Platform.ProductMetrics do
   def sanitize_payload({:scenes, event_type}, %{entity_type: "scene", project_id: project_id} = payload)
       when event_type in [:version_compared, :version_created, :version_panel_opened, :version_restored] do
     if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
+  end
+
+  def sanitize_payload(
+        {:sheets, :block_created},
+        %{
+          block_type: block_type,
+          creation_method: creation_method,
+          project_id: project_id,
+          scope: scope,
+          sheet_id: sheet_id
+        } = payload
+      ) do
+    if block_type in @sheet_block_types and creation_method in @creation_methods and
+         valid_ids?(sheet_id, project_id) and (is_nil(scope) or is_binary(scope)) do
+      {:ok, Map.take(payload, [:block_type, :creation_method, :project_id, :scope, :sheet_id])}
+    else
+      :error
+    end
   end
 
   def sanitize_payload(_event, _payload), do: :error

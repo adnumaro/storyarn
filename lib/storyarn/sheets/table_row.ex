@@ -11,8 +11,8 @@ defmodule Storyarn.Sheets.TableRow do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Naming
 
   schema "table_rows" do
     field :name, :string
@@ -54,7 +54,7 @@ defmodule Storyarn.Sheets.TableRow do
   defp generate_slug(changeset) do
     case get_change(changeset, :name) do
       nil -> changeset
-      name -> put_change(changeset, :slug, NameNormalizer.variablify(name))
+      name -> put_change(changeset, :slug, Naming.variablify(name))
     end
   end
 

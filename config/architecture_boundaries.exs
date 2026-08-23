@@ -489,6 +489,24 @@ forbidden_dependencies =
       reason: "Scenes applies Platform-owned commercial entitlements to Scene operations"
     },
     %{
+      source: "lib/storyarn/sheets/events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheets publishes owned business facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/sheets/limits.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheets applies Platform-owned commercial entitlements to Sheet operations"
+    },
+    %{
+      source: "lib/storyarn/sheets/sheet_crud.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheet mutations request durable notification delivery through the public Platform contract"
+    },
+    %{
       source: "lib/storyarn/scenes/scene_crud.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],

@@ -5,18 +5,17 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
-  alias Storyarn.References
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
-  alias Storyarn.Shared.TreeOperations
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
+  alias Storyarn.Sheets.Naming
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableUsage
   alias Storyarn.Sheets.WordCount
 
@@ -316,7 +315,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   end
 
   defp maybe_update_block_references(%Block{} = block, project_id) do
-    References.update_block_references(block, project_id: project_id)
+    ReferenceTracker.update_block_references(block, project_id: project_id)
   end
 
   def update_block_config(%Block{} = block, config) do
@@ -363,7 +362,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       {block, _sheet} = lock_active_block!(block.id, project_id)
 
       # Clean up references and localization texts before soft-deleting
-      References.delete_block_references(block.id)
+      ReferenceTracker.delete_block_references(block.id)
       Localization.delete_block_tree_texts(block.id)
 
       # If this is a parent block with scope: "children", soft-delete all instances
@@ -389,7 +388,7 @@ defmodule Storyarn.Sheets.BlockCrud do
   """
   def permanently_delete_block(%Block{} = block) do
     fn ->
-      References.delete_block_references(block.id)
+      ReferenceTracker.delete_block_references(block.id)
       Localization.purge_texts_for_source("block", block.id)
 
       case Repo.delete(block) do
@@ -823,7 +822,7 @@ defmodule Storyarn.Sheets.BlockCrud do
       lock_active_sheet!(sheet_id, project_id)
       locked_block = lock_active_block_in_sheet!(block.id, sheet_id)
 
-      normalized = NameNormalizer.variablify(variable_name)
+      normalized = Naming.variablify(variable_name)
       normalized = normalized || default_variable_name(locked_block)
 
       update_variable_name_transaction(locked_block, normalized)
@@ -849,7 +848,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   defp default_variable_name(block) do
     label = get_in(block.config || %{}, ["label"])
-    NameNormalizer.variablify(label) || "variable"
+    Naming.variablify(label) || "variable"
   end
 
   @doc false
@@ -866,11 +865,11 @@ defmodule Storyarn.Sheets.BlockCrud do
       referenced? = VariableUsage.count_variable_usage(block.id) != %{}
 
       new_name =
-        NameNormalizer.maybe_regenerate(
+        Naming.maybe_regenerate(
           block.variable_name,
           label,
           referenced?,
-          &NameNormalizer.variablify/1
+          &Naming.variablify/1
         )
 
       Ecto.Changeset.put_change(changeset, :variable_name, new_name)

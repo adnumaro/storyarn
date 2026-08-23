@@ -19,11 +19,10 @@ defmodule Storyarn.Sheets.Sheet do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Projects.Project
-  alias Storyarn.Shared.HierarchicalSchema
-  alias Storyarn.Shared.Validations
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Persistence.AssetRecord, as: Asset
+  alias Storyarn.Sheets.Persistence.ProjectRecord, as: Project
+  alias Storyarn.Sheets.Schema
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.EntityVersion
 
@@ -89,7 +88,7 @@ defmodule Storyarn.Sheets.Sheet do
       :position,
       :hidden_inherited_block_ids
     ])
-    |> HierarchicalSchema.validate_core_fields()
+    |> Schema.validate_core_fields()
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
@@ -111,7 +110,7 @@ defmodule Storyarn.Sheets.Sheet do
       :position,
       :hidden_inherited_block_ids
     ])
-    |> HierarchicalSchema.validate_core_fields()
+    |> Schema.validate_core_fields()
     |> validate_shortcut()
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
@@ -121,17 +120,17 @@ defmodule Storyarn.Sheets.Sheet do
   @doc """
   Changeset for moving a sheet (changing parent or position).
   """
-  def move_changeset(sheet, attrs), do: HierarchicalSchema.move_changeset(sheet, attrs)
+  def move_changeset(sheet, attrs), do: Schema.move_changeset(sheet, attrs)
 
   @doc """
   Changeset for soft deleting a sheet.
   """
-  def delete_changeset(sheet), do: HierarchicalSchema.delete_changeset(sheet)
+  def delete_changeset(sheet), do: Schema.delete_changeset(sheet)
 
   @doc """
   Changeset for restoring a soft-deleted sheet.
   """
-  def restore_changeset(sheet), do: HierarchicalSchema.restore_changeset(sheet)
+  def restore_changeset(sheet), do: Schema.restore_changeset(sheet)
 
   @doc """
   Changeset for updating the current version pointer.
@@ -145,13 +144,13 @@ defmodule Storyarn.Sheets.Sheet do
   @doc """
   Returns true if the sheet is soft-deleted.
   """
-  def deleted?(sheet), do: HierarchicalSchema.deleted?(sheet)
+  def deleted?(sheet), do: Schema.deleted?(sheet)
 
   # Private functions
 
   defp validate_shortcut(changeset) do
     changeset
-    |> Validations.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)")
+    |> Schema.validate_shortcut(message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)")
     |> unique_constraint(:shortcut,
       name: :sheets_project_shortcut_unique,
       message: "is already taken in this project"

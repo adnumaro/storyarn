@@ -9,15 +9,15 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockCrud
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.FormulaBindingRewriter
   alias Storyarn.Sheets.InheritanceAudit
+  alias Storyarn.Sheets.Naming
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetQueries
@@ -1462,7 +1462,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
   defp derive_variable_name(%Block{} = parent_block, _sheet_id) do
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       label = get_in(parent_block.config, ["label"])
-      NameNormalizer.variablify(label)
+      Naming.variablify(label)
     end
   end
 
@@ -1525,7 +1525,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp derive_sync_variable_name(parent_block) do
     label = get_in(parent_block.config, ["label"])
-    base_variable_name = NameNormalizer.variablify(label)
+    base_variable_name = Naming.variablify(label)
 
     if Block.can_be_variable?(parent_block.type) and not parent_block.is_constant do
       base_variable_name
@@ -1737,7 +1737,7 @@ defmodule Storyarn.Sheets.PropertyInheritance do
 
   defp build_reattach_updates(source) do
     label = get_in(source.config, ["label"])
-    variable_name = NameNormalizer.variablify(label)
+    variable_name = Naming.variablify(label)
 
     variable_name =
       if Block.can_be_variable?(source.type) and not source.is_constant do

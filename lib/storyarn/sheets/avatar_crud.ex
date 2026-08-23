@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.AvatarCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.References.AvatarIntegrity
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+  alias Storyarn.Sheets.AvatarIntegrity
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
 

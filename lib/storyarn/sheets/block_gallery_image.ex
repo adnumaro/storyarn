@@ -10,8 +10,8 @@ defmodule Storyarn.Sheets.BlockGalleryImage do
 
   import Ecto.Changeset
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Sheets.Block
+  alias Storyarn.Sheets.Persistence.AssetRecord, as: Asset
 
   schema "block_gallery_images" do
     field :label, :string

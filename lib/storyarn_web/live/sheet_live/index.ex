@@ -25,7 +25,6 @@ defmodule StoryarnWeb.SheetLive.Index do
 
   alias Storyarn.Collaboration
   alias Storyarn.Dashboards.Cache, as: DashboardCache
-  alias Storyarn.Shared.Severity
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers
@@ -465,7 +464,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     # it, errors would otherwise sit behind hundreds of info findings.
     |> Enum.sort_by(
       &{
-        Severity.rank(&1.severity),
+        Sheets.health_severity_rank(&1.severity),
         &1.label,
         &1.code,
         &1.sheet_id,

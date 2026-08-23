@@ -11,8 +11,8 @@ defmodule Storyarn.Sheets.SheetAvatar do
 
   import Ecto.Changeset
 
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Sheets.Naming
+  alias Storyarn.Sheets.Persistence.AssetRecord, as: Asset
   alias Storyarn.Sheets.Sheet
 
   schema "sheet_avatars" do
@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.SheetAvatar do
     case get_change(changeset, :name) do
       nil -> changeset
       "" -> changeset
-      name -> put_change(changeset, :name, NameNormalizer.variablify(name))
+      name -> put_change(changeset, :name, Naming.variablify(name))
     end
   end
 end

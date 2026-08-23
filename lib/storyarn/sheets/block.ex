@@ -46,8 +46,8 @@ defmodule Storyarn.Sheets.Block do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Sheets.Naming
   alias Storyarn.Sheets.Sheet
 
   @block_types ~w(text rich_text number select multi_select date boolean reference table gallery)
@@ -331,7 +331,7 @@ defmodule Storyarn.Sheets.Block do
         label = Map.get(get_field(changeset, :config) || %{}, "label")
 
         if label,
-          do: put_change(changeset, :variable_name, NameNormalizer.variablify(label)),
+          do: put_change(changeset, :variable_name, Naming.variablify(label)),
           else: changeset
     end
   end

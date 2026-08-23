@@ -4,17 +4,17 @@ defmodule Storyarn.Sheets.TableCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.FormulaEngine
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.TreeOperations
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.FormulaBindingRewriter
+  alias Storyarn.Sheets.FormulaEngine
+  alias Storyarn.Sheets.Naming
+  alias Storyarn.Sheets.ProjectReferenceIntegrity
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableUsage
 
   # =============================================================================
@@ -1194,11 +1194,11 @@ defmodule Storyarn.Sheets.TableCrud do
       referenced? = VariableUsage.count_variable_usage(block_id) != %{}
 
       new_slug =
-        NameNormalizer.maybe_regenerate(
+        Naming.maybe_regenerate(
           current_slug,
           name,
           referenced?,
-          &NameNormalizer.variablify/1
+          &Naming.variablify/1
         )
 
       Ecto.Changeset.put_change(changeset, :slug, new_slug)
