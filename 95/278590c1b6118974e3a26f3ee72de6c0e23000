@@ -1,0 +1,93 @@
+test/storyarn/sheets/versioning/entity_restore_safety_test.exs
+  s_1837e1b58927a7::t_b5bc14d993a287 1-181
+test/storyarn/sheets/versioning/conflict_detector_test.exs
+  s_1837e1b58927a7::t_b5bc14d993a287 1-310
+lib/storyarn/projects/persistence/block_record.ex
+  s_1837e1b58927a7::t_3192c5a44b4a1b 8,24-27,34
+  s_1837e1b58927a7::t_54e2947877c5b9 20
+  s_1837e1b58927a7::t_5013a1dcb91476 6-7,38-104
+lib/storyarn_web/live_vue_encoders.ex
+  s_1837e1b58927a7::t_29ec1403558a9a 82
+test/storyarn/imports/replacement_test.exs
+  s_1837e1b58927a7::t_8c20ab9a920a16 33,759,762
+  s_1837e1b58927a7::t_eaf5d1ef7c0cb6 760
+test/storyarn/scenes/versioning_test.exs
+  s_1837e1b58927a7::t_028e66c8e506a8 84,90-112
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_1837e1b58927a7::t_22025d9b45955c 139
+  s_1837e1b58927a7::t_c942508ef2c019 107,123
+lib/storyarn/billing/limits.ex
+  s_1837e1b58927a7::t_0b0c1de5f54ff1 9,166,182,216,313-321
+  s_1837e1b58927a7::t_da105f8ac348c4 322-323
+config/architecture_baselines/platform.json
+  s_1837e1b58927a7::t_02dac7b3dbaec3 14-33,39-43,54-63,69-73,114-118,129-178
+lib/storyarn/projects/persistence/table_column_record.ex
+  s_1837e1b58927a7::t_3192c5a44b4a1b 13
+  s_1837e1b58927a7::t_5013a1dcb91476 20-24
+test/storyarn/sheets/versioning/snapshot_viewer_test.exs
+  s_1837e1b58927a7::t_b5bc14d993a287 1-88
+lib/storyarn/projects/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_3192c5a44b4a1b 20
+  s_1837e1b58927a7::t_5013a1dcb91476 6-7,31-72
+test/storyarn/billing/limits_test.exs
+  s_1837e1b58927a7::t_b2c90716faf190 386,401,405,411
+lib/storyarn/sheets/versioning/conflict_detector.ex
+  s_1837e1b58927a7::t_f2918be7821de0 14-18,21,26-30,33-41,44,48-49,52-53,56,63,65,67-69,71-73,77-79,82-99,101,103-117,124,132,134-135,139,143,151-152,154-170,173-174,180-191,193,196,198-200,206,208-230,241-244,246-251,256-257,259-263,266-274,276,278,280,282-284,288,293-297,303,305,307,310-316
+lib/storyarn/billing/persistence/entity_version_record.ex
+  s_1837e1b58927a7::t_0b0c1de5f54ff1 1-17
+lib/storyarn/projects/persistence/block_gallery_image_record.ex
+  s_1837e1b58927a7::t_3192c5a44b4a1b 1-21
+test/storyarn_web/live/restore_containment_test.exs
+  s_1837e1b58927a7::t_2a6bdd75a41229 15,20,26,43,118-119,121,142
+test/storyarn/versioning/builders/sheet_builder_test.exs
+  s_1837e1b58927a7::t_8c20ab9a920a16 28
+config/architecture_baselines/web_infrastructure.json
+  s_1837e1b58927a7::t_02dac7b3dbaec3 4-83,109-138
+test/storyarn/versioning/restore_policy_test.exs
+  s_1837e1b58927a7::t_3af31c25b348a0 2,20-21,27-28,32
+lib/storyarn/projects/persistence/sheet_avatar_record.ex
+  s_1837e1b58927a7::t_53ba213f7a5600 18-19
+  s_1837e1b58927a7::t_3192c5a44b4a1b 12
+lib/storyarn/versioning/builders/project_snapshot_builder.ex
+  s_1837e1b58927a7::t_7349c846526ab7 101
+  s_1837e1b58927a7::t_b56ae0630a98db 18
+test/storyarn/sheets/versioning/restore_policy_test.exs
+  s_1837e1b58927a7::t_3af31c25b348a0 1-17
+test/storyarn/flows/versioning_test.exs
+  s_1837e1b58927a7::t_028e66c8e506a8 79,85-107
+test/storyarn/sheets_test.exs
+  s_1837e1b58927a7::t_b2c90716faf190 1034-1035
+test/support/projects_sheet_builder_test_adapter.ex
+  s_1837e1b58927a7::t_48ac0ca34ecb7d 1-18
+lib/storyarn/versioning/restore_policy.ex
+  s_1837e1b58927a7::t_3af31c25b348a0 5-6,10
+test/storyarn/versioning/builders/portable_snapshot_validation_test.exs
+  s_1837e1b58927a7::t_8c20ab9a920a16 12
+lib/storyarn/versioning/builders/sheet_builder.ex
+  s_1837e1b58927a7::t_b56ae0630a98db 16-21
+  s_1837e1b58927a7::t_39c881ff98fca5 1318,1320-1333
+lib/storyarn/projects/sheet_read_model.ex
+  s_1837e1b58927a7::t_b10429b64e937c 1-21,25-30,32-45
+  s_1837e1b58927a7::t_7349c846526ab7 22-24,31
+test/storyarn/flows/versioning/flow_snapshot_restore_test.exs
+  s_1837e1b58927a7::t_8c20ab9a920a16 22
+  s_1837e1b58927a7::t_82c8c85fa9c304 52
+lib/storyarn/sheets/avatar_integrity.ex
+  s_1837e1b58927a7::t_f2918be7821de0 17-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "95278590c1b6118974e3a26f3ee72de6c0e23000",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
