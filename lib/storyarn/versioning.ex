@@ -15,8 +15,6 @@ defmodule Storyarn.Versioning do
 
   alias Storyarn.Billing
   alias Storyarn.Versioning.ChangeDetector
-  alias Storyarn.Versioning.ConflictDetector
-  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild
   alias Storyarn.Versioning.ProjectSnapshotCrud
@@ -27,134 +25,9 @@ defmodule Storyarn.Versioning do
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Versioning.ProjectSnapshotRestoreLifecycle
   alias Storyarn.Versioning.RestorePolicy
-  alias Storyarn.Versioning.SnapshotDiff
-  alias Storyarn.Versioning.SnapshotViewer
-  alias Storyarn.Versioning.VersionCrud
   alias Storyarn.Versioning.WorkspaceSnapshotImports
 
-  @type version :: EntityVersion.t()
   @type project_snapshot :: ProjectSnapshot.t()
-
-  # ========== Create ==========
-
-  @doc """
-  Creates a new version for the given entity.
-
-  ## Options
-  - `:title` - Custom title for manual versions
-  - `:description` - Optional description
-  - `:is_auto` - Whether this is an auto-generated version (default: false)
-  """
-  defdelegate create_version(entity_type, entity, project_id, user_id, opts \\ []), to: VersionCrud
-
-  @doc """
-  Creates a version if enough time has passed since the last version.
-  Returns `{:ok, version}`, `{:skipped, :too_recent}`, or `{:error, reason}`.
-  """
-  defdelegate maybe_create_version(entity_type, entity, project_id, user_id, opts \\ []), to: VersionCrud
-
-  # ========== Queries ==========
-
-  @doc """
-  Lists versions for an entity, ordered by version number descending.
-  """
-  defdelegate list_versions(entity_type, entity_id, opts \\ []), to: VersionCrud
-
-  @doc """
-  Gets a specific version by entity type, entity ID, and version number.
-  """
-  defdelegate get_version(entity_type, entity_id, version_number), to: VersionCrud
-
-  @doc """
-  Gets the latest version for an entity.
-  """
-  defdelegate get_latest_version(entity_type, entity_id), to: VersionCrud
-
-  @doc """
-  Returns the total number of versions for an entity.
-  """
-  defdelegate count_versions(entity_type, entity_id), to: VersionCrud
-
-  @doc """
-  Returns `{prev_number, next_number}` adjacent to the given version number.
-  Either may be nil if no adjacent version exists.
-  """
-  defdelegate get_adjacent_version_numbers(entity_type, entity_id, current_number), to: VersionCrud
-
-  @doc """
-  Counts versions created after the given timestamp for an entity.
-  """
-  defdelegate count_versions_since(entity_type, entity_id, since), to: VersionCrud
-
-  # ========== Update ==========
-
-  @doc """
-  Updates a version's title and description (promotes auto-snapshots to named versions).
-  """
-  defdelegate update_version(version, attrs), to: VersionCrud
-
-  @doc """
-  Counts named versions (with non-nil title) for a project.
-  """
-  defdelegate count_named_versions(project_id), to: VersionCrud
-
-  # ========== Delete ==========
-
-  @doc """
-  Deletes a version and its snapshot from storage.
-  """
-  defdelegate delete_version(version), to: VersionCrud
-
-  # ========== Restore ==========
-
-  @doc """
-  Detects conflicts that would occur when restoring from a snapshot.
-  Returns a report with blocking reference conflicts and shortcut collisions.
-  """
-  def detect_restore_conflicts(entity_type, snapshot, entity) when entity_type == "sheet",
-    do: ConflictDetector.detect_conflicts(entity_type, snapshot, entity)
-
-  def detect_restore_conflicts(_entity_type, _snapshot, _entity), do: {:error, :unknown_entity_type}
-
-  @doc """
-  Loads a version's snapshot from storage and restores the entity.
-  """
-  def restore_version(entity_type, entity, version, opts \\ [])
-
-  def restore_version("sheet" = entity_type, entity, version, opts) do
-    with :ok <- RestorePolicy.ensure_enabled({:entity_version_restore, entity_type}) do
-      VersionCrud.restore_version(entity_type, entity, version, opts)
-    end
-  end
-
-  def restore_version(_entity_type, _entity, _version, _opts), do: {:error, :unknown_entity_type}
-
-  @doc """
-  Returns whether a mutating restore surface is currently enabled.
-  """
-  defdelegate restore_enabled?(action), to: RestorePolicy, as: :enabled?
-
-  @doc """
-  Returns `:ok` when a mutating restore surface is enabled.
-  """
-  defdelegate ensure_restore_enabled(action), to: RestorePolicy, as: :ensure_enabled
-
-  @doc """
-  Loads a version's snapshot from storage.
-  """
-  defdelegate load_version_snapshot(version), to: VersionCrud
-
-  # ========== Helpers ==========
-
-  @doc """
-  Returns the next version number for an entity.
-  """
-  defdelegate next_version_number(entity_type, entity_id), to: VersionCrud
-
-  @doc """
-  Returns the builder module for the given entity type.
-  """
-  defdelegate get_builder!(entity_type), to: VersionCrud
 
   # ========== Project Snapshots ==========
 
@@ -574,27 +447,7 @@ defmodule Storyarn.Versioning do
 
   # ========== Snapshot Diff ==========
 
-  @doc """
-  Compares two snapshots and returns a structured diff result with changes and stats.
-  """
-  defdelegate diff_snapshots(entity_type, old_snapshot, new_snapshot), to: SnapshotDiff, as: :diff
-
-  @doc """
-  Returns true if two snapshots have any differences.
-  """
-  defdelegate snapshot_has_changes?(entity_type, old_snapshot, new_snapshot), to: SnapshotDiff, as: :has_changes?
-
-  @doc """
-  Converts a diff result into a human-readable summary string.
-  """
-  defdelegate format_diff_summary(diff_result), to: SnapshotDiff, as: :format_summary
-
   # ========== Snapshot Viewer ==========
-
-  @doc """
-  Serializes a sheet snapshot into a list of block maps for BlockComponents.
-  """
-  defdelegate serialize_sheet(snapshot), to: SnapshotViewer
 
   # ========== Change Detection ==========
 

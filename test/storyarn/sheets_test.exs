@@ -1031,8 +1031,8 @@ defmodule Storyarn.SheetsTest do
       project = project_fixture(user)
       sheet = sheet_fixture(project)
 
-      {:ok, _} = Sheets.create_version(sheet, user)
-      {:ok, _} = Sheets.create_version(sheet, user)
+      {:ok, _} = Sheets.create_version(sheet, user.id)
+      {:ok, _} = Sheets.create_version(sheet, user.id)
       assert Sheets.count_versions(sheet.id) == 2
 
       {:ok, _} = Sheets.permanently_delete_sheet(sheet)

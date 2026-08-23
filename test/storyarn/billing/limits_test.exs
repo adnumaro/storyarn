@@ -383,7 +383,7 @@ defmodule Storyarn.Billing.LimitsTest do
       # Create 10 named versions to reach the limit
       for i <- 1..10 do
         {:ok, _} =
-          Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v#{i}")
+          Storyarn.Sheets.create_version(sheet, user.id, title: "v#{i}")
       end
 
       assert {:error, :limit_reached, %{resource: :named_versions_per_project, used: 10, limit: 10}} =
@@ -398,17 +398,17 @@ defmodule Storyarn.Billing.LimitsTest do
       # Create 9 named + 1 promoted = 10
       for i <- 1..9 do
         {:ok, _} =
-          Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v#{i}")
+          Storyarn.Sheets.create_version(sheet, user.id, title: "v#{i}")
       end
 
       {:ok, auto} =
-        Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, is_auto: true)
+        Storyarn.Sheets.create_version(sheet, user.id, is_auto: true)
 
       # Still under limit (only 9 named, auto has no title)
       assert :ok = Billing.can_create_named_version?(project.id, workspace.id)
 
       # Promote the auto-snapshot
-      {:ok, _} = Storyarn.Versioning.update_version(auto, %{title: "Promoted"})
+      {:ok, _} = Storyarn.Sheets.update_version(auto, %{title: "Promoted"})
 
       # Now at limit
       assert {:error, :limit_reached, _} =

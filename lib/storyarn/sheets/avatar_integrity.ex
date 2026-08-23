@@ -14,6 +14,15 @@ defmodule Storyarn.Sheets.AvatarIntegrity do
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
 
   @spec ensure_deletable(integer()) :: :ok | {:error, term()}
+  @doc "Validates that an avatar belongs to the sheet a dialogue speaker points at."
+  def validate_avatar_speaker(_avatar_id, _avatar_sheet_id, nil), do: :ok
+
+  def validate_avatar_speaker(_avatar_id, avatar_sheet_id, avatar_sheet_id), do: :ok
+
+  def validate_avatar_speaker(avatar_id, avatar_sheet_id, speaker_sheet_id) do
+    {:error, {:avatar_speaker_mismatch, avatar_id, avatar_sheet_id, speaker_sheet_id}}
+  end
+
   def ensure_deletable(avatar_id) when is_integer(avatar_id) do
     ensure_transaction!()
 

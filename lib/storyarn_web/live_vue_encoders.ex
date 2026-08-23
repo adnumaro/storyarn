@@ -79,7 +79,7 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Persistence.ProjectRecord)
 
   # Versioning
-  Protocol.derive(LiveVue.Encoder, Storyarn.Versioning.EntityVersion)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Versioning.EntityVersionRecord)
   Protocol.derive(LiveVue.Encoder, Storyarn.Versioning.ProjectSnapshot)
 
   # Workspaces

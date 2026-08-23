@@ -104,8 +104,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Localization.LocalizedText",
       "Storyarn.Projects.Project",
       "Storyarn.References",
-      "Storyarn.Sheets.EntityReference",
-      "Storyarn.Versioning.EntityVersion"
+      "Storyarn.Sheets.EntityReference"
     ],
     "test/storyarn/flows/versioning/snapshot_storage_test.exs" => [
       "Storyarn.Assets.Storage",
@@ -121,8 +120,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Versioning.Builders.FlowBuilder"
     ],
     "test/storyarn/flows/versioning_test.exs" => [
-      "Storyarn.Versioning",
-      "Storyarn.Versioning.EntityVersion"
+      "Storyarn.Versioning"
     ],
     "test/storyarn/flows/writer_reference_integrity_test.exs" => [
       "Storyarn.Localization",
@@ -138,7 +136,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # These are explicit composition seams, not permissions for feature tests to
   # reach into Flows. Keep every exception scoped to one file and one module.
   @integration_exceptions %{
-    "test/storyarn/versioning/builders/sheet_builder_test.exs" => [
+    "test/storyarn/sheets/versioning/sheet_snapshot_contract_test.exs" => [
       "Storyarn.Flows.EntityTrashRefs"
     ],
     "test/storyarn_web/live/restore_containment_test.exs" => [

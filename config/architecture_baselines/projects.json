@@ -607,11 +607,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/builders/project_snapshot_builder.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/builders/scene_builder.ex",
       "lib/storyarn/sheets/sheet.ex",
       "runtime"
@@ -623,67 +618,12 @@
     ],
     [
       "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/block.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/block_gallery_image.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/property_inheritance.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
       "lib/storyarn/sheets/reference_tracker.ex",
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/table_column.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/table_row.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/versioning/change_detector.ex",
       "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/conflict_detector.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/conflict_detector.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/conflict_detector.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/entity_version.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -965,11 +905,6 @@
       "lib/storyarn/versioning/snapshot_archive_storage.ex",
       "lib/storyarn/billing/storage_reservation.ex",
       "export"
-    ],
-    [
-      "lib/storyarn/versioning/version_crud.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
     ],
     [
       "lib/storyarn/versioning/workspace_snapshot_import.ex",

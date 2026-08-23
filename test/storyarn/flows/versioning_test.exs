@@ -16,7 +16,6 @@ defmodule Storyarn.Flows.VersioningTest do
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Repo
   alias Storyarn.Versioning, as: LegacyVersioning
-  alias Storyarn.Versioning.EntityVersion, as: LegacyEntityVersion
 
   setup do
     previous_policy = Application.get_env(:storyarn, RestorePolicy)
@@ -77,41 +76,35 @@ defmodule Storyarn.Flows.VersioningTest do
       assert {:error, _reason} = Versioning.load_version_snapshot(first)
     end
 
-    test "the legacy Versioning facade cannot read or mutate Flow-owned versions", %{
+    test "the legacy Versioning facade no longer exposes entity versioning", %{
       user: user,
       flow: flow
     } do
       assert {:ok, created} = Versioning.create_version(flow, user.id, title: "Flow owner")
-      legacy_record = Repo.get!(LegacyEntityVersion, created.id)
 
-      assert LegacyVersioning.list_versions("flow", flow.id) == []
-      assert LegacyVersioning.get_version("flow", flow.id, created.version_number) == nil
-      assert LegacyVersioning.get_latest_version("flow", flow.id) == nil
-      assert LegacyVersioning.count_versions("flow", flow.id) == 0
+      Code.ensure_loaded!(LegacyVersioning)
 
-      assert LegacyVersioning.get_adjacent_version_numbers(
-               "flow",
-               flow.id,
-               created.version_number
-             ) == {nil, nil}
-
-      assert LegacyVersioning.count_versions_since(
-               "flow",
-               flow.id,
-               ~U[2000-01-01 00:00:00Z]
-             ) == 0
-
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.update_version(legacy_record, %{title: "Bypass"})
-
-      assert {:error, :unknown_entity_type} = LegacyVersioning.delete_version(legacy_record)
-      assert {:error, :unknown_entity_type} = LegacyVersioning.load_version_snapshot(legacy_record)
-
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.detect_restore_conflicts("flow", %{}, flow)
-
-      assert_raise ArgumentError, fn -> LegacyVersioning.get_builder!("flow") end
-      assert_raise ArgumentError, fn -> LegacyVersioning.next_version_number("flow", flow.id) end
+      for {fun, arity} <- [
+            create_version: 5,
+            maybe_create_version: 5,
+            list_versions: 3,
+            get_version: 3,
+            get_latest_version: 2,
+            count_versions: 2,
+            get_adjacent_version_numbers: 3,
+            count_versions_since: 3,
+            update_version: 2,
+            count_named_versions: 1,
+            delete_version: 1,
+            load_version_snapshot: 1,
+            restore_version: 4,
+            detect_restore_conflicts: 3,
+            get_builder!: 1,
+            next_version_number: 2
+          ] do
+        refute function_exported?(LegacyVersioning, fun, arity),
+               "expected the legacy facade to no longer export #{fun}/#{arity}"
+      end
 
       assert Versioning.get_version(flow.id, created.version_number).title == "Flow owner"
     end

@@ -1,7 +1,7 @@
-defmodule Storyarn.Versioning.SnapshotViewerTest do
+defmodule Storyarn.Sheets.Versioning.SnapshotViewerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Versioning.SnapshotViewer
+  alias Storyarn.Sheets.Versioning.SnapshotViewer
 
   describe "serialize_sheet/1" do
     test "produces block list with negative IDs" do

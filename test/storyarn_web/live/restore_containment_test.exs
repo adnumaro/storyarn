@@ -12,19 +12,18 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Versioning.RestorePolicy, as: SceneRestorePolicy
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.RestorePolicy, as: ProjectRestorePolicy
+  alias Storyarn.Sheets.Versioning.RestorePolicy, as: SheetRestorePolicy
 
   setup :register_and_log_in_user
 
   setup do
-    original_project_config = Application.get_env(:storyarn, ProjectRestorePolicy)
+    original_sheet_config = Application.get_env(:storyarn, SheetRestorePolicy)
     original_flow_config = Application.get_env(:storyarn, FlowRestorePolicy)
     original_scene_config = Application.get_env(:storyarn, SceneRestorePolicy)
 
     Application.put_env(
       :storyarn,
-      ProjectRestorePolicy,
+      SheetRestorePolicy,
       sheet_version_restore: false
     )
 
@@ -41,7 +40,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     )
 
     on_exit(fn ->
-      restore_config(ProjectRestorePolicy, original_project_config)
+      restore_config(SheetRestorePolicy, original_sheet_config)
       restore_config(FlowRestorePolicy, original_flow_config)
       restore_config(SceneRestorePolicy, original_scene_config)
     end)
@@ -116,8 +115,10 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     sheet = sheet_fixture(project, %{name: "Original"})
     block = block_fixture(sheet)
 
+    sheet_with_blocks = Repo.preload(sheet, :blocks, force: true)
+
     {:ok, version} =
-      Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+      Sheets.create_version(sheet_with_blocks, user.id, title: "Restore target")
 
     {:ok, _changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed"})
 
@@ -138,7 +139,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
 
     assert Sheets.get_sheet(project.id, sheet.id).name == "Changed"
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == [block.id]
-    assert Versioning.count_versions("sheet", sheet.id) == 1
+    assert Sheets.count_versions(sheet.id) == 1
     refute_push_event(view, "show_unsaved_modal", %{})
     refute_push_event(view, "show_restore_modal", %{})
     refute_push_event(view, "version_restored", %{})

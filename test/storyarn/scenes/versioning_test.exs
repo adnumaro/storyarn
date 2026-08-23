@@ -15,7 +15,6 @@ defmodule Storyarn.Scenes.VersioningTest do
   alias Storyarn.Scenes.Versioning.SceneSnapshot
   alias Storyarn.Scenes.Versioning.SnapshotStorage
   alias Storyarn.Versioning, as: LegacyVersioning
-  alias Storyarn.Versioning.EntityVersion, as: LegacyEntityVersion
 
   setup do
     previous_policy = Application.get_env(:storyarn, RestorePolicy)
@@ -82,50 +81,35 @@ defmodule Storyarn.Scenes.VersioningTest do
       assert {:error, _reason} = Versioning.load_version_snapshot(first)
     end
 
-    test "the legacy Versioning facade cannot read or mutate Scene-owned versions", %{
+    test "the legacy Versioning facade no longer exposes entity versioning", %{
       user: user,
       scene: scene
     } do
       assert {:ok, created} = Versioning.create_version(scene, user.id, title: "Scene owner")
-      legacy_record = Repo.get!(LegacyEntityVersion, created.id)
 
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.create_version("scene", scene, scene.project_id, user.id)
+      Code.ensure_loaded!(LegacyVersioning)
 
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.maybe_create_version("scene", scene, scene.project_id, user.id)
-
-      assert LegacyVersioning.list_versions("scene", scene.id) == []
-      assert LegacyVersioning.get_version("scene", scene.id, created.version_number) == nil
-      assert LegacyVersioning.get_latest_version("scene", scene.id) == nil
-      assert LegacyVersioning.count_versions("scene", scene.id) == 0
-
-      assert LegacyVersioning.get_adjacent_version_numbers(
-               "scene",
-               scene.id,
-               created.version_number
-             ) == {nil, nil}
-
-      assert LegacyVersioning.count_versions_since(
-               "scene",
-               scene.id,
-               ~U[2000-01-01 00:00:00Z]
-             ) == 0
-
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.update_version(legacy_record, %{title: "Bypass"})
-
-      assert {:error, :unknown_entity_type} = LegacyVersioning.delete_version(legacy_record)
-      assert {:error, :unknown_entity_type} = LegacyVersioning.load_version_snapshot(legacy_record)
-
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.restore_version("scene", scene, legacy_record, user_id: user.id)
-
-      assert {:error, :unknown_entity_type} =
-               LegacyVersioning.detect_restore_conflicts("scene", %{}, scene)
-
-      assert_raise ArgumentError, fn -> LegacyVersioning.get_builder!("scene") end
-      assert_raise ArgumentError, fn -> LegacyVersioning.next_version_number("scene", scene.id) end
+      for {fun, arity} <- [
+            create_version: 5,
+            maybe_create_version: 5,
+            list_versions: 3,
+            get_version: 3,
+            get_latest_version: 2,
+            count_versions: 2,
+            get_adjacent_version_numbers: 3,
+            count_versions_since: 3,
+            update_version: 2,
+            count_named_versions: 1,
+            delete_version: 1,
+            load_version_snapshot: 1,
+            restore_version: 4,
+            detect_restore_conflicts: 3,
+            get_builder!: 1,
+            next_version_number: 2
+          ] do
+        refute function_exported?(LegacyVersioning, fun, arity),
+               "expected the legacy facade to no longer export #{fun}/#{arity}"
+      end
 
       assert Versioning.get_version(scene.id, created.version_number).title == "Scene owner"
     end

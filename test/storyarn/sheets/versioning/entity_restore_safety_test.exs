@@ -1,8 +1,8 @@
-defmodule Storyarn.Versioning.EntityRestoreSafetyTest do
+defmodule Storyarn.Sheets.Versioning.EntityRestoreSafetyTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Versioning.EntityRestoreSafety
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Sheets.Versioning.EntityRestoreSafety
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord, as: EntityVersion
 
   defmodule FakeRepo do
     def one(_query), do: Process.get({__MODULE__, :version})

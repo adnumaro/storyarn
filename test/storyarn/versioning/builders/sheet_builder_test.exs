@@ -23,9 +23,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.AssetMaterializationCache
-  alias Storyarn.Versioning.Builders.SheetBuilder
   alias Storyarn.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Workers.DeleteStorageObjectsWorker
+  alias StoryarnTest.ProjectsSheetBuilderTestAdapter, as: SheetBuilder
 
   setup do
     user = user_fixture(%{email: "sheet-builder-#{Ecto.UUID.generate()}@example.com"})
@@ -465,62 +465,6 @@ defmodule Storyarn.Versioning.Builders.SheetBuilderTest do
   end
 
   describe "restore_snapshot/3" do
-    test "rejects corrupt localization schema and semantics with recomputed manifests without partial writes", %{
-      project: project,
-      sheet: sheet
-    } do
-      _en = source_language_fixture(project, %{locale_code: "en", name: "English"})
-      _es = language_fixture(project, %{locale_code: "es", name: "Spanish"})
-
-      block =
-        block_fixture(sheet, %{
-          type: "text",
-          variable_name: "bio",
-          value: %{"content" => "Historical biography {name}"}
-        })
-
-      :ok = Localization.sync_sheet_names(project.id)
-      snapshot = SheetBuilder.build_snapshot(sheet)
-      row = Enum.find(snapshot["localization"], &(&1["source_type"] == "block"))
-      remaining_rows = List.delete(snapshot["localization"], row)
-
-      {:ok, current_sheet} = Sheets.update_sheet(sheet, %{name: "Current sheet"})
-      {:ok, current_block} = Sheets.update_block_value(block, %{"content" => "Current biography"})
-      current_localization = sheet_localization_state(sheet.id, block.id)
-
-      corruptions = [
-        &Map.delete(&1, "reviewer_notes"),
-        &Map.put(&1, "source_text", "Forged source"),
-        &Map.put(&1, "source_text_hash", String.duplicate("0", 64)),
-        &Map.update!(&1, "word_count", fn count -> count + 1 end),
-        &Map.put(&1, "status", "final"),
-        fn entry ->
-          entry
-          |> Map.put("archived_at", DateTime.truncate(DateTime.utc_now(), :second))
-          |> Map.put("archive_reason", "version_replaced")
-        end,
-        fn entry ->
-          entry
-          |> Map.put("translated_text", "Biografía histórica")
-          |> Map.put("translated_source_hash", entry["source_text_hash"])
-          |> Map.put("status", "final")
-        end
-      ]
-
-      for corrupt <- corruptions do
-        rows = [corrupt.(row) | remaining_rows]
-        invalid_snapshot = put_localization_with_manifest(snapshot, rows)
-
-        assert {:error, _reason} =
-                 SheetBuilder.restore_snapshot(current_sheet, invalid_snapshot,
-                   restore_action: {:entity_version_restore, "sheet"}
-                 )
-
-        assert Repo.get!(Sheet, sheet.id).name == "Current sheet"
-        assert Repo.get!(Block, block.id).value == current_block.value
-        assert sheet_localization_state(sheet.id, block.id) == current_localization
-      end
-    end
   end
 
   describe "instantiate_snapshot/3" do

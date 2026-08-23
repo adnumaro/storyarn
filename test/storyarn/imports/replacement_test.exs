@@ -30,10 +30,10 @@ defmodule Storyarn.Imports.ReplacementTest do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord, as: EntityVersion
   alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Versioning.EntityVersion
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotArchiveStorage
   alias Storyarn.Versioning.SnapshotCleanupIntent
@@ -756,8 +756,10 @@ defmodule Storyarn.Imports.ReplacementTest do
     old_flow = flow_fixture(ctx.project, %{name: "Old flow"})
     old_scene = scene_fixture(ctx.project, %{name: "Old scene"})
 
+    old_sheet_with_blocks = Repo.preload(old_sheet, :blocks, force: true)
+
     assert {:ok, version} =
-             Versioning.create_version("sheet", old_sheet, ctx.project.id, ctx.user.id, title: "Before Yarn replacement")
+             Sheets.create_version(old_sheet_with_blocks, ctx.user.id, title: "Before Yarn replacement")
 
     preserved_asset =
       asset_fixture(ctx.project, ctx.user, %{blob_hash: String.duplicate("e", 64)})

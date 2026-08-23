@@ -15,8 +15,8 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
-  alias Storyarn.Sheets
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.FlowBuilder
   alias Storyarn.Versioning.Builders.SceneBuilder
@@ -98,7 +98,7 @@ defmodule Storyarn.Versioning.Builders.ProjectSnapshotBuilder do
 
   defp build_consistent_snapshot(project, localization_scope, mode) do
     project_id = project.id
-    sheets = Sheets.list_sheets_for_export(project_id)
+    sheets = SheetReadModel.list_for_export(project_id)
     flows = FlowReadModel.list_flows_for_export(project_id)
     scenes = SceneReadModel.list_for_export(project_id)
 

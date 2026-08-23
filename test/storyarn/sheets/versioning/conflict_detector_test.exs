@@ -1,4 +1,4 @@
-defmodule Storyarn.Versioning.ConflictDetectorTest do
+defmodule Storyarn.Sheets.Versioning.ConflictDetectorTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
@@ -7,7 +7,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
-  alias Storyarn.Versioning.ConflictDetector
+  alias Storyarn.Sheets.Versioning.ConflictDetector
 
   @max_pg_bigint 9_223_372_036_854_775_807
 
@@ -29,7 +29,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
 
       snapshot = portable_sheet_asset_snapshot(sheet, asset, project.id)
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       refute report.has_conflicts
       assert report.conflicts == []
@@ -58,7 +58,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         |> put_in(["asset_blob_hashes", asset_id], blob_hash)
 
       matching_report =
-        ConflictDetector.detect_conflicts("sheet", matching_snapshot, sheet)
+        ConflictDetector.detect(matching_snapshot, sheet)
 
       refute matching_report.has_conflicts
       assert matching_report.conflicts == []
@@ -71,7 +71,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         )
 
       mismatch_report =
-        ConflictDetector.detect_conflicts("sheet", mismatched_snapshot, sheet)
+        ConflictDetector.detect(mismatched_snapshot, sheet)
 
       assert [%{type: :asset, id: id}] = mismatch_report.conflicts
       assert id == asset.id
@@ -82,7 +82,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         |> put_in(["asset_metadata"], %{})
 
       incomplete_report =
-        ConflictDetector.detect_conflicts("sheet", incomplete_snapshot, sheet)
+        ConflictDetector.detect(incomplete_snapshot, sheet)
 
       assert [%{type: :asset, id: id}] = incomplete_report.conflicts
       assert id == asset.id
@@ -108,7 +108,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
           true
         )
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       refute report.has_conflicts
       assert report.conflicts == []
@@ -137,7 +137,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
       ]
 
       for snapshot <- invalid_snapshots do
-        report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+        report = ConflictDetector.detect(snapshot, sheet)
 
         assert report.has_conflicts
         assert [%{type: :asset, id: id}] = report.conflicts
@@ -167,7 +167,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         ]
       }
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       assert [%{type: :block, id: id}] = report.conflicts
       assert id == foreign_block.id
@@ -199,7 +199,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         ]
       }
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       assert report.has_conflicts
       assert Enum.any?(report.conflicts, &(&1.type == :flow and &1.id == missing_flow_id))
@@ -228,7 +228,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         ]
       }
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       assert report.has_conflicts
       assert Enum.all?(report.conflicts, &(&1.type == :reference))
@@ -258,7 +258,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         }
       }
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       assert [%{type: :asset, id: ^oversized_id}] = report.conflicts
     end
@@ -276,7 +276,7 @@ defmodule Storyarn.Versioning.ConflictDetectorTest do
         ]
       }
 
-      report = ConflictDetector.detect_conflicts("sheet", snapshot, sheet)
+      report = ConflictDetector.detect(snapshot, sheet)
 
       assert [%{type: :block, id: 999_999}] = report.conflicts
     end

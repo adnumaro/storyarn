@@ -6,6 +6,7 @@ defmodule Storyarn.Billing.Limits do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Billing.Persistence.EntityVersionRecord
   alias Storyarn.Billing.Persistence.FlowNodeRecord
   alias Storyarn.Billing.Persistence.FlowRecord
   alias Storyarn.Billing.Persistence.SceneRecord
@@ -162,7 +163,7 @@ defmodule Storyarn.Billing.Limits do
   def can_create_named_version?(project_id, workspace_id) do
     plan = SubscriptionCrud.plan_for_workspace_id(workspace_id)
     limit = Plan.limit(plan, :named_versions_per_project)
-    used = Storyarn.Versioning.count_named_versions(project_id)
+    used = count_named_versions(project_id)
     check_limit(:named_versions_per_project, used, limit)
   end
 
@@ -178,7 +179,7 @@ defmodule Storyarn.Billing.Limits do
         limit: Plan.limit(plan, :project_snapshots_per_project)
       },
       named_versions: %{
-        used: Storyarn.Versioning.count_named_versions(project_id),
+        used: count_named_versions(project_id),
         limit: Plan.limit(plan, :named_versions_per_project)
       }
     }
@@ -212,7 +213,7 @@ defmodule Storyarn.Billing.Limits do
           ),
         named_versions:
           usage_bucket(
-            Storyarn.Versioning.count_named_versions(project.id),
+            count_named_versions(project.id),
             Plan.limit(plan, :named_versions_per_project)
           )
       },
@@ -307,6 +308,17 @@ defmodule Storyarn.Billing.Limits do
       used: used || 0,
       limit: limit
     }
+  end
+
+  # The commercial named-version quota counts across every entity type in the
+  # project; the three tool-owned copies count only their own entity type.
+  defp count_named_versions(project_id) do
+    Repo.aggregate(
+      from(version in EntityVersionRecord,
+        where: version.project_id == ^project_id and not is_nil(version.title) and version.is_auto == false
+      ),
+      :count
+    )
   end
 
   defp check_limit(resource, used, nil) do

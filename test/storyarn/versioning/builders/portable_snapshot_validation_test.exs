@@ -8,8 +8,8 @@ defmodule Storyarn.Versioning.Builders.PortableSnapshotValidationTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Versioning.Builders.FlowBuilder
-  alias Storyarn.Versioning.Builders.SheetBuilder
   alias StoryarnTest.ProjectsSceneBuilderTestAdapter, as: SceneBuilder
+  alias StoryarnTest.ProjectsSheetBuilderTestAdapter, as: SheetBuilder
 
   setup do
     user = user_fixture()
