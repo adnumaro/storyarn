@@ -1,21 +1,19 @@
-defmodule StoryarnWeb.VersionViewerLive do
+defmodule StoryarnWeb.SheetLive.VersionViewer do
   @moduledoc """
-  Legacy read-only Sheet version surface.
+  Read-only Sheet version surface embedded by the comparison view.
 
-  Flow and Scene version viewers live with their owning presentation
-  boundaries in `FlowLive` and `SceneLive`.
+  Sheet identity and version storage are resolved through the public Sheets
+  facade. The Vue-facing snapshot mapping remains in StoryarnWeb.
   """
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Projects
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
   alias StoryarnWeb.PrivateMedia
 
   require Logger
 
-  @not_found_view_errors [
+  @not_found_error_reasons [
     :invalid_entity_id,
     :invalid_version_number,
     :entity_version_not_found,
@@ -61,41 +59,30 @@ defmodule StoryarnWeb.VersionViewerLive do
   end
 
   @impl true
-  def mount(
-        %{
-          "workspace_slug" => workspace_slug,
-          "project_slug" => project_slug,
-          "id" => entity_id_string,
-          "version_number" => version_number_string
-        },
-        _session,
-        socket
-      ) do
-    case load_version_view(socket, workspace_slug, project_slug, entity_id_string, version_number_string) do
+  def mount(%{"id" => sheet_id_string, "version_number" => version_number_string}, _session, socket) do
+    case load_version_view(socket, sheet_id_string, version_number_string) do
       {:ok, loaded_socket} ->
         {:ok, loaded_socket, layout: false}
 
       {:error, reason} ->
-        {:ok, assign_view_error(socket, entity_id_string, version_number_string, reason), layout: false}
+        {:ok, assign_view_error(socket, sheet_id_string, version_number_string, reason), layout: false}
     end
   end
 
-  defp load_version_view(socket, workspace_slug, project_slug, entity_id_string, version_number_string) do
-    with {:ok, entity_id} <- parse_id(entity_id_string, :invalid_entity_id),
+  defp load_version_view(socket, sheet_id_string, version_number_string) do
+    project = socket.assigns.project
+
+    with {:ok, entity_id} <- parse_id(sheet_id_string, :invalid_entity_id),
          {:ok, version_number} <- parse_id(version_number_string, :invalid_version_number),
-         {:ok, project, _membership} <-
-           Projects.get_project_by_slugs(socket.assigns.current_scope, workspace_slug, project_slug),
          sheet when not is_nil(sheet) <- Sheets.get_sheet(project.id, entity_id),
-         version when not is_nil(version) <- Versioning.get_version("sheet", entity_id, version_number),
-         {:ok, snapshot} <- Versioning.load_version_snapshot(version) do
-      blocks = Versioning.serialize_sheet(snapshot)
+         version when not is_nil(version) <- Sheets.get_version(entity_id, version_number),
+         {:ok, snapshot} <- Sheets.load_version_snapshot(version) do
+      blocks = Sheets.serialize_version_snapshot(snapshot)
 
       {:ok,
        socket
        |> assign(:entity_id, entity_id)
        |> assign(:version_number, version_number)
-       |> assign(:project, project)
-       |> assign(:workspace, project.workspace)
        |> assign(:page_title, version_label(version))
        |> assign(:sheet, sheet_header(snapshot, project.id))
        |> assign(:surface, sheet_surface(socket.assigns, project, blocks))}
@@ -105,9 +92,9 @@ defmodule StoryarnWeb.VersionViewerLive do
     end
   end
 
-  defp assign_view_error(socket, entity_id_string, version_number_string, reason) do
+  defp assign_view_error(socket, sheet_id_string, version_number_string, reason) do
     kind = view_error_kind(reason)
-    log_view_error(kind, entity_id_string, version_number_string, reason)
+    log_view_error(kind, sheet_id_string, version_number_string, reason)
 
     socket
     |> assign(:view_error, to_string(kind))
@@ -119,17 +106,15 @@ defmodule StoryarnWeb.VersionViewerLive do
   defp view_error_kind({:compressed_size_mismatch, _expected, _actual}), do: :integrity
   defp view_error_kind({:invalid_expected_compressed_size, _value}), do: :integrity
   defp view_error_kind(:entity_version_storage_key_mismatch), do: :integrity
-
-  defp view_error_kind(reason) when reason in @not_found_view_errors, do: :not_found
-
+  defp view_error_kind(reason) when reason in @not_found_error_reasons, do: :not_found
   defp view_error_kind(_reason), do: :unreadable
 
-  defp log_view_error(:not_found, entity_id_string, version_number_string, reason) do
-    Logger.info("Version viewer: no sheet #{entity_id_string} v#{version_number_string} to show (#{inspect(reason)})")
+  defp log_view_error(:not_found, sheet_id_string, version_number_string, reason) do
+    Logger.info("Version viewer: no sheet #{sheet_id_string} v#{version_number_string} to show (#{inspect(reason)})")
   end
 
-  defp log_view_error(kind, entity_id_string, version_number_string, reason) do
-    Logger.warning("Version viewer: sheet #{entity_id_string} v#{version_number_string} is #{kind} (#{inspect(reason)})")
+  defp log_view_error(kind, sheet_id_string, version_number_string, reason) do
+    Logger.warning("Version viewer: sheet #{sheet_id_string} v#{version_number_string} is #{kind} (#{inspect(reason)})")
   end
 
   defp view_error_title(:not_found), do: dgettext("versioning", "Version not found")

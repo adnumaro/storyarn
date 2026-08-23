@@ -3,67 +3,7 @@
   "edges": [
     [
       "lib/storyarn/sheets.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/projects/project.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
       "lib/storyarn/references.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet.ex",
-      "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/sheets/sheet_crud.ex",
-      "lib/storyarn/versioning/entity_version.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex",
-      "lib/storyarn/analytics.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex",
-      "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/show.ex",
-      "lib/storyarn/analytics.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/sheet_live/show.ex",
-      "lib/storyarn/versioning.ex",
       "runtime"
     ]
   ],

@@ -207,6 +207,12 @@ config :storyarn, Storyarn.Publication.Locales,
 
 config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restore: false
 
+# Entity-version restore surfaces remain disabled by default and are enabled
+# independently only after their canonical workflows are operationally ready.
+# Exact full-project snapshot restore is part of the recovery contract and is
+# always available to authorized project managers.
+config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: false
+
 # Cloak encryption configuration
 # Development key - NEVER use in production!
 # Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
@@ -226,12 +232,6 @@ config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   build_heartbeat_interval_seconds: 60,
   build_lease_ttl_seconds: 5 * 60,
   export_lease_retention_seconds: 7 * 24 * 60 * 60
-
-# Entity-version restore surfaces remain disabled by default and are enabled
-# independently only after their canonical workflows are operationally ready.
-# Exact full-project snapshot restore is part of the recovery contract and is
-# always available to authorized project managers.
-config :storyarn, Storyarn.Versioning.RestorePolicy, sheet_version_restore: false
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

@@ -1,6 +1,6 @@
 defmodule Storyarn.Sheets.AssetCommands do
   @moduledoc """
-  Scene-owned asset writes and version materialization.
+  Sheet-owned asset writes and version materialization.
 
   Scenes intentionally reads and writes the shared asset tables through local
   projections. Storage is a technical adapter; Project asset commands and
@@ -563,7 +563,7 @@ defmodule Storyarn.Sheets.AssetCommands do
   end
 
   defp handle_background_variant_result(error, original_id, _uploaded_by_id) do
-    Logger.warning("Scene background variant generation failed for asset #{original_id}: #{inspect(error)}")
+    Logger.warning("Sheet background variant generation failed for asset #{original_id}: #{inspect(error)}")
     error
   end
 
@@ -1242,12 +1242,12 @@ defmodule Storyarn.Sheets.AssetCommands do
         :ok
 
       {:error, reason} ->
-        Logger.error("Scene asset cleanup failed while preserving an exception: #{inspect(reason)}")
+        Logger.error("Sheet asset cleanup failed while preserving an exception: #{inspect(reason)}")
     end
   rescue
     cleanup_error ->
       Logger.error(
-        "Scene asset cleanup raised while preserving an exception: " <>
+        "Sheet asset cleanup raised while preserving an exception: " <>
           Exception.message(cleanup_error)
       )
   end
@@ -1378,12 +1378,12 @@ defmodule Storyarn.Sheets.AssetCommands do
   defp project_id!(%{id: id}), do: project_id!(id)
   defp project_id!(id) when is_integer(id) and id > 0, do: id
 
-  defp project_id!(value), do: raise(ArgumentError, "expected a Scene project identity, got: #{inspect(value)}")
+  defp project_id!(value), do: raise(ArgumentError, "expected a Sheet project identity, got: #{inspect(value)}")
 
   defp user_id!(%{id: id}), do: user_id!(id)
   defp user_id!(id) when is_integer(id) and id > 0, do: id
 
-  defp user_id!(value), do: raise(ArgumentError, "expected a Scene user identity, got: #{inspect(value)}")
+  defp user_id!(value), do: raise(ArgumentError, "expected a Sheet user identity, got: #{inspect(value)}")
 
   defp optional_user_id!(nil), do: nil
   defp optional_user_id!(user), do: user_id!(user)

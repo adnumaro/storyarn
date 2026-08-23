@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SheetLive.VersionViewerTest do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord
 
   setup :register_and_log_in_user
 
@@ -192,9 +192,9 @@ defmodule StoryarnWeb.SheetLive.VersionViewerTest do
     LiveVue.Test.get_vue(view, name: "live/versioning/viewer/VersionViewerError").props["reason"]
   end
 
-  defp from_version(%EntityVersion{id: id}) do
+  defp from_version(%EntityVersionRecord{id: id}) do
     import Ecto.Query, only: [from: 2]
 
-    from(version in EntityVersion, where: version.id == ^id)
+    from(version in EntityVersionRecord, where: version.id == ^id)
   end
 end

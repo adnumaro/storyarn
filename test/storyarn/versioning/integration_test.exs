@@ -2,7 +2,8 @@ defmodule Storyarn.Versioning.IntegrationTest do
   @moduledoc """
   Integration tests for the versioning systems owned by Sheets, Flows, and Scenes.
 
-  The legacy `Storyarn.Versioning` facade serves Sheets only. Flows and Scenes
+  Flows, Scenes, and Sheets each own their versioning; these tests pin the
+  cross-context isolation contract. Flows and Scenes
   expose their version lifecycle through their own bounded-context facades.
   """
   use Storyarn.DataCase, async: true
@@ -21,46 +22,6 @@ defmodule Storyarn.Versioning.IntegrationTest do
     user = user_fixture()
     project = project_fixture(user)
     %{user: user, project: project}
-  end
-
-  describe "sheet versioning through Versioning context" do
-    test "create, list, restore, delete cycle", %{project: project, user: user} do
-      sheet = sheet_fixture(project)
-
-      _block =
-        block_fixture(sheet, %{
-          type: "text",
-          config: %{"label" => "Name"},
-          value: %{"content" => "Alice"}
-        })
-
-      sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
-
-      # Create version via new system
-      {:ok, version} =
-        Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id, title: "v1")
-
-      assert version.entity_type == "sheet"
-      assert version.version_number == 1
-
-      # Modify sheet
-      {:ok, sheet} = Sheets.update_sheet(sheet, %{name: "Modified Sheet"})
-
-      # List versions
-      versions = Storyarn.Versioning.list_versions("sheet", sheet.id)
-      assert length(versions) == 1
-
-      # Restore
-      {:ok, restored} = Storyarn.Versioning.restore_version("sheet", sheet, version)
-      assert restored.name != "Modified Sheet"
-
-      # Delete
-      {:ok, _} = Storyarn.Versioning.delete_version(version)
-
-      assert [safety_version] = Storyarn.Versioning.list_versions("sheet", sheet.id)
-      assert safety_version.is_auto
-      assert safety_version.title == "Before restore to v1"
-    end
   end
 
   describe "flow versioning through facade" do
@@ -152,21 +113,21 @@ defmodule Storyarn.Versioning.IntegrationTest do
       sheet = Storyarn.Repo.preload(sheet, :blocks)
       flow = flow_fixture(project)
 
-      {:ok, _} = Storyarn.Versioning.create_version("sheet", sheet, project.id, user.id)
+      {:ok, _} = Sheets.create_version(sheet, user.id)
 
       # Probe the SAME numeric id under other entity types while only the
       # sheet version exists: zero here is exactly what type isolation
       # means. (Entity tables have independent id sequences that CAN align
       # — e.g. on a fresh CI database — so asserting zero for another
       # entity's id is a coin flip, not an isolation proof.)
-      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
+      assert Sheets.count_versions(sheet.id) == 1
       assert Flows.count_versions(sheet.id) == 0
       assert Scenes.count_versions(sheet.id) == 0
 
       {:ok, _} = Flows.create_version(flow, user.id)
 
       assert Flows.count_versions(flow.id) == 1
-      assert Storyarn.Versioning.count_versions("sheet", sheet.id) == 1
+      assert Sheets.count_versions(sheet.id) == 1
     end
   end
 end

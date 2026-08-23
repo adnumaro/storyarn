@@ -11,7 +11,14 @@ defmodule Storyarn.Sheets.Events do
   alias Storyarn.Sheets.Persistence.AssetRecord
   alias Storyarn.Sheets.Sheet
 
-  @event_types [:asset_uploaded, :block_created]
+  @event_types [
+    :asset_uploaded,
+    :block_created,
+    :version_compared,
+    :version_created,
+    :version_panel_opened,
+    :version_restored
+  ]
 
   @block_types Block.types()
   @creation_methods ~w(create duplicate wrap_selection)
@@ -69,6 +76,10 @@ defmodule Storyarn.Sheets.Events do
       valid_id?(project_id) and is_nil(purpose) and
       size_bucket in ~w(under_100kb 100kb_to_1mb 1mb_to_10mb over_10mb)
   end
+
+  defp valid_payload?(event_type, %{entity_type: "sheet", project_id: project_id})
+       when event_type in [:version_compared, :version_created, :version_panel_opened, :version_restored],
+       do: valid_id?(project_id)
 
   defp valid_payload?(:block_created, payload) do
     payload.block_type in @block_types and payload.creation_method in @creation_methods and

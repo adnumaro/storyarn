@@ -13,10 +13,7 @@ defmodule Storyarn.Sheets do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Collaboration
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.AssetCatalog
@@ -32,8 +29,10 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.FormulaResolver
   alias Storyarn.Sheets.GalleryCrud
   alias Storyarn.Sheets.HealthSnapshots
+  alias Storyarn.Sheets.Limits
   alias Storyarn.Sheets.LocalizationProjection, as: Localization
   alias Storyarn.Sheets.Persistence.FlowRecord
+  alias Storyarn.Sheets.Persistence.ProjectRecord
   alias Storyarn.Sheets.ProjectAccess
   alias Storyarn.Sheets.PropertyInheritance
   alias Storyarn.Sheets.ReferenceTracker
@@ -44,12 +43,13 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.SheetQueries
   alias Storyarn.Sheets.SheetStats
   alias Storyarn.Sheets.TableCrud
+  alias Storyarn.Sheets.TrackedCommands
   alias Storyarn.Sheets.TreeOperations
   alias Storyarn.Sheets.VariableCatalog
   alias Storyarn.Sheets.VariableUsage
+  alias Storyarn.Sheets.Versioning
+  alias Storyarn.Sheets.Versioning.SnapshotViewer
   alias Storyarn.Sheets.WordCount
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.EntityVersion
 
   # =============================================================================
   # Type Definitions
@@ -250,7 +250,7 @@ defmodule Storyarn.Sheets do
   @doc """
   Creates a new sheet in a project.
   """
-  @spec create_sheet(Project.t(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
+  @spec create_sheet(map(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
   defdelegate create_sheet(project, attrs), to: SheetCrud
   defdelegate create_sheet(actor_scope, project, attrs), to: SheetCrud
 
@@ -347,13 +347,13 @@ defmodule Storyarn.Sheets do
   def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
     fn ->
       case Repo.one(
-             from(project in Project,
+             from(project in ProjectRecord,
                where: project.id == ^sheet.project_id,
                lock: "FOR UPDATE"
              )
            ) do
-        %Project{deleted_at: nil} -> :ok
-        %Project{} -> Repo.rollback(:project_not_active)
+        %ProjectRecord{deleted_at: nil} -> :ok
+        %ProjectRecord{} -> Repo.rollback(:project_not_active)
         nil -> Repo.rollback(:project_not_found)
       end
 
@@ -728,6 +728,20 @@ defmodule Storyarn.Sheets do
     to: Events,
     as: :block_created
 
+  @doc "Emits the typed Sheet fact that the version panel was opened."
+  defdelegate record_version_panel_opened(scope, sheet), to: TrackedCommands
+
+  @doc "Emits the typed Sheet fact that a version comparison was opened."
+  defdelegate record_version_compared(scope, sheet), to: TrackedCommands
+
+  @doc "Creates a named Sheet version and emits its Sheet-owned fact."
+  defdelegate create_named_version(scope, sheet, opts), to: TrackedCommands
+
+  @doc "Restores a Sheet version and emits its Sheet-owned fact on success."
+  defdelegate restore_tracked_version(scope, sheet, version, opts),
+    to: TrackedCommands,
+    as: :restore_version
+
   @doc "Returns the Sheet-owned health severity ordering."
   defdelegate health_severity_rank(severity), to: Storyarn.Sheets.Severity, as: :rank
 
@@ -807,67 +821,49 @@ defmodule Storyarn.Sheets do
   # Versioning
   # =============================================================================
 
-  @type version :: EntityVersion.t()
+  @doc "Returns whether in-place Sheet version restore is enabled."
+  def restore_enabled?, do: Versioning.restore_enabled?()
 
   @doc """
   Creates a new version snapshot of the given sheet.
   """
-  def create_version(sheet, user_or_id, opts \\ [])
-
-  def create_version(%Sheet{} = sheet, %User{} = user, opts) do
-    create_version(sheet, user.id, opts)
-  end
-
-  def create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
-    Versioning.create_version("sheet", sheet, sheet.project_id, user_id, opts)
+  def create_version(%Sheet{} = sheet, user_id, opts \\ []) do
+    Versioning.create_version(sheet, user_id, opts)
   end
 
   @doc """
   Lists all versions for a sheet, ordered by version number descending.
   """
   def list_versions(sheet_id, opts \\ []) do
-    Versioning.list_versions("sheet", sheet_id, opts)
+    Versioning.list_versions(sheet_id, opts)
   end
 
   @doc """
   Gets a specific version by sheet_id and version_number.
   """
   def get_version(sheet_id, version_number) do
-    Versioning.get_version("sheet", sheet_id, version_number)
+    Versioning.get_version(sheet_id, version_number)
   end
 
   @doc """
   Gets the latest version for a sheet.
   """
   def get_latest_version(sheet_id) do
-    Versioning.get_latest_version("sheet", sheet_id)
+    Versioning.get_latest_version(sheet_id)
   end
 
   @doc """
   Returns the total number of versions for a sheet.
   """
   def count_versions(sheet_id) do
-    Versioning.count_versions("sheet", sheet_id)
+    Versioning.count_versions(sheet_id)
   end
 
   @doc """
   Creates a version if enough time has passed since the last version.
   """
-  def maybe_create_version(sheet, user_or_id, opts \\ [])
-
-  def maybe_create_version(%Sheet{} = sheet, %User{} = user, opts) do
-    maybe_create_version(sheet, user.id, opts)
-  end
-
-  def maybe_create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
-    opts = Keyword.put_new(opts, :is_auto, true)
-
-    if Keyword.get(opts, :is_auto) and
-         not Projects.auto_versioning_enabled?(sheet.project_id, :sheet) do
-      {:skipped, :auto_versioning_disabled}
-    else
-      Versioning.maybe_create_version("sheet", sheet, sheet.project_id, user_id, opts)
-    end
+  def maybe_create_version(%Sheet{} = sheet, user_id, opts \\ []) do
+    Versioning.maybe_create_version(sheet, user_id, opts)
   end
 
   @doc """
@@ -877,12 +873,42 @@ defmodule Storyarn.Sheets do
     Versioning.delete_version(version)
   end
 
+  @doc "Updates the name and description of a Sheet version."
+  def update_version(version, attrs), do: Versioning.update_version(version, attrs)
+
+  @doc false
+  def load_version_snapshot(version), do: Versioning.load_version_snapshot(version)
+
+  @doc "Serializes a stored Sheet snapshot into the read-only viewer block list."
+  def serialize_version_snapshot(snapshot), do: SnapshotViewer.serialize_sheet(snapshot)
+
+  @doc "Decides whether restore must first warn about unsaved changes."
+  def prepare_version_restore(%Sheet{} = sheet, version), do: Versioning.prepare_restore(sheet, version)
+
+  @doc "Loads a target Sheet version and builds its restore conflict report."
+  def prepare_version_restore_conflicts(%Sheet{} = sheet, version),
+    do: Versioning.prepare_restore_conflicts(sheet, version)
+
   @doc """
   Restores a sheet to a specific version.
   """
-  def restore_version(%Sheet{} = sheet, version) do
-    Versioning.restore_version("sheet", sheet, version)
+  def restore_version(%Sheet{} = sheet, version, opts \\ []) do
+    Versioning.restore_version(sheet, version, opts)
   end
+
+  @doc "Ensures that Sheet version restore is currently enabled."
+  def ensure_version_restore_enabled, do: Versioning.ensure_restore_enabled()
+
+  @doc "Builds the Sheet-owned restore-conflict preview."
+  def detect_version_restore_conflicts(snapshot, %Sheet{} = sheet),
+    do: Versioning.detect_restore_conflicts(snapshot, sheet)
+
+  @doc "Returns the previous and next stored Sheet version numbers."
+  def get_adjacent_version_numbers(sheet_id, current_number),
+    do: Versioning.get_adjacent_version_numbers(sheet_id, current_number)
+
+  @doc "Returns whether this project can create another named Sheet version."
+  defdelegate can_create_named_version?(project_id, workspace_id), to: Limits
 
   @doc """
   Sets the current version for a sheet.

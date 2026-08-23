@@ -513,6 +513,12 @@ forbidden_dependencies =
       reason: "Sheet mutations request durable notification delivery through the public Platform contract"
     },
     %{
+      source: "lib/storyarn/sheets/versioning/sheet_snapshot.ex",
+      target: "lib/storyarn/references.ex",
+      kinds: ["runtime"],
+      reason: "Sheet restore triggers the Project-owned project-wide variable reference rebuild through its public facade"
+    },
+    %{
       source: "lib/storyarn/scenes/scene_crud.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],

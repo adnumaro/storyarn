@@ -76,6 +76,60 @@ defmodule Storyarn.Sheets.LocalizationProjection do
     end
   end
 
+  @doc false
+  def archive_restore_texts_for_sources(_source_type, [], _reason), do: {0, nil}
+
+  def archive_restore_texts_for_sources(source_type, source_ids, reason) do
+    now = TimeHelpers.now()
+
+    Repo.update_all(
+      from(text in LocalizedTextRecord,
+        where:
+          text.source_type == ^source_type and text.source_id in ^source_ids and
+            is_nil(text.archived_at)
+      ),
+      set: [archived_at: now, archive_reason: reason, updated_at: now],
+      inc: [lock_version: 1]
+    )
+  end
+
+  @doc false
+  def archive_texts_for_active_target_locales(_project_id, _source_type, [], _reason), do: {0, nil}
+
+  def archive_texts_for_active_target_locales(project_id, source_type, source_ids, reason) do
+    now = TimeHelpers.now()
+
+    active_target_locales =
+      from(language in ProjectLanguageRecord,
+        where:
+          language.project_id == ^project_id and language.is_source == false and
+            is_nil(language.archived_at),
+        select: language.locale_code
+      )
+
+    Repo.update_all(
+      from(text in LocalizedTextRecord,
+        where:
+          text.project_id == ^project_id and text.source_type == ^source_type and
+            text.source_id in ^source_ids and is_nil(text.archived_at) and
+            text.locale_code in subquery(active_target_locales)
+      ),
+      set: [archived_at: now, archive_reason: reason, updated_at: now],
+      inc: [lock_version: 1]
+    )
+  end
+
+  @doc false
+  def lock_inventory!(project_id) when is_integer(project_id) do
+    if Repo.in_transaction?() do
+      lock_active_project!(project_id)
+      lock_exclusive!(@inventory_lock_namespace, project_id)
+      :ok
+    else
+      raise ArgumentError, "localization inventory locks require an explicit database transaction"
+    end
+  end
+
   @spec extract_sheet_blocks(integer()) :: :ok | {:error, term()}
   def extract_sheet_blocks(sheet_id), do: extract_sheet_blocks_for_sheets([sheet_id])
 

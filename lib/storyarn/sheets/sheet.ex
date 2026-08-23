@@ -24,7 +24,7 @@ defmodule Storyarn.Sheets.Sheet do
   alias Storyarn.Sheets.Persistence.ProjectRecord, as: Project
   alias Storyarn.Sheets.Schema
   alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
   @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
@@ -40,7 +40,7 @@ defmodule Storyarn.Sheets.Sheet do
           banner_asset_id: integer() | nil,
           banner_asset: Asset.t() | NotLoaded.t() | nil,
           current_version_id: integer() | nil,
-          current_version: EntityVersion.t() | NotLoaded.t() | nil,
+          current_version: EntityVersionRecord.t() | NotLoaded.t() | nil,
           project_id: integer() | nil,
           project: Project.t() | NotLoaded.t() | nil,
           parent_id: integer() | nil,
@@ -65,7 +65,7 @@ defmodule Storyarn.Sheets.Sheet do
     belongs_to :project, Project
     belongs_to :parent, __MODULE__
     belongs_to :banner_asset, Asset, where: [deleted_at: nil]
-    belongs_to :current_version, EntityVersion
+    belongs_to :current_version, EntityVersionRecord
     has_many :children, __MODULE__, foreign_key: :parent_id
     has_many :blocks, Block
     has_many :avatars, SheetAvatar

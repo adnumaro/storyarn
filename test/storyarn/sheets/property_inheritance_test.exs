@@ -898,9 +898,9 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
     test "snapshot includes inheritance fields", %{user: user, parent: parent, child: child} do
       _block = inheritable_block_fixture(parent, label: "Versioned")
 
-      {:ok, version} = Sheets.create_version(child, user)
+      {:ok, version} = Sheets.create_version(child, user.id)
 
-      {:ok, snapshot} = Storyarn.Versioning.load_version_snapshot(version)
+      {:ok, snapshot} = Sheets.load_version_snapshot(version)
       block_snapshots = snapshot["blocks"]
       assert [_ | _] = block_snapshots
 
@@ -918,7 +918,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
       block = inheritable_block_fixture(parent, label: "Orphan Test")
 
       # Create a version while the block exists
-      {:ok, version} = Sheets.create_version(child, user)
+      {:ok, version} = Sheets.create_version(child, user.id)
 
       # Delete the parent block permanently
       {:ok, _} = Sheets.permanently_delete_block(block)

@@ -1,9 +1,8 @@
-defmodule Storyarn.Versioning.VersionConcurrencyTest do
+defmodule Storyarn.Sheets.VersioningConcurrencyTest do
   use ExUnit.Case, async: false
 
   import Ecto.Query
   import Storyarn.AccountsFixtures
-  import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -12,22 +11,19 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Versioning
   alias Storyarn.Workspaces.Workspace
 
   setup do
     fixtures =
       Sandbox.unboxed_run(Repo, fn ->
-        user = user_fixture(%{email: "version-concurrency-#{Ecto.UUID.generate()}@example.com"})
+        user = user_fixture(%{email: "sheet-version-concurrency-#{Ecto.UUID.generate()}@example.com"})
         project = project_fixture(user)
         sheet = sheet_fixture(project)
         _block = block_fixture(sheet, %{type: "text", config: %{"label" => "Name"}})
         sheet = Repo.preload(sheet, :blocks, force: true)
-
-        flow = flow_fixture(project)
-        _node = node_fixture(flow, %{type: "dialogue"})
 
         %{user: user, project: project, sheet: sheet}
       end)
@@ -37,7 +33,6 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
   end
 
   test "concurrent entity version creation keeps every stored snapshot", %{
-    project: project,
     sheet: sheet,
     user: user
   } do
@@ -45,25 +40,24 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
       5
       |> run_concurrently(fn ->
         Sandbox.unboxed_run(Repo, fn ->
-          Versioning.create_version("sheet", sheet, project.id, user.id, title: "Concurrent")
+          Sheets.create_version(sheet, user.id, title: "Concurrent")
         end)
       end)
       |> unwrap_ok()
 
     assert versions |> Enum.map(& &1.version_number) |> Enum.sort() == [1, 2, 3, 4, 5]
     assert versions |> Enum.map(& &1.storage_key) |> Enum.uniq() |> length() == 5
-    assert Sandbox.unboxed_run(Repo, fn -> Versioning.count_versions("sheet", sheet.id) end) == 5
+    assert Sandbox.unboxed_run(Repo, fn -> Sheets.count_versions(sheet.id) end) == 5
 
     for version <- versions do
       assert {:ok, snapshot} =
-               Sandbox.unboxed_run(Repo, fn -> Versioning.load_version_snapshot(version) end)
+               Sandbox.unboxed_run(Repo, fn -> Sheets.load_version_snapshot(version) end)
 
       assert snapshot["name"] == sheet.name
     end
   end
 
   test "concurrent restores serialize without publishing mixed or duplicate state", %{
-    project: project,
     sheet: sheet,
     user: user
   } do
@@ -72,12 +66,12 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
 
     {:ok, target} =
       Sandbox.unboxed_run(Repo, fn ->
-        Versioning.create_version("sheet", sheet, project.id, user.id, title: "Concurrent restore target")
+        Sheets.create_version(sheet, user.id, title: "Concurrent restore target")
       end)
 
     changed_sheet =
       Sandbox.unboxed_run(Repo, fn ->
-        {:ok, changed_sheet} = Storyarn.Sheets.update_sheet(sheet, %{name: "Changed before restore"})
+        {:ok, changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed before restore"})
         Repo.preload(changed_sheet, :blocks, force: true)
       end)
 
@@ -86,7 +80,7 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
         2,
         fn ->
           Sandbox.unboxed_run(Repo, fn ->
-            Versioning.restore_version("sheet", changed_sheet, target,
+            Sheets.restore_version(changed_sheet, target,
               user_id: user.id,
               __after_pre_restore_version_verified_hook: fn safety_version ->
                 send(parent, {barrier, :safety_ready, self(), safety_version.id})
@@ -132,7 +126,7 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
     assert length(active_block_ids) == 1
     assert length(Enum.uniq(active_block_ids)) == 1
 
-    versions = Sandbox.unboxed_run(Repo, fn -> Versioning.list_versions("sheet", sheet.id) end)
+    versions = Sandbox.unboxed_run(Repo, fn -> Sheets.list_versions(sheet.id) end)
     successful_restores = Enum.count(results, &match?({:ok, %Sheet{}}, &1))
 
     assert length(versions) == 1 + 2 + successful_restores
@@ -141,7 +135,7 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
     assert Enum.all?(versions, fn version ->
              match?(
                {:ok, _snapshot},
-               Sandbox.unboxed_run(Repo, fn -> Versioning.load_version_snapshot(version) end)
+               Sandbox.unboxed_run(Repo, fn -> Sheets.load_version_snapshot(version) end)
              )
            end)
   end
@@ -184,7 +178,7 @@ defmodule Storyarn.Versioning.VersionConcurrencyTest do
     Sandbox.unboxed_run(Repo, fn ->
       storage_keys =
         Repo.all(
-          from(version in Storyarn.Versioning.EntityVersion,
+          from(version in Storyarn.Sheets.Versioning.EntityVersionRecord,
             where: version.project_id == ^project.id,
             select: version.storage_key
           )

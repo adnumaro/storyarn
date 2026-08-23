@@ -9,16 +9,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.AudioDataHelpers
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
   import StoryarnWeb.SheetLive.Helpers.HealthHelpers
-  import StoryarnWeb.SheetLive.Helpers.HistoryDataHelpers
   import StoryarnWeb.SheetLive.Helpers.PropsSerializer
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
-  alias Storyarn.Analytics
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
   alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -28,12 +25,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.SheetLive.Handlers.FormulaHandlers
   alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
   alias StoryarnWeb.SheetLive.Handlers.HeaderHandlers
-  alias StoryarnWeb.SheetLive.Handlers.HistoryHandlers
   alias StoryarnWeb.SheetLive.Handlers.LockHandlers
   alias StoryarnWeb.SheetLive.Handlers.ReferenceHandlers
   alias StoryarnWeb.SheetLive.Handlers.SelectOptionHandlers
   alias StoryarnWeb.SheetLive.Handlers.TableHandlers
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SheetLive.VersionEvents
+  alias StoryarnWeb.SheetLive.VersionHistory
 
   @sheet_tabs ~w(content references audio history)
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -290,7 +288,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       canEdit: assigns.can_edit,
       restoreEnabled:
         assigns.can_edit &&
-          Versioning.restore_enabled?({:entity_version_restore, "sheet"}),
+          Sheets.restore_enabled?(),
       loading: is_nil(assigns.history_data)
     }
   end
@@ -825,26 +823,28 @@ defmodule StoryarnWeb.SheetLive.Show do
   # --- History (versions, restore) ---
 
   def handle_event("compare_version", params, socket),
-    do: HistoryHandlers.handle_compare(params, socket, history_helpers())
+    do: VersionEvents.handle_compare(params, socket, sheet_version_config())
 
-  def handle_event("create_version", params, socket), do: HistoryHandlers.handle_create(params, socket, history_helpers())
+  def handle_event("create_version", params, socket),
+    do: VersionEvents.handle_create(params, socket, sheet_version_config())
 
   def handle_event("promote_version", params, socket),
-    do: HistoryHandlers.handle_promote(params, socket, history_helpers())
+    do: VersionEvents.handle_promote(params, socket, sheet_version_config())
 
-  def handle_event("delete_version", params, socket), do: HistoryHandlers.handle_delete(params, socket, history_helpers())
+  def handle_event("delete_version", params, socket),
+    do: VersionEvents.handle_delete(params, socket, sheet_version_config())
 
   def handle_event("load_more_versions", params, socket),
-    do: HistoryHandlers.handle_load_more(params, socket, history_helpers())
+    do: VersionEvents.handle_load_more(params, socket, sheet_version_config())
 
   def handle_event("preview_restore", params, socket),
-    do: HistoryHandlers.handle_preview_restore(params, socket, history_helpers())
+    do: VersionEvents.handle_preview_restore(params, socket, sheet_version_config())
 
   def handle_event("review_restore", params, socket),
-    do: HistoryHandlers.handle_review_restore(params, socket, history_helpers())
+    do: VersionEvents.handle_review_restore(params, socket, sheet_version_config())
 
   def handle_event("confirm_restore", params, socket),
-    do: HistoryHandlers.handle_confirm_restore(params, socket, history_helpers())
+    do: VersionEvents.handle_confirm_restore(params, socket, sheet_version_config())
 
   # --- Block locking ---
 
@@ -1024,7 +1024,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
     socket =
       if socket.assigns.current_tab == "history",
-        do: load_history_data(socket),
+        do: VersionHistory.load_history_data(socket),
         else: socket
 
     {:noreply, show_collab_toast(socket, :sheet_restored, payload)}
@@ -1048,10 +1048,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   defp track_sheet_history_opened(socket, "history") do
     if !(socket.assigns.current_tab == "history" or socket.assigns.compact) do
-      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
-        entity_type: "sheet",
-        project_id: socket.assigns.project.id
-      })
+      Sheets.record_version_panel_opened(socket.assigns.current_scope, socket.assigns.sheet)
     end
   end
 
@@ -1066,7 +1063,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp maybe_load_tab_data(socket, "history") do
-    maybe_load_assign(socket, :history_data, &load_history_data/1)
+    maybe_load_assign(socket, :history_data, &VersionHistory.load_history_data/1)
   end
 
   defp maybe_load_tab_data(socket, _tab), do: socket
@@ -1083,12 +1080,20 @@ defmodule StoryarnWeb.SheetLive.Show do
     }
   end
 
-  defp history_helpers do
+  defp sheet_version_config do
     %{
       reload_blocks: &reload_blocks/1,
       broadcast: &broadcast_sheet_change/2,
-      clear_undo: &UndoRedoStack.clear/1
+      clear_undo: &UndoRedoStack.clear/1,
+      reload_history: &VersionHistory.load_history_data/1,
+      compare_path: &sheet_compare_path/2
     }
+  end
+
+  defp sheet_compare_path(socket, version_number) do
+    %{workspace: workspace, project: project, sheet: sheet} = socket.assigns
+
+    ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/sheets/#{sheet.id}/compare/#{version_number}"
   end
 
   defp content_helpers do

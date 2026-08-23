@@ -19,7 +19,7 @@ defmodule Storyarn.Sheets.SheetCrud do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.ShortcutGenerator
   alias Storyarn.Sheets.TreeOperations
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord
 
   # =============================================================================
   # CRUD Operations
@@ -304,7 +304,7 @@ defmodule Storyarn.Sheets.SheetCrud do
       block_ids = Repo.all(from(b in Storyarn.Sheets.Block, where: b.sheet_id == ^sheet.id, select: b.id))
 
       # Delete all versions first
-      Repo.delete_all(from(v in EntityVersion, where: v.entity_type == "sheet" and v.entity_id == ^sheet.id))
+      Repo.delete_all(from(v in EntityVersionRecord, where: v.entity_type == "sheet" and v.entity_id == ^sheet.id))
 
       # Delete references where this sheet is the target
       ReferenceTracker.delete_target_references("sheet", sheet.id)

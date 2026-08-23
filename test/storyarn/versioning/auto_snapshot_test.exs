@@ -8,7 +8,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Versioning.EntityVersion
+  alias Storyarn.Sheets.Versioning.EntityVersionRecord
 
   setup do
     user = user_fixture()
@@ -23,7 +23,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
       sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
 
       {:ok, version} = Storyarn.Sheets.maybe_create_version(sheet, user.id)
-      assert %EntityVersion{is_auto: true} = version
+      assert %EntityVersionRecord{is_auto: true} = version
     end
 
     test "explicit is_auto: false overrides default", %{user: user, project: project} do
@@ -32,7 +32,7 @@ defmodule Storyarn.Versioning.AutoSnapshotTest do
       sheet = Storyarn.Repo.preload(sheet, :blocks, force: true)
 
       {:ok, version} = Storyarn.Sheets.maybe_create_version(sheet, user.id, is_auto: false)
-      assert %EntityVersion{is_auto: false} = version
+      assert %EntityVersionRecord{is_auto: false} = version
     end
   end
 
