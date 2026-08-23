@@ -1,0 +1,154 @@
+config/architecture_baselines/sheets.json
+  s_1837e1b58927a7::t_ae499d0513065d 5-7,10-11,15-17,20-21,25-26,30-31,35-36,41,45-46,84-93
+lib/storyarn/sheets/project_reference_integrity.ex
+  s_1837e1b58927a7::t_0bd797b38dac1d 1-15,17-18,21-253
+  s_1837e1b58927a7::t_8dba0275f233c4 16,19-20
+lib/storyarn_web/live/sheet_live/helpers/formula_helpers.ex
+  s_1837e1b58927a7::t_201a4086b404d0 13-14,42-43,55,57,174,242
+lib/storyarn/sheets/sheet_crud.ex
+  s_1837e1b58927a7::t_93e4b187d3f87d 419-420,426-432,435,440-441
+  s_1837e1b58927a7::t_4dd2fb5c011900 528,532
+  s_1837e1b58927a7::t_73271d9e93e003 28-30,34,39,41,52-53,59
+  s_1837e1b58927a7::t_726813d820834e 116,158,169
+  s_1837e1b58927a7::t_6d52649168eb47 8
+  s_1837e1b58927a7::t_8dba0275f233c4 16
+  s_1837e1b58927a7::t_4abb31204bf7bf 18,20
+  s_1837e1b58927a7::t_604b5f1dcb188d 13,15
+  s_1837e1b58927a7::t_2a1265422e8011 185-186,192
+  s_1837e1b58927a7::t_7f0b428bfe0d7b 231-232,234
+  s_1837e1b58927a7::t_5ed49b836602f8 21
+  s_1837e1b58927a7::t_0dcf1b0e7fe6d7 79-81,84,86,95,97,100,103,117,119
+  s_1837e1b58927a7::t_5385d07ae255e8 310
+  s_1837e1b58927a7::t_c04d8bd3723110 410,414
+lib/storyarn/sheets/block_crud.ex
+  s_1837e1b58927a7::t_5385d07ae255e8 318,365,391
+  s_1837e1b58927a7::t_59a5a07d77b2be 825,851,868,872
+  s_1837e1b58927a7::t_196886dbb58c7a 11,18
+  s_1837e1b58927a7::t_8dba0275f233c4 12
+lib/storyarn/sheets/schema.ex
+  s_1837e1b58927a7::t_465cbbbc348dd6 1-36
+lib/storyarn_web/live/sheet_live/index.ex
+  s_1837e1b58927a7::t_245fa4a49519c3 467
+lib/storyarn/sheets/block_gallery_image.ex
+  s_1837e1b58927a7::t_726813d820834e 14
+lib/storyarn/sheets/persistence/entity_trash_ref_record.ex
+  s_1837e1b58927a7::t_a5c6892e1520c8 1-31
+lib/storyarn/sheets/property_inheritance.ex
+  s_1837e1b58927a7::t_22f315ce015542 19
+  s_1837e1b58927a7::t_8dba0275f233c4 20
+  s_1837e1b58927a7::t_59a5a07d77b2be 1465,1528,1740
+lib/storyarn/sheets/events.ex
+  s_1837e1b58927a7::t_50448b908de7fc 1-50
+lib/storyarn/sheets/persistence/project_record.ex
+  s_1837e1b58927a7::t_3393d6508d56fa 6-9,11-15
+lib/storyarn/sheets/formula_engine.ex
+  s_1837e1b58927a7::t_98025f580cb5c0 1-496
+lib/storyarn_web/live/sheet_live/handlers/table_handlers.ex
+  s_1837e1b58927a7::t_201a4086b404d0 398-399
+lib/storyarn/sheets/avatar_crud.ex
+  s_1837e1b58927a7::t_e60d2889e62195 7
+  s_1837e1b58927a7::t_8dba0275f233c4 8
+lib/storyarn/sheets/naming.ex
+  s_1837e1b58927a7::t_b4e84ca89ec335 1-79
+lib/storyarn/sheets.ex
+  s_1837e1b58927a7::t_1a07a2f783cbec 29
+  s_1837e1b58927a7::t_620c3ec31fa2c1 704-709
+  s_1837e1b58927a7::t_015ee0ae94f3e3 28
+  s_1837e1b58927a7::t_4e146d752eccff 710-714
+  s_1837e1b58927a7::t_3559703a4a47a1 715-717
+  s_1837e1b58927a7::t_3908b6499c661f 35
+  s_1837e1b58927a7::t_ed0014bc6c4531 718-731
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_1837e1b58927a7::t_c7fad976eacce7 27
+lib/storyarn/sheets/table_crud.ex
+  s_1837e1b58927a7::t_d572c3f759ffae 11-12
+  s_1837e1b58927a7::t_59a5a07d77b2be 1197,1201
+  s_1837e1b58927a7::t_44415f675040f4 17
+  s_1837e1b58927a7::t_8dba0275f233c4 13
+lib/storyarn/platform/product_metrics.ex
+  s_1837e1b58927a7::t_a8f01b7059cb97 224-241
+  s_1837e1b58927a7::t_5c7096a322e59a 55
+  s_1837e1b58927a7::t_35a72eca07e37b 17
+  s_1837e1b58927a7::t_726813d820834e 56
+lib/storyarn_web/live_vue_encoders.ex
+  s_1837e1b58927a7::t_726813d820834e 61
+  s_1837e1b58927a7::t_27c21fd5088c64 75-79
+lib/storyarn/sheets/sheet.ex
+  s_1837e1b58927a7::t_425c8b4331fd5b 91,113,123,128,133,147,153
+  s_1837e1b58927a7::t_b8862dab674b3a 23-24
+  s_1837e1b58927a7::t_22f315ce015542 25
+lib/storyarn/sheets/persistence/project_membership_record.ex
+  s_1837e1b58927a7::t_336c4b8027d280 1-13
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_40833b8dcee427 491,498-508
+  s_1837e1b58927a7::t_c2c74418832c8f 492-497
+lib/storyarn/sheets/reference_tracker.ex
+  s_1837e1b58927a7::t_8dba0275f233c4 39
+  s_1837e1b58927a7::t_22f315ce015542 40
+lib/storyarn/sheets/block.ex
+  s_1837e1b58927a7::t_22f315ce015542 50
+  s_1837e1b58927a7::t_59a5a07d77b2be 334
+lib/storyarn/sheets/severity.ex
+  s_1837e1b58927a7::t_465cbbbc348dd6 1-17
+lib/storyarn_web/live/sheet_live/handlers/block_handlers.ex
+  s_1837e1b58927a7::t_d9a4fc25fe3f71 40-46
+lib/storyarn/sheets/shortcut_generator.ex
+  s_1837e1b58927a7::t_22f315ce015542 7
+  s_1837e1b58927a7::t_3f49e8bc58aa8e 65-72
+  s_1837e1b58927a7::t_1cab4a4f941704 31
+  s_1837e1b58927a7::t_427cb6030709e4 1-6,8-30,32-64,73-98
+lib/storyarn/sheets/health_checker.ex
+  s_1837e1b58927a7::t_22f315ce015542 13
+test/storyarn/platform/product_metrics_test.exs
+  s_1837e1b58927a7::t_431f642fb9103f 27
+  s_1837e1b58927a7::t_726813d820834e 28
+lib/storyarn/sheets/limits.ex
+  s_1837e1b58927a7::t_ec6d844498450d 1-57
+lib/storyarn/sheets/persistence/workspace_membership_record.ex
+  s_1837e1b58927a7::t_336c4b8027d280 1-13
+lib/storyarn/sheets/table_row.ex
+  s_1837e1b58927a7::t_22f315ce015542 15
+  s_1837e1b58927a7::t_59a5a07d77b2be 57
+lib/storyarn/sheets/sheet_queries.ex
+  s_1837e1b58927a7::t_ab810dbe7b27d3 16
+  s_1837e1b58927a7::t_c04d8bd3723110 50,135
+  s_1837e1b58927a7::t_46465a96d5c80a 24
+lib/storyarn/sheets/formula_resolver.ex
+  s_1837e1b58927a7::t_22f315ce015542 17
+lib/storyarn/sheets/gallery_crud.ex
+  s_1837e1b58927a7::t_8dba0275f233c4 10
+lib/storyarn/sheets/rich_text_mentions.ex
+  s_1837e1b58927a7::t_465cbbbc348dd6 1-99
+lib/storyarn/sheets/sheet_avatar.ex
+  s_1837e1b58927a7::t_59a5a07d77b2be 14,50
+  s_1837e1b58927a7::t_726813d820834e 15
+lib/storyarn/sheets/table_column.ex
+  s_1837e1b58927a7::t_59a5a07d77b2be 63
+  s_1837e1b58927a7::t_22f315ce015542 16
+lib/storyarn/sheets/project_access.ex
+  s_1837e1b58927a7::t_7bbee986095fb3 1-80
+lib/storyarn/sheets/persistence/workspace_record.ex
+  s_1837e1b58927a7::t_336c4b8027d280 1-14
+lib/storyarn/sheets/tree_operations.ex
+  s_1837e1b58927a7::t_726813d820834e 7
+  s_1837e1b58927a7::t_9012b814c3573d 26,49,56-278,280-285,359,377
+  s_1837e1b58927a7::t_8dba0275f233c4 8
+lib/storyarn/sheets/avatar_integrity.ex
+  s_1837e1b58927a7::t_cecea5fe6e2c84 1-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "ad313da31d4fd80513fb4803c8cf246ebf94277a",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
