@@ -82,24 +82,24 @@ dependency-kind strengthening, not individual call sites.
 | Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis`                                                                                                                                                         |
 | Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                                                                                                                                                                          |
 | Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                                                                                                                                                                                   |
-| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                                                                                                                                                                                   |
-| Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `StorageCompensation`, `StorageCleanupOwnershipReceipt`, `UploadPolicy`                                                                                                                                                                                   |
+| Collaboration    | `Storyarn.Platform.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                                                                                                                                                                                   |
+| Assets           | `Storyarn.Projects.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `StorageCompensation`, `StorageCleanupOwnershipReceipt`, `UploadPolicy`                                                                                                                                                                                   |
 | AI               | `Storyarn.AI`               | `Operations`, `Execution`, `Executor`, `Allowance`, `Context`, `Audit`, `IntegrationCrud`, `InferenceProviders`, `ModelCatalog`, `CredentialResolver`                                                                                                                                                                                                            |
-| References       | `Storyarn.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                                                                                                                                                                                 |
-| ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Deletion`, `Authorization`, `Audit`                                                                                                                                                                                                                                 |
-| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `SnapshotObjectFormat`, `SnapshotArchiveStorage`, `SnapshotObjectPublicationClaim`, `ProjectSnapshotCrud`, `ProjectSnapshotDownload`, `ProjectSnapshotZip`, `ProjectSnapshotReconciliation`, `ProjectSnapshotReconciliationRepair`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery` |
-| Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                                                                                                                                                                                    |
-| Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                                                                                                                                                                        |
-| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`, `StorageAccounting`, `StorageReservation`                                                                                                                                                                                                                                                                  |
-| CommandPalette   | `Storyarn.CommandPalette`   | `Definition`, `Registry`, `Operation`                                                                                                                                                                                                                                                                                                                            |
-| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                                                                                                                                                                                   |
-| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                                                                                                                                                                               |
-| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                                                                                                                                                                          |
-| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                                                                                                                                                                            |
-| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                                                                                                                                                                                  |
-| RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                                                                                                                                                                                     |
+| References       | `Storyarn.Projects.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                                                                                                                                                                                 |
+| ProjectTemplates | `Storyarn.Projects.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Deletion`, `Authorization`, `Audit`                                                                                                                                                                                                                                 |
+| Versioning       | `Storyarn.Projects.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `SnapshotObjectFormat`, `SnapshotArchiveStorage`, `SnapshotObjectPublicationClaim`, `ProjectSnapshotCrud`, `ProjectSnapshotDownload`, `ProjectSnapshotZip`, `ProjectSnapshotReconciliation`, `ProjectSnapshotReconciliationRepair`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery` |
+| Exports          | `Storyarn.Projects.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                                                                                                                                                                                    |
+| Imports          | `Storyarn.Projects.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                                                                                                                                                                        |
+| Billing          | `Storyarn.Platform.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`, `StorageAccounting`, `StorageReservation`                                                                                                                                                                                                                                                                  |
+| CommandPalette   | `Storyarn.Platform.CommandPalette`   | `Definition`, `Registry`, `Operation`                                                                                                                                                                                                                                                                                                                            |
+| GlobalSearch     | `Storyarn.Platform.GlobalSearch`     | `Destinations`                                                                                                                                                                                                                                                                                                                                                   |
+| Onboarding       | `Storyarn.Platform.Onboarding`       | `TutorialProgress`                                                                                                                                                                                                                                                                                                                                               |
+| Docs             | `Storyarn.Public.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                                                                                                                                                                          |
+| Blog             | `Storyarn.Public.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                                                                                                                                                                            |
+| Analytics        | `Storyarn.Platform.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                                                                                                                                                                                  |
+| RateLimiter      | `Storyarn.Platform.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                                                                                                                                                                                     |
 
-Snapshot lifecycle submodules under `Storyarn.Versioning` are
+Snapshot lifecycle submodules under `Storyarn.Projects.Versioning` are
 `ProjectSnapshotBuild`, `ProjectSnapshotLifecycle`, `ProjectSnapshotPolicy`,
 `ProjectSnapshotReconciliation` (with immutable run and finding schemas),
 `ProjectSnapshotReconciliationRepair` (with immutable repair action outcomes),
@@ -107,12 +107,12 @@ Snapshot lifecycle submodules under `Storyarn.Versioning` are
 `SnapshotCleanupIntent`.
 
 Facade-less directories — call the module directly, do not invent a facade:
-`lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),
-`lib/storyarn/product_metrics/` (`Taxonomy`), `lib/storyarn/publication/`,
-`lib/storyarn/workers/` (Oban workers).
+`lib/storyarn/platform/dashboards/` (`Cache`), `lib/storyarn/platform/emails/` (`Layout`, `Templates`),
+`lib/storyarn/platform/product_metrics/` (`Taxonomy`), `lib/storyarn/public/publication/`,
+`lib/storyarn/projects/workers/` (Oban workers).
 
-Single-module contexts with no directory: `Storyarn.FeatureFlags`, `Storyarn.Urls`,
-`Storyarn.Vault`, `Storyarn.LiveVueEncoders`.
+Single-module contexts with no directory: `Storyarn.Platform.FeatureFlags`, `Storyarn.Platform.Urls`,
+`Storyarn.Platform.Vault`, `Storyarn.LiveVueEncoders`.
 
 ---
 
@@ -136,7 +136,7 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   # no Storyarn.Shared.SoftDelete anymore:
   alias Storyarn.{Context}.SoftDelete
   alias Storyarn.Shared.{MapUtils, ShortcutHelpers}
-  alias Storyarn.Shared.SearchHelpers  # only if search is needed
+  alias Storyarn.Platform.Shared.SearchHelpers  # only if search is needed
 
   # ========== Queries ==========
   def list_{entities}(project_id) do
@@ -223,7 +223,7 @@ end
 
 **Changesets:** Always separate by operation: `create_changeset/2`, `update_changeset/2`, `move_changeset/2`, `delete_changeset/1`, `restore_changeset/1`
 
-**Validation:** Use `Storyarn.Shared.Validations.validate_shortcut/2` for shortcut fields.
+**Validation:** Use `Storyarn.Projects.Validations.validate_shortcut/2` for shortcut fields.
 
 **Do not re-implement the standard changesets** — `Storyarn.Shared.HierarchicalSchema`
 already provides `delete_changeset/1`, `restore_changeset/1`, `move_changeset/2`,
@@ -376,7 +376,7 @@ only the `put_flash` case (`put_flash_without_gettext`, web files only).
 `priv/gettext/errors.pot` still exists but **nothing calls `dgettext("errors", …)`**.
 `translate_error/1` was deleted from `core_components.ex`; changeset errors are now
 interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error/1` in
-`lib/storyarn/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
+`lib/storyarn/projects/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
 Do not route new error text through that domain expecting translation.
 
 ### After adding, moving or deleting a `dgettext` call
@@ -458,9 +458,9 @@ end
 
 ```elixir
 # Behaviour + Adapter pattern
-Storyarn.Assets.Storage.upload(key, data, content_type)
-Storyarn.Assets.Storage.delete(key)
-Storyarn.Assets.Storage.get_url(key)
+Storyarn.Projects.Assets.Storage.upload(key, data, content_type)
+Storyarn.Projects.Assets.Storage.delete(key)
+Storyarn.Projects.Assets.Storage.get_url(key)
 
 # Key generation
 key = Assets.generate_key(project, filename)

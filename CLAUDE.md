@@ -118,7 +118,7 @@ Locales: `en` (default), `es`
 
 **NEVER duplicate existing utilities.** Before writing ANY helper:
 
-1. **Check `lib/storyarn/shared/`** — CanonicalJSON, ColorUtils, EncryptedBinary, HtmlSanitizer, HtmlUtils, ImportHelpers, InvitationNotifier, InvitationOperations, InvitationSchema, MapUtils, MembershipOperations, NameNormalizer, SearchHelpers, StringUtils, TimeHelpers, TokenGenerator, Trashable, Validations, WordCount
+1. **Check `lib/storyarn/platform/shared/`** — CanonicalJSON, ColorUtils, EncryptedBinary, HierarchySearch, HtmlSanitizer, HtmlUtils, ImportHelpers, MapUtils, SearchHelpers, Severity, StringUtils, TimeHelpers, TokenGenerator (Project-owned helpers live in `lib/storyarn/projects/`: InvitationNotifier, InvitationOperations, InvitationSchema, MembershipOperations, NameNormalizer, Validations, WordCount)
 2. **Check `lib/storyarn_web/helpers/`** — Authorize, AutoSnapshot, EntitySearch, SaveStatusTimer, UndoRedoStack, VersionEventHelpers, VersionHistoryHelpers
 3. **Check `lib/storyarn_web/live/shared/`** — CollaborationHelpers, DashboardHandlers, DashboardHelpers, InvitationHelpers, OnboardingHelpers, PickerSearch, ProjectChromeHelpers
 4. **Read `docs/reference/shared-utilities.md`** for the full registry with examples

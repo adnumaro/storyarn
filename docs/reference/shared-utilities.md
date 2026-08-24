@@ -4,13 +4,13 @@
 >
 > Last reviewed: 2026-07-29
 >
-> Source of truth: `lib/storyarn/shared/`
+> Source of truth: `lib/storyarn/platform/shared/`
 
 **IMPORTANT: Before writing ANY helper function, search this registry first. Duplicating these utilities is a bug.**
 
-## `Storyarn.Shared.NameNormalizer`
+## `Storyarn.Projects.NameNormalizer`
 
-**File:** `lib/storyarn/shared/name_normalizer.ex` — **owned by the Project
+**File:** `lib/storyarn/projects/name_normalizer.ex` — **owned by the Project
 boundary** since ENG-92 (its only consumers). Tools carry their own copies
 (e.g. `Workspaces.Naming`, per-context `ShortcutGenerator`s); do not add
 foreign consumers.
@@ -70,9 +70,9 @@ copy the pattern into the owning context instead.
 
 ---
 
-## `Storyarn.Shared.Validations`
+## `Storyarn.Projects.Validations`
 
-**File:** `lib/storyarn/shared/validations.ex` — **owned by the Project
+**File:** `lib/storyarn/projects/validations.ex` — **owned by the Project
 boundary** since ENG-92. Workspaces and Accounts carry their formats inline
 (`Workspace.validate_slug`, `User.validate_email_format`,
 `WorkspaceInvitation.validate_email_format`); do not add foreign consumers.
@@ -95,9 +95,9 @@ changeset
 
 ---
 
-## `Storyarn.Shared.MapUtils`
+## `Storyarn.Platform.Shared.MapUtils`
 
-**File:** `lib/storyarn/shared/map_utils.ex`
+**File:** `lib/storyarn/platform/shared/map_utils.ex`
 
 Map transformation and parsing utilities for handling mixed atom/string key maps from forms and JSON.
 
@@ -123,9 +123,9 @@ MapUtils.parse_to_number(nil)   # => 0.0
 
 ---
 
-## `Storyarn.Shared.Severity`
+## `Storyarn.Platform.Shared.Severity`
 
-**File:** `lib/storyarn/shared/severity.ex`
+**File:** `lib/storyarn/platform/shared/severity.ex`
 
 The single ordering of the health severity catalog for shared Web dashboards
 (`StoryarnWeb.Live.Shared.DashboardHelpers`). Sealed boundaries carry their own
@@ -145,9 +145,9 @@ Enum.sort_by(findings, &Severity.rank(&1.severity))
 
 ---
 
-## `Storyarn.Shared.StringUtils`
+## `Storyarn.Platform.Shared.StringUtils`
 
-**File:** `lib/storyarn/shared/string_utils.ex`
+**File:** `lib/storyarn/platform/shared/string_utils.ex`
 
 | Function          | Purpose                                                                                                          |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------- |
@@ -158,9 +158,9 @@ Enum.sort_by(findings, &Severity.rank(&1.severity))
 
 ---
 
-## `Storyarn.Shared.SearchHelpers`
+## `Storyarn.Platform.Shared.SearchHelpers`
 
-**File:** `lib/storyarn/shared/search_helpers.ex`
+**File:** `lib/storyarn/platform/shared/search_helpers.ex`
 
 SQL injection prevention for LIKE queries.
 
@@ -175,9 +175,9 @@ where(query, [q], ilike(q.name, ^"%#{sanitized}%"))
 
 ---
 
-## `Storyarn.Shared.TimeHelpers`
+## `Storyarn.Platform.Shared.TimeHelpers`
 
-**File:** `lib/storyarn/shared/time_helpers.ex`
+**File:** `lib/storyarn/platform/shared/time_helpers.ex`
 
 | Function | Purpose                                             |
 | -------- | --------------------------------------------------- |
@@ -187,9 +187,9 @@ where(query, [q], ilike(q.name, ^"%#{sanitized}%"))
 
 ---
 
-## `Storyarn.Shared.TokenGenerator`
+## `Storyarn.Platform.Shared.TokenGenerator`
 
-**File:** `lib/storyarn/shared/token_generator.ex`
+**File:** `lib/storyarn/platform/shared/token_generator.ex`
 
 Cryptographic token generation for invitations and auth tokens.
 
@@ -200,21 +200,21 @@ Cryptographic token generation for invitations and auth tokens.
 
 ---
 
-## `Storyarn.Shared.EncryptedBinary`
+## `Storyarn.Platform.Shared.EncryptedBinary`
 
-**File:** `lib/storyarn/shared/encrypted_binary.ex`
+**File:** `lib/storyarn/platform/shared/encrypted_binary.ex`
 
 Custom Ecto type for Cloak-encrypted fields. Use in schemas:
 
 ```elixir
-field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
+field :api_key_encrypted, Storyarn.Platform.Shared.EncryptedBinary
 ```
 
 ---
 
-## `Storyarn.Shared.CanonicalJSON`
+## `Storyarn.Platform.Shared.CanonicalJSON`
 
-**File:** `lib/storyarn/shared/canonical_json.ex`
+**File:** `lib/storyarn/platform/shared/canonical_json.ex`
 
 Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, rejects structs/duplicate-normalized-keys/improper lists. Its only consumers are in `lib/storyarn/ai/`: context payload and entity content hashing, the execution-intent input hash that makes a repeated AI request replay instead of re-spending, and output encoding for the size cap and stored result. Any new hash over structured data MUST go through this module — two encoders mean two hashes for the same input, and the spend guarantee is exactly that identical input yields an identical key.
 
@@ -227,9 +227,9 @@ Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, r
 
 ---
 
-## `Storyarn.Shared.HtmlSanitizer`
+## `Storyarn.Platform.Shared.HtmlSanitizer`
 
-**File:** `lib/storyarn/shared/html_sanitizer.ex`
+**File:** `lib/storyarn/platform/shared/html_sanitizer.ex`
 
 HTML sanitizer with XSS protection. **ALWAYS use when rendering `raw()` content.**
 
@@ -249,7 +249,7 @@ Allowlist: `p br em strong b i u s span a ul ol li blockquote code pre sub sup d
 
 ---
 
-## Remaining `Storyarn.Shared.*` modules
+## Remaining `Storyarn.Platform.Shared.*` modules
 
 One line each. Open the file before writing anything that overlaps.
 

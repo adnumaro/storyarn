@@ -4,7 +4,7 @@ The UI is **Vue 3 rendered through LiveVue**, not HEEx. Server-rendered HEEx is 
 
 ## Project-Specific Notes
 
-**UI stack:** shadcn-vue + reka-ui over Tailwind v4. daisyUI is **gone** — no `@plugin "daisyui"`, no `btn`/`card`/`modal` classes, no themes. Theme tokens are CSS variables in `assets/css/app.css` (`:root` / `.dark`). One stale mention survives in `lib/storyarn/shared/color_utils.ex:4` (a docstring); the module itself is still used.
+**UI stack:** shadcn-vue + reka-ui over Tailwind v4. daisyUI is **gone** — no `@plugin "daisyui"`, no `btn`/`card`/`modal` classes, no themes. Theme tokens are CSS variables in `assets/css/app.css` (`:root` / `.dark`). One stale mention survives in `lib/storyarn/platform/shared/color_utils.ex:4` (a docstring); the module itself is still used.
 
 **Dialogs:** `assets/app/components/ConfirmDialog.vue`. **Never** `window.confirm/alert/prompt` or `data-confirm` — `mix convention.check` fails the build on those. There are no `<dialog>` elements and no `phx:show-modal` dispatch sites; the listeners in `assets/js/app.js` are vestigial.
 
@@ -171,7 +171,7 @@ Controllers automatically have `current_scope` available if they use the `:brows
 
 - **Never** nest multiple modules in the same file as it can cause cyclic dependencies and compilation errors
 - **Never** use map access syntax (`changeset[:field]`) on structs as they do not implement the Access behaviour by default. For regular structs, you **must** access the fields directly, such as `my_struct.field` or use higher level APIs that are available on the struct if they exist, `Ecto.Changeset.get_field/2` for changesets
-- Elixir's standard library has everything necessary for date and time manipulation. Familiarize yourself with the common `Time`, `Date`, `DateTime`, and `Calendar` interfaces by accessing their documentation as necessary. **Never** install additional dependencies unless asked or for date/time parsing (which you can use the `date_time_parser` package). In this project, use `Storyarn.Shared.TimeHelpers.now/0` instead of `DateTime.utc_now()` — `convention.check` enforces it
+- Elixir's standard library has everything necessary for date and time manipulation. Familiarize yourself with the common `Time`, `Date`, `DateTime`, and `Calendar` interfaces by accessing their documentation as necessary. **Never** install additional dependencies unless asked or for date/time parsing (which you can use the `date_time_parser` package). In this project, use `Storyarn.Platform.Shared.TimeHelpers.now/0` instead of `DateTime.utc_now()` — `convention.check` enforces it
 - Don't use `String.to_atom/1` on user input (memory leak risk); `convention.check` flags every call site. Use `String.to_existing_atom/1` behind a `when field in ~w(...)` guard
 - Predicate function names should not start with `is_` and should end in a question mark. Names like `is_thing` should be reserved for guards
 - Elixir's builtin OTP primitives like `DynamicSupervisor` and `Registry`, require names in the child spec, such as `{DynamicSupervisor, name: MyApp.MyDynamicSup}`, then you can use `DynamicSupervisor.start_child(MyApp.MyDynamicSup, child_spec)`
@@ -400,12 +400,12 @@ adapter and owns no domain model or business rule:
   read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
 - `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It
   must never become a catch-all for business behavior.
-- Legacy namespaces such as `Storyarn.AI`, `Storyarn.Assets`, `Storyarn.Billing`, `Storyarn.Emails`,
-  `Storyarn.Notifications`, `Storyarn.References`, `Storyarn.Versioning`, `Storyarn.Imports`, `Storyarn.Exports` and
-  `Storyarn.ProjectTemplates` are not additional bounded contexts. Business code in them must move to its owner
+- Legacy namespaces such as `Storyarn.AI`, `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`, `Storyarn.Platform.Emails`,
+  `Storyarn.Platform.Notifications`, `Storyarn.Projects.References`, `Storyarn.Projects.Versioning`, `Storyarn.Projects.Imports`, `Storyarn.Projects.Exports` and
+  `Storyarn.Projects.ProjectTemplates` are not additional bounded contexts. Business code in them must move to its owner
   above; only compatibility facades or technical adapters may remain during migration.
 
-Background jobs are Oban workers in `lib/storyarn/workers/`; they are application adapters, not bounded contexts.
+Background jobs are Oban workers in `lib/storyarn/projects/workers/`; they are application adapters, not bounded contexts.
 
 ## Event Contracts
 
@@ -446,7 +446,7 @@ A dialogue response is `%{id, text, condition, instruction, instruction_assignme
 
 ### File Size
 
-Nothing enforces a line limit — Credo checks line _length_ (120), not file length, and the largest files in the codebase are far past any figure previously written here (`lib/storyarn/assets.ex` 1921, `scene_live/show.ex` 2139, `flow_live/show.ex` 1699). Treat these as direction, not gates:
+Nothing enforces a line limit — Credo checks line _length_ (120), not file length, and the largest files in the codebase are far past any figure previously written here (`lib/storyarn/projects/assets.ex` 1921, `scene_live/show.ex` 2139, `flow_live/show.ex` 1699). Treat these as direction, not gates:
 
 - A LiveView `show.ex` should dispatch, not implement — push logic into `handlers/` (event handling, returns `{:noreply, socket}`) and `helpers/` (pure functions, no socket mutation)
 - A Vue component that owns more than one concern belongs in `composables/` plus a thin SFC
