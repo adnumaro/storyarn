@@ -5,7 +5,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.Scope
   alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.PublicLanguageMetadata
   alias StoryarnWeb.UserAuth
@@ -117,7 +116,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
         socket =
           socket
-          |> assign(:current_scope, Scope.for_user(updated_user))
+          |> assign(:current_scope, Accounts.scope_for_user(updated_user))
           |> assign(:profile_form, profile_form)
           |> maybe_apply_locale(updated_user.locale)
 

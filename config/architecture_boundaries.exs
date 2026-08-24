@@ -385,12 +385,12 @@ forbidden_dependencies =
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
   # when the current xref graph contains the exact same edge.
-  zero_debt_consumers: [:flows, :scenes, :localization, :sheets, :workspaces],
+  zero_debt_consumers: [:accounts, :flows, :scenes, :localization, :sheets, :workspaces],
 
   # Flows, Scenes, Localization and Sheets are sealed in both directions. Durable
   # coordinator access to their public facades must use an exact exception; it
   # cannot be accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:flows, :scenes, :localization, :sheets, :workspaces],
+  isolated_contexts: [:accounts, :flows, :scenes, :localization, :sheets, :workspaces],
 
   # Repo is deliberately shared during ENG-92. Ecto and other external
   # dependencies do not appear as repository paths in the xref JSON graph.
@@ -591,6 +591,18 @@ forbidden_dependencies =
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
       reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/ai_team.ex",
+      target: "lib/storyarn_web/live/settings_live/sudo.ex",
+      kinds: ["runtime"],
+      reason: "AI team settings gate sensitive actions behind the account sudo re-authentication flow"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/integration_detail.ex",
+      target: "lib/storyarn_web/live/settings_live/sudo.ex",
+      kinds: ["runtime"],
+      reason: "Integration credential actions gate behind the account sudo re-authentication flow"
     },
     %{
       source: "lib/storyarn/accounts/passwords.ex",

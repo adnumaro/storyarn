@@ -106,6 +106,14 @@ defmodule Storyarn.Accounts do
   @spec change_user_registration(user(), attrs(), keyword()) :: changeset()
   defdelegate change_user_registration(user, attrs \\ %{}, opts \\ []), to: Registration
 
+  @doc "Returns a bare user struct for registration forms."
+  @spec new_user() :: user()
+  def new_user, do: %User{}
+
+  @doc "Builds the session scope for an authenticated user."
+  @spec scope_for_user(user() | nil) :: Scope.t()
+  defdelegate scope_for_user(user), to: Scope, as: :for_user
+
   # =============================================================================
   # Sessions
   # =============================================================================

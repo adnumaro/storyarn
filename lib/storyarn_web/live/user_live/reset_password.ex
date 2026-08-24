@@ -4,7 +4,6 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.User
   alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserAuth
 
@@ -37,7 +36,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
   @impl true
   def mount(%{"token" => token}, _session, socket) do
     case Accounts.get_user_by_reset_password_token(token) do
-      %User{} = user ->
+      %{id: _} = user ->
         {:ok,
          socket
          |> assign(:token, token)
@@ -70,7 +69,7 @@ defmodule StoryarnWeb.UserLive.ResetPassword do
 
   def handle_event("reset_password", %{"user" => user_params}, socket) do
     case Accounts.get_user_by_reset_password_token(socket.assigns.token) do
-      %User{} = user ->
+      %{id: _} = user ->
         reset_password(socket, user, user_params)
 
       nil ->

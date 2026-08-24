@@ -42,16 +42,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn_web/live/settings_live/ai_team.ex",
-      "lib/storyarn_web/live/settings_live/sudo.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/settings_live/integration_detail.ex",
-      "lib/storyarn_web/live/settings_live/sudo.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/shared/notification_helpers.ex",
       "lib/storyarn/notifications.ex",
       "runtime"

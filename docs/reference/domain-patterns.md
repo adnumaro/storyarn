@@ -34,13 +34,13 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 
 ### ENG-92 bounded-context ratchet
 
-Storyarn currently protects five business boundaries: `Sheets`, `Flows`,
-`Scenes`, `Workspaces`, and `Project`. The Project boundary includes the
-project/global coordination code in `Projects`, `References`, `Versioning`,
-`Exports`, `Imports`, and `ProjectTemplates`.
+Storyarn currently protects six business boundaries: `Sheets`, `Flows`,
+`Scenes`, `Workspaces`, `Accounts`, and `Project`. The Project boundary
+includes the project/global coordination code in `Projects`, `References`,
+`Versioning`, `Exports`, `Imports`, and `ProjectTemplates`.
 
 New code dependencies between these boundaries are forbidden. `Flows`,
-`Scenes`, `Localization`, `Sheets`, and `Workspaces` are sealed in both directions
+`Scenes`, `Localization`, `Sheets`, `Workspaces`, and `Accounts` are sealed in both directions
 (`zero_debt_consumers` + `isolated_contexts`); coordinator access to their
 public facades requires an exact reviewed exception. Remaining edges are legacy
 migration debt recorded exactly in the partitioned baselines under
@@ -68,7 +68,7 @@ dependency-kind strengthening, not individual call sites.
 
 | Context          | Facade                      | Key Submodules                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `UserNotifier`, `UserToken`                                                                                                                                                                                                                                                     |
+| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `Events`, `UserNotifier`, `UserToken`                                                                                                                                                                                                                                                     |
 | Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations`, `InvitationNotifier`, `Naming`, `Events`, `Persistence.*` records (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                                                                                                                                                                                                            |
 | Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                                                                                                                                                                                     |
 | Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`                                                                                                                                                                              |

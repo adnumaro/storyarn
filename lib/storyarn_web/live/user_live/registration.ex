@@ -59,7 +59,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   def mount(_params, _session, socket) do
-    user = %Accounts.User{}
+    user = Accounts.new_user()
     changeset = Ecto.Changeset.cast(user, %{}, [])
 
     {:ok,

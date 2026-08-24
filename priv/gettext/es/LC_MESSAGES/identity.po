@@ -76,7 +76,7 @@ msgstr "¡Cuenta creada correctamente! Te damos la bienvenida."
 msgid "Invalid or expired registration link."
 msgstr "El enlace de registro no es válido o ha caducado."
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:99
+#: lib/storyarn_web/live/user_live/reset_password.ex:98
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired password reset link."
 msgstr "El enlace para restablecer la contraseña es inválido o ha caducado."

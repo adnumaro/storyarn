@@ -76,7 +76,7 @@ msgstr ""
 msgid "Invalid or expired registration link."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/reset_password.ex:99
+#: lib/storyarn_web/live/user_live/reset_password.ex:98
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired password reset link."
 msgstr ""

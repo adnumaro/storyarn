@@ -95,7 +95,7 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   defp authenticated?(conn) do
-    match?(%{current_scope: %{user: %Accounts.User{}}}, conn.assigns)
+    match?(%{current_scope: %{user: %{id: _}}}, conn.assigns)
   end
 
   def confirm_access(conn, %{"sudo_handoff" => sudo_handoff, "return_to" => requested_return_to}) do
