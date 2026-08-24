@@ -401,13 +401,25 @@ forbidden_dependencies =
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
-  # when the current xref graph contains the exact same edge.
-  zero_debt_consumers: [:accounts, :flows, :scenes, :localization, :projects, :sheets, :workspaces],
+  # when the current xref graph contains the exact same edge. Every partition
+  # is sealed: the ENG-92 debt baseline is empty and can only stay empty.
+  zero_debt_consumers: [
+    :accounts,
+    :flows,
+    :infrastructure,
+    :localization,
+    :platform,
+    :projects,
+    :scenes,
+    :sheets,
+    :web_infrastructure,
+    :workspaces
+  ],
 
-  # Flows, Scenes, Localization and Sheets are sealed in both directions. Durable
-  # coordinator access to their public facades must use an exact exception; it
-  # cannot be accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:accounts, :flows, :scenes, :localization, :projects, :sheets, :workspaces],
+  # Every bounded context is sealed in both directions. Durable cross-boundary
+  # access to a public facade must use an exact exception; it cannot be
+  # accepted by adding an inbound edge to another consumer's debt baseline.
+  isolated_contexts: [:accounts, :flows, :localization, :platform, :projects, :scenes, :sheets, :workspaces],
 
   # Repo is deliberately shared during ENG-92. Ecto and other external
   # dependencies do not appear as repository paths in the xref JSON graph.
@@ -452,6 +464,24 @@ forbidden_dependencies =
   # why it is a durable architectural contract. Temporary debt belongs only in
   # the baseline files, never here.
   exceptions: [
+    %{
+      source: "lib/storyarn_web/live/hooks/notifications.ex",
+      target: "lib/storyarn/notifications.ex",
+      kinds: ["runtime"],
+      reason: "The notifications hook subscribes and marks read state through the public Notifications facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/notifications.ex",
+      kinds: ["runtime"],
+      reason: "Palette operations publish committed notification outcomes through the public Notifications facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/notification_helpers.ex",
+      target: "lib/storyarn/notifications.ex",
+      kinds: ["runtime"],
+      reason: "The shared notification helpers list and count through the public Notifications facade"
+    },
     %{
       source: "lib/storyarn/workers/deliver_invitation_worker.ex",
       target: "lib/storyarn/projects.ex",

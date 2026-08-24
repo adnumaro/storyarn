@@ -8,7 +8,6 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
   """
 
   alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
 
   @type filter :: :all | :unread
 
@@ -26,7 +25,7 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
     }
   end
 
-  defp serialize(%Notification{} = notification) do
+  defp serialize(%{id: _} = notification) do
     %{
       id: notification.id,
       kind: notification.kind,

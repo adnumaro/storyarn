@@ -39,20 +39,20 @@ Storyarn currently protects six business boundaries: `Sheets`, `Flows`,
 includes the project/global coordination code in `Projects`, `References`,
 `Versioning`, `Exports`, `Imports`, and `ProjectTemplates`.
 
-New code dependencies between these boundaries are forbidden. `Flows`,
-`Scenes`, `Localization`, `Sheets`, `Workspaces`, `Accounts`, and the `Project`
-boundary are sealed in both directions
-(`zero_debt_consumers` + `isolated_contexts`); coordinator access to their
-public facades requires an exact reviewed exception. Remaining edges are legacy
-migration debt recorded exactly in the partitioned baselines under
-`config/architecture_baselines/`; a facade call does not make such a dependency
-acceptable. Consumer-owned Ecto records may map the existing shared tables, but
-must not associate to schemas owned by another boundary. ENG-92 keeps the shared
-Repo, SQL schema, and current write behavior unchanged.
+New code dependencies between these boundaries are forbidden. Every boundary —
+`Flows`, `Scenes`, `Localization`, `Sheets`, `Workspaces`, `Accounts`, the
+`Project` boundary, and `Platform` — is sealed in both directions
+(`zero_debt_consumers` + `isolated_contexts`), and the partitioned baselines
+under `config/architecture_baselines/` are **empty**: the ENG-92 migration debt
+is fully repaid and every partition is pinned at zero. Durable cross-boundary
+access to a public facade requires an exact reviewed exception; a facade call
+does not make a new dependency acceptable. Consumer-owned Ecto records may map
+the existing shared tables, but must not associate to schemas owned by another
+boundary. ENG-92 keeps the shared Repo, SQL schema, and current write behavior
+unchanged.
 
-`mix architecture.check` compares the JSON `mix xref` graph with that debt. It
-rejects new edges, stronger dependency kinds, and stale baseline entries. The
-baseline may only shrink or weaken as dependencies are migrated. `platform` is
+`mix architecture.check` compares the JSON `mix xref` graph with that policy.
+It rejects any forbidden edge that is not an exact exception. `platform` is
 a technical classification rather than a fifth business boundary: tools may use its listed
 public/technical contracts, while platform code may not become a hidden bridge
 back into a tool. Project/platform

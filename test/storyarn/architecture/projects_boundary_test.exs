@@ -73,11 +73,21 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     """
   end
 
-  test "the ratchet seals the projects boundary in both directions" do
+  test "the ratchet seals every boundary and the debt baseline stays empty" do
     config = File.read!("config/architecture_boundaries.exs")
 
-    assert config =~ ~r/zero_debt_consumers:[^\]]*:projects/s
-    assert config =~ ~r/isolated_contexts:[^\]]*:projects/s
+    for context <- ~w(accounts flows localization platform projects scenes sheets workspaces) do
+      assert config =~ ~r/zero_debt_consumers:[^\]]*:#{context}/s
+      assert config =~ ~r/isolated_contexts:[^\]]*:#{context}/s
+    end
+
+    assert config =~ ~r/zero_debt_consumers:[^\]]*:infrastructure/s
+    assert config =~ ~r/zero_debt_consumers:[^\]]*:web_infrastructure/s
+
+    for baseline <- Path.wildcard("config/architecture_baselines/*.json") do
+      assert %{"edges" => []} = baseline |> File.read!() |> JSON.decode!(),
+             "#{baseline} must stay empty: the ENG-92 debt is fully repaid"
+    end
   end
 
   test "reclassified shared modules are consumed only inside the projects boundary" do

@@ -1,26 +1,5 @@
 {
   "consumer": "web_infrastructure",
-  "edges": [
-    [
-      "lib/storyarn_web/live/hooks/notifications.ex",
-      "lib/storyarn/notifications.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/hooks/palette.ex",
-      "lib/storyarn/notifications.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/shared/notification_helpers.ex",
-      "lib/storyarn/notifications.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/shared/notification_helpers.ex",
-      "lib/storyarn/notifications/notification.ex",
-      "export"
-    ]
-  ],
+  "edges": [],
   "version": 1
 }
