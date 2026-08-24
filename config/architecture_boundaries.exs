@@ -228,16 +228,22 @@ boundaries = %{
     "lib/storyarn/global_search/advanced_search.ex",
     "lib/storyarn/global_search/destinations.ex",
     "lib/storyarn/global_search/flow_search.ex",
+    "lib/storyarn/global_search/persistence/block_gallery_image_record.ex",
+    "lib/storyarn/global_search/persistence/block_record.ex",
     "lib/storyarn/global_search/persistence/flow_connection_record.ex",
     "lib/storyarn/global_search/persistence/flow_node_record.ex",
     "lib/storyarn/global_search/persistence/flow_record.ex",
     "lib/storyarn/global_search/persistence/scene_annotation_record.ex",
+    "lib/storyarn/global_search/persistence/sheet_record.ex",
+    "lib/storyarn/global_search/persistence/table_column_record.ex",
+    "lib/storyarn/global_search/persistence/table_row_record.ex",
     "lib/storyarn/global_search/persistence/scene_connection_record.ex",
     "lib/storyarn/global_search/persistence/scene_layer_record.ex",
     "lib/storyarn/global_search/persistence/scene_pin_record.ex",
     "lib/storyarn/global_search/persistence/scene_record.ex",
     "lib/storyarn/global_search/persistence/scene_zone_record.ex",
     "lib/storyarn/global_search/scene_search.ex",
+    "lib/storyarn/global_search/sheet_search.ex",
     "lib/storyarn/global_search/variable_query.ex",
     "lib/storyarn/global_search/variable_search.ex",
     "lib/storyarn/mailer.ex",
@@ -517,6 +523,20 @@ forbidden_dependencies =
       target: "lib/storyarn/references.ex",
       kinds: ["runtime"],
       reason: "Sheet restore triggers the Project-owned project-wide variable reference rebuild through its public facade"
+    },
+    %{
+      source: "lib/storyarn/global_search/variable_search.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason:
+        "Global variable search is technical infrastructure over the Sheet-owned variable catalog; the predicate engine reads through the public Sheets facade rather than duplicating the 1000-line catalog"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason:
+        "The global command palette creates, deletes, and localizes entities of every tool through each tool's public facade"
     },
     %{
       source: "lib/storyarn/scenes/scene_crud.ex",

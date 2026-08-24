@@ -281,6 +281,11 @@ defmodule Storyarn.Sheets do
   @spec delete_sheet_subtree(sheet()) ::
           {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
   defdelegate delete_sheet_subtree(sheet), to: SheetCrud
+
+  @doc false
+  defdelegate delete_sheet_subtree_by_id_in_transaction(actor_scope, project_id, sheet_id),
+    to: SheetCrud
+
   defdelegate delete_sheet_subtree(actor_scope, sheet), to: SheetCrud
 
   @doc false

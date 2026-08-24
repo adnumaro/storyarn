@@ -13,11 +13,11 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
   alias Storyarn.GlobalSearch.FlowSearch
   alias Storyarn.GlobalSearch.Persistence.FlowRecord
   alias Storyarn.GlobalSearch.Persistence.SceneRecord
+  alias Storyarn.GlobalSearch.Persistence.SheetRecord, as: Sheet
   alias Storyarn.GlobalSearch.SceneSearch
+  alias Storyarn.GlobalSearch.SheetSearch
   alias Storyarn.GlobalSearch.VariableSearch
   alias Storyarn.Shared.HierarchySearch
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.Sheet
 
   @default_limit 25
   @max_limit 50
@@ -110,7 +110,7 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
 
     candidates =
       [
-        {:sheet, Sheets.search_sheets_deep(project_id, query, limit: fetch_limit)},
+        {:sheet, SheetSearch.search_deep(project_id, query, limit: fetch_limit)},
         {:flow, FlowSearch.search_deep(project_id, query, limit: fetch_limit)},
         {:scene, SceneSearch.search_deep(project_id, query, limit: fetch_limit)}
       ]

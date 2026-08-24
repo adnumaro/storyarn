@@ -53,11 +53,6 @@
     ],
     [
       "lib/storyarn_web/live/hooks/palette.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/hooks/palette.ex",
       "lib/storyarn/workspaces.ex",
       "runtime"
     ],

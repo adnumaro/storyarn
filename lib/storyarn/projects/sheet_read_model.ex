@@ -3,9 +3,17 @@ defmodule Storyarn.Projects.SheetReadModel do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.FlowVariableNamespaceResolver
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetRecord
+  alias Storyarn.Projects.Persistence.TableColumnRecord
+  alias Storyarn.Projects.Persistence.TableRowRecord
   alias Storyarn.Repo
+  alias Storyarn.Shared.HtmlUtils
+
+  require FlowVariableNamespaceResolver
+
+  @localizable_block_types ~w(text rich_text)
 
   @doc """
   Lists active sheets with the exact preload shape project snapshots capture.
@@ -59,6 +67,110 @@ defmodule Storyarn.Projects.SheetReadModel do
       :count
     )
   end
+
+  @doc """
+  Counts the project's sheet variables with the exact filters the Sheet tool's
+  variable catalog applies — including the table variant, which counts every
+  cell (column x row), not columns.
+  """
+  def count_variables(project_id) do
+    count_block_variables(project_id) + count_table_variables(project_id)
+  end
+
+  defp count_block_variables(project_id) do
+    variable_types = ~w(text rich_text number select multi_select boolean date)
+
+    Repo.aggregate(
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: block.sheet_id == sheet.id,
+        where:
+          sheet.project_id == ^project_id and
+            is_nil(sheet.deleted_at) and
+            is_nil(block.deleted_at) and
+            block.type in ^variable_types and
+            block.is_constant == false and
+            not is_nil(block.variable_name) and
+            block.variable_name != "" and
+            FlowVariableNamespaceResolver.authoritative_namespace_owner?(sheet)
+      ),
+      :count
+    )
+  end
+
+  defp count_table_variables(project_id) do
+    variable_column_types = ~w(number text boolean select multi_select date reference formula)
+
+    Repo.aggregate(
+      from(column in TableColumnRecord,
+        join: block in BlockRecord,
+        on: column.block_id == block.id,
+        join: sheet in SheetRecord,
+        on: block.sheet_id == sheet.id,
+        join: row in TableRowRecord,
+        on: row.block_id == block.id,
+        where: sheet.project_id == ^project_id,
+        where: is_nil(sheet.deleted_at) and is_nil(block.deleted_at),
+        where: block.type == "table",
+        where: column.type in ^variable_column_types,
+        where: column.is_constant == false or column.type == "formula",
+        where: FlowVariableNamespaceResolver.authoritative_namespace_owner?(sheet)
+      ),
+      :count
+    )
+  end
+
+  @doc """
+  Word counts per active sheet — name words plus localizable block words,
+  mirroring the Sheet tool's runtime content contract.
+  """
+  def sheet_word_counts(project_id) do
+    block_counts =
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and is_nil(sheet.deleted_at) and
+            block.type in ^@localizable_block_types,
+        select: %{
+          sheet_id: block.sheet_id,
+          type: block.type,
+          is_constant: block.is_constant,
+          variable_name: block.variable_name,
+          deleted_at: block.deleted_at,
+          word_count: block.word_count
+        }
+      )
+      |> Repo.all()
+      |> Enum.filter(&localizable_block?/1)
+      |> Enum.reduce(%{}, fn block, counts ->
+        Map.update(counts, block.sheet_id, block.word_count, &(&1 + block.word_count))
+      end)
+
+    sheet_counts =
+      SheetRecord
+      |> where([sheet], sheet.project_id == ^project_id and is_nil(sheet.deleted_at))
+      |> select([sheet], {sheet.id, sheet.name})
+      |> Repo.all()
+      |> Map.new(fn {sheet_id, name} -> {sheet_id, name_word_count(name)} end)
+
+    Map.merge(sheet_counts, block_counts, fn _sheet_id, name_words, block_words ->
+      name_words + block_words
+    end)
+  end
+
+  defp localizable_block?(block) do
+    block.type in @localizable_block_types and
+      block.is_constant == false and
+      present_variable_name?(block.variable_name) and
+      is_nil(block.deleted_at)
+  end
+
+  defp present_variable_name?(name) when is_binary(name), do: String.trim(name) != ""
+  defp present_variable_name?(_name), do: false
+
+  defp name_word_count(name) when is_binary(name), do: HtmlUtils.word_count(name)
+  defp name_word_count(_name), do: 0
 
   defp maybe_filter_ids(query, :all), do: query
 

@@ -20,11 +20,11 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
   alias Storyarn.Shared.Severity
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.Sheet
 
   @tools [:flows, :sheets, :scenes]
 
@@ -40,7 +40,7 @@ defmodule Storyarn.Projects.Dashboard do
   """
   def project_stats(project_id) do
     %{
-      sheet_count: Sheets.count_sheets(project_id),
+      sheet_count: SheetReadModel.count_active(project_id),
       variable_count: count_variables(project_id),
       flow_count: FlowReadModel.count_flows(project_id),
       dialogue_count: count_dialogue_nodes(project_id),
@@ -149,11 +149,11 @@ defmodule Storyarn.Projects.Dashboard do
   # Private Helpers — New Queries
   # ===========================================================================
 
-  # Uses existing Sheets.list_project_variables/1 which handles both
-  # regular block variables AND table cell variables (TableColumn + TableRow).
-  # A custom count query would miss table variables.
+  # Counts both regular block variables AND table cell variables
+  # (TableColumn + TableRow) — a plain block count query would miss the
+  # table half. The read model mirrors the Sheet tool's catalog filters.
   defp count_variables(project_id) do
-    project_id |> Sheets.list_project_variables() |> length()
+    SheetReadModel.count_variables(project_id)
   end
 
   defp count_dialogue_nodes(project_id) do
@@ -178,7 +178,7 @@ defmodule Storyarn.Projects.Dashboard do
 
     sheet_words =
       project_id
-      |> Sheets.sheet_word_counts()
+      |> SheetReadModel.sheet_word_counts()
       |> Map.values()
       |> Enum.sum()
 

@@ -12,8 +12,8 @@ defmodule Storyarn.GlobalSearch.Destinations do
   alias Storyarn.Accounts.Scope
   alias Storyarn.GlobalSearch.FlowSearch
   alias Storyarn.GlobalSearch.SceneSearch
+  alias Storyarn.GlobalSearch.SheetSearch
   alias Storyarn.Projects
-  alias Storyarn.Sheets
   alias Storyarn.Workspaces
 
   @max_query_length 100
@@ -165,7 +165,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
     end
   end
 
-  defp get_entity(:sheet, project_id, id), do: Sheets.get_sheet(project_id, id)
+  defp get_entity(:sheet, project_id, id), do: SheetSearch.get(project_id, id)
   defp get_entity(:flow, project_id, id), do: FlowSearch.get(project_id, id)
   defp get_entity(:scene, project_id, id), do: SceneSearch.get(project_id, id)
 
@@ -249,7 +249,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
 
     Enum.flat_map(
       [
-        {:sheet, Sheets.search_sheets_in_projects(project_ids, query, search_opts)},
+        {:sheet, SheetSearch.search_in_projects(project_ids, query, search_opts)},
         {:flow, FlowSearch.search_in_projects(project_ids, query, search_opts)},
         {:scene, SceneSearch.search_in_projects(project_ids, query, search_opts)}
       ],

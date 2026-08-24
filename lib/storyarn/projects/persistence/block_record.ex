@@ -25,7 +25,7 @@ defmodule Storyarn.Projects.Persistence.BlockRecord do
     field :detached, :boolean, default: false
     field :column_group_id, Ecto.UUID
     field :column_index, :integer, default: 0
-    field :inherited_from_block_id, :id
+    belongs_to :inherited_from_block, __MODULE__
     field :deleted_at, :utc_datetime
 
     belongs_to :sheet, SheetRecord

@@ -317,16 +317,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/projects/dashboard.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/dashboard.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/projects/invitations.ex",
       "lib/storyarn/shared/invitation_operations.ex",
       "runtime"
@@ -714,11 +704,6 @@
     [
       "lib/storyarn_web/live/project_live/invitation.ex",
       "lib/storyarn/publication/locales.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/project_live/show.ex",
-      "lib/storyarn/sheets.ex",
       "runtime"
     ],
     [

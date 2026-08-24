@@ -31,6 +31,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.SceneHealthReadModel
   alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetHealthReadModel
   alias Storyarn.Projects.SheetProjectTrash
 
   @doc false
@@ -255,6 +256,16 @@ defmodule Storyarn.Projects do
 
   @doc "Restores a trashed Scene through the Project lifecycle boundary."
   defdelegate restore_trashed_scene(scene), to: SceneProjectTrash, as: :restore
+
+  @doc "Project-wide Sheet health findings for the dashboard."
+  defdelegate list_sheet_dashboard_health_findings(project_id, referenced_ids \\ nil),
+    to: SheetHealthReadModel,
+    as: :list_dashboard_health_findings
+
+  @doc "Block ids referenced by variables or table formula bindings."
+  defdelegate sheet_referenced_block_ids(project_id),
+    to: SheetHealthReadModel,
+    as: :referenced_block_ids_for_project
 
   @doc "Returns Project-owned dashboard health findings for all active Scenes."
   defdelegate list_scene_dashboard_health_findings(project_id),

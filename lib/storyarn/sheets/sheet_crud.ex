@@ -228,6 +228,15 @@ defmodule Storyarn.Sheets.SheetCrud do
   end
 
   @doc false
+  def delete_sheet_subtree_by_id_in_transaction(%{user: %{id: actor_id}} = actor_scope, project_id, sheet_id)
+      when is_integer(actor_id) and actor_id > 0 do
+    case Repo.get_by(Sheet, id: sheet_id, project_id: project_id) do
+      %Sheet{deleted_at: nil} = sheet -> delete_sheet_subtree_in_transaction(actor_scope, sheet)
+      _missing_or_deleted -> Repo.rollback(:not_found)
+    end
+  end
+
+  @doc false
   def delete_sheet_subtree_in_transaction(%{user: %{id: actor_id}}, %Sheet{} = sheet)
       when is_integer(actor_id) and actor_id > 0 do
     deleted = delete_sheet_subtree_in_transaction(sheet)
