@@ -16,8 +16,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   require Logger
 

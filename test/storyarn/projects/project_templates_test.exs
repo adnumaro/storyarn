@@ -25,6 +25,10 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.SnapshotStorage
+  alias Storyarn.Projects.Workers.DeleteProjectTemplateArtifactsWorker
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
+  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
+  alias Storyarn.Projects.Workers.PublishProjectTemplateWorker
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
@@ -32,10 +36,6 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SheetsFixtures
   alias Storyarn.SnapshotReadSwitchStorage
-  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
-  alias Storyarn.Workers.InstallProjectTemplateWorker
-  alias Storyarn.Workers.PublishProjectTemplateWorker
   alias Storyarn.Workspaces.WorkspaceMembership
   alias Storyarn.WorkspacesFixtures
 

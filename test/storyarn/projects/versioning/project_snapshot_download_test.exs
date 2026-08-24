@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
   alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Versioning
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
 
   test "coalesces overlapping grants onto one renewed zero-byte lease" do
     user = user_fixture()

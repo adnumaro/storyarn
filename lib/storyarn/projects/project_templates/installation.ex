@@ -24,9 +24,9 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   alias Storyarn.Projects.Versioning.Builders.AssetCopyError
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.SnapshotStorage
+  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
-  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   require Logger
 

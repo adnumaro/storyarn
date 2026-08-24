@@ -20,6 +20,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
   alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References.Persistence.EntityTrashRefRecord, as: EntityTrashRef
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -32,7 +33,6 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
   alias Storyarn.Sheets.TableRow
   alias Storyarn.Sheets.Versioning.LocalizationCodec, as: LocalizationSnapshotCodec
   alias Storyarn.Sheets.Versioning.SheetSnapshot, as: SheetBuilder
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture(%{email: "sheet-builder-#{Ecto.UUID.generate()}@example.com"})

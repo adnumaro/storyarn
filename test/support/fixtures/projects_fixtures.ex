@@ -8,11 +8,11 @@ defmodule Storyarn.ProjectsFixtures do
 
   alias Storyarn.AccountsFixtures
   alias Storyarn.Platform.Shared.EncryptedBinary
+  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.WorkspacesFixtures
 
   def unique_project_name, do: "Project #{System.unique_integer([:positive])}"

@@ -24,8 +24,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Workers.InspectProjectSnapshotsWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
   require Logger
 
@@ -41,9 +41,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   @max_bigint 9_223_372_036_854_775_807
   @inventory_digest_seed String.duplicate("0", 64)
   @provider_prefix "projects/"
-  @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
+  @build_worker "Storyarn.Projects.Workers.BuildProjectSnapshotWorker"
   @archive_build_queue "snapshot_archives"
-  @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
+  @inspection_worker "Storyarn.Projects.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
   @finding_insert_fields ProjectSnapshotReconciliationFinding.__schema__(:fields) -- [:id]
   @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/archives/v2/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>

@@ -8,10 +8,10 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.UserToken
+  alias Storyarn.Accounts.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Accounts.Workers.RequestResetPasswordInstructionsWorker
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
-  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
   alias StoryarnWeb.UserLive.ForgotPassword
 
   defp get_forgot_password_vue(view) do

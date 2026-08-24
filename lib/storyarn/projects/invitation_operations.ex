@@ -22,12 +22,12 @@ defmodule Storyarn.Projects.InvitationOperations do
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Projects.InvitationNotifier
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeliverInvitationWorker
 
   require Logger
 

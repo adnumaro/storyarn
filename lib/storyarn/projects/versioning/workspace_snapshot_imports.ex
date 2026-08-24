@@ -18,9 +18,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
+  alias Storyarn.Projects.Workers.ImportProjectSnapshotWorker
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
-  alias Storyarn.Workers.ImportProjectSnapshotWorker
 
   require Logger
 

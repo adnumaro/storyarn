@@ -72,26 +72,26 @@ boundaries = %{
     "lib/storyarn/projects/imports/",
     "lib/storyarn/projects/project_templates.ex",
     "lib/storyarn/projects/project_templates/",
-    "lib/storyarn/workers/trash_retention_worker.ex",
+    "lib/storyarn/projects/workers/trash_retention_worker.ex",
     "lib/storyarn/projects/name_normalizer.ex",
     "lib/storyarn/projects/validations.ex",
     "lib/storyarn/projects/word_count.ex",
-    "lib/storyarn/workers/build_project_snapshot_worker.ex",
-    "lib/storyarn/workers/cleanup_project_snapshot_worker.ex",
-    "lib/storyarn/workers/delete_project_template_artifacts_worker.ex",
-    "lib/storyarn/workers/delete_storage_objects_worker.ex",
-    "lib/storyarn/workers/expire_project_imports_worker.ex",
-    "lib/storyarn/workers/import_project_snapshot_worker.ex",
-    "lib/storyarn/workers/import_project_worker.ex",
-    "lib/storyarn/workers/inspect_project_snapshots_worker.ex",
-    "lib/storyarn/workers/install_project_template_worker.ex",
-    "lib/storyarn/workers/project_snapshot_retention_worker.ex",
-    "lib/storyarn/workers/publish_project_template_worker.ex",
-    "lib/storyarn/workers/reconcile_project_snapshot_cleanup_worker.ex",
-    "lib/storyarn/workers/reconcile_project_snapshot_repair_worker.ex",
-    "lib/storyarn/workers/repair_project_snapshot_finding_worker.ex",
-    "lib/storyarn/workers/restore_project_snapshot_worker.ex",
-    "lib/storyarn/workers/retry_storage_cleanup_requests_worker.ex",
+    "lib/storyarn/projects/workers/build_project_snapshot_worker.ex",
+    "lib/storyarn/projects/workers/cleanup_project_snapshot_worker.ex",
+    "lib/storyarn/projects/workers/delete_project_template_artifacts_worker.ex",
+    "lib/storyarn/projects/workers/delete_storage_objects_worker.ex",
+    "lib/storyarn/projects/workers/expire_project_imports_worker.ex",
+    "lib/storyarn/projects/workers/import_project_snapshot_worker.ex",
+    "lib/storyarn/projects/workers/import_project_worker.ex",
+    "lib/storyarn/projects/workers/inspect_project_snapshots_worker.ex",
+    "lib/storyarn/projects/workers/install_project_template_worker.ex",
+    "lib/storyarn/projects/workers/project_snapshot_retention_worker.ex",
+    "lib/storyarn/projects/workers/publish_project_template_worker.ex",
+    "lib/storyarn/projects/workers/reconcile_project_snapshot_cleanup_worker.ex",
+    "lib/storyarn/projects/workers/reconcile_project_snapshot_repair_worker.ex",
+    "lib/storyarn/projects/workers/repair_project_snapshot_finding_worker.ex",
+    "lib/storyarn/projects/workers/restore_project_snapshot_worker.ex",
+    "lib/storyarn/projects/workers/retry_storage_cleanup_requests_worker.ex",
     "lib/storyarn_web/controllers/export_controller.ex",
     "lib/storyarn_web/controllers/private_media_controller.ex",
     "lib/storyarn_web/controllers/snapshot_download_controller.ex",
@@ -141,6 +141,9 @@ boundaries = %{
     "lib/storyarn/ai/allowance_ledger_entry.ex",
     "lib/storyarn/ai/allowance_reservation.ex",
     "lib/storyarn/ai/audit.ex",
+    "lib/storyarn/ai/workers/ai_execution_worker.ex",
+    "lib/storyarn/ai/workers/expire_ai_results_worker.ex",
+    "lib/storyarn/ai/workers/reconcile_ai_reservations_worker.ex",
     "lib/storyarn/ai/audit_entry.ex",
     "lib/storyarn/ai/config_map.ex",
     "lib/storyarn/ai/context.ex",
@@ -483,7 +486,7 @@ forbidden_dependencies =
       reason: "The shared notification helpers list and count through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      source: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The durable invitation delivery worker calls back into the public Projects facade to render and send"
@@ -753,7 +756,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/projects/invitation_operations.ex",
-      target: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      target: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
       kinds: ["runtime"],
       reason: "Project invitations enqueue the durable delivery worker shared with Workspace invitations"
     },
@@ -1080,13 +1083,13 @@ forbidden_dependencies =
       reason: "Accounts publishes owned business facts through the public Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
+      source: "lib/storyarn/accounts/workers/deliver_reset_password_instructions_worker.ex",
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
       reason: "The durable reset-password delivery worker calls back into the public Accounts facade to render and send"
     },
     %{
-      source: "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
+      source: "lib/storyarn/accounts/workers/request_reset_password_instructions_worker.ex",
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
       reason: "The durable reset-password request worker processes the request through the public Accounts facade"
@@ -1129,13 +1132,13 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/accounts/passwords.ex",
-      target: "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
+      target: "lib/storyarn/accounts/workers/deliver_reset_password_instructions_worker.ex",
       kinds: ["runtime"],
       reason: "Password reset enqueues its durable delivery worker"
     },
     %{
       source: "lib/storyarn/accounts/passwords.ex",
-      target: "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
+      target: "lib/storyarn/accounts/workers/request_reset_password_instructions_worker.ex",
       kinds: ["runtime"],
       reason: "Password reset requests enqueue their durable delivery worker"
     },
@@ -1171,7 +1174,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/workspaces/invitations.ex",
-      target: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      target: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
       kinds: ["runtime"],
       reason: "Workspace invitations enqueue the durable delivery worker shared with Project invitations"
     },
@@ -1285,7 +1288,7 @@ forbidden_dependencies =
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
     },
     %{
-      source: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      source: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "The durable invitation delivery worker calls back into the public Workspaces facade to render and send"
@@ -1419,7 +1422,7 @@ forbidden_dependencies =
       reason: "Workspace project creation presents the Platform-owned product metric taxonomy through its public facade"
     },
     %{
-      source: "lib/storyarn/workers/localization_batch_translation_worker.ex",
+      source: "lib/storyarn/localization/workers/localization_batch_translation_worker.ex",
       target: "lib/storyarn/localization.ex",
       kinds: ["runtime"],
       reason: "The Oban adapter delegates batch translation execution to the public Localization facade"

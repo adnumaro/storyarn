@@ -23,9 +23,9 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Projects.Assets.Persistence.SequenceVisualLayerRecord
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   describe "assets" do
     setup do

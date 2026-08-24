@@ -13,13 +13,13 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias StoryarnTest.ProjectsSceneBuilderTestAdapter, as: SceneBuilder
 
   setup do

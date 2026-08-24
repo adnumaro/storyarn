@@ -10,8 +10,8 @@ import Config
 # Keep every object-storage socket phase bounded well below the import-plan
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
-alias Storyarn.Workers.ExpireAIResultsWorker
-alias Storyarn.Workers.TrashRetentionWorker
+alias Storyarn.AI.Workers.ExpireAIResultsWorker
+alias Storyarn.Projects.Workers.TrashRetentionWorker
 
 config :ex_aws, :req_opts,
   receive_timeout: 60_000,
@@ -139,25 +139,25 @@ config :storyarn, Oban,
         # six times finer than the window.
         {"0 */4 * * *", TrashRetentionWorker},
         # 24h retention (`Imports` `@plan_retention_seconds 86_400`).
-        {"0 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
+        {"0 * * * *", Storyarn.Projects.Workers.ExpireProjectImportsWorker},
         # Correctness does not depend on this sweep: the read path already
         # refuses results past `expires_at`. It only reclaims rows.
         {"*/30 * * * *", ExpireAIResultsWorker},
         # Recovery bound is `stale_after_seconds` + this interval. Holding the
         # documented ≤20 min means 300 + 900, where it used to be 900 + 300.
-        {"*/15 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
+        {"*/15 * * * *", Storyarn.AI.Workers.ReconcileAIReservationsWorker},
         # Safety net for cleanup requests whose direct enqueue failed — already a
         # rare path. Its own uniqueness window made it run every 2-3 min anyway.
-        {"*/15 * * * *", Storyarn.Workers.RetryStorageCleanupRequestsWorker},
+        {"*/15 * * * *", Storyarn.Projects.Workers.RetryStorageCleanupRequestsWorker},
         # Snapshot cleanup ownership survives job pruning and terminal Oban
         # states. Reconcile the durable intent to an immediately available job.
-        {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker},
+        {"*/15 * * * *", Storyarn.Projects.Workers.ReconcileProjectSnapshotCleanupWorker},
         # Repair actions are a durable operator ledger too. Restore only their
         # exact delivery chain and terminalize exhausted chains fail-closed.
-        {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotRepairWorker},
+        {"*/15 * * * *", Storyarn.Projects.Workers.ReconcileProjectSnapshotRepairWorker},
         # Snapshot TTL deletion is coarse, but this worker also reclaims expired
         # build reservations. Run at the ENG-37 floor to bound that quota leak.
-        {"*/15 * * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}
+        {"*/15 * * * *", Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker}
       ]
     }
   ]
@@ -180,7 +180,7 @@ config :storyarn, Storyarn.Gettext,
   locales: ~w(en es)
 
 config :storyarn, Storyarn.Localization.TranslationJobQueue,
-  worker: "Storyarn.Workers.LocalizationBatchTranslationWorker",
+  worker: "Storyarn.Localization.Workers.LocalizationBatchTranslationWorker",
   queue: :localization,
   max_attempts: 3
 

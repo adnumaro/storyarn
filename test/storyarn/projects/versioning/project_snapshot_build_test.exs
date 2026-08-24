@@ -30,11 +30,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Projects.Versioning.ProjectSnapshotCapture
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.RetryStorageCleanupRequestsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SnapshotReadSwitchStorage
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   describe "request_full_project_snapshot/3" do
     test "normalizes inserted lifecycle time to the database clock" do

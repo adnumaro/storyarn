@@ -11,8 +11,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Deletion do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.SnapshotStorage
+  alias Storyarn.Projects.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
 
   @portable_manifest_prefix "project_templates/imports/"
   @sha256_regex ~r/\A[0-9a-f]{64}\z/

@@ -24,9 +24,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"

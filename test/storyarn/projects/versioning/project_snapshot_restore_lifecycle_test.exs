@@ -17,9 +17,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycleTest do
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor
+  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
+  alias Storyarn.Projects.Workers.RestoreProjectSnapshotWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
-  alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   defmodule RaisingArchiveReader do
     @moduledoc false

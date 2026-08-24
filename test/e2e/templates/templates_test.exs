@@ -15,8 +15,8 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectTemplates
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
+  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   @moduletag :e2e
 

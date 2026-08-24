@@ -9,8 +9,8 @@ defmodule Storyarn.AccountsTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
-  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
+  alias Storyarn.Accounts.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Accounts.Workers.RequestResetPasswordInstructionsWorker
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do

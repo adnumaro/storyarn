@@ -17,6 +17,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.AssetMaterializationCache
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
+  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -24,7 +25,6 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias StoryarnTest.ProjectsSheetBuilderTestAdapter, as: SheetBuilder
 
   setup do

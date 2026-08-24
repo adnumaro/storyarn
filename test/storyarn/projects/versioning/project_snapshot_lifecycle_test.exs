@@ -21,8 +21,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workspaces
 
   describe "delete_project_snapshot/3" do
@@ -336,7 +336,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
                Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
 
       replay_jobs =
-        Storyarn.Workers.CleanupProjectSnapshotWorker
+        Storyarn.Projects.Workers.CleanupProjectSnapshotWorker
         |> then(&all_enqueued(worker: &1))
         |> Enum.filter(&is_binary(&1.args["replay_token"]))
 

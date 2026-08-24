@@ -30,10 +30,10 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   alias Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImports
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.ImportProjectSnapshotWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.ImportProjectSnapshotWorker
 
   defmodule DirectUploadStorage do
     @moduledoc false

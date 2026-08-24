@@ -20,10 +20,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.InspectProjectSnapshotsWorker
   alias Storyarn.Repo
   alias Storyarn.SnapshotReadSwitchStorage
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
   setup do
     original_storage = Application.fetch_env!(:storyarn, :storage)

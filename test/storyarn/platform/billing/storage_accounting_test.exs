@@ -20,8 +20,8 @@ defmodule Storyarn.Platform.Billing.StorageAccountingTest do
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   @checksum String.duplicate("a", 64)
 

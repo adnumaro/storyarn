@@ -8,9 +8,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairRecove
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairAction
+  alias Storyarn.Projects.Workers.ReconcileProjectSnapshotRepairWorker
+  alias Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.ReconcileProjectSnapshotRepairWorker
-  alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
 
   setup do
     original_storage = Application.fetch_env!(:storyarn, :storage)
@@ -523,7 +523,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairRecove
     Repo.all(
       from(job in Oban.Job,
         where:
-          job.worker == "Storyarn.Workers.RepairProjectSnapshotFindingWorker" and
+          job.worker == "Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker" and
             job.queue == "snapshots_maintenance" and
             job.args ==
               ^%{

@@ -19,14 +19,14 @@ defmodule Storyarn.Projects.Imports.ReplacementRestoreIntegrationTest do
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.RestoreProjectSnapshotWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   test "a real pre-import snapshot restores the graph replaced by a Yarn project import" do
     user = user_fixture()

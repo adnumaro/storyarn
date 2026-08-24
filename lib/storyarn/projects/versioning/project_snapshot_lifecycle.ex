@@ -26,8 +26,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Workers.CleanupProjectSnapshotWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.CleanupProjectSnapshotWorker
 
   # R2 lists at most 1,000 objects per page. Matching that provider bound keeps
   # a maximum snapshot to 21 durable row transitions per delete pass instead
@@ -40,13 +40,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @terminal_job_states ~w(completed discarded cancelled)
   @active_job_states ~w(available scheduled executing retryable)
   @cleanup_worker inspect(CleanupProjectSnapshotWorker)
-  @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
+  @build_worker "Storyarn.Projects.Workers.BuildProjectSnapshotWorker"
   @archive_build_queue "snapshot_archives"
   @build_recovery_quarantine_seconds 15 * 60
   @cleanup_job_rescue_after_seconds 3 * 60 * 60
   @maintenance_workers [
-    "Storyarn.Workers.ProjectSnapshotRetentionWorker",
-    "Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker"
+    "Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker",
+    "Storyarn.Projects.Workers.ReconcileProjectSnapshotCleanupWorker"
   ]
   @maintenance_job_stale_after_seconds 30 * 60
   @hard_delete_reasons ~w(project_hard_delete workspace_hard_delete)a

@@ -13,10 +13,10 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Workers.CleanupProjectSnapshotWorker
-  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
-  alias Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.CleanupProjectSnapshotWorker
+  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
+  alias Storyarn.Projects.Workers.ReconcileProjectSnapshotCleanupWorker
 
   test "cleanup worker discards missing and invalid durable intent identities" do
     assert {:discard, :snapshot_cleanup_intent_not_found} =

@@ -35,8 +35,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Projects.Versioning.SnapshotStorage
+  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   require Logger
 

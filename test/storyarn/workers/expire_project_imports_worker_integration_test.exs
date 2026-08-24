@@ -9,8 +9,8 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerIntegrationTest do
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.PlanCleanupRequest
   alias Storyarn.Projects.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Workers.ExpireProjectImportsWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.ExpireProjectImportsWorker
 
   test "reports and drains an attempt backlog larger than one bounded batch" do
     user = user_fixture()

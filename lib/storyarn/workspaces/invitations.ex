@@ -13,8 +13,8 @@ defmodule Storyarn.Workspaces.Invitations do
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.Workspaces.InvitationNotifier
   alias Storyarn.Workspaces.Memberships
   alias Storyarn.Workspaces.Persistence.UserRecord

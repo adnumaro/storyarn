@@ -18,10 +18,10 @@ defmodule Storyarn.AI.Execution do
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
+  alias Storyarn.AI.Workers.AIExecutionWorker
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.CanonicalJSON
   alias Storyarn.Repo
-  alias Storyarn.Workers.AIExecutionWorker
 
   @idempotency_lock_namespace 981_005
 

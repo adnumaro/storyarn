@@ -169,7 +169,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     CHECK (
       state NOT IN ('available', 'scheduled', 'executing', 'retryable') OR
       worker NOT IN (
-        'Storyarn.Workers.BuildProjectSnapshotWorker',
+        'Storyarn.Projects.Workers.BuildProjectSnapshotWorker',
         'Storyarn.Workers.DailySnapshotWorker',
         'Storyarn.Workers.SnapshotRetentionWorker',
         'Storyarn.Workers.RestoreProjectWorker',

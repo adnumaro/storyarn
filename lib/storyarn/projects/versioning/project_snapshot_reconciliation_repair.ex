@@ -23,14 +23,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
 
   @contract_version 1
   @default_limit 50
   @max_limit 100
   @repair_terminal_statuses ~w(repaired resolved manual failed)
-  @repair_worker "Storyarn.Workers.RepairProjectSnapshotFindingWorker"
+  @repair_worker "Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker"
   @repair_queue "snapshots_maintenance"
   @active_repair_job_states ~w(available scheduled executing retryable)
   @recoverable_terminal_job_states ~w(discarded cancelled)

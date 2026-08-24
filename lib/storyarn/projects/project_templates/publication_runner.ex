@@ -21,8 +21,8 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.ProjectTemplates.TemplateQueries
   alias Storyarn.Projects.Versioning.SnapshotStorage
+  alias Storyarn.Projects.Workers.PublishProjectTemplateWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.PublishProjectTemplateWorker
 
   def request_template_publication(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),

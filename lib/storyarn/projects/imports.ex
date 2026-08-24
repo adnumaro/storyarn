@@ -37,8 +37,8 @@ defmodule Storyarn.Projects.Imports do
   alias Storyarn.Projects.Imports.Telemetry
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.Workers.ImportProjectWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400
   @plan_store_timeout 300_000

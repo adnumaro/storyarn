@@ -21,8 +21,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor
   alias Storyarn.Projects.Versioning.RestorePolicy
+  alias Storyarn.Projects.Workers.RestoreProjectSnapshotWorker
   alias Storyarn.Repo
-  alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   @restore_worker inspect(RestoreProjectSnapshotWorker)
   @restore_queue "snapshot_restores"
