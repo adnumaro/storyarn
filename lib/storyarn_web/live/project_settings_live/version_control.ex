@@ -3,7 +3,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Analytics
   alias Storyarn.Billing
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
@@ -145,12 +144,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   end
 
   defp track_version_control_settings(socket, project, attrs) do
-    Analytics.track(socket.assigns.current_scope, "version control settings updated", %{
-      auto_version_flows: attrs.auto_version_flows,
-      auto_version_scenes: attrs.auto_version_scenes,
-      auto_version_sheets: attrs.auto_version_sheets,
-      project_id: project.id
-    })
+    Projects.version_control_settings_updated(socket.assigns.current_scope, project, attrs)
   end
 
   # ===========================================================================

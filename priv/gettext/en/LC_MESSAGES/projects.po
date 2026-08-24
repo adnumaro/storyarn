@@ -61,7 +61,7 @@ msgstr ""
 #: lib/storyarn_web/live/project_settings_live/members.ex:104
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:283
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:123
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:109
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:108
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr ""
@@ -179,7 +179,7 @@ msgstr "Some items could not be deleted."
 #: lib/storyarn_web/live/project_settings_live/members.ex:149
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:271
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:111
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:97
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:96
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr ""
@@ -239,7 +239,7 @@ msgstr ""
 msgid "Translation provider configuration"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:142
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:141
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
 msgstr ""
@@ -254,12 +254,12 @@ msgstr ""
 msgid "Snapshots"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:26
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:25
 #, elixir-autogen, elixir-format
 msgid "Version Control"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:139
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:138
 #, elixir-autogen, elixir-format
 msgid "Version control settings saved."
 msgstr ""
@@ -1192,7 +1192,7 @@ msgstr ""
 msgid "The import could not be dismissed. Try again."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:27
 #, elixir-autogen, elixir-format
 msgid "Configure automatic entity versioning"
 msgstr ""

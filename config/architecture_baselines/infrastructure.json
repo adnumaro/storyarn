@@ -72,83 +72,8 @@
       "runtime"
     ],
     [
-      "lib/storyarn/workers/build_project_snapshot_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/cleanup_project_snapshot_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/delete_project_template_artifacts_worker.ex",
-      "lib/storyarn/project_templates.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/delete_storage_objects_worker.ex",
-      "lib/storyarn/assets/storage_compensation.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/workers/deliver_invitation_worker.ex",
       "lib/storyarn/projects/invitations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/expire_project_imports_worker.ex",
-      "lib/storyarn/imports.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/import_project_snapshot_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/import_project_worker.ex",
-      "lib/storyarn/imports.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/inspect_project_snapshots_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/install_project_template_worker.ex",
-      "lib/storyarn/project_templates.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/project_snapshot_retention_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/publish_project_template_worker.ex",
-      "lib/storyarn/project_templates.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/reconcile_project_snapshot_cleanup_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/reconcile_project_snapshot_repair_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/repair_project_snapshot_finding_worker.ex",
-      "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/restore_project_snapshot_worker.ex",
-      "lib/storyarn/versioning.ex",
       "runtime"
     ],
     [

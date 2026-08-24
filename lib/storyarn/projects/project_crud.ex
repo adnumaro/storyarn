@@ -3,9 +3,9 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Billing
+  alias Storyarn.Projects.Events
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
@@ -137,12 +137,7 @@ defmodule Storyarn.Projects.ProjectCrud do
 
     case result do
       {:ok, project} ->
-        Analytics.track(user, "project created", %{
-          project_id: project.id,
-          workspace_id: project.workspace_id,
-          project_type: project.project_type,
-          project_subtype: project.project_subtype
-        })
+        Events.project_created(user, project)
 
         {:ok, project}
 

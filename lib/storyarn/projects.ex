@@ -15,6 +15,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.Dashboard
+  alias Storyarn.Projects.Events
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Invitations
@@ -139,6 +140,10 @@ defmodule Storyarn.Projects do
   """
   @spec change_new_project() :: changeset()
   defdelegate change_new_project(), to: ProjectCrud
+
+  @doc "Publishes the product fact for updated version control settings."
+  @spec version_control_settings_updated(scope(), map(), map()) :: :ok
+  defdelegate version_control_settings_updated(scope, project, attrs), to: Events
 
   @spec change_new_project(project(), attrs()) :: changeset()
   defdelegate change_new_project(project, attrs \\ %{}), to: ProjectCrud

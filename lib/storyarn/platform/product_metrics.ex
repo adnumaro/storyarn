@@ -50,6 +50,20 @@ defmodule Storyarn.Platform.ProductMetrics do
     {:flows, :version_created} => {"version created", ~w(entity_type project_id)},
     {:flows, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
     {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:projects, :asset_uploaded} =>
+      {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
+    {:projects, :project_created} => {"project created", ~w(project_id project_subtype project_type workspace_id)},
+    {:projects, :template_installation_completed} =>
+      {"project template installation completed",
+       ~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)},
+    {:projects, :template_installation_failed} =>
+      {"project template installation failed",
+       ~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)},
+    {:projects, :template_installation_requested} =>
+      {"project template installation requested",
+       ~w(installation_id source template_id template_version_id visibility workspace_id)},
+    {:projects, :version_control_settings_updated} =>
+      {"version control settings updated", ~w(auto_version_flows auto_version_scenes auto_version_sheets project_id)},
     {:scenes, :asset_uploaded} =>
       {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
     {:scenes, :exploration_started} => {"scene exploration started", ~w(has_saved_session project_id scene_id)},
@@ -238,6 +252,85 @@ defmodule Storyarn.Platform.ProductMetrics do
     if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
   end
 
+  # Generic asset uploads share the Scene external name but pin the wider
+  # payload the asset pipeline actually produces: nil-able type metadata and
+  # the stringified absent purpose ("nil").
+  def sanitize_payload(
+        {:projects, :asset_uploaded},
+        %{
+          asset_type: asset_type,
+          content_type: content_type,
+          created_variant: created_variant,
+          project_id: project_id,
+          purpose: purpose,
+          size_bucket: size_bucket
+        } = payload
+      ) do
+    if (is_nil(content_type) or is_binary(content_type)) and
+         asset_type == generic_asset_type(content_type) and
+         is_boolean(created_variant) and valid_id?(project_id) and
+         purpose in ["nil", "scene_background"] and
+         (is_nil(size_bucket) or size_bucket in @asset_size_buckets) do
+      {:ok,
+       Map.take(payload, [
+         :asset_type,
+         :content_type,
+         :created_variant,
+         :project_id,
+         :purpose,
+         :size_bucket
+       ])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload({:projects, :project_created}, %{project_id: project_id, workspace_id: workspace_id} = payload) do
+    if valid_ids?(project_id, workspace_id) do
+      {:ok, Map.take(payload, [:project_id, :project_subtype, :project_type, :workspace_id])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload(
+        {:projects, :template_installation_requested},
+        %{installation_id: installation_id, template_id: template_id, workspace_id: workspace_id} = payload
+      ) do
+    if valid_ids?(installation_id, template_id) and valid_id?(workspace_id) do
+      {:ok,
+       Map.take(payload, [:installation_id, :source, :template_id, :template_version_id, :visibility, :workspace_id])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload({:projects, event_type}, %{installation_id: installation_id} = payload)
+      when event_type in [:template_installation_completed, :template_installation_failed] do
+    if valid_id?(installation_id) do
+      {:ok,
+       Map.take(payload, [
+         :duration_bucket,
+         :error_code,
+         :installation_id,
+         :project_id,
+         :source,
+         :template_version_id,
+         :workspace_id
+       ])}
+    else
+      :error
+    end
+  end
+
+  def sanitize_payload({:projects, :version_control_settings_updated}, %{project_id: project_id} = payload) do
+    if valid_id?(project_id) do
+      {:ok, Map.take(payload, [:auto_version_flows, :auto_version_scenes, :auto_version_sheets, :project_id])}
+    else
+      :error
+    end
+  end
+
   # Sheet asset uploads share the Scene payload contract and external name.
   def sanitize_payload({:sheets, :asset_uploaded}, payload) do
     sanitize_payload({:scenes, :asset_uploaded}, payload)
@@ -278,6 +371,9 @@ defmodule Storyarn.Platform.ProductMetrics do
   def sanitize_payload(_event, _payload), do: :error
 
   defp content_type_asset_type(content_type), do: content_type |> String.split("/", parts: 2) |> List.first()
+
+  defp generic_asset_type(nil), do: nil
+  defp generic_asset_type(content_type), do: content_type_asset_type(content_type)
 
   defp valid_ids?(flow_id, project_id), do: valid_id?(flow_id) and valid_id?(project_id)
   defp valid_id?(id), do: is_integer(id) and id > 0

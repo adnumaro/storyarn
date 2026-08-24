@@ -22,9 +22,9 @@ defmodule Storyarn.Projects.Dashboard do
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.Severity
   alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
-  alias Storyarn.Shared.Severity
 
   @tools [:flows, :sheets, :scenes]
 

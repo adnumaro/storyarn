@@ -4,13 +4,13 @@ defmodule Storyarn.ProjectTemplates.Installation do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Analytics
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
   alias Storyarn.Notifications
   alias Storyarn.Projects
+  alias Storyarn.Projects.Events
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
@@ -984,14 +984,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   defp publish_requested(scope, install, template) do
     broadcast_install(install)
 
-    Analytics.track(scope, "project template installation requested", %{
-      installation_id: install.id,
-      template_id: template.id,
-      template_version_id: install.project_template_version_id,
-      workspace_id: install.workspace_id,
-      source: install.source,
-      visibility: template.visibility
-    })
+    Events.template_installation_requested(scope, install, template)
 
     :telemetry.execute(
       [:storyarn, :project_template, :installation, :requested],
@@ -1003,20 +996,14 @@ defmodule Storyarn.ProjectTemplates.Installation do
   defp publish_finished(install, project, started_at) do
     broadcast_install(install)
 
-    event =
-      if install.status == "completed",
-        do: "project template installation completed",
-        else: "project template installation failed"
-
-    Analytics.track(install.user, event, analytics_properties(install, project, started_at))
+    Events.template_installation_finished(
+      install.user,
+      install.status,
+      analytics_properties(install, project, started_at)
+    )
 
     if project do
-      Analytics.track(install.user, "project created", %{
-        project_id: project.id,
-        workspace_id: project.workspace_id,
-        project_type: project.project_type,
-        project_subtype: project.project_subtype
-      })
+      Events.project_created(install.user, project)
     end
 
     emit_finished_telemetry(install, started_at)

@@ -8,7 +8,6 @@ defmodule Storyarn.Assets do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Analytics
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.AssetTrash
   alias Storyarn.Assets.BlobStore
@@ -25,6 +24,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Projects.Events
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
@@ -2317,10 +2317,7 @@ defmodule Storyarn.Assets do
   defp track_asset_created({:ok, asset}, user, attrs) do
     properties = asset_analytics_properties(asset, attrs)
 
-    case user do
-      %{id: _} -> Analytics.track(user, "asset uploaded", properties)
-      _ -> Analytics.track_system("asset uploaded", properties)
-    end
+    Events.asset_uploaded(user, properties)
 
     {:ok, asset}
   end

@@ -20,6 +20,20 @@ defmodule Storyarn.Platform.ProductMetricsTest do
     {:flows, :version_created} => {"version created", ~w(entity_type project_id)},
     {:flows, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
     {:flows, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:projects, :asset_uploaded} =>
+      {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
+    {:projects, :project_created} => {"project created", ~w(project_id project_subtype project_type workspace_id)},
+    {:projects, :template_installation_completed} =>
+      {"project template installation completed",
+       ~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)},
+    {:projects, :template_installation_failed} =>
+      {"project template installation failed",
+       ~w(duration_bucket error_code installation_id project_id source template_version_id workspace_id)},
+    {:projects, :template_installation_requested} =>
+      {"project template installation requested",
+       ~w(installation_id source template_id template_version_id visibility workspace_id)},
+    {:projects, :version_control_settings_updated} =>
+      {"version control settings updated", ~w(auto_version_flows auto_version_scenes auto_version_sheets project_id)},
     {:scenes, :asset_uploaded} =>
       {"asset uploaded", ~w(asset_type content_type created_variant project_id purpose size_bucket)},
     {:scenes, :exploration_started} => {"scene exploration started", ~w(has_saved_session project_id scene_id)},
@@ -94,6 +108,45 @@ defmodule Storyarn.Platform.ProductMetricsTest do
 
     assert ProductMetrics.event({:accounts, :user_signed_up}) == {:ok, "user signed up", ~w(auth_method)}
     assert ProductMetrics.event({:accounts, :user_logged_in}) == {:ok, "user logged in", ~w(auth_method)}
+  end
+
+  test "Project metrics keep ids validated and drop authored payload fields" do
+    assert {:ok, %{project_id: 7, workspace_id: 3, project_type: "game", project_subtype: "rpg"}} =
+             EventContract.sanitize(ProductMetrics, {:projects, :project_created}, %{
+               project_id: 7,
+               workspace_id: 3,
+               project_type: "game",
+               project_subtype: "rpg",
+               name: "private project name"
+             })
+
+    assert EventContract.sanitize(ProductMetrics, {:projects, :project_created}, %{
+             project_id: nil,
+             workspace_id: 3
+           }) == :error
+
+    assert {:ok, sanitized} =
+             EventContract.sanitize(ProductMetrics, {:projects, :template_installation_completed}, %{
+               duration_bucket: "under_1m",
+               error_code: nil,
+               installation_id: 11,
+               project_id: nil,
+               source: "gallery",
+               template_version_id: 4,
+               workspace_id: 3,
+               template_name: "private"
+             })
+
+    refute Map.has_key?(sanitized, :template_name)
+    assert sanitized.project_id == nil
+
+    assert {:ok, %{auto_version_flows: true, project_id: 7}} =
+             EventContract.sanitize(ProductMetrics, {:projects, :version_control_settings_updated}, %{
+               auto_version_flows: true,
+               auto_version_scenes: false,
+               auto_version_sheets: true,
+               project_id: 7
+             })
   end
 
   test "Scene metrics preserve historical names while dropping authored content" do
