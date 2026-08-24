@@ -10,9 +10,12 @@
 
 ## `Storyarn.Shared.NameNormalizer`
 
-**File:** `lib/storyarn/shared/name_normalizer.ex`
+**File:** `lib/storyarn/shared/name_normalizer.ex` — **owned by the Project
+boundary** since ENG-92 (its only consumers). Tools carry their own copies
+(e.g. `Workspaces.Naming`, per-context `ShortcutGenerator`s); do not add
+foreign consumers.
 
-Centralizes ALL name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
+Centralizes the Project boundary's name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
 
 | Function                   | Input → Output                                                                         | Used For                                                                            |
 | -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
@@ -69,9 +72,12 @@ copy the pattern into the owning context instead.
 
 ## `Storyarn.Shared.Validations`
 
-**File:** `lib/storyarn/shared/validations.ex`
+**File:** `lib/storyarn/shared/validations.ex` — **owned by the Project
+boundary** since ENG-92. Workspaces and Accounts carry their formats inline
+(`Workspace.validate_slug`, `User.validate_email_format`,
+`WorkspaceInvitation.validate_email_format`); do not add foreign consumers.
 
-Centralized Ecto validators. Do NOT write custom regex for these.
+Centralized Ecto validators for the Project boundary. Do NOT write custom regex for these.
 
 | Function                  | Purpose                                                             | Pattern                                      |
 | ------------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
@@ -121,7 +127,10 @@ MapUtils.parse_to_number(nil)   # => 0.0
 
 **File:** `lib/storyarn/shared/severity.ex`
 
-The single ordering of the health severity catalog. Five modules hand-rolled it: the flows/sheets/scenes dashboards rank the **strings** that cross the LiveVue boundary, `StructuralAnalysis` and `Projects.Dashboard` rank the **atoms**.
+The single ordering of the health severity catalog for shared Web dashboards
+(`StoryarnWeb.Live.Shared.DashboardHelpers`). Sealed boundaries carry their own
+copies (`Flows.Severity`, `Projects.Severity`, …) — reimplement the copy in the
+owning context, never a cross-boundary call.
 
 | Function    | Purpose                                                       |
 | ----------- | ------------------------------------------------------------- |
@@ -254,7 +263,7 @@ One line each. Open the file before writing anything that overlaps.
 | `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above; Workspaces has its own `Workspaces.InvitationNotifier`                   |
 | `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2` for Projects; the workspace arm lives in `Workspaces.Memberships`               |
 | `Trashable`            | `trashable.ex`             | `soft_delete/1`, `restore/1`, `inbound_refs/1`, `target_type!/1` — registry-driven soft-delete that also sweeps inbound refs      |
-| `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — denormalized at write time                                  |
+| `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — **Project-boundary-owned** (versioning builders); tools own copies |
 
 `EncryptedBinary` is covered above; it is a type, not a helper.
 

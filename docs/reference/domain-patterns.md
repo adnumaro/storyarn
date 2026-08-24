@@ -40,7 +40,8 @@ includes the project/global coordination code in `Projects`, `References`,
 `Versioning`, `Exports`, `Imports`, and `ProjectTemplates`.
 
 New code dependencies between these boundaries are forbidden. `Flows`,
-`Scenes`, `Localization`, `Sheets`, `Workspaces`, and `Accounts` are sealed in both directions
+`Scenes`, `Localization`, `Sheets`, `Workspaces`, `Accounts`, and the `Project`
+boundary are sealed in both directions
 (`zero_debt_consumers` + `isolated_contexts`); coordinator access to their
 public facades requires an exact reviewed exception. Remaining edges are legacy
 migration debt recorded exactly in the partitioned baselines under
@@ -54,9 +55,15 @@ rejects new edges, stronger dependency kinds, and stale baseline entries. The
 baseline may only shrink or weaken as dependencies are migrated. `platform` is
 a technical classification rather than a fifth business boundary: tools may use its listed
 public/technical contracts, while platform code may not become a hidden bridge
-back into a tool. Project/platform collaboration remains temporarily allowed.
+back into a tool. Project/platform
+edges are now exact reviewed exceptions rather than a blanket allowance.
 `web_platform` applies the same anti-bridge rule to shared Web helpers while
 allowing concrete tool and Project Web roots to keep their business owner.
+Project/platform collaboration is no longer a blanket allowance: every
+surviving edge is an exact reviewed exception (the Billing plan/storage
+protocol, Notifications delivery, transactional email, workers, release CLI
+and OTP wiring), and the baseline holds only the four web-to-Notifications
+edges owned by the Platform phase.
 
 The ratchet operates at xref file-edge granularity. If a source file already has
 a baselined edge to a target file, another call between that same pair is not
