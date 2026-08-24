@@ -28,7 +28,7 @@ defmodule Storyarn.AI.Allowance do
         }
 
   @spec summary(Scope.t(), pos_integer()) :: {:ok, summary()} | {:error, :unauthorized}
-  def summary(%Scope{} = scope, workspace_id) do
+  def summary(%{user: _} = scope, workspace_id) do
     case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, workspace, _membership} -> {:ok, refresh_and_summarize(workspace.id)}
       _error -> {:error, :unauthorized}

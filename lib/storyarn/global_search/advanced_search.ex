@@ -45,7 +45,7 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
 
   @spec search(Scope.t(), integer(), String.t(), keyword()) ::
           {:ok, page()} | {:error, error_reason()}
-  def search(%Scope{} = scope, project_id, raw_query, opts \\ []) do
+  def search(%{user: _} = scope, project_id, raw_query, opts \\ []) do
     with :ok <- validate_project_id(project_id),
          {:ok, mode, query} <- parse_prefix(raw_query),
          :ok <- validate_execution(mode, query, opts),

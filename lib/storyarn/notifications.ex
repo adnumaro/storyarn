@@ -12,9 +12,9 @@ defmodule Storyarn.Notifications do
 
   alias Ecto.Changeset
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Notifications.Notification
+  alias Storyarn.Notifications.Persistence.UserRecord, as: User
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
@@ -44,7 +44,7 @@ defmodule Storyarn.Notifications do
   """
   @spec deliver(Scope.t(), User.t() | nil, map()) ::
           {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver(%Scope{} = recipient_scope, actor, attrs) when is_map(attrs) do
+  def deliver(%{user: _} = recipient_scope, actor, attrs) when is_map(attrs) do
     deliver(recipient_scope, actor, nil, attrs)
   end
 
@@ -53,8 +53,7 @@ defmodule Storyarn.Notifications do
   """
   @spec deliver(Scope.t(), User.t() | nil, Project.t(), map()) ::
           {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver(%Scope{user: %User{} = recipient} = recipient_scope, actor, %Project{} = project, attrs)
-      when is_map(attrs) do
+  def deliver(%{user: %{id: _} = recipient} = recipient_scope, actor, %Project{} = project, attrs) when is_map(attrs) do
     if self_notification?(recipient, actor) do
       {:ok, :suppressed}
     else
@@ -68,7 +67,7 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def deliver(%Scope{user: %User{} = recipient}, actor, nil, attrs) when is_map(attrs) do
+  def deliver(%{user: %{id: _} = recipient}, actor, nil, attrs) when is_map(attrs) do
     if self_notification?(recipient, actor) do
       {:ok, :suppressed}
     else
@@ -76,7 +75,7 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def deliver(%Scope{}, _actor, _project, _attrs), do: {:error, :not_found}
+  def deliver(%{user: _}, _actor, _project, _attrs), do: {:error, :not_found}
 
   @doc """
   Inserts a requester-only asynchronous outcome without broadcasting.
@@ -93,7 +92,7 @@ defmodule Storyarn.Notifications do
     {:ok, :suppressed}
   end
 
-  def deliver_async_result(%Scope{} = recipient_scope, project, attrs) when is_map(attrs) do
+  def deliver_async_result(%{user: _} = recipient_scope, project, attrs) when is_map(attrs) do
     ensure_inside_transaction!("deliver_async_result/3")
     attrs = Map.put(attrs, :kind, "async_operation")
 
@@ -117,7 +116,7 @@ defmodule Storyarn.Notifications do
 
     with %Project{} = project <- lock_async_project(project_id),
          %User{} = requester <- lock_async_requester(requested_by_id) do
-      deliver_async_result(Scope.for_user(requester), project, attrs)
+      deliver_async_result(%{user: requester}, project, attrs)
     else
       _missing_parent -> {:ok, :suppressed}
     end
@@ -132,14 +131,14 @@ defmodule Storyarn.Notifications do
   """
   @spec deliver_to_project_members(Scope.t(), Project.t(), map()) ::
           {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_to_project_members(%Scope{user: %User{} = actor} = actor_scope, %Project{} = project, attrs)
+  def deliver_to_project_members(%{user: %{id: _} = actor} = actor_scope, %Project{} = project, attrs)
       when is_map(attrs) do
     with {:ok, authorized_project} <- authorize_project(actor_scope, project) do
       insert_for_effective_members(actor, authorized_project, attrs)
     end
   end
 
-  def deliver_to_project_members(%Scope{}, %Project{}, _attrs), do: {:error, :not_found}
+  def deliver_to_project_members(%{user: _}, %Project{}, _attrs), do: {:error, :not_found}
 
   @doc """
   Inserts one structural content notification for every other effective project member.
@@ -155,7 +154,7 @@ defmodule Storyarn.Notifications do
           String.t(),
           %{required(:id) => integer(), required(:name) => String.t()}
         ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_content_activity(%Scope{user: %User{} = actor} = actor_scope, %Project{} = project, action, entity_type, %{
+  def deliver_content_activity(%{user: %{id: _} = actor} = actor_scope, %Project{} = project, action, entity_type, %{
         id: entity_id,
         name: entity_name
       })
@@ -181,7 +180,7 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def deliver_content_activity(%Scope{}, %Project{}, action, entity_type, %{id: entity_id, name: entity_name})
+  def deliver_content_activity(%{user: _}, %Project{}, action, entity_type, %{id: entity_id, name: entity_name})
       when action in [:created, :deleted] and entity_type in @content_entity_types and is_integer(entity_id) and
              is_binary(entity_name) do
     ensure_inside_transaction!("deliver_content_activity/5")
@@ -203,7 +202,7 @@ defmodule Storyarn.Notifications do
           String.t(),
           %{required(:id) => integer(), required(:name) => String.t()}
         ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_content_activity_by_project_id(%Scope{} = actor_scope, project_id, action, entity_type, entity)
+  def deliver_content_activity_by_project_id(%{user: _} = actor_scope, project_id, action, entity_type, entity)
       when is_integer(project_id) do
     ensure_inside_transaction!("deliver_content_activity_by_project_id/5")
 
@@ -235,7 +234,7 @@ defmodule Storyarn.Notifications do
 
     with %Project{} = project <- lock_async_project(project_id),
          %User{} = actor <- lock_async_requester(actor_id) do
-      deliver_content_activity(Scope.for_user(actor), project, action, entity_type, entity)
+      deliver_content_activity(%{user: actor}, project, action, entity_type, entity)
     else
       _missing_parent -> {:error, :not_found}
     end
@@ -250,7 +249,7 @@ defmodule Storyarn.Notifications do
   @spec list_notifications(Scope.t(), keyword()) :: [Notification.t()]
   def list_notifications(scope, opts \\ [])
 
-  def list_notifications(%Scope{user: %User{}} = scope, opts) when is_list(opts) do
+  def list_notifications(%{user: %{id: _}} = scope, opts) when is_list(opts) do
     scope
     |> visible_query()
     |> maybe_only_unread(Keyword.get(opts, :unread_only, false))
@@ -260,22 +259,22 @@ defmodule Storyarn.Notifications do
     |> Repo.preload([:actor, :project])
   end
 
-  def list_notifications(%Scope{}, _opts), do: []
+  def list_notifications(%{user: _}, _opts), do: []
 
   @doc "Returns the scoped user's count of currently visible unread notifications."
   @spec unread_count(Scope.t()) :: non_neg_integer()
-  def unread_count(%Scope{user: %User{}} = scope) do
+  def unread_count(%{user: %{id: _}} = scope) do
     scope
     |> visible_query()
     |> where([notification], is_nil(notification.read_at))
     |> Repo.aggregate(:count, :id)
   end
 
-  def unread_count(%Scope{}), do: 0
+  def unread_count(%{user: _}), do: 0
 
   @doc "Marks one currently visible notification as read."
   @spec mark_read(Scope.t(), integer()) :: {:ok, Notification.t()} | {:error, :not_found}
-  def mark_read(%Scope{user: %User{id: user_id}} = scope, notification_id)
+  def mark_read(%{user: %{id: user_id}} = scope, notification_id)
       when is_integer(notification_id) and notification_id > 0 do
     ensure_outside_transaction!("mark_read/2")
 
@@ -326,11 +325,11 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def mark_read(%Scope{}, _notification_id), do: {:error, :not_found}
+  def mark_read(%{user: _}, _notification_id), do: {:error, :not_found}
 
   @doc "Marks all currently visible unread notifications for the scoped user as read."
   @spec mark_all_read(Scope.t()) :: {:ok, non_neg_integer()}
-  def mark_all_read(%Scope{user: %User{id: user_id}} = scope) do
+  def mark_all_read(%{user: %{id: user_id}} = scope) do
     ensure_outside_transaction!("mark_all_read/1")
 
     result =
@@ -359,15 +358,15 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def mark_all_read(%Scope{}), do: {:ok, 0}
+  def mark_all_read(%{user: _}), do: {:ok, 0}
 
   @doc "Subscribes the current process to notification invalidations for the scoped user."
   @spec subscribe(Scope.t()) :: :ok | {:error, :not_found}
-  def subscribe(%Scope{user: %User{id: user_id}}) do
+  def subscribe(%{user: %{id: user_id}}) do
     Phoenix.PubSub.subscribe(Storyarn.PubSub, user_topic(user_id))
   end
 
-  def subscribe(%Scope{}), do: {:error, :not_found}
+  def subscribe(%{user: _}), do: {:error, :not_found}
 
   @doc """
   Publishes invalidations for notifications created by a committed transaction.
@@ -513,7 +512,7 @@ defmodule Storyarn.Notifications do
     |> where([recipient], recipient.user_id != ^actor_id)
   end
 
-  defp visible_query(%Scope{user: %User{id: user_id}}) do
+  defp visible_query(%{user: %{id: user_id}}) do
     from(notification in Notification,
       left_join: project in Project,
       on: project.id == notification.project_id,
@@ -535,11 +534,11 @@ defmodule Storyarn.Notifications do
   defp normalize_limit(limit) when is_integer(limit) and limit > 0, do: min(limit, @max_limit)
   defp normalize_limit(_invalid), do: @default_limit
 
-  defp self_notification?(%User{id: user_id}, %User{id: user_id}), do: true
-  defp self_notification?(%User{}, %User{}), do: false
-  defp self_notification?(%User{}, nil), do: false
+  defp self_notification?(%{id: user_id}, %{id: user_id}), do: true
+  defp self_notification?(%{id: _}, %{id: _}), do: false
+  defp self_notification?(%{id: _}, nil), do: false
 
-  defp actor_id(%User{id: id}), do: id
+  defp actor_id(%{id: id}), do: id
   defp actor_id(nil), do: nil
 
   defp project_id(%Project{id: id}), do: id

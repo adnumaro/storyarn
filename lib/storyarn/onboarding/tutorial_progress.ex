@@ -11,7 +11,7 @@ defmodule Storyarn.Onboarding.TutorialProgress do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
+  alias Storyarn.Onboarding.Persistence.UserRecord, as: User
 
   @tutorials [:workspace, :sheets, :flows, :scenes, :localization, :export]
 

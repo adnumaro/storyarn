@@ -10,7 +10,6 @@ defmodule Storyarn.Onboarding do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Onboarding.TutorialProgress
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -42,7 +41,7 @@ defmodule Storyarn.Onboarding do
 
   @doc "Builds the complete onboarding state for a user in a single query."
   @spec summary(Scope.t()) :: summary()
-  def summary(%Scope{user: %User{} = user}) do
+  def summary(%{user: %{id: _} = user}) do
     progress_by_tutorial =
       TutorialProgress
       |> where([progress], progress.user_id == ^user.id)
@@ -63,7 +62,7 @@ defmodule Storyarn.Onboarding do
   @doc "Marks a tutorial as completed for the current user."
   @spec complete_tutorial(Scope.t(), atom() | String.t()) ::
           {:ok, TutorialProgress.t()} | {:error, :invalid_tutorial | Ecto.Changeset.t()}
-  def complete_tutorial(%Scope{user: %User{} = user}, tutorial) do
+  def complete_tutorial(%{user: %{id: _} = user}, tutorial) do
     case TutorialProgress.cast_tutorial(tutorial) do
       {:ok, tutorial} -> put_progress(user, tutorial, TimeHelpers.now())
       :error -> {:error, :invalid_tutorial}
@@ -73,7 +72,7 @@ defmodule Storyarn.Onboarding do
   @doc "Restarts one tutorial without changing the remaining guides."
   @spec restart_tutorial(Scope.t(), atom() | String.t()) ::
           {:ok, TutorialProgress.t()} | {:error, :invalid_tutorial | Ecto.Changeset.t()}
-  def restart_tutorial(%Scope{user: %User{} = user}, tutorial) do
+  def restart_tutorial(%{user: %{id: _} = user}, tutorial) do
     case TutorialProgress.cast_tutorial(tutorial) do
       {:ok, tutorial} -> put_progress(user, tutorial, nil)
       :error -> {:error, :invalid_tutorial}
@@ -82,7 +81,7 @@ defmodule Storyarn.Onboarding do
 
   @doc "Restarts every tutorial for the current user."
   @spec restart_all(Scope.t()) :: {:ok, [TutorialProgress.t()]} | {:error, Ecto.Changeset.t()}
-  def restart_all(%Scope{user: %User{} = user}) do
+  def restart_all(%{user: %{id: _} = user}) do
     Repo.transact(fn -> {:ok, restart_tutorials(user, tutorials(), [])} end)
   end
 

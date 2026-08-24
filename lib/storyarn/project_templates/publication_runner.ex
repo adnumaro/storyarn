@@ -3,11 +3,10 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
@@ -25,7 +24,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.PublishProjectTemplateWorker
 
-  def request_template_publication(%Scope{} = scope, %Project{} = source_project, attrs) do
+  def request_template_publication(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Billing.can_create_project_template?(source_project) do
@@ -36,7 +35,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   end
 
   def request_template_version_publication(
-        %Scope{} = scope,
+        %{user: _} = scope,
         %ProjectTemplate{} = template,
         %Project{} = source_project,
         attrs
@@ -79,7 +78,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     Phoenix.PubSub.subscribe(Storyarn.PubSub, publication_template_topic(template_id))
   end
 
-  def create_template_from_project(%Scope{} = scope, %Project{} = source_project, attrs) do
+  def create_template_from_project(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Billing.can_create_project_template?(source_project),
@@ -92,7 +91,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end
   end
 
-  def publish_new_version(%Scope{} = scope, %ProjectTemplate{} = template, %Project{} = source_project) do
+  def publish_new_version(%{user: _} = scope, %ProjectTemplate{} = template, %Project{} = source_project) do
     with :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
@@ -109,22 +108,22 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
     end
   end
 
-  def update_template(%Scope{} = scope, %ProjectTemplate{} = template, attrs) do
+  def update_template(%{user: _} = scope, %ProjectTemplate{} = template, attrs) do
     with :ok <- Authorization.authorize_template_manager(scope, template) do
       update_template_metadata(template, attrs, scope)
     end
   end
 
-  def archive_template(%Scope{} = scope, %ProjectTemplate{} = template) do
+  def archive_template(%{user: _} = scope, %ProjectTemplate{} = template) do
     update_template(scope, template, %{"status" => "archived"})
   end
 
-  def unarchive_template(%Scope{} = scope, %ProjectTemplate{} = template) do
+  def unarchive_template(%{user: _} = scope, %ProjectTemplate{} = template) do
     update_template(scope, template, %{"status" => "active"})
   end
 
   def update_template_and_publish_new_version(
-        %Scope{} = scope,
+        %{user: _} = scope,
         %ProjectTemplate{} = template,
         %Project{} = source_project,
         attrs
@@ -439,7 +438,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
          %ProjectTemplatePublication{} = publication <-
            lock_finalizing_publication(candidate.id),
          :ok <- ensure_finalizing_publication_identity(publication, candidate),
-         scope = Scope.for_user(user),
+         scope = %{user: user},
          :ok <-
            reauthorize_publication_for_finalize(
              scope,
@@ -730,7 +729,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
     with %User{} = user <- publication.requested_by,
          %Project{} = source_project <- publication.source_project,
-         scope = Scope.for_user(user),
+         scope = %{user: user},
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project) do
       authorize_publication_template_for_worker(scope, publication, source_project)
     else

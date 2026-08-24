@@ -222,10 +222,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   end
 
   # The context independently scopes notification mutations to this user.
-  def authorize(
-        %{assigns: %{current_scope: %Storyarn.Accounts.Scope{user: %Storyarn.Accounts.User{}}}},
-        :manage_notifications
-      ), do: :ok
+  def authorize(%{assigns: %{current_scope: %{user: %{id: _}}}}, :manage_notifications), do: :ok
 
   # Catch-all: deny unknown actions
   def authorize(_socket, _action), do: {:error, :unauthorized}

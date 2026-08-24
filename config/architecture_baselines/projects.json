@@ -3,22 +3,12 @@
   "edges": [
     [
       "lib/storyarn/assets.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/assets.ex",
       "lib/storyarn/analytics.ex",
       "runtime"
     ],
     [
       "lib/storyarn/assets.ex",
       "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/assets/asset.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -43,17 +33,7 @@
     ],
     [
       "lib/storyarn/imports.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/imports.ex",
       "lib/storyarn/workers/import_project_worker.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/execution.ex",
-      "lib/storyarn/accounts/scope.ex",
       "runtime"
     ],
     [
@@ -74,16 +54,6 @@
     [
       "lib/storyarn/imports/materializer.ex",
       "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/notification_delivery.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/notification_delivery.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -112,24 +82,9 @@
       "runtime"
     ],
     [
-      "lib/storyarn/imports/project_import_attempt.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/replacement.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/imports/replacement.ex",
       "lib/storyarn/billing.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/imports/resume.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
     ],
     [
       "lib/storyarn/imports/resume.ex",
@@ -137,29 +92,9 @@
       "runtime"
     ],
     [
-      "lib/storyarn/project_templates/authorization.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/deletion.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/project_templates/deletion.ex",
       "lib/storyarn/workers/delete_project_template_artifacts_worker.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/installation.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/installation.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
     ],
     [
       "lib/storyarn/project_templates/installation.ex",
@@ -188,53 +123,13 @@
     ],
     [
       "lib/storyarn/project_templates/portable_import.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/portable_import.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/portable_import.ex",
       "lib/storyarn/shared/name_normalizer.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/project_template.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
       "lib/storyarn/project_templates/project_template.ex",
       "lib/storyarn/shared/validations.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/project_template_install.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/project_template_publication.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/project_template_version.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/publication_runner.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/publication_runner.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
     ],
     [
       "lib/storyarn/project_templates/publication_runner.ex",
@@ -252,29 +147,14 @@
       "runtime"
     ],
     [
-      "lib/storyarn/project_templates/template_queries.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/projects/dashboard.ex",
       "lib/storyarn/shared/severity.ex",
       "runtime"
     ],
     [
       "lib/storyarn/projects/project.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project.ex",
       "lib/storyarn/shared/validations.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project_crud.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
     ],
     [
       "lib/storyarn/projects/project_crud.ex",
@@ -293,17 +173,7 @@
     ],
     [
       "lib/storyarn/projects/project_invitation.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project_invitation.ex",
       "lib/storyarn/shared/validations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project_membership.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -323,11 +193,6 @@
     ],
     [
       "lib/storyarn/shared/invitation_operations.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/shared/invitation_operations.ex",
       "lib/storyarn/billing.ex",
       "runtime"
     ],
@@ -335,11 +200,6 @@
       "lib/storyarn/shared/invitation_operations.ex",
       "lib/storyarn/workers/deliver_invitation_worker.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/shared/membership_operations.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
     ],
     [
       "lib/storyarn/versioning.ex",
@@ -352,18 +212,8 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/materialization_helpers.ex",
       "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -378,11 +228,6 @@
     ],
     [
       "lib/storyarn/versioning/project_snapshot.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot.ex",
       "lib/storyarn/billing/storage_reservation.ex",
       "runtime"
     ],
@@ -390,16 +235,6 @@
       "lib/storyarn/versioning/project_snapshot_asset_materializer.ex",
       "lib/storyarn/billing.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_build.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_build.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
     ],
     [
       "lib/storyarn/versioning/project_snapshot_build.ex",
@@ -430,11 +265,6 @@
       "lib/storyarn/versioning/project_snapshot_download.ex",
       "lib/storyarn/billing.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_lifecycle.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
     ],
     [
       "lib/storyarn/versioning/project_snapshot_lifecycle.ex",
@@ -483,22 +313,7 @@
     ],
     [
       "lib/storyarn/versioning/project_snapshot_restore.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore.ex",
       "lib/storyarn/billing/storage_reservation.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/accounts/user.ex",
       "export"
     ],
     [
@@ -514,11 +329,6 @@
     [
       "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
       "lib/storyarn/billing/storage_reservation.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex",
-      "lib/storyarn/accounts/scope.ex",
       "export"
     ],
     [
@@ -552,21 +362,6 @@
       "export"
     ],
     [
-      "lib/storyarn/versioning/workspace_snapshot_import.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/workspace_snapshot_imports.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/workspace_snapshot_imports.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/versioning/workspace_snapshot_imports.ex",
       "lib/storyarn/billing.ex",
       "runtime"
@@ -594,11 +389,6 @@
     [
       "lib/storyarn_web/live/project_live/components/settings_components.ex",
       "lib/storyarn/shared/validations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/project_live/invitation.ex",
-      "lib/storyarn/accounts.ex",
       "runtime"
     ],
     [

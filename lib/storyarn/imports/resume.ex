@@ -50,12 +50,12 @@ defmodule Storyarn.Imports.Resume do
           | {:ok, nil}
           | {:error, term()}
           | {:error, term(), ProjectImportAttempt.t()}
-  def resume_latest_active_import(%Scope{} = scope, %Project{} = project) do
+  def resume_latest_active_import(%{user: _} = scope, %Project{} = project) do
     resume_latest_active_import(scope, project, [])
   end
 
   @doc false
-  def resume_latest_active_import(%Scope{} = scope, %Project{} = project, opts) when is_list(opts) do
+  def resume_latest_active_import(%{user: _} = scope, %Project{} = project, opts) when is_list(opts) do
     case Projects.authorize(scope, project.id, @import_action) do
       {:ok, _project, _membership} ->
         case latest_active_import_attempt(project.id, scope.user.id) do
@@ -105,12 +105,12 @@ defmodule Storyarn.Imports.Resume do
   """
   @spec resume_import(Scope.t(), Project.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t(), map() | nil} | {:error, term()}
-  def resume_import(%Scope{} = scope, %Project{} = project, attempt_id) do
+  def resume_import(%{user: _} = scope, %Project{} = project, attempt_id) do
     resume_import(scope, project, attempt_id, [])
   end
 
   @doc false
-  def resume_import(%Scope{} = scope, %Project{} = project, attempt_id, opts)
+  def resume_import(%{user: _} = scope, %Project{} = project, attempt_id, opts)
       when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= @max_safe_import_attempt_id and is_list(opts) do
     case Projects.authorize(scope, project.id, @import_action) do
       {:ok, _project, _membership} ->
@@ -121,7 +121,7 @@ defmodule Storyarn.Imports.Resume do
     end
   end
 
-  def resume_import(%Scope{}, %Project{}, _attempt_id, _opts), do: {:error, :not_found}
+  def resume_import(%{user: _}, %Project{}, _attempt_id, _opts), do: {:error, :not_found}
 
   defp resume_authorized_import(scope, project, attempt_id, opts) do
     user_id = scope.user.id

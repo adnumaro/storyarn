@@ -40,7 +40,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
           projects: [destination()],
           entities: [destination()]
         }
-  def destinations(%Scope{} = scope, query, opts \\ []) do
+  def destinations(%{user: _} = scope, query, opts \\ []) do
     limit = Keyword.get(opts, :limit_per_type, @default_limit_per_type)
     query = normalize_query(query)
 
@@ -72,7 +72,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   @spec create_targets(Scope.t()) :: [
           %{id: integer(), name: String.t(), workspace_name: String.t()}
         ]
-  def create_targets(%Scope{} = scope) do
+  def create_targets(%{user: _} = scope) do
     scope
     |> editable_project_entries()
     |> Enum.map(fn %{project: project, workspace: workspace} ->
@@ -86,7 +86,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   """
   @spec editable_project(Scope.t(), integer()) ::
           {:ok, %{project: struct(), workspace: struct()}} | {:error, :unauthorized}
-  def editable_project(%Scope{} = scope, project_id) do
+  def editable_project(%{user: _} = scope, project_id) do
     case Enum.find(editable_project_entries(scope), &(&1.project.id == project_id)) do
       nil -> {:error, :unauthorized}
       entry -> {:ok, entry}
@@ -103,7 +103,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   """
   @spec viewable_project(Scope.t(), integer()) ::
           {:ok, %{project: struct(), workspace: struct()}} | {:error, :unauthorized}
-  def viewable_project(%Scope{} = scope, project_id) do
+  def viewable_project(%{user: _} = scope, project_id) do
     with {:ok, project, _project_membership} <- Projects.get_project(scope, project_id),
          {:ok, workspace, _workspace_membership} <-
            Workspaces.get_workspace(scope, project.workspace_id) do
@@ -120,7 +120,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   the user browse before typing.
   """
   @spec deletable_entities(Scope.t(), String.t(), keyword()) :: [destination()]
-  def deletable_entities(%Scope{} = scope, query, opts \\ []) do
+  def deletable_entities(%{user: _} = scope, query, opts \\ []) do
     limit = Keyword.get(opts, :limit_per_type, @default_limit_per_type)
     query = normalize_query(query)
 
@@ -155,7 +155,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   @spec deletable_entity(Scope.t(), :sheet | :flow | :scene, integer(), integer()) ::
           {:ok, %{entity: struct(), project: struct(), workspace: struct()}}
           | {:error, :unauthorized | :not_found}
-  def deletable_entity(%Scope{} = scope, type, project_id, id) when type in [:sheet, :flow, :scene] do
+  def deletable_entity(%{user: _} = scope, type, project_id, id) when type in [:sheet, :flow, :scene] do
     with {:ok, %{project: project, workspace: workspace}} <- editable_project(scope, project_id),
          %{} = entity <- get_entity(type, project.id, id) do
       {:ok, %{entity: entity, project: project, workspace: workspace}}
@@ -169,7 +169,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
   defp get_entity(:flow, project_id, id), do: FlowSearch.get(project_id, id)
   defp get_entity(:scene, project_id, id), do: SceneSearch.get(project_id, id)
 
-  defp authorized_entries(%Scope{} = scope) do
+  defp authorized_entries(%{user: _} = scope) do
     workspace_entries = Workspaces.list_workspaces(scope)
     workspace_by_id = Map.new(workspace_entries, fn %{workspace: w} -> {w.id, w} end)
 
@@ -183,7 +183,7 @@ defmodule Storyarn.GlobalSearch.Destinations do
     %{workspace_entries: workspace_entries, workspace_by_id: workspace_by_id, project_entries: project_entries}
   end
 
-  defp editable_project_entries(%Scope{} = scope) do
+  defp editable_project_entries(%{user: _} = scope) do
     %{workspace_by_id: workspace_by_id, project_entries: project_entries} = authorized_entries(scope)
 
     project_entries

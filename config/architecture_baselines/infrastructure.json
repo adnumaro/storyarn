@@ -2,103 +2,13 @@
   "consumer": "infrastructure",
   "edges": [
     [
-      "lib/storyarn/ai/allowance.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/allowance_grant.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/audit_entry.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/context.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/ai/context.ex",
       "lib/storyarn/projects.ex",
       "runtime"
     ],
     [
-      "lib/storyarn/ai/execution_intent.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/integration.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/integration_assignments.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/integration_crud.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/integration_workspace_assignment.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/operation.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/operation.ex",
       "lib/storyarn/projects/project.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/operations.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/operations.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/personal_consent.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/personal_preference.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/personal_preferences.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/policy.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/policy_decision.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/policy_decision.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -123,73 +33,18 @@
     ],
     [
       "lib/storyarn/ai/result.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/result.ex",
       "lib/storyarn/projects/project.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/results.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/route_option.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
       "lib/storyarn/ai/route_option.ex",
       "lib/storyarn/projects/project.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/ai/workspace_policy.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/workspace_policy_audit.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/analytics.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/analytics.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
     ],
     [
       "lib/storyarn/application.ex",
       "lib/storyarn/imports/error_deduplicator.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/command_palette.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/command_palette/operation.ex",
-      "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/global_search/advanced_search.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/global_search/destinations.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
     ],
     [
       "lib/storyarn/global_search/destinations.ex",
@@ -199,21 +54,6 @@
     [
       "lib/storyarn/global_search/variable_search.ex",
       "lib/storyarn/references.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/onboarding.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/onboarding.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/onboarding/tutorial_progress.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
@@ -254,16 +94,6 @@
     [
       "lib/storyarn/workers/deliver_invitation_worker.ex",
       "lib/storyarn/projects/invitations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
-      "lib/storyarn/accounts.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
-      "lib/storyarn/accounts/user_notifier.ex",
       "runtime"
     ],
     [
@@ -314,11 +144,6 @@
     [
       "lib/storyarn/workers/repair_project_snapshot_finding_worker.ex",
       "lib/storyarn/versioning.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
-      "lib/storyarn/accounts.ex",
       "runtime"
     ],
     [

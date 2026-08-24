@@ -3,14 +3,13 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.WorkspaceAccess
@@ -735,7 +734,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp validate_workspace_exists(workspace_id), do: {:error, {:invalid_workspace_id, workspace_id}}
 
   defp validate_source_project_scope(%{source_user_id: source_user_id, verify_workspace_id: workspace_id}) do
-    case WorkspaceAccess.authorize(Scope.for_user(Repo.get!(User, source_user_id)), workspace_id, :create_project) do
+    case WorkspaceAccess.authorize(%{user: Repo.get!(User, source_user_id)}, workspace_id, :create_project) do
       {:ok, _workspace, _membership} -> :ok
       {:error, reason} -> {:error, {:source_project_unauthorized, reason}}
     end

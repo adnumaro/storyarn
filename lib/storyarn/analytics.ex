@@ -69,9 +69,9 @@ defmodule Storyarn.Analytics do
   @spec track(Scope.t() | User.t() | nil, String.t(), properties()) :: :ok
   def track(scope_or_user, event_name, properties \\ %{})
 
-  def track(%Scope{user: user}, event_name, properties), do: track(user, event_name, properties)
+  def track(%{user: user}, event_name, properties), do: track(user, event_name, properties)
 
-  def track(%User{} = user, event_name, properties) when is_binary(event_name) do
+  def track(%{id: _} = user, event_name, properties) when is_binary(event_name) do
     capture(%{
       event: event_name,
       distinct_id: distinct_id(user),
@@ -92,9 +92,9 @@ defmodule Storyarn.Analytics do
   @spec track(Scope.t() | User.t() | nil, module(), term(), properties()) :: :ok
   def track(scope_or_user, contract, event, properties)
 
-  def track(%Scope{user: user}, contract, event, properties), do: track(user, contract, event, properties)
+  def track(%{user: user}, contract, event, properties), do: track(user, contract, event, properties)
 
-  def track(%User{} = user, contract, event, properties) when is_map(properties) do
+  def track(%{id: _} = user, contract, event, properties) when is_map(properties) do
     with {:ok, event_name, allowed_keys} <- EventContract.resolve(contract, event),
          {:ok, safe_properties} <- EventContract.sanitize(contract, event, properties) do
       capture_declared(%{
@@ -148,7 +148,7 @@ defmodule Storyarn.Analytics do
   @spec identify_user(User.t() | nil, properties()) :: :ok
   def identify_user(user, properties \\ %{})
 
-  def identify_user(%User{} = user, properties) do
+  def identify_user(%{id: _, is_super_admin: _, locale: _} = user, properties) do
     identify(%{
       distinct_id: distinct_id(user),
       properties:
@@ -166,9 +166,9 @@ defmodule Storyarn.Analytics do
   @spec frontend_config(Scope.t() | User.t() | nil) :: map() | nil
   def frontend_config(scope_or_user)
 
-  def frontend_config(%Scope{user: user}), do: frontend_config(user)
+  def frontend_config(%{user: user}), do: frontend_config(user)
 
-  def frontend_config(%User{} = user) do
+  def frontend_config(%{id: _, is_super_admin: _, locale: _} = user) do
     case frontend_base_config() do
       {:ok, config} ->
         Map.merge(config, %{
@@ -328,7 +328,7 @@ defmodule Storyarn.Analytics do
 
   defp present?(value), do: is_binary(value) and value != ""
 
-  defp distinct_id(%User{id: id}), do: "user:#{id}"
+  defp distinct_id(%{id: id}), do: "user:#{id}"
 
   defp allowed_event?(event_name), do: Map.has_key?(@event_property_keys, event_name)
 

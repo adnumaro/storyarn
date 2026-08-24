@@ -4,7 +4,7 @@ defmodule Storyarn.AI.WorkspacePolicyAudit do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_workspace_policy_audits" do

@@ -33,29 +33,29 @@ defmodule Storyarn.AI.IntegrationAssignments do
 
   @spec assign(Scope.t(), pos_integer(), pos_integer()) ::
           {:ok, IntegrationWorkspaceAssignment.t()} | {:error, mutation_error()}
-  def assign(%Scope{user: %{id: user_id}} = scope, integration_id, workspace_id)
+  def assign(%{user: %{id: user_id}} = scope, integration_id, workspace_id)
       when is_integer(integration_id) and integration_id > 0 and is_integer(workspace_id) and workspace_id > 0 do
     transact_if_enabled(scope, fn ->
       assign_locked(scope, user_id, integration_id, workspace_id)
     end)
   end
 
-  def assign(%Scope{}, _integration_id, _workspace_id), do: {:error, :workspace_unavailable}
+  def assign(%{user: _}, _integration_id, _workspace_id), do: {:error, :workspace_unavailable}
 
   @spec unassign(Scope.t(), pos_integer(), pos_integer()) ::
           {:ok, IntegrationWorkspaceAssignment.t()} | {:error, mutation_error()}
-  def unassign(%Scope{user: %{id: user_id}} = scope, integration_id, workspace_id)
+  def unassign(%{user: %{id: user_id}} = scope, integration_id, workspace_id)
       when is_integer(integration_id) and integration_id > 0 and is_integer(workspace_id) and workspace_id > 0 do
     transact_if_enabled(scope, fn ->
       unassign_locked(scope, user_id, integration_id, workspace_id)
     end)
   end
 
-  def unassign(%Scope{}, _integration_id, _workspace_id), do: {:error, :assignment_not_found}
+  def unassign(%{user: _}, _integration_id, _workspace_id), do: {:error, :assignment_not_found}
 
   @doc "Returns actor-visible workspace states for one actor-owned active integration."
   @spec list_states(Scope.t(), Integration.t()) :: [map()]
-  def list_states(%Scope{user: %{id: user_id}} = scope, %Integration{user_id: user_id, revoked_at: nil} = integration) do
+  def list_states(%{user: %{id: user_id}} = scope, %Integration{user_id: user_id, revoked_at: nil} = integration) do
     workspaces = WorkspaceAccess.list_workspaces(scope)
     workspace_ids = Enum.map(workspaces, & &1.workspace.id)
     policies = policies_by_workspace(workspace_ids)
@@ -80,7 +80,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
     end)
   end
 
-  def list_states(%Scope{}, %Integration{}), do: []
+  def list_states(%{user: _}, %Integration{}), do: []
 
   @doc false
   @spec active_for(pos_integer(), pos_integer(), pos_integer(), keyword()) ::
@@ -248,7 +248,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
     end
   end
 
-  defp feature_enabled(%Scope{user: user}) do
+  defp feature_enabled(%{user: user}) do
     if FeatureFlags.enabled?(:ai_integrations, for: user), do: :ok, else: {:error, :feature_disabled}
   end
 

@@ -21,6 +21,7 @@ defmodule Storyarn.Accounts do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
+  alias Storyarn.Accounts.UserNotifier
   alias Storyarn.Accounts.Users
   alias Storyarn.Accounts.UserToken
 
@@ -216,6 +217,10 @@ defmodule Storyarn.Accounts do
   @doc false
   @spec decrypt_reset_password_url(String.t()) :: {:ok, String.t()} | {:error, :invalid_reset_password_url}
   defdelegate decrypt_reset_password_url(encrypted_reset_url), to: Passwords
+
+  @doc "Delivers reset password instructions to the given email."
+  @spec deliver_reset_password_instructions(String.t() | map(), String.t()) :: {:ok, term()} | {:error, term()}
+  defdelegate deliver_reset_password_instructions(email, reset_url), to: UserNotifier
 
   @doc """
   Gets the user for a valid reset password token.

@@ -4,8 +4,8 @@ defmodule Storyarn.AI.Result do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.EncryptedBinary

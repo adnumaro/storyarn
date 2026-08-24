@@ -5,7 +5,7 @@ defmodule Storyarn.CommandPalette.Operation do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
+  alias Storyarn.CommandPalette.Persistence.UserRecord, as: User
 
   @events ~w(palette_create palette_delete)
 

@@ -47,7 +47,7 @@ defmodule Storyarn.AI.PersonalPreferences do
           | Ecto.Changeset.t()
 
   @spec overview(Scope.t()) :: {:ok, map()} | {:error, mutation_error()}
-  def overview(%Scope{user: %{id: user_id}} = scope) do
+  def overview(%{user: %{id: user_id}} = scope) do
     with :ok <- feature_enabled(scope) do
       workspace_entries = WorkspaceAccess.list_workspaces(scope)
       workspace_ids = Enum.map(workspace_entries, & &1.workspace.id)
@@ -63,7 +63,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   end
 
   @spec summary(Scope.t(), pos_integer()) :: {:ok, map()} | {:error, mutation_error()}
-  def summary(%Scope{user: %{id: user_id}} = scope, workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+  def summary(%{user: %{id: user_id}} = scope, workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
     with :ok <- feature_enabled(scope),
          {:ok, workspace, membership} <- workspace_access(scope, workspace_id),
          :ok <- require_workspace_membership(membership.role) do
@@ -93,7 +93,7 @@ defmodule Storyarn.AI.PersonalPreferences do
     end
   end
 
-  def summary(%Scope{}, _workspace_id), do: {:error, :workspace_unavailable}
+  def summary(%{user: _}, _workspace_id), do: {:error, :workspace_unavailable}
 
   @doc """
   Return the actor-visible role preferences affected by one actor-owned active
@@ -103,8 +103,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   credential material and keeps broken selections visible as repair states.
   """
   @spec impacts(Scope.t(), pos_integer()) :: {:ok, [map()]} | {:error, mutation_error()}
-  def impacts(%Scope{user: %{id: user_id}} = scope, integration_id)
-      when is_integer(integration_id) and integration_id > 0 do
+  def impacts(%{user: %{id: user_id}} = scope, integration_id) when is_integer(integration_id) and integration_id > 0 do
     with :ok <- feature_enabled(scope),
          %Integration{revoked_at: nil} <- get_integration(user_id, integration_id) do
       impacts =
@@ -145,11 +144,11 @@ defmodule Storyarn.AI.PersonalPreferences do
     end
   end
 
-  def impacts(%Scope{}, _integration_id), do: {:error, :integration_unavailable}
+  def impacts(%{user: _}, _integration_id), do: {:error, :integration_unavailable}
 
   @spec put(Scope.t(), pos_integer(), atom() | String.t(), pos_integer(), String.t()) ::
           {:ok, PersonalPreference.t()} | {:error, mutation_error()}
-  def put(%Scope{user: %{id: user_id}} = scope, workspace_id, slot, integration_id, model)
+  def put(%{user: %{id: user_id}} = scope, workspace_id, slot, integration_id, model)
       when is_integer(workspace_id) and workspace_id > 0 and is_integer(integration_id) and integration_id > 0 and
              is_binary(model) do
     with :ok <- feature_enabled(scope),
@@ -160,12 +159,11 @@ defmodule Storyarn.AI.PersonalPreferences do
     end
   end
 
-  def put(%Scope{}, _workspace_id, _slot, _integration_id, _model), do: {:error, :integration_unavailable}
+  def put(%{user: _}, _workspace_id, _slot, _integration_id, _model), do: {:error, :integration_unavailable}
 
   @spec delete(Scope.t(), pos_integer(), atom() | String.t()) ::
           {:ok, PersonalPreference.t()} | {:error, mutation_error()}
-  def delete(%Scope{user: %{id: user_id}} = scope, workspace_id, slot)
-      when is_integer(workspace_id) and workspace_id > 0 do
+  def delete(%{user: %{id: user_id}} = scope, workspace_id, slot) when is_integer(workspace_id) and workspace_id > 0 do
     with :ok <- feature_enabled(scope),
          {:ok, slot} <- PersonalRoles.normalize_slot(slot) do
       fn -> delete_locked(scope, user_id, workspace_id, slot) end
@@ -174,7 +172,7 @@ defmodule Storyarn.AI.PersonalPreferences do
     end
   end
 
-  def delete(%Scope{}, _workspace_id, _slot), do: {:error, :preference_not_found}
+  def delete(%{user: _}, _workspace_id, _slot), do: {:error, :preference_not_found}
 
   defp put_locked(scope, user_id, workspace_id, slot, integration_id, model) do
     with {:ok, workspace, membership} <- workspace_access(scope, workspace_id),
@@ -733,7 +731,7 @@ defmodule Storyarn.AI.PersonalPreferences do
     end)
   end
 
-  defp feature_enabled(%Scope{user: user}) do
+  defp feature_enabled(%{user: user}) do
     if FeatureFlags.enabled?(:ai_integrations, for: user),
       do: :ok,
       else: {:error, :feature_disabled}

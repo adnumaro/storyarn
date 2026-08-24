@@ -10,8 +10,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
@@ -44,6 +42,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.SceneProjectTrash
@@ -193,7 +192,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
          true <- project.workspace_id == restore.workspace_id,
          %User{} = actor <- Repo.get(User, restore.requested_by_id),
          {:ok, %Project{id: project_id, deleted_at: nil}, _membership} <-
-           Projects.authorize(Scope.for_user(actor), project.id, :manage_project),
+           Projects.authorize(%{user: actor}, project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
          :ok <- validate_canonical_project_fields(project, archive_plan.project),

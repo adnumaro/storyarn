@@ -12,7 +12,6 @@ defmodule Storyarn.Imports.Execution do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Imports.Error
@@ -164,7 +163,7 @@ defmodule Storyarn.Imports.Execution do
   end
 
   defp authorize_worker(attempt) do
-    Projects.authorize(Scope.for_user(attempt.user), attempt.project_id, @import_action)
+    Projects.authorize(%{user: attempt.user}, attempt.project_id, @import_action)
   end
 
   defp handled_execution_error(

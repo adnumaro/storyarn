@@ -33,11 +33,6 @@
     ],
     [
       "lib/storyarn/billing/storage_accounting.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/billing/storage_accounting.ex",
       "lib/storyarn/assets/asset.ex",
       "runtime"
     ],
@@ -98,16 +93,6 @@
     ],
     [
       "lib/storyarn/notifications.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/notifications.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/notifications.ex",
       "lib/storyarn/projects.ex",
       "runtime"
     ],
@@ -119,11 +104,6 @@
     [
       "lib/storyarn/notifications.ex",
       "lib/storyarn/projects/project_membership.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/notifications/notification.ex",
-      "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [

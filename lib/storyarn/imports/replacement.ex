@@ -10,7 +10,6 @@ defmodule Storyarn.Imports.Replacement do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Imports.Error
@@ -433,7 +432,7 @@ defmodule Storyarn.Imports.Replacement do
       description: "Recovery point created before replacing narrative project content."
     }
 
-    case request.(Scope.for_user(attempt.user), project, attrs) do
+    case request.(%{user: attempt.user}, project, attrs) do
       {:ok, %ProjectSnapshot{} = snapshot} -> {:ok, snapshot}
       {:error, reason} -> {:error, normalize_snapshot_request_error(reason)}
       {:error, reason, _details} -> {:error, normalize_snapshot_request_error(reason)}

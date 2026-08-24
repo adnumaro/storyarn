@@ -3,13 +3,13 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.TimeHelpers

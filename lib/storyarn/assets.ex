@@ -8,7 +8,6 @@ defmodule Storyarn.Assets do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Analytics
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.AssetTrash
@@ -34,6 +33,7 @@ defmodule Storyarn.Assets do
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
@@ -231,7 +231,7 @@ defmodule Storyarn.Assets do
   """
   @spec create_asset(project(), user(), attrs()) ::
           {:ok, asset()} | {:error, changeset() | term()} | {:error, :limit_reached, map()}
-  def create_asset(%Project{} = project, %User{} = user, attrs) do
+  def create_asset(%Project{} = project, %{id: _} = user, attrs) do
     project
     |> create_asset_record(user.id, attrs, :generic)
     |> track_asset_created(user, attrs)
@@ -1517,7 +1517,7 @@ defmodule Storyarn.Assets do
           upload_result()
   def upload_and_create_asset(path, entry, project, user, opts \\ [])
 
-  def upload_and_create_asset(path, entry, %Project{} = project, %User{} = user, opts) do
+  def upload_and_create_asset(path, entry, %Project{} = project, %{id: _} = user, opts) do
     do_upload_and_create_asset(path, entry, project, user, opts)
   end
 
@@ -2311,14 +2311,14 @@ defmodule Storyarn.Assets do
   defp do_create_asset(project, nil, attrs), do: create_asset(project, attrs)
   defp do_create_asset(project, user, attrs), do: create_asset(project, user, attrs)
 
-  defp uploaded_by_id(%User{id: id}), do: id
+  defp uploaded_by_id(%{id: id}), do: id
   defp uploaded_by_id(_), do: nil
 
   defp track_asset_created({:ok, asset}, user, attrs) do
     properties = asset_analytics_properties(asset, attrs)
 
     case user do
-      %User{} -> Analytics.track(user, "asset uploaded", properties)
+      %{id: _} -> Analytics.track(user, "asset uploaded", properties)
       _ -> Analytics.track_system("asset uploaded", properties)
     end
 

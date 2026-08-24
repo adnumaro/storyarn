@@ -9,7 +9,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
@@ -26,6 +25,7 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.References

@@ -54,7 +54,7 @@ defmodule Storyarn.CommandPalette do
   """
   @spec run(Scope.t(), String.t(), String.t(), (-> {reply(), term()}), (term() -> reply())) ::
           {reply(), term() | nil}
-  def run(%Scope{user: %{id: user_id}}, event, execution_id, operation, error_reply)
+  def run(%{user: %{id: user_id}}, event, execution_id, operation, error_reply)
       when event in @events and is_binary(execution_id) and is_function(operation, 0) and is_function(error_reply, 1) do
     user_id
     |> transact_once(event, execution_id, operation)

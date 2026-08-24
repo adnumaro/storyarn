@@ -43,7 +43,7 @@ defmodule Storyarn.AI.IntegrationCrud do
 
   @doc "Active integrations for a user, ordered by provider name."
   @spec list_active(User.t() | integer()) :: [Integration.t()]
-  def list_active(%User{id: user_id}), do: list_active(user_id)
+  def list_active(%{id: user_id} = _user), do: list_active(user_id)
 
   def list_active(user_id) when is_integer(user_id) do
     Repo.all(
@@ -77,7 +77,7 @@ defmodule Storyarn.AI.IntegrationCrud do
   """
   @spec connect(User.t(), Provider.id() | String.t(), String.t()) ::
           {:ok, Integration.t()} | {:error, connect_error()}
-  def connect(%User{id: user_id} = _user, provider, api_key) when is_binary(api_key) do
+  def connect(%{id: user_id} = _user, provider, api_key) when is_binary(api_key) do
     with {:ok, adapter} <- Providers.adapter_for(provider),
          :ok <- ensure_not_connected(user_id, adapter.metadata().id),
          {:ok, account_info} <- validate_key(user_id, adapter, api_key) do
@@ -95,7 +95,7 @@ defmodule Storyarn.AI.IntegrationCrud do
   """
   @spec replace_key(User.t(), Integration.t(), String.t()) ::
           {:ok, Integration.t()} | {:error, credential_update_error()}
-  def replace_key(%User{id: user_id}, %Integration{id: integration_id, user_id: user_id}, api_key)
+  def replace_key(%{id: user_id} = _user, %Integration{id: integration_id, user_id: user_id}, api_key)
       when is_integer(integration_id) and is_binary(api_key) do
     with {:ok, snapshot} <- owned_active_snapshot(user_id, integration_id),
          {:ok, adapter} <- Providers.adapter_for(snapshot.provider),
@@ -104,7 +104,7 @@ defmodule Storyarn.AI.IntegrationCrud do
     end
   end
 
-  def replace_key(%User{}, %Integration{}, _api_key), do: {:error, :unauthorized}
+  def replace_key(%{id: _}, %Integration{}, _api_key), do: {:error, :unauthorized}
 
   @doc """
   Revalidate the stored key and atomically refresh provider metadata.
@@ -114,7 +114,7 @@ defmodule Storyarn.AI.IntegrationCrud do
   """
   @spec revalidate(User.t(), Integration.t()) ::
           {:ok, Integration.t()} | {:error, credential_update_error()}
-  def revalidate(%User{id: user_id}, %Integration{id: integration_id, user_id: user_id})
+  def revalidate(%{id: user_id} = _user, %Integration{id: integration_id, user_id: user_id})
       when is_integer(integration_id) do
     with {:ok, snapshot} <- owned_active_snapshot(user_id, integration_id),
          {:ok, adapter} <- Providers.adapter_for(snapshot.provider) do
@@ -131,7 +131,7 @@ defmodule Storyarn.AI.IntegrationCrud do
     end
   end
 
-  def revalidate(%User{}, %Integration{}), do: {:error, :unauthorized}
+  def revalidate(%{id: _}, %Integration{}), do: {:error, :unauthorized}
 
   @doc """
   Mark an integration as revoked (user-initiated disconnect).
@@ -142,10 +142,10 @@ defmodule Storyarn.AI.IntegrationCrud do
   """
   @spec revoke(User.t(), Integration.t()) ::
           {:ok, Integration.t()} | {:error, :unauthorized | :already_revoked | Ecto.Changeset.t()}
-  def revoke(%User{id: user_id}, %Integration{user_id: user_id} = integration),
+  def revoke(%{id: user_id} = _user, %Integration{user_id: user_id} = integration),
     do: revoke_active(integration, :disconnected)
 
-  def revoke(%User{}, %Integration{}), do: {:error, :unauthorized}
+  def revoke(%{id: _}, %Integration{}), do: {:error, :unauthorized}
 
   @doc """
   Conditional revoke shared by user disconnect (`:disconnected`) and runtime
@@ -167,7 +167,7 @@ defmodule Storyarn.AI.IntegrationCrud do
 
   # -- private ---------------------------------------------------------------
 
-  defp user_id_of(%User{id: id}), do: id
+  defp user_id_of(%{id: id}), do: id
   defp user_id_of(id) when is_integer(id), do: id
 
   defp ensure_not_connected(user_id, provider_id) do

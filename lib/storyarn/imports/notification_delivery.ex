@@ -3,10 +3,9 @@ defmodule Storyarn.Imports.NotificationDelivery do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Notifications
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
@@ -47,7 +46,7 @@ defmodule Storyarn.Imports.NotificationDelivery do
     requester = if attempt.user_id == requester_id, do: context.requester
 
     Notifications.deliver_async_result(
-      Scope.for_user(requester),
+      %{user: requester},
       project,
       %{
         entity_type: "project_import",

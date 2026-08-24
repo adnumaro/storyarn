@@ -15,10 +15,10 @@ defmodule Storyarn.Billing.StorageAccounting do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
+  alias Storyarn.Billing.Persistence.UserRecord, as: User
   alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageCleanupInventory

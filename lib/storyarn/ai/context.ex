@@ -20,7 +20,7 @@ defmodule Storyarn.AI.Context do
 
   @spec build_context(Scope.t(), Task.t(), SubjectRef.t()) ::
           {:ok, Package.t()} | {:error, atom()}
-  def build_context(%Scope{} = scope, %Task{} = task, %SubjectRef{} = subject_ref) do
+  def build_context(%{user: _} = scope, %Task{} = task, %SubjectRef{} = subject_ref) do
     started = System.monotonic_time()
 
     result =
@@ -48,7 +48,7 @@ defmodule Storyarn.AI.Context do
   @doc "Builds the task-owned package and its content-free persisted subject, when context is required."
   @spec prepare(Scope.t(), Task.t(), ExecutionIntent.t() | Operation.t()) ::
           {:ok, nil | %{package: Package.t(), subject: map() | nil}} | {:error, atom()}
-  def prepare(%Scope{} = scope, %Task{} = task, intent_or_operation) do
+  def prepare(%{user: _} = scope, %Task{} = task, intent_or_operation) do
     with {:ok, policy} <- Task.context_policy(task) do
       case policy.scope do
         :none -> {:ok, nil}
@@ -59,7 +59,7 @@ defmodule Storyarn.AI.Context do
 
   @spec current?(Scope.t(), Task.t(), SubjectRef.t(), String.t()) ::
           :ok | {:error, :stale_context | atom()}
-  def current?(%Scope{} = scope, %Task{} = task, %SubjectRef{} = subject_ref, expected_hash)
+  def current?(%{user: _} = scope, %Task{} = task, %SubjectRef{} = subject_ref, expected_hash)
       when is_binary(expected_hash) do
     case build_context(scope, task, subject_ref) do
       {:ok, %Package{hash: ^expected_hash}} -> :ok
@@ -72,11 +72,11 @@ defmodule Storyarn.AI.Context do
 
   @doc "Reauthorizes and verifies the context bound to a durable operation."
   @spec operation_current?(Scope.t(), Task.t(), Operation.t()) :: :ok | {:error, atom()}
-  def operation_current?(%Scope{}, %Task{}, %Operation{context_hash: nil, context_manifest: nil, context_subject: nil}),
+  def operation_current?(%{user: _}, %Task{}, %Operation{context_hash: nil, context_manifest: nil, context_subject: nil}),
     do: :ok
 
   def operation_current?(
-        %Scope{} = scope,
+        %{user: _} = scope,
         %Task{} = task,
         %Operation{context_hash: hash, context_manifest: %{}, context_subject: %{} = persisted} = operation
       )
@@ -89,7 +89,7 @@ defmodule Storyarn.AI.Context do
   end
 
   def operation_current?(
-        %Scope{},
+        %{user: _},
         %Task{} = task,
         %Operation{context_hash: hash, context_manifest: %{}, context_subject: nil} = operation
       )

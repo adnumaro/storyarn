@@ -26,7 +26,7 @@ defmodule Storyarn.Shared.InvitationSchema do
       import Ecto.Changeset
       import Ecto.Query
 
-      alias Storyarn.Accounts.User
+      alias Storyarn.Projects.Persistence.UserRecord, as: User
       alias Storyarn.Shared.TimeHelpers
       alias Storyarn.Shared.TokenGenerator
       alias Storyarn.Shared.Validations

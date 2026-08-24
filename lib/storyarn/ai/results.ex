@@ -18,12 +18,12 @@ defmodule Storyarn.AI.Results do
   @default_expiration_batch_size 100
 
   @spec get_operation(Scope.t(), pos_integer()) :: Operation.t() | nil
-  def get_operation(%Scope{user: %{id: actor_id}}, operation_id) do
+  def get_operation(%{user: %{id: actor_id}}, operation_id) do
     Repo.one(from(operation in Operation, where: operation.id == ^operation_id and operation.actor_id == ^actor_id))
   end
 
   @spec get(Scope.t(), pos_integer()) :: {:ok, map() | list(), Operation.t()} | {:error, atom()}
-  def get(%Scope{user: %{id: actor_id}}, operation_id) do
+  def get(%{user: %{id: actor_id}}, operation_id) do
     now = TimeHelpers.now()
 
     row =
@@ -60,7 +60,7 @@ defmodule Storyarn.AI.Results do
   """
   @spec get_by_idempotency_key(Scope.t(), String.t(), String.t()) ::
           {:ok, map() | list(), Operation.t()} | {:error, atom()}
-  def get_by_idempotency_key(%Scope{user: %{id: actor_id}}, task_id, idempotency_key)
+  def get_by_idempotency_key(%{user: %{id: actor_id}}, task_id, idempotency_key)
       when is_binary(task_id) and is_binary(idempotency_key) do
     now = TimeHelpers.now()
 
@@ -98,7 +98,7 @@ defmodule Storyarn.AI.Results do
   """
   @spec operations_by_idempotency_keys(Scope.t(), String.t(), [String.t()]) ::
           %{String.t() => Operation.t()}
-  def operations_by_idempotency_keys(%Scope{user: %{id: actor_id}}, task_id, idempotency_keys)
+  def operations_by_idempotency_keys(%{user: %{id: actor_id}}, task_id, idempotency_keys)
       when is_binary(task_id) and is_list(idempotency_keys) do
     from(operation in Operation,
       where:
@@ -119,7 +119,7 @@ defmodule Storyarn.AI.Results do
   result must not fail because the stamp could not be written.
   """
   @spec record_view(Scope.t(), pos_integer()) :: :ok
-  def record_view(%Scope{user: %{id: actor_id}}, operation_id) do
+  def record_view(%{user: %{id: actor_id}}, operation_id) do
     case Repo.one(
            from(operation in Operation,
              where:
@@ -137,7 +137,7 @@ defmodule Storyarn.AI.Results do
   end
 
   @spec dismiss(Scope.t(), pos_integer()) :: {:ok, Operation.t()} | {:error, atom()}
-  def dismiss(%Scope{user: %{id: actor_id}}, operation_id) do
+  def dismiss(%{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->
       operation = lock_actor_operation(operation_id, actor_id)
 
@@ -169,8 +169,7 @@ defmodule Storyarn.AI.Results do
   """
   @spec apply(Scope.t(), pos_integer(), String.t() | nil, (term(), map() -> {:ok, term()} | {:error, term()})) ::
           {:ok, term()} | {:error, term()}
-  def apply(%Scope{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun)
-      when is_function(apply_fun, 2) do
+  def apply(%{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun) when is_function(apply_fun, 2) do
     Repo.transaction(fn ->
       operation = lock_actor_operation(operation_id, actor_id)
 

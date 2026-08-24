@@ -3,13 +3,12 @@ defmodule Storyarn.AI.Operations do
 
   import Ecto.Query
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.AI.Alerts
   alias Storyarn.AI.Context
   alias Storyarn.AI.CredentialResolver
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Result
@@ -426,7 +425,7 @@ defmodule Storyarn.AI.Operations do
 
   defp operation_scope(%Operation{user_id: user_id}) when is_integer(user_id) do
     case Repo.get(User, user_id) do
-      %User{} = user -> {:ok, Scope.for_user(user)}
+      %User{} = user -> {:ok, %{user: user}}
       nil -> {:error, :actor_deleted}
     end
   end

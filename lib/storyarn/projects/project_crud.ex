@@ -3,7 +3,6 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Billing
@@ -21,7 +20,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Lists all projects the user has access to (owned or as a member).
   """
-  def list_projects(%Scope{user: user}) do
+  def list_projects(%{user: user}) do
     Project
     |> where([p], is_nil(p.deleted_at))
     |> join(:inner, [p], m in ProjectMembership, on: m.project_id == p.id and m.user_id == ^user.id)
@@ -33,7 +32,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Lists all projects in a workspace that the user has access to.
   """
-  def list_projects_for_workspace(workspace_id, %Scope{user: user}) do
+  def list_projects_for_workspace(workspace_id, %{user: user}) do
     Project
     |> where([p], p.workspace_id == ^workspace_id and is_nil(p.deleted_at))
     |> join(:left, [p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
@@ -53,7 +52,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Gets a single project by ID with authorization check.
   """
-  def get_project(%Scope{user: user}, id) do
+  def get_project(%{user: user}, id) do
     project = Repo.one(from(p in Project, where: p.id == ^id and is_nil(p.deleted_at)))
 
     with %Project{} <- project,
@@ -73,7 +72,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Gets a project by workspace slug and project slug with authorization check.
   """
-  def get_project_by_slugs(%Scope{user: user}, workspace_slug, project_slug) do
+  def get_project_by_slugs(%{user: user}, workspace_slug, project_slug) do
     query =
       from p in Project,
         join: w in Workspace,
@@ -93,7 +92,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Creates a project and sets up the owner membership.
   """
-  def create_project(%Scope{user: user}, attrs) do
+  def create_project(%{user: user}, attrs) do
     with {:ok, workspace, membership} <- authorized_workspace_for_create(attrs, user),
          true <- WorkspaceAccess.can?(membership.role, :create_project) do
       do_create_project(user, workspace.id, attrs)
@@ -122,7 +121,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   defp authorized_workspace_for_create(attrs, user) do
     case attrs[:workspace_id] || attrs["workspace_id"] do
       nil -> {:error, :not_found}
-      workspace_id -> WorkspaceAccess.get_workspace(Scope.for_user(user), workspace_id)
+      workspace_id -> WorkspaceAccess.get_workspace(%{user: user}, workspace_id)
     end
   end
 

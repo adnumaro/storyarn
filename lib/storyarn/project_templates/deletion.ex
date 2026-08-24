@@ -3,7 +3,6 @@ defmodule Storyarn.ProjectTemplates.Deletion do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.ProjectTemplates.Artifact
@@ -21,7 +20,7 @@ defmodule Storyarn.ProjectTemplates.Deletion do
   @deletion_transaction_timeout to_timeout(second: 30)
   @manifest_load_event [:storyarn, :project_templates, :deletion, :asset_manifest_load]
 
-  def delete_template(%Scope{} = scope, %ProjectTemplate{} = template) do
+  def delete_template(%{user: _} = scope, %ProjectTemplate{} = template) do
     with {:ok, prepared} <- prepare_template_deletion(scope, template.id) do
       commit_template_deletion(scope, template.id, prepared)
     end

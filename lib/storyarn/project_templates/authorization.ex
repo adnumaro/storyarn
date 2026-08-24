@@ -3,7 +3,6 @@ defmodule Storyarn.ProjectTemplates.Authorization do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
@@ -20,7 +19,7 @@ defmodule Storyarn.ProjectTemplates.Authorization do
     end
   end
 
-  def authorize_source_project(%Scope{user: user} = scope, %Project{id: project_id}) when not is_nil(user) do
+  def authorize_source_project(%{user: user} = scope, %Project{id: project_id}) when not is_nil(user) do
     case Projects.get_project(scope, project_id) do
       {:ok, project, membership} ->
         if Projects.can?(membership.role, :manage_project) or source_project_admin?(user.id, project.workspace_id) do
@@ -36,7 +35,7 @@ defmodule Storyarn.ProjectTemplates.Authorization do
 
   def authorize_source_project(_scope, _project), do: {:error, :unauthorized}
 
-  def can_publish_source_project?(%Scope{user: user} = scope, %Project{} = project) when not is_nil(user) do
+  def can_publish_source_project?(%{user: user} = scope, %Project{} = project) when not is_nil(user) do
     case authorize_source_project(scope, project) do
       {:ok, _project} -> true
       {:error, _reason} -> false
@@ -48,7 +47,7 @@ defmodule Storyarn.ProjectTemplates.Authorization do
   def ensure_template_source(%ProjectTemplate{source_project_id: project_id}, %Project{id: project_id}), do: :ok
   def ensure_template_source(%ProjectTemplate{}, %Project{}), do: {:error, :invalid_source_project}
 
-  def authorize_template_manager(%Scope{} = scope, %ProjectTemplate{} = template) do
+  def authorize_template_manager(%{user: _} = scope, %ProjectTemplate{} = template) do
     if can_manage_template?(scope, template) do
       :ok
     else
@@ -58,11 +57,11 @@ defmodule Storyarn.ProjectTemplates.Authorization do
 
   def authorize_template_manager(_scope, _template), do: {:error, :unauthorized}
 
-  def can_manage_template?(%Scope{user: %{id: user_id}}, %ProjectTemplate{visibility: "private"} = template) do
+  def can_manage_template?(%{user: %{id: user_id}}, %ProjectTemplate{visibility: "private"} = template) do
     template.owner_id == user_id or source_template_admin?(user_id, template.source_project_id)
   end
 
-  def can_manage_template?(%Scope{user: %{is_super_admin: true}} = scope, %ProjectTemplate{
+  def can_manage_template?(%{user: %{is_super_admin: true}} = scope, %ProjectTemplate{
         visibility: "public",
         source_project_id: source_project_id
       })
@@ -76,7 +75,7 @@ defmodule Storyarn.ProjectTemplates.Authorization do
   def can_manage_template?(_scope, _template), do: false
 
   def authorize_template_visibility(
-        %Scope{} = scope,
+        %{user: _} = scope,
         %ProjectTemplate{status: "active", visibility: "private"} = template
       ) do
     if can_manage_template?(scope, template) do
@@ -86,11 +85,11 @@ defmodule Storyarn.ProjectTemplates.Authorization do
     end
   end
 
-  def authorize_template_visibility(%Scope{user: %{}}, %ProjectTemplate{status: "active", visibility: "public"}) do
+  def authorize_template_visibility(%{user: %{}}, %ProjectTemplate{status: "active", visibility: "public"}) do
     :ok
   end
 
-  def authorize_template_visibility(%Scope{}, %ProjectTemplate{status: "archived"}), do: {:error, :archived}
+  def authorize_template_visibility(%{user: _}, %ProjectTemplate{status: "archived"}), do: {:error, :archived}
 
   def authorize_template_visibility(_scope, _template), do: {:error, :unauthorized}
 

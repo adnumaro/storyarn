@@ -3,7 +3,6 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Authorization
@@ -20,7 +19,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   def publication_preloads, do: @publication_preloads
 
-  def list_templates(%Scope{user: %{id: user_id}}, opts \\ []) do
+  def list_templates(%{user: %{id: user_id}}, opts \\ []) do
     status = Keyword.get(opts, :status, "active")
     source_project_id = Keyword.get(opts, :source_project_id)
     visibility = Keyword.get(opts, :visibility)
@@ -37,7 +36,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
     |> Repo.all()
   end
 
-  def paginate_templates(%Scope{user: %{id: user_id}}, opts \\ []) do
+  def paginate_templates(%{user: %{id: user_id}}, opts \\ []) do
     status = Keyword.get(opts, :status, "active")
     source_project_id = Keyword.get(opts, :source_project_id)
     visibility = Keyword.get(opts, :visibility)
@@ -75,7 +74,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   def get_template(scope, id, opts \\ [])
 
-  def get_template(%Scope{user: %{id: user_id}} = scope, id, opts) do
+  def get_template(%{user: %{id: user_id}} = scope, id, opts) do
     status = Keyword.get(opts, :status, "active")
 
     user_id
@@ -87,13 +86,13 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
     end
   end
 
-  def get_template!(%Scope{user: %{id: user_id}}, id) do
+  def get_template!(%{user: %{id: user_id}}, id) do
     user_id
     |> visible_template_by_id_query(id, "active")
     |> Repo.one!()
   end
 
-  def list_template_versions(%Scope{} = scope, %ProjectTemplate{} = template) do
+  def list_template_versions(%{user: _} = scope, %ProjectTemplate{} = template) do
     case Authorization.authorize_template_visibility(scope, template) do
       :ok ->
         preloads =
@@ -116,7 +115,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   def list_template_installs(scope, template, opts \\ [])
 
-  def list_template_installs(%Scope{} = scope, %ProjectTemplate{} = template, opts) do
+  def list_template_installs(%{user: _} = scope, %ProjectTemplate{} = template, opts) do
     limit = Keyword.get(opts, :limit, 10)
 
     if Authorization.can_manage_template?(scope, template) do
@@ -133,7 +132,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
     end
   end
 
-  def list_template_publications(%Scope{user: %{id: user_id}}, opts \\ []) do
+  def list_template_publications(%{user: %{id: user_id}}, opts \\ []) do
     ProjectTemplatePublication
     |> visible_publications_query(user_id)
     |> maybe_filter_publication_source_project(Keyword.get(opts, :source_project_id))
@@ -144,7 +143,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
     |> Repo.all()
   end
 
-  def get_template_publication!(%Scope{user: %{id: user_id}}, id) do
+  def get_template_publication!(%{user: %{id: user_id}}, id) do
     ProjectTemplatePublication
     |> visible_publications_query(user_id)
     |> where([publication], publication.id == ^id)
@@ -154,7 +153,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   def preload_template(template, scope \\ nil)
 
-  def preload_template(template, %Scope{} = scope) do
+  def preload_template(template, %{user: _} = scope) do
     preloads =
       if Authorization.can_manage_template?(scope, template) do
         [:owner, :source_project, :current_version]

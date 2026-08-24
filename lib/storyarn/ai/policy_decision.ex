@@ -89,7 +89,7 @@ defmodule Storyarn.AI.PolicyDecision do
   def reauthorize(%Operation{user_id: nil}, %Task{}, _phase, _opts), do: {:error, :actor_deleted}
 
   def reauthorize(%Operation{} = operation, %Task{} = task, phase, opts) do
-    user = Repo.get(Storyarn.Accounts.User, operation.user_id)
+    user = Repo.get(Storyarn.AI.Persistence.UserRecord, operation.user_id)
 
     if user do
       subject =
@@ -98,7 +98,7 @@ defmodule Storyarn.AI.PolicyDecision do
         end
 
       {:ok, intent} =
-        ExecutionIntent.new(Storyarn.Accounts.Scope.for_user(user), %{
+        ExecutionIntent.new(%{user: user}, %{
           workspace_id: operation.workspace_id_snapshot,
           project_id: operation.project_id_snapshot,
           task_id: operation.task_id,

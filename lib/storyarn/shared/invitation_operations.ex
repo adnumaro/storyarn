@@ -18,8 +18,8 @@ defmodule Storyarn.Shared.InvitationOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Billing
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.RateLimiter
@@ -403,7 +403,7 @@ defmodule Storyarn.Shared.InvitationOperations do
     end
   end
 
-  defp lock_user(%User{id: user_id}) do
+  defp lock_user(%{id: user_id}) do
     case Repo.one(from(user in User, where: user.id == ^user_id, lock: "FOR UPDATE")) do
       nil -> {:error, :user_unavailable}
       user -> {:ok, user}

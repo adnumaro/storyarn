@@ -116,12 +116,12 @@ defmodule Storyarn.Imports do
   """
   @spec prepare_import(Scope.t(), Project.t(), String.t(), binary()) ::
           {:ok, ProjectImportAttempt.t(), map() | nil} | {:error, term()}
-  def prepare_import(%Scope{} = scope, %Project{} = project, filename, binary) do
+  def prepare_import(%{user: _} = scope, %Project{} = project, filename, binary) do
     prepare_import(scope, project, filename, binary, [])
   end
 
   @doc false
-  def prepare_import(%Scope{} = scope, %Project{} = project, filename, binary, opts)
+  def prepare_import(%{user: _} = scope, %Project{} = project, filename, binary, opts)
       when is_binary(filename) and is_binary(binary) and is_list(opts) do
     started_at = System.monotonic_time()
     initial_metadata = Telemetry.source_metadata(filename)
@@ -160,12 +160,12 @@ defmodule Storyarn.Imports do
   """
   @spec save_import_review(Scope.t(), pos_integer(), list()) ::
           {:ok, ProjectImportAttempt.t(), map()} | {:error, term()}
-  def save_import_review(%Scope{} = scope, attempt_id, decisions) do
+  def save_import_review(%{user: _} = scope, attempt_id, decisions) do
     save_import_review(scope, attempt_id, decisions, [])
   end
 
   @doc false
-  def save_import_review(%Scope{} = scope, attempt_id, decisions, opts)
+  def save_import_review(%{user: _} = scope, attempt_id, decisions, opts)
       when is_integer(attempt_id) and attempt_id > 0 and is_list(opts) do
     case revise_import_review(scope, attempt_id, opts, fn plan ->
            ReviewDecisions.save_draft(plan, decisions)
@@ -175,7 +175,7 @@ defmodule Storyarn.Imports do
     end
   end
 
-  def save_import_review(%Scope{}, _attempt_id, _decisions, _opts), do: {:error, :not_found}
+  def save_import_review(%{user: _}, _attempt_id, _decisions, _opts), do: {:error, :not_found}
 
   @doc """
   Applies every explicit Yarn review decision and returns the exact preview
@@ -187,12 +187,12 @@ defmodule Storyarn.Imports do
   """
   @spec resolve_import_review(Scope.t(), pos_integer(), boolean(), list()) ::
           {:ok, ProjectImportAttempt.t(), map(), String.t()} | {:error, term()}
-  def resolve_import_review(%Scope{} = scope, attempt_id, acknowledged?, decisions) do
+  def resolve_import_review(%{user: _} = scope, attempt_id, acknowledged?, decisions) do
     resolve_import_review(scope, attempt_id, acknowledged?, decisions, [])
   end
 
   @doc false
-  def resolve_import_review(%Scope{} = scope, attempt_id, acknowledged?, decisions, opts)
+  def resolve_import_review(%{user: _} = scope, attempt_id, acknowledged?, decisions, opts)
       when is_integer(attempt_id) and attempt_id > 0 and is_boolean(acknowledged?) and is_list(opts) do
     with {:ok, attempt, preview, plan} <-
            revise_import_review(scope, attempt_id, opts, fn plan ->
@@ -203,7 +203,7 @@ defmodule Storyarn.Imports do
     end
   end
 
-  def resolve_import_review(%Scope{}, _attempt_id, _acknowledged?, _decisions, _opts), do: {:error, :not_found}
+  def resolve_import_review(%{user: _}, _attempt_id, _acknowledged?, _decisions, _opts), do: {:error, :not_found}
 
   @doc """
   Persists the conflict strategy selected for a ready import preview.
@@ -213,7 +213,7 @@ defmodule Storyarn.Imports do
   """
   @spec update_import_strategy(Scope.t(), pos_integer(), String.t() | atom()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
-  def update_import_strategy(%Scope{} = scope, attempt_id, strategy) when is_integer(attempt_id) and attempt_id > 0 do
+  def update_import_strategy(%{user: _} = scope, attempt_id, strategy) when is_integer(attempt_id) and attempt_id > 0 do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
@@ -227,12 +227,12 @@ defmodule Storyarn.Imports do
     end
   end
 
-  def update_import_strategy(%Scope{}, _attempt_id, _strategy), do: {:error, :not_found}
+  def update_import_strategy(%{user: _}, _attempt_id, _strategy), do: {:error, :not_found}
 
   @doc "Persists the explicit additive or snapshot-backed replacement mode for a ready import."
   @spec update_import_mode(Scope.t(), pos_integer(), String.t() | atom()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
-  def update_import_mode(%Scope{} = scope, attempt_id, mode) when is_integer(attempt_id) and attempt_id > 0 do
+  def update_import_mode(%{user: _} = scope, attempt_id, mode) when is_integer(attempt_id) and attempt_id > 0 do
     with {:ok, mode} <- normalize_import_mode(mode),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
@@ -247,7 +247,7 @@ defmodule Storyarn.Imports do
     end
   end
 
-  def update_import_mode(%Scope{}, _attempt_id, _mode), do: {:error, :not_found}
+  def update_import_mode(%{user: _}, _attempt_id, _mode), do: {:error, :not_found}
 
   @doc """
   Returns the opaque browser-storage key for one user's import in one project.
@@ -256,7 +256,7 @@ defmodule Storyarn.Imports do
   `localStorage`; the key is a namespace only and grants no server access.
   """
   @spec resume_storage_key(Scope.t(), Project.t()) :: String.t()
-  def resume_storage_key(%Scope{user: %{id: user_id}}, %Project{id: project_id}) do
+  def resume_storage_key(%{user: %{id: user_id}}, %Project{id: project_id}) do
     secret = Application.fetch_env!(:storyarn, :import_idempotency_secret)
     payload = :erlang.term_to_binary({:project_import_resume, project_id, user_id})
     digest = :crypto.mac(:hmac, :sha256, secret, payload)
@@ -269,12 +269,12 @@ defmodule Storyarn.Imports do
   """
   @spec enqueue_import(Scope.t(), pos_integer(), String.t() | atom()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
-  def enqueue_import(%Scope{} = scope, attempt_id, strategy) do
+  def enqueue_import(%{user: _} = scope, attempt_id, strategy) do
     enqueue_import(scope, attempt_id, strategy, [])
   end
 
   @doc false
-  def enqueue_import(%Scope{} = scope, attempt_id, strategy, opts) when is_list(opts) do
+  def enqueue_import(%{user: _} = scope, attempt_id, strategy, opts) when is_list(opts) do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
@@ -303,7 +303,7 @@ defmodule Storyarn.Imports do
 
   @spec get_import_attempt(Scope.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, :not_found | :unauthorized}
-  def get_import_attempt(%Scope{} = scope, attempt_id) do
+  def get_import_attempt(%{user: _} = scope, attempt_id) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view),
          :ok <- authorize_attempt_owner(attempt, scope.user.id) do
@@ -354,12 +354,12 @@ defmodule Storyarn.Imports do
   """
   @spec cancel_import(Scope.t(), pos_integer()) ::
           {:ok, ProjectImportAttempt.t()} | {:error, term()}
-  def cancel_import(%Scope{} = scope, attempt_id) do
+  def cancel_import(%{user: _} = scope, attempt_id) do
     cancel_import(scope, attempt_id, [])
   end
 
   @doc false
-  def cancel_import(%Scope{} = scope, attempt_id, opts) when is_list(opts) do
+  def cancel_import(%{user: _} = scope, attempt_id, opts) when is_list(opts) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
          :ok <- authorize_attempt_owner(attempt, scope.user.id),

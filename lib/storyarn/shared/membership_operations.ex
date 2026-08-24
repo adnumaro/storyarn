@@ -12,7 +12,6 @@ defmodule Storyarn.Shared.MembershipOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Repo
 
   @doc """
@@ -74,7 +73,7 @@ defmodule Storyarn.Shared.MembershipOperations do
   @doc """
   Authorizes a user action on a parent entity.
   """
-  def authorize(config, %Scope{user: user}, parent_id, action) do
+  def authorize(config, %{user: user}, parent_id, action) do
     with %{} = parent <- Repo.get(config.parent_schema, parent_id),
          %{role: role} = membership <- get_membership(config, parent_id, user.id),
          true <- config.membership_schema.can?(role, action) do

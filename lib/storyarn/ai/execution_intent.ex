@@ -45,7 +45,7 @@ defmodule Storyarn.AI.ExecutionIntent do
         }
 
   @spec new(Scope.t(), map()) :: {:ok, t()} | {:error, atom()}
-  def new(%Scope{user: %{id: user_id}} = scope, attrs) when is_integer(user_id) and is_map(attrs) do
+  def new(%{user: %{id: user_id}} = scope, attrs) when is_integer(user_id) and is_map(attrs) do
     with {:ok, workspace_id} <- positive_id(Map.get(attrs, :workspace_id)),
          {:ok, project_id} <- optional_positive_id(Map.get(attrs, :project_id)),
          {:ok, task_id} <- bounded_string(Map.get(attrs, :task_id), 120),

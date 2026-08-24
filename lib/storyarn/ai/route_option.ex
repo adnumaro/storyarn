@@ -4,9 +4,9 @@ defmodule Storyarn.AI.RouteOption do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
   alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
 

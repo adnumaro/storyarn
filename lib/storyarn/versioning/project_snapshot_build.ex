@@ -11,7 +11,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
@@ -20,6 +19,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Notifications
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -72,8 +72,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   action and is unique within the project.
   """
   @spec request(Scope.t(), Project.t(), map()) :: request_result()
-  def request(%Scope{user: %{id: user_id}} = scope, %Project{} = project, attrs)
-      when is_integer(user_id) and is_map(attrs) do
+  def request(%{user: %{id: user_id}} = scope, %Project{} = project, attrs) when is_integer(user_id) and is_map(attrs) do
     with {:ok, request} <- normalize_request(attrs),
          {:ok, %Project{} = authorized_project, _membership} <-
            Projects.authorize(scope, project.id, :manage_project) do
@@ -935,7 +934,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   @doc "Authorizes and requests cooperative cancellation without killing an active storage writer."
   @spec cancel(Scope.t(), Project.t(), pos_integer()) ::
           {:ok, ProjectSnapshot.t()} | {:error, term()}
-  def cancel(%Scope{} = scope, %Project{} = project, snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0 do
+  def cancel(%{user: _} = scope, %Project{} = project, snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0 do
     case Projects.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->
         cancel_authorized(authorized_project, snapshot_id)
@@ -2840,7 +2839,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
     snapshot = Repo.preload(snapshot, [:created_by, :project], force: true)
 
     Notifications.deliver_async_result(
-      Scope.for_user(snapshot.created_by),
+      %{user: snapshot.created_by},
       snapshot.project,
       %{
         entity_type: "project_snapshot",

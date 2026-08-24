@@ -11,8 +11,8 @@ defmodule Storyarn.Imports.ProjectImportAttempt do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
   alias Storyarn.Imports.PlanCleanupRequest
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ProjectSnapshot
 

@@ -120,7 +120,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @doc "Authorizes and durably deletes one user-visible snapshot."
   @spec delete(Scope.t(), Project.t(), pos_integer()) ::
           {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
-  def delete(%Scope{user: %{id: user_id}} = scope, %Project{} = project, snapshot_id)
+  def delete(%{user: %{id: user_id}} = scope, %Project{} = project, snapshot_id)
       when is_integer(user_id) and is_integer(snapshot_id) and snapshot_id > 0 do
     case Projects.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->

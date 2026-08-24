@@ -82,7 +82,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
   @doc "Persists and enqueues one authorized, exact restore request atomically."
   @spec request(Scope.t(), Project.t(), ProjectSnapshot.t() | pos_integer(), map()) ::
           {:ok, ProjectSnapshotRestore.t()} | {:error, term()}
-  def request(%Scope{user: %{id: user_id}} = scope, %Project{id: project_id}, snapshot, attrs)
+  def request(%{user: %{id: user_id}} = scope, %Project{id: project_id}, snapshot, attrs)
       when is_integer(user_id) and user_id > 0 and is_integer(project_id) and project_id > 0 and is_map(attrs) do
     with :ok <- RestorePolicy.ensure_enabled({:project_snapshot_restore, "full"}),
          {:ok, snapshot_id} <- snapshot_id(snapshot),
@@ -1244,7 +1244,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycle do
     with %{id: actor_id} = actor <- restore.requested_by,
          true <- actor_id == restore.requested_by_id,
          {:ok, %Project{workspace_id: workspace_id, deleted_at: nil}, _membership} <-
-           Projects.authorize(Scope.for_user(actor), restore.project_id, :manage_project),
+           Projects.authorize(%{user: actor}, restore.project_id, :manage_project),
          true <- workspace_id == restore.workspace_id do
       :ok
     else

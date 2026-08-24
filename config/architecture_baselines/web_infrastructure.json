@@ -23,16 +23,6 @@
     ],
     [
       "lib/storyarn_web/helpers/authorize.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/helpers/authorize.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/helpers/authorize.ex",
       "lib/storyarn/projects.ex",
       "runtime"
     ],
@@ -50,11 +40,6 @@
       "lib/storyarn_web/live/hooks/project_scope.ex",
       "lib/storyarn/projects.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/landing_live/index.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
     ],
     [
       "lib/storyarn_web/live/settings_live/ai_team.ex",
@@ -79,21 +64,6 @@
     [
       "lib/storyarn_web/private_media.ex",
       "lib/storyarn/assets/asset.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/user_auth.ex",
-      "lib/storyarn/accounts.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/user_auth.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/user_auth.ex",
-      "lib/storyarn/accounts/user.ex",
       "export"
     ]
   ],

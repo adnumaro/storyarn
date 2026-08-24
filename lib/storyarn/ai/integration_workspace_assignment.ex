@@ -5,8 +5,8 @@ defmodule Storyarn.AI.IntegrationWorkspaceAssignment do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   @type t :: %__MODULE__{}

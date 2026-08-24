@@ -33,7 +33,7 @@ defmodule Storyarn.Assets.Asset do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Accounts.User
+  alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
 
   @allowed_content_types ~w(

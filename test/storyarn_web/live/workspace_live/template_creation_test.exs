@@ -203,6 +203,6 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
 
   defp make_public(template) do
     Repo.update_all(from(t in ProjectTemplate, where: t.id == ^template.id), set: [visibility: "public"])
-    ProjectTemplates.get_template!(user_scope_fixture(template.owner), template.id)
+    ProjectTemplates.get_template!(user_scope_fixture(Storyarn.Accounts.get_user!(template.owner.id)), template.id)
   end
 end

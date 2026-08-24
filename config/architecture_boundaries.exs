@@ -167,6 +167,7 @@ boundaries = %{
     "lib/storyarn/ai/operator_alert.ex",
     "lib/storyarn/ai/persistence/project_membership_record.ex",
     "lib/storyarn/ai/persistence/project_record.ex",
+    "lib/storyarn/ai/persistence/user_record.ex",
     "lib/storyarn/ai/persistence/workspace_membership_record.ex",
     "lib/storyarn/ai/persistence/workspace_record.ex",
     "lib/storyarn/ai/personal_consent.ex",
@@ -225,6 +226,7 @@ boundaries = %{
     "lib/storyarn/command_palette.ex",
     "lib/storyarn/command_palette/definition.ex",
     "lib/storyarn/command_palette/operation.ex",
+    "lib/storyarn/command_palette/persistence/user_record.ex",
     "lib/storyarn/command_palette/registry.ex",
     "lib/storyarn/dashboards/cache.ex",
     "lib/storyarn/docs.ex",
@@ -256,6 +258,7 @@ boundaries = %{
     "lib/storyarn/global_search/variable_search.ex",
     "lib/storyarn/mailer.ex",
     "lib/storyarn/onboarding.ex",
+    "lib/storyarn/onboarding/persistence/user_record.ex",
     "lib/storyarn/onboarding/tutorial_progress.ex",
     "lib/storyarn/publication/html_link_localizer.ex",
     "lib/storyarn/publication/locales.ex",
@@ -552,6 +555,42 @@ forbidden_dependencies =
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Accounts publishes owned business facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "The durable reset-password delivery worker calls back into the public Accounts facade to render and send"
+    },
+    %{
+      source: "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "The durable reset-password request worker processes the request through the public Accounts facade"
+    },
+    %{
+      source: "lib/storyarn_web/user_auth.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "Session authentication resolves users and tokens through the public Accounts facade"
+    },
+    %{
+      source: "lib/storyarn_web/user_auth.ex",
+      target: "lib/storyarn/accounts/scope.ex",
+      kinds: ["export"],
+      reason: "The session plug constructs the Accounts scope that every LiveView receives as current_scope"
+    },
+    %{
+      source: "lib/storyarn_web/user_auth.ex",
+      target: "lib/storyarn/accounts/user.ex",
+      kinds: ["export"],
+      reason: "The session plug pattern-matches the authenticated user struct returned by the public Accounts facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/project_live/invitation.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
     },
     %{
       source: "lib/storyarn/accounts/passwords.ex",

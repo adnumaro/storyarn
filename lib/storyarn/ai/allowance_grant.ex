@@ -4,8 +4,8 @@ defmodule Storyarn.AI.AllowanceGrant do
 
   import Ecto.Changeset
 
-  alias Storyarn.Accounts.User
   alias Storyarn.AI.AllowanceAccount
+  alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_grants" do
