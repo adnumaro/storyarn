@@ -1,0 +1,46 @@
+lib/storyarn/workspaces.ex
+  s_1837e1b58927a7::t_01702c9391a550 127-129
+lib/storyarn/shared/invitation_schema.ex
+  s_1837e1b58927a7::t_d00057c3819f18 3-5
+lib/storyarn/workspaces/workspace_crud.ex
+  s_1837e1b58927a7::t_01702c9391a550 169-172
+  s_1837e1b58927a7::t_2446e935136471 168
+docs/reference/domain-patterns.md
+  s_1837e1b58927a7::t_54fc7202ecb816 37-40,43,72
+test/storyarn/architecture/workspaces_web_facade_boundary_test.exs
+  s_1837e1b58927a7::t_019db6c006ce35 1-161
+lib/storyarn/shared/invitation_notifier.ex
+  s_1837e1b58927a7::t_d00057c3819f18 3-5
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_1837e1b58927a7::t_d9fa5899341700 45,90,139
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_1837e1b58927a7::t_d9fa5899341700 45,90,139
+priv/gettext/workspaces.pot
+  s_1837e1b58927a7::t_d9fa5899341700 45,90,139
+lib/storyarn/shared/membership_operations.ex
+  s_1837e1b58927a7::t_d00057c3819f18 3-5
+lib/storyarn_web/live/workspace_live/new.ex
+  s_1837e1b58927a7::t_01702c9391a550 12
+lib/storyarn/shared/invitation_operations.ex
+  s_1837e1b58927a7::t_d00057c3819f18 3-5,8-12,14-16
+docs/reference/shared-utilities.md
+  s_1837e1b58927a7::t_54fc7202ecb816 252-255
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_f08113cefdc500 385,390
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6a880691b493241db50376a34dfcc725b1cf1e76",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
