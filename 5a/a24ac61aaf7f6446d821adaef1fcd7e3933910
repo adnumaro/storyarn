@@ -1,0 +1,30 @@
+config/architecture_baselines/web_infrastructure.json
+  s_1837e1b58927a7::t_6d393668f7643a 3
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_07e06087df574e 404-405,419-421
+  s_1837e1b58927a7::t_6d393668f7643a 467-484
+  s_1837e1b58927a7::t_8c41ecde2f4c93 422
+  s_1837e1b58927a7::t_9b6a8bc7b9c98c 406-417
+docs/reference/domain-patterns.md
+  s_1837e1b58927a7::t_9b6a8bc7b9c98c 42-55
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_1837e1b58927a7::t_6d393668f7643a 28
+test/storyarn/architecture/projects_boundary_test.exs
+  s_1837e1b58927a7::t_07e06087df574e 76,79-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5aa24ac61aaf7f6446d821adaef1fcd7e3933910",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
