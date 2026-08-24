@@ -1,0 +1,70 @@
+lib/storyarn/projects/persistence/block_record.ex
+  s_1837e1b58927a7::t_4a3cba674f3ead 28
+lib/storyarn/sheets/sheet_crud.ex
+  s_1837e1b58927a7::t_7224e00dc4b31b 230
+  s_1837e1b58927a7::t_7d59dbb93488f0 231-238
+lib/storyarn_web/live/project_live/show.ex
+  s_1837e1b58927a7::t_ace51e4f274d9b 222,232
+lib/storyarn/projects/sheet_health_checker.ex
+  s_1837e1b58927a7::t_e0ae72d5ebe3b5 1-864
+lib/storyarn/global_search/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_5802b99c3c5541 1-20
+lib/storyarn/projects/sheet_read_model.ex
+  s_1837e1b58927a7::t_1232b7301625cd 15-16
+  s_1837e1b58927a7::t_76d4f4cc3d23b5 6,9-10,12-14,71-173
+  s_1837e1b58927a7::t_0e2cf061792cf0 174
+lib/storyarn/projects/sheet_health_read_model.ex
+  s_1837e1b58927a7::t_2cd60295126679 1-448,451-475,477-483,500,502-919
+  s_1837e1b58927a7::t_1232b7301625cd 449-450,476,484-499,501
+lib/storyarn/global_search/persistence/block_record.ex
+  s_1837e1b58927a7::t_5802b99c3c5541 1-18
+test/storyarn/projects/sheet_health_read_model_test.exs
+  s_1837e1b58927a7::t_03c0c76250b51a 1-89
+lib/storyarn/global_search/persistence/block_gallery_image_record.ex
+  s_1837e1b58927a7::t_5802b99c3c5541 1-15
+lib/storyarn_web/live/hooks/palette.ex
+  s_1837e1b58927a7::t_7d59dbb93488f0 594
+lib/storyarn/global_search/advanced_search.ex
+  s_1837e1b58927a7::t_bf2b6cbe764355 16,18,113
+lib/storyarn/projects/dashboard.ex
+  s_1837e1b58927a7::t_76d4f4cc3d23b5 23,25,43,152-154,156,181
+lib/storyarn/projects/sheet_formula_resolver.ex
+  s_1837e1b58927a7::t_e0ae72d5ebe3b5 1-153
+lib/storyarn/projects/sheet_inheritance_audit.ex
+  s_1837e1b58927a7::t_e0ae72d5ebe3b5 1-218
+lib/storyarn/global_search/persistence/table_row_record.ex
+  s_1837e1b58927a7::t_5802b99c3c5541 1-16
+config/architecture_baselines/infrastructure.json
+  s_1837e1b58927a7::t_e56d0a476db671 4-33,39-78,84-88,99-163,169-203,209-218,229-278,284-388,394-398,439-443,449-453
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_af14952e808529 231-232,237-239
+  s_1837e1b58927a7::t_b32f7fb93c304c 246
+  s_1837e1b58927a7::t_e56d0a476db671 527-540
+lib/storyarn/sheets.ex
+  s_1837e1b58927a7::t_2a2a2bcf4b9ec6 288
+  s_1837e1b58927a7::t_7d59dbb93488f0 284-287
+lib/storyarn/global_search/destinations.ex
+  s_1837e1b58927a7::t_bf2b6cbe764355 15,168,252
+lib/storyarn/projects.ex
+  s_1837e1b58927a7::t_ace51e4f274d9b 34,260-269
+lib/storyarn/global_search/sheet_search.ex
+  s_1837e1b58927a7::t_ea05a54ca45ed2 1-210
+lib/storyarn/global_search/persistence/table_column_record.ex
+  s_1837e1b58927a7::t_5802b99c3c5541 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "1bf93b59c14f44ab172e5d3bc5bf515399801e7b",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
