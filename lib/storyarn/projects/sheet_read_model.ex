@@ -52,6 +52,14 @@ defmodule Storyarn.Projects.SheetReadModel do
     )
   end
 
+  @doc "Counts non-deleted sheets for a project."
+  def count_active(project_id) do
+    Repo.aggregate(
+      from(sheet in SheetRecord, where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at)),
+      :count
+    )
+  end
+
   defp maybe_filter_ids(query, :all), do: query
 
   defp maybe_filter_ids(query, ids) when is_list(ids) do

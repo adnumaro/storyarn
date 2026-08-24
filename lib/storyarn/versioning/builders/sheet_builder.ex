@@ -21,9 +21,9 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Project
   alias Storyarn.References
+  alias Storyarn.References.EntityReferenceProjection
   alias Storyarn.Repo
   alias Storyarn.Shared.WordCount
-  alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers
@@ -1931,7 +1931,7 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   defp add_gallery_refs(refs, _block, _block_index), do: refs
 
   defp add_block_value_refs(refs, block, block_index) do
-    case ReferenceTracker.extract_block_value_references(block["type"], block["value"]) do
+    case EntityReferenceProjection.extract_block_value_references(block["type"], block["value"]) do
       {:ok, references} ->
         Enum.reduce(references, refs, fn reference, acc ->
           maybe_add_ref(

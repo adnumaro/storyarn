@@ -12,6 +12,8 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
+  alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -27,12 +29,10 @@ defmodule Storyarn.ProjectTemplates.Audit do
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
+  alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
 

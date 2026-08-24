@@ -17,6 +17,7 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.LocalizationReadModel
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -29,15 +30,14 @@ defmodule Storyarn.Exports.DataCollector do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
+  alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
+  alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Sheets.TableColumn
-  alias Storyarn.Sheets.TableRow
 
   @default_source_byte_query_timeout_ms 5_000
   @source_byte_stream_rows 128
@@ -194,7 +194,7 @@ defmodule Storyarn.Exports.DataCollector do
 
   defp maybe_load(:sheets, project_id, opts) do
     filter_ids = if opts.sheet_ids == :all, do: :all, else: opts.sheet_ids
-    Sheets.list_sheets_for_export(project_id, filter_ids: filter_ids)
+    SheetReadModel.list_for_export(project_id, filter_ids: filter_ids)
   end
 
   defp maybe_load(:flows, _project_id, %{include_flows: false}), do: []
@@ -265,7 +265,7 @@ defmodule Storyarn.Exports.DataCollector do
   defp count_if(:scenes, project_id, opts), do: count_scenes(project_id, opts)
   defp count_if(:assets, project_id, _opts), do: Assets.count_assets(project_id)
 
-  defp count_sheets(project_id, %{sheet_ids: :all}), do: Sheets.count_sheets(project_id)
+  defp count_sheets(project_id, %{sheet_ids: :all}), do: SheetReadModel.count_active(project_id)
 
   defp count_sheets(_project_id, %{sheet_ids: []}), do: 0
 

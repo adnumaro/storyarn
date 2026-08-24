@@ -12,8 +12,9 @@ defmodule Storyarn.Exports.Validator do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.LocalizationReadModel
+  alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.References
-  alias Storyarn.Sheets
 
   @artifact_health_codes [
     :invalid_output_pins,
@@ -204,13 +205,13 @@ defmodule Storyarn.Exports.Validator do
   defp load_sheets(_project_id, %ExportOptions{include_sheets: false}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: :all}) do
-    Sheets.list_sheets_for_export(project_id)
+    SheetReadModel.list_for_export(project_id)
   end
 
   defp load_sheets(_project_id, %ExportOptions{sheet_ids: []}), do: []
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: sheet_ids}) do
-    Sheets.list_sheets_for_export(project_id, filter_ids: sheet_ids)
+    SheetReadModel.list_for_export(project_id, filter_ids: sheet_ids)
   end
 
   # Export consumes canonical health as a boundary, never as a second dashboard.
@@ -543,7 +544,7 @@ defmodule Storyarn.Exports.Validator do
     all_referenced = MapSet.union(referenced_sheet_ids, block_sheet_ids)
 
     # Also check scene pin/zone sheet references
-    pin_sheet_ids = Sheets.list_pin_referenced_sheet_ids(project_id)
+    pin_sheet_ids = SceneReadModel.list_pin_referenced_sheet_ids(project_id)
 
     all_referenced = MapSet.union(all_referenced, pin_sheet_ids)
 

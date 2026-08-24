@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.SceneReadModel do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.Persistence.ScenePinRecord
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Repo
 
@@ -13,6 +14,22 @@ defmodule Storyarn.Projects.SceneReadModel do
         order_by: [asc: scene.position, asc: scene.name, asc: scene.id]
       )
     )
+  end
+
+  @doc """
+  Sheet ids referenced by any scene pin of the project.
+
+  Used by the export Validator for orphan sheet detection.
+  """
+  def list_pin_referenced_sheet_ids(project_id) do
+    from(pin in ScenePinRecord,
+      join: scene in SceneRecord,
+      on: pin.scene_id == scene.id,
+      where: scene.project_id == ^project_id and not is_nil(pin.sheet_id),
+      select: pin.sheet_id
+    )
+    |> Repo.all()
+    |> MapSet.new()
   end
 
   def list_for_export(project_id, opts \\ []) do

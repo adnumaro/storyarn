@@ -35,10 +35,10 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Projects.SceneImportPersistence
   alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Projects.SceneRoutePoints, as: RoutePoints
+  alias Storyarn.Projects.SheetImportPersistence
   alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets
 
   @required_top_keys ~w(storyarn_version export_version project)
 
@@ -427,7 +427,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp detect_conflicts_for_type(:sheet, project_id, shortcuts),
-    do: Sheets.detect_sheet_shortcut_conflicts(project_id, shortcuts)
+    do: SheetImportPersistence.detect_shortcut_conflicts(project_id, shortcuts)
 
   defp detect_conflicts_for_type(:flow, project_id, shortcuts),
     do: FlowImportPersistence.detect_shortcut_conflicts(project_id, shortcuts)
@@ -675,7 +675,7 @@ defmodule Storyarn.Imports.Materializer do
 
   defp preload_existing_shortcuts(project_id) do
     %{
-      sheet: Sheets.list_sheet_shortcuts(project_id),
+      sheet: SheetImportPersistence.list_shortcuts(project_id),
       flow: FlowImportPersistence.list_shortcuts(project_id),
       scene: SceneReadModel.list_shortcuts(project_id)
     }
@@ -754,7 +754,7 @@ defmodule Storyarn.Imports.Materializer do
 
             sheet =
               facade_insert_or_rollback!(
-                Sheets.import_sheet(project.id, attrs),
+                SheetImportPersistence.import_sheet(project.id, attrs),
                 {:sheet, sheet_data["name"]}
               )
 
@@ -949,7 +949,7 @@ defmodule Storyarn.Imports.Materializer do
 
       block =
         facade_insert_or_rollback!(
-          Sheets.import_block(sheet_id, attrs),
+          SheetImportPersistence.import_block(sheet_id, attrs),
           {:block, block_data["type"]}
         )
 
@@ -998,7 +998,7 @@ defmodule Storyarn.Imports.Materializer do
 
       col =
         facade_insert_or_rollback!(
-          Sheets.import_table_column(block_id, attrs),
+          SheetImportPersistence.import_column(block_id, attrs),
           {:table_column, col_data["name"]}
         )
 
@@ -1016,7 +1016,7 @@ defmodule Storyarn.Imports.Materializer do
 
       row =
         facade_insert_or_rollback!(
-          Sheets.import_table_row(block_id, attrs),
+          SheetImportPersistence.import_row(block_id, attrs),
           {:table_row, row_data["name"]}
         )
 
@@ -1757,8 +1757,8 @@ defmodule Storyarn.Imports.Materializer do
 
     %{
       "flow_node" => load_sources(FlowNode, ids_by_type["flow_node"]),
-      "block" => load_sources(Storyarn.Sheets.Block, ids_by_type["block"]),
-      "sheet" => load_sources(Storyarn.Sheets.Sheet, ids_by_type["sheet"])
+      "block" => load_sources(Storyarn.Projects.Persistence.BlockRecord, ids_by_type["block"]),
+      "sheet" => load_sources(Storyarn.Projects.Persistence.SheetRecord, ids_by_type["sheet"])
     }
   end
 
@@ -1892,7 +1892,7 @@ defmodule Storyarn.Imports.Materializer do
   end
 
   defp overwrite_existing(shortcut, project_id, :sheet) do
-    Sheets.soft_delete_sheet_by_shortcut(project_id, shortcut)
+    SheetImportPersistence.soft_delete_by_shortcut(project_id, shortcut)
     shortcut
   end
 
@@ -1939,7 +1939,7 @@ defmodule Storyarn.Imports.Materializer do
       _ ->
         # Fallback: legacy format with avatar_asset_id
         avatar_asset_id = remap_id(id_map, :asset, sheet_data["avatar_asset_id"])
-        if avatar_asset_id, do: Sheets.add_avatar(sheet, avatar_asset_id)
+        if avatar_asset_id, do: SheetImportPersistence.add_avatar(sheet, avatar_asset_id)
     end
   end
 
@@ -1947,7 +1947,7 @@ defmodule Storyarn.Imports.Materializer do
     asset_id = remap_id(id_map, :asset, avatar_data["asset_id"])
 
     if asset_id do
-      Sheets.add_avatar(sheet, asset_id, %{
+      SheetImportPersistence.add_avatar(sheet, asset_id, %{
         name: avatar_data["name"],
         notes: avatar_data["notes"],
         is_default: avatar_data["is_default"] || false
@@ -1965,7 +1965,7 @@ defmodule Storyarn.Imports.Materializer do
     end
   end
 
-  defp link_import_parent(:sheet, entity, parent_id), do: Sheets.link_sheet_import_parent(entity, parent_id)
+  defp link_import_parent(:sheet, entity, parent_id), do: SheetImportPersistence.link_import_parent(entity, parent_id)
 
   defp link_import_parent(:flow, entity, parent_id), do: FlowImportPersistence.link_flow_parent(entity, parent_id)
 

@@ -22,9 +22,9 @@ defmodule Storyarn.Exports.ArtifactValidator do
   alias Storyarn.Projects.FlowNodeConnectionRules
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.References
   alias Storyarn.Shared.StringUtils
-  alias Storyarn.Sheets
 
   @stale_variable_blocking_formats [:ink]
   @control_reference_blocking_formats [:ink, :yarn, :godot]
@@ -2106,7 +2106,7 @@ defmodule Storyarn.Exports.ArtifactValidator do
       selected_sheet_ids = Enum.map(sheets, & &1.id)
 
       project_id
-      |> Sheets.list_sheets_for_export(filter_ids: selected_sheet_ids)
+      |> SheetReadModel.list_for_export(filter_ids: selected_sheet_ids)
       |> SerializerHelpers.collect_variables()
     end
   end

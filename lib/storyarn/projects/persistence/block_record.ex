@@ -74,7 +74,31 @@ defmodule Storyarn.Projects.Persistence.BlockRecord do
     |> validate_inclusion(:scope, @scopes)
     |> validate_inclusion(:column_index, 0..2)
     |> validate_config()
+    |> maybe_generate_variable_name()
     |> foreign_key_constraint(:inherited_from_block_id)
+  end
+
+  @non_variable_types ~w(reference gallery)
+
+  # Only generates if variable_name is not yet set (new block or first label);
+  # mirror of the Sheet tool's block changeset.
+  defp maybe_generate_variable_name(changeset) do
+    type = get_field(changeset, :type)
+
+    cond do
+      type in @non_variable_types ->
+        put_change(changeset, :variable_name, nil)
+
+      get_field(changeset, :variable_name) != nil ->
+        changeset
+
+      true ->
+        label = Map.get(get_field(changeset, :config) || %{}, "label")
+
+        if label,
+          do: put_change(changeset, :variable_name, Storyarn.Projects.SheetNaming.variablify(label)),
+          else: changeset
+    end
   end
 
   defp validate_config(changeset) do

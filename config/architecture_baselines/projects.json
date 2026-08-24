@@ -42,46 +42,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/exports/artifact_validator.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets/table_column.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/data_collector.ex",
-      "lib/storyarn/sheets/table_row.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/exports/validator.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/imports.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
@@ -114,21 +74,6 @@
     [
       "lib/storyarn/imports/materializer.ex",
       "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/materializer.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/materializer.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/materializer.ex",
-      "lib/storyarn/sheets/sheet.ex",
       "runtime"
     ],
     [
@@ -182,16 +127,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/imports/replacement.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/imports/replacement.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/imports/resume.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
@@ -199,26 +134,6 @@
     [
       "lib/storyarn/imports/resume.ex",
       "lib/storyarn/notifications.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/sheets/block_gallery_image.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/audit.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
       "runtime"
     ],
     [
@@ -509,11 +424,6 @@
     [
       "lib/storyarn/versioning/builders/sheet_builder.ex",
       "lib/storyarn/shared/word_count.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/sheet_builder.ex",
-      "lib/storyarn/sheets/reference_tracker.ex",
       "runtime"
     ],
     [
