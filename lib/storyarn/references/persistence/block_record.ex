@@ -20,6 +20,7 @@ defmodule Storyarn.References.Persistence.BlockRecord do
     field :type, :string
     field :position, :integer, default: 0
     field :config, :map, default: %{}
+    field :value, :map, default: %{}
     field :variable_name, :string
     field :is_constant, :boolean, default: false
     field :deleted_at, :utc_datetime

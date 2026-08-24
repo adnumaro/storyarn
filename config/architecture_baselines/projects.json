@@ -527,51 +527,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/references.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/avatar_integrity.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/avatar_integrity.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/references/backlinks.ex",
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/entity_tracker.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/entity_tracker.ex",
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/entity_tracker.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/project_reference_integrity.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/references/variable_usage.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning.ex",
       "lib/storyarn/billing.ex",
       "runtime"

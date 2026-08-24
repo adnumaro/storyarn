@@ -14,9 +14,9 @@ defmodule Storyarn.References.AvatarIntegrity do
   alias Storyarn.References.Persistence.EntityTrashRefRecord
   alias Storyarn.References.Persistence.FlowNodeRecord
   alias Storyarn.References.Persistence.FlowRecord
+  alias Storyarn.References.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.References.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
 
   @type validation_error ::
           {:invalid_avatar_reference, term()}

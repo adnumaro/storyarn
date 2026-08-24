@@ -14,12 +14,12 @@ defmodule Storyarn.References.VariableUsage do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.References.FlowCondition
+  alias Storyarn.References.FormulaUsageReadModel
   alias Storyarn.References.Persistence.FlowNodeRecord
   alias Storyarn.References.Persistence.FlowRecord
   alias Storyarn.References.VariableReference
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Sheets
 
   @default_limit 25
   # Predicate search may need to inspect more authored occurrences than the
@@ -58,7 +58,7 @@ defmodule Storyarn.References.VariableUsage do
         ambient_flow_usages(project_id, definition, fetch_limit)
 
     formula_page =
-      Sheets.list_formula_variable_usages(project_id, definition.qualified_ref, limit: limit)
+      FormulaUsageReadModel.list_formula_usages(project_id, definition.qualified_ref, limit: limit)
 
     formula = Enum.map(formula_page.items, &formula_usage/1)
 

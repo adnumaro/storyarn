@@ -1,11 +1,5 @@
 {
   "consumer": "sheets",
-  "edges": [
-    [
-      "lib/storyarn/sheets.ex",
-      "lib/storyarn/references.ex",
-      "runtime"
-    ]
-  ],
+  "edges": [],
   "version": 1
 }

@@ -1,12 +1,11 @@
 defmodule Storyarn.References.VariableUsageDelegationTest do
   @moduledoc """
-  `References.list_stale_node_ids_by_flow/1` used to travel
+  The batched stale-reference sweep used to travel
   `References → VariableUsage → legacy variable tracker → Sheets → SheetQueries`.
-  Hop 3 was a compatibility submodule bouncing out to the **Sheets** facade for a
-  batched sheet-blocks query: no body, no work, and a context inversion.
-
-  Both hops are gone. The behaviour is asserted end-to-end because a pure
-  structural assertion would pass just as well against a broken repoint.
+  It now reads Project-owned records through
+  `Projects.FlowVariableReferenceReadModel`; the behaviour is asserted
+  end-to-end because a pure structural assertion would pass just as well
+  against a broken repoint.
 
   The single-flow `list_stale_node_ids/1` chain is deliberately NOT collapsed —
   its third hop unions two real queries.
@@ -18,6 +17,7 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Projects.FlowVariableReferenceReadModel
   alias Storyarn.References
   alias Storyarn.References.VariableUsage
   alias Storyarn.Sheets
@@ -43,7 +43,10 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
     %{
       project: project,
       sheet: sheet,
+      block: block,
+      table: table,
       row: row,
+      column: column,
       flow: flow,
       node: node,
       cell_node: cell_node
@@ -53,7 +56,10 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
   describe "the batched sweep no longer detours through Flows" do
     test "VariableUsage stops re-exporting the batched sweep", _context do
       refute {:list_stale_node_ids_by_flow, 1} in exported_functions(VariableUsage),
-             "VariableUsage still re-exports the batched sweep; References should reach Sheets directly"
+             "VariableUsage still re-exports the batched sweep; References should read Project-owned records"
+
+      refute {:list_stale_node_ids_by_flow, 1} in exported_functions(References),
+             "the id-only batched view had no remaining caller and must stay deleted"
     end
 
     test "the single-flow chain is left intact (it does real work)", _context do
@@ -62,16 +68,15 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
     end
   end
 
-  describe "References.list_stale_node_ids_by_flow/1 after the repoint" do
+  describe "References.list_stale_node_variable_refs_by_flow/1 after the repoint" do
     test "reports nothing while the reference still resolves", context do
-      assert References.list_stale_node_ids_by_flow([context.flow.id]) == %{}
+      assert References.list_stale_node_variable_refs_by_flow([context.flow.id]) == %{}
     end
 
     test "reports both nodes once the sheet shortcut is renamed", context do
       {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
 
-      assert References.list_stale_node_ids_by_flow([context.flow.id]) ==
-               %{context.flow.id => MapSet.new([context.node.id, context.cell_node.id])},
+      assert stale_node_ids(context.flow.id) == MapSet.new([context.node.id, context.cell_node.id]),
              "the shortcut is half of every reference, table cells included"
     end
 
@@ -80,8 +85,7 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
       # can break the cell — the plain reference is untouched either way.
       {:ok, _row} = Sheets.delete_table_row(context.row)
 
-      assert References.list_stale_node_ids_by_flow([context.flow.id]) ==
-               %{context.flow.id => MapSet.new([context.cell_node.id])}
+      assert stale_node_ids(context.flow.id) == MapSet.new([context.cell_node.id])
     end
 
     test "reports both causes at once without double-counting", context do
@@ -91,8 +95,7 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
       # The cell node is stale for BOTH reasons here. The two SQL builders are
       # unioned, so it must appear once, not twice — a MapSet makes that
       # structural, but the plain node must still be present alongside it.
-      assert References.list_stale_node_ids_by_flow([context.flow.id]) ==
-               %{context.flow.id => MapSet.new([context.node.id, context.cell_node.id])}
+      assert stale_node_ids(context.flow.id) == MapSet.new([context.node.id, context.cell_node.id])
     end
 
     test "keys each flow separately when several are asked for at once", context do
@@ -102,26 +105,59 @@ defmodule Storyarn.References.VariableUsageDelegationTest do
       {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
       {:ok, _row} = Sheets.delete_table_row(context.row)
 
-      batched = References.list_stale_node_ids_by_flow([context.flow.id, other_flow.id])
+      batched = References.list_stale_node_variable_refs_by_flow([context.flow.id, other_flow.id])
 
-      assert Map.get(batched, other_flow.id) == MapSet.new([other_node.id])
-      assert Map.get(batched, context.flow.id) == MapSet.new([context.node.id, context.cell_node.id])
+      assert batched |> Map.fetch!(other_flow.id) |> Map.keys() |> MapSet.new() == MapSet.new([other_node.id])
+
+      assert batched |> Map.fetch!(context.flow.id) |> Map.keys() |> MapSet.new() ==
+               MapSet.new([context.node.id, context.cell_node.id])
     end
 
-    test "agrees with the Sheets facade it now delegates to", context do
+    test "retains each stale full reference while deriving the node-id view", context do
       {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
 
-      assert References.list_stale_node_ids_by_flow([context.flow.id]) ==
-               Sheets.list_stale_node_ids_by_flow([context.flow.id])
+      plain_ref = "hero.#{context.block.variable_name}"
+      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
+
+      assert References.list_stale_node_variable_refs_by_flow([context.flow.id]) == %{
+               context.flow.id => %{
+                 context.node.id => MapSet.new([plain_ref]),
+                 context.cell_node.id => MapSet.new([table_ref])
+               }
+             }
+    end
+
+    test "retains the table-cell path when only that reference becomes stale", context do
+      {:ok, _row} = Sheets.delete_table_row(context.row)
+
+      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
 
       assert References.list_stale_node_variable_refs_by_flow([context.flow.id]) ==
-               Sheets.list_stale_node_variable_refs_by_flow([context.flow.id])
+               %{
+                 context.flow.id => %{
+                   context.cell_node.id => MapSet.new([table_ref])
+                 }
+               }
+    end
+
+    test "agrees with the Projects read model it now delegates to", context do
+      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
+
+      assert References.list_stale_node_variable_refs_by_flow([context.flow.id]) ==
+               FlowVariableReferenceReadModel.list_stale_node_variable_refs_by_flow([context.flow.id])
     end
 
     test "short-circuits on an empty flow list", _context do
-      assert References.list_stale_node_ids_by_flow([]) == %{}
       assert References.list_stale_node_variable_refs_by_flow([]) == %{}
     end
+  end
+
+  defp stale_node_ids(flow_id) do
+    [flow_id]
+    |> References.list_stale_node_variable_refs_by_flow()
+    |> Map.get(flow_id, %{})
+    |> Map.keys()
+    |> MapSet.new()
   end
 
   # `function_exported?/3` answers `false` for a module that merely has not been

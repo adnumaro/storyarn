@@ -14,7 +14,6 @@ defmodule Storyarn.Sheets do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
-  alias Storyarn.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.AssetCatalog
   alias Storyarn.Sheets.AssetCommands
@@ -1029,38 +1028,34 @@ defmodule Storyarn.Sheets do
   Gets backlinks for a target with resolved source information.
   """
   @spec get_backlinks_with_sources(String.t(), id(), id()) :: [map()]
-  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: References
+  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: ReferenceTracker
 
   @doc """
   Counts backlinks for a target.
   """
   @spec count_backlinks(String.t(), id()) :: integer()
-  defdelegate count_backlinks(target_type, target_id), to: References
+  defdelegate count_backlinks(target_type, target_id), to: ReferenceTracker
 
   @doc """
   Updates references from a flow node.
   Called after node data is saved to track mentions and references.
   """
   @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
-  defdelegate update_flow_node_references(node, opts \\ []),
-    to: References,
-    as: :update_flow_node_entity_references
+  defdelegate update_flow_node_references(node, opts \\ []), to: ReferenceTracker
 
   @doc """
   Deletes all references from a flow node.
   Called when a node is deleted.
   """
   @spec delete_flow_node_references(integer()) :: {integer(), nil}
-  defdelegate delete_flow_node_references(node_id),
-    to: References,
-    as: :delete_flow_node_entity_references
+  defdelegate delete_flow_node_references(node_id), to: ReferenceTracker
 
   @doc """
   Deletes all references where a given entity is the target.
   Used for permanent deletion cleanup.
   """
   @spec delete_target_references(String.t(), integer()) :: {integer(), nil}
-  defdelegate delete_target_references(target_type, target_id), to: References
+  defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
 
   # =============================================================================
   # Export / Import helpers
@@ -1099,12 +1094,6 @@ defmodule Storyarn.Sheets do
 
   @doc "Returns variable references with current block info for stale repair."
   defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: SheetQueries
-
-  @doc "Lists stale full variable references for MANY flows, keyed by flow and node."
-  defdelegate list_stale_node_variable_refs_by_flow(flow_ids), to: SheetQueries
-
-  @doc "Lists stale node IDs — regular and table — for MANY flows, keyed by flow."
-  defdelegate list_stale_node_ids_by_flow(flow_ids), to: SheetQueries
 
   @doc "Lists stale regular (non-table) node IDs in one flow."
   defdelegate list_stale_regular_node_ids(flow_id), to: SheetQueries

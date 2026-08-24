@@ -1830,7 +1830,6 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
     end
 
     test "report nothing while both references still resolve", context do
-      assert SheetQueries.list_stale_node_ids_by_flow([context.flow.id]) == %{}
       assert per_flow_stale_node_ids(context.flow.id) == MapSet.new()
     end
 
@@ -1860,10 +1859,7 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       assert regular_ref && regular_ref.stale == false
       assert table_ref && table_ref.stale == false
 
-      stale_ids =
-        [context.flow.id]
-        |> SheetQueries.list_stale_node_ids_by_flow()
-        |> Map.fetch!(context.flow.id)
+      stale_ids = per_flow_stale_node_ids(context.flow.id)
 
       refute numeric_plain.id in stale_ids
       refute numeric_table.id in stale_ids
@@ -1874,69 +1870,16 @@ defmodule Storyarn.Sheets.SheetQueriesTest do
       # row leaves the path intact — only removing it can break the cell.
       {:ok, _row} = Sheets.delete_table_row(context.row)
 
-      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id])
-
-      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
-
-      assert Map.get(batched, context.flow.id, MapSet.new()) == MapSet.new([context.table_node.id]),
+      assert per_flow_stale_node_ids(context.flow.id) == MapSet.new([context.table_node.id]),
              "only the table node loses its cell: the plain reference is untouched"
     end
 
     test "agree when the sheet shortcut is renamed", context do
       {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
 
-      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id])
-
-      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
-
-      assert Map.get(batched, context.flow.id, MapSet.new()) ==
+      assert per_flow_stale_node_ids(context.flow.id) ==
                MapSet.new([context.plain_node.id, context.table_node.id]),
              "the shortcut is half of every reference, table cells included"
-    end
-
-    test "retain each stale full reference while deriving the node-id view", context do
-      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
-
-      plain_ref = "hero.#{context.plain.variable_name}"
-      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
-
-      refs_by_flow =
-        SheetQueries.list_stale_node_variable_refs_by_flow([context.flow.id])
-
-      assert refs_by_flow == %{
-               context.flow.id => %{
-                 context.plain_node.id => MapSet.new([plain_ref]),
-                 context.table_node.id => MapSet.new([table_ref])
-               }
-             }
-
-      assert SheetQueries.list_stale_node_ids_by_flow([context.flow.id]) ==
-               %{context.flow.id => MapSet.new(Map.keys(refs_by_flow[context.flow.id]))}
-    end
-
-    test "retain the table-cell path when only that reference becomes stale", context do
-      {:ok, _row} = Sheets.delete_table_row(context.row)
-
-      table_ref = "hero.#{context.table.variable_name}.#{context.row.slug}.#{context.column.slug}"
-
-      assert SheetQueries.list_stale_node_variable_refs_by_flow([context.flow.id]) ==
-               %{
-                 context.flow.id => %{
-                   context.table_node.id => MapSet.new([table_ref])
-                 }
-               }
-    end
-
-    test "key each flow separately when several are asked for at once", context do
-      other_flow = flow_fixture(context.project)
-      other_node = tracked_assignment_node(other_flow, "hero", "health")
-
-      {:ok, _sheet} = Sheets.update_sheet(context.sheet, %{shortcut: "protagonist"})
-
-      batched = SheetQueries.list_stale_node_ids_by_flow([context.flow.id, other_flow.id])
-
-      assert Map.get(batched, other_flow.id, MapSet.new()) == MapSet.new([other_node.id])
-      assert Map.get(batched, context.flow.id, MapSet.new()) == per_flow_stale_node_ids(context.flow.id)
     end
   end
 

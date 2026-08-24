@@ -3,18 +3,13 @@ defmodule Storyarn.References do
   Public facade for entity and variable reference tracking.
   """
 
-  alias Storyarn.References.Backlinks
   alias Storyarn.References.EntityTracker
   alias Storyarn.References.VariableTracker
   alias Storyarn.References.VariableUsage
 
   defdelegate update_block_references(block, opts \\ []), to: EntityTracker
-  defdelegate delete_block_references(block_id), to: EntityTracker
   @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
   defdelegate update_flow_node_entity_references(node, opts \\ []), to: EntityTracker
-  defdelegate flow_node_entity_references_current?(node), to: EntityTracker
-  defdelegate flow_node_entity_references_current_ids(nodes), to: EntityTracker
-  defdelegate delete_flow_node_entity_references(node_id), to: EntityTracker
   defdelegate update_scene_pin_entity_references(pin, opts \\ []), to: EntityTracker
   defdelegate delete_scene_pin_entity_references(pin_id), to: EntityTracker
   defdelegate update_scene_zone_entity_references(zone, opts \\ []), to: EntityTracker
@@ -23,9 +18,6 @@ defmodule Storyarn.References do
 
   @spec rebuild_project_entity_references(integer()) :: :ok | {:error, term()}
   defdelegate rebuild_project_entity_references(project_id), to: EntityTracker
-
-  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: Backlinks
-  defdelegate count_backlinks(target_type, target_id), to: Backlinks
 
   @spec rebuild_project_variable_references(integer()) :: :ok | {:error, term()}
   defdelegate rebuild_project_variable_references(project_id), to: VariableTracker
@@ -69,9 +61,10 @@ defmodule Storyarn.References do
 
   defdelegate check_stale_variable_references(block_id, project_id), to: VariableUsage
   defdelegate repair_stale_variable_references(project_id), to: VariableUsage
-  # The batched sweep is a sheet-blocks query; it goes straight to Sheets rather
-  # than detouring through a Flows submodule that only forwarded it back here.
-  defdelegate list_stale_node_variable_refs_by_flow(flow_ids), to: Storyarn.Sheets
-  defdelegate list_stale_node_ids_by_flow(flow_ids), to: Storyarn.Sheets
+  # The batched export sweep reads Project-owned records; the per-tool editors
+  # keep their own copies of this rule.
+  defdelegate list_stale_node_variable_refs_by_flow(flow_ids),
+    to: Storyarn.Projects.FlowVariableReferenceReadModel
+
   defdelegate list_stale_node_ids(flow_id), to: VariableUsage
 end

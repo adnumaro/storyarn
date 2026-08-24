@@ -20,33 +20,23 @@ defmodule Storyarn.References.EntityTracker do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.SceneEntityReferenceTracker
+  alias Storyarn.References.EntityReferenceProjection
+  alias Storyarn.References.Persistence.BlockRecord, as: Block
   alias Storyarn.References.Persistence.FlowNodeRecord
   alias Storyarn.References.Persistence.FlowRecord
+  alias Storyarn.References.Persistence.SheetRecord, as: Sheet
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.ReferenceTracker
-  alias Storyarn.Sheets.Sheet
 
   @rebuild_batch_size 100
 
-  def update_block_references(block, opts \\ []), do: ReferenceTracker.update_block_references(block, opts)
+  def update_block_references(block, opts \\ []), do: EntityReferenceProjection.update_block_references(block, opts)
 
-  defdelegate delete_block_references(block_id), to: ReferenceTracker
-  defdelegate delete_target_references(target_type, target_id), to: ReferenceTracker
+  defdelegate delete_target_references(target_type, target_id), to: EntityReferenceProjection
 
   @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
-  def update_flow_node_entity_references(node, opts \\ []), do: ReferenceTracker.update_flow_node_references(node, opts)
-
-  defdelegate flow_node_entity_references_current?(node),
-    to: ReferenceTracker,
-    as: :flow_node_references_current?
-
-  defdelegate flow_node_entity_references_current_ids(nodes),
-    to: ReferenceTracker,
-    as: :flow_node_references_current_ids
-
-  def delete_flow_node_entity_references(node_id), do: ReferenceTracker.delete_flow_node_references(node_id)
+  def update_flow_node_entity_references(node, opts \\ []),
+    do: EntityReferenceProjection.update_flow_node_references(node, opts)
 
   def update_scene_pin_entity_references(pin, opts \\ []),
     do: SceneEntityReferenceTracker.update_pin_references(pin, opts)
@@ -91,11 +81,11 @@ defmodule Storyarn.References.EntityTracker do
            ProjectReferenceIntegrity.lock_active_project(project_id, :update),
          :ok <-
            rebuild_sources(active_project_blocks_query(project_id), fn block ->
-             ReferenceTracker.update_block_references(block, project_id: project_id)
+             EntityReferenceProjection.update_block_references(block, project_id: project_id)
            end),
          :ok <-
            rebuild_sources(active_project_flow_nodes_query(project_id), fn node ->
-             ReferenceTracker.update_flow_node_references(node, project_id: project_id)
+             EntityReferenceProjection.update_flow_node_references(node, project_id: project_id)
            end),
          :ok <-
            rebuild_sources(active_project_scene_rows_query(ScenePin, project_id), fn pin ->

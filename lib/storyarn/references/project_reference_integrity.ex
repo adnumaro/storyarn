@@ -17,8 +17,8 @@ defmodule Storyarn.References.ProjectReferenceIntegrity do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Project
   alias Storyarn.References.Persistence.FlowRecord
+  alias Storyarn.References.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
 
   @reference_types [:asset, :flow, :scene, :sheet]
   @project_lock_modes [:key_share, :share, :update]

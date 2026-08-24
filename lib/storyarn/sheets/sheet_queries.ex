@@ -1334,56 +1334,6 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
   end
 
-  @type stale_node_variable_refs_by_flow :: %{
-          integer() => %{integer() => MapSet.t(String.t())}
-        }
-
-  @doc """
-  Stale variable references for MANY flows at once, keyed by flow and node.
-
-  The per-flow pair costs two queries each, so a project-wide sweep over N flows
-  would otherwise pay 2N. This returns the same information in two queries total
-  while retaining the original full reference needed to distinguish exportable
-  expressions from draft rows on the same node.
-  """
-  @spec list_stale_node_variable_refs_by_flow([integer()]) ::
-          stale_node_variable_refs_by_flow()
-  def list_stale_node_variable_refs_by_flow([]), do: %{}
-
-  def list_stale_node_variable_refs_by_flow(flow_ids) do
-    regular = stale_regular_refs(flow_ids)
-    table = stale_table_refs(flow_ids)
-
-    Enum.reduce(regular ++ table, %{}, fn
-      {flow_id, node_id, source_sheet, source_variable}, refs_by_flow ->
-        full_ref = "#{source_sheet}.#{source_variable}"
-
-        Map.update(
-          refs_by_flow,
-          flow_id,
-          %{node_id => MapSet.new([full_ref])},
-          &Map.update(&1, node_id, MapSet.new([full_ref]), fn refs ->
-            MapSet.put(refs, full_ref)
-          end)
-        )
-    end)
-  end
-
-  @doc """
-  Stale node ids for MANY flows at once, keyed by flow — the project-wide sweep.
-
-  This compatibility view is derived from
-  `list_stale_node_variable_refs_by_flow/1`, preserving the same two-query cost.
-  """
-  @spec list_stale_node_ids_by_flow([integer()]) :: %{integer() => MapSet.t()}
-  def list_stale_node_ids_by_flow(flow_ids) do
-    flow_ids
-    |> list_stale_node_variable_refs_by_flow()
-    |> Map.new(fn {flow_id, refs_by_node} ->
-      {flow_id, refs_by_node |> Map.keys() |> MapSet.new()}
-    end)
-  end
-
   # A reference is stale when the shortcut it was written against no longer names
   # its sheet, or the variable no longer carries its name.
   defp stale_regular_refs(flow_ids) do

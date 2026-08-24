@@ -68,18 +68,17 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
       {ReferenceTracker, :update_scene_pin_references, 1},
       {ReferenceTracker, :update_scene_pin_references, 2},
       {ReferenceTracker, :delete_map_pin_references, 1},
-      {Storyarn.Shortcuts, :generate_scene_shortcut, 2},
-      {Storyarn.Shortcuts, :generate_scene_shortcut, 3},
-      {Storyarn.Shortcuts, :generate_pin_shortcut, 2},
-      {Storyarn.Shortcuts, :generate_pin_shortcut, 3},
-      {Storyarn.Shortcuts, :generate_zone_shortcut, 2},
-      {Storyarn.Shortcuts, :generate_zone_shortcut, 3},
       {SceneBuilder, :restore_snapshot, 2},
       {SceneBuilder, :restore_snapshot, 3},
       {SceneSnapshot, :build_capture_snapshot, 1},
       {SceneSnapshot, :instantiate_snapshot, 2},
       {SceneSnapshot, :instantiate_snapshot, 3}
     ]
+
+    # The global Shortcuts module is deleted outright — stronger than any
+    # per-function refutation.
+    assert Code.ensure_loaded(Storyarn.Shortcuts) == {:error, :nofile},
+           "Storyarn.Shortcuts must stay deleted; per-tool shortcut policy owns generation"
 
     Enum.each(forbidden_exports, fn {module, function, arity} ->
       Code.ensure_loaded!(module)

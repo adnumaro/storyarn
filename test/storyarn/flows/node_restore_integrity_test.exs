@@ -68,7 +68,7 @@ defmodule Storyarn.Flows.NodeRestoreIntegrityTest do
     assert backlink_targets(restored.id) == MapSet.new([speaker.id, mentioned.id])
 
     assert Enum.any?(
-             References.get_backlinks_with_sources("sheet", mentioned.id, project.id),
+             Sheets.get_backlinks_with_sources("sheet", mentioned.id, project.id),
              &(&1.source_id == restored.id)
            )
   end
