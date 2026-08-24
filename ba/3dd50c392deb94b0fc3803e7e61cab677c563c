@@ -1,0 +1,87 @@
+lib/storyarn_web/plugs/locale.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 15
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 241-243,252-254,283-285,939,1247
+lib/storyarn_web/controllers/public_locale_redirect_controller.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 6
+test/storyarn/public/blog_test.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 1-10,12-319
+  s_1837e1b58927a7::t_5662e6666f962b 11
+lib/storyarn/public/publication/html_link_localizer.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-59
+lib/storyarn_web/router.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 4
+lib/storyarn/public/docs/guide.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-76
+lib/storyarn_web/live/docs_live/show.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 5-6
+lib/storyarn_web/components/layouts.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 12
+lib/storyarn_web/public_urls.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 10-11
+lib/storyarn_web/live/project_live/invitation.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 13
+lib/storyarn_web/blog_urls.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 10-11
+lib/storyarn/public/publication/path_localizer.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-79
+lib/storyarn_web/public_locale.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 13
+test/storyarn_web/controllers/llms_controller_test.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 4
+config/config.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 201
+lib/storyarn/public/docs.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-68
+lib/storyarn/public/publication/locales.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-140
+lib/storyarn_web/components/auth_layout.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 12
+lib/storyarn_web/live/blog_live/show.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 6-7
+lib/storyarn_web/public_seo.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 4
+test/storyarn_web/docs_gating_test.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 8
+lib/storyarn/public/docs/guide_builder.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-100
+lib/storyarn/public/blog/post.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-75
+lib/storyarn_web/components/public_layout.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 12
+lib/storyarn_web/controllers/sitemap_controller.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 4-6
+lib/storyarn_web/live/blog_live/index.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 6-7
+lib/storyarn/public/blog.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-26
+lib/storyarn_web/controllers/llms_controller.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 4-6
+lib/storyarn_web/live/workspace_live/invitation.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 12
+test/storyarn/public/docs/guide_builder_test.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 1-138
+lib/storyarn/public/blog/post_builder.ex
+  s_1837e1b58927a7::t_1a833ccf07810d 1-103
+test/storyarn_web/public_urls_test.exs
+  s_1837e1b58927a7::t_1a833ccf07810d 4
+test/storyarn/public/publication/locales_test.exs
+  s_1837e1b58927a7::t_5662e6666f962b 11
+  s_1837e1b58927a7::t_1a833ccf07810d 1-10,12-367
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "ba3dd50c392deb94b0fc3803e7e61cab677c563c",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
