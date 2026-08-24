@@ -2,8 +2,8 @@ defmodule StoryarnWeb.DocsLive.Show do
   @moduledoc false
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Docs
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Docs
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Shared.HtmlSanitizer
   alias StoryarnWeb.PublicURLs
 

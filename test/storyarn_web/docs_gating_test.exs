@@ -5,7 +5,7 @@ defmodule StoryarnWeb.DocsGatingTest do
 
   import Phoenix.LiveViewTest
 
-  alias Storyarn.Docs
+  alias Storyarn.Public.Docs
 
   describe "flag-gated AI docs with :ai_integrations OFF (default)" do
     test "direct URL is unreachable (404)", %{conn: conn} do

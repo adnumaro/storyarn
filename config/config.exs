@@ -198,7 +198,7 @@ config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
 # Gettext. A locale can be available inside the authenticated application
 # before its landing page, docs, legal copy, and editorial content are ready
 # to be published under a canonical URL.
-config :storyarn, Storyarn.Publication.Locales,
+config :storyarn, Storyarn.Public.Publication.Locales,
   default_locale: "en",
   locales: [
     %{gettext_locale: "en", language_tag: "en", path_segment: "en"},

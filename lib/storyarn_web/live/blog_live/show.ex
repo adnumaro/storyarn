@@ -3,8 +3,8 @@ defmodule StoryarnWeb.BlogLive.Show do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Blog
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Shared.HtmlSanitizer
   alias StoryarnWeb.BlogFormatting
   alias StoryarnWeb.BlogURLs

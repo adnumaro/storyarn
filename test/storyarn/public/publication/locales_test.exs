@@ -1,14 +1,14 @@
-defmodule Storyarn.Publication.LocalesTest do
+defmodule Storyarn.Public.Publication.LocalesTest do
   use ExUnit.Case, async: true
 
   alias Expo.Message
   alias Expo.Message.Plural
   alias Expo.Message.Singular
-  alias Storyarn.Blog
-  alias Storyarn.Docs.Guide
-  alias Storyarn.Publication.Locales
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Docs.Guide
+  alias Storyarn.Public.Publication.Locales
 
-  @project_root Path.expand("../../..", __DIR__)
+  @project_root Path.expand("../../../..", __DIR__)
 
   test "exposes the canonical default and localized public locales" do
     assert Locales.default_locale() == "en"

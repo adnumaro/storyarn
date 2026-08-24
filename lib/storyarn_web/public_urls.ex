@@ -7,8 +7,8 @@ defmodule StoryarnWeb.PublicURLs do
   language.
   """
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
-  alias Storyarn.Publication.PathLocalizer
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.PathLocalizer
   alias StoryarnWeb.Layouts
   alias StoryarnWeb.PublicLanguageMetadata
 

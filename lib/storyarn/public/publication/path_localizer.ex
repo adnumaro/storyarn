@@ -1,4 +1,4 @@
-defmodule Storyarn.Publication.PathLocalizer do
+defmodule Storyarn.Public.Publication.PathLocalizer do
   @moduledoc """
   Pure canonicalization for paths on Storyarn's public surface.
 
@@ -6,7 +6,7 @@ defmodule Storyarn.Publication.PathLocalizer do
   external, and fragment-only destinations untouched.
   """
 
-  alias Storyarn.Publication.Locales
+  alias Storyarn.Public.Publication.Locales
 
   @public_roots ~w(contact privacy terms docs blog)
 

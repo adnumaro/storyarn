@@ -1,8 +1,8 @@
-defmodule Storyarn.Blog.PostBuilder do
+defmodule Storyarn.Public.Blog.PostBuilder do
   @moduledoc false
 
-  alias Storyarn.Publication.HtmlLinkLocalizer
-  alias Storyarn.Publication.Locales
+  alias Storyarn.Public.Publication.HtmlLinkLocalizer
+  alias Storyarn.Public.Publication.Locales
   alias Storyarn.Shared.HtmlUtils
 
   @words_per_minute 200

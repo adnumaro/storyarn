@@ -9,7 +9,7 @@ defmodule StoryarnWeb.Components.PublicLayout do
 
   use StoryarnWeb, :html
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.BlogURLs
   alias StoryarnWeb.Components.PublicFooter
   alias StoryarnWeb.Components.PublicHeader

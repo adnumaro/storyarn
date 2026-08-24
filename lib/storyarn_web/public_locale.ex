@@ -10,7 +10,7 @@ defmodule StoryarnWeb.PublicLocale do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [attach_hook: 4, get_connect_info: 2]
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   @known_locales Gettext.known_locales(Storyarn.Gettext)

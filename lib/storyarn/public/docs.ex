@@ -1,4 +1,4 @@
-defmodule Storyarn.Docs do
+defmodule Storyarn.Public.Docs do
   @moduledoc """
   Public API for the documentation system.
 
@@ -11,7 +11,7 @@ defmodule Storyarn.Docs do
   gating uses global flag state, never a per-user actor.
   """
 
-  alias Storyarn.Docs.Guide
+  alias Storyarn.Public.Docs.Guide
   alias Storyarn.FeatureFlags
 
   def list_guides(locale \\ "en") do

@@ -10,7 +10,7 @@ defmodule StoryarnWeb.ProjectLive.Invitation do
 
   alias Storyarn.Accounts
   alias Storyarn.Projects
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.Live.Shared.InvitationHelpers
   alias StoryarnWeb.PublicURLs
 

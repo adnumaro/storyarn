@@ -1,16 +1,16 @@
-defmodule Storyarn.Blog.Post do
+defmodule Storyarn.Public.Blog.Post do
   @moduledoc """
   Compile-time publisher and query module for Storyarn blog posts.
   """
 
   use NimblePublisher,
-    build: Storyarn.Blog.PostBuilder,
+    build: Storyarn.Public.Blog.PostBuilder,
     from: "priv/blog/**/*.md",
     as: :posts,
     highlighters: [:makeup_elixir],
     earmark_options: %Earmark.Options{gfm_tables: true}
 
-  @default_locale Storyarn.Publication.Locales.default_locale()
+  @default_locale Storyarn.Public.Publication.Locales.default_locale()
 
   for {{locale, slug}, posts} <- Enum.group_by(@posts, &{&1.locale, &1.slug}),
       length(posts) > 1 do

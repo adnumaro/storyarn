@@ -1,14 +1,14 @@
 defmodule Storyarn.BlogTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Blog
-  alias Storyarn.Blog.PostBuilder
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Blog.PostBuilder
 
   @slug "introducing-storyarn"
   @version_control_slug "version-control-branching-narratives"
   @version_control_spanish_slug "control-versiones-narrativa-ramificada"
   @debug_image_path Path.expand(
-                      "../../priv/static/images/blog/introducing-storyarn-debug-session.jpg",
+                      "../../../priv/static/images/blog/introducing-storyarn-debug-session.jpg",
                       __DIR__
                     )
   @debug_image_sha256 "df6c084bbf65120cfa5ff28b415a6dbbc034aa462b9e5db1e79326e49afb8967"

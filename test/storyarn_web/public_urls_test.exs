@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.PublicURLsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Blog
+  alias Storyarn.Public.Blog
   alias StoryarnWeb.BlogURLs
   alias StoryarnWeb.Layouts
   alias StoryarnWeb.PublicURLs

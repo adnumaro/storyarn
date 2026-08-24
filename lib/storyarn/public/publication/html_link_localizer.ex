@@ -1,7 +1,7 @@
-defmodule Storyarn.Publication.HtmlLinkLocalizer do
+defmodule Storyarn.Public.Publication.HtmlLinkLocalizer do
   @moduledoc false
 
-  alias Storyarn.Publication.PathLocalizer
+  alias Storyarn.Public.Publication.PathLocalizer
 
   @spec localize_navigation(String.t(), String.t()) :: String.t()
   def localize_navigation(body, locale) do

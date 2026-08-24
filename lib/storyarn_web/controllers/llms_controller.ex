@@ -1,9 +1,9 @@
 defmodule StoryarnWeb.LlmsController do
   use StoryarnWeb, :controller
 
-  alias Storyarn.Blog
-  alias Storyarn.Docs
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Docs
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicLanguageMetadata
   alias StoryarnWeb.PublicURLs
 

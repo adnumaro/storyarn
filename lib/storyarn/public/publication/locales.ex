@@ -1,4 +1,4 @@
-defmodule Storyarn.Publication.Locales do
+defmodule Storyarn.Public.Publication.Locales do
   @moduledoc """
   Published locales for Storyarn's indexable public surface.
 

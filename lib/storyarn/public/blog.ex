@@ -1,4 +1,4 @@
-defmodule Storyarn.Blog do
+defmodule Storyarn.Public.Blog do
   @moduledoc """
   Public API for Storyarn's editorial blog.
 
@@ -7,7 +7,7 @@ defmodule Storyarn.Blog do
   require a database or an administration surface.
   """
 
-  alias Storyarn.Blog.Post
+  alias Storyarn.Public.Blog.Post
 
   defdelegate default_locale(), to: Post
   defdelegate published_locales(), to: Post

@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
-  alias Storyarn.Publication.Locales
+  alias Storyarn.Public.Publication.Locales
 
   # Content Security Policy
   @csp_dev_extras if(Mix.env() == :dev,

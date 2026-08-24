@@ -9,7 +9,7 @@ defmodule StoryarnWeb.Layouts do
   alias Phoenix.LiveView.JS
   alias Storyarn.Analytics
   alias Storyarn.CommandPalette
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.FeatureFlagHelpers
 
   # Embed all files in layouts/* within this module.

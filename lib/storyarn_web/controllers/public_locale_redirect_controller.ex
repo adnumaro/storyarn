@@ -3,7 +3,7 @@ defmodule StoryarnWeb.PublicLocaleRedirectController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   def default_locale(conn, _params) do

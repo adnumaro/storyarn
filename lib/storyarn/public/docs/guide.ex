@@ -1,4 +1,4 @@
-defmodule Storyarn.Docs.Guide do
+defmodule Storyarn.Public.Docs.Guide do
   @moduledoc """
   Represents a documentation guide parsed from Markdown files at compile time.
 
@@ -7,7 +7,7 @@ defmodule Storyarn.Docs.Guide do
   """
 
   use NimblePublisher,
-    build: Storyarn.Docs.GuideBuilder,
+    build: Storyarn.Public.Docs.GuideBuilder,
     from: "priv/docs/**/*.md",
     as: :guides,
     highlighters: [:makeup_elixir],
