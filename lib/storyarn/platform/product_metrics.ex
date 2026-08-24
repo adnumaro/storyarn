@@ -59,7 +59,8 @@ defmodule Storyarn.Platform.ProductMetrics do
     {:sheets, :version_compared} => {"version compared", ~w(entity_type project_id)},
     {:sheets, :version_created} => {"version created", ~w(entity_type project_id)},
     {:sheets, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
-    {:sheets, :version_restored} => {"version restored", ~w(entity_type project_id)}
+    {:sheets, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:workspaces, :workspace_created} => {"workspace created", ~w(workspace_id)}
   }
 
   @impl EventReaction
@@ -253,6 +254,10 @@ defmodule Storyarn.Platform.ProductMetrics do
   def sanitize_payload({:sheets, event_type}, %{entity_type: "sheet", project_id: project_id} = payload)
       when event_type in [:version_compared, :version_created, :version_panel_opened, :version_restored] do
     if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
+  end
+
+  def sanitize_payload({:workspaces, :workspace_created}, %{workspace_id: workspace_id} = payload) do
+    if valid_id?(workspace_id), do: {:ok, Map.take(payload, [:workspace_id])}, else: :error
   end
 
   def sanitize_payload(_event, _payload), do: :error

@@ -137,6 +137,9 @@ defmodule Storyarn.Projects do
   @doc """
   Returns a changeset for validating new project form input.
   """
+  @spec change_new_project() :: changeset()
+  defdelegate change_new_project(), to: ProjectCrud
+
   @spec change_new_project(project(), attrs()) :: changeset()
   defdelegate change_new_project(project, attrs \\ %{}), to: ProjectCrud
 

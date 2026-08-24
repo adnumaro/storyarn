@@ -3,15 +3,14 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
-  alias Storyarn.Analytics
   alias Storyarn.Assets
   alias Storyarn.Billing
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Versioning
+  alias Storyarn.Workspaces.Events
+  alias Storyarn.Workspaces.Persistence.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Workspaces.Persistence.ProjectRecord, as: Project
+  alias Storyarn.Workspaces.Persistence.UserRecord
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
@@ -21,7 +20,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Includes workspaces via WorkspaceMembership (with role) and workspaces
   the user can see through ProjectMembership only (with role: nil).
   """
-  def list_workspaces(%Scope{user: user}) do
+  def list_workspaces(%{user: user}) do
     # Workspaces via workspace membership
     via_wm =
       Workspace
@@ -55,7 +54,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   Includes workspaces visible through ProjectMembership.
   """
-  def list_workspaces_for_user(%User{} = user) do
+  def list_workspaces_for_user(%{id: _} = user) do
     Workspace
     |> join(:left, [w], wm in WorkspaceMembership, on: wm.workspace_id == w.id and wm.user_id == ^user.id)
     |> join(:left, [w, wm], p in Project, on: p.workspace_id == w.id)
@@ -72,7 +71,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Priority: First owned workspace via WorkspaceMembership, then first workspace
   with any membership. Falls back to workspace via ProjectMembership.
   """
-  def get_default_workspace(%User{} = user) do
+  def get_default_workspace(%{id: _} = user) do
     workspace =
       Workspace
       |> join(:inner, [w], m in WorkspaceMembership, on: m.workspace_id == w.id and m.user_id == ^user.id)
@@ -92,7 +91,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Returns a virtual WorkspaceMembership with `role: nil` for users who have
   access only through ProjectMembership (no workspace-level permissions).
   """
-  def get_workspace(%Scope{user: user}, id) do
+  def get_workspace(%{user: user}, id) do
     Workspace
     |> Repo.get(id)
     |> authorize_workspace_access(user)
@@ -104,7 +103,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   Returns a virtual WorkspaceMembership with `role: nil` for users who have
   access only through ProjectMembership (no workspace-level permissions).
   """
-  def get_workspace_by_slug(%Scope{user: user}, slug) do
+  def get_workspace_by_slug(%{user: user}, slug) do
     Workspace
     |> Repo.get_by(slug: slug)
     |> authorize_workspace_access(user)
@@ -118,21 +117,21 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   @doc """
   Creates a workspace and sets up the owner membership.
   """
-  def create_workspace(%Scope{user: user}, attrs) do
+  def create_workspace(%{user: user}, attrs) do
     create_workspace_with_owner(user, attrs)
   end
 
   @doc """
   Creates a workspace with owner membership (for internal use).
   """
-  def create_workspace_with_owner(%User{} = user, attrs) do
+  def create_workspace_with_owner(%{id: _} = user, attrs) do
     do_create_workspace_with_owner(user, attrs)
   end
 
   defp do_create_workspace_with_owner(user, attrs) do
     result =
       Repo.transact(fn ->
-        locked_user = Repo.one!(from(u in User, where: u.id == ^user.id, lock: "FOR UPDATE"))
+        locked_user = Repo.one!(from(u in UserRecord, where: u.id == ^user.id, lock: "FOR UPDATE"))
 
         with :ok <- normalize_workspace_capacity(Billing.can_create_workspace?(locked_user)),
              {:ok, workspace} <- insert_workspace(user, attrs),
@@ -144,7 +143,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
     case result do
       {:ok, workspace} ->
-        Analytics.track(user, "workspace created", %{workspace_id: workspace.id})
+        Events.workspace_created(user, workspace)
         {:ok, workspace}
 
       {:error, {:limit_reached, details}} ->
@@ -249,7 +248,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     %WorkspaceMembership{workspace_id: workspace_id, user_id: user_id, role: nil}
   end
 
-  defp get_default_workspace_via_project(%User{} = user) do
+  defp get_default_workspace_via_project(user) do
     Workspace
     |> join(:inner, [w], p in Project, on: p.workspace_id == w.id)
     |> join(:inner, [w, p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)

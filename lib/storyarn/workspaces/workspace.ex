@@ -10,8 +10,8 @@ defmodule Storyarn.Workspaces.Workspace do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Accounts.User
-  alias Storyarn.Projects.Project
+  alias Storyarn.Workspaces.Persistence.ProjectRecord
+  alias Storyarn.Workspaces.Persistence.UserRecord
   alias Storyarn.Workspaces.WorkspaceMembership
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)
@@ -26,10 +26,10 @@ defmodule Storyarn.Workspaces.Workspace do
           color: String.t() | nil,
           source_locale: String.t() | nil,
           owner_id: integer() | nil,
-          owner: User.t() | NotLoaded.t() | nil,
+          owner: UserRecord.t() | NotLoaded.t() | nil,
           memberships: [WorkspaceMembership.t()] | NotLoaded.t(),
-          members: [User.t()] | NotLoaded.t(),
-          projects: [Project.t()] | NotLoaded.t(),
+          members: [UserRecord.t()] | NotLoaded.t(),
+          projects: [ProjectRecord.t()] | NotLoaded.t(),
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -42,10 +42,10 @@ defmodule Storyarn.Workspaces.Workspace do
     field :color, :string
     field :source_locale, :string, default: "en"
 
-    belongs_to :owner, User
+    belongs_to :owner, UserRecord
     has_many :memberships, WorkspaceMembership
     has_many :members, through: [:memberships, :user]
-    has_many :projects, Project
+    has_many :projects, ProjectRecord
 
     timestamps(type: :utc_datetime)
   end
@@ -86,5 +86,11 @@ defmodule Storyarn.Workspaces.Workspace do
     end
   end
 
-  defp validate_slug(changeset), do: Storyarn.Shared.Validations.validate_slug(changeset)
+  @slug_format ~r/^[a-z0-9]+(?:-[a-z0-9]+)*$/
+
+  defp validate_slug(changeset) do
+    changeset
+    |> validate_length(:slug, min: 1, max: 100)
+    |> validate_format(:slug, @slug_format, message: "must be lowercase alphanumeric with hyphens")
+  end
 end

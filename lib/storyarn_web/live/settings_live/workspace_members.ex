@@ -4,7 +4,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   """
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Shared.Validations
   alias Storyarn.Workspaces
 
   @workspace_invite_roles ~w(admin member viewer)
@@ -44,7 +43,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
     |> Ecto.Changeset.cast(params, Map.keys(types))
     |> Ecto.Changeset.update_change(:email, &String.trim/1)
     |> Ecto.Changeset.validate_required([:email, :role])
-    |> Validations.validate_email_format()
+    |> Workspaces.validate_invitation_email_format()
     |> Ecto.Changeset.validate_inclusion(:role, @workspace_invite_roles)
   end
 

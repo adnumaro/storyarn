@@ -12,11 +12,9 @@ defmodule Storyarn.Workspaces do
   - `Invitations` - Invitation management
   """
 
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.User
-  alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Workspaces.Invitations
   alias Storyarn.Workspaces.Memberships
+  alias Storyarn.Workspaces.Naming
   alias Storyarn.Workspaces.SourceLocaleCatalog
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceCrud
@@ -30,8 +28,8 @@ defmodule Storyarn.Workspaces do
   @type workspace :: Workspace.t()
   @type membership :: WorkspaceMembership.t()
   @type invitation :: WorkspaceInvitation.t()
-  @type scope :: Scope.t()
-  @type user :: User.t()
+  @type scope :: %{user: %{id: integer()}}
+  @type user :: %{id: integer()}
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
@@ -44,6 +42,12 @@ defmodule Storyarn.Workspaces do
           | :use_ai
           | :run_bulk_ai
           | :view
+
+  @doc "Validates an `:email` change with the invitation email format."
+  @spec validate_invitation_email_format(changeset()) :: changeset()
+  defdelegate validate_invitation_email_format(changeset),
+    to: WorkspaceInvitation,
+    as: :validate_email_format
 
   @doc "Returns the source locales supported by workspace defaults."
   @spec source_locale_options() :: [%{code: String.t(), name: String.t()}]
@@ -206,7 +210,7 @@ defmodule Storyarn.Workspaces do
   """
   @spec generate_slug(String.t()) :: String.t()
   def generate_slug(name) do
-    NameNormalizer.generate_unique_slug(Workspace, [], name)
+    Naming.generate_unique_slug(name)
   end
 
   # =============================================================================

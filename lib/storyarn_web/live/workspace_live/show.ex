@@ -8,7 +8,6 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Billing
   alias Storyarn.Platform
   alias Storyarn.Projects
-  alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateMedia
@@ -33,7 +32,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:search_query, "")
      |> assign(:can_create_project, can_create_project)
      |> assign(:new_project_modal_open, false)
-     |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
+     |> assign(:project_form, to_form(Projects.change_new_project()))
      |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
      |> assign_template_installation_feedback()}
   end

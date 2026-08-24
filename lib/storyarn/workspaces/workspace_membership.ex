@@ -16,7 +16,7 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Accounts.User
+  alias Storyarn.Workspaces.Persistence.UserRecord
   alias Storyarn.Workspaces.Workspace
 
   @roles ~w(owner admin member viewer)
@@ -27,7 +27,7 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
           workspace_id: integer() | nil,
           workspace: Workspace.t() | NotLoaded.t() | nil,
           user_id: integer() | nil,
-          user: User.t() | NotLoaded.t() | nil,
+          user: UserRecord.t() | NotLoaded.t() | nil,
           inserted_at: DateTime.t() | nil,
           updated_at: DateTime.t() | nil
         }
@@ -36,7 +36,7 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
     field :role, :string
 
     belongs_to :workspace, Workspace
-    belongs_to :user, User
+    belongs_to :user, UserRecord
 
     timestamps(type: :utc_datetime)
   end

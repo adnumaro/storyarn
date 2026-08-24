@@ -525,6 +525,134 @@ forbidden_dependencies =
       reason: "Sheet restore triggers the Project-owned project-wide variable reference rebuild through its public facade"
     },
     %{
+      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      target: "lib/storyarn/billing.ex",
+      kinds: ["runtime"],
+      reason:
+        "Workspace lifecycle applies Platform-owned commercial limits and subscriptions through the public Billing facade"
+    },
+    %{
+      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      target: "lib/storyarn/versioning.ex",
+      kinds: ["runtime"],
+      reason: "Workspace hard-delete coordinates snapshot cleanup through the public Versioning facade"
+    },
+    %{
+      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      target: "lib/storyarn/assets.ex",
+      kinds: ["runtime"],
+      reason: "Workspace hard-delete coordinates asset cleanup through the public Assets facade"
+    },
+    %{
+      source: "lib/storyarn/workspaces/events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Workspaces publishes owned business facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitations.ex",
+      target: "lib/storyarn/billing.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitations apply the Platform-owned member seat limits through the public Billing facade"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitations.ex",
+      target: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitations enqueue the durable delivery worker shared with Project invitations"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitation_notifier.ex",
+      target: "lib/storyarn/emails/templates.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitation email rendering uses the shared transactional email templates"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitation_notifier.ex",
+      target: "lib/storyarn/mailer.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitation delivery goes through the application mailer"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The workspace trash settings page lists and restores deleted projects through the public Projects facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
+      target: "lib/storyarn/ai.ex",
+      kinds: ["runtime"],
+      reason: "Workspace general settings surfaces the AI policy controls through the public AI facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
+      target: "lib/storyarn/assets.ex",
+      kinds: ["runtime"],
+      reason: "Workspace banner upload goes through the public Assets facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
+      target: "lib/storyarn/assets/image_processor.ex",
+      kinds: ["runtime"],
+      reason:
+        "Workspace banner upload validates image binaries with the Assets image primitives, like the upload controller"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
+      target: "lib/storyarn/assets/upload_policy.ex",
+      kinds: ["runtime"],
+      reason: "Workspace banner upload enforces the Assets upload profile, like the upload controller"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
+      target: "lib/storyarn/versioning.ex",
+      kinds: ["runtime"],
+      reason: "Workspace snapshot imports are requested and tracked through the public Versioning facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
+      target: "lib/storyarn/versioning/project_snapshot_archive_reader.ex",
+      kinds: ["runtime"],
+      reason: "The import page shows the archive size limit owned by the Versioning archive reader"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
+      target: "lib/storyarn/assets/storage/r2.ex",
+      kinds: ["runtime"],
+      reason: "The import page branches on the configured storage adapter to offer external uploads"
+    },
+    %{
+      source: "lib/storyarn_web/live/workspace_live/invitation.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/workspace_live/invitation.ex",
+      target: "lib/storyarn/publication/locales.ex",
+      kinds: ["runtime"],
+      reason: "Invitation pages normalize the public locale like the other public-facing pages"
+    },
+    %{
+      source: "lib/storyarn_web/live/workspace_live/show.ex",
+      target: "lib/storyarn/billing.ex",
+      kinds: ["runtime"],
+      reason: "The workspace home shows plan usage through the public Billing facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/workspace_live/show.ex",
+      target: "lib/storyarn/project_templates.ex",
+      kinds: ["runtime"],
+      reason: "The workspace home offers template installation through the public ProjectTemplates facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/workspace_live/show.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The workspace home lists and creates projects through the public Projects facade"
+    },
+    %{
       source: "lib/storyarn/global_search/variable_search.ex",
       target: "lib/storyarn/sheets.ex",
       kinds: ["runtime"],

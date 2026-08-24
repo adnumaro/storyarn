@@ -173,6 +173,8 @@ defmodule Storyarn.Projects.ProjectCrud do
   @doc """
   Returns a changeset for validating new project form input.
   """
+  def change_new_project, do: change_new_project(%Project{}, %{})
+
   def change_new_project(%Project{} = project, attrs \\ %{}) do
     Project.create_form_changeset(project, attrs)
   end

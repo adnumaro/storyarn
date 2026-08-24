@@ -31,7 +31,8 @@ defmodule Storyarn.Platform.ProductMetricsTest do
     {:sheets, :version_compared} => {"version compared", ~w(entity_type project_id)},
     {:sheets, :version_created} => {"version created", ~w(entity_type project_id)},
     {:sheets, :version_panel_opened} => {"version panel opened", ~w(entity_type project_id)},
-    {:sheets, :version_restored} => {"version restored", ~w(entity_type project_id)}
+    {:sheets, :version_restored} => {"version restored", ~w(entity_type project_id)},
+    {:workspaces, :workspace_created} => {"workspace created", ~w(workspace_id)}
   }
 
   test "Platform owns the complete tool metric vocabulary and privacy allowlist" do
