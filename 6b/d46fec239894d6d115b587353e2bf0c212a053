@@ -1,0 +1,44 @@
+lib/storyarn/projects/project_trash.ex
+  s_1837e1b58927a7::t_22a1a948239a2d 11
+lib/storyarn/projects.ex
+  s_1837e1b58927a7::t_22a1a948239a2d 34
+  s_1837e1b58927a7::t_c930f6ae63f40b 229-236
+  s_1837e1b58927a7::t_37a6c59c9e02cd 237
+lib/storyarn/projects/persistence/block_record.ex
+  s_1837e1b58927a7::t_0eaa7a194d9566 42-46
+lib/storyarn/projects/sheet_project_trash.ex
+  s_1837e1b58927a7::t_1bbe7a33bf20a1 1-527
+lib/storyarn/projects/persistence/entity_version_record.ex
+  s_1837e1b58927a7::t_0eaa7a194d9566 1-17
+lib/storyarn/workers/trash_retention_worker.ex
+  s_1837e1b58927a7::t_c930f6ae63f40b 84
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_1837e1b58927a7::t_c930f6ae63f40b 290,339,379
+test/storyarn/projects/sheet_project_trash_test.exs
+  s_1837e1b58927a7::t_09f68b599727e2 1-135,173-175
+  s_1837e1b58927a7::t_7a1cfcb4cb418e 136-172
+lib/storyarn/references.ex
+  s_1837e1b58927a7::t_22a1a948239a2d 16
+  s_1837e1b58927a7::t_0eaa7a194d9566 11-15
+lib/storyarn/projects/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_0eaa7a194d9566 35-40
+lib/storyarn/projects/localization_projection.ex
+  s_1837e1b58927a7::t_0eaa7a194d9566 157-167,169-173
+  s_1837e1b58927a7::t_a72954e680a442 168
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "6bd46fec239894d6d115b587353e2bf0c212a053",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
