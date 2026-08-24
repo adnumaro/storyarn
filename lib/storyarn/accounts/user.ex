@@ -67,7 +67,7 @@ defmodule Storyarn.Accounts.User do
     changeset =
       changeset
       |> validate_required([:email])
-      |> Storyarn.Shared.Validations.validate_email_format()
+      |> validate_email_format()
       |> validate_length(:email, max: 160)
 
     if Keyword.get(opts, :validate_unique, true) do
@@ -78,6 +78,13 @@ defmodule Storyarn.Accounts.User do
     else
       changeset
     end
+  end
+
+  @email_format ~r/^[^@,;\s]+@[^@,;\s]+$/
+
+  @doc "Validates the `:email` field with the account email format."
+  def validate_email_format(changeset) do
+    validate_format(changeset, :email, @email_format, message: "must have the @ sign and no spaces")
   end
 
   defp validate_email_changed(changeset) do

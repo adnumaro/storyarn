@@ -5,6 +5,8 @@ defmodule Storyarn.Platform.ProductMetricsTest do
   alias Storyarn.Platform.ProductMetrics
 
   @events %{
+    {:accounts, :user_logged_in} => {"user logged in", ~w(auth_method)},
+    {:accounts, :user_signed_up} => {"user signed up", ~w(auth_method)},
     {:flows, :debug_started} => {"flow debug started", ~w(flow_id project_id)},
     {:flows, :node_created} => {"flow node created", ~w(creation_method flow_id has_parent node_type project_id)},
     {:flows, :player_started} => {"flow player started", ~w(flow_id project_id)},
@@ -75,6 +77,23 @@ defmodule Storyarn.Platform.ProductMetricsTest do
              {:flows, :node_created},
              %{payload | node_type: "private user-authored content"}
            ) == :error
+  end
+
+  test "Account metrics keep the closed auth-method vocabulary and drop everything else" do
+    for event_type <- [:user_logged_in, :user_signed_up], auth_method <- ["password", "invite"] do
+      assert {:ok, %{auth_method: ^auth_method}} =
+               EventContract.sanitize(ProductMetrics, {:accounts, event_type}, %{
+                 auth_method: auth_method,
+                 email: "private@example.com"
+               })
+    end
+
+    assert EventContract.sanitize(ProductMetrics, {:accounts, :user_signed_up}, %{
+             auth_method: "private-user-authored-method"
+           }) == :error
+
+    assert ProductMetrics.event({:accounts, :user_signed_up}) == {:ok, "user signed up", ~w(auth_method)}
+    assert ProductMetrics.event({:accounts, :user_logged_in}) == {:ok, "user logged in", ~w(auth_method)}
   end
 
   test "Scene metrics preserve historical names while dropping authored content" do

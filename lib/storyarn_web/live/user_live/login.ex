@@ -8,7 +8,6 @@ defmodule StoryarnWeb.UserLive.Login do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
-  alias Storyarn.Shared.Validations
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserLoginToken
@@ -143,7 +142,7 @@ defmodule StoryarnWeb.UserLive.Login do
     attrs
     |> initial_login_changeset()
     |> validate_required([:email, :password])
-    |> Validations.validate_email_format()
+    |> Accounts.validate_email_format()
     |> validate_length(:email, max: 160)
   end
 

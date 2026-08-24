@@ -548,6 +548,42 @@ forbidden_dependencies =
       reason: "Workspace hard-delete coordinates asset cleanup through the public Assets facade"
     },
     %{
+      source: "lib/storyarn/accounts/events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Accounts publishes owned business facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/accounts/passwords.ex",
+      target: "lib/storyarn/workers/deliver_reset_password_instructions_worker.ex",
+      kinds: ["runtime"],
+      reason: "Password reset enqueues its durable delivery worker"
+    },
+    %{
+      source: "lib/storyarn/accounts/passwords.ex",
+      target: "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
+      kinds: ["runtime"],
+      reason: "Password reset requests enqueue their durable delivery worker"
+    },
+    %{
+      source: "lib/storyarn/accounts/user_notifier.ex",
+      target: "lib/storyarn/emails/templates.ex",
+      kinds: ["runtime"],
+      reason: "Account email rendering uses the shared transactional email templates"
+    },
+    %{
+      source: "lib/storyarn/accounts/user_notifier.ex",
+      target: "lib/storyarn/mailer.ex",
+      kinds: ["runtime"],
+      reason: "Account email delivery goes through the application mailer"
+    },
+    %{
+      source: "lib/storyarn_web/live/user_live/login.ex",
+      target: "lib/storyarn/mailer.ex",
+      kinds: ["runtime"],
+      reason: "The login page offers the local dev mailbox link by inspecting the configured mailer adapter"
+    },
+    %{
       source: "lib/storyarn/workspaces/events.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],

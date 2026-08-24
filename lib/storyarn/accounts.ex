@@ -14,6 +14,7 @@ defmodule Storyarn.Accounts do
   """
 
   alias Storyarn.Accounts.Emails
+  alias Storyarn.Accounts.Events
   alias Storyarn.Accounts.Passwords
   alias Storyarn.Accounts.Profiles
   alias Storyarn.Accounts.Registration
@@ -89,6 +90,14 @@ defmodule Storyarn.Accounts do
   """
   @spec register_user_with_password(attrs()) :: {:ok, user()} | {:error, changeset()}
   defdelegate register_user_with_password(attrs), to: Registration
+
+  @doc "Publishes the product fact for a completed login."
+  @spec user_logged_in(user(), String.t()) :: :ok
+  defdelegate user_logged_in(user, auth_method), to: Events
+
+  @doc "Validates the `:email` field with the account email format."
+  @spec validate_email_format(changeset()) :: changeset()
+  defdelegate validate_email_format(changeset), to: User
 
   @doc """
   Returns an `%Ecto.Changeset{}` for public registration.

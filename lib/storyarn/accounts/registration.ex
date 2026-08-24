@@ -5,9 +5,9 @@ defmodule Storyarn.Accounts.Registration do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Accounts.Events
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Analytics
   alias Storyarn.Repo
   alias Storyarn.Workspaces
 
@@ -34,8 +34,7 @@ defmodule Storyarn.Accounts.Registration do
 
     case result do
       {:ok, user} ->
-        Analytics.identify_user(user)
-        Analytics.track(user, "user signed up", %{auth_method: "password"})
+        Events.user_signed_up(user, "password")
         {:ok, user}
 
       error ->
@@ -131,8 +130,7 @@ defmodule Storyarn.Accounts.Registration do
 
     case result do
       {:ok, updated_user} ->
-        Analytics.identify_user(updated_user)
-        Analytics.track(updated_user, "user signed up", %{auth_method: "invite"})
+        Events.user_signed_up(updated_user, "invite")
         {:ok, updated_user}
 
       error ->

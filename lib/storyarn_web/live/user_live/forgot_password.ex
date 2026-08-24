@@ -7,7 +7,6 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
 
   alias Storyarn.Accounts
   alias Storyarn.RateLimiter
-  alias Storyarn.Shared.Validations
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
 
@@ -131,7 +130,7 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
     {%{}, @request_types}
     |> cast(attrs || %{}, [:email])
     |> validate_required([:email])
-    |> Validations.validate_email_format()
+    |> Accounts.validate_email_format()
     |> validate_length(:email, max: 160)
   end
 

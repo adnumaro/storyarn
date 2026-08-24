@@ -32,7 +32,11 @@ defmodule Storyarn.Platform.ProductMetrics do
     bottom-left bottom-center bottom-right
   )
 
+  @auth_methods ~w(password invite)
+
   @events %{
+    {:accounts, :user_logged_in} => {"user logged in", ~w(auth_method)},
+    {:accounts, :user_signed_up} => {"user signed up", ~w(auth_method)},
     {:flows, :debug_started} => {"flow debug started", ~w(flow_id project_id)},
     {:flows, :node_created} => {"flow node created", ~w(creation_method flow_id has_parent node_type project_id)},
     {:flows, :player_started} => {"flow player started", ~w(flow_id project_id)},
@@ -72,6 +76,12 @@ defmodule Storyarn.Platform.ProductMetrics do
   def handle({:user_id, user_id}, source, event_type, payload)
       when is_integer(user_id) and user_id > 0 and is_atom(source) and is_atom(event_type) and is_map(payload) do
     Analytics.track_user_id(user_id, __MODULE__, {source, event_type}, payload)
+  end
+
+  def handle(scope_or_user, :accounts, event_type, payload)
+      when event_type in [:user_logged_in, :user_signed_up] and is_map(payload) do
+    Analytics.identify_user(scope_or_user)
+    Analytics.track(scope_or_user, __MODULE__, {:accounts, event_type}, payload)
   end
 
   def handle(scope_or_user, source, event_type, payload)
@@ -254,6 +264,11 @@ defmodule Storyarn.Platform.ProductMetrics do
   def sanitize_payload({:sheets, event_type}, %{entity_type: "sheet", project_id: project_id} = payload)
       when event_type in [:version_compared, :version_created, :version_panel_opened, :version_restored] do
     if valid_id?(project_id), do: {:ok, Map.take(payload, [:entity_type, :project_id])}, else: :error
+  end
+
+  def sanitize_payload({:accounts, event_type}, %{auth_method: auth_method} = payload)
+      when event_type in [:user_logged_in, :user_signed_up] do
+    if auth_method in @auth_methods, do: {:ok, Map.take(payload, [:auth_method])}, else: :error
   end
 
   def sanitize_payload({:workspaces, :workspace_created}, %{workspace_id: workspace_id} = payload) do
