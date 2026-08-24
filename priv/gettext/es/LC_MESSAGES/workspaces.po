@@ -42,7 +42,7 @@ msgstr "Miembro no encontrado."
 msgid "Member removed."
 msgstr "Miembro eliminado."
 
-#: lib/storyarn_web/live/workspace_live/new.ex:17
+#: lib/storyarn_web/live/workspace_live/new.ex:16
 #, elixir-autogen, elixir-format
 msgid "New Workspace"
 msgstr "Nuevo espacio de trabajo"
@@ -87,7 +87,7 @@ msgstr "Miembros del espacio de trabajo"
 msgid "Workspace Settings"
 msgstr "Configuración del espacio de trabajo"
 
-#: lib/storyarn_web/live/workspace_live/new.ex:54
+#: lib/storyarn_web/live/workspace_live/new.ex:53
 #, elixir-autogen, elixir-format
 msgid "Workspace created successfully."
 msgstr "Espacio de trabajo creado exitosamente."
@@ -136,7 +136,7 @@ msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 msgid "Project limit reached for your plan"
 msgstr "Límite de proyectos alcanzado para tu plan"
 
-#: lib/storyarn_web/live/workspace_live/new.ex:62
+#: lib/storyarn_web/live/workspace_live/new.ex:61
 #, elixir-autogen, elixir-format
 msgid "You have reached the workspace limit for your plan."
 msgstr "Has alcanzado el límite de espacios de trabajo para tu plan."

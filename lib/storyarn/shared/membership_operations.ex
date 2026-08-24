@@ -1,6 +1,8 @@
 defmodule Storyarn.Shared.MembershipOperations do
   @moduledoc """
-  Generic membership operations shared by Projects and Workspaces.
+  Generic membership operations serving the Projects context. The workspace
+  arm moved into `Storyarn.Workspaces.Memberships` during the ENG-92
+  bounded-context migration.
 
   Parameterized by a config map containing:
   - `membership_schema` — e.g., ProjectMembership or WorkspaceMembership

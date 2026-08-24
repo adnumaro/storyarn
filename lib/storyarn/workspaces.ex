@@ -124,6 +124,9 @@ defmodule Storyarn.Workspaces do
   @spec change_workspace(workspace(), attrs()) :: changeset()
   defdelegate change_workspace(workspace, attrs \\ %{}), to: WorkspaceCrud
 
+  @spec change_new_workspace() :: changeset()
+  defdelegate change_new_workspace(), to: WorkspaceCrud
+
   @doc """
   Updates a workspace.
   """

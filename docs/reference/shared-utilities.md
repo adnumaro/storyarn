@@ -249,10 +249,10 @@ One line each. Open the file before writing anything that overlaps.
 | `ColorUtils`           | `color_utils.ex`           | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization                                            |
 | `HtmlUtils`            | `html_utils.ex`            | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer            |
 | `ImportHelpers`        | `import_helpers.ex`        | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                     |
-| `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the shared invitation schema/changesets (parameterized by `parent_key`, `allowed_roles`, …)            |
-| `InvitationOperations` | `invitation_operations.ex` | Config-map-driven invitation CRUD shared by Projects and Workspaces (`create_invitation`, `accept_invitation`, `revoke_…`)        |
-| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above                                                                           |
-| `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2`, shared by Projects and Workspaces                                              |
+| `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the invitation schema/changesets for Projects; the workspace arm lives in `Workspaces.WorkspaceInvitation` |
+| `InvitationOperations` | `invitation_operations.ex` | Config-map-driven invitation CRUD for Projects (`create_invitation`, `accept_invitation`, `revoke_…`); the workspace arm lives in `Workspaces.Invitations` |
+| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above; Workspaces has its own `Workspaces.InvitationNotifier`                   |
+| `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2` for Projects; the workspace arm lives in `Workspaces.Memberships`               |
 | `Trashable`            | `trashable.ex`             | `soft_delete/1`, `restore/1`, `inbound_refs/1`, `target_type!/1` — registry-driven soft-delete that also sweeps inbound refs      |
 | `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — denormalized at write time                                  |
 

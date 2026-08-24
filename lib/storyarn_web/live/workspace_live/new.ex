@@ -6,11 +6,10 @@ defmodule StoryarnWeb.WorkspaceLive.New do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
 
   @impl true
   def mount(_params, _session, socket) do
-    changeset = Workspaces.change_workspace(%Workspace{})
+    changeset = Workspaces.change_new_workspace()
 
     {:ok,
      socket

@@ -166,6 +166,11 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   end
 
   @doc """
+  Returns a changeset for a new workspace form.
+  """
+  def change_new_workspace, do: change_workspace(%Workspace{})
+
+  @doc """
   Updates a workspace.
   """
   def update_workspace(%Workspace{} = workspace, attrs) do

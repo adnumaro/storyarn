@@ -1,6 +1,8 @@
 defmodule Storyarn.Shared.InvitationSchema do
   @moduledoc """
-  Shared invitation schema logic for Projects and Workspaces.
+  Invitation schema logic for the Projects context. The workspace arm
+  moved into `Storyarn.Workspaces.WorkspaceInvitation` during the ENG-92
+  bounded-context migration.
 
   ## Usage
 

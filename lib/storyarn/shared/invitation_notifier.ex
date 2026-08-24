@@ -1,6 +1,8 @@
 defmodule Storyarn.Shared.InvitationNotifier do
   @moduledoc """
-  Generic invitation email delivery shared by Projects and Workspaces.
+  Generic invitation email delivery serving the Projects context. The
+  workspace arm moved into `Storyarn.Workspaces.InvitationNotifier` during
+  the ENG-92 bounded-context migration.
 
   Parameterized by the config map from `InvitationOperations`, which must
   additionally include:

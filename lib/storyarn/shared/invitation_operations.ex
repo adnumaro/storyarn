@@ -1,17 +1,19 @@
 defmodule Storyarn.Shared.InvitationOperations do
   @moduledoc """
-  Generic invitation operations shared by Projects and Workspaces.
+  Generic invitation operations serving the Projects context. The workspace
+  arm moved into `Storyarn.Workspaces.Invitations` during the ENG-92
+  bounded-context migration.
 
   Parameterized by a config map containing:
-  - `invitation_schema` — e.g., ProjectInvitation or WorkspaceInvitation
-  - `membership_schema` — e.g., ProjectMembership or WorkspaceMembership
-  - `parent_key` — e.g., :project_id or :workspace_id
-  - `rate_limit_context` — e.g., "project" or "workspace"
-  - `parent_assoc` — e.g., :project or :workspace
+  - `invitation_schema` — e.g., ProjectInvitation
+  - `membership_schema` — e.g., ProjectMembership
+  - `parent_key` — e.g., :project_id
+  - `rate_limit_context` — e.g., "project"
+  - `parent_assoc` — e.g., :project
   - `template` — e.g., :project_invitation
-  - `invitation_path_prefix` — e.g., "/projects/invitations" or "/workspaces/invitations"
-  - `memberships_module` — e.g., Projects.Memberships or Workspaces.Memberships
-  - `preload_after_insert` — e.g., [:project, :invited_by] or [:workspace, :invited_by]
+  - `invitation_path_prefix` — e.g., "/projects/invitations"
+  - `memberships_module` — e.g., Projects.Memberships
+  - `preload_after_insert` — e.g., [:project, :invited_by]
   """
 
   import Ecto.Query, warn: false
