@@ -1,0 +1,172 @@
+lib/storyarn/ai/allowance_reservation.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 8
+lib/storyarn/notifications.ex
+  s_1837e1b58927a7::t_fa049a92483205 16
+lib/storyarn/ai/operator_alert.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 8
+lib/storyarn/project_templates/installation.ex
+  s_1837e1b58927a7::t_49eafd487ddf37 15,17
+  s_1837e1b58927a7::t_25e375f2e416f3 50
+  s_1837e1b58927a7::t_6e672b5bc586f8 108,130,145,164,195,212,217,228,284,593
+  s_1837e1b58927a7::t_c13599444ed679 54,112,131,146,197,219,355,603
+lib/storyarn/versioning/project_snapshot_restore.ex
+  s_1837e1b58927a7::t_fa049a92483205 17
+lib/storyarn_web/live/template_live/show.ex
+  s_1837e1b58927a7::t_0ec8d29df65212 475
+lib/storyarn/shared/invitation_operations.ex
+  s_1837e1b58927a7::t_fa049a92483205 21
+config/architecture_baselines/projects.json
+  s_1837e1b58927a7::t_c4785a388e1abc 302,315-317,320-321,325,327,330,334-343
+  s_1837e1b58927a7::t_6a442a22ea150a 295-296,300-301,305-306,310-311
+lib/storyarn/ai/personal_preferences.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 29,52,743,753
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 21-22
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_1837e1b58927a7::t_fc5c11ce855010 182
+  s_1837e1b58927a7::t_fa049a92483205 20
+lib/storyarn/projects/persistence/workspace_record.ex
+  s_1837e1b58927a7::t_4023fbd6b6672d 1-16
+lib/storyarn/versioning/workspace_snapshot_import.ex
+  s_1837e1b58927a7::t_fa049a92483205 16
+lib/storyarn/workers/deliver_invitation_worker.ex
+  s_1837e1b58927a7::t_de7b8c9f129dad 13,35,69
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_1837e1b58927a7::t_56252a63b7115f 342-343,348-349,354,359,364,369,374,379,384,389,395,406,421,441,446,451-452,457,482,487,492,497,517,537,567,582,587,592,598,603,608,633,653,664,670,681-683,699,704-705,715-716,722,732,738,743,750,760-761,771,776,861,866,871-872,877,882,887,892,897,902,907,912,917,922
+lib/storyarn/ai/provider_budget_reservation.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 8
+lib/storyarn/billing/limits.ex
+  s_1837e1b58927a7::t_fc5c11ce855010 87,101,117
+  s_1837e1b58927a7::t_fa049a92483205 14-16
+lib/storyarn/ai/result.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 9
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_15b5df48ffe1cb 63-66
+  s_1837e1b58927a7::t_858de96fbeef62 659-736
+  s_1837e1b58927a7::t_70e779d21b89b5 168-171,209
+lib/storyarn/ai/workspace_policy.ex
+  s_1837e1b58927a7::t_49eafd487ddf37 8
+lib/storyarn/project_templates/publication_runner.ex
+  s_1837e1b58927a7::t_49eafd487ddf37 11-12
+lib/storyarn/versioning/workspace_snapshot_imports.ex
+  s_1837e1b58927a7::t_c13599444ed679 17,47-48,83-84,155,172,366
+  s_1837e1b58927a7::t_fc5c11ce855010 41,69,73,78,129,152,205,432
+  s_1837e1b58927a7::t_fa049a92483205 15
+  s_1837e1b58927a7::t_6d312081e25c3c 171,364,955
+  s_1837e1b58927a7::t_25e375f2e416f3 94,168
+  s_1837e1b58927a7::t_d425e856a253a3 967-968
+config/architecture_baselines/accounts.json
+  s_1837e1b58927a7::t_858de96fbeef62 14-33,44-53
+lib/storyarn/ai/allowance_grant.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 9
+lib/storyarn/ai/personal_preference.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 16
+priv/gettext/workspaces.pot
+  s_1837e1b58927a7::t_56252a63b7115f 14,19,29,34-35,40,50,60,65,70,80,102,115-116,132-134,205,216,221,226,231,236,241,246,251,256,261
+lib/storyarn/ai/personal_consent.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 9
+lib/storyarn/ai/persistence/workspace_record.ex
+  s_1837e1b58927a7::t_213d8de1c8ee7f 1-16
+lib/storyarn/billing/persistence/workspace_invitation_record.ex
+  s_1837e1b58927a7::t_4023fbd6b6672d 1-17
+lib/storyarn/projects/persistence/workspace_membership_record.ex
+  s_1837e1b58927a7::t_4023fbd6b6672d 1-15
+lib/storyarn/billing/persistence/workspace_record.ex
+  s_1837e1b58927a7::t_4023fbd6b6672d 1-15
+lib/storyarn/billing/persistence/workspace_membership_record.ex
+  s_1837e1b58927a7::t_4023fbd6b6672d 1-10,13-16
+  s_1837e1b58927a7::t_aa051c3c04b68f 11-12
+lib/storyarn/billing/storage_reservation.ex
+  s_1837e1b58927a7::t_fa049a92483205 13
+lib/storyarn/project_templates/authorization.ex
+  s_1837e1b58927a7::t_fa049a92483205 8
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_1837e1b58927a7::t_56252a63b7115f 342-343,348-349,354,359,364,369,374,379,384,389,395,406,421,441,446,451-452,457,482,487,492,497,517,537,567,582,587,592,598,603,608,633,653,664,670,681-683,699,704-705,715-716,722,732,738,743,750,760-761,771,776,861,866,871-872,877,882,887,892,897,902,907,912,917,922
+lib/storyarn/billing/storage_accounting.ex
+  s_1837e1b58927a7::t_fa049a92483205 22
+  s_1837e1b58927a7::t_2e9e8bc0f513dc 177
+  s_1837e1b58927a7::t_25e375f2e416f3 169
+lib/storyarn/project_templates/template_queries.ex
+  s_1837e1b58927a7::t_49eafd487ddf37 7
+lib/storyarn/ai/policy_decision.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 8-9
+  s_1837e1b58927a7::t_2dd55c56b76a35 12,181,190
+  s_1837e1b58927a7::t_e7be3cb855bc89 299
+lib/storyarn/projects/project.ex
+  s_1837e1b58927a7::t_fa049a92483205 15
+lib/storyarn/ai/integration_assignments.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 17,59,256
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 14
+lib/storyarn/ai/persistence/workspace_membership_record.ex
+  s_1837e1b58927a7::t_213d8de1c8ee7f 1-15
+lib/storyarn/ai/persistence/project_membership_record.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 1-15
+lib/storyarn/projects/project_crud.ex
+  s_1837e1b58927a7::t_c13599444ed679 15,98,125
+  s_1837e1b58927a7::t_fa049a92483205 11,40
+lib/storyarn/project_templates/project_template_install.ex
+  s_1837e1b58927a7::t_fa049a92483205 11
+priv/gettext/projects.pot
+  s_1837e1b58927a7::t_56252a63b7115f 342-343,348-349,354,359,364,369,374,379,384,389,395,406,421,441,446,451-452,457,482,487,492,497,517,537,567,582,587,592,598,603,608,633,653,664,670,681-683,699,704-705,715-716,722,732,738,743,750,760-761,771,776,861,866,871-872,877,882,887,892,897,902,907,912,917,922
+lib/storyarn/ai/operation.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 9
+lib/storyarn/ai/allowance_ledger_entry.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 10
+lib/storyarn/ai/integration_workspace_assignment.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 10
+lib/storyarn/ai/persistence/project_record.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 1-14
+lib/storyarn/project_templates/portable_import.ex
+  s_1837e1b58927a7::t_c13599444ed679 738,1126
+  s_1837e1b58927a7::t_49eafd487ddf37 14-16
+lib/storyarn/ai/route_option.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 10
+lib/storyarn/projects/memberships.ex
+  s_1837e1b58927a7::t_fa049a92483205 4
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_1837e1b58927a7::t_56252a63b7115f 14,19,29,34-35,40,50,60,65,70,80,102,115-116,132-134,205,216,221,226,231,236,241,246,251,256,261
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_1837e1b58927a7::t_56252a63b7115f 14,19,29,34-35,40,50,60,65,70,80,102,115-116,132-134,205,216,221,226,231,236,241,246,251,256,261
+lib/storyarn/billing/subscription_crud.ex
+  s_1837e1b58927a7::t_fc5c11ce855010 20
+  s_1837e1b58927a7::t_2e9e8bc0f513dc 38
+lib/storyarn/ai/workspace_policy_audit.ex
+  s_1837e1b58927a7::t_49eafd487ddf37 8
+lib/storyarn/ai/workspace_access.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 1-107
+lib/storyarn/billing/subscription.ex
+  s_1837e1b58927a7::t_fa049a92483205 10
+lib/storyarn/workspaces/workspace_crud.ex
+  s_1837e1b58927a7::t_c246665c1457bd 177-182
+  s_1837e1b58927a7::t_2d7feba80ae0a0 186
+lib/storyarn/ai/allowance.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 15
+  s_1837e1b58927a7::t_2dd55c56b76a35 16,32
+lib/storyarn/ai/allowance_account.ex
+  s_1837e1b58927a7::t_d75f7cd31e5fa7 7
+lib/storyarn/projects/workspace_access.ex
+  s_1837e1b58927a7::t_c13599444ed679 14-15,50-83
+  s_1837e1b58927a7::t_d425e856a253a3 1-13,16-49,84-90
+lib/storyarn/workspaces.ex
+  s_1837e1b58927a7::t_de7b8c9f129dad 288-293
+  s_1837e1b58927a7::t_2d7feba80ae0a0 136
+lib/storyarn/billing/persistence/user_record.ex
+  s_1837e1b58927a7::t_aa051c3c04b68f 1-13
+lib/storyarn/ai/policy.ex
+  s_1837e1b58927a7::t_2dd55c56b76a35 7,18,42-43
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "f3122258a63434b91c2d372ee8c8d53833633361",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
