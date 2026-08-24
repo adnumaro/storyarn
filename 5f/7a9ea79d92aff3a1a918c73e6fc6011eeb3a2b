@@ -1,0 +1,1019 @@
+lib/storyarn/scenes/zone_image_extractor.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+test/storyarn/projects/versioning/project_snapshot_restore_lock_concurrency_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-161
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+lib/storyarn/projects/assets/storage/local/conditional_copy_registry.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-157
+test/storyarn/platform/billing/limits_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 9
+test/storyarn_web/live/sheet_live/handlers/audio_handlers_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+  s_1837e1b58927a7::t_48da1d1da1842a 14-15
+test/storyarn/projects/project_assets_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 8-9
+test/support/fixtures/assets_fixtures.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 3,9
+test/storyarn/projects/versioning/workspace_snapshot_imports_integration_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1,27-32
+  s_1837e1b58927a7::t_8f6e8ec246503a 20-25
+test/storyarn/flows/versioning/flow_snapshot_restore_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 28
+  s_1837e1b58927a7::t_8f6e8ec246503a 24-26
+test/storyarn/projects/exports/validator_health_boundary_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 9
+  s_1837e1b58927a7::t_48da1d1da1842a 1-8,10-221
+lib/storyarn/projects/imports/import_issue.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-37
+test/storyarn_web/live/asset_live/index_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12-13
+lib/storyarn/projects/exports/serializers/helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-339
+lib/storyarn/projects/exports/serializers/godot_dialogic.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-463
+  s_1837e1b58927a7::t_8f6e8ec246503a 17
+lib/storyarn/projects/references/persistence/table_column_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-28
+lib/storyarn/projects/versioning/workspace_snapshot_import.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-332
+test/storyarn/scenes/dashboard_health_coverage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 28
+lib/storyarn/projects/versioning/project_snapshot_reconciliation_finding.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-202
+lib/storyarn/projects/references/variable_catalog.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-21
+test/support/snapshot_reset_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+test/storyarn/projects/assets/storage_cleanup_request_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-43
+test/storyarn/projects/exports/serializers/articy_xml_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-638
+lib/storyarn/application.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14,23-24
+lib/storyarn/projects/assets/asset.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-270
+test/storyarn/projects/exports/serializers/yarn_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10-11
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,12-1673
+test/storyarn/projects/versioning/project_snapshot_reconciliation_repair_action_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-12,14-498
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+  s_1837e1b58927a7::t_6ca60635cf8ebf 13
+lib/storyarn/projects/exports/expression_transpiler/ink.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-125
+test/storyarn/projects/exports/expression_transpiler/base_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-574
+test/storyarn/projects/imports/replacement_restore_integration_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12,19-21
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,13-18,22-237
+test/storyarn/projects/versioning/project_snapshot_restore_executor_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+  s_1837e1b58927a7::t_48da1d1da1842a 2-6,12,36-47,149
+lib/storyarn/workers/expire_project_imports_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+test/storyarn/projects/versioning/project_snapshot_archive_reader_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-677
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+lib/storyarn/projects/references/variable_projection_queries.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-444
+lib/storyarn_web/controllers/snapshot_download_controller.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+lib/storyarn/projects/assets/asset_trash.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-9
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,10-456
+lib/storyarn/projects/assets/persistence/flow_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13
+lib/storyarn/projects/sheet_health_read_model.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 23
+lib/storyarn/projects/assets/storage_cleanup_persistence_error.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10
+test/storyarn/localization/export_policy_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 5
+lib/storyarn/projects/exports/serializers/unreal_csv.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-438
+lib/storyarn/projects/project_templates/project_template_version.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-95
+test/storyarn/projects/exports/serializers/unreal_csv_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-405
+lib/storyarn_web/live/asset_sidebar_live.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+lib/storyarn/projects/versioning/builders/asset_copy_error.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10
+test/storyarn/architecture/sheets_web_facade_boundary_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 4-5
+lib/storyarn_web/live/template_live/show.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 11
+lib/storyarn/projects/assets/persistence/sequence_config_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13
+test/storyarn/sheets/reference_writer_concurrency_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 13
+test/storyarn/projects/imports/source_bundle_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-432
+lib/storyarn/workers/restore_project_snapshot_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+lib/storyarn/projects/imports/parsers/yarn/speaker_classifier.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-687
+lib/storyarn/projects/persistence/sequence_track_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 36
+lib/storyarn/workers/publish_project_template_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 5,12
+test/storyarn/projects/exports/export_options_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-366
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9-12
+test/storyarn/projects/project_templates/portable_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,14-18,21-1521
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-13,19-20
+test/storyarn/projects/versioning/materialization_helpers_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-33
+test/storyarn/projects/project_templates_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 13-15,27
+  s_1837e1b58927a7::t_48da1d1da1842a 20-26
+test/storyarn/projects/versioning/project_snapshot_zip_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-409
+  s_1837e1b58927a7::t_8f6e8ec246503a 11
+lib/mix/tasks/storyarn.templates.import.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 32
+lib/storyarn/projects/assets/storage_cleanup_ownership_receipt.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-44
+test/storyarn/sheets/versioning/sheet_snapshot_contract_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 22
+  s_1837e1b58927a7::t_8f6e8ec246503a 16-18
+lib/storyarn/projects/assets/blob_store.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 12-13
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,14-912
+test/storyarn/flows/editor_catalog_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-19
+lib/storyarn/projects/exports/expression_transpiler/base.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-218
+lib/storyarn/projects/exports/expression_transpiler/unreal.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-66
+lib/storyarn/projects/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+lib/storyarn_web/endpoint.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+lib/storyarn/flows/versioning/asset_catalog.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 21-23
+lib/storyarn/flows/versioning/snapshot_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+lib/storyarn/projects/imports/plan_cleanup.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,14-464
+lib/storyarn/projects/project_templates/audit.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 37
+  s_1837e1b58927a7::t_48da1d1da1842a 1-36,38-1521
+lib/storyarn/projects/references/persistence/scene_ambient_flow_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-26
+test/storyarn/projects/versioning/project_snapshot_reconciliation_repair_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,13-21,24-1006
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-12,22-23
+lib/storyarn/projects/exports/expression_transpiler/yarn.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-146
+lib/storyarn/flows/versioning/asset_storage_compensation.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-9
+lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair_action.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-123
+lib/storyarn/projects/versioning/diff_helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-140
+lib/storyarn/projects/imports/parsers/yarn/normalizer.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-1037
+lib/storyarn/projects/versioning/project_snapshot_archive_reader.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-1693
+lib/storyarn/projects/versioning/workspace_snapshot_imports.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 6-8,21-22
+  s_1837e1b58927a7::t_48da1d1da1842a 1-5,9-20,23-1409
+lib/storyarn/sheets/versioning/sheet_snapshot.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+test/storyarn/platform/billing/storage_accounting_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 17-22
+  s_1837e1b58927a7::t_8f6e8ec246503a 14-16
+lib/storyarn/projects/references/persistence/entity_trash_ref_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-31
+lib/storyarn/projects/imports/error_deduplicator.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-64
+test/storyarn/platform/analytics_instrumentation_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 6
+test/storyarn/projects/soft_delete_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 15-18
+lib/storyarn/platform/billing/storage_reservation.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 16
+lib/storyarn/platform/billing/storage_accounting.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 29-35,2516
+  s_1837e1b58927a7::t_8f6e8ec246503a 25-27
+lib/storyarn/projects/versioning/snapshot_archive_storage.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 17-19,25
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,20-24,26-1921
+test/storyarn/projects/exports/expression_transpiler/instruction_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-367
+lib/storyarn_web/live_vue_encoders.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 21,48,77,83
+lib/storyarn/projects/imports/parsers/yarn/review_decisions.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-897
+lib/storyarn/workers/delete_project_template_artifacts_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+test/storyarn/projects/exports/serializers/godot_dialogic_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-1648
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+test/storyarn/projects/versioning/builders/scene_builder_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-1778
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+test/storyarn/flows/versioning/snapshot_storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 5-6
+test/storyarn/projects/versioning/project_snapshot_asset_materializer_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-9,18,348,390,518
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,10-17,19-347,349-389,391-517,519-884
+lib/storyarn/projects/imports/parsers/yarn/document.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-558
+lib/storyarn/projects/versioning/project_snapshot_download.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,14-109
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+test/storyarn/projects/versioning/project_snapshot_lease_policy_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-58
+test/storyarn/projects/versioning/snapshot_archive_smoke_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-36
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 16,18
+lib/storyarn/projects/exports/serializers/flow_control_resolver.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 11
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-237
+test/storyarn/projects/exports/expression_transpiler/helpers_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-275
+test/storyarn/projects/versioning/builders/scene_builder_boundary_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-23
+test/support/snapshot_read_switch_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4,6
+test/storyarn/scenes/asset_commands_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 9
+test/storyarn/projects/imports/error_resilience_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-124
+test/storyarn/projects/versioning/project_snapshot_restore_lifecycle_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 15-16,20
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,17-19,21-1103
+test/storyarn_web/live/project_live/settings_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 23-26
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9-11
+lib/storyarn/projects/references/formula_usage_read_model.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-88
+lib/storyarn/projects/versioning/project_snapshot_asset_materializer.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 17,28
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-27,29-767
+lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,21-28,30-1874
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-20,29
+lib/storyarn/projects/project_assets.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4-7
+test/storyarn/projects/versioning/project_snapshot_crud_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-130
+test/storyarn/scenes/ambient_flow_crud_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10
+test/storyarn/projects/exports/size_guard_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-222
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+test/storyarn/scenes/scene_reference_integrity_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 11
+lib/storyarn/sheets/versioning/asset_hash_resolver.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+lib/storyarn/projects/sheet_import_persistence.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 20
+test/storyarn/projects/assets/image_optimization_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-217
+lib/storyarn/projects/assets/persistence/flow_node_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14
+lib/storyarn/scenes/versioning/asset_storage_compensation.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6-7
+lib/storyarn/projects/references/variable_tracker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-43
+lib/storyarn/workers/inspect_project_snapshots_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 20
+test/storyarn/projects/assets/image_processor_extended_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-148
+test/storyarn/projects/exports/data_collector_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12-13
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,14-434
+test/storyarn/projects/versioning/project_recovery_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-15,19-23,27-3634
+  s_1837e1b58927a7::t_8f6e8ec246503a 16-18,24-26
+lib/storyarn/projects/project_templates/project_template_publication.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-173
+lib/storyarn/projects/versioning/project_snapshot_zip.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-567
+lib/storyarn_web/controllers/export_controller.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 7-8
+lib/storyarn/projects/persistence/block_gallery_image_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6
+test/storyarn/projects/assets/storage/local_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-853
+test/storyarn/projects/references/variable_reference_tracker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1,15-18
+lib/storyarn/projects/exports/expression_transpiler/helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-264
+lib/storyarn/projects/project_templates/publication_runner.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-9,24
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,10-23,25-1055
+lib/storyarn/sheets/asset_commands.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 15-17
+test/e2e/templates/templates_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 16-17
+test/storyarn/projects/exports/serializers/unity_json_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-12
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,13-1155
+lib/storyarn/workers/repair_project_snapshot_finding_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 20
+test/storyarn/scenes/zone_image_extractor_integration_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 32-33
+lib/storyarn/projects/imports/expiration.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-19
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,20-413
+lib/storyarn/projects/references/project_reference_integrity.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-253
+lib/storyarn/projects/exports/artifact_validator.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 13,27
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,14-26,28-2281
+lib/storyarn/projects/imports/source_bundle/yarn_project_sources.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-366
+lib/storyarn/projects/references/flow_node_repair.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-144
+lib/storyarn/workspaces/workspace_crud.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+test/storyarn/projects/assets/asset_owner_restore_integrity_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 11
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-126
+test/storyarn/projects/imports/import_issue_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14
+lib/storyarn/workers/reconcile_project_snapshot_repair_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 20
+lib/storyarn/projects/versioning/builders/project_snapshot_builder.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-23,25-354
+  s_1837e1b58927a7::t_8f6e8ec246503a 24
+lib/storyarn/workers/retry_storage_cleanup_requests_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+lib/storyarn/projects/exports/export_options.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-188
+lib/storyarn/projects/imports/plan_storage.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 17
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-336
+lib/storyarn/projects/versioning/asset_materialization_scope.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+  s_1837e1b58927a7::t_48da1d1da1842a 1-6,8-140
+lib/storyarn/projects/persistence/scene_pin_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+lib/storyarn/projects/references/variable_reference.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-74
+lib/storyarn_web/private_media.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 11
+test/storyarn/flows/versioning/conflict_detector_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12
+test/storyarn/flows/versioning_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 17
+lib/storyarn/projects/versioning/builders/asset_hash_resolver.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 22
+  s_1837e1b58927a7::t_48da1d1da1842a 1-21,23-1095
+test/storyarn/platform/billing/storage_accounting_concurrency_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+test/storyarn/projects/exports/serializers/ink_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,12-1787
+  s_1837e1b58927a7::t_8f6e8ec246503a 10-11
+test/storyarn/projects/versioning/builders/portable_snapshot_validation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-65
+lib/storyarn/projects/imports/import_plan.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-50
+lib/storyarn/projects/imports/source_bundle.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-521
+lib/mix/tasks/storyarn.snapshot_archive_smoke.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 13,19
+lib/storyarn/scenes/versioning/snapshot_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+test/storyarn/projects/assets/active_asset_associations_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-118
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+lib/storyarn/projects/imports/preview.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-59
+lib/storyarn/projects/imports/materializer.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 36
+  s_1837e1b58927a7::t_48da1d1da1842a 1,21,23-28
+test/storyarn/projects/versioning/diff_helpers_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-134
+test/storyarn/projects/assets/asset_trash_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1,17-20
+lib/storyarn/projects/imports/plan_cleanup_request.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-60
+test/storyarn/sheets/versioning_concurrency_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 11
+test/storyarn_web/live/template_live_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 12-16
+lib/storyarn/projects.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 16
+test/storyarn_web/controllers/private_media_controller_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10
+test/storyarn/sheets/reference_tracker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 12
+test/storyarn_web/controllers/upload_controller_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+lib/storyarn/projects/assets/storage/local/conditional_copy_sweeper.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-59
+lib/storyarn/projects/project_templates/artifact.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-105
+lib/storyarn/projects/exports/serializers/ink.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-492
+  s_1837e1b58927a7::t_8f6e8ec246503a 17
+lib/storyarn/projects/references/variable_reference_tracker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-3601
+lib/storyarn/projects/imports/execution.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1,20-30
+lib/storyarn/projects/project_trash.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 7-8
+lib/storyarn_web/live/settings_live/workspace_imports.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 12-15
+test/storyarn/projects/versioning/project_snapshot_archive_contract_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-16,18-292
+  s_1837e1b58927a7::t_8f6e8ec246503a 8,17
+test/storyarn/scenes/asset_catalog_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9-10
+lib/storyarn_web/live/asset_live/index.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+test/e2e/import_resume_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 18-23
+lib/storyarn/projects/imports/parsers/yarn.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-111
+lib/storyarn/projects/references/avatar_integrity.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-367
+lib/storyarn/projects/assets/upload_policy.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-184
+test/storyarn/projects/versioning/builders/project_snapshot_builder_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 11
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-206
+test/storyarn/projects/versioning/snapshot_archive_storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,11-22,25-949
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-10,23-24
+test/storyarn/projects/versioning/snapshot_asset_capture_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,14-79
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+test/storyarn_web/live/workspace_live/template_creation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 13-16
+lib/storyarn/platform/release.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 6,429,453,456
+  s_1837e1b58927a7::t_48da1d1da1842a 7
+lib/storyarn/projects/project_templates/portable_export.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-3,5-179
+  s_1837e1b58927a7::t_8f6e8ec246503a 4
+lib/storyarn/projects/versioning/project_snapshot_archive_reader/entry.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-32
+lib/storyarn/projects/versioning/project_snapshot_build.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-18,23-37,39-3124
+  s_1837e1b58927a7::t_8f6e8ec246503a 19-22,38
+test/storyarn/architecture/projects_boundary_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 6-7,9-12
+  s_1837e1b58927a7::t_48da1d1da1842a 13-19
+test/storyarn/workers/import_project_worker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 8-9
+test/support/fixtures/versioning_fixtures.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6-7
+test/storyarn/projects/assets/upload_decision_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-189
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn/projects/assets/image_processor.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-370
+lib/storyarn/projects/versioning/project_snapshot_policy.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-65
+lib/storyarn/projects/versioning/materialization_helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-266
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn/projects/persistence/sequence_visual_layer_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+lib/storyarn/workers/reconcile_project_snapshot_cleanup_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+test/storyarn/projects/versioning/asset_materialization_scope_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-45
+test/storyarn/projects/versioning/change_detector_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-76
+test/storyarn/projects/versioning/restore_policy_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-34
+test/storyarn/projects/assets/storage_hash_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-20
+lib/storyarn/projects/flow_project_trash.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 16
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 10
+test/storyarn/scenes/versioning/scene_snapshot_contract_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 11-13,15-16,1756
+lib/storyarn/projects/project_templates.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-252
+lib/storyarn/projects/project.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 18
+lib/storyarn_web/live/workspace_live/show.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 11
+test/storyarn_web/live/settings_live/workspace_imports_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+test/storyarn/projects/versioning/entity_restore_lock_concurrency_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-410
+  s_1837e1b58927a7::t_8f6e8ec246503a 17
+lib/storyarn/projects/versioning/builders/scene_builder.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 30,35
+  s_1837e1b58927a7::t_48da1d1da1842a 1-29,31-34,36-3399
+lib/storyarn/projects/versioning/snapshot_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-526
+lib/storyarn_web/private_download.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 12
+test/storyarn/architecture/scenes_web_facade_boundary_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 4,98-113
+  s_1837e1b58927a7::t_48da1d1da1842a 114
+test/storyarn/projects/references/portable_project_snapshot_variable_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-446
+lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 18,24
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,19-23,25-1561
+test/storyarn/projects/imports/materializer_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1,15-17,19-23,1228
+  s_1837e1b58927a7::t_8f6e8ec246503a 26
+lib/storyarn/projects/references/entity_reference_projection.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-588
+test/storyarn/projects/versioning/builders/asset_hash_resolver_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-15,17-1506
+  s_1837e1b58927a7::t_8f6e8ec246503a 16
+test/storyarn/projects/exports/serializers/graph_traversal_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-877
+test/storyarn/projects/references/ambient_flow_variable_usage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-176
+test/storyarn/projects/versioning/builders/flow_builder_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,18-25,28-3173
+  s_1837e1b58927a7::t_8f6e8ec246503a 15-17,26-27
+lib/storyarn/projects/references/persistence/flow_node_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-41
+lib/storyarn/projects/versioning/project_snapshot_restore.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-467
+lib/storyarn/projects/imports/replacement.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1,15,17-19,28-33
+lib/storyarn/projects/assets/storage_hash.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-26
+test/storyarn/projects/versioning/localization_snapshot_codec_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-328
+test/storyarn/projects/versioning/project_snapshot_reconciliation_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12-14,23-24
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,15-22,25-2192
+lib/storyarn/platform/global_search/variable_search.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 13-14
+lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-22,54-55,63
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,23-53,56-62,64-1933
+lib/storyarn/workers/delete_storage_objects_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+lib/storyarn/projects/versioning/snapshot_archive_smoke.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-274
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+lib/storyarn/projects/project_templates/portable_bundle.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-135
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 11,14-15,20-21,25,42-43,73,81,89,96,102-104,106,110-111,116-118,120,123
+test/storyarn/projects/project_templates/audit_sequence_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-110
+lib/storyarn/projects/exports/serializers/unity_json.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 12
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,13-1331
+lib/storyarn/projects/versioning/project_snapshot.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-1129
+lib/storyarn/projects/exports/serializers/articy_xml.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-444
+test/storyarn/scenes/asset_pipeline_invariants_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9-11
+lib/storyarn/projects/assets/storage/local.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-926
+lib/storyarn/projects/versioning/restore_policy.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-21
+test/storyarn/sheets/versioning/conflict_detector_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+test/storyarn/projects/imports/plan_storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-3,5-286
+  s_1837e1b58927a7::t_8f6e8ec246503a 4
+lib/storyarn/projects/versioning/builders/sheet_builder.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 31-32
+  s_1837e1b58927a7::t_48da1d1da1842a 1-30,33-1983
+lib/storyarn/projects/versioning/sheet_localization_snapshot_validator.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-435
+lib/storyarn/workers/import_project_snapshot_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+test/storyarn/projects/imports/parsers/yarn_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 8-9
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,10-2981
+test/storyarn/projects/versioning/project_snapshot_restore_actor_lock_concurrency_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 23
+  s_1837e1b58927a7::t_48da1d1da1842a 1-22,24-433
+test/storyarn/workers/retry_storage_cleanup_requests_worker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 5-6
+lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 17-18,27
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,19-26,28-2602
+lib/storyarn/projects/exports/size_guard.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-155
+test/storyarn/projects/assets/blob_store_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-6,8-955
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+test/support/storage_test_helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+lib/storyarn/projects/imports/resume.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-20
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,21-414
+test/storyarn/projects/exports/artifact_validator_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-1469
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+lib/storyarn/projects/references/persistence/scene_pin_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-23
+test/storyarn/flows/node_restore_integrity_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+lib/storyarn/projects/references/entity_reference.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-47
+lib/storyarn/scenes/versioning/asset_hash_resolver.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 14
+test/storyarn/projects/versioning/snapshot_storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-363
+test/storyarn/workspaces_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10-13
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 14-17
+lib/mix/tasks/storyarn.templates.export.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 21
+lib/storyarn/projects/assets/storage/r2.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-933
+test/storyarn_web/live_vue_encoders_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 5
+lib/storyarn/projects/exports/data_collector.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-668
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+lib/storyarn/projects/exports.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-168
+lib/storyarn/projects/references/persistence/block_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-34
+test/storyarn/projects/exports/expression_transpiler/condition_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-653
+test/storyarn/projects/exports/localization_engine_contract_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 13-15,18
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,16-17,19-427
+lib/storyarn/projects/versioning/project_snapshot_crud.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-198
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+lib/storyarn/projects/assets/storage_key_lock.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-473
+lib/storyarn/projects/project_templates/deletion.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-598
+lib/storyarn/projects/references/flow_condition.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-364
+lib/storyarn/projects/versioning/asset_materialization_cache.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-223
+test/storyarn/projects/exports/serializer_registry_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-127
+test/storyarn/scenes/versioning/snapshot_storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 4-5
+test/storyarn/sheets/property_inheritance_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+lib/storyarn/projects/versioning/snapshot_cleanup_intent.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-468
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+lib/storyarn/projects/scene_project_trash.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+test/storyarn/projects/versioning/workspace_snapshot_referenced_tombstones_integration_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 18-21,26-28
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,22-25,29-407
+lib/storyarn/projects/assets/persistence/entity_trash_ref_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-21
+lib/storyarn/projects/exports/expression_transpiler/articy.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-65
+lib/storyarn/projects/exports/serializers/graph_traversal.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-587
+lib/storyarn/projects/versioning/change_detector.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-47
+  s_1837e1b58927a7::t_8f6e8ec246503a 11
+test/storyarn/workers/delete_storage_objects_worker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+test/storyarn_web/live/hooks/palette_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 477
+test/storyarn/projects/versioning/project_snapshot_download_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-216
+lib/storyarn/projects/imports/parsers/yarn/speaker_sheets.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-52
+lib/storyarn/projects/versioning/localization_snapshot_codec.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-7,9-556
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn/projects/versioning/snapshot_asset_capture.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-476
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn/projects/exports/localization_catalog.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 4
+  s_1837e1b58927a7::t_48da1d1da1842a 1-3,5-253
+lib/storyarn/workers/project_snapshot_retention_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 18
+lib/storyarn/projects/versioning/builders/flow_builder.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 38,43
+  s_1837e1b58927a7::t_48da1d1da1842a 1-37,39-42,44-3802
+test/storyarn/localization/writer_reference_integrity_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 12
+test/storyarn/projects/exports/serializers/yarn_validation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-18,20-1379
+  s_1837e1b58927a7::t_8f6e8ec246503a 19
+lib/storyarn/workers/install_project_template_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+test/storyarn/projects/versioning/auto_snapshot_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-70
+lib/storyarn/projects/versioning/snapshot_object_publication_claim.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-149
+test/storyarn/projects/versioning/project_recovery_materialization_preflight_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-203
+lib/storyarn_web/live/template_live/index.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 10
+lib/storyarn/projects/references/persistence/scene_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-28
+config/config.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 204-215
+  s_1837e1b58927a7::t_27943d86a25f39 216
+lib/storyarn/projects/references/persistence/table_row_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-25
+lib/storyarn/projects/persistence/sheet_avatar_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 8
+test/e2e/workspaces/projects/projects_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 18
+test/storyarn/sheets/variable_usage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10
+lib/storyarn/projects/exports/expression_transpiler/dialogic.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-109
+lib/storyarn/projects/imports/error.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-118
+lib/storyarn/projects/imports/project_import_attempt.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-363
+lib/storyarn/projects/references/entity_tracker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-27,29-169
+  s_1837e1b58927a7::t_8f6e8ec246503a 28
+lib/storyarn/projects/project_templates/authorization.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-123
+lib/storyarn/projects/references/variable_namespace_resolver.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-107
+lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 15-17,26
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,18-25,27-1064
+test/storyarn/architecture/dependency_policy_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 476-477,487
+test/storyarn/projects/assets/image_processor_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-148
+lib/storyarn/projects/project_crud.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 8,16
+lib/storyarn/projects/references/persistence/scene_zone_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-27
+test/storyarn/projects/exports/serializers/helpers_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-499
+test/storyarn/projects/assets/storage_compensation_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10-12
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,13-1762
+lib/storyarn/projects/assets/persistence/sequence_visual_layer_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-15
+test/storyarn/projects/exports/validator_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,12-664,666-676,678-790
+  s_1837e1b58927a7::t_8f6e8ec246503a 11,665,677
+test/storyarn/projects/references/rich_text_mentions_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-108
+test/storyarn/platform/global_search/advanced_search_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 12
+test/storyarn/projects/versioning/builders/sheet_builder_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,13-17,20-1538
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-12,18-19
+test/storyarn/projects/versioning/integration_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-133
+lib/storyarn/projects/project_templates/project_template_install.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-200
+test/storyarn/sheets/asset_commands_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 8
+lib/storyarn/projects/project_templates/portable_import.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 6-7,24-25
+  s_1837e1b58927a7::t_48da1d1da1842a 1-5,8-23,26-1433
+test/storyarn_web/private_media_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+lib/storyarn/projects/imports/telemetry.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-84
+test/storyarn/projects/imports/import_lifecycle_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1,15-19
+  s_1837e1b58927a7::t_8f6e8ec246503a 14
+test/support/projects_sheet_builder_test_adapter.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 5
+lib/storyarn/projects/versioning/project_recovery.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 14,48
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13,15-47,49-4487
+test/storyarn/workers/publish_project_template_worker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10-13
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+test/storyarn/projects/assets_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 19-25
+lib/storyarn/projects/versioning/project_snapshot_reconciliation_run.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-189
+lib/storyarn/projects/references/persistence/flow_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-33
+test/storyarn/projects/assets/storage/r2_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-1186
+test/storyarn/projects/versioning/project_snapshot_lifecycle_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-11,15-1740
+  s_1837e1b58927a7::t_8f6e8ec246503a 12-14
+lib/storyarn/projects/exports/serializer.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-52
+lib/storyarn/projects/assets/storage_cleanup_request.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-97
+lib/storyarn/projects/versioning.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-463
+lib/storyarn/projects/imports/parser.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17
+lib/storyarn/projects/assets/storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-489
+test/storyarn/projects/references/entity_tracker_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-154
+test/storyarn/projects/references/variable_usage_delegation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-192
+test/storyarn/projects/versioning/referenced_tombstones_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 16
+  s_1837e1b58927a7::t_48da1d1da1842a 1-15,17-226
+lib/storyarn/projects/versioning/snapshot_object_format.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-1201
+lib/storyarn/projects/versioning/project_snapshot_lease_policy.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-103
+lib/storyarn/workers/build_project_snapshot_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 16
+lib/storyarn/projects/assets/storage_compensation.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-5,7-18,20-1918
+  s_1837e1b58927a7::t_8f6e8ec246503a 6,19
+lib/storyarn/workers/import_project_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+lib/storyarn/projects/exports/serializers/yarn.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 17
+  s_1837e1b58927a7::t_48da1d1da1842a 1-16,18-795
+test/storyarn/projects/assets/storage_key_lock_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-539
+lib/storyarn/projects/imports/parser_registry.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14
+test/storyarn_web/live/project_settings_live/template_publication_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10-13
+lib/storyarn/projects/project_templates/installation.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-13,27-28
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,14-26,29-1133
+lib/storyarn/projects/versioning/referenced_tombstones.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-584
+lib/storyarn/projects/sheet_project_trash.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 24
+  s_1837e1b58927a7::t_8f6e8ec246503a 16
+lib/storyarn/projects/persistence/scene_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+lib/storyarn_web/controllers/upload_controller.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 12-13
+test/storyarn/flows/player_catalog_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+lib/storyarn/projects/references/persistence/sheet_avatar_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14
+test/storyarn/flows/versioning_flow_snapshot_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 23-25
+  s_1837e1b58927a7::t_48da1d1da1842a 27
+lib/storyarn/projects/imports/parsers/yarn/layout.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-315
+lib/storyarn/projects/project_templates/project_template.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-99
+test/storyarn/projects/assets/storage_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-285
+lib/storyarn/projects/assets.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-10,16-3333
+  s_1837e1b58927a7::t_8f6e8ec246503a 11-15
+lib/storyarn/scenes/asset_commands.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 15-17
+test/storyarn/projects/versioning/project_snapshot_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-238
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+test/storyarn/workers/expire_project_imports_worker_integration_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 9-11
+lib/storyarn/projects/exports/expression_transpiler/unity.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-85
+test/storyarn/projects/exports/localization_catalog_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-166
+test/storyarn/scenes/versioning_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 9
+test/support/snapshot_reconciliation_test_helpers.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4
+lib/storyarn/sheets/versioning/asset_storage_compensation.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6-7
+lib/storyarn/projects/imports/parsers/yarn/shortcut.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-48
+test/storyarn/projects/project_templates/deletion_integrity_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-12,14-635
+  s_1837e1b58927a7::t_8f6e8ec246503a 13
+lib/storyarn/projects/exports/expression_transpiler.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-81
+lib/storyarn/projects/imports/notification_delivery.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 7
+  s_1837e1b58927a7::t_48da1d1da1842a 1-6,8-83
+lib/storyarn/projects/imports/parsers/yarn/expression.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-445
+lib/storyarn_web/live/export_import_live/index.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6-9
+lib/storyarn/projects/references/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-26
+lib/storyarn/projects/assets/persistence/sequence_track_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-13
+test/storyarn/flows/node_crud_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 15
+lib/storyarn/projects/imports/shared.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-99
+lib/storyarn/projects/imports.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 19-20
+  s_1837e1b58927a7::t_48da1d1da1842a 1-18,21-1104
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 59-62,67-74,237-240,432-434,493,499,506,520,527,534,541,548,555,562,575,587,593,605,617,634,640,646,652,659,665,671,677,683,689,695,701,707,713,719,761,767,773,779,786,792,798,805,811,817,823,829,836,842,849,855,862,869,875,881,888,894,901-902,907,913,920,926,1053,1066,1072,1204,1210,1217,1223,1229,1235,1259
+lib/storyarn/projects/flow_reference_integrity.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 6,11-13
+lib/storyarn/sheets/versioning/snapshot_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+lib/storyarn/projects/exports/validator.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-14,16-584
+  s_1837e1b58927a7::t_8f6e8ec246503a 15
+lib/storyarn/workers/cleanup_project_snapshot_worker.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 18,78
+test/storyarn/projects/versioning/project_snapshot_build_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-18,26-32,36-3169
+  s_1837e1b58927a7::t_8f6e8ec246503a 19-25,33-35
+test/storyarn/projects/versioning/snapshot_cleanup_intent_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-163
+test/storyarn/projects/versioning/snapshot_object_format_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-518
+test/storyarn/projects/references/project_reference_integrity_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 10
+  s_1837e1b58927a7::t_48da1d1da1842a 1-9,11-84
+lib/storyarn/projects/exports/serializer_registry.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-74
+test/storyarn/projects/exports/serializers/ink_validation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-17,19-1037
+  s_1837e1b58927a7::t_8f6e8ec246503a 18
+test/storyarn/projects/references/portable_project_snapshot_variable_writer_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 9
+  s_1837e1b58927a7::t_48da1d1da1842a 1-8,10-36
+test/storyarn/workers/project_snapshot_cleanup_workers_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 10-15
+lib/storyarn/projects/versioning/project_snapshot_capture.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-115
+lib/storyarn/projects/persistence/scene_zone_record.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 9
+test/support/projects_scene_builder_test_adapter.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 5
+lib/storyarn/projects/references/rich_text_mentions.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-107
+test/support/failing_stream_storage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 4,7
+test/storyarn/workers/trash_retention_worker_test.exs
+  s_1837e1b58927a7::t_8f6e8ec246503a 14-15
+lib/storyarn/projects/project_templates/template_queries.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-273
+lib/storyarn/projects/localization_export_policy.ex
+  s_1837e1b58927a7::t_8f6e8ec246503a 5
+lib/storyarn/projects/references.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-76
+lib/storyarn/projects/imports/queue.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-78
+lib/storyarn/projects/references/variable_usage.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-461
+lib/storyarn/projects/versioning/project_snapshot_archive_reader/plan.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 1-44
+test/storyarn/projects/assets/display_url_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-50
+config/runtime.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 408
+lib/storyarn_web/controllers/private_media_controller.ex
+  s_1837e1b58927a7::t_48da1d1da1842a 7-9
+test/storyarn/projects/assets/upload_policy_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-26
+test/storyarn/projects/assets/variant_generation_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-166
+test/storyarn/projects/imports/replacement_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-19,26-34,40,42-994
+  s_1837e1b58927a7::t_8f6e8ec246503a 20-25,35-39
+  s_1837e1b58927a7::t_6ca60635cf8ebf 41
+test/storyarn/projects/versioning/project_snapshot_reconciliation_repair_recovery_test.exs
+  s_1837e1b58927a7::t_48da1d1da1842a 1-5,7-10,12-538
+  s_1837e1b58927a7::t_8f6e8ec246503a 6,11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "5f7a9ea79d92aff3a1a918c73e6fc6011eeb3a2b",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
