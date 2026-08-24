@@ -10,13 +10,13 @@ defmodule Storyarn.Projects.SceneEntityReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.EntityReferenceRecord
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.SceneVariableNamespaceResolver
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @reference_schemas [
     {"flow", FlowRecord},

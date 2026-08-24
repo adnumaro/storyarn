@@ -9,8 +9,8 @@ defmodule Storyarn.Sheets.VariableCatalog do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn

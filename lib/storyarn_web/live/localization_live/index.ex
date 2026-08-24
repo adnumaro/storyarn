@@ -6,7 +6,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   import StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers
 
   alias Storyarn.Localization
-  alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.HtmlSanitizer
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 

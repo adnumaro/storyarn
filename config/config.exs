@@ -192,7 +192,19 @@ config :storyarn, Storyarn.Localization.TranslationJobQueue,
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)
-config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
+config :storyarn, Storyarn.Platform.Mailer, adapter: Swoosh.Adapters.Local
+
+# Cloak encryption configuration
+# Development key - NEVER use in production!
+# Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
+config :storyarn, Storyarn.Platform.Vault,
+  ciphers: [
+    default: {
+      Cloak.Ciphers.AES.GCM,
+      # This is a development-only key, override in production via CLOAK_KEY env var
+      tag: "AES.GCM.V1", key: Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="), iv_length: 12
+    }
+  ]
 
 # Public, indexable locales are deliberately configured separately from
 # Gettext. A locale can be available inside the authenticated application
@@ -212,18 +224,6 @@ config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restor
 # Exact full-project snapshot restore is part of the recovery contract and is
 # always available to authorized project managers.
 config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: false
-
-# Cloak encryption configuration
-# Development key - NEVER use in production!
-# Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
-config :storyarn, Storyarn.Vault,
-  ciphers: [
-    default: {
-      Cloak.Ciphers.AES.GCM,
-      # This is a development-only key, override in production via CLOAK_KEY env var
-      tag: "AES.GCM.V1", key: Base.decode64!("dGhpc2lzYWRldmVsb3BtZW50a2V5b25seTMyYnl0ZXM="), iv_length: 12
-    }
-  ]
 
 config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
   download_signed_url_ttl_seconds: 5 * 60,

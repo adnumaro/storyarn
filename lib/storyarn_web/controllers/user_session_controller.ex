@@ -3,8 +3,8 @@ defmodule StoryarnWeb.UserSessionController do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.RateLimiter
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
   alias StoryarnWeb.UserLoginToken

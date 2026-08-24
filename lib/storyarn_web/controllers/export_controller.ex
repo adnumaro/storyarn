@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ExportController do
   alias Storyarn.Exports
   alias Storyarn.Exports.SizeGuard
   alias Storyarn.Projects
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Projects.NameNormalizer
 
   require Logger
 

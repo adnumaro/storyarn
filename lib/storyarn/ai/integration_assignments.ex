@@ -16,9 +16,9 @@ defmodule Storyarn.AI.IntegrationAssignments do
   alias Storyarn.AI.Policy
   alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.AI.WorkspacePolicy
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @lock_namespace 981_006
 

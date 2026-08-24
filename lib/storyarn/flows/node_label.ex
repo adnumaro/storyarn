@@ -3,8 +3,8 @@ defmodule Storyarn.Flows.NodeLabel do
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.StringUtils
 
   @max_text_length 48
 

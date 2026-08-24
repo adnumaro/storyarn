@@ -6,8 +6,8 @@ defmodule Storyarn.AI.IntegrationCrudTest do
   alias Storyarn.AI
   alias Storyarn.AI.AuditEntry
   alias Storyarn.AI.Integration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @stub StoryarnTest.AI.Anthropic
 

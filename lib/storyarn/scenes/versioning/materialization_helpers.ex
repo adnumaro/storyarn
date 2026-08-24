@@ -3,11 +3,11 @@ defmodule Storyarn.Scenes.Versioning.MaterializationHelpers do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.Persistence.SheetAvatarRecord
   alias Storyarn.Scenes.Persistence.SheetRecord
-  alias Storyarn.Shared.TimeHelpers
 
   def now, do: TimeHelpers.now()
   def timestamps(now), do: %{inserted_at: now, updated_at: now}

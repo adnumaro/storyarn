@@ -3,13 +3,13 @@ defmodule Storyarn.Projects.SheetReadModel do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Projects.FlowVariableNamespaceResolver
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.Persistence.TableColumnRecord
   alias Storyarn.Projects.Persistence.TableRowRecord
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
 
   require FlowVariableNamespaceResolver
 

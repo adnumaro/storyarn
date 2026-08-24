@@ -28,7 +28,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   alias Storyarn.AI.Task
   alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.AI.WorkspacePolicy
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Repo
 
   @lock_namespace 981_007

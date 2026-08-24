@@ -5,8 +5,8 @@ defmodule Storyarn.Flows.ShortcutGenerator do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.TreeOperations
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   @spec prepare_create(map(), pos_integer(), pos_integer() | nil) :: map()
   def prepare_create(attrs, project_id, exclude_id) do

@@ -5,7 +5,7 @@ defmodule Storyarn.Projects.ProjectInvitation do
   Invitations are token-based and expire after 7 days.
   """
 
-  use Storyarn.Shared.InvitationSchema,
+  use Storyarn.Projects.InvitationSchema,
     parent_key: :project_id,
     parent_schema: Storyarn.Projects.Project,
     allowed_roles: ~w(editor viewer),

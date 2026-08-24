@@ -25,8 +25,8 @@ defmodule Storyarn.AI.PersonalByokTest do
   alias Storyarn.AI.RouteOption
   alias Storyarn.AI.Settlement
   alias Storyarn.AI.UsageEvent
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias StoryarnTest.AI.ContractTask
 
   @validation_stub StoryarnTest.AI.OpenAI

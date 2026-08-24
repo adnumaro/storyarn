@@ -8,8 +8,8 @@ defmodule Storyarn.Projects.SheetHealthChecker do
   the snapshot with reference and project-variable information before checking.
   """
 
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
-  alias Storyarn.Shared.HtmlUtils
 
   @type severity :: :error | :warning | :info
 

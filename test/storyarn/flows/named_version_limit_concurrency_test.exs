@@ -11,9 +11,9 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
   alias Storyarn.Flows
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.SnapshotStorage
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces.Workspace
 
   setup do

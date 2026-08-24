@@ -24,7 +24,7 @@ defmodule StoryarnWeb.SheetLive.Index do
     ]
 
   alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers

@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.SceneChangesetHelpers do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @color_regex ~r/\A#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?\z/
   @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/

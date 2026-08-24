@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   alias Storyarn.Assets.ImageProcessor
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption

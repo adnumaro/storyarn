@@ -9,6 +9,7 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.FlowVariableNamespaceResolver, as: VariableNamespaceResolver
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
@@ -24,7 +25,6 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
   alias Storyarn.Projects.SheetInheritanceAudit
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   require VariableNamespaceResolver
 

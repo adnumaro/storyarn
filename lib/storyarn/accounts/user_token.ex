@@ -8,8 +8,8 @@ defmodule Storyarn.Accounts.UserToken do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.TokenGenerator
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TokenGenerator
 
   @change_email_validity_in_days 7
   @reset_password_validity_in_hours 24

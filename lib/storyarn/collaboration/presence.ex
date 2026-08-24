@@ -13,7 +13,7 @@ defmodule Storyarn.Collaboration.Presence do
     pubsub_server: Storyarn.PubSub
 
   alias Storyarn.Collaboration.Colors
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @type presence_meta :: %{
           user_id: integer(),

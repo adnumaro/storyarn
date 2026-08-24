@@ -24,6 +24,7 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowImportPersistence
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationReconstitution
@@ -38,7 +39,6 @@ defmodule Storyarn.Imports.Materializer do
   alias Storyarn.Projects.SheetImportPersistence
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @required_top_keys ~w(storyarn_version export_version project)
 

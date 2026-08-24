@@ -34,8 +34,8 @@ defmodule Storyarn.AI.KernelSpendGuaranteesTest do
 
   alias Storyarn.AI
   alias Storyarn.AI.Operation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias StoryarnTest.AI.ContractTask
 
   setup do

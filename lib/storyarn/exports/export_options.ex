@@ -6,7 +6,7 @@ defmodule Storyarn.Exports.ExportOptions do
   and filtering options for selective export.
   """
 
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
 
   @type t :: %__MODULE__{
           format: atom(),

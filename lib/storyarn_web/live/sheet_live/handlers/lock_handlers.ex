@@ -7,7 +7,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Collaboration
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   def handle_acquire(%{"block_id" => block_id}, socket) do

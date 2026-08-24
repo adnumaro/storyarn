@@ -16,11 +16,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Localization
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotRestore

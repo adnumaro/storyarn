@@ -19,8 +19,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   alias Storyarn.Flows.Persistence.TableRowRecord
   alias Storyarn.Flows.VariableNamespaceResolver
   alias Storyarn.Flows.VariableReference
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   require VariableNamespaceResolver
 

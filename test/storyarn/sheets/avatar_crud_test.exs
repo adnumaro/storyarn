@@ -8,8 +8,8 @@ defmodule Storyarn.Sheets.AvatarCrudTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
 

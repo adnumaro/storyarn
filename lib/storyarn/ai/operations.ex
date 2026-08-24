@@ -17,8 +17,8 @@ defmodule Storyarn.AI.Operations do
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.AI.Telemetry
   alias Storyarn.AI.UsageEvent
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 
@@ -165,7 +165,7 @@ defmodule Storyarn.AI.Operations do
 
       if deliver? do
         result = Repo.get_by!(Result, operation_id: locked.id)
-        encoded_output = Storyarn.Shared.CanonicalJSON.encode!(output)
+        encoded_output = Storyarn.Platform.Shared.CanonicalJSON.encode!(output)
         expires_at = DateTime.add(now, task.result_ttl_seconds, :second)
         result |> Result.output_changeset(encoded_output, expires_at) |> Repo.update!()
         transition!(locked, "succeeded", %{completed_at: now})

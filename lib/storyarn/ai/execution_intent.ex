@@ -8,7 +8,7 @@ defmodule Storyarn.AI.ExecutionIntent do
   """
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Shared.CanonicalJSON
+  alias Storyarn.Platform.Shared.CanonicalJSON
 
   @max_bigint 9_223_372_036_854_775_807
 

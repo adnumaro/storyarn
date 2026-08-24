@@ -33,7 +33,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   alias Storyarn.Flows
   alias Storyarn.GlobalSearch
   alias Storyarn.Notifications
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Workspaces

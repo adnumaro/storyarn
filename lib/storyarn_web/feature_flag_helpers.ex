@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.FeatureFlagHelpers do
   @moduledoc false
 
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
 
   @doc "Serializes actor-resolved feature flags for authenticated Vue layout boundaries."
   def client_flags(%{user: user}) when not is_nil(user) do

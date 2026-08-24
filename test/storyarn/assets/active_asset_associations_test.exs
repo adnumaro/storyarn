@@ -106,7 +106,7 @@ defmodule Storyarn.Assets.ActiveAssetAssociationsTest do
       Repo.update_all(
         from(asset in Asset, where: asset.id in ^asset_ids),
         set: [
-          deleted_at: Storyarn.Shared.TimeHelpers.now(),
+          deleted_at: Storyarn.Platform.Shared.TimeHelpers.now(),
           deleted_by_id: user_id,
           deletion_reason: "user",
           deletion_generation: 1

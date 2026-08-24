@@ -33,7 +33,7 @@ defmodule Storyarn.Projects.Persistence.SheetRecord do
   @color_format ~r/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/
 
   @doc "Changeset for soft deleting a sheet."
-  def delete_changeset(sheet), do: change(sheet, %{deleted_at: Storyarn.Shared.TimeHelpers.now()})
+  def delete_changeset(sheet), do: change(sheet, %{deleted_at: Storyarn.Platform.Shared.TimeHelpers.now()})
 
   @doc "Changeset for restoring a soft-deleted sheet."
   def restore_changeset(sheet), do: change(sheet, %{deleted_at: nil})

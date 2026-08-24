@@ -23,8 +23,8 @@ defmodule StoryarnWeb.FlowLive.Index do
     ]
 
   alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers

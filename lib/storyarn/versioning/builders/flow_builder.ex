@@ -12,6 +12,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   import Ecto.Query, warn: false
   import Storyarn.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Projects.FlowLocalizationProjection
   alias Storyarn.Projects.FlowReferenceGraph, as: NodeCreate
   alias Storyarn.Projects.FlowWordCount, as: WordCount
@@ -36,7 +37,6 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.References.EntityReferenceProjection
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.LocalizationSnapshotCodec

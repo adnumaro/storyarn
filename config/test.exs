@@ -144,10 +144,10 @@ config :storyarn, Storyarn.AI.TaskRegistry, tasks: [StoryarnTest.AI.ContractTask
 config :storyarn, Storyarn.Flows.Versioning.RestorePolicy, flow_version_restore: true
 
 # In test we don't send emails
-config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test
+config :storyarn, Storyarn.Platform.Mailer, adapter: Swoosh.Adapters.Test
 
 # Disable rate limiting in tests
-config :storyarn, Storyarn.RateLimiter, enabled: false
+config :storyarn, Storyarn.Platform.RateLimiter, enabled: false
 
 # Configure your database
 #

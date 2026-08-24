@@ -13,8 +13,8 @@ defmodule Storyarn.AI.PersonalConsents do
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.TaskRegistry
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @default_policy_text_version "personal-egress-v1"
 

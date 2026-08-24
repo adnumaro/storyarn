@@ -38,7 +38,7 @@ defmodule Storyarn.AI.Integration do
 
   schema "ai_integrations" do
     field :provider, :string
-    field :api_key_encrypted, Storyarn.Shared.EncryptedBinary, redact: true
+    field :api_key_encrypted, Storyarn.Platform.Shared.EncryptedBinary, redact: true
     field :key_last_four, :string
     field :account_email, :string
     field :account_display_name, :string

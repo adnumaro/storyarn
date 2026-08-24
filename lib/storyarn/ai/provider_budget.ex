@@ -8,8 +8,8 @@ defmodule Storyarn.AI.ProviderBudget do
   alias Storyarn.AI.Operation
   alias Storyarn.AI.ProviderBudgetReservation
   alias Storyarn.AI.UsageEvent
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @budget_lock_namespace 981_007
 

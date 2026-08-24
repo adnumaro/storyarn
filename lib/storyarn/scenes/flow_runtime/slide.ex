@@ -8,8 +8,8 @@ defmodule Storyarn.Scenes.FlowRuntime.Slide do
 
   use Gettext, backend: Storyarn.Gettext
 
+  alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Scenes.FlowRuntime.Helpers
-  alias Storyarn.Shared.HtmlSanitizer
 
   @doc """
   Build a slide from the current engine state and node.

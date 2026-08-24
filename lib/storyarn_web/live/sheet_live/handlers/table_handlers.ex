@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 

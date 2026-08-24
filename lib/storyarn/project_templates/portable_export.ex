@@ -4,13 +4,13 @@ defmodule Storyarn.ProjectTemplates.PortableExport do
   alias Storyarn.Assets
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.PortableBundle
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
-  alias Storyarn.Shared.TimeHelpers
 
   @spec export_project(pos_integer(), String.t(), keyword()) :: {:ok, map()} | {:error, term()}
   def export_project(project_id, output_path, opts \\ []) when is_integer(project_id) and is_binary(output_path) do

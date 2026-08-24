@@ -13,6 +13,7 @@ defmodule Storyarn.Scenes.Versioning do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Limits
   alias Storyarn.Scenes.Persistence.ProjectRecord
@@ -23,7 +24,6 @@ defmodule Storyarn.Scenes.Versioning do
   alias Storyarn.Scenes.Versioning.SceneSnapshot
   alias Storyarn.Scenes.Versioning.SnapshotStorage
   alias Storyarn.Scenes.Versioning.VersionNumberLock
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

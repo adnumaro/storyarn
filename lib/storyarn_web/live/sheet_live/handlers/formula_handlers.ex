@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.FormulaHandlers do
   import Phoenix.Component, only: [assign: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 

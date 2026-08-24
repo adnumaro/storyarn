@@ -5,7 +5,7 @@ defmodule Storyarn.Imports.PlanStorageTest do
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.PlanStorage
-  alias Storyarn.Vault
+  alias Storyarn.Platform.Vault
 
   @envelope_magic "STORYARN_IMPORT_PLAN"
   @envelope_version 1

@@ -4,7 +4,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.UserAuth
 
   setup do

@@ -9,8 +9,8 @@ defmodule Storyarn.AI.CredentialResolver.Personal do
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.ResolvedCredential
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @impl true
   def resolve(%CredentialRef{kind: :personal_byok}, %{operation: operation, task: task, route: route}) do

@@ -14,11 +14,11 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
 
   test "retries cleanup job persistence before returning an error" do

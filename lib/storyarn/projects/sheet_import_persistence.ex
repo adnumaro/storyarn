@@ -9,6 +9,8 @@ defmodule Storyarn.Projects.SheetImportPersistence do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetAvatarRecord
@@ -17,8 +19,6 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   alias Storyarn.Projects.Persistence.TableRowRecord
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   def list_shortcuts(project_id) do
     from(sheet in SheetRecord,

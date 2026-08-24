@@ -6,8 +6,8 @@ defmodule Storyarn.AI.Executor do
   alias Storyarn.AI.Operations
   alias Storyarn.AI.Result
   alias Storyarn.AI.Task
+  alias Storyarn.Platform.Shared.CanonicalJSON
   alias Storyarn.Repo
-  alias Storyarn.Shared.CanonicalJSON
 
   @spec run(pos_integer()) :: :ok | {:error, term()}
   def run(operation_id) do

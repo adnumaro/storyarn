@@ -3,8 +3,8 @@ defmodule Storyarn.Scenes.SoftDelete do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   def list_deleted(schema, project_id) do
     Repo.all(

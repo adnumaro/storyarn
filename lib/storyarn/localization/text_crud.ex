@@ -13,9 +13,9 @@ defmodule Storyarn.Localization.TextCrud do
   alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
+  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.TimeHelpers
 
   # =============================================================================
   # Queries
@@ -554,7 +554,7 @@ defmodule Storyarn.Localization.TextCrud do
   defp maybe_search(query, ""), do: query
 
   defp maybe_search(query, search) do
-    sanitized = Storyarn.Shared.SearchHelpers.sanitize_like_query(search)
+    sanitized = Storyarn.Platform.Shared.SearchHelpers.sanitize_like_query(search)
     pattern = "%#{sanitized}%"
 
     where(

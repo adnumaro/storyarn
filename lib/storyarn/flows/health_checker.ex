@@ -15,8 +15,8 @@ defmodule Storyarn.Flows.HealthChecker do
 
   alias Storyarn.Flows.Condition
   alias Storyarn.Flows.Instruction
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.StringUtils
 
   @type severity :: :error | :warning | :info
   @type finding :: %{

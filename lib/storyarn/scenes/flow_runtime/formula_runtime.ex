@@ -7,8 +7,8 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntime do
   exploration semantics.
   """
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes.FlowRuntime.FormulaEngine
-  alias Storyarn.Shared.MapUtils
 
   @spec recompute_formulas(map()) :: map()
   def recompute_formulas(variables) when map_size(variables) == 0, do: variables

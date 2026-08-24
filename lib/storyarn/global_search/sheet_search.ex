@@ -8,8 +8,8 @@ defmodule Storyarn.GlobalSearch.SheetSearch do
   alias Storyarn.GlobalSearch.Persistence.SheetRecord
   alias Storyarn.GlobalSearch.Persistence.TableColumnRecord
   alias Storyarn.GlobalSearch.Persistence.TableRowRecord
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @default_search_limit 20
   @max_deep_search_limit 50

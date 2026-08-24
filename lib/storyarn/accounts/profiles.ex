@@ -2,8 +2,8 @@ defmodule Storyarn.Accounts.Profiles do
   @moduledoc false
 
   alias Storyarn.Accounts.User
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @doc """
   Returns an `%Ecto.Changeset{}` for changing the user profile.

@@ -8,9 +8,9 @@ defmodule Storyarn.Workspaces.InvitationNotifier do
 
   import Swoosh.Email
 
-  alias Storyarn.Emails.Templates
-  alias Storyarn.Mailer
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Emails.Templates
+  alias Storyarn.Platform.Mailer
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   require Logger
 

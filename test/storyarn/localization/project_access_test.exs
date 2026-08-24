@@ -9,8 +9,8 @@ defmodule Storyarn.Localization.ProjectAccessTest do
   alias Storyarn.Localization.Persistence.ProjectMembershipRecord
   alias Storyarn.Localization.Persistence.ProjectRecord
   alias Storyarn.Localization.Persistence.WorkspaceRecord
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   test "returns context-owned project and membership records with the workspace preloaded" do
     user = user_fixture()

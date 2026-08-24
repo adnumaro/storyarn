@@ -8,9 +8,9 @@ defmodule Storyarn.Scenes.AssetCatalog do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.AssetRecord
-  alias Storyarn.Shared.SearchHelpers
 
   @asset_option_limit 80
   @max_option_limit 100

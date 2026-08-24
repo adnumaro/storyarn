@@ -13,8 +13,8 @@ defmodule Storyarn.Sheets.Versioning do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Limits
   alias Storyarn.Sheets.Persistence.ProjectRecord
   alias Storyarn.Sheets.Sheet

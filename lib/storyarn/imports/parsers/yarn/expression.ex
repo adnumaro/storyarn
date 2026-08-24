@@ -1,7 +1,7 @@
 defmodule Storyarn.Imports.Parsers.Yarn.Expression do
   @moduledoc false
 
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Projects.NameNormalizer
 
   @comparison_operators [
     {~r/^(.+?)\s+is\s+not\s+(.+)$/i, "not_equals"},

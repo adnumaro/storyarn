@@ -10,8 +10,8 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot

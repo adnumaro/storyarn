@@ -17,7 +17,7 @@ defmodule Storyarn.GlobalSearch.AdvancedSearch do
   alias Storyarn.GlobalSearch.SceneSearch
   alias Storyarn.GlobalSearch.SheetSearch
   alias Storyarn.GlobalSearch.VariableSearch
-  alias Storyarn.Shared.HierarchySearch
+  alias Storyarn.Platform.Shared.HierarchySearch
 
   @default_limit 25
   @max_limit 50

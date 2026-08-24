@@ -8,7 +8,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
   alias Storyarn.Workers.RequestResetPasswordInstructionsWorker

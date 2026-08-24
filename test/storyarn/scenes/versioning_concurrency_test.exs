@@ -8,12 +8,12 @@ defmodule Storyarn.Scenes.VersioningConcurrencyTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Versioning.EntityVersionRecord
   alias Storyarn.Scenes.Versioning.SnapshotStorage
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces.Workspace
 
   setup do

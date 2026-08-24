@@ -21,8 +21,8 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 3
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

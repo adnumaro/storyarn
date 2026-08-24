@@ -228,7 +228,7 @@ defmodule Storyarn.Localization.ExportImport do
     end
   end
 
-  defp strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
+  defp strip_html(text), do: Storyarn.Platform.Shared.HtmlUtils.strip_html(text)
 
   defp validate_source_hash(_text, nil), do: :ok
   defp validate_source_hash(_text, ""), do: :ok

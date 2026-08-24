@@ -4,8 +4,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.SnapshotArchiveStorage
 

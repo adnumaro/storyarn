@@ -6,7 +6,7 @@ defmodule Storyarn.Flows.WordCount do
   counting primitive, but they do not share this domain rule.
   """
 
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
 
   @spec for_node_data(String.t(), map() | nil) :: non_neg_integer()
   def for_node_data(_type, nil), do: 0

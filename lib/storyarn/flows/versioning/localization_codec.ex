@@ -10,9 +10,9 @@ defmodule Storyarn.Flows.Versioning.LocalizationCodec do
   alias Storyarn.Flows.Versioning.ProjectLanguageRecord
   alias Storyarn.Flows.Versioning.SourceContract
   alias Storyarn.Flows.Versioning.UserRecord
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   @manifest_fields ~w(count sha256 target_locales)
   @sha256_regex ~r/\A[0-9a-f]{64}\z/

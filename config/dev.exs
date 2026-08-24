@@ -23,7 +23,7 @@ config :phoenix_live_view,
 # Use Mailpit for development (SMTP on port 1025, Web UI on port 8025)
 # Run: docker compose up -d mailpit
 # View emails at: http://localhost:8025
-config :storyarn, Storyarn.Mailer,
+config :storyarn, Storyarn.Platform.Mailer,
   adapter: Swoosh.Adapters.SMTP,
   relay: "localhost",
   port: 1025

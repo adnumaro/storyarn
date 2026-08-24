@@ -14,8 +14,8 @@ defmodule Storyarn.Flows.EntityReferenceTracker do
   alias Storyarn.Flows.Persistence.SheetRecord
   alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.RichTextMentions
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @doc "Rebuilds the entity references encoded in a persisted Flow node."
   @spec update_references(map(), keyword()) :: :ok | {:error, term()}

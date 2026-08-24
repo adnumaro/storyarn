@@ -1,8 +1,8 @@
 defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairActionTest do
   use Storyarn.DataCase, async: false
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRepairAction
   alias Storyarn.Versioning.ProjectSnapshotReconciliationRun

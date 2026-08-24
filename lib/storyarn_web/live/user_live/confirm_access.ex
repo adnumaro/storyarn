@@ -14,7 +14,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
 

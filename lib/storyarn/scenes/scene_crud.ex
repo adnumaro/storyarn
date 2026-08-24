@@ -11,6 +11,8 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   alias Storyarn.Collaboration
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.AssetReferences
   alias Storyarn.Scenes.Limits
@@ -24,8 +26,6 @@ defmodule Storyarn.Scenes.SceneCrud do
   alias Storyarn.Scenes.ShortcutGenerator
   alias Storyarn.Scenes.SoftDelete
   alias Storyarn.Scenes.TreeOperations
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.SearchHelpers
 
   @doc """
   Lists all non-deleted scenes for a project.

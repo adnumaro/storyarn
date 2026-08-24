@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SceneLive.IndexTest do
   import Storyarn.ScenesFixtures
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene

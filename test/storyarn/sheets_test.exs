@@ -1265,7 +1265,7 @@ defmodule Storyarn.SheetsTest do
   end
 
   describe "shortcut validation" do
-    alias Storyarn.Shared.NameNormalizer
+    alias Storyarn.Projects.NameNormalizer
 
     test "accepts lowercase alphanumeric" do
       assert NameNormalizer.shortcutify("test123") == "test123"

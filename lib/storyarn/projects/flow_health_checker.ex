@@ -15,10 +15,10 @@ defmodule Storyarn.Projects.FlowHealthChecker do
   `"scene"` for its container and the element kind for everything else.
   """
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Projects.FlowCondition
   alias Storyarn.Projects.FlowInstruction
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.StringUtils
 
   @type severity :: :error | :warning | :info
   @type finding :: %{

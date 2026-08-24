@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.LocalizationProjection do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.ContentContract
   alias Storyarn.Sheets.Persistence.LocalizedTextRecord

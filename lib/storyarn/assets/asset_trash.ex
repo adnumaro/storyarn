@@ -6,9 +6,9 @@ defmodule Storyarn.Assets.AssetTrash do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @type reference_scope :: :active | :any
   @type reference_check :: ([pos_integer()], reference_scope() -> :ok | {:error, term()})

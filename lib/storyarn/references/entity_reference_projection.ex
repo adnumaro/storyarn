@@ -29,6 +29,7 @@ defmodule Storyarn.References.EntityReferenceProjection do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.References.EntityReference
   alias Storyarn.References.Persistence.BlockRecord, as: Block
   alias Storyarn.References.Persistence.FlowNodeRecord
@@ -38,7 +39,6 @@ defmodule Storyarn.References.EntityReferenceProjection do
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @project_target_types %{
     "block" => ~w(sheet flow),

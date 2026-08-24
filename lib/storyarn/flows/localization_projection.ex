@@ -8,9 +8,9 @@ defmodule Storyarn.Flows.LocalizationProjection do
   alias Storyarn.Flows.Persistence.LocalizedTextRecord
   alias Storyarn.Flows.Persistence.ProjectLanguageRecord
   alias Storyarn.Flows.ProjectReferenceIntegrity
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   @inventory_lock_namespace "storyarn:localization:inventory"
   @flow_node_lock_namespace "storyarn:localization:flow_node"

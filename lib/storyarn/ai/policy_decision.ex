@@ -13,7 +13,7 @@ defmodule Storyarn.AI.PolicyDecision do
   alias Storyarn.AI.ProjectAccess
   alias Storyarn.AI.Task
   alias Storyarn.AI.WorkspaceAccess
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Repo
 
   @enforce_keys [

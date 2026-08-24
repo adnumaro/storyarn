@@ -18,11 +18,11 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectSnapshot

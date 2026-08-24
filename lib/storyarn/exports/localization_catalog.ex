@@ -4,11 +4,11 @@ defmodule Storyarn.Exports.LocalizationCatalog do
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Projects.LocalizationExportPolicy, as: ExportPolicy
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
-  alias Storyarn.Shared.MapUtils
 
   @doc "Returns the stable key shared by engine content and external catalogs."
   @spec key(term(), term(), term()) :: String.t()

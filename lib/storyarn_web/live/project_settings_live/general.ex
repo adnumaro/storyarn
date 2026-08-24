@@ -454,7 +454,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp iso_datetime(datetime), do: DateTime.to_iso8601(datetime)
 
   defp do_save_theme(socket) do
-    alias Storyarn.Shared.ColorUtils
+    alias Storyarn.Platform.Shared.ColorUtils
 
     primary = socket.assigns.theme_primary
     accent = socket.assigns.theme_accent

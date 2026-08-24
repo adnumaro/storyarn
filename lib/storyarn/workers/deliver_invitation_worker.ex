@@ -8,8 +8,8 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 5
 
+  alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Projects
-  alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workspaces
 
   require Logger

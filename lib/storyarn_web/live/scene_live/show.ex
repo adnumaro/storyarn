@@ -27,9 +27,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers

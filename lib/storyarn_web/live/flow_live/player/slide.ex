@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.HtmlSanitizer
 
   @doc """
   Build a slide from the current engine state and node.

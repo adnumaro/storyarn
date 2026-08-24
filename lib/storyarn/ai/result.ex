@@ -8,7 +8,7 @@ defmodule Storyarn.AI.Result do
   alias Storyarn.AI.Persistence.ProjectRecord, as: Project
   alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
-  alias Storyarn.Shared.EncryptedBinary
+  alias Storyarn.Platform.Shared.EncryptedBinary
 
   @derive {Inspect, except: [:input_encrypted, :output_encrypted]}
 

@@ -39,7 +39,7 @@ defmodule Storyarn.Flows.FlowNode do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
 

@@ -10,7 +10,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "Storyarn.Accounts",
     "Storyarn.Assets",
     "Storyarn.Billing",
-    "Storyarn.Emails",
+    "Storyarn.Platform.Emails",
     "Storyarn.Exports",
     "Storyarn.Imports",
     "Storyarn.Localization",
@@ -316,6 +316,10 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   end
 
   defp canonical_reference(_segments, _aliases), do: nil
+
+  # The platform technical utilities remain allowed contracts for every
+  # boundary (mirrors always_allowed_targets in the ratchet config).
+  defp foreign_context_module?("Storyarn.Platform.Shared" <> _rest), do: false
 
   defp foreign_context_module?(module) do
     Enum.any?(@foreign_context_modules, fn root ->

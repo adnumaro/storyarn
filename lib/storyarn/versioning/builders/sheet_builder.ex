@@ -20,10 +20,10 @@ defmodule Storyarn.Versioning.Builders.SheetBuilder do
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.WordCount
   alias Storyarn.References
   alias Storyarn.References.EntityReferenceProjection
   alias Storyarn.Repo
-  alias Storyarn.Shared.WordCount
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers

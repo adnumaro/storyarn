@@ -16,7 +16,7 @@ defmodule Storyarn.Imports.PlanStorage do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Imports.ImportPlan
-  alias Storyarn.Vault
+  alias Storyarn.Platform.Vault
 
   @default_max_json_bytes 128 * 1024 * 1024
   @envelope_magic "STORYARN_IMPORT_PLAN"

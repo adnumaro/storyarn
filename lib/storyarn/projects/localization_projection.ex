@@ -3,6 +3,8 @@ defmodule Storyarn.Projects.LocalizationProjection do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.LocalizationSourceContract
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
@@ -12,8 +14,6 @@ defmodule Storyarn.Projects.LocalizationProjection do
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   @inventory_lock_namespace "storyarn:localization:inventory"
   @block_lock_namespace "storyarn:localization:block"

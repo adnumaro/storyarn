@@ -8,7 +8,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.Normalizer do
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Imports.Parsers.Yarn.SpeakerSheets
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Projects.NameNormalizer
 
   @max_title_length 200
   @max_description_length 2_000

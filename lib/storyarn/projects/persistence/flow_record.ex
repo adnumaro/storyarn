@@ -19,9 +19,9 @@ defmodule Storyarn.Projects.Persistence.FlowRecord do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowConnectionRecord
   alias Storyarn.Projects.Persistence.FlowNodeRecord
-  alias Storyarn.Shared.TimeHelpers
 
   @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 

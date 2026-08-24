@@ -13,9 +13,9 @@ defmodule Storyarn.Sheets.AssetCommands do
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Events
   alias Storyarn.Sheets.ImageProcessor
   alias Storyarn.Sheets.Persistence.AssetRecord

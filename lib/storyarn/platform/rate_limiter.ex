@@ -1,0 +1,223 @@
+defmodule Storyarn.Platform.RateLimiter do
+  @moduledoc """
+  Rate limiting service using Hammer v7.
+
+  Uses the ETS backend by default, and the Redis backend in production when
+  `REDIS_URL` is set (for multi-node support). `config/runtime.exs` is the only
+  reader of that variable and resolves it into `:rate_limiter_redis_url`; a
+  configured URL is what selects the backend, so the value that makes the choice
+  is always the value the backend receives.
+
+  ## Rate Limits
+
+  - Login attempts: 5 per minute per IP
+  - Sudo re-authentication attempts: 5 per minute per user and IP
+  - Magic link requests: 3 per minute per email
+  - Registration: 3 per minute per IP
+  - Password reset: 3 per 15 minutes per IP and per email address
+  - Full project search: 12 per 10 seconds per user
+  - Invitations: 10 per hour per user (configured in invitation modules)
+
+  ## Configuration
+
+  Rate limiting can be disabled for testing:
+
+      config :storyarn, Storyarn.Platform.RateLimiter, enabled: false
+
+  Backend selection is derived from the URL alone (set in runtime.exs for prod):
+
+      config :storyarn, :rate_limiter_redis_url, "redis://host:6379"
+
+  ## Usage
+
+      case RateLimiter.check_login(ip_address) do
+        :ok -> attempt_login(...)
+        {:error, :rate_limited} -> show_error(...)
+      end
+  """
+  alias Storyarn.Platform.RateLimiter.ETSBackend
+  alias Storyarn.Platform.RateLimiter.RedisBackend
+
+  # Login: 5 attempts per minute per IP
+  @login_limit 5
+  @login_window_ms 60_000
+
+  # Sudo re-authentication: 5 attempts per minute per user and IP. Keeping this
+  # bucket separate prevents normal login traffic (or another user behind the
+  # same NAT) from locking an authenticated user out of protected settings.
+  @sudo_limit 5
+  @sudo_window_ms 60_000
+
+  # Registration: 3 attempts per minute per IP
+  @registration_limit 3
+  @registration_window_ms 60_000
+
+  # Password reset: 3 attempts per 15 minutes per IP and per email address
+  @password_reset_limit 3
+  @password_reset_window_ms 900_000
+
+  # AI integration connect: 3 validation attempts per minute per user. Guards
+  # against brute-forcing a valid key format against a live provider endpoint.
+  @ai_integration_connect_limit 3
+  @ai_integration_connect_window_ms 60_000
+
+  # AI execution uses separate preflight and accepted-operation buckets. A
+  # caller can refresh route choices more often than it can create billable
+  # intent, and idempotent operation replays do not consume this allowance.
+  @ai_preflight_limit 60
+  @ai_execution_limit 20
+  @ai_execution_window_ms 60_000
+
+  # Full project search deliberately scans authored content across several
+  # entity domains. It is submit-only in the UI, but this server-side bucket
+  # prevents forged events or multiple sessions from bypassing that policy.
+  @palette_deep_search_limit 12
+  @palette_deep_search_window_ms 10_000
+
+  @doc """
+  Checks if a login attempt is allowed for the given IP address.
+
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_login(String.t()) :: :ok | {:error, :rate_limited}
+  def check_login(ip_address) do
+    check_rate("login:#{ip_address}", @login_window_ms, @login_limit)
+  end
+
+  @doc "Checks whether a sudo re-authentication attempt is allowed."
+  @spec check_sudo(pos_integer(), String.t()) :: :ok | {:error, :rate_limited}
+  def check_sudo(user_id, ip_address) when is_integer(user_id) and user_id > 0 do
+    check_rate("sudo:#{user_id}:#{ip_address}", @sudo_window_ms, @sudo_limit)
+  end
+
+  @doc """
+  Checks if a registration attempt is allowed for the given IP address.
+
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_registration(String.t()) :: :ok | {:error, :rate_limited}
+  def check_registration(ip_address) do
+    check_rate("registration:#{ip_address}", @registration_window_ms, @registration_limit)
+  end
+
+  @doc """
+  Checks if a password reset request is allowed for the given IP address and email.
+
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_password_reset(String.t(), String.t()) :: :ok | {:error, :rate_limited}
+  def check_password_reset(ip_address, email) do
+    normalized_email = normalize_email(email)
+
+    with :ok <- check_rate("password_reset:ip:#{ip_address}", @password_reset_window_ms, @password_reset_limit) do
+      check_rate("password_reset:email:#{normalized_email}", @password_reset_window_ms, @password_reset_limit)
+    end
+  end
+
+  @doc """
+  Checks if an AI integration connect attempt is allowed for the given user.
+
+  Bucketed per user (the request already has a session, so the user id is the
+  natural key), not per IP. Returns `:ok` if allowed, `{:error, :rate_limited}`
+  if blocked.
+  """
+  @spec check_ai_integration_connect(pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_integration_connect(user_id) when is_integer(user_id) and user_id > 0 do
+    check_rate(
+      "ai_integration_connect:#{user_id}",
+      @ai_integration_connect_window_ms,
+      @ai_integration_connect_limit
+    )
+  end
+
+  @doc "Checks actor/task preflight volume before issuing opaque route options."
+  @spec check_ai_preflight(pos_integer(), String.t(), pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_preflight(user_id, task_id, limit \\ @ai_preflight_limit)
+      when is_integer(user_id) and user_id > 0 and is_binary(task_id) and is_integer(limit) and limit > 0 do
+    check_rate("ai_preflight:#{user_id}:#{task_id}", @ai_execution_window_ms, limit)
+  end
+
+  @doc "Checks newly accepted AI-operation volume; callers must not charge idempotent replays."
+  @spec check_ai_execution(pos_integer(), String.t(), pos_integer()) :: :ok | {:error, :rate_limited}
+  def check_ai_execution(user_id, task_id, limit \\ @ai_execution_limit)
+      when is_integer(user_id) and user_id > 0 and is_binary(task_id) and is_integer(limit) and limit > 0 do
+    check_rate("ai_execution:#{user_id}:#{task_id}", @ai_execution_window_ms, limit)
+  end
+
+  @doc "Checks per-user volume for the command palette's full project search."
+  @spec check_palette_deep_search(pos_integer(), pos_integer()) ::
+          :ok | {:error, :rate_limited}
+  def check_palette_deep_search(user_id, limit \\ @palette_deep_search_limit)
+      when is_integer(user_id) and user_id > 0 and is_integer(limit) and limit > 0 do
+    check_rate(
+      "palette_deep_search:#{user_id}",
+      @palette_deep_search_window_ms,
+      limit
+    )
+  end
+
+  @doc """
+  Checks if an invitation is allowed for the given context.
+
+  Used by workspace and project invitation modules.
+  Returns `:ok` if allowed, `{:error, :rate_limited}` if blocked.
+  """
+  @spec check_invitation(String.t(), integer(), integer(), integer()) ::
+          :ok | {:error, :rate_limited}
+  def check_invitation(context, context_id, user_id, limit \\ 10) do
+    # 1 hour window
+    window_ms = 60_000 * 60
+    check_rate("invitation:#{context}:#{context_id}:#{user_id}", window_ms, limit)
+  end
+
+  @doc """
+  Returns the backend module to use for rate limiting.
+  """
+  def backend do
+    if redis_url(), do: RedisBackend, else: ETSBackend
+  end
+
+  @doc """
+  Returns the child spec for the rate limiter backend.
+  Called from Application.start/2.
+  """
+  def child_spec_for_backend do
+    case redis_url() do
+      url when is_binary(url) -> {RedisBackend, url: url}
+      nil -> {ETSBackend, clean_period: to_timeout(minute: 10)}
+    end
+  end
+
+  # The single source of truth for both readers above. `config/runtime.exs` is the
+  # only place that touches REDIS_URL, so there is no second normalization to
+  # disagree with — and because presence alone selects the backend, there is no
+  # "Redis configured without a URL" state to detect or paper over.
+  defp redis_url, do: Application.get_env(:storyarn, :rate_limiter_redis_url)
+
+  # Private
+
+  defp check_rate(key, window_ms, limit) do
+    if enabled?() do
+      case backend().hit(key, window_ms, limit) do
+        {:allow, _count} -> :ok
+        {:deny, _retry_after_ms} -> {:error, :rate_limited}
+      end
+    else
+      :ok
+    end
+  end
+
+  defp normalize_email(email) when is_binary(email) do
+    email
+    |> String.trim()
+    |> String.downcase()
+  end
+
+  defp normalize_email(_email), do: "missing_email"
+
+  defp enabled? do
+    :storyarn
+    |> Application.get_env(__MODULE__, [])
+    |> Keyword.get(:enabled, true)
+  end
+end

@@ -29,7 +29,7 @@ defmodule Storyarn.Collaboration do
   alias Storyarn.Collaboration.CursorTracker
   alias Storyarn.Collaboration.Locks
   alias Storyarn.Collaboration.Presence
-  alias Storyarn.Dashboards.Cache
+  alias Storyarn.Platform.Dashboards.Cache
 
   @type editor_scope ::
           {:flow, integer()}

@@ -9,7 +9,7 @@ defmodule Storyarn.AI.TaskRegistryTest do
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.AI.Tasks.ManagedDiagnostic
   alias Storyarn.AI.Telemetry
-  alias Storyarn.Shared.CanonicalJSON
+  alias Storyarn.Platform.Shared.CanonicalJSON
   alias StoryarnTest.AI.ContractTask
 
   test "loads only registered validated tasks and derives palette ids" do

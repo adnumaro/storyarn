@@ -13,7 +13,7 @@ defmodule Storyarn.AI.ContextTest do
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.Task
   alias Storyarn.Flows
-  alias Storyarn.Shared.CanonicalJSON
+  alias Storyarn.Platform.Shared.CanonicalJSON
   alias Storyarn.Sheets.Block
   alias StoryarnTest.Flows.AI.ContextTask, as: FlowContextTask
   alias StoryarnTest.Sheets.AI.ContextTask, as: SheetContextTask

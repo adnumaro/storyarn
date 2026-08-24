@@ -22,8 +22,8 @@ defmodule Storyarn.Flows.Versioning do
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Flows.Versioning.SnapshotStorage
   alias Storyarn.Flows.Versioning.VersionNumberLock
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

@@ -10,10 +10,10 @@ defmodule Storyarn.Workspaces.Invitations do
   import Ecto.Query, warn: false
 
   alias Storyarn.Billing
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
+  alias Storyarn.Platform.Shared.EncryptedBinary
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.EncryptedBinary
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.Workspaces.InvitationNotifier
   alias Storyarn.Workspaces.Memberships
@@ -53,7 +53,7 @@ defmodule Storyarn.Workspaces.Invitations do
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
 
-  Used by `Storyarn.Release.invite_member/5` for CLI-approved invitations.
+  Used by `Storyarn.Platform.Release.invite_member/5` for CLI-approved invitations.
   """
   def create_admin_invitation(%Workspace{} = workspace, email, role, opts \\ []) do
     create_serialized_invitation(workspace, nil, normalize_email(email), role, opts)
@@ -389,7 +389,7 @@ defmodule Storyarn.Workspaces.Invitations do
   end
 
   defp invitation_url(token) do
-    Storyarn.Urls.base_url() <> @invitation_path_prefix <> "/" <> token
+    Storyarn.Platform.Urls.base_url() <> @invitation_path_prefix <> "/" <> token
   end
 
   defp mark_invitation_accepted(invitation) do

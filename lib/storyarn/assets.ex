@@ -24,6 +24,9 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.SearchHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
@@ -37,9 +40,6 @@ defmodule Storyarn.Assets do
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.SearchHelpers
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

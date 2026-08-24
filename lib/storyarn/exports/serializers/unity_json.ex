@@ -14,8 +14,8 @@ defmodule Storyarn.Exports.Serializers.UnityJSON do
   alias Storyarn.Exports.LocalizationCatalog
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Projects.LocalizationExportPolicy, as: ExportPolicy
-  alias Storyarn.Shared.StringUtils
 
   @text_type 0
   @boolean_type 2

@@ -54,7 +54,7 @@ defmodule Storyarn.VersioningFixtures do
     asset_count = Map.get(attrs, :asset_count, if(asset_blob_size > 0, do: 1, else: 0))
     blob_count = Map.get(attrs, :blob_count, if(asset_blob_size > 0, do: 1, else: 0))
 
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = Storyarn.Platform.Shared.TimeHelpers.now()
     inserted_at = Map.get(attrs, :inserted_at, now)
     attrs = Map.delete(attrs, :inserted_at)
 

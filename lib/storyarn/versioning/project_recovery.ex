@@ -11,7 +11,9 @@ defmodule Storyarn.Versioning.ProjectRecovery do
 
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
+  alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
@@ -33,8 +35,6 @@ defmodule Storyarn.Versioning.ProjectRecovery do
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.AssetMaterializationCache
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetCopyError

@@ -1329,7 +1329,7 @@ defmodule Storyarn.References.VariableReferenceTrackerTest do
       # unwritable. The repair query still sees the reference, but one damaged
       # source must not roll back every independent repair in the project.
       failing_node
-      |> Ecto.Changeset.change(deleted_at: Storyarn.Shared.TimeHelpers.now())
+      |> Ecto.Changeset.change(deleted_at: Storyarn.Platform.Shared.TimeHelpers.now())
       |> Storyarn.Repo.update!()
 
       {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})

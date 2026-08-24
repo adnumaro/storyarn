@@ -20,8 +20,8 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   alias Storyarn.Flows.Persistence.WorkspaceSnapshotImportRecord
   alias Storyarn.Flows.Versioning.AssetStorageCompensation
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @snapshot_restore_asset_content_types ~w(
     image/jpeg image/png image/gif image/webp image/svg+xml

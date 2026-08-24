@@ -7,7 +7,7 @@ defmodule Storyarn.Flows.Evaluator.Helpers do
   @spec strip_html(binary() | nil, non_neg_integer()) :: String.t() | nil
   def strip_html(text, max_length \\ 40)
 
-  def strip_html(text, max_length), do: Storyarn.Shared.HtmlUtils.strip_and_truncate(text, max_length)
+  def strip_html(text, max_length), do: Storyarn.Platform.Shared.HtmlUtils.strip_and_truncate(text, max_length)
 
   @doc "Format a debug value for display."
   @spec format_value(any()) :: String.t()

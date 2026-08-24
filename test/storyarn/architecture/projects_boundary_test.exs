@@ -23,14 +23,6 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
                             "lib/storyarn_web/controllers/upload_controller.ex"
                           ]
 
-  # Reclassified into the projects boundary during ENG-92; their consumers
-  # must stay inside it so they cannot silently regrow into shared utilities.
-  @reclassified_shared [
-    "lib/storyarn/shared/name_normalizer.ex",
-    "lib/storyarn/shared/validations.ex",
-    "lib/storyarn/shared/word_count.ex"
-  ]
-
   @foreign_domain_roots [
     "lib/storyarn/accounts",
     "lib/storyarn/workspaces",
@@ -90,13 +82,9 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     end
   end
 
-  test "reclassified shared modules are consumed only inside the projects boundary" do
-    reclassified_modules =
-      Enum.map(@reclassified_shared, fn path ->
-        path
-        |> Path.basename(".ex")
-        |> Macro.camelize()
-      end)
+  test "the dissolved shared namespace stays dissolved" do
+    refute File.dir?("lib/storyarn/shared"),
+           "lib/storyarn/shared was dissolved by the ENG-92 physical reorganization and must stay deleted"
 
     violations =
       @foreign_domain_roots
@@ -105,17 +93,13 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
       |> Enum.flat_map(fn path ->
         path
         |> shared_references()
-        |> Enum.filter(fn %{segments: segments} ->
-          match?([:Storyarn, :Shared, name | _] when is_atom(name), segments) and
-            "#{Enum.at(segments, 2)}" in reclassified_modules
-        end)
+        |> Enum.filter(&match?(%{segments: [:Storyarn, :Shared | _]}, &1))
         |> Enum.map(&"#{path}:#{&1.line}: #{Enum.join(&1.segments, ".")}")
       end)
       |> Enum.sort()
 
     assert violations == [], """
-    The shared name normalizer, validations and word count now belong to the
-    projects boundary; foreign boundaries own their own copies:
+    Storyarn.Shared no longer exists; utilities live in their owning boundary:
 
     #{Enum.join(violations, "\n")}
     """

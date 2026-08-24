@@ -1494,7 +1494,7 @@ defmodule Storyarn.Versioning.Builders.AssetHashResolverTest do
       Repo.update_all(
         from(candidate in Asset, where: candidate.id == ^asset.id),
         set: [
-          deleted_at: Storyarn.Shared.TimeHelpers.now(),
+          deleted_at: Storyarn.Platform.Shared.TimeHelpers.now(),
           deleted_by_id: user_id,
           deletion_reason: "user",
           deletion_generation: 1

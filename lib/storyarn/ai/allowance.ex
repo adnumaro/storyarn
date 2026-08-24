@@ -14,8 +14,8 @@ defmodule Storyarn.AI.Allowance do
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.WorkspaceAccess
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @account_lock_namespace 981_006
   @default_expiration_batch_size 100

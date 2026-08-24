@@ -14,7 +14,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepairAction do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshotReconciliationFinding
 
   @action_kinds ~w(

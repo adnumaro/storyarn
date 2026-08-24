@@ -5,13 +5,13 @@ defmodule Storyarn.Projects.FlowImportPersistenceTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowImportPersistence
   alias Storyarn.Projects.Persistence.FlowConnectionRecord
   alias Storyarn.Projects.Persistence.FlowNodeRecord
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.SequenceConfigRecord
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   setup do
     project = project_fixture(user_fixture())

@@ -12,9 +12,9 @@ defmodule Storyarn.Projects.SheetFormulaResolver do
   Called during table data loading to inject computed values into formula cells.
   """
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.SheetHealthReadModel
-  alias Storyarn.Shared.MapUtils
 
   @doc """
   Injects `__result` and `__resolved` into every formula cell of a batch of table

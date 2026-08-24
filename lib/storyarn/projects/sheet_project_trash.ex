@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.EntityVersionRecord
@@ -22,7 +23,6 @@ defmodule Storyarn.Projects.SheetProjectTrash do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @doc "Gets a trashed Sheet scoped to its project, with avatars preloaded."
   def get_trashed(project_id, sheet_id) do

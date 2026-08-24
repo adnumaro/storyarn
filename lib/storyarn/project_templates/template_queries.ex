@@ -3,6 +3,7 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.Authorization
@@ -11,7 +12,6 @@ defmodule Storyarn.ProjectTemplates.TemplateQueries do
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @publication_preloads [:source_project, :project_template, :project_template_version]
   @default_per_page 12

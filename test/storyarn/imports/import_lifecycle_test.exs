@@ -16,9 +16,9 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   @private_filename "client-jane-doe-private-project.yarn"

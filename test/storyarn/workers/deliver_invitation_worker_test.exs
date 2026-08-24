@@ -6,18 +6,19 @@ defmodule Storyarn.Workers.DeliverInvitationWorkerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Platform.Mailer
+  alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Projects
   alias Storyarn.Repo
-  alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.Workspaces
 
   setup do
-    mailer_config = Application.get_env(:storyarn, Storyarn.Mailer)
+    mailer_config = Application.get_env(:storyarn, Mailer)
     locale = Gettext.get_locale(Storyarn.Gettext)
 
     on_exit(fn ->
-      Application.put_env(:storyarn, Storyarn.Mailer, mailer_config)
+      Application.put_env(:storyarn, Mailer, mailer_config)
       Gettext.put_locale(Storyarn.Gettext, locale)
     end)
 
@@ -136,7 +137,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorkerTest do
              Workspaces.create_invitation(workspace, owner, "transient@example.com", "member")
 
     job = latest_job()
-    Application.put_env(:storyarn, Storyarn.Mailer, adapter: Storyarn.FailingMailerAdapter)
+    Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
 
     assert {:error, :simulated_delivery_failure} =
              DeliverInvitationWorker.perform(%Oban.Job{
@@ -166,7 +167,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorkerTest do
 
     job = latest_job()
 
-    Application.put_env(:storyarn, Storyarn.Mailer, adapter: Storyarn.FailingMailerAdapter)
+    Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
 
     assert {:cancel, :simulated_delivery_failure} =
              DeliverInvitationWorker.perform(%Oban.Job{
@@ -177,7 +178,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorkerTest do
 
     assert Workspaces.list_pending_invitations(workspace.id) == []
 
-    Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test)
+    Application.put_env(:storyarn, Mailer, adapter: Swoosh.Adapters.Test)
 
     assert {:ok, _invitation} =
              Workspaces.create_invitation(workspace, owner, "retry@example.com", "member")

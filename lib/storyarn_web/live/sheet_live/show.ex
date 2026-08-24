@@ -14,7 +14,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   alias Storyarn.Collaboration
   alias Storyarn.Collaboration.Presence
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack

@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.Versioning.LocalizationCodec do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Persistence.AssetRecord, as: Asset
   alias Storyarn.Sheets.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Sheets.Persistence.ProjectLanguageRecord, as: ProjectLanguage

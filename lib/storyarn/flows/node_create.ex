@@ -11,8 +11,8 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.WordCount
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   # Prevents infinite recursion in circular reference detection
   @max_reference_depth 20

@@ -6,11 +6,11 @@ defmodule Storyarn.Scenes.AssetCommandsTest do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.Persistence.AssetRecord
-  alias Storyarn.Shared.TimeHelpers
 
   test "generated assets use the Scene-owned projection and remain project-scoped" do
     user = user_fixture()

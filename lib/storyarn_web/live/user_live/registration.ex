@@ -4,7 +4,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
 

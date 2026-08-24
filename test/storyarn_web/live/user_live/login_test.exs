@@ -4,6 +4,8 @@ defmodule StoryarnWeb.UserLive.LoginTest do
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
 
+  alias Storyarn.Platform.Mailer
+
   defp get_login_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/auth/login/AuthLoginForm")
   end
@@ -90,14 +92,14 @@ defmodule StoryarnWeb.UserLive.LoginTest do
 
   describe "local mail adapter info" do
     test "passes local-mail-adapter=true to Vue when adapter is Local", %{conn: conn} do
-      Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local)
+      Application.put_env(:storyarn, Mailer, adapter: Swoosh.Adapters.Local)
 
       {:ok, view, _html} = live(conn, ~p"/users/log-in")
 
       vue = get_login_vue(view)
       assert vue.props["local-mail-adapter"] == true
     after
-      Application.put_env(:storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Test)
+      Application.put_env(:storyarn, Mailer, adapter: Swoosh.Adapters.Test)
     end
   end
 

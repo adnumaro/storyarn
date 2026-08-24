@@ -9,6 +9,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Persistence.UserRecord, as: User
@@ -22,7 +23,6 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.Builders.AssetCopyError
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.SnapshotStorage

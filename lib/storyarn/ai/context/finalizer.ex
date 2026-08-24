@@ -4,7 +4,7 @@ defmodule Storyarn.AI.Context.Finalizer do
   alias Storyarn.AI.Context.Entity
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.Context.Policy
-  alias Storyarn.Shared.CanonicalJSON
+  alias Storyarn.Platform.Shared.CanonicalJSON
 
   @package_version "storyarn-context-v1"
 

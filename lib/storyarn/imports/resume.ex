@@ -27,10 +27,10 @@ defmodule Storyarn.Imports.Resume do
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Shared
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @max_safe_import_attempt_id 9_007_199_254_740_991
   @executable_import_job_states ~w(available scheduled retryable executing)

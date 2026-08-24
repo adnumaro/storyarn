@@ -13,8 +13,8 @@ defmodule Storyarn.Localization.LocalizableWords do
   alias Storyarn.Localization.ProjectReferenceIntegrity
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.TextCrud
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
 
   @inventory_lock_namespace "storyarn:localization:inventory"
   @flow_node_lock_namespace "storyarn:localization:flow_node"

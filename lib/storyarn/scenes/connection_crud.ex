@@ -3,11 +3,11 @@ defmodule Storyarn.Scenes.ConnectionCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
-  alias Storyarn.Shared.MapUtils
 
   @doc """
   Lists all connections for a map, with from_pin and to_pin preloaded.

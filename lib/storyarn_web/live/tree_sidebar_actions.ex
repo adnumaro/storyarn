@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
 
   def with_edit(socket, error_message, fun) do
     if socket.assigns.can_edit do

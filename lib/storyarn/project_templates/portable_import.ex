@@ -8,7 +8,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
+  alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
@@ -19,8 +21,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.SnapshotStorage
 

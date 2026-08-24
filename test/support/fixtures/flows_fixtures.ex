@@ -7,9 +7,9 @@ defmodule Storyarn.FlowsFixtures do
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   def unique_flow_name, do: "Flow #{System.unique_integer([:positive])}"
 

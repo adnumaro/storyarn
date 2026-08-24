@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SheetLive.IndexTest do
   import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Index

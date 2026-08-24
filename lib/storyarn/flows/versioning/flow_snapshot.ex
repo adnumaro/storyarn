@@ -41,9 +41,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Flows.Versioning.SourceContract
   alias Storyarn.Flows.WordCount
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   @flow_fields ~w(name shortcut description is_main settings scene_id)
 

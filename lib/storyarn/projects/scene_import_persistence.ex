@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.SceneImportPersistence do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SceneAnnotationRecord
   alias Storyarn.Projects.Persistence.SceneConnectionRecord
   alias Storyarn.Projects.Persistence.SceneLayerRecord
@@ -10,7 +11,6 @@ defmodule Storyarn.Projects.SceneImportPersistence do
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Projects.Persistence.SceneZoneRecord
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   def import_scene(project_id, attrs) do
     %SceneRecord{project_id: project_id}

@@ -32,8 +32,8 @@ defmodule Storyarn.AI.Runtime do
   alias Storyarn.AI.Integration
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.Provider
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @type call_result :: {:ok, term()} | {:error, :unauthorized | term()}
 

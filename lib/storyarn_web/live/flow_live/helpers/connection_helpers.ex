@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
 

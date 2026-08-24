@@ -1,9 +1,9 @@
 defmodule Storyarn.Public.Docs.GuideBuilderTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Public.Docs.Guide
   alias Storyarn.Public.Docs.GuideBuilder
-  alias Storyarn.FeatureFlags
 
   test "published Spanish guides emit localized internal documentation links" do
     guides = Guide.list_guides("es")

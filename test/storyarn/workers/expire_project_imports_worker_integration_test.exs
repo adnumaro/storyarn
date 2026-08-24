@@ -8,8 +8,8 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerIntegrationTest do
   alias Storyarn.Imports
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.ExpireProjectImportsWorker
 
   test "reports and drains an attempt backlog larger than one bounded batch" do

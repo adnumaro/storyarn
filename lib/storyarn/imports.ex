@@ -33,11 +33,11 @@ defmodule Storyarn.Imports do
   alias Storyarn.Imports.Shared
   alias Storyarn.Imports.SourceBundle
   alias Storyarn.Imports.Telemetry
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400

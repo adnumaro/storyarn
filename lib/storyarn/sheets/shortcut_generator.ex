@@ -3,8 +3,8 @@ defmodule Storyarn.Sheets.ShortcutGenerator do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
   alias Storyarn.Sheets.Naming
   alias Storyarn.Sheets.ReferenceTracker
   alias Storyarn.Sheets.Sheet

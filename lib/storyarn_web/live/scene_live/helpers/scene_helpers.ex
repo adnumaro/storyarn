@@ -8,8 +8,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.PrivateMedia
 
   @element_icons %{

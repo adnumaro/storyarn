@@ -10,8 +10,8 @@ defmodule Storyarn.Localization.TranslationRunCrud do
   alias Storyarn.Localization.TextCrud
   alias Storyarn.Localization.TranslationJobQueue
   alias Storyarn.Localization.TranslationRun
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @active_statuses ~w(queued running)
 

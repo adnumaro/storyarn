@@ -4,13 +4,13 @@ defmodule Storyarn.Scenes.AmbientFlowCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.FlowRecord
   alias Storyarn.Scenes.ProjectReferenceIntegrity
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.VariableReferenceTracker
-  alias Storyarn.Shared.MapUtils
 
   @doc """
   Lists ambient flows for a scene, ordered by position then id.

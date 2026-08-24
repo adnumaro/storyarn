@@ -8,9 +8,9 @@ defmodule Storyarn.Sheets.SheetQueries do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
   alias Storyarn.Sheets.FormulaEngine

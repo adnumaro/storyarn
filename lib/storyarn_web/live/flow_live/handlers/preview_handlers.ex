@@ -10,7 +10,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.PreviewHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
-  alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.HtmlSanitizer
 
   # ============================================================================
   # Public handlers

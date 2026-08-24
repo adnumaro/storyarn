@@ -12,10 +12,10 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
-  alias Storyarn.Shared.TimeHelpers
 
   @statuses ~w(uploading queued running retrying completed failed)
   @active_statuses ~w(uploading queued running retrying)

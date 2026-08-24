@@ -81,7 +81,7 @@ defmodule Storyarn.Scenes.VariableCatalogTest do
     scene = scene_fixture(project)
     pin = pin_fixture(scene, %{"shortcut" => "retired-pin"})
 
-    deleted_at = Storyarn.Shared.TimeHelpers.now()
+    deleted_at = Storyarn.Platform.Shared.TimeHelpers.now()
     Repo.update!(Ecto.Changeset.change(sheet, deleted_at: deleted_at))
     Repo.update!(Ecto.Changeset.change(scene, deleted_at: deleted_at))
 

@@ -13,7 +13,7 @@ defmodule Storyarn.Versioning.SnapshotCleanupIntent do
 
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
 
   @statuses ~w(pending processing retrying completed terminal)

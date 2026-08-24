@@ -5,11 +5,11 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
 
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Billing
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @spec now() :: DateTime.t()
   def now, do: TimeHelpers.now()

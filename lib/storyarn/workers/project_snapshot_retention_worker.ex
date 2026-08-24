@@ -14,7 +14,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     max_attempts: 5,
     unique: [fields: [:worker, :args], period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Versioning
 
   @batch_size 50

@@ -12,8 +12,8 @@ defmodule Storyarn.Flows.FlowTrash do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.LocalizationProjection, as: Localization
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @spec list_deleted(pos_integer()) :: [Flow.t()]
   def list_deleted(project_id) do

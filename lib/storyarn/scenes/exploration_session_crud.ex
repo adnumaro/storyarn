@@ -5,9 +5,9 @@ defmodule Storyarn.Scenes.ExplorationSessionCrud do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.ExplorationSession
-  alias Storyarn.Shared.TimeHelpers
 
   @doc """
   Gets an existing exploration session for a user and project.

@@ -21,11 +21,11 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.ProjectSnapshot

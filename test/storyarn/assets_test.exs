@@ -22,8 +22,8 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Billing
   alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 

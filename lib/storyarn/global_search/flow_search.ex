@@ -6,8 +6,8 @@ defmodule Storyarn.GlobalSearch.FlowSearch do
   alias Storyarn.GlobalSearch.Persistence.FlowConnectionRecord
   alias Storyarn.GlobalSearch.Persistence.FlowNodeRecord
   alias Storyarn.GlobalSearch.Persistence.FlowRecord
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @default_limit 50
   @max_deep_limit 100

@@ -5,7 +5,7 @@ defmodule StoryarnWeb.UserLive.AuthRedirectTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
 
   describe "public auth pages" do
     setup :register_and_log_in_user

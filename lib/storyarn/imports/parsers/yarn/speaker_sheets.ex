@@ -2,7 +2,7 @@ defmodule Storyarn.Imports.Parsers.Yarn.SpeakerSheets do
   @moduledoc false
 
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
-  alias Storyarn.Shared.NameNormalizer
+  alias Storyarn.Projects.NameNormalizer
 
   @description "Imported Yarn Spinner character"
   @color "#8b5cf6"

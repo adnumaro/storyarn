@@ -335,7 +335,7 @@ defmodule Mix.Tasks.Convention.Check do
 
   defp fix_suggestion(:raw_without_sanitizer), do: "Wrap with HtmlSanitizer.sanitize_html/1 before passing to raw()"
 
-  defp fix_suggestion(:datetime_utc_now), do: "alias Storyarn.Shared.TimeHelpers, then use TimeHelpers.now()"
+  defp fix_suggestion(:datetime_utc_now), do: "alias Storyarn.Platform.Shared.TimeHelpers, then use TimeHelpers.now()"
 
   defp fix_suggestion(:facade_bypass),
     do: "Use the context facade (e.g., Sheets.function() not Sheets.SheetCrud.function())"

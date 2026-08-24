@@ -6,10 +6,10 @@ defmodule Storyarn.Projects.LocalizationSettingsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   test "ensure_source_language reactivates an archived workspace locale" do
     user = user_fixture()

@@ -15,8 +15,8 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Flows.WordCount
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   # This is a write-path certification, not a hash of the derivative rows.
   # Increment it whenever the canonical derivative contract changes. A nil or

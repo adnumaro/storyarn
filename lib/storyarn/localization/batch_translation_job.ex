@@ -6,7 +6,7 @@ defmodule Storyarn.Localization.BatchTranslationJob do
   alias Storyarn.Localization.NotificationDelivery
   alias Storyarn.Localization.Providers.DeepL
   alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   require Logger
 

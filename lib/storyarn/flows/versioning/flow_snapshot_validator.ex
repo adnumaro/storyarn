@@ -9,7 +9,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   alias Storyarn.Flows.Versioning.LocalizationCodec
   alias Storyarn.Flows.Versioning.PlaceholderValidator
   alias Storyarn.Flows.Versioning.SourceContract
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
 
   @flow_fields ~w(
     original_id name shortcut description is_main settings scene_id nodes connections

@@ -22,8 +22,8 @@ defmodule Storyarn.AI.IntegrationCrud do
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.Provider
   alias Storyarn.AI.Providers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @unique_index_name "ai_integrations_user_provider_active_index"
 

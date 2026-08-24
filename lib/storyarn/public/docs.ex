@@ -11,8 +11,8 @@ defmodule Storyarn.Public.Docs do
   gating uses global flag state, never a per-user actor.
   """
 
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Public.Docs.Guide
-  alias Storyarn.FeatureFlags
 
   def list_guides(locale \\ "en") do
     locale |> Guide.list_guides() |> Enum.filter(&visible?/1)

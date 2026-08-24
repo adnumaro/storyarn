@@ -1,11 +1,11 @@
 defmodule Storyarn.RateLimiterTest do
   use ExUnit.Case, async: false
 
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   # Rate limiter is disabled in test config. Tests that verify blocking
   # temporarily enable it, then restore the original setting.
-  alias Storyarn.RateLimiter.ETSBackend
-  alias Storyarn.RateLimiter.RedisBackend
+  alias Storyarn.Platform.RateLimiter.ETSBackend
+  alias Storyarn.Platform.RateLimiter.RedisBackend
 
   defp with_rate_limiting_enabled(fun) do
     original = Application.get_env(:storyarn, RateLimiter)

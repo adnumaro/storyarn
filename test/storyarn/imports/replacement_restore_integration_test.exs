@@ -12,6 +12,7 @@ defmodule Storyarn.Imports.ReplacementRestoreIntegrationTest do
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.Imports
   alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -19,7 +20,6 @@ defmodule Storyarn.Imports.ReplacementRestoreIntegrationTest do
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneLayer
   alias Storyarn.Scenes.ScenePin
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning

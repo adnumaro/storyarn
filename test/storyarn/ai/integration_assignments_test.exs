@@ -9,8 +9,8 @@ defmodule Storyarn.AI.IntegrationAssignmentsTest do
   alias Storyarn.AI.AuditEntry
   alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.IntegrationWorkspaceAssignment
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @stub StoryarnTest.AI.OpenAI
 

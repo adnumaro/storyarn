@@ -8,9 +8,9 @@ defmodule Storyarn.Scenes.SheetCatalog do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.SheetRecord
-  alias Storyarn.Shared.SearchHelpers
 
   @default_search_limit 20
 

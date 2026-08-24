@@ -16,9 +16,9 @@ defmodule Storyarn.Flows.EditorCatalogTest do
   alias Storyarn.Flows.Persistence.BlockRecord
   alias Storyarn.Flows.Persistence.SceneRecord
   alias Storyarn.Flows.Persistence.SheetRecord
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.PrivateMedia

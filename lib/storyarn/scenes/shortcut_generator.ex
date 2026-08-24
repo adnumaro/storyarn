@@ -3,12 +3,12 @@ defmodule Storyarn.Scenes.ShortcutGenerator do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.TreeOperations
-  alias Storyarn.Shared.MapUtils
 
   def prepare_create(attrs, project_id, exclude_id) do
     if Map.has_key?(attrs, "shortcut") or attrs["name"] in [nil, ""] do

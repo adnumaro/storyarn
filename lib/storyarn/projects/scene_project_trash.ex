@@ -5,10 +5,10 @@ defmodule Storyarn.Projects.SceneProjectTrash do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   def delete_subtree_in_transaction(%SceneRecord{id: scene_id}) do
     with project_id when is_integer(project_id) <- fetch_project_id(scene_id),

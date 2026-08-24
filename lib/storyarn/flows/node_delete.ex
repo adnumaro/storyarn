@@ -250,7 +250,7 @@ defmodule Storyarn.Flows.NodeDelete do
   defp unwrap_restore_result({:error, reason}), do: {:error, reason}
 
   defp clear_orphaned_jumps(flow_id, hub_id) when is_binary(hub_id) and hub_id != "" do
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = Storyarn.Platform.Shared.TimeHelpers.now()
 
     matching_jumps =
       from(n in FlowNode,

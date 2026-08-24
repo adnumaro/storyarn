@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
 
   alias Storyarn.Assets
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowEntityTrashReferences
   alias Storyarn.Projects.FlowLocalizationProjection
   alias Storyarn.Projects.FlowReferenceIntegrity
@@ -14,7 +15,6 @@ defmodule Storyarn.Projects.FlowProjectTrash do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @restore_sources_locked_event [
     :storyarn,

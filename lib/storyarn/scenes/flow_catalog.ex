@@ -8,11 +8,11 @@ defmodule Storyarn.Scenes.FlowCatalog do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.FlowConnectionRecord
   alias Storyarn.Scenes.Persistence.FlowNodeRecord
   alias Storyarn.Scenes.Persistence.FlowRecord
-  alias Storyarn.Shared.SearchHelpers
 
   @default_search_limit 25
 

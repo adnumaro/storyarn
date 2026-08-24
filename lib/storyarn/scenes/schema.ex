@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Schema do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 

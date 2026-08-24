@@ -1,10 +1,10 @@
 defmodule Storyarn.Public.Docs.GuideBuilder do
   @moduledoc false
 
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Public.Publication.HtmlLinkLocalizer
   alias Storyarn.Public.Publication.Locales
-  alias Storyarn.Shared.HtmlUtils
 
   @known_feature_flags FeatureFlags.known_flags()
 

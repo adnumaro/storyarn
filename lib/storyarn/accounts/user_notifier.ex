@@ -4,8 +4,8 @@ defmodule Storyarn.Accounts.UserNotifier do
   """
   import Swoosh.Email
 
-  alias Storyarn.Emails.Templates
-  alias Storyarn.Mailer
+  alias Storyarn.Platform.Emails.Templates
+  alias Storyarn.Platform.Mailer
 
   require Logger
 

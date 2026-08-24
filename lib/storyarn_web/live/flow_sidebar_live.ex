@@ -13,7 +13,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   alias Storyarn.Collaboration
   alias Storyarn.Flows
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true

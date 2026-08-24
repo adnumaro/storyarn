@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Sheets
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}

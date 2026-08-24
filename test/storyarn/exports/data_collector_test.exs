@@ -13,8 +13,8 @@ defmodule Storyarn.Exports.DataCollectorTest do
   alias Storyarn.Exports.DataCollector
   alias Storyarn.Exports.ExportOptions
   alias Storyarn.Localization
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   # ===========================================================================
   # Setup

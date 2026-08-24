@@ -3,12 +3,12 @@ defmodule Storyarn.Scenes.AnnotationCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
   alias Storyarn.Scenes.PositionUtils
   alias Storyarn.Scenes.SceneAnnotation
   alias Storyarn.Scenes.SceneCrud
   alias Storyarn.Scenes.SceneReferenceIntegrity
-  alias Storyarn.Shared.MapUtils
 
   def list_annotations(scene_id) do
     Repo.all(from(a in SceneAnnotation, where: a.scene_id == ^scene_id, order_by: [asc: a.position]))

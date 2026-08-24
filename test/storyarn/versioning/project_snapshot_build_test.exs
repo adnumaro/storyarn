@@ -22,9 +22,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning

@@ -15,6 +15,7 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Telemetry
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
@@ -25,7 +26,6 @@ defmodule Storyarn.Imports.Replacement do
   alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Projects.SheetProjectTrash
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder

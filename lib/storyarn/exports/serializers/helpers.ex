@@ -126,9 +126,9 @@ defmodule Storyarn.Exports.Serializers.Helpers do
   @doc """
   Strips HTML tags from text, preserving plain text content.
 
-  Delegates to `Storyarn.Shared.HtmlUtils.strip_html/1`.
+  Delegates to `Storyarn.Platform.Shared.HtmlUtils.strip_html/1`.
   """
-  defdelegate strip_html(html), to: Storyarn.Shared.HtmlUtils
+  defdelegate strip_html(html), to: Storyarn.Platform.Shared.HtmlUtils
 
   # ---------------------------------------------------------------------------
   # Identifier sanitization

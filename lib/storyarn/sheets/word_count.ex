@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.WordCount do
   which Sheet fields count is owned here by Sheets.
   """
 
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
 
   @spec for_block_value(map() | nil) :: non_neg_integer()
   def for_block_value(nil), do: 0

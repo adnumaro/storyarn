@@ -6,8 +6,8 @@ defmodule Storyarn.Accounts.Passwords do
   alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
+  alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Repo
-  alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
   alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
 

@@ -11,8 +11,8 @@ defmodule Storyarn.Onboarding do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Onboarding.TutorialProgress
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   # Version 1 completions predate the explicit opt-out checkbox. Keeping the
   # current guides on version 2 makes those legacy finishes pending again while

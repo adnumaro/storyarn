@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.SceneImportPersistenceTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowImportPersistence
   alias Storyarn.Projects.Persistence.SceneAnnotationRecord
   alias Storyarn.Projects.Persistence.SceneConnectionRecord
@@ -15,7 +16,6 @@ defmodule Storyarn.Projects.SceneImportPersistenceTest do
   alias Storyarn.Projects.SceneImportPersistence
   alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   setup do
     project = project_fixture(user_fixture())

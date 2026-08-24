@@ -27,7 +27,7 @@ defmodule Storyarn.Flows.StructuralAnalysis do
   alias Storyarn.Flows.Severity
   alias Storyarn.Flows.StructuralAnalysis.Graph
   alias Storyarn.Flows.StructuralAnalysis.Topology
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
 
   defmodule Analysis do
     @moduledoc false

@@ -86,7 +86,7 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplate do
     changeset
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1_000)
-    |> Storyarn.Shared.Validations.validate_slug()
+    |> Storyarn.Projects.Validations.validate_slug()
     |> validate_inclusion(:visibility, @visibilities)
     |> validate_inclusion(:status, @statuses)
     |> foreign_key_constraint(:owner_id)

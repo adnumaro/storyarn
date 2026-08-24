@@ -17,8 +17,8 @@ defmodule Storyarn.AI.AllowanceTest do
   alias Storyarn.AI.ProviderBudgetReservation
   alias Storyarn.AI.RouteOption
   alias Storyarn.AI.Settlement
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
   alias StoryarnTest.AI.ContractTask
 

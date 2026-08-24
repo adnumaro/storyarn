@@ -16,8 +16,8 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.Result
   alias Storyarn.AI.UsageEvent
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.AIExecutionWorker
   alias Storyarn.Workers.ExpireAIResultsWorker
   alias Storyarn.Workers.ReconcileAIReservationsWorker

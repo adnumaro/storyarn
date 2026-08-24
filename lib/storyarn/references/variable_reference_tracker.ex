@@ -27,6 +27,7 @@ defmodule Storyarn.References.VariableReferenceTracker do
   import Ecto.Query
 
   alias Storyarn.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.References.FlowCondition
   alias Storyarn.References.FlowNodeRepair
@@ -45,7 +46,6 @@ defmodule Storyarn.References.VariableReferenceTracker do
   alias Storyarn.References.VariableProjectionQueries
   alias Storyarn.References.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   require VariableNamespaceResolver
 

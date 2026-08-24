@@ -16,8 +16,8 @@ defmodule Storyarn.Flows.EditorCatalog do
   alias Storyarn.Flows.Persistence.GalleryImageRecord
   alias Storyarn.Flows.Persistence.SceneRecord
   alias Storyarn.Flows.Persistence.SheetRecord
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @mention_limit 20
   @mention_sheet_candidate_limit 20

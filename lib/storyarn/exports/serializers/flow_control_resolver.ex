@@ -8,7 +8,7 @@ defmodule Storyarn.Exports.Serializers.FlowControlResolver do
   """
 
   alias Storyarn.Exports.Serializers.Helpers
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
 
   @doc """
   Builds a lookup from flow shortcut to flow id.

@@ -29,7 +29,7 @@ defmodule Storyarn.Flows.EntityTrashRef do
 
   import Ecto.Changeset
 
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @source_types ~w(flow_node)
 

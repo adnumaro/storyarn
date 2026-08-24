@@ -17,7 +17,7 @@ defmodule Storyarn.AI.ContextExecutionTest do
   alias Storyarn.AI.RouteOption
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.UsageEvent
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
   alias Storyarn.Sheets.AI.ContextContract
   alias Storyarn.Sheets.Block

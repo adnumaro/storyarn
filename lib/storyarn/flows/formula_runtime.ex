@@ -9,7 +9,7 @@ defmodule Storyarn.Flows.FormulaRuntime do
   """
 
   alias Storyarn.Flows.FormulaEngine
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
 
   @spec recompute_formulas(map()) :: map()
   def recompute_formulas(variables) when map_size(variables) == 0, do: variables

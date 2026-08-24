@@ -36,8 +36,8 @@ defmodule Storyarn.Flows.EntityTrashRefs do
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @type target_type ::
           :sheet | :asset | :flow | :flow_node | :sheet_avatar

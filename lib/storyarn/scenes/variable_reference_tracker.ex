@@ -8,6 +8,7 @@ defmodule Storyarn.Scenes.VariableReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Condition
   alias Storyarn.Scenes.Persistence.BlockRecord
@@ -16,7 +17,6 @@ defmodule Storyarn.Scenes.VariableReferenceTracker do
   alias Storyarn.Scenes.Persistence.TableRowRecord
   alias Storyarn.Scenes.Persistence.VariableReferenceRecord
   alias Storyarn.Scenes.VariableNamespaceResolver
-  alias Storyarn.Shared.TimeHelpers
 
   require VariableNamespaceResolver
 

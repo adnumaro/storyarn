@@ -8,7 +8,7 @@ defmodule Storyarn.Sheets.HealthChecker do
   the snapshot with reference and project-variable information before checking.
   """
 
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.FormulaEngine
 

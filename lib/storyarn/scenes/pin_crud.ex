@@ -3,6 +3,7 @@ defmodule Storyarn.Scenes.PinCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
   alias Storyarn.Scenes.EntityReferenceTracker
   alias Storyarn.Scenes.PositionUtils
@@ -11,7 +12,6 @@ defmodule Storyarn.Scenes.PinCrud do
   alias Storyarn.Scenes.SceneReferenceIntegrity
   alias Storyarn.Scenes.ShortcutGenerator
   alias Storyarn.Scenes.VariableReferenceTracker
-  alias Storyarn.Shared.MapUtils
 
   @doc """
   Lists pins for a map, with optional layer_id filter.

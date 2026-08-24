@@ -18,8 +18,8 @@ defmodule Storyarn.Notifications do
   alias Storyarn.Notifications.Notification
   alias Storyarn.Notifications.Persistence.UserRecord, as: User
   alias Storyarn.Notifications.ProjectAccess
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @default_limit 20
   @max_limit 100

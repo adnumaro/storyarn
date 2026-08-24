@@ -14,9 +14,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Shared
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias StoryarnWeb.ExportImportLive.Index
 
   defp get_settings_layout(view) do

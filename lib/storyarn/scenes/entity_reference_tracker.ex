@@ -8,11 +8,11 @@ defmodule Storyarn.Scenes.EntityReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.EntityReferenceRecord
   alias Storyarn.Scenes.ProjectReferenceIntegrity
   alias Storyarn.Scenes.VariableNamespaceResolver
-  alias Storyarn.Shared.TimeHelpers
 
   def update_pin_references(pin, opts \\ [])
 

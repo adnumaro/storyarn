@@ -10,8 +10,8 @@ defmodule Storyarn.Flows.ExitTargetScenes do
   import Ecto.Query
 
   alias Storyarn.Flows.Persistence.SceneRecord
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @default_search_limit 20
 

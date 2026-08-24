@@ -22,11 +22,11 @@ defmodule Storyarn.Projects.FlowStructuralAnalysis do
   - jump→hub virtual edges participate in reachability and isolation.
   """
 
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Projects.FlowHealthChecker
   alias Storyarn.Projects.FlowNodeConnectionRules
   alias Storyarn.Projects.FlowStructuralAnalysis.Graph
   alias Storyarn.Projects.FlowStructuralAnalysis.Topology
-  alias Storyarn.Shared.StringUtils
 
   defmodule Analysis do
     @moduledoc false

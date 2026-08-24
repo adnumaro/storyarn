@@ -20,8 +20,8 @@ defmodule Storyarn.Exports.Serializers.Ink do
   alias Storyarn.Exports.Serializers.FlowControlResolver
   alias Storyarn.Exports.Serializers.GraphTraversal
   alias Storyarn.Exports.Serializers.Helpers
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
-  alias Storyarn.Shared.StringUtils
 
   @impl true
   def content_type, do: "text/plain"

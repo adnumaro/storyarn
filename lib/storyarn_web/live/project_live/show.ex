@@ -10,7 +10,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
     only: [fail_overview_load: 1, fail_issues_load: 1]
 
   alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers

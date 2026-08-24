@@ -31,7 +31,7 @@ boundaries = %{
     # not turn their consumers into part of Platform.
     "lib/storyarn/billing.ex",
     "lib/storyarn/billing/",
-    "lib/storyarn/emails/",
+    "lib/storyarn/platform/emails/",
     "lib/storyarn/notifications.ex",
     "lib/storyarn/notifications/"
   ],
@@ -60,10 +60,10 @@ boundaries = %{
     "lib/storyarn/assets/",
     "lib/storyarn/references.ex",
     "lib/storyarn/references/",
-    "lib/storyarn/shared/invitation_notifier.ex",
-    "lib/storyarn/shared/invitation_operations.ex",
-    "lib/storyarn/shared/invitation_schema.ex",
-    "lib/storyarn/shared/membership_operations.ex",
+    "lib/storyarn/projects/invitation_notifier.ex",
+    "lib/storyarn/projects/invitation_operations.ex",
+    "lib/storyarn/projects/invitation_schema.ex",
+    "lib/storyarn/projects/membership_operations.ex",
     "lib/storyarn/versioning.ex",
     "lib/storyarn/versioning/",
     "lib/storyarn/exports.ex",
@@ -73,9 +73,9 @@ boundaries = %{
     "lib/storyarn/project_templates.ex",
     "lib/storyarn/project_templates/",
     "lib/storyarn/workers/trash_retention_worker.ex",
-    "lib/storyarn/shared/name_normalizer.ex",
-    "lib/storyarn/shared/validations.ex",
-    "lib/storyarn/shared/word_count.ex",
+    "lib/storyarn/projects/name_normalizer.ex",
+    "lib/storyarn/projects/validations.ex",
+    "lib/storyarn/projects/word_count.ex",
     "lib/storyarn/workers/build_project_snapshot_worker.ex",
     "lib/storyarn/workers/cleanup_project_snapshot_worker.ex",
     "lib/storyarn/workers/delete_project_template_artifacts_worker.ex",
@@ -248,11 +248,11 @@ boundaries = %{
     "lib/storyarn/command_palette/operation.ex",
     "lib/storyarn/command_palette/persistence/user_record.ex",
     "lib/storyarn/command_palette/registry.ex",
-    "lib/storyarn/dashboards/cache.ex",
+    "lib/storyarn/platform/dashboards/cache.ex",
     "lib/storyarn/public/docs.ex",
     "lib/storyarn/public/docs/guide.ex",
     "lib/storyarn/public/docs/guide_builder.ex",
-    "lib/storyarn/feature_flags.ex",
+    "lib/storyarn/platform/feature_flags.ex",
     "lib/storyarn/gettext.ex",
     "lib/storyarn/global_search.ex",
     "lib/storyarn/global_search/advanced_search.ex",
@@ -276,37 +276,37 @@ boundaries = %{
     "lib/storyarn/global_search/sheet_search.ex",
     "lib/storyarn/global_search/variable_query.ex",
     "lib/storyarn/global_search/variable_search.ex",
-    "lib/storyarn/mailer.ex",
+    "lib/storyarn/platform/mailer.ex",
     "lib/storyarn/onboarding.ex",
     "lib/storyarn/onboarding/persistence/user_record.ex",
     "lib/storyarn/onboarding/tutorial_progress.ex",
     "lib/storyarn/public/publication/html_link_localizer.ex",
     "lib/storyarn/public/publication/locales.ex",
     "lib/storyarn/public/publication/path_localizer.ex",
-    "lib/storyarn/rate_limiter.ex",
-    "lib/storyarn/rate_limiter/",
-    "lib/storyarn/release.ex",
+    "lib/storyarn/platform/rate_limiter.ex",
+    "lib/storyarn/platform/rate_limiter/",
+    "lib/storyarn/platform/release.ex",
     "lib/storyarn/repo.ex",
-    "lib/storyarn/shared/canonical_json.ex",
-    "lib/storyarn/shared/color_utils.ex",
-    "lib/storyarn/shared/encrypted_binary.ex",
+    "lib/storyarn/platform/shared/canonical_json.ex",
+    "lib/storyarn/platform/shared/color_utils.ex",
+    "lib/storyarn/platform/shared/encrypted_binary.ex",
     "lib/storyarn/shared/formula_engine.ex",
     "lib/storyarn/shared/formula_runtime.ex",
     "lib/storyarn/shared/hierarchical_schema.ex",
-    "lib/storyarn/shared/hierarchy_search.ex",
-    "lib/storyarn/shared/html_sanitizer.ex",
-    "lib/storyarn/shared/html_utils.ex",
-    "lib/storyarn/shared/import_helpers.ex",
-    "lib/storyarn/shared/map_utils.ex",
-    "lib/storyarn/shared/search_helpers.ex",
-    "lib/storyarn/shared/severity.ex",
+    "lib/storyarn/platform/shared/hierarchy_search.ex",
+    "lib/storyarn/platform/shared/html_sanitizer.ex",
+    "lib/storyarn/platform/shared/html_utils.ex",
+    "lib/storyarn/platform/shared/import_helpers.ex",
+    "lib/storyarn/platform/shared/map_utils.ex",
+    "lib/storyarn/platform/shared/search_helpers.ex",
+    "lib/storyarn/platform/shared/severity.ex",
     "lib/storyarn/shared/shortcut_helpers.ex",
-    "lib/storyarn/shared/string_utils.ex",
-    "lib/storyarn/shared/time_helpers.ex",
-    "lib/storyarn/shared/token_generator.ex",
+    "lib/storyarn/platform/shared/string_utils.ex",
+    "lib/storyarn/platform/shared/time_helpers.ex",
+    "lib/storyarn/platform/shared/token_generator.ex",
     "lib/storyarn/shared/tree_operations.ex",
-    "lib/storyarn/urls.ex",
-    "lib/storyarn/vault.ex",
+    "lib/storyarn/platform/urls.ex",
+    "lib/storyarn/platform/vault.ex",
     "lib/storyarn/workers/"
   ],
 
@@ -432,20 +432,20 @@ forbidden_dependencies =
     "lib/storyarn/assets/storage.ex",
     "lib/storyarn/assets/storage_hash.ex",
     "lib/storyarn/assets/storage_key_lock.ex",
-    "lib/storyarn/dashboards/cache.ex",
+    "lib/storyarn/platform/dashboards/cache.ex",
     "lib/storyarn/collaboration.ex",
-    "lib/storyarn/feature_flags.ex",
-    "lib/storyarn/rate_limiter.ex",
-    "lib/storyarn/urls.ex",
-    "lib/storyarn/shared/color_utils.ex",
-    "lib/storyarn/shared/encrypted_binary.ex",
-    "lib/storyarn/shared/html_sanitizer.ex",
-    "lib/storyarn/shared/html_utils.ex",
-    "lib/storyarn/shared/map_utils.ex",
-    "lib/storyarn/shared/search_helpers.ex",
-    "lib/storyarn/shared/string_utils.ex",
-    "lib/storyarn/shared/time_helpers.ex",
-    "lib/storyarn/shared/token_generator.ex"
+    "lib/storyarn/platform/feature_flags.ex",
+    "lib/storyarn/platform/rate_limiter.ex",
+    "lib/storyarn/platform/urls.ex",
+    "lib/storyarn/platform/shared/color_utils.ex",
+    "lib/storyarn/platform/shared/encrypted_binary.ex",
+    "lib/storyarn/platform/shared/html_sanitizer.ex",
+    "lib/storyarn/platform/shared/html_utils.ex",
+    "lib/storyarn/platform/shared/map_utils.ex",
+    "lib/storyarn/platform/shared/search_helpers.ex",
+    "lib/storyarn/platform/shared/string_utils.ex",
+    "lib/storyarn/platform/shared/time_helpers.ex",
+    "lib/storyarn/platform/shared/token_generator.ex"
   ],
 
   # Phoenix Web adapters need VerifiedRoutes, while domain modules must remain
@@ -589,19 +589,19 @@ forbidden_dependencies =
       reason: "Global variable search reads usage through the public References facade"
     },
     %{
-      source: "lib/storyarn/release.ex",
+      source: "lib/storyarn/platform/release.ex",
       target: "lib/storyarn/project_templates.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on templates through the public ProjectTemplates facade"
     },
     %{
-      source: "lib/storyarn/release.ex",
+      source: "lib/storyarn/platform/release.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on projects through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/release.ex",
+      source: "lib/storyarn/platform/release.ex",
       target: "lib/storyarn/versioning.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on snapshots through the public Versioning facade"
@@ -687,7 +687,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/imports/plan_storage.ex",
-      target: "lib/storyarn/vault.ex",
+      target: "lib/storyarn/platform/vault.ex",
       kinds: ["runtime"],
       reason: "Import plan storage encrypts payloads with the application vault"
     },
@@ -734,25 +734,25 @@ forbidden_dependencies =
       reason: "Project lifecycle enforces plan entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/shared/invitation_notifier.ex",
-      target: "lib/storyarn/emails/templates.ex",
+      source: "lib/storyarn/projects/invitation_notifier.ex",
+      target: "lib/storyarn/platform/emails/templates.ex",
       kinds: ["runtime"],
       reason: "Project invitation email rendering uses the shared transactional email templates"
     },
     %{
-      source: "lib/storyarn/shared/invitation_notifier.ex",
-      target: "lib/storyarn/mailer.ex",
+      source: "lib/storyarn/projects/invitation_notifier.ex",
+      target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
       reason: "Project invitation delivery goes through the application mailer"
     },
     %{
-      source: "lib/storyarn/shared/invitation_operations.ex",
+      source: "lib/storyarn/projects/invitation_operations.ex",
       target: "lib/storyarn/billing.ex",
       kinds: ["runtime"],
       reason: "Project invitations enforce seat entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/shared/invitation_operations.ex",
+      source: "lib/storyarn/projects/invitation_operations.ex",
       target: "lib/storyarn/workers/deliver_invitation_worker.ex",
       kinds: ["runtime"],
       reason: "Project invitations enqueue the durable delivery worker shared with Workspace invitations"
@@ -1141,19 +1141,19 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/accounts/user_notifier.ex",
-      target: "lib/storyarn/emails/templates.ex",
+      target: "lib/storyarn/platform/emails/templates.ex",
       kinds: ["runtime"],
       reason: "Account email rendering uses the shared transactional email templates"
     },
     %{
       source: "lib/storyarn/accounts/user_notifier.ex",
-      target: "lib/storyarn/mailer.ex",
+      target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
       reason: "Account email delivery goes through the application mailer"
     },
     %{
       source: "lib/storyarn_web/live/user_live/login.ex",
-      target: "lib/storyarn/mailer.ex",
+      target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
       reason: "The login page offers the local dev mailbox link by inspecting the configured mailer adapter"
     },
@@ -1177,13 +1177,13 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/workspaces/invitation_notifier.ex",
-      target: "lib/storyarn/emails/templates.ex",
+      target: "lib/storyarn/platform/emails/templates.ex",
       kinds: ["runtime"],
       reason: "Workspace invitation email rendering uses the shared transactional email templates"
     },
     %{
       source: "lib/storyarn/workspaces/invitation_notifier.ex",
-      target: "lib/storyarn/mailer.ex",
+      target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
       reason: "Workspace invitation delivery goes through the application mailer"
     },
@@ -1279,7 +1279,7 @@ forbidden_dependencies =
       reason: "Global search resolves reachable workspaces through the public Workspaces access reads"
     },
     %{
-      source: "lib/storyarn/release.ex",
+      source: "lib/storyarn/platform/release.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
@@ -1425,7 +1425,7 @@ forbidden_dependencies =
       reason: "The Oban adapter delegates batch translation execution to the public Localization facade"
     },
     %{
-      source: "lib/storyarn/urls.ex",
+      source: "lib/storyarn/platform/urls.ex",
       target: "lib/storyarn_web/endpoint.ex",
       kinds: ["runtime"],
       reason: "Technical URL resolution reads the configured Phoenix endpoint without calling Web behavior"

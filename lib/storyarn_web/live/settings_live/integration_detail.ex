@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.SettingsLive.Sudo
   alias StoryarnWeb.UserAuth
 

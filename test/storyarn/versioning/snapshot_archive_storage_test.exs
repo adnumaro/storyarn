@@ -12,8 +12,8 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorageTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot

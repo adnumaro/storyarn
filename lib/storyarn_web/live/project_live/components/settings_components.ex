@@ -13,9 +13,9 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Billing
   alias Storyarn.Projects
+  alias Storyarn.Projects.Validations
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.Validations
   alias Storyarn.Versioning
 
   # ---------------------------------------------------------------------------

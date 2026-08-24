@@ -13,8 +13,8 @@ defmodule Storyarn.Billing.StorageAccountingTest do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotRestore

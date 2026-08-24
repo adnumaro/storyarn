@@ -5,8 +5,8 @@ defmodule Storyarn.Localization.GlossaryCrud do
 
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.ProjectReferenceIntegrity
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   # =============================================================================
   # Queries
@@ -126,7 +126,7 @@ defmodule Storyarn.Localization.GlossaryCrud do
   defp maybe_search(query, ""), do: query
 
   defp maybe_search(query, search) do
-    sanitized = Storyarn.Shared.SearchHelpers.sanitize_like_query(search)
+    sanitized = Storyarn.Platform.Shared.SearchHelpers.sanitize_like_query(search)
     pattern = "%#{sanitized}%"
 
     where(

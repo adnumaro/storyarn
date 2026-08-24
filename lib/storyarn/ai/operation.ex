@@ -9,7 +9,7 @@ defmodule Storyarn.AI.Operation do
   alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.RouteOption
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
 
   @execution_statuses ~w(queued running succeeded failed cancelled unknown)
   @dispositions ~w(accepted dismissed abandoned)

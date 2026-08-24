@@ -9,8 +9,8 @@ defmodule Storyarn.GlobalSearch.SceneSearch do
   alias Storyarn.GlobalSearch.Persistence.ScenePinRecord
   alias Storyarn.GlobalSearch.Persistence.SceneRecord
   alias Storyarn.GlobalSearch.Persistence.SceneZoneRecord
+  alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.SearchHelpers
 
   @default_limit 20
   @max_deep_limit 50

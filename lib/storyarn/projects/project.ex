@@ -121,7 +121,7 @@ defmodule Storyarn.Projects.Project do
     |> unique_constraint([:workspace_id, :slug])
   end
 
-  defp validate_slug(changeset), do: Storyarn.Shared.Validations.validate_slug(changeset)
+  defp validate_slug(changeset), do: Storyarn.Projects.Validations.validate_slug(changeset)
 
   @doc """
   Changeset for validating the new-project form before the slug is generated.

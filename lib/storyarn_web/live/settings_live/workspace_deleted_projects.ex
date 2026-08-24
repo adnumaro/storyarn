@@ -7,8 +7,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
   """
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
 
   @impl true

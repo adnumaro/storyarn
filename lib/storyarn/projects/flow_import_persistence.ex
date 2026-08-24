@@ -3,6 +3,8 @@ defmodule Storyarn.Projects.FlowImportPersistence do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowHubColors
   alias Storyarn.Projects.FlowWordCount, as: WordCount
   alias Storyarn.Projects.Persistence.FlowConnectionRecord
@@ -10,8 +12,6 @@ defmodule Storyarn.Projects.FlowImportPersistence do
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.SequenceConfigRecord
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Shared.TimeHelpers
 
   def detect_shortcut_conflicts(_project_id, []), do: []
 

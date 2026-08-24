@@ -9,11 +9,11 @@ defmodule Storyarn.Exports.ArtifactValidatorTest do
 
   alias Storyarn.Exports.ArtifactValidator
   alias Storyarn.Exports.ExportOptions
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
 
   setup do

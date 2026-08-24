@@ -7,8 +7,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.GalleryHandlersTest do
   import Storyarn.SheetsFixtures
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
 

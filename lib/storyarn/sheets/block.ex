@@ -46,7 +46,7 @@ defmodule Storyarn.Sheets.Block do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Sheets.Naming
   alias Storyarn.Sheets.Sheet
 

@@ -13,6 +13,8 @@ defmodule Storyarn.Scenes.AssetCommands do
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Events
   alias Storyarn.Scenes.ImageProcessor
@@ -24,8 +26,6 @@ defmodule Storyarn.Scenes.AssetCommands do
   alias Storyarn.Scenes.Persistence.WorkspaceRecord
   alias Storyarn.Scenes.Persistence.WorkspaceSnapshotImportRecord
   alias Storyarn.Scenes.Versioning.AssetStorageCompensation
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

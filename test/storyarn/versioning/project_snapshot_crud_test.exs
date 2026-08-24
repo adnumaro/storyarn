@@ -15,7 +15,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrudTest do
 
   describe "canonical rollout boundary" do
     test "database rejects a project snapshot with a noncanonical object target", %{project: project} do
-      now = Storyarn.Shared.TimeHelpers.now()
+      now = Storyarn.Platform.Shared.TimeHelpers.now()
 
       noncanonical_changeset =
         %ProjectSnapshot{}

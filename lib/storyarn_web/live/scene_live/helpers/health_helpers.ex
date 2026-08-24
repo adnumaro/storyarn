@@ -12,8 +12,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}

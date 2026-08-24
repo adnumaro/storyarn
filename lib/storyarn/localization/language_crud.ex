@@ -13,8 +13,8 @@ defmodule Storyarn.Localization.LanguageCrud do
   alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.TranslationRunCrud
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Repo
-  alias Storyarn.Shared.MapUtils
 
   defguardp is_positive_id(value) when is_integer(value) and value > 0
 
@@ -242,7 +242,7 @@ defmodule Storyarn.Localization.LanguageCrud do
   defp archive_language!(%ProjectLanguage{} = language) do
     case language
          |> ProjectLanguage.update_changeset(%{
-           "archived_at" => Storyarn.Shared.TimeHelpers.now()
+           "archived_at" => Storyarn.Platform.Shared.TimeHelpers.now()
          })
          |> Repo.update() do
       {:ok, archived} -> archived

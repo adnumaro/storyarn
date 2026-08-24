@@ -11,8 +11,8 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
   import Ecto.Query
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Shared.TokenGenerator
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TokenGenerator
   alias Storyarn.Workspaces.Persistence.UserRecord
   alias Storyarn.Workspaces.Workspace
 

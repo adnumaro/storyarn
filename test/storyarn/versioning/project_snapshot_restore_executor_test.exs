@@ -27,6 +27,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -36,7 +37,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.References.RichTextMentions
   alias Storyarn.References.VariableReference
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning

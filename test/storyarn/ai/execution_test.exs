@@ -16,9 +16,10 @@ defmodule Storyarn.AI.ExecutionTest do
   alias Storyarn.AI.RouteOptions
   alias Storyarn.AI.UsageEvent
   alias Storyarn.AI.WorkspacePolicyAudit
+  alias Storyarn.Platform.RateLimiter
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workspaces
   alias StoryarnTest.AI.ContractTask
   alias StoryarnTest.AI.FakeSettlement
@@ -395,9 +396,9 @@ defmodule Storyarn.AI.ExecutionTest do
   end
 
   test "invalid route attempts do not consume accepted-operation rate allowance", ctx do
-    original = Application.get_env(:storyarn, Storyarn.RateLimiter, [])
-    on_exit(fn -> Application.put_env(:storyarn, Storyarn.RateLimiter, original) end)
-    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+    original = Application.get_env(:storyarn, RateLimiter, [])
+    on_exit(fn -> Application.put_env(:storyarn, RateLimiter, original) end)
+    Application.put_env(:storyarn, RateLimiter, enabled: true)
 
     base = intent!(ctx, "rate-bound")
     route_ref = route_ref!(base)
@@ -412,16 +413,16 @@ defmodule Storyarn.AI.ExecutionTest do
   end
 
   test "idempotent replays do not consume or require accepted-operation rate allowance", ctx do
-    original = Application.get_env(:storyarn, Storyarn.RateLimiter, [])
-    on_exit(fn -> Application.put_env(:storyarn, Storyarn.RateLimiter, original) end)
-    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: false)
+    original = Application.get_env(:storyarn, RateLimiter, [])
+    on_exit(fn -> Application.put_env(:storyarn, RateLimiter, original) end)
+    Application.put_env(:storyarn, RateLimiter, enabled: false)
 
     {operation, execute_intent} = execute_success!(ctx, "replay after rate limit")
 
-    Application.put_env(:storyarn, Storyarn.RateLimiter, enabled: true)
+    Application.put_env(:storyarn, RateLimiter, enabled: true)
 
     for _index <- 1..20 do
-      assert :ok = Storyarn.RateLimiter.check_ai_execution(ctx.user.id, "contract.echo")
+      assert :ok = RateLimiter.check_ai_execution(ctx.user.id, "contract.echo")
     end
 
     assert {:ok, replayed} = AI.execute(execute_intent)

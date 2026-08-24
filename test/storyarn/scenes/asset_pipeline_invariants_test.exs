@@ -8,12 +8,12 @@ defmodule Storyarn.Scenes.AssetPipelineInvariantsTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Platform
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.ImageProcessor
   alias Storyarn.Scenes.Persistence.AssetRecord
   alias Storyarn.Scenes.Persistence.ProjectRecord
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.SnapshotReadSwitchStorage
 
   test "Scene background upload owns dimensions, purpose scheduling and variant linking" do

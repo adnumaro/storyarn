@@ -39,7 +39,7 @@ defmodule Storyarn.Localization.ProviderConfig do
 
   schema "translation_provider_configs" do
     field :provider, :string, default: "deepl"
-    field :api_key_encrypted, Storyarn.Shared.EncryptedBinary
+    field :api_key_encrypted, Storyarn.Platform.Shared.EncryptedBinary
     field :api_endpoint, :string
     field :settings, :map, default: %{}
     field :is_active, :boolean, default: true

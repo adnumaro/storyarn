@@ -3,7 +3,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Ecto.Migration.Runner
-  alias Storyarn.Release
+  alias Storyarn.Platform.Release
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AddAbandonedImportSnapshotCleanupReason
   alias Storyarn.Repo.Migrations.AllowZeroByteRestoreStagingReservations

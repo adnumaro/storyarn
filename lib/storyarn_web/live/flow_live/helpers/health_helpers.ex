@@ -16,7 +16,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.HealthHelpers do
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}

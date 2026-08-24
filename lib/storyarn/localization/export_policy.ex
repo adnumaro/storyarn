@@ -1,7 +1,7 @@
 defmodule Storyarn.Localization.ExportPolicy do
   @moduledoc "Central release/preview eligibility rules for engine localization exports."
 
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Shared.MapUtils
 
   @spec text_eligible?(map(), %{required(:localization_policy) => atom()} | atom()) :: boolean()
   def text_eligible?(text, %{localization_policy: policy}), do: text_eligible?(text, policy)

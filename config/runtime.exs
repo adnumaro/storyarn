@@ -496,9 +496,17 @@ if config_env() == :prod do
 
   %URI{host: s3_host} = URI.parse(s3_endpoint)
 
-  config :storyarn, Storyarn.Mailer,
+  config :storyarn, Storyarn.Platform.Mailer,
     adapter: Swoosh.Adapters.Resend,
     api_key: resend_api_key
+
+  config :storyarn, Storyarn.Platform.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: decoded_cloak_key, iv_length: 12
+      }
+    ]
 
   config :storyarn, Storyarn.Repo,
     ssl: if(System.get_env("DATABASE_SSL") == "false", do: false, else: true),
@@ -507,14 +515,6 @@ if config_env() == :prod do
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
-
-  config :storyarn, Storyarn.Vault,
-    ciphers: [
-      default: {
-        Cloak.Ciphers.AES.GCM,
-        tag: "AES.GCM.V1", key: decoded_cloak_key, iv_length: 12
-      }
-    ]
 
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

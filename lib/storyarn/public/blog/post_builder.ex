@@ -1,9 +1,9 @@
 defmodule Storyarn.Public.Blog.PostBuilder do
   @moduledoc false
 
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Public.Publication.HtmlLinkLocalizer
   alias Storyarn.Public.Publication.Locales
-  alias Storyarn.Shared.HtmlUtils
 
   @words_per_minute 200
   @default_image "/images/landing/storyarn-lab-hero.webp"

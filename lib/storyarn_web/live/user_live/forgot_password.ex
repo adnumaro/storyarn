@@ -6,7 +6,7 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
   import Ecto.Changeset, only: [cast: 3, validate_length: 3, validate_required: 2]
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
 

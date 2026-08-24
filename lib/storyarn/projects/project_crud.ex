@@ -5,16 +5,16 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   alias Storyarn.Assets
   alias Storyarn.Billing
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
-  alias Storyarn.Shared.NameNormalizer
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
 
   @doc """

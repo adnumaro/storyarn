@@ -1,7 +1,7 @@
 defmodule Storyarn.Sheets.Versioning.LocalizationSnapshotValidator do
   @moduledoc false
 
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Sheets.Versioning.LocaleCode
   alias Storyarn.Sheets.Versioning.LocalizationCodec, as: LocalizationSnapshotCodec
   alias Storyarn.Sheets.Versioning.PlaceholderValidator, as: HtmlHandler

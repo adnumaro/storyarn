@@ -7,11 +7,11 @@ defmodule Storyarn.ProjectsFixtures do
   import Ecto.Query
 
   alias Storyarn.AccountsFixtures
+  alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.WorkspacesFixtures
 

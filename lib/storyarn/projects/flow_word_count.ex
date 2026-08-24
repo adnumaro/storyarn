@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.FlowWordCount do
   editor while both contexts still persist the same denormalized SQL field.
   """
 
-  alias Storyarn.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.HtmlUtils
 
   @spec for_node_data(String.t(), map() | nil) :: non_neg_integer()
   def for_node_data(_type, nil), do: 0

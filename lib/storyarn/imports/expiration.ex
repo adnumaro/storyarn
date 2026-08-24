@@ -22,8 +22,8 @@ defmodule Storyarn.Imports.Expiration do
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Replacement
   alias Storyarn.Notifications
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @absolute_plan_retention_seconds 172_800
   @expiration_retry_backoff_seconds 300

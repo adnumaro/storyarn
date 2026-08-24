@@ -109,7 +109,7 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   defp maybe_add_source_locale(codes, _source_language), do: codes
 
   @spec strip_html(String.t() | nil) :: String.t()
-  def strip_html(text), do: Storyarn.Shared.HtmlUtils.strip_html(text)
+  def strip_html(text), do: Storyarn.Platform.Shared.HtmlUtils.strip_html(text)
 
   @spec status_label(String.t()) :: String.t()
   def status_label("pending"), do: dgettext("localization", "Pending")

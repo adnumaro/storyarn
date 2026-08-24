@@ -32,6 +32,7 @@ defmodule Storyarn.Projects.Persistence.FlowNodeRecord do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowHubColors
   alias Storyarn.Projects.FlowRuntimeKey
   alias Storyarn.Projects.Persistence.FlowConnectionRecord
@@ -39,7 +40,6 @@ defmodule Storyarn.Projects.Persistence.FlowNodeRecord do
   alias Storyarn.Projects.Persistence.SequenceConfigRecord
   alias Storyarn.Projects.Persistence.SequenceTrackRecord
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord
-  alias Storyarn.Shared.TimeHelpers
 
   @node_types ~w(annotation dialogue hub condition instruction jump entry exit subflow sequence)
 

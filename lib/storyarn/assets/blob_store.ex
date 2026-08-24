@@ -15,9 +15,9 @@ defmodule Storyarn.Assets.BlobStore do
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   require Logger
 

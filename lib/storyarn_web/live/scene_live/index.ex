@@ -24,9 +24,9 @@ defmodule StoryarnWeb.SceneLive.Index do
     ]
 
   alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers

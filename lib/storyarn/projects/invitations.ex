@@ -1,11 +1,11 @@
 defmodule Storyarn.Projects.Invitations do
   @moduledoc false
 
+  alias Storyarn.Projects.InvitationOperations
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
-  alias Storyarn.Shared.InvitationOperations
 
   @config %{
     invitation_schema: ProjectInvitation,

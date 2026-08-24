@@ -12,8 +12,8 @@ defmodule Storyarn.AI.Results do
   alias Storyarn.AI.Result
   alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @default_expiration_batch_size 100
 

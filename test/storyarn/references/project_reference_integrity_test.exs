@@ -7,9 +7,9 @@ defmodule Storyarn.References.ProjectReferenceIntegrityTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
 
   @max_pg_bigint 9_223_372_036_854_775_807
 

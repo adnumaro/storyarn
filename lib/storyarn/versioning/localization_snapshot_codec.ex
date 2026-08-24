@@ -4,6 +4,8 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.Asset
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
@@ -11,8 +13,6 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Repo
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.TimeHelpers
 
   @manifest_fields ~w(count sha256 target_locales)
   @sha256_regex ~r/\A[0-9a-f]{64}\z/

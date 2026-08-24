@@ -4,8 +4,8 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 

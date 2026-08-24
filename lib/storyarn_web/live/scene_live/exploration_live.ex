@@ -21,9 +21,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       prepare_exploration_data_for_vue: 4
     ]
 
+  alias Storyarn.Platform.Shared.HtmlUtils
+  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.SceneLive.FlowPresenter
 
   # ===========================================================================
