@@ -1,0 +1,56 @@
+lib/storyarn/references/persistence/sheet_avatar_record.ex
+  s_1837e1b58927a7::t_e4f2d47447572b 1-14
+lib/storyarn/references/project_reference_integrity.ex
+  s_1837e1b58927a7::t_e4f2d47447572b 20
+lib/storyarn/references/avatar_integrity.ex
+  s_1837e1b58927a7::t_e4f2d47447572b 17
+  s_1837e1b58927a7::t_948e241f9320aa 18
+lib/storyarn/references.ex
+  s_1837e1b58927a7::t_948e241f9320aa 68
+  s_1837e1b58927a7::t_7e6a95362c01c6 64-67
+lib/storyarn/sheets.ex
+  s_1837e1b58927a7::t_3241dec6ef6db4 1031,1037,1044,1051,1058
+test/storyarn/architecture/scenes_web_facade_boundary_test.exs
+  s_1837e1b58927a7::t_7ba1787238f186 78-81
+  s_1837e1b58927a7::t_1df3f7614ef9af 82
+lib/storyarn/references/entity_reference_projection.ex
+  s_1837e1b58927a7::t_7bc5a215462a41 1-32,34-36,38-39,42-225,227-229,231-239,241-588
+  s_1837e1b58927a7::t_948e241f9320aa 33,37,40-41,226,230,240
+config/architecture_baselines/sheets.json
+  s_1837e1b58927a7::t_c1592fcd71d3fc 3
+lib/storyarn/references/variable_usage.ex
+  s_1837e1b58927a7::t_f239fa0173dbd4 61
+  s_1837e1b58927a7::t_948e241f9320aa 17
+test/storyarn/references/variable_usage_delegation_test.exs
+  s_1837e1b58927a7::t_11e5c959405539 3,5-8,20,46-47,49,59-62,71,73,79,88,98,108,110-113,116,119-133,136-147,155-160
+  s_1837e1b58927a7::t_40939cea0b1acf 161-162
+lib/storyarn/references/persistence/block_record.ex
+  s_1837e1b58927a7::t_0cfa470274b70c 23
+lib/storyarn/references/entity_tracker.ex
+  s_1837e1b58927a7::t_7e6a95362c01c6 33,35,84,88
+  s_1837e1b58927a7::t_948e241f9320aa 23-24,27,38-39
+test/storyarn/sheets/sheet_queries_test.exs
+  s_1837e1b58927a7::t_56c00a6a85f04f 1862,1873,1880
+lib/storyarn/projects/flow_variable_reference_read_model.ex
+  s_1837e1b58927a7::t_d2feb5608acd81 84-171
+lib/storyarn/references/formula_usage_read_model.ex
+  s_1837e1b58927a7::t_1ec3ab437d679f 1-88
+test/storyarn/flows/node_restore_integrity_test.exs
+  s_1837e1b58927a7::t_0cfa470274b70c 71
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "84f7f1466633ac6449bdb5d2b9caec2b8607c1d7",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
