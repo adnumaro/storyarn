@@ -8,9 +8,6 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   import Storyarn.ScenesFixtures, only: [scene_fixture: 1]
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -24,8 +21,11 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   alias Storyarn.Flows.Versioning.LocalizationCodec
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Project
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.EntityReference
 

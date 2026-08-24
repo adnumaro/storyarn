@@ -1,0 +1,1506 @@
+defmodule Storyarn.Projects.Versioning.Builders.AssetHashResolverTest do
+  use Storyarn.DataCase, async: false
+
+  import Ecto.Query
+  import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Versioning.AssetMaterializationCache
+  alias Storyarn.Projects.Versioning.Builders.AssetCopyError
+  alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Repo
+
+  setup do
+    user = user_fixture()
+    project = project_fixture(user)
+    %{user: user, project: project}
+  end
+
+  describe "validate_portable_catalog_entry/4" do
+    test "shares the pure SVG source-key restriction with restore preview" do
+      hash = String.duplicate("a", 64)
+
+      metadata = %{
+        "filename" => "safe.svg",
+        "content_type" => "image/svg+xml",
+        "sanitized_svg" => true,
+        "size" => 123,
+        "project_id" => 42
+      }
+
+      assert {:ok, 42} =
+               AssetHashResolver.validate_portable_catalog_entry(hash, metadata, 42)
+
+      assert {:error, :unsupported_portable_svg} =
+               AssetHashResolver.validate_portable_catalog_entry(
+                 hash,
+                 metadata,
+                 42,
+                 asset_source_keys: %{hash => "trusted/source.svg"}
+               )
+    end
+  end
+
+  describe "pre-materialized assets" do
+    test "preloads and resolves an exact destination without consulting storage", %{
+      project: source_project,
+      user: user
+    } do
+      destination_project = project_fixture(user)
+      hash = String.duplicate("a", 64)
+
+      destination =
+        asset_fixture(destination_project, user, %{
+          filename: "archived.png",
+          content_type: "image/png",
+          size: 123,
+          blob_hash: hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 destination_project.id,
+                 cache
+               )
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(
+                 41,
+                 snapshot,
+                 destination_project.id,
+                 user.id,
+                 pre_materialized_assets: true,
+                 asset_materialization_cache: cache,
+                 asset_mode: :reuse,
+                 asset_source_keys: %{hash => "missing/provider/object.png"}
+               )
+
+      refute source_project.id == destination_project.id
+    end
+
+    test "uses captured identity for exact catalogs whose authored technical fields drift", %{
+      project: project,
+      user: user
+    } do
+      effective_hash = String.duplicate("a", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "../authored-name.png",
+          content_type: "image/png",
+          size: 17,
+          blob_hash: effective_hash
+        })
+
+      snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
+        "asset_catalog_refs" => %{"41" => "asset-000001"},
+        "asset_blob_hashes" => %{"41" => "authored-invalid-hash"},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "../authored-name.png",
+            "content_type" => "text/html",
+            "size" => -99,
+            "persisted_metadata" => %{"authored" => true}
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 cache
+               )
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(
+                 41,
+                 snapshot,
+                 project.id,
+                 user.id,
+                 pre_materialized_assets: true,
+                 asset_materialization_cache: cache,
+                 materialization_mode: :exact
+               )
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            snapshot,
+            project.id,
+            user.id,
+            pre_materialized_assets: true,
+            asset_materialization_cache: cache
+          )
+        end
+
+      assert error.reason == :invalid_blob_hash
+    end
+
+    test "keeps one exact identity across top-level preload and nested builder snapshots", %{
+      project: project,
+      user: user
+    } do
+      effective_hash = String.duplicate("b", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "effective.png",
+          content_type: "image/png",
+          size: 23,
+          blob_hash: effective_hash
+        })
+
+      project_snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
+        "asset_catalog_refs" => %{"41" => "asset-000001"},
+        "asset_blob_hashes" => %{"41" => "authored-invalid-hash"},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "../authored.png",
+            "content_type" => "text/html",
+            "size" => -1,
+            "persisted_metadata" => %{"authored" => true}
+          }
+        }
+      }
+
+      nested_snapshot = %{
+        "asset_blob_hashes" => %{"41" => effective_hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+
+      assert :ok =
+               AssetHashResolver.preload_materialized_assets(
+                 project_snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 cache
+               )
+
+      exact_opts = [
+        pre_materialized_assets: true,
+        asset_materialization_cache: cache,
+        materialization_mode: :exact
+      ]
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(41, project_snapshot, project.id, user.id, exact_opts)
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(41, nested_snapshot, project.id, user.id, exact_opts)
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            nested_snapshot,
+            project.id,
+            user.id,
+            Keyword.delete(exact_opts, :materialization_mode)
+          )
+        end
+
+      assert {:asset_materialization_conflict, %{cached_mode: :copy, requested_mode: :copy}} = error.reason
+    end
+
+    test "exact materialization preserves a verified asset even when its MIME family mismatches the slot", %{
+      project: project,
+      user: user
+    } do
+      hash = String.duplicate("e", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "authored-as-voice.png",
+          content_type: "image/png",
+          size: 123,
+          blob_hash: hash
+        })
+
+      snapshot = %{
+        "asset_restore_contract_version" => AssetHashResolver.exact_restore_contract_version(),
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        }
+      }
+
+      cache = AssetMaterializationCache.new()
+      assert :ok = AssetHashResolver.preload_materialized_assets(snapshot, %{41 => destination.id}, project.id, cache)
+
+      opts = [
+        pre_materialized_assets: true,
+        asset_materialization_cache: cache,
+        expected_content_type_prefix: "audio/",
+        asset_context: :voice_over
+      ]
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(41, snapshot, project.id, user.id, opts)
+        end
+
+      assert error.reason == {:invalid_asset_content_type, :voice_over, 41, "image/png"}
+
+      assert destination.id ==
+               AssetHashResolver.resolve_asset_fk(
+                 41,
+                 snapshot,
+                 project.id,
+                 user.id,
+                 Keyword.put(opts, :materialization_mode, :exact)
+               )
+    end
+
+    test "fails closed when an exact mapping was not preloaded", %{project: project, user: user} do
+      hash = String.duplicate("b", 64)
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => "missing.png",
+            "content_type" => "image/png",
+            "size" => 123
+          }
+        }
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            41,
+            snapshot,
+            project.id,
+            user.id,
+            pre_materialized_assets: true,
+            asset_materialization_cache: AssetMaterializationCache.new()
+          )
+        end
+
+      assert error.asset_id == 41
+      assert error.reason == :missing_pre_materialized_asset_mapping
+    end
+
+    test "rejects conflicting metadata for one historical identity", %{project: project, user: user} do
+      hash = String.duplicate("c", 64)
+
+      destination =
+        asset_fixture(project, user, %{
+          filename: "canonical.png",
+          content_type: "image/png",
+          size: 123,
+          blob_hash: hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{"41" => hash},
+        "asset_metadata" => %{
+          "41" => %{
+            "filename" => destination.filename,
+            "content_type" => destination.content_type,
+            "size" => destination.size
+          }
+        },
+        "sheets" => [
+          %{
+            "snapshot" => %{
+              "asset_blob_hashes" => %{"41" => String.duplicate("d", 64)},
+              "asset_metadata" => %{
+                "41" => %{
+                  "filename" => destination.filename,
+                  "content_type" => destination.content_type,
+                  "size" => destination.size
+                }
+              }
+            }
+          }
+        ]
+      }
+
+      assert {:error, {:asset_materialization_failed, 41, :conflicting_pre_materialized_asset_metadata}} =
+               AssetHashResolver.preload_materialized_assets(
+                 snapshot,
+                 %{41 => destination.id},
+                 project.id,
+                 AssetMaterializationCache.new()
+               )
+    end
+  end
+
+  describe "resolve_hashes/1" do
+    test "returns empty maps for empty input" do
+      assert {%{}, %{}} = AssetHashResolver.resolve_hashes([])
+    end
+
+    test "returns empty maps for nil-only input" do
+      assert {%{}, %{}} = AssetHashResolver.resolve_hashes([nil, nil])
+    end
+
+    test "returns hash and metadata for assets", %{project: project, user: user} do
+      asset =
+        asset_fixture(project, user, %{
+          filename: "test.jpg",
+          blob_hash: "abc123",
+          metadata: %{"sanitized_svg" => true, "web_url" => "/uploads/stale.webp"}
+        })
+
+      {hash_map, metadata_map} = AssetHashResolver.resolve_hashes([asset.id])
+
+      id_str = to_string(asset.id)
+      assert hash_map[id_str] == "abc123"
+      assert metadata_map[id_str]["filename"] == "test.jpg"
+      assert metadata_map[id_str]["content_type"] == "image/jpeg"
+      assert metadata_map[id_str]["size"] == 12_345
+      assert metadata_map[id_str]["sanitized_svg"] == true
+      refute Map.has_key?(metadata_map[id_str], "web_url")
+    end
+
+    test "does not resolve assets in trash", %{project: project, user: user} do
+      asset = asset_fixture(project, user, %{blob_hash: String.duplicate("a", 64)})
+      trash_asset_row!(asset, user.id)
+
+      assert {%{}, %{}} = AssetHashResolver.resolve_hashes([asset.id])
+    end
+  end
+
+  describe "resolve_hashes_for_project!/2" do
+    test "returns metadata only when every asset belongs to the project", %{
+      project: project,
+      user: user
+    } do
+      {asset, hash} =
+        materializable_asset(
+          project,
+          user,
+          "owned versioning asset",
+          filename: "owned.jpg",
+          content_type: "image/jpeg"
+        )
+
+      assert {hashes, metadata} =
+               AssetHashResolver.resolve_hashes_for_project!([nil, asset.id, asset.id], project.id)
+
+      assert hashes[to_string(asset.id)] == hash
+      assert metadata[to_string(asset.id)]["project_id"] == project.id
+    end
+
+    test "rejects missing and cross-project assets", %{project: project, user: user} do
+      foreign_project = project_fixture(user)
+      foreign_asset = asset_fixture(foreign_project, user)
+      missing_asset_id = foreign_asset.id + 10_000_000
+
+      assert_raise ArgumentError, ~r/cannot snapshot missing assets/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([missing_asset_id], project.id)
+      end
+
+      assert_raise ArgumentError, ~r/owned by another project/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([foreign_asset.id], project.id)
+      end
+    end
+
+    test "rejects assets already in trash", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+      trash_asset_row!(asset, user.id)
+
+      assert_raise ArgumentError, ~r/cannot snapshot missing assets/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([asset.id], project.id)
+      end
+    end
+
+    test "rejects an invalid SHA256 hash", %{project: project, user: user} do
+      asset = asset_fixture(project, user, %{blob_hash: "not-a-sha256"})
+
+      assert_raise ArgumentError, ~r/invalid_blob_hash/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([asset.id], project.id)
+      end
+    end
+
+    test "rejects a missing canonical blob", %{project: project, user: user} do
+      hash = String.duplicate("a", 64)
+
+      asset =
+        asset_fixture(project, user, %{
+          blob_hash: hash,
+          size: 12_345
+        })
+
+      assert_raise ArgumentError, ~r/asset_blob_unavailable/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([asset.id], project.id)
+      end
+    end
+
+    test "rejects a canonical blob whose size differs from the asset row", %{
+      project: project,
+      user: user
+    } do
+      content = "blob with authoritative size"
+      hash = BlobStore.compute_hash(content)
+      {:ok, _key} = BlobStore.ensure_blob(project.id, hash, "jpg", content)
+
+      asset =
+        asset_fixture(project, user, %{
+          blob_hash: hash,
+          size: byte_size(content) + 1
+        })
+
+      assert_raise ArgumentError, ~r/asset_blob_size_mismatch/, fn ->
+        AssetHashResolver.resolve_hashes_for_project!([asset.id], project.id)
+      end
+    end
+  end
+
+  describe "resolve_hashes_for_project_capture/2" do
+    test "captures raw owned rows and leaves broken references in the entity payload", %{
+      project: project,
+      user: user
+    } do
+      {asset, hash} =
+        materializable_asset(
+          project,
+          user,
+          "captured asset",
+          filename: "captured.jpg",
+          content_type: "image/jpeg"
+        )
+
+      foreign_project = project_fixture(user)
+      foreign_asset = asset_fixture(foreign_project, user)
+      inactive_asset = asset_fixture(project, user)
+      invalid_asset = asset_fixture(project, user)
+      trash_asset_row!(inactive_asset, user.id)
+
+      Repo.update_all(
+        from(asset in Asset, where: asset.id == ^invalid_asset.id),
+        set: [content_type: "not-a-valid-content-type"]
+      )
+
+      missing_id = foreign_asset.id + 10_000_000
+
+      context = %{
+        entity_type: :flow_node,
+        entity_id: 123,
+        source_field: "audio_asset_id",
+        container_type: :flow,
+        container_id: 45
+      }
+
+      {hashes, metadata} =
+        AssetHashResolver.resolve_hashes_for_project_capture(
+          [
+            {asset.id, context},
+            {foreign_asset.id, context},
+            {inactive_asset.id, context},
+            {invalid_asset.id, context},
+            {missing_id, context},
+            {"malformed", context},
+            {nil, context}
+          ],
+          project.id
+        )
+
+      assert hashes == %{
+               to_string(asset.id) => hash,
+               to_string(invalid_asset.id) => invalid_asset.blob_hash
+             }
+
+      assert metadata[to_string(asset.id)]["project_id"] == project.id
+      assert metadata[to_string(invalid_asset.id)]["content_type"] == "not-a-valid-content-type"
+      refute Map.has_key?(hashes, to_string(foreign_asset.id))
+      refute Map.has_key?(hashes, to_string(inactive_asset.id))
+      refute Map.has_key?(hashes, to_string(missing_id))
+    end
+  end
+
+  describe "capture_catalog_maps/1" do
+    test "scrubs nested persisted storage locators but preserves typed relationship profiles", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+
+      persisted_metadata = %{
+        "key" => "projects/current/asset.png",
+        "url" => "https://storage.invalid/current.png",
+        "custom_url" => "https://content.invalid/asset",
+        "variant_asset_ids" => %{"url" => 123},
+        "caption" => "Retained caption",
+        "nested" => %{
+          "storage_key" => "projects/current/nested.png",
+          "project_id" => project.id,
+          "label" => "Retained nested metadata",
+          "items" => [
+            %{
+              "url" => "https://storage.invalid/item.png",
+              "label" => "Retained list metadata"
+            }
+          ]
+        }
+      }
+
+      Repo.update_all(
+        from(candidate in Asset, where: candidate.id == ^asset.id),
+        set: [metadata: persisted_metadata]
+      )
+
+      asset = Repo.get!(Asset, asset.id)
+
+      {_hashes, catalog} = AssetHashResolver.capture_catalog_maps([asset])
+      captured = catalog[to_string(asset.id)]
+
+      assert captured["variant_asset_ids"] == %{"url" => 123}
+
+      assert captured["persisted_metadata"] == %{
+               "variant_asset_ids" => %{"url" => 123},
+               "caption" => "Retained caption",
+               "custom_url" => "https://content.invalid/asset",
+               "nested" => %{
+                 "label" => "Retained nested metadata",
+                 "items" => [%{"label" => "Retained list metadata"}]
+               }
+             }
+    end
+  end
+
+  describe "resolve_asset_fk/4" do
+    test "returns nil for nil input" do
+      assert nil == AssetHashResolver.resolve_asset_fk(nil, %{}, 1)
+    end
+
+    test "reuses a verified asset owned by the destination project", %{project: project, user: user} do
+      {asset, _hash} =
+        materializable_asset(
+          project,
+          user,
+          "verified reusable asset",
+          filename: "reusable.jpg",
+          content_type: "image/jpeg"
+        )
+
+      result =
+        AssetHashResolver.resolve_asset_fk(
+          asset.id,
+          strict_snapshot(asset, project.id),
+          project.id
+        )
+
+      assert result == asset.id
+    end
+
+    test "never reuses a foreign asset ID and recreates it in the destination project", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+      content = "cross-project versioned audio"
+      hash = BlobStore.compute_hash(content)
+      {:ok, _key} = BlobStore.ensure_blob(source_project.id, hash, "mp3", content)
+
+      foreign_asset =
+        asset_fixture(source_project, user, %{
+          content_type: "audio/mpeg",
+          filename: "foreign-track.mp3",
+          blob_hash: hash,
+          size: byte_size(content)
+        })
+
+      {hashes, metadata} = AssetHashResolver.resolve_hashes([foreign_asset.id])
+
+      snapshot = %{
+        "asset_blob_hashes" => hashes,
+        "asset_metadata" => metadata
+      }
+
+      new_id =
+        AssetHashResolver.resolve_asset_fk(
+          foreign_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id
+        )
+
+      refute new_id == foreign_asset.id
+      new_asset = Repo.get!(Asset, new_id)
+      assert new_asset.project_id == destination_project.id
+      assert new_asset.blob_hash == hash
+    end
+
+    test "only drops explicitly when portable metadata is unavailable", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+      foreign_asset = asset_fixture(source_project, user)
+
+      assert nil ==
+               AssetHashResolver.resolve_asset_fk(
+                 foreign_asset.id,
+                 %{},
+                 destination_project.id,
+                 user.id,
+                 asset_mode: :drop
+               )
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            foreign_asset.id,
+            %{},
+            destination_project.id,
+            user.id
+          )
+        end
+
+      assert error.asset_id == foreign_asset.id
+      assert error.reason == :missing_blob_hash
+    end
+
+    test "recreates asset from blob when deleted", %{project: project, user: user} do
+      content = "audio content for versioning"
+      hash = BlobStore.compute_hash(content)
+      ext = "mp3"
+      {:ok, _key} = BlobStore.ensure_blob(project.id, hash, ext, content)
+
+      asset =
+        asset_fixture(project, user, %{
+          content_type: "audio/mpeg",
+          filename: "track.mp3",
+          blob_hash: hash,
+          size: byte_size(content)
+        })
+
+      snapshot = strict_snapshot(asset, project.id)
+
+      Repo.delete!(asset)
+
+      new_id = AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id, user.id)
+      assert is_integer(new_id)
+      refute new_id == asset.id
+
+      new_asset = Repo.get!(Asset, new_id)
+      assert new_asset.filename == "track.mp3"
+      assert new_asset.content_type == "audio/mpeg"
+      assert new_asset.blob_hash == hash
+    end
+
+    test "rejects a deleted asset without portable catalog data", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+      Repo.delete!(asset)
+
+      snapshot = %{"asset_blob_hashes" => %{}, "asset_metadata" => %{}}
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(asset.id, snapshot, project.id)
+        end
+
+      assert error.asset_id == asset.id
+      assert error.reason == :missing_blob_hash
+    end
+
+    test "rejects malformed snapshot asset metadata", %{project: project, user: user} do
+      asset_id = 999_991
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(asset_id) => "abc123"},
+        "asset_metadata" => %{
+          to_string(asset_id) => %{"filename" => "broken.png", "content_type" => nil}
+        }
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(asset_id, snapshot, project.id, user.id, asset_mode: :copy)
+        end
+
+      assert error.asset_id == asset_id
+      assert error.reason == :missing_asset_metadata
+    end
+
+    test "materializes one destination identity for repeated copy resolution", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "shared versioned audio",
+          filename: "shared.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      first_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      second_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      assert second_id == first_id
+
+      assert 1 ==
+               Repo.aggregate(
+                 from(asset in Asset,
+                   where:
+                     asset.project_id == ^destination_project.id and
+                       asset.blob_hash == ^hash
+                 ),
+                 :count
+               )
+    end
+
+    test "rejects a fingerprint conflict for the same materialization identity", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "fingerprinted versioned audio",
+          filename: "fingerprint.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      _destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      conflicting_snapshot =
+        put_in(
+          snapshot,
+          ["asset_metadata", to_string(source_asset.id), "filename"],
+          "different-name.mp3"
+        )
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            conflicting_snapshot,
+            destination_project.id,
+            user.id,
+            opts
+          )
+        end
+
+      assert {:asset_materialization_conflict,
+              %{
+                target_project_id: destination_project_id,
+                source_asset_id: source_asset_id,
+                cached_mode: :copy,
+                requested_mode: :copy
+              }} = error.reason
+
+      assert destination_project_id == destination_project.id
+      assert source_asset_id == source_asset.id
+    end
+
+    test "rejects a mode conflict for the same materialization identity", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "mode versioned audio",
+          filename: "mode.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      _destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          asset_mode: :copy,
+          asset_materialization_cache: cache
+        )
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :reuse,
+            asset_materialization_cache: cache
+          )
+        end
+
+      assert {:asset_materialization_conflict, %{cached_mode: :copy, requested_mode: :reuse}} = error.reason
+    end
+
+    test "rejects a cached destination that no longer exists", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "stale versioned audio",
+          filename: "stale.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      Asset
+      |> Repo.get!(destination_id)
+      |> Repo.delete!()
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            opts
+          )
+        end
+
+      assert {:stale_asset_materialization, %{destination_asset_id: ^destination_id}} = error.reason
+    end
+
+    test "rejects a cached destination that moved to asset trash", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "trashed destination audio",
+          filename: "trashed.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      destination_asset = Repo.get!(Asset, destination_id)
+      trash_asset_row!(destination_asset, user.id)
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            opts
+          )
+        end
+
+      assert {:stale_asset_materialization, %{destination_asset_id: ^destination_id}} = error.reason
+    end
+
+    test "rejects a cached destination whose persisted identity changed", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "mutated destination audio",
+          filename: "immutable.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+      cache = AssetMaterializationCache.new()
+
+      opts = [
+        asset_mode: :copy,
+        asset_materialization_cache: cache
+      ]
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          opts
+        )
+
+      Repo.update_all(
+        from(asset in Asset, where: asset.id == ^destination_id),
+        set: [filename: "mutated.mp3"]
+      )
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            opts
+          )
+        end
+
+      assert {:stale_asset_materialization, %{destination_asset_id: ^destination_id}} = error.reason
+    end
+
+    test "strict copy derives the canonical blob key instead of trusting snapshot keys", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "canonical source audio",
+          filename: "canonical.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      id = to_string(source_asset.id)
+
+      snapshot =
+        source_asset
+        |> strict_snapshot(source_project.id)
+        |> put_in(["asset_metadata", id, "blob_key"], "projects/999/blobs/foreign.mp3")
+        |> put_in(["asset_metadata", id, "key"], "projects/999/assets/foreign.mp3")
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          asset_mode: :copy
+        )
+
+      assert %Asset{project_id: project_id} = Repo.get!(Asset, destination_id)
+      assert project_id == destination_project.id
+    end
+
+    test "strict copy accepts a caller-verified portable source key", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+      content = "portable source audio"
+      blob_hash = BlobStore.compute_hash(content)
+      source_key = "project_templates/imported_blobs/test/#{blob_hash}/portable.mp3"
+      {:ok, _url} = Storage.upload(source_key, content, "audio/mpeg")
+      on_exit(fn -> Storage.delete(source_key) end)
+
+      source_asset =
+        asset_fixture(source_project, user, %{
+          filename: "portable.mp3",
+          content_type: "audio/mpeg",
+          size: byte_size(content),
+          blob_hash: blob_hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(source_asset.id) => blob_hash},
+        "asset_metadata" => %{
+          to_string(source_asset.id) => %{
+            "filename" => "portable.mp3",
+            "content_type" => "audio/mpeg",
+            "size" => byte_size(content),
+            "project_id" => source_project.id,
+            "blob_key" => "snapshot/keys/are/not/trusted.mp3"
+          }
+        }
+      }
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          asset_mode: :copy,
+          asset_source_keys: %{blob_hash => source_key}
+        )
+
+      destination_asset = Repo.get!(Asset, destination_id)
+      on_exit(fn -> Storage.delete(destination_asset.key) end)
+      assert destination_asset.project_id == destination_project.id
+      assert {:ok, ^content} = Storage.download(destination_asset.key)
+    end
+
+    test "strict copy rejects same-sized portable bytes whose SHA256 differs from the catalogued hash", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+      expected_content = "expected"
+      corrupted_content = "tampered"
+      blob_hash = BlobStore.compute_hash(expected_content)
+      actual_hash = BlobStore.compute_hash(corrupted_content)
+      source_key = "project_templates/imported_blobs/test/corrupt/#{blob_hash}/blob"
+
+      assert byte_size(corrupted_content) == byte_size(expected_content)
+      assert {:ok, _url} = Storage.upload(source_key, corrupted_content, "audio/mpeg")
+      on_exit(fn -> Storage.delete(source_key) end)
+
+      source_asset =
+        asset_fixture(source_project, user, %{
+          filename: "corrupt.mp3",
+          content_type: "audio/mpeg",
+          size: byte_size(expected_content),
+          blob_hash: blob_hash
+        })
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(source_asset.id) => blob_hash},
+        "asset_metadata" => %{
+          to_string(source_asset.id) => %{
+            "filename" => "corrupt.mp3",
+            "content_type" => "audio/mpeg",
+            "size" => byte_size(expected_content),
+            "project_id" => source_project.id
+          }
+        }
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :copy,
+            asset_source_keys: %{blob_hash => source_key}
+          )
+        end
+
+      assert actual_hash != blob_hash
+      assert error.reason == :blob_hash_mismatch
+
+      assert [] == Assets.list_assets(destination_project.id)
+    end
+
+    test "strict copy sanitizes unsafe filenames to a safe storage segment", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _blob_hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "invalid filename source",
+          filename: "valid.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+
+      for invalid_filename <- ["/", ".", ".."] do
+        invalid_snapshot =
+          put_in(
+            snapshot,
+            ["asset_metadata", to_string(source_asset.id), "filename"],
+            invalid_filename
+          )
+
+        destination_id =
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            invalid_snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :copy
+          )
+
+        destination_asset = Repo.get!(Asset, destination_id)
+        assert Path.basename(destination_asset.key) == "file"
+
+        on_exit(fn ->
+          Storage.delete(destination_asset.key)
+
+          Storage.delete(
+            BlobStore.blob_key(
+              destination_project.id,
+              destination_asset.blob_hash,
+              BlobStore.ext_from_content_type(destination_asset.content_type)
+            )
+          )
+        end)
+      end
+
+      assert Enum.all?(Assets.list_assets(destination_project.id), fn asset ->
+               Path.basename(asset.key) == "file"
+             end)
+    end
+
+    test "portable materialization drops untrusted metadata before persistence", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, blob_hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "metadata whitelist source",
+          filename: "whitelist.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      external_key = "projects/#{source_project.id}/assets/external/thumbnail.png"
+      {:ok, _url} = Storage.upload(external_key, "external thumbnail", "image/png")
+      on_exit(fn -> Storage.delete(external_key) end)
+
+      snapshot =
+        source_asset
+        |> strict_snapshot(source_project.id)
+        |> put_in(
+          ["asset_metadata", to_string(source_asset.id), "thumbnail_key"],
+          external_key
+        )
+        |> put_in(
+          ["asset_metadata", to_string(source_asset.id), "web_url"],
+          "/media/foreign"
+        )
+
+      destination_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          snapshot,
+          destination_project.id,
+          user.id,
+          asset_mode: :copy,
+          asset_source_keys: %{
+            blob_hash => BlobStore.blob_key(source_project.id, blob_hash, "mp3")
+          }
+        )
+
+      destination_asset = Repo.get!(Asset, destination_id)
+      assert destination_asset.metadata == %{}
+
+      assert {:ok, _deleted_asset} = Assets.delete_asset(destination_asset)
+      assert :ok = Storage.delete(destination_asset.key)
+      assert {:ok, "external thumbnail"} = Storage.download(external_key)
+    end
+
+    test "portable materialization rejects SVG even when snapshot metadata claims sanitization", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+      content = ~S|<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script></svg>|
+      blob_hash = BlobStore.compute_hash(content)
+      source_key = "project_templates/imported_blobs/svg/test/#{blob_hash}/blob"
+      {:ok, _url} = Storage.upload(source_key, content, "image/svg+xml")
+      on_exit(fn -> Storage.delete(source_key) end)
+      source_asset_id = System.unique_integer([:positive])
+
+      snapshot = %{
+        "asset_blob_hashes" => %{to_string(source_asset_id) => blob_hash},
+        "asset_metadata" => %{
+          to_string(source_asset_id) => %{
+            "filename" => "unsafe.svg",
+            "content_type" => "image/svg+xml",
+            "size" => byte_size(content),
+            "project_id" => source_project.id,
+            "sanitized_svg" => true
+          }
+        }
+      }
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset_id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :copy,
+            asset_source_keys: %{blob_hash => source_key}
+          )
+        end
+
+      assert error.reason == :unsupported_portable_svg
+      assert [] == Assets.list_assets(destination_project.id)
+    end
+
+    test "an explicit source catalog is exhaustive and never falls back to snapshot or canonical keys", %{
+      project: destination_project,
+      user: user
+    } do
+      source_project = project_fixture(user)
+
+      {source_asset, _blob_hash} =
+        materializable_asset(
+          source_project,
+          user,
+          "catalogued source audio",
+          filename: "catalogued.mp3",
+          content_type: "audio/mpeg"
+        )
+
+      snapshot = strict_snapshot(source_asset, source_project.id)
+
+      error =
+        assert_raise AssetCopyError, fn ->
+          AssetHashResolver.resolve_asset_fk(
+            source_asset.id,
+            snapshot,
+            destination_project.id,
+            user.id,
+            asset_mode: :copy,
+            asset_source_keys: %{}
+          )
+        end
+
+      assert error.reason == :missing_asset_source_key
+    end
+
+    test "successive template clones keep a copyable project-local blob", %{
+      project: source_project,
+      user: user
+    } do
+      first_clone = project_fixture(user)
+      second_clone = project_fixture(user)
+      content = "avatar copied through two template generations"
+      hash = BlobStore.compute_hash(content)
+
+      assert {:ok, source_blob_key} =
+               BlobStore.ensure_blob(source_project.id, hash, "png", content)
+
+      source_asset =
+        asset_fixture(source_project, user, %{
+          filename: "avatar.png",
+          content_type: "image/png",
+          size: byte_size(content),
+          blob_hash: hash
+        })
+
+      {first_hashes, first_metadata} = AssetHashResolver.resolve_hashes([source_asset.id])
+
+      first_snapshot = %{
+        "asset_blob_hashes" => first_hashes,
+        "asset_metadata" => first_metadata
+      }
+
+      first_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          source_asset.id,
+          first_snapshot,
+          first_clone.id,
+          user.id,
+          asset_mode: :copy
+        )
+
+      first_asset = Repo.get!(Asset, first_asset_id)
+      first_blob_key = BlobStore.blob_key(first_clone.id, hash, "png")
+      assert {:ok, ^content} = Storage.download(first_blob_key)
+
+      {second_hashes, second_metadata} = AssetHashResolver.resolve_hashes([first_asset.id])
+
+      second_snapshot = %{
+        "asset_blob_hashes" => second_hashes,
+        "asset_metadata" => second_metadata
+      }
+
+      second_asset_id =
+        AssetHashResolver.resolve_asset_fk(
+          first_asset.id,
+          second_snapshot,
+          second_clone.id,
+          user.id,
+          asset_mode: :copy
+        )
+
+      second_asset = Repo.get!(Asset, second_asset_id)
+      second_blob_key = BlobStore.blob_key(second_clone.id, hash, "png")
+
+      on_exit(fn ->
+        Enum.each(
+          [
+            source_blob_key,
+            first_blob_key,
+            second_blob_key,
+            first_asset.key,
+            second_asset.key
+          ],
+          &Storage.delete/1
+        )
+      end)
+
+      assert {:ok, ^content} = Storage.download(second_asset.key)
+      assert {:ok, ^content} = Storage.download(second_blob_key)
+      assert second_asset.blob_hash == hash
+    end
+  end
+
+  defp materializable_asset(project, user, content, attrs) do
+    content_type = Keyword.fetch!(attrs, :content_type)
+    filename = Keyword.fetch!(attrs, :filename)
+    hash = BlobStore.compute_hash(content)
+    ext = BlobStore.ext_from_content_type(content_type)
+    {:ok, _key} = BlobStore.ensure_blob(project.id, hash, ext, content)
+
+    asset =
+      asset_fixture(project, user, %{
+        filename: filename,
+        content_type: content_type,
+        size: byte_size(content),
+        blob_hash: hash
+      })
+
+    {asset, hash}
+  end
+
+  defp strict_snapshot(asset, project_id) do
+    {hashes, metadata} =
+      AssetHashResolver.resolve_hashes_for_project!([asset.id], project_id)
+
+    %{
+      "asset_blob_hashes" => hashes,
+      "asset_metadata" => metadata
+    }
+  end
+
+  defp trash_asset_row!(asset, user_id) do
+    {1, _rows} =
+      Repo.update_all(
+        from(candidate in Asset, where: candidate.id == ^asset.id),
+        set: [
+          deleted_at: Storyarn.Platform.Shared.TimeHelpers.now(),
+          deleted_by_id: user_id,
+          deletion_reason: "user",
+          deletion_generation: 1
+        ]
+      )
+
+    :ok
+  end
+end

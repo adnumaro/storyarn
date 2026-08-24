@@ -13,7 +13,7 @@ defmodule Storyarn.Projects do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Dashboard
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.FlowProjectTrash

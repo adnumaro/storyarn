@@ -20,11 +20,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
+  alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Repo
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 

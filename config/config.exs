@@ -172,11 +172,6 @@ config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
 # configuration provides them. The task list is owned by config/runtime.exs;
 # dev/test override it explicitly.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
-
-# UploadPart has a hard wall-clock deadline in addition to the socket-phase
-# limits above. Durable multipart cleanup uses this same value as its minimum
-# quiescence window, so one policy bounds both sides of the handoff.
-config :storyarn, Storyarn.Assets.Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
 config :storyarn, Storyarn.Flows.Versioning.RestorePolicy, flow_version_restore: false
 
 # Configure Gettext locales
@@ -206,6 +201,19 @@ config :storyarn, Storyarn.Platform.Vault,
     }
   ]
 
+# UploadPart has a hard wall-clock deadline in addition to the socket-phase
+# limits above. Durable multipart cleanup uses this same value as its minimum
+# quiescence window, so one policy bounds both sides of the handoff.
+config :storyarn, Storyarn.Projects.Assets.Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
+
+config :storyarn, Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy,
+  download_signed_url_ttl_seconds: 5 * 60,
+  download_max_transfer_seconds: 60 * 60,
+  download_lease_safety_seconds: 60,
+  build_heartbeat_interval_seconds: 60,
+  build_lease_ttl_seconds: 5 * 60,
+  export_lease_retention_seconds: 7 * 24 * 60 * 60
+
 # Public, indexable locales are deliberately configured separately from
 # Gettext. A locale can be available inside the authenticated application
 # before its landing page, docs, legal copy, and editorial content are ready
@@ -224,14 +232,6 @@ config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restor
 # Exact full-project snapshot restore is part of the recovery contract and is
 # always available to authorized project managers.
 config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: false
-
-config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
-  download_signed_url_ttl_seconds: 5 * 60,
-  download_max_transfer_seconds: 60 * 60,
-  download_lease_safety_seconds: 60,
-  build_heartbeat_interval_seconds: 60,
-  build_lease_ttl_seconds: 5 * 60,
-  export_lease_retention_seconds: 7 * 24 * 60 * 60
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

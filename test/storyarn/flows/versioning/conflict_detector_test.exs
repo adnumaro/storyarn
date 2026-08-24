@@ -7,9 +7,9 @@ defmodule Storyarn.Flows.Versioning.ConflictDetectorTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
   alias Storyarn.Flows
   alias Storyarn.Flows.Versioning.FlowSnapshot
+  alias Storyarn.Projects.Assets
   alias Storyarn.Repo
   alias Storyarn.Sheets
 

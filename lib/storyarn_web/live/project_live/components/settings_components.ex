@@ -13,10 +13,10 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Platform.Billing
   alias Storyarn.Projects
+  alias Storyarn.Projects.References
   alias Storyarn.Projects.Validations
-  alias Storyarn.References
+  alias Storyarn.Projects.Versioning
   alias Storyarn.Repo
-  alias Storyarn.Versioning
 
   # ---------------------------------------------------------------------------
   # Form changesets

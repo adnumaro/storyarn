@@ -10,10 +10,10 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
 
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates
-  alias Storyarn.ProjectTemplates.ProjectTemplate
-  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
-  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.InstallProjectTemplateWorker
 

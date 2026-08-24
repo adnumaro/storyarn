@@ -3,9 +3,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
   alias StoryarnWeb.Helpers.Authorize
 
   @page_size 25

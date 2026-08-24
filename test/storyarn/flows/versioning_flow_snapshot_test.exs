@@ -8,9 +8,6 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -23,9 +20,12 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Persistence.FlowRecord, as: ProjectFlowRecord
+  alias Storyarn.Projects.Versioning.Builders.FlowBuilder, as: LegacyFlowBuilder
   alias Storyarn.Repo
-  alias Storyarn.Versioning.Builders.FlowBuilder, as: LegacyFlowBuilder
 
   setup do
     previous_policy = Application.get_env(:storyarn, RestorePolicy)

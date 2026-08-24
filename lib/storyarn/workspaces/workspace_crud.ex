@@ -3,10 +3,10 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Billing
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Versioning
   alias Storyarn.Repo
-  alias Storyarn.Versioning
   alias Storyarn.Workspaces.Events
   alias Storyarn.Workspaces.Persistence.ProjectMembershipRecord, as: ProjectMembership
   alias Storyarn.Workspaces.Persistence.ProjectRecord, as: Project

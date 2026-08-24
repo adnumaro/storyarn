@@ -1,8 +1,8 @@
 defmodule Storyarn.Localization.ExportPolicyTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Exports.ExportOptions
   alias Storyarn.Localization.ExportPolicy
+  alias Storyarn.Projects.Exports.ExportOptions
 
   @current_hash "current-source-hash"
 

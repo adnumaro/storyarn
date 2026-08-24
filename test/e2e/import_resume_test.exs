@@ -15,14 +15,14 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Assets
-  alias Storyarn.Imports
-  alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
+  alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Versioning.Builders.AssetHashResolver
-  alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Versioning.SnapshotArchiveStorage
 
   @moduletag :e2e
 

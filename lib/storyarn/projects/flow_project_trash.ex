@@ -3,9 +3,9 @@ defmodule Storyarn.Projects.FlowProjectTrash do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets
   alias Storyarn.Projects.FlowEntityTrashReferences
   alias Storyarn.Projects.FlowLocalizationProjection
   alias Storyarn.Projects.FlowReferenceIntegrity
@@ -13,7 +13,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
   alias Storyarn.Projects.Persistence.FlowNodeRecord
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Project
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Repo
 
   @restore_sources_locked_event [

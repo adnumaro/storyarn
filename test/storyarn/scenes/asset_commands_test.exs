@@ -4,9 +4,9 @@ defmodule Storyarn.Scenes.AssetCommandsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets.Storage
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.AssetCommands

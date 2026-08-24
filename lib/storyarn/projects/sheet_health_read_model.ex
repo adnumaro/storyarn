@@ -20,10 +20,10 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Persistence.VariableReferenceRecord
+  alias Storyarn.Projects.References
   alias Storyarn.Projects.SheetFormulaResolver
   alias Storyarn.Projects.SheetHealthChecker
   alias Storyarn.Projects.SheetInheritanceAudit
-  alias Storyarn.References
   alias Storyarn.Repo
 
   require VariableNamespaceResolver

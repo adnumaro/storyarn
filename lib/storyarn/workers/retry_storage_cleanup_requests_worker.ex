@@ -12,7 +12,7 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorker do
     max_attempts: 5,
     unique: [period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
-  alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Projects.Assets.StorageCompensation
 
   require Logger
 

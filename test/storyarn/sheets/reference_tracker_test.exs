@@ -9,7 +9,7 @@ defmodule Storyarn.Sheets.ReferenceTrackerTest do
   alias Ecto.Multi
   alias Storyarn.Flows
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.References.EntityReference
+  alias Storyarn.Projects.References.EntityReference
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.ReferenceTracker

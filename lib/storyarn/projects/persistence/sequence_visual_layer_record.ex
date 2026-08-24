@@ -12,7 +12,7 @@ defmodule Storyarn.Projects.Persistence.SequenceVisualLayerRecord do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowNodeRecord
 
   @kinds ~w(backdrop character prop overlay)

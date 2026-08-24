@@ -9,9 +9,6 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageHash
-  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Flows.Persistence.AssetRecord
   alias Storyarn.Flows.Persistence.ProjectRecord
   alias Storyarn.Flows.Persistence.ProjectSnapshotRecord
@@ -21,6 +18,9 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   alias Storyarn.Flows.Versioning.AssetStorageCompensation
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageHash
+  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
 
   @snapshot_restore_asset_content_types ~w(

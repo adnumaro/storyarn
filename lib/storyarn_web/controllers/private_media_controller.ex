@@ -3,10 +3,10 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateDownload
   alias StoryarnWeb.PrivateMedia

@@ -10,16 +10,16 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshotContractTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
   alias Storyarn.Projects.Project
-  alias Storyarn.References.Persistence.EntityTrashRefRecord, as: EntityTrashRef
+  alias Storyarn.Projects.References.Persistence.EntityTrashRefRecord, as: EntityTrashRef
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block

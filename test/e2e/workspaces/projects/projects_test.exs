@@ -14,8 +14,8 @@ defmodule StoryarnWeb.E2E.ProjectsTest do
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts
-  alias Storyarn.Assets
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
   alias Storyarn.Repo
 
   @moduletag :e2e

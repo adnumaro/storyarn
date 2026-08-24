@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.Persistence.BlockGalleryImageRecord do
 
   use Ecto.Schema
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.BlockRecord
 
   @type t :: %__MODULE__{}

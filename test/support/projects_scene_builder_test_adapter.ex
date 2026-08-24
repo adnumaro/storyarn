@@ -2,8 +2,8 @@ defmodule StoryarnTest.ProjectsSceneBuilderTestAdapter do
   @moduledoc false
 
   alias Storyarn.Projects.Persistence.SceneRecord
+  alias Storyarn.Projects.Versioning.Builders.SceneBuilder
   alias Storyarn.Repo
-  alias Storyarn.Versioning.Builders.SceneBuilder
 
   def build_snapshot(scene), do: scene |> scene_record!() |> SceneBuilder.build_snapshot()
   def build_capture_snapshot(scene), do: scene |> scene_record!() |> SceneBuilder.build_capture_snapshot()

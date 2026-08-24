@@ -13,7 +13,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @impl Oban.Worker
   def backoff(%Oban.Job{} = job) do

@@ -2,8 +2,8 @@ defmodule StoryarnTest.ProjectsSheetBuilderTestAdapter do
   @moduledoc false
 
   alias Storyarn.Projects.Persistence.SheetRecord
+  alias Storyarn.Projects.Versioning.Builders.SheetBuilder
   alias Storyarn.Repo
-  alias Storyarn.Versioning.Builders.SheetBuilder
 
   def build_snapshot(sheet), do: sheet |> sheet_record!() |> SheetBuilder.build_snapshot()
   def build_capture_snapshot(sheet), do: sheet |> sheet_record!() |> SheetBuilder.build_capture_snapshot()

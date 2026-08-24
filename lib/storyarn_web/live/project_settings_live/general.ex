@@ -7,7 +7,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   alias Storyarn.Platform
   alias Storyarn.Projects
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
 
   require Logger

@@ -2,8 +2,8 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   test "deletes copied objects and their durable cleanup request" do

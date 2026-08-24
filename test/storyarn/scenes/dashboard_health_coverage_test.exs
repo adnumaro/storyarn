@@ -25,7 +25,7 @@ defmodule Storyarn.Scenes.DashboardHealthCoverageTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
+  alias Storyarn.Projects.Assets
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.HealthChecker

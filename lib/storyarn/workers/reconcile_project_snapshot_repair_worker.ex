@@ -17,7 +17,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @batch_size 50
   @timeout_ms 10 * 60 * 1_000

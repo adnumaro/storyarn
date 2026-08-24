@@ -9,10 +9,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.Storage.R2
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshotArchiveReader
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage.R2
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Workspaces
 
   @impl true

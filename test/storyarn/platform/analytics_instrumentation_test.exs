@@ -2,8 +2,8 @@ defmodule Storyarn.AnalyticsInstrumentationTest do
   use Storyarn.DataCase, async: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Assets
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
   alias Storyarn.Workspaces
 
   defmodule TestAdapter do

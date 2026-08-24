@@ -7,7 +7,7 @@ defmodule Storyarn.Sheets.VariableUsageTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.References.VariableReferenceTracker
+  alias Storyarn.Projects.References.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets

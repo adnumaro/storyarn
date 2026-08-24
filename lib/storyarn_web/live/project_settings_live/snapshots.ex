@@ -6,9 +6,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias StoryarnWeb.Helpers.Authorize
 
   @active_restore_statuses ~w(queued running retrying)

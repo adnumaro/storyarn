@@ -6,8 +6,8 @@ defmodule Storyarn.Scenes.AssetCatalogTest do
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo
   alias Storyarn.Scenes
 

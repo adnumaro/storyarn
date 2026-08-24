@@ -7,9 +7,9 @@ defmodule Storyarn.Localization.WriterReferenceIntegrityTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Projects.Assets
   alias Storyarn.Repo
 
   test "recorded and approved voice-over states require an audio asset" do

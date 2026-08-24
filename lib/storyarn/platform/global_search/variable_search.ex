@@ -11,7 +11,7 @@ defmodule Storyarn.Platform.GlobalSearch.VariableSearch do
   """
 
   alias Storyarn.Platform.GlobalSearch.VariableQuery
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Sheets
 
   @default_limit 25

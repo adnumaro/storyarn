@@ -8,9 +8,9 @@ defmodule Storyarn.Platform.Billing.StorageAccountingConcurrencyTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
-  alias Storyarn.Assets.Asset
   alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Workspace

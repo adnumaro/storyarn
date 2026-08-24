@@ -9,13 +9,13 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
-  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Localization
   alias Storyarn.Platform.Billing.Subscription
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.PrivateDownload do
 
   import Plug.Conn
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias StoryarnWeb.PrivateDownload.Range, as: DownloadRange
 
   require Logger

@@ -13,7 +13,7 @@ defmodule Storyarn.Platform.Billing.StorageReservation do
   alias Storyarn.Platform.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Platform.Billing.StorageCleanupInventory
   alias Storyarn.Projects.Project
-  alias Storyarn.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
 
   @kinds ~w(snapshot_build restore_staging snapshot_export)
   @statuses ~w(active committed released)

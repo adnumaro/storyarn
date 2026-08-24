@@ -5,7 +5,7 @@ defmodule Storyarn.Workers.InstallProjectTemplateWorker do
 
   use Oban.Worker, queue: :template_installs, max_attempts: 3
 
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
 
   require Logger
 

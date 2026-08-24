@@ -12,7 +12,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractor do
   Returns {:error, :image_extraction_failed} on processing failures.
   """
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.SceneZone
 

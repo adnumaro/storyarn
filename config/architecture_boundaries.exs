@@ -56,22 +56,22 @@ boundaries = %{
   projects: [
     "lib/storyarn/projects.ex",
     "lib/storyarn/projects/",
-    "lib/storyarn/assets.ex",
-    "lib/storyarn/assets/",
-    "lib/storyarn/references.ex",
-    "lib/storyarn/references/",
+    "lib/storyarn/projects/assets.ex",
+    "lib/storyarn/projects/assets/",
+    "lib/storyarn/projects/references.ex",
+    "lib/storyarn/projects/references/",
     "lib/storyarn/projects/invitation_notifier.ex",
     "lib/storyarn/projects/invitation_operations.ex",
     "lib/storyarn/projects/invitation_schema.ex",
     "lib/storyarn/projects/membership_operations.ex",
-    "lib/storyarn/versioning.ex",
-    "lib/storyarn/versioning/",
-    "lib/storyarn/exports.ex",
-    "lib/storyarn/exports/",
-    "lib/storyarn/imports.ex",
-    "lib/storyarn/imports/",
-    "lib/storyarn/project_templates.ex",
-    "lib/storyarn/project_templates/",
+    "lib/storyarn/projects/versioning.ex",
+    "lib/storyarn/projects/versioning/",
+    "lib/storyarn/projects/exports.ex",
+    "lib/storyarn/projects/exports/",
+    "lib/storyarn/projects/imports.ex",
+    "lib/storyarn/projects/imports/",
+    "lib/storyarn/projects/project_templates.ex",
+    "lib/storyarn/projects/project_templates/",
     "lib/storyarn/workers/trash_retention_worker.ex",
     "lib/storyarn/projects/name_normalizer.ex",
     "lib/storyarn/projects/validations.ex",
@@ -234,10 +234,10 @@ boundaries = %{
     "lib/storyarn/platform/analytics/",
     "lib/storyarn/application.ex",
     "lib/storyarn/architecture/",
-    "lib/storyarn/assets/storage.ex",
-    "lib/storyarn/assets/storage/",
-    "lib/storyarn/assets/storage_hash.ex",
-    "lib/storyarn/assets/storage_key_lock.ex",
+    "lib/storyarn/projects/assets/storage.ex",
+    "lib/storyarn/projects/assets/storage/",
+    "lib/storyarn/projects/assets/storage_hash.ex",
+    "lib/storyarn/projects/assets/storage_key_lock.ex",
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
     "lib/storyarn/public/blog/post_builder.ex",
@@ -429,9 +429,9 @@ forbidden_dependencies =
     "lib/storyarn/ai/context/contract.ex",
     "lib/storyarn/ai/context/policy.ex",
     "lib/storyarn/ai/context/subject_ref.ex",
-    "lib/storyarn/assets/storage.ex",
-    "lib/storyarn/assets/storage_hash.ex",
-    "lib/storyarn/assets/storage_key_lock.ex",
+    "lib/storyarn/projects/assets/storage.ex",
+    "lib/storyarn/projects/assets/storage_hash.ex",
+    "lib/storyarn/projects/assets/storage_key_lock.ex",
     "lib/storyarn/platform/dashboards/cache.ex",
     "lib/storyarn/platform/collaboration.ex",
     "lib/storyarn/platform/feature_flags.ex",
@@ -490,20 +490,20 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/application.ex",
-      target: "lib/storyarn/imports/error_deduplicator.ex",
+      target: "lib/storyarn/projects/imports/error_deduplicator.ex",
       kinds: ["runtime"],
       reason: "OTP composition root starts the import error deduplicator process"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/assets/asset.ex",
+      target: "lib/storyarn/projects/assets/asset.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/assets/storage_cleanup_ownership_receipt.ex",
+      target: "lib/storyarn/projects/assets/storage_cleanup_ownership_receipt.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
@@ -517,49 +517,49 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/project_snapshot.ex",
+      target: "lib/storyarn/projects/versioning/project_snapshot.ex",
       kinds: ["export"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/project_snapshot_lease_policy.ex",
+      target: "lib/storyarn/projects/versioning/project_snapshot_lease_policy.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/project_snapshot_restore.ex",
+      target: "lib/storyarn/projects/versioning/project_snapshot_restore.ex",
       kinds: ["export"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/snapshot_archive_storage.ex",
+      target: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/snapshot_object_format.ex",
+      target: "lib/storyarn/projects/versioning/snapshot_object_format.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/snapshot_object_publication_claim.ex",
+      target: "lib/storyarn/projects/versioning/snapshot_object_publication_claim.ex",
       kinds: ["export"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
     },
     %{
       source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/versioning/workspace_snapshot_import.ex",
+      target: "lib/storyarn/projects/versioning/workspace_snapshot_import.ex",
       kinds: ["runtime"],
       reason:
         "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
@@ -572,7 +572,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/platform/billing/storage_reservation.ex",
-      target: "lib/storyarn/versioning/project_snapshot.ex",
+      target: "lib/storyarn/projects/versioning/project_snapshot.ex",
       kinds: ["runtime"],
       reason: "Storage reservations validate their project and snapshot targets in the shared storage protocol"
     },
@@ -584,13 +584,13 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/platform/global_search/variable_search.ex",
-      target: "lib/storyarn/references.ex",
+      target: "lib/storyarn/projects/references.ex",
       kinds: ["runtime"],
       reason: "Global variable search reads usage through the public References facade"
     },
     %{
       source: "lib/storyarn/platform/release.ex",
-      target: "lib/storyarn/project_templates.ex",
+      target: "lib/storyarn/projects/project_templates.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on templates through the public ProjectTemplates facade"
     },
@@ -602,7 +602,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/platform/release.ex",
-      target: "lib/storyarn/versioning.ex",
+      target: "lib/storyarn/projects/versioning.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on snapshots through the public Versioning facade"
     },
@@ -614,7 +614,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn_web/endpoint.ex",
-      target: "lib/storyarn/assets/upload_policy.ex",
+      target: "lib/storyarn/projects/assets/upload_policy.ex",
       kinds: ["compile"],
       reason: "The endpoint compiles upload limits from the asset upload policy"
     },
@@ -631,92 +631,92 @@ forbidden_dependencies =
       reason: "The project scope hook loads the current project through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/assets.ex",
+      source: "lib/storyarn/projects/assets.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/assets/asset_trash.ex",
+      source: "lib/storyarn/projects/assets/asset_trash.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/assets/blob_store.ex",
+      source: "lib/storyarn/projects/assets/blob_store.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/assets/storage_compensation.ex",
+      source: "lib/storyarn/projects/assets/storage_compensation.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/imports/execution.ex",
+      source: "lib/storyarn/projects/imports/execution.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/imports/execution.ex",
+      source: "lib/storyarn/projects/imports/execution.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/imports/expiration.ex",
+      source: "lib/storyarn/projects/imports/expiration.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/imports/materializer.ex",
+      source: "lib/storyarn/projects/imports/materializer.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/imports/notification_delivery.ex",
+      source: "lib/storyarn/projects/imports/notification_delivery.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/imports/plan_storage.ex",
+      source: "lib/storyarn/projects/imports/plan_storage.ex",
       target: "lib/storyarn/platform/vault.ex",
       kinds: ["runtime"],
       reason: "Import plan storage encrypts payloads with the application vault"
     },
     %{
-      source: "lib/storyarn/imports/replacement.ex",
+      source: "lib/storyarn/projects/imports/replacement.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/imports/resume.ex",
+      source: "lib/storyarn/projects/imports/resume.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/project_templates/installation.ex",
+      source: "lib/storyarn/projects/project_templates/installation.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Template installation and publication enforce plan entitlements through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/project_templates/installation.ex",
+      source: "lib/storyarn/projects/project_templates/installation.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/project_templates/publication_runner.ex",
+      source: "lib/storyarn/projects/project_templates/publication_runner.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Template installation and publication enforce plan entitlements through the public Billing facade"
@@ -758,172 +758,172 @@ forbidden_dependencies =
       reason: "Project invitations enqueue the durable delivery worker shared with Workspace invitations"
     },
     %{
-      source: "lib/storyarn/versioning.ex",
+      source: "lib/storyarn/projects/versioning.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/materialization_helpers.ex",
+      source: "lib/storyarn/projects/versioning/materialization_helpers.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_recovery.ex",
+      source: "lib/storyarn/projects/versioning/project_recovery.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["runtime"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_asset_materializer.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_asset_materializer.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_build.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_build.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_build.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_crud.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_crud.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_download.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_download.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_reconciliation.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_reconciliation.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
       target: "lib/storyarn/platform/billing/storage_cleanup_inventory.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage cleanup reconciles against the Billing storage cleanup inventory protocol"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/snapshot_archive_smoke.ex",
-      target: "lib/storyarn/assets/storage/r2.ex",
+      source: "lib/storyarn/projects/versioning/snapshot_archive_smoke.ex",
+      target: "lib/storyarn/projects/assets/storage/r2.ex",
       kinds: ["runtime"],
       reason: "The archive smoke check branches on the configured storage adapter"
     },
     %{
-      source: "lib/storyarn/versioning/snapshot_archive_storage.ex",
+      source: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
       target: "lib/storyarn/platform/billing/storage_cleanup_inventory.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage cleanup reconciles against the Billing storage cleanup inventory protocol"
     },
     %{
-      source: "lib/storyarn/versioning/snapshot_archive_storage.ex",
+      source: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
       target: "lib/storyarn/platform/billing/storage_reservation.ex",
       kinds: ["export"],
       reason:
         "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
     },
     %{
-      source: "lib/storyarn/versioning/workspace_snapshot_imports.ex",
+      source: "lib/storyarn/projects/versioning/workspace_snapshot_imports.ex",
       target: "lib/storyarn/platform/billing.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
     },
     %{
-      source: "lib/storyarn/versioning/workspace_snapshot_imports.ex",
+      source: "lib/storyarn/projects/versioning/workspace_snapshot_imports.ex",
       target: "lib/storyarn/platform/notifications.ex",
       kinds: ["runtime"],
       reason: "Project coordination delivers durable user notifications through the public Notifications facade"
@@ -1050,7 +1050,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/sheets/versioning/sheet_snapshot.ex",
-      target: "lib/storyarn/references.ex",
+      target: "lib/storyarn/projects/references.ex",
       kinds: ["runtime"],
       reason: "Sheet restore triggers the Project-owned project-wide variable reference rebuild through its public facade"
     },
@@ -1063,13 +1063,13 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/workspaces/workspace_crud.ex",
-      target: "lib/storyarn/versioning.ex",
+      target: "lib/storyarn/projects/versioning.ex",
       kinds: ["runtime"],
       reason: "Workspace hard-delete coordinates snapshot cleanup through the public Versioning facade"
     },
     %{
       source: "lib/storyarn/workspaces/workspace_crud.ex",
-      target: "lib/storyarn/assets.ex",
+      target: "lib/storyarn/projects/assets.ex",
       kinds: ["runtime"],
       reason: "Workspace hard-delete coordinates asset cleanup through the public Assets facade"
     },
@@ -1201,38 +1201,38 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/assets.ex",
+      target: "lib/storyarn/projects/assets.ex",
       kinds: ["runtime"],
       reason: "Workspace banner upload goes through the public Assets facade"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/assets/image_processor.ex",
+      target: "lib/storyarn/projects/assets/image_processor.ex",
       kinds: ["runtime"],
       reason:
         "Workspace banner upload validates image binaries with the Assets image primitives, like the upload controller"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/assets/upload_policy.ex",
+      target: "lib/storyarn/projects/assets/upload_policy.ex",
       kinds: ["runtime"],
       reason: "Workspace banner upload enforces the Assets upload profile, like the upload controller"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/versioning.ex",
+      target: "lib/storyarn/projects/versioning.ex",
       kinds: ["runtime"],
       reason: "Workspace snapshot imports are requested and tracked through the public Versioning facade"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/versioning/project_snapshot_archive_reader.ex",
+      target: "lib/storyarn/projects/versioning/project_snapshot_archive_reader.ex",
       kinds: ["runtime"],
       reason: "The import page shows the archive size limit owned by the Versioning archive reader"
     },
     %{
       source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/assets/storage/r2.ex",
+      target: "lib/storyarn/projects/assets/storage/r2.ex",
       kinds: ["runtime"],
       reason: "The import page branches on the configured storage adapter to offer external uploads"
     },
@@ -1256,7 +1256,7 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",
-      target: "lib/storyarn/project_templates.ex",
+      target: "lib/storyarn/projects/project_templates.ex",
       kinds: ["runtime"],
       reason: "The workspace home offers template installation through the public ProjectTemplates facade"
     },

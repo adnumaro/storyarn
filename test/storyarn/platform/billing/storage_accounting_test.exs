@@ -7,20 +7,20 @@ defmodule Storyarn.Platform.Billing.StorageAccountingTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.VersioningFixtures
 
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Billing.StorageAccounting
   alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
+  alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Projects.Versioning.SnapshotObjectFormat
+  alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Repo
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Versioning.SnapshotCleanupIntent
-  alias Storyarn.Versioning.SnapshotObjectFormat
-  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   @checksum String.duplicate("a", 64)

@@ -8,7 +8,7 @@ defmodule Storyarn.Scenes.SceneReferenceIntegrityTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.References.EntityReference
+  alias Storyarn.Projects.References.EntityReference
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene

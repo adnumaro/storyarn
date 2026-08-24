@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
 
   use Mix.Task
 
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
 
   @requirements ["app.start"]
 

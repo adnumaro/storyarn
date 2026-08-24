@@ -8,9 +8,9 @@ defmodule StoryarnWeb.UploadController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.UploadPolicy
   alias StoryarnWeb.PrivateMedia
 
   def inspect_upload(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug}) do

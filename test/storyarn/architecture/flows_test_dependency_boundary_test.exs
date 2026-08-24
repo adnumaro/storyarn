@@ -8,21 +8,21 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
 
   @foreign_context_modules [
     "Storyarn.Accounts",
-    "Storyarn.Assets",
+    "Storyarn.Projects.Assets",
     "Storyarn.Platform.Billing",
     "Storyarn.Platform.Emails",
-    "Storyarn.Exports",
-    "Storyarn.Imports",
+    "Storyarn.Projects.Exports",
+    "Storyarn.Projects.Imports",
     "Storyarn.Localization",
     "Storyarn.Platform.Notifications",
     "Storyarn.Platform",
     "Storyarn.Projects",
-    "Storyarn.ProjectTemplates",
-    "Storyarn.References",
+    "Storyarn.Projects.ProjectTemplates",
+    "Storyarn.Projects.References",
     "Storyarn.Scenes",
     "Storyarn.Sheets",
     "Storyarn.Shortcuts",
-    "Storyarn.Versioning",
+    "Storyarn.Projects.Versioning",
     "Storyarn.Workspaces"
   ]
 
@@ -39,8 +39,8 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Workspaces.Workspace"
     ],
     "test/storyarn/flows/editor_catalog_test.exs" => [
-      "Storyarn.Assets",
-      "Storyarn.Assets.Asset",
+      "Storyarn.Projects.Assets",
+      "Storyarn.Projects.Assets.Asset",
       "Storyarn.Scenes",
       "Storyarn.Sheets"
     ],
@@ -70,7 +70,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn/flows/node_crud_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.RuntimeKey",
-      "Storyarn.References.EntityReference"
+      "Storyarn.Projects.References.EntityReference"
     ],
     "test/storyarn/flows/node_delete_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
@@ -78,7 +78,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     ],
     "test/storyarn/flows/node_restore_integrity_test.exs" => [
       "Storyarn.Localization.RuntimeKey",
-      "Storyarn.References",
+      "Storyarn.Projects.References",
       "Storyarn.Sheets",
       "Storyarn.Sheets.EntityReference"
     ],
@@ -86,41 +86,41 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Sheets"
     ],
     "test/storyarn/flows/player_catalog_test.exs" => [
-      "Storyarn.Assets.Asset",
+      "Storyarn.Projects.Assets.Asset",
       "Storyarn.Sheets"
     ],
     "test/storyarn/flows/runtime_variables_test.exs" => [
       "Storyarn.Sheets"
     ],
     "test/storyarn/flows/versioning/conflict_detector_test.exs" => [
-      "Storyarn.Assets",
+      "Storyarn.Projects.Assets",
       "Storyarn.Sheets"
     ],
     "test/storyarn/flows/versioning/flow_snapshot_restore_test.exs" => [
-      "Storyarn.Assets",
-      "Storyarn.Assets.Asset",
-      "Storyarn.Assets.BlobStore",
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
+      "Storyarn.Projects.Assets",
+      "Storyarn.Projects.Assets.Asset",
+      "Storyarn.Projects.Assets.BlobStore",
       "Storyarn.Projects.Project",
-      "Storyarn.References",
+      "Storyarn.Projects.References",
       "Storyarn.Sheets.EntityReference"
     ],
     "test/storyarn/flows/versioning/snapshot_storage_test.exs" => [
-      "Storyarn.Assets.Storage",
-      "Storyarn.Assets.Storage.Local"
+      "Storyarn.Projects.Assets.Storage",
+      "Storyarn.Projects.Assets.Storage.Local"
     ],
     "test/storyarn/flows/versioning_flow_snapshot_test.exs" => [
-      "Storyarn.Assets",
-      "Storyarn.Assets.Asset",
-      "Storyarn.Assets.BlobStore",
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
+      "Storyarn.Projects.Assets",
+      "Storyarn.Projects.Assets.Asset",
+      "Storyarn.Projects.Assets.BlobStore",
       "Storyarn.Projects.Persistence.FlowRecord",
-      "Storyarn.Versioning.Builders.FlowBuilder"
+      "Storyarn.Projects.Versioning.Builders.FlowBuilder"
     ],
     "test/storyarn/flows/versioning_test.exs" => [
-      "Storyarn.Versioning"
+      "Storyarn.Projects.Versioning"
     ],
     "test/storyarn/flows/writer_reference_integrity_test.exs" => [
       "Storyarn.Localization",

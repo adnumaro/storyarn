@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.Persistence.SceneRecord do
   import Ecto.Changeset
   import Storyarn.Projects.SceneChangesetHelpers, only: [validate_color: 2]
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord
   alias Storyarn.Projects.Persistence.SceneAnnotationRecord
   alias Storyarn.Projects.Persistence.SceneConnectionRecord

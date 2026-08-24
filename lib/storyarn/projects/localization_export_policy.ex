@@ -1,8 +1,8 @@
 defmodule Storyarn.Projects.LocalizationExportPolicy do
   @moduledoc false
 
-  alias Storyarn.Exports.ExportOptions
   alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Projects.Exports.ExportOptions
 
   def text_eligible?(text, %ExportOptions{localization_policy: policy}), do: text_eligible?(text, policy)
 

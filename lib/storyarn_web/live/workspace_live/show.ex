@@ -8,7 +8,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   alias Storyarn.Platform
   alias Storyarn.Platform.Billing
   alias Storyarn.Projects
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateMedia
 

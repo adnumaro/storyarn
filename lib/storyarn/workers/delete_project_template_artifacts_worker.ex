@@ -5,7 +5,7 @@ defmodule Storyarn.Workers.DeleteProjectTemplateArtifactsWorker do
 
   use Oban.Worker, queue: :templates, max_attempts: 5
 
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
 
   require Logger
 

@@ -17,7 +17,7 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   require Logger
 

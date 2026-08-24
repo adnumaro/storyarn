@@ -3,8 +3,8 @@ defmodule Storyarn.Scenes.Versioning.AssetStorageCompensation do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageKeyLock
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
   alias Storyarn.Scenes.Persistence.AssetRecord
   alias Storyarn.Scenes.Persistence.StorageCleanupRequestRecord

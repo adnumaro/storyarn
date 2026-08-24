@@ -3,9 +3,9 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
   alias Storyarn.Platform.Billing
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet

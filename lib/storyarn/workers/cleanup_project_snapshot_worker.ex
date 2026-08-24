@@ -15,7 +15,7 @@ defmodule Storyarn.Workers.CleanupProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   require Logger
 
@@ -75,7 +75,7 @@ defmodule Storyarn.Workers.CleanupProjectSnapshotWorker do
       {:ok, :replay} ->
         Logger.error(
           "Snapshot cleanup exhausted retries intent_id=#{intent_id} " <>
-            "operator_replay=Storyarn.Versioning.replay_terminal_project_snapshot_cleanup(#{intent_id})"
+            "operator_replay=Storyarn.Projects.Versioning.replay_terminal_project_snapshot_cleanup(#{intent_id})"
         )
 
       {:ok, {:manual_repair_required, code}} ->

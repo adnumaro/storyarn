@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.AI
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Workspaces
 
   defp get_general_vue(view) do

@@ -3,8 +3,8 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Collaboration
+  alias Storyarn.Projects.Assets
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia

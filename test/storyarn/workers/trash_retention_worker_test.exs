@@ -9,10 +9,10 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
   alias Storyarn.Platform.Billing
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet

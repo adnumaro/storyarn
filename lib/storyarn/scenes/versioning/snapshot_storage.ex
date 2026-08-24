@@ -6,7 +6,7 @@ defmodule Storyarn.Scenes.Versioning.SnapshotStorage do
   contract, size limits, checksum verification, and decoding policy.
   """
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
 
   @default_max_compressed_bytes 128 * 1024 * 1024
   @default_max_uncompressed_bytes 128 * 1024 * 1024

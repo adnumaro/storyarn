@@ -33,7 +33,7 @@ defmodule Storyarn.Projects.Persistence.SequenceTrackRecord do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowNodeRecord
 
   @kinds ~w(music ambience sfx)

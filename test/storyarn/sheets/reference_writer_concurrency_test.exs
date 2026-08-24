@@ -10,7 +10,7 @@ defmodule Storyarn.Sheets.ReferenceWriterConcurrencyTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
   alias Storyarn.Flows
-  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Projects.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block

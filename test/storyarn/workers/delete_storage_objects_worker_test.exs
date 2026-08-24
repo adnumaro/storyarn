@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
   use Storyarn.DataCase, async: false
 
-  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   test "moves exhausted storage cleanup to the recurring durable reconciler" do

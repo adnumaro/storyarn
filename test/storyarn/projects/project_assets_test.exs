@@ -4,9 +4,9 @@ defmodule Storyarn.Projects.ProjectAssetsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.Projects
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.BlobStore
 
   test "generated assets stay project-scoped and are available to Scene consumers" do
     user = user_fixture()

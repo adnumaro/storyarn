@@ -474,7 +474,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
           data: %{"assignments" => [assignment]}
         })
 
-      :ok = Storyarn.References.update_flow_node_variable_references(node)
+      :ok = Storyarn.Projects.References.update_flow_node_variable_references(node)
 
       scene = scene_fixture(project, %{name: "Camp"})
       pin = pin_fixture(scene, %{"label" => "Gate", "condition" => condition})

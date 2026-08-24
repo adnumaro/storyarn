@@ -1,7 +1,7 @@
 defmodule Storyarn.StorageTestHelpers do
   @moduledoc false
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
 
   def delete_storage_blob(key) when is_binary(key) do
     if !recoverable_blob_key?(key) do

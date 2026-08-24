@@ -3,14 +3,14 @@ defmodule Storyarn.Projects.FlowReferenceIntegrity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Asset, as: AssetRecord
+  alias Storyarn.Projects.Assets.Asset, as: AssetRecord
   alias Storyarn.Projects.FlowNodeConnectionRules, as: NodeConnectionRules
   alias Storyarn.Projects.FlowReferenceGraph, as: NodeCreate
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
-  alias Storyarn.References.AvatarIntegrity
-  alias Storyarn.References.ProjectReferenceIntegrity
-  alias Storyarn.References.RichTextMentions
+  alias Storyarn.Projects.References.AvatarIntegrity
+  alias Storyarn.Projects.References.ProjectReferenceIntegrity
+  alias Storyarn.Projects.References.RichTextMentions
   alias Storyarn.Repo
 
   @project_lock_modes [:key_share, :share, :update]

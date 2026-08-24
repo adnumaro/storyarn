@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.Persistence.SceneZoneRecord do
   import Ecto.Changeset
   import Storyarn.Projects.SceneChangesetHelpers
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.SceneLayerRecord
   alias Storyarn.Projects.Persistence.SceneRecord
 

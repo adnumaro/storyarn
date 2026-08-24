@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.Versioning.ConflictDetectorTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
+  alias Storyarn.Projects.Assets
   alias Storyarn.Sheets.Versioning.ConflictDetector
 
   @max_pg_bigint 9_223_372_036_854_775_807

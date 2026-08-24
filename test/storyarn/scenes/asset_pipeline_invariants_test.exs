@@ -4,11 +4,11 @@ defmodule Storyarn.Scenes.AssetPipelineInvariantsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Repo
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.ImageProcessor

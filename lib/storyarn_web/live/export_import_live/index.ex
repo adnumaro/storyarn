@@ -3,10 +3,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Exports
-  alias Storyarn.Exports.ExportOptions
-  alias Storyarn.Imports
-  alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Exports
+  alias Storyarn.Projects.Exports.ExportOptions
+  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes localization)a

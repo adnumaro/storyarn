@@ -3,7 +3,8 @@ defmodule Storyarn.Platform.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects.Versioning
 
   @app :storyarn
   @snapshot_storage_accounting_migration 20_260_804_120_000
@@ -425,7 +426,7 @@ defmodule Storyarn.Platform.Release do
   def preview_template_bundle(path) when is_binary(path) do
     load_app()
 
-    case Storyarn.ProjectTemplates.preview_portable_template(path) do
+    case ProjectTemplates.preview_portable_template(path) do
       {:ok, manifest} ->
         print_template_bundle_preview(path, manifest, [])
         manifest
@@ -449,10 +450,10 @@ defmodule Storyarn.Platform.Release do
     load_app()
 
     with {:ok, keyword_opts} <- template_import_options(opts),
-         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path, keyword_opts) do
+         {:ok, manifest} <- ProjectTemplates.preview_portable_template(path, keyword_opts) do
       print_template_bundle_preview(path, manifest, keyword_opts)
 
-      case Storyarn.ProjectTemplates.import_portable_template(path, keyword_opts) do
+      case ProjectTemplates.import_portable_template(path, keyword_opts) do
         {:ok, template} ->
           IO.puts("Imported template ##{template.id}: #{template.name}")
           IO.puts("Visibility: #{template.visibility}")

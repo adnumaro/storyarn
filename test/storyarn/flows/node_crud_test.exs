@@ -12,7 +12,7 @@ defmodule Storyarn.Flows.NodeCrudTest do
   alias Storyarn.Localization
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.References.EntityReference
+  alias Storyarn.Projects.References.EntityReference
   alias Storyarn.Repo
 
   # ===========================================================================

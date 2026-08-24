@@ -3,9 +3,9 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.NameNormalizer
@@ -13,9 +13,9 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
-  alias Storyarn.Versioning
 
   @doc """
   Lists all projects the user has access to (owned or as a member).

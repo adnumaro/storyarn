@@ -14,8 +14,8 @@ defmodule Storyarn.Flows.VersioningTest do
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.FlowSnapshot
   alias Storyarn.Flows.Versioning.RestorePolicy
+  alias Storyarn.Projects.Versioning, as: LegacyVersioning
   alias Storyarn.Repo
-  alias Storyarn.Versioning, as: LegacyVersioning
 
   setup do
     previous_policy = Application.get_env(:storyarn, RestorePolicy)

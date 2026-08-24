@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.Persistence.ScenePinRecord do
   import Ecto.Changeset
   import Storyarn.Projects.SceneChangesetHelpers
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.SceneConnectionRecord
   alias Storyarn.Projects.Persistence.SceneLayerRecord

@@ -12,7 +12,7 @@ defmodule Storyarn.Workers.RestoreProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @impl Oban.Worker
   def perform(%Oban.Job{

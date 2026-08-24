@@ -8,7 +8,7 @@ defmodule StoryarnWeb.PrivateMedia do
 
   use StoryarnWeb, :verified_routes
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
 
   @spec asset_url(Asset.t() | map() | nil) :: String.t() | nil
   def asset_url(nil), do: nil

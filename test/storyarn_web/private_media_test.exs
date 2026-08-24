@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.PrivateMediaTest do
   use StoryarnWeb.ConnCase, async: true
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias StoryarnWeb.PrivateMedia
 
   describe "asset_url/1" do

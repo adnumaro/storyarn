@@ -9,9 +9,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
   alias Storyarn.Flows
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets

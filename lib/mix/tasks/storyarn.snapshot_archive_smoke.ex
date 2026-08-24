@@ -10,14 +10,14 @@ defmodule Mix.Tasks.Storyarn.SnapshotArchiveSmoke do
       mix storyarn.snapshot_archive_smoke --snapshot-id 123 --yes-read-only
 
   Production releases must invoke
-  `Storyarn.Versioning.SnapshotArchiveSmoke.run!/1` through the release `rpc`
+  `Storyarn.Projects.Versioning.SnapshotArchiveSmoke.run!/1` through the release `rpc`
   command instead of running Mix.
   """
 
   use Mix.Task
 
+  alias Storyarn.Projects.Versioning.SnapshotArchiveSmoke
   alias Storyarn.Repo
-  alias Storyarn.Versioning.SnapshotArchiveSmoke
 
   @runtime_applications [:ecto_sql, :postgrex, :req, :ex_aws, :ex_aws_s3]
   @usage "Usage: mix storyarn.snapshot_archive_smoke --snapshot-id ID --yes-read-only"

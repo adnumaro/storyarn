@@ -5,7 +5,7 @@ defmodule Storyarn.Projects.Persistence.SheetAvatarRecord do
 
   import Ecto.Changeset
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.SheetNaming
 
   @type t :: %__MODULE__{}

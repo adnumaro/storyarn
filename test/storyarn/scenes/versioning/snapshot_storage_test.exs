@@ -1,8 +1,8 @@
 defmodule Storyarn.Scenes.Versioning.SnapshotStorageTest do
   use ExUnit.Case, async: false
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage.Local
   alias Storyarn.Scenes.Versioning.SnapshotStorage
   alias Storyarn.SnapshotReadSwitchStorage
 

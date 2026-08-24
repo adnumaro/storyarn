@@ -7,7 +7,7 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
   import Storyarn.WorkspacesFixtures
   import StoryarnWeb.PrivateDownloadAssertions
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateMedia

@@ -2,7 +2,7 @@ defmodule StoryarnWeb.LiveVueEncodersTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Accounts.User
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
 
   test "asset encoding excludes internal trash state" do
     encoded =

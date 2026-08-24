@@ -7,7 +7,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   import StoryarnWeb.TemplateLive.Helpers
 
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
 
   @section_per_page 9
 

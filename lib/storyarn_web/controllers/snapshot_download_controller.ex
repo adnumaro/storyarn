@@ -3,9 +3,9 @@ defmodule StoryarnWeb.SnapshotDownloadController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Versioning
   alias StoryarnWeb.PrivateDownload
 
   require Logger

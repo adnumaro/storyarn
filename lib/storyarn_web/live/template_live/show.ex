@@ -8,7 +8,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
   import StoryarnWeb.TemplateLive.Helpers
 
   alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates
   alias Storyarn.Workspaces
 
   @impl true

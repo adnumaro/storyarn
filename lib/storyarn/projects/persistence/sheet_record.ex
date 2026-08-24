@@ -5,7 +5,7 @@ defmodule Storyarn.Projects.Persistence.SheetRecord do
 
   import Ecto.Changeset
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetAvatarRecord
 

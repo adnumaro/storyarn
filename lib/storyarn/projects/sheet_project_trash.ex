@@ -11,9 +11,9 @@ defmodule Storyarn.Projects.SheetProjectTrash do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets
   alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.EntityVersionRecord
@@ -21,7 +21,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
   alias Storyarn.Projects.Persistence.TableColumnRecord
   alias Storyarn.Projects.Persistence.TableRowRecord
   alias Storyarn.Projects.Project
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Repo
 
   @doc "Gets a trashed Sheet scoped to its project, with avatars preloaded."

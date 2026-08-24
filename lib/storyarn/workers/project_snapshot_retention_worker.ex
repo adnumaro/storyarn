@@ -15,7 +15,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     unique: [fields: [:worker, :args], period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @batch_size 50
   @timeout_ms 10 * 60 * 1_000

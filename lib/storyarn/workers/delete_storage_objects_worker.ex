@@ -11,7 +11,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorker do
 
   use Oban.Worker, queue: :storage_cleanup, max_attempts: 5
 
-  alias Storyarn.Assets.StorageCompensation
+  alias Storyarn.Projects.Assets.StorageCompensation
 
   require Logger
 

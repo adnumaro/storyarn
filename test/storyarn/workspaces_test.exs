@@ -7,10 +7,10 @@ defmodule Storyarn.WorkspacesTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
-  alias Storyarn.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.WorkspaceMembership

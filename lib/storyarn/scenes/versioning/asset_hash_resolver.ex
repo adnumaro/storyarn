@@ -11,7 +11,7 @@ defmodule Storyarn.Scenes.Versioning.AssetHashResolver do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Scenes.AssetCommands
   alias Storyarn.Scenes.Persistence.AssetRecord, as: Asset

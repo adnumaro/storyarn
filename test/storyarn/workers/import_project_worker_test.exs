@@ -5,8 +5,8 @@ defmodule Storyarn.Workers.ImportProjectWorkerTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Imports
-  alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Repo
   alias Storyarn.Workers.ImportProjectWorker
 

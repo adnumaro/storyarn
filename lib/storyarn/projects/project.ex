@@ -15,7 +15,7 @@ defmodule Storyarn.Projects.Project do
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
-  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
 
   @type t :: %__MODULE__{
           id: integer() | nil,

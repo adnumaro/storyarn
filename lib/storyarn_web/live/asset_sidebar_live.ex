@@ -10,8 +10,8 @@ defmodule StoryarnWeb.AssetSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Assets
   alias Storyarn.Platform.Collaboration
+  alias Storyarn.Projects.Assets
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @asset_filters ~w(all image audio file)

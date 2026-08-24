@@ -1,0 +1,2289 @@
+defmodule Storyarn.AssetsTest do
+  use Storyarn.DataCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
+
+  import Ecto.Query
+  import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
+
+  alias Phoenix.LiveView.UploadEntry
+  alias Storyarn.Accounts.User
+  alias Storyarn.Localization
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Assets.Persistence.FlowNodeRecord
+  alias Storyarn.Projects.Assets.Persistence.SequenceVisualLayerRecord
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Repo
+  alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
+
+  describe "assets" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "list_assets/2 returns all assets for a project", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+      assets = Assets.list_assets(project.id)
+
+      assert length(assets) == 1
+      assert hd(assets).id == asset.id
+    end
+
+    test "list_assets/2 filters by content_type", %{project: project, user: user} do
+      _image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
+
+      assets = Assets.list_assets(project.id, content_type: "audio/")
+
+      assert length(assets) == 1
+      assert hd(assets).id == audio.id
+    end
+
+    test "list_assets/2 filters images only", %{project: project, user: user} do
+      image = image_asset_fixture(project, user)
+      _audio = audio_asset_fixture(project, user)
+
+      assets = Assets.list_assets(project.id, images_only: true)
+
+      assert length(assets) == 1
+      assert hd(assets).id == image.id
+    end
+
+    test "list_assets/2 searches by filename", %{project: project, user: user} do
+      _asset1 = asset_fixture(project, user, %{filename: "hero_portrait.jpg"})
+      asset2 = asset_fixture(project, user, %{filename: "villain_portrait.png"})
+
+      assets = Assets.list_assets(project.id, search: "villain")
+
+      assert length(assets) == 1
+      assert hd(assets).id == asset2.id
+    end
+
+    test "list_assets/2 with empty search returns all", %{project: project, user: user} do
+      _asset = asset_fixture(project, user)
+
+      assets = Assets.list_assets(project.id, search: "")
+      assert length(assets) == 1
+    end
+
+    test "list_assets/2 keeps offset pagination stable when timestamps match", %{
+      project: project,
+      user: user
+    } do
+      assets = for _ <- 1..3, do: asset_fixture(project, user)
+      timestamp = ~U[2026-01-01 12:00:00Z]
+      ids = Enum.map(assets, & &1.id)
+
+      Repo.update_all(from(a in Asset, where: a.id in ^ids), set: [inserted_at: timestamp])
+
+      first_page = Assets.list_assets(project.id, limit: 2, offset: 0)
+      second_page = Assets.list_assets(project.id, limit: 2, offset: 2)
+
+      assert Enum.map(first_page ++ second_page, & &1.id) == Enum.sort(ids, :desc)
+    end
+
+    test "get_asset/2 returns asset by id", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      assert found = Assets.get_asset(project.id, asset.id)
+      assert found.id == asset.id
+    end
+
+    test "get_asset/2 returns nil for wrong project", %{user: user} do
+      other_project = project_fixture()
+      asset = asset_fixture(other_project, user)
+
+      another_project = project_fixture()
+      assert Assets.get_asset(another_project.id, asset.id) == nil
+    end
+
+    test "get_asset_by_key/2 returns asset by storage key", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      assert found = Assets.get_asset_by_key(project.id, asset.key)
+      assert found.id == asset.id
+    end
+
+    test "get_asset_by_key/2 returns nil for unknown key", %{project: project} do
+      assert Assets.get_asset_by_key(project.id, "unknown/key.jpg") == nil
+    end
+
+    test "create_asset/3 creates an asset", %{project: project, user: user} do
+      attrs = %{
+        filename: "test.jpg",
+        content_type: "image/jpeg",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/test.jpg",
+        url: "/uploads/projects/#{project.id}/assets/test.jpg"
+      }
+
+      assert {:ok, asset} = Assets.create_asset(project, user, attrs)
+      assert asset.filename == "test.jpg"
+      assert asset.content_type == "image/jpeg"
+      assert asset.size == 5000
+      assert asset.project_id == project.id
+      assert asset.uploaded_by_id == user.id
+    end
+
+    test "create_asset/3 validates required fields", %{project: project, user: user} do
+      assert {:error, changeset} = Assets.create_asset(project, user, %{})
+      assert "can't be blank" in errors_on(changeset).filename
+      assert "can't be blank" in errors_on(changeset).content_type
+      assert "can't be blank" in errors_on(changeset).key
+    end
+
+    test "create_asset/3 validates content_type", %{project: project, user: user} do
+      attrs = valid_asset_attributes(%{content_type: "application/x-malware"})
+
+      assert {:error, changeset} = Assets.create_asset(project, user, attrs)
+      assert errors_on(changeset).content_type != []
+    end
+
+    test "create_asset/3 validates file size", %{project: project, user: user} do
+      attrs = valid_asset_attributes(%{size: -100})
+
+      assert {:error, changeset} = Assets.create_asset(project, user, attrs)
+      assert errors_on(changeset).size != []
+    end
+
+    test "create_asset/3 enforces unique key per project", %{project: project, user: user} do
+      key = "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/unique.jpg"
+      _asset = asset_fixture(project, user, %{key: key})
+
+      attrs = valid_asset_attributes(%{key: key})
+
+      assert {:error, changeset} = Assets.create_asset(project, user, attrs)
+      assert "has already been taken" in errors_on(changeset).key
+    end
+
+    test "create_asset/2 creates asset without user", %{project: project} do
+      attrs = valid_asset_attributes()
+
+      assert {:ok, asset} = Assets.create_asset(project, attrs)
+      assert asset.filename
+      assert asset.uploaded_by_id == nil
+    end
+
+    test "create_asset/3 enforces workspace storage capacity under the common lock", %{
+      project: project,
+      user: user
+    } do
+      limit = Billing.plan_limit("free", :storage_bytes_per_workspace)
+      max_asset_size = 52_428_800
+      assert limit == max_asset_size * 5
+
+      Enum.each(1..5, fn index ->
+        filename = "fills-workspace-#{index}.pdf"
+
+        assert {:ok, _asset} =
+                 Assets.create_asset(project, user, %{
+                   filename: filename,
+                   content_type: "application/pdf",
+                   size: max_asset_size,
+                   key: Assets.generate_key(project, filename)
+                 })
+      end)
+
+      assert {:error, :limit_reached, details} =
+               Assets.create_asset(project, user, %{
+                 filename: "over-limit.pdf",
+                 content_type: "application/pdf",
+                 size: 1,
+                 key: Assets.generate_key(project, "over-limit.pdf")
+               })
+
+      assert details.required == 1
+      assert details.available == 0
+      assert Assets.count_assets(project.id) == 5
+    end
+
+    test "create_asset/3 rejects a project struct spoofing another workspace", %{
+      project: project,
+      user: user
+    } do
+      other_project = project_fixture()
+      spoofed_project = %{project | workspace_id: other_project.workspace_id}
+
+      assert {:error, :project_workspace_mismatch} =
+               Assets.create_asset(spoofed_project, user, %{
+                 filename: "spoofed-workspace.pdf",
+                 content_type: "application/pdf",
+                 size: 1,
+                 key: Assets.generate_key(project, "spoofed-workspace.pdf")
+               })
+
+      assert Assets.count_assets(project.id) == 0
+      assert Assets.count_assets(other_project.id) == 0
+    end
+
+    test "create_asset/3 rejects a stale struct for a trashed project", %{
+      project: project,
+      user: user
+    } do
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Assets.create_asset(project, user, valid_asset_attributes())
+    end
+
+    test "update_asset/2 updates an asset", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      assert {:ok, updated} = Assets.update_asset(asset, %{metadata: %{"width" => 1024}})
+      assert updated.metadata == %{"width" => 1024}
+    end
+
+    test "update_asset/2 rejects a stale write after the project enters trash", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      assert {:error, :project_not_active} =
+               Assets.update_asset(asset, %{metadata: %{"width" => 1024}})
+
+      assert Repo.reload!(asset).metadata == asset.metadata
+    end
+
+    test "delete_asset/1 keeps its compatibility surface but moves the asset to trash", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+      thumbnail_key = Assets.thumbnail_key(asset.key)
+      {:ok, asset} = Assets.update_asset(asset, %{metadata: %{"thumbnail_key" => thumbnail_key}})
+      :ok = Collaboration.subscribe_dashboard(project.id)
+
+      assert {:ok, _} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id) == nil
+      assert trashed_asset = Repo.get!(Asset, asset.id)
+      assert trashed_asset.deleted_at
+      assert trashed_asset.metadata["thumbnail_key"] == thumbnail_key
+      assert Repo.all(StorageCleanupRequest) == []
+
+      assert_receive {:dashboard_invalidate, :all}
+      refute_receive {:dashboard_invalidate, :all}, 10
+    end
+
+    test "purge derives thumbnail cleanup from the owned asset key", %{
+      project: project,
+      user: user
+    } do
+      other_project = project_fixture(user)
+      asset = asset_fixture(project, user)
+      other_asset = asset_fixture(other_project, user)
+      hostile_thumbnail_key = Assets.thumbnail_key(other_asset.key)
+
+      {:ok, asset} =
+        Assets.update_asset(asset, %{
+          metadata: %{"thumbnail_key" => hostile_thumbnail_key}
+        })
+
+      assert {:ok, trashed_asset} = Assets.delete_asset(asset)
+
+      assert {:ok, _deleted_asset} =
+               Assets.purge_trashed_asset(
+                 project.id,
+                 asset.id,
+                 trashed_asset.deletion_generation,
+                 user.id
+               )
+
+      expected_keys = Enum.sort([asset.key, Assets.thumbnail_key(asset.key)])
+
+      assert Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               Enum.sort(request.storage_keys) == expected_keys
+             end)
+
+      refute Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+               hostile_thumbnail_key in request.storage_keys
+             end)
+    end
+
+    test "delete_asset/1 refuses stale writes after the project enters trash", %{
+      project: project,
+      user: user
+    } do
+      asset = asset_fixture(project, user)
+
+      project
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      :ok = Collaboration.subscribe_dashboard(project.id)
+      assert {:error, :project_not_active} = Assets.delete_asset(asset)
+      assert Repo.get(Asset, asset.id)
+      refute_receive {:dashboard_invalidate, :all}, 10
+    end
+
+    test "delete_asset/1 refuses to hide a sheet avatar still used by active content", %{
+      project: project,
+      user: user
+    } do
+      asset = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, avatar} = Storyarn.Sheets.add_avatar(sheet, asset.id, %{is_default: true})
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id)
+      assert Repo.get(SheetAvatar, avatar.id)
+    end
+
+    test "delete_asset/1 rolls back every avatar deletion when one is referenced", %{
+      project: project,
+      user: user
+    } do
+      asset = image_asset_fixture(project, user)
+      referenced_sheet = sheet_fixture(project, %{name: "Referenced"})
+      other_sheet = sheet_fixture(project, %{name: "Other"})
+      {:ok, referenced_avatar} = Storyarn.Sheets.add_avatar(referenced_sheet, asset.id)
+      {:ok, other_avatar} = Storyarn.Sheets.add_avatar(other_sheet, asset.id)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          data: %{
+            "speaker_sheet_id" => referenced_sheet.id,
+            "avatar_id" => referenced_avatar.id,
+            "text" => "Hello"
+          }
+        })
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+      assert Assets.get_asset(project.id, asset.id)
+      assert Repo.get(SheetAvatar, referenced_avatar.id)
+      assert Repo.get(SheetAvatar, other_avatar.id)
+      assert Repo.get!(FlowNodeRecord, node.id).data["avatar_id"] == referenced_avatar.id
+    end
+
+    test "delete_asset/1 preserves and rejects active flow audio references", %{
+      project: project,
+      user: user
+    } do
+      asset = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"audio_asset_id" => asset.id, "text" => "Hello"}
+        })
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+
+      refreshed = Repo.get!(FlowNodeRecord, node.id)
+      assert refreshed.data["audio_asset_id"] == asset.id
+    end
+
+    test "delete_asset/1 preserves and rejects active structured references", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      asset = image_asset_fixture(project, user)
+      flow = flow_fixture(project)
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      {:ok, layer} =
+        Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+          "asset_id" => asset.id,
+          "kind" => "backdrop"
+        })
+
+      sheet = sheet_fixture(project)
+      block = block_fixture(sheet, %{type: "gallery"})
+      {:ok, gallery_image} = Storyarn.Sheets.add_gallery_image(block, asset.id)
+      scene = scene_fixture(project)
+
+      zone =
+        zone_fixture(scene, %{
+          "label_mode" => "icon",
+          "label_icon_asset_id" => asset.id
+        })
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+
+      assert Repo.get(SequenceVisualLayerRecord, layer.id)
+      assert Repo.get(Storyarn.Sheets.BlockGalleryImage, gallery_image.id)
+      assert Repo.reload!(zone).label_icon_asset_id == asset.id
+    end
+
+    test "delete_asset/1 preserves and rejects active sequence tracks", %{
+      project: project,
+      user: user
+    } do
+      asset = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      {:ok, track} =
+        Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{"asset_id" => asset.id})
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+
+      assert Repo.reload!(track).asset_id == asset.id
+    end
+
+    test "delete_asset/1 preserves and rejects active localized voice-over references", %{
+      project: project,
+      user: user
+    } do
+      asset = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, voiced_text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: asset.id,
+                 vo_status: "recorded"
+               })
+
+      assert {:error, :asset_still_referenced} = Assets.delete_asset(asset)
+
+      refreshed = Repo.reload!(voiced_text)
+      assert refreshed.vo_asset_id == asset.id
+      assert refreshed.vo_status == "recorded"
+      assert refreshed.lock_version == voiced_text.lock_version
+    end
+
+    test "delete_asset/1 trashes a complete optimized-image family without rewriting metadata", %{
+      project: project,
+      user: user
+    } do
+      variant = image_asset_fixture(project, user, %{filename: "hero-avatar.webp"})
+      other_variant = image_asset_fixture(project, user, %{filename: "hero-banner.webp"})
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url,
+                   "variant_asset_ids" => %{
+                     "avatar" => variant.id,
+                     "banner" => other_variant.id
+                   }
+                 }
+               })
+
+      assert {:ok, _variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert {:ok, _deleted} = Assets.delete_asset(variant)
+
+      refreshed_original = Repo.reload!(original)
+      refreshed_variant = Repo.reload!(variant)
+      refreshed_other_variant = Repo.reload!(other_variant)
+
+      assert refreshed_original.deleted_at
+      assert refreshed_variant.deleted_at
+      assert refreshed_other_variant.deleted_at
+      assert refreshed_original.metadata == original.metadata
+      assert refreshed_variant.metadata["original_asset_id"] == original.id
+    end
+
+    test "delete_asset/1 preserves inverse links while trashing the family", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert {:ok, _deleted} = Assets.delete_asset(original)
+
+      assert Repo.reload!(original).deleted_at
+      assert Repo.reload!(variant).deleted_at
+      assert Repo.reload!(variant).metadata["original_asset_id"] == original.id
+    end
+
+    test "change_asset/2 returns a changeset", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      assert %Ecto.Changeset{} = Assets.change_asset(asset)
+    end
+
+    test "count_assets_by_type/1 returns counts grouped by type", %{project: project, user: user} do
+      _image1 = image_asset_fixture(project, user)
+      _image2 = image_asset_fixture(project, user)
+      _audio = audio_asset_fixture(project, user)
+
+      counts = Assets.count_assets_by_type(project.id)
+
+      assert counts["image"] == 2
+      assert counts["audio"] == 1
+    end
+
+    test "total_storage_size/1 returns total size", %{project: project, user: user} do
+      _asset1 = asset_fixture(project, user, %{size: 1000})
+      _asset2 = asset_fixture(project, user, %{size: 2000})
+
+      assert Assets.total_storage_size(project.id) == 3000
+    end
+
+    test "total_storage_size/1 returns 0 for empty project", %{project: project} do
+      assert Assets.total_storage_size(project.id) == 0
+    end
+  end
+
+  describe "generate_key/2" do
+    test "generates a unique storage key" do
+      project = project_fixture()
+      filename = "test.jpg"
+
+      key = Assets.generate_key(project, filename)
+
+      assert String.starts_with?(key, "projects/#{project.id}/assets/")
+      assert String.ends_with?(key, "/test.jpg")
+    end
+
+    test "preserves file extension" do
+      project = project_fixture()
+
+      assert String.ends_with?(Assets.generate_key(project, "file.png"), ".png")
+      assert String.ends_with?(Assets.generate_key(project, "file.jpeg"), ".jpeg")
+      assert String.ends_with?(Assets.generate_key(project, "file.gif"), ".gif")
+    end
+
+    test "sanitizes filename" do
+      project = project_fixture()
+
+      key = Assets.generate_key(project, "Hello World!.jpg")
+      assert String.ends_with?(key, "/hello_world_.jpg")
+    end
+  end
+
+  describe "thumbnail_key/1" do
+    test "generates thumbnail key from original key" do
+      key = "projects/abc/assets/123/image.jpg"
+
+      thumb_key = Assets.thumbnail_key(key)
+
+      assert thumb_key == "projects/abc/thumbnails/123/image.jpg"
+    end
+  end
+
+  describe "get_asset_usages/2" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "returns flow node usages for audio assets", %{project: project, user: user} do
+      import Storyarn.FlowsFixtures
+
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Intro Flow"})
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+      })
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert length(usages.flow_nodes) == 1
+      assert hd(usages.flow_nodes).flow_name == "Intro Flow"
+      refute hd(usages.flow_nodes).trashed
+    end
+
+    test "returns optimized-image metadata relationships", %{project: project, user: user} do
+      original = image_asset_fixture(project, user, %{filename: "hero.png"})
+      variant = image_asset_fixture(project, user, %{filename: "hero.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "web_url" => variant.url,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      assert [
+               %{
+                 id: original_id,
+                 filename: "hero.png",
+                 relations: ["web_variant", "profile_variant"]
+               }
+             ] = Assets.get_asset_usages(project.id, variant.id).asset_metadata_links
+
+      assert original_id == original.id
+
+      assert [
+               %{id: variant_id, filename: "hero.webp", relations: ["original"]}
+             ] = Assets.get_asset_usages(project.id, original.id).asset_metadata_links
+
+      assert variant_id == variant.id
+    end
+
+    test "returns deduplicated usages for every active member of an asset family", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-original.png"})
+      variant = image_asset_fixture(project, user, %{filename: "family-variant.webp"})
+      unrelated = image_asset_fixture(project, user, %{filename: "unrelated.png"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => variant.id,
+                   "variant_asset_ids" => %{"avatar" => variant.id}
+                 }
+               })
+
+      assert {:ok, variant} =
+               Assets.update_asset(variant, %{
+                 metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+               })
+
+      original_sheet = sheet_fixture(project, %{name: "Original usage", banner_asset_id: original.id})
+      variant_sheet = sheet_fixture(project, %{name: "Variant usage", banner_asset_id: variant.id})
+      _unrelated_sheet = sheet_fixture(project, %{name: "Unrelated usage", banner_asset_id: unrelated.id})
+
+      original_usages = Assets.get_asset_family_usages(project.id, original.id)
+
+      assert MapSet.new(original_usages.sheet_banners, & &1.id) ==
+               MapSet.new([original_sheet.id, variant_sheet.id])
+
+      assert [%{id: variant_id}] = original_usages.asset_metadata_links
+      assert variant_id == variant.id
+      refute Enum.any?(original_usages.asset_metadata_links, &(&1.id == original.id))
+
+      variant_usages = Assets.get_asset_family_usages(project.id, variant.id)
+
+      assert [%{id: original_id}] = variant_usages.asset_metadata_links
+      assert original_id == original.id
+      refute Enum.any?(variant_usages.asset_metadata_links, &(&1.id == variant.id))
+
+      assert Map.delete(original_usages, :asset_metadata_links) ==
+               Map.delete(variant_usages, :asset_metadata_links)
+    end
+
+    test "loads a three-member asset family's usages with a fixed query budget", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-budget-original.png"})
+      web_variant = image_asset_fixture(project, user, %{filename: "family-budget-web.webp"})
+      profile_variant = image_asset_fixture(project, user, %{filename: "family-budget-profile.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => web_variant.id,
+                   "variant_asset_ids" => %{"avatar" => profile_variant.id}
+                 }
+               })
+
+      for variant <- [web_variant, profile_variant] do
+        assert {:ok, _variant} =
+                 Assets.update_asset(variant, %{
+                   metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+                 })
+      end
+
+      {usages, queries} =
+        capture_repo_queries(fn -> Assets.get_asset_family_usages(project.id, original.id) end)
+
+      assert length(queries) == 12
+      refute Enum.any?(usages.asset_metadata_links, &(&1.id == original.id))
+
+      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
+               MapSet.new([web_variant.id, profile_variant.id])
+    end
+
+    test "returns sequence visual layers, including layers owned by trashed nodes", %{
+      project: project,
+      user: user
+    } do
+      image = image_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Cinematic Flow"})
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Opening"})
+
+      assert {:ok, layer} =
+               Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Wide shot"
+               })
+
+      sequence
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 id: layer_id,
+                 node_id: node_id,
+                 flow_name: "Cinematic Flow",
+                 sequence_name: "Opening",
+                 label: "Wide shot",
+                 kind: "backdrop",
+                 trashed: true
+               }
+             ] = usages.sequence_visual_layers
+
+      assert layer_id == layer.id
+      assert node_id == sequence.id
+    end
+
+    test "returns sequence audio tracks, including tracks owned by trashed flows", %{
+      project: project,
+      user: user
+    } do
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project, %{name: "Audio Flow"})
+      {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Chase"})
+
+      assert {:ok, track} =
+               Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{
+                 "asset_id" => audio.id
+               })
+
+      flow
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert [
+               %{
+                 id: track_id,
+                 node_id: node_id,
+                 flow_name: "Audio Flow",
+                 sequence_name: "Chase",
+                 kind: "music",
+                 trashed: true
+               }
+             ] = usages.sequence_tracks
+
+      assert track_id == track.id
+      assert node_id == sequence.id
+    end
+
+    test "returns sheet avatar usages", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.sheet_avatars) == 1
+      assert hd(usages.sheet_avatars).id == sheet.id
+    end
+
+    test "returns sheet banner usages", %{project: project, user: user} do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero", banner_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.sheet_banners) == 1
+      assert hd(usages.sheet_banners).id == sheet.id
+    end
+
+    test "returns scene background usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge", background_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_backgrounds) == 1
+      assert hd(usages.scene_backgrounds).id == scene.id
+    end
+
+    test "returns scene pin icon usages", %{project: project, user: user} do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge"})
+      pin = pin_fixture(scene, %{"label" => "Gate", "icon_asset_id" => image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.scene_pin_icons) == 1
+      assert hd(usages.scene_pin_icons).pin_id == pin.id
+    end
+
+    test "returns scene zone label icon usages, including zones in trashed scenes", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge"})
+
+      zone =
+        zone_fixture(scene, %{
+          "name" => "Exit",
+          "label_mode" => "icon",
+          "label_icon_asset_id" => image.id
+        })
+
+      scene
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 zone_id: zone_id,
+                 zone_name: "Exit",
+                 scene_id: scene_id,
+                 scene_name: "Bridge",
+                 trashed: true
+               }
+             ] = usages.scene_zone_icons
+
+      assert zone_id == zone.id
+      assert scene_id == scene.id
+    end
+
+    test "returns localized voice-over usages", %{project: project, user: user} do
+      audio = audio_asset_fixture(project, user)
+      text = localized_text_fixture(project.id, %{source_text: "A voiced line", locale_code: "es"})
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert [
+               %{
+                 id: text_id,
+                 locale_code: "es",
+                 source_text: "A voiced line"
+               }
+             ] = usages.localized_voiceovers
+
+      assert text_id == text.id
+    end
+
+    test "returns gallery image usages, including content in trash", %{
+      project: project,
+      user: user
+    } do
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Gallery owner"})
+      block = block_fixture(sheet, %{type: "gallery"})
+
+      assert {:ok, gallery_image} =
+               Storyarn.Sheets.add_gallery_image(block, image.id)
+
+      block
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [
+               %{
+                 id: gallery_image_id,
+                 block_id: block_id,
+                 sheet_id: sheet_id,
+                 sheet_name: "Gallery owner",
+                 block_deleted_at: deleted_at
+               }
+             ] = usages.gallery_images
+
+      assert gallery_image_id == gallery_image.id
+      assert block_id == block.id
+      assert sheet_id == sheet.id
+      assert deleted_at
+    end
+
+    test "returns empty when asset is unused", %{project: project, user: user} do
+      asset = asset_fixture(project, user)
+
+      usages = Assets.get_asset_usages(project.id, asset.id)
+
+      assert usages.asset_metadata_links == []
+      assert usages.flow_nodes == []
+      assert usages.sequence_visual_layers == []
+      assert usages.sequence_tracks == []
+      assert usages.sheet_avatars == []
+      assert usages.sheet_banners == []
+      assert usages.scene_backgrounds == []
+      assert usages.scene_pin_icons == []
+      assert usages.scene_zone_icons == []
+      assert usages.localized_voiceovers == []
+      assert usages.gallery_images == []
+    end
+
+    test "includes soft-deleted nodes because asset deletion still clears their audio", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.FlowsFixtures
+
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+        })
+
+      # Soft-delete the node
+      node
+      |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, audio.id)
+
+      assert [%{node_id: node_id, trashed: true}] = usages.flow_nodes
+      assert node_id == node.id
+    end
+
+    test "includes soft-deleted sheets because asset deletion still removes their references", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.SheetsFixtures
+
+      image = image_asset_fixture(project, user)
+      sheet = sheet_fixture(project, %{name: "Hero", banner_asset_id: image.id})
+      {:ok, _} = Storyarn.Sheets.add_avatar(sheet, image.id, %{is_default: true})
+
+      # Soft-delete the sheet via raw changeset
+      sheet
+      |> Ecto.Changeset.change(deleted_at: DateTime.truncate(DateTime.utc_now(), :second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [%{id: sheet_id, trashed: true}] = usages.sheet_avatars
+      assert [%{id: ^sheet_id, trashed: true}] = usages.sheet_banners
+      assert sheet_id == sheet.id
+    end
+
+    test "includes backgrounds and pin icons from trashed scenes", %{
+      project: project,
+      user: user
+    } do
+      import Storyarn.ScenesFixtures
+
+      image = image_asset_fixture(project, user)
+      scene = scene_fixture(project, %{name: "Bridge", background_asset_id: image.id})
+      pin = pin_fixture(scene, %{"label" => "Gate", "icon_asset_id" => image.id})
+
+      scene
+      |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
+      |> Repo.update!()
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert [%{id: scene_id, trashed: true}] = usages.scene_backgrounds
+      assert [%{pin_id: pin_id, scene_id: ^scene_id, trashed: true}] = usages.scene_pin_icons
+      assert scene_id == scene.id
+      assert pin_id == pin.id
+    end
+  end
+
+  describe "Asset schema" do
+    test "image?/1 returns true for image content types" do
+      assert Asset.image?(%Asset{content_type: "image/jpeg"})
+      assert Asset.image?(%Asset{content_type: "image/png"})
+      assert Asset.image?(%Asset{content_type: "image/gif"})
+      assert Asset.image?(%Asset{content_type: "image/webp"})
+      refute Asset.image?(%Asset{content_type: "audio/mpeg"})
+      refute Asset.image?(%Asset{content_type: "application/pdf"})
+    end
+
+    test "audio?/1 returns true for audio content types" do
+      assert Asset.audio?(%Asset{content_type: "audio/mpeg"})
+      assert Asset.audio?(%Asset{content_type: "audio/wav"})
+      assert Asset.audio?(%Asset{content_type: "audio/ogg"})
+      refute Asset.audio?(%Asset{content_type: "image/jpeg"})
+      refute Asset.audio?(%Asset{content_type: "application/pdf"})
+    end
+
+    test "allowed_content_types/0 returns expected types" do
+      types = Asset.allowed_content_types()
+
+      assert "image/jpeg" in types
+      assert "image/png" in types
+      assert "audio/mpeg" in types
+      refute "image/svg+xml" in types
+    end
+
+    test "allowed_content_type?/1 returns true for valid types" do
+      assert Asset.allowed_content_type?("image/jpeg")
+      assert Asset.allowed_content_type?("audio/mpeg")
+      refute Asset.allowed_content_type?("image/svg+xml")
+      refute Asset.allowed_content_type?("application/x-malware")
+    end
+  end
+
+  describe "sanitize_filename/1" do
+    test "downcases filename" do
+      assert Assets.sanitize_filename("MyFile.JPG") == "myfile.jpg"
+    end
+
+    test "replaces spaces with underscores" do
+      assert Assets.sanitize_filename("my file name.png") == "my_file_name.png"
+    end
+
+    test "replaces special characters" do
+      assert Assets.sanitize_filename("file@#$%.txt") == "file____.txt"
+    end
+
+    test "strips path components" do
+      assert Assets.sanitize_filename("/path/to/file.jpg") == "file.jpg"
+      assert Assets.sanitize_filename("C:\\Users\\file.jpg") == "file.jpg"
+    end
+
+    test "limits length to 255 characters" do
+      long_name = String.duplicate("a", 300) <> ".jpg"
+      result = Assets.sanitize_filename(long_name)
+      assert String.length(result) <= 255
+    end
+
+    test "handles unicode characters" do
+      result = Assets.sanitize_filename("héro_portrait.png")
+      assert is_binary(result)
+      assert String.ends_with?(result, ".png")
+    end
+
+    test "preserves dots and hyphens" do
+      assert Assets.sanitize_filename("my-file.v2.png") == "my-file.v2.png"
+    end
+
+    test "replaces empty, path-only, and reserved storage names" do
+      assert Assets.sanitize_filename("") == "file"
+      assert Assets.sanitize_filename("/") == "file"
+      assert Assets.sanitize_filename(".") == "file"
+      assert Assets.sanitize_filename("..") == "file"
+      assert Assets.sanitize_filename(".storyarn-copy") == "_storyarn-copy"
+    end
+  end
+
+  describe "list_assets_for_export/1" do
+    test "returns all assets ordered by insertion time" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _asset1 = asset_fixture(project, user, %{filename: "first.jpg"})
+      _asset2 = asset_fixture(project, user, %{filename: "second.jpg"})
+
+      assets = Assets.list_assets_for_export(project.id)
+      assert length(assets) == 2
+      assert hd(assets).filename == "first.jpg"
+    end
+
+    test "returns empty list for project without assets" do
+      project = project_fixture()
+      assert Assets.list_assets_for_export(project.id) == []
+    end
+  end
+
+  describe "count_assets/1" do
+    test "counts all assets in project" do
+      user = user_fixture()
+      project = project_fixture(user)
+      _asset1 = asset_fixture(project, user)
+      _asset2 = asset_fixture(project, user)
+
+      assert Assets.count_assets(project.id) == 2
+    end
+
+    test "returns 0 for empty project" do
+      project = project_fixture()
+      assert Assets.count_assets(project.id) == 0
+    end
+  end
+
+  describe "import_asset/2" do
+    test "creates an asset record for import" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "imported.png",
+        content_type: "image/png",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/imported.png",
+        url: "/uploads/imported.png"
+      }
+
+      assert {:ok, asset} = import_asset_for_test(project, attrs)
+      assert asset.filename == "imported.png"
+      assert asset.project_id == project.id
+      assert asset.uploaded_by_id == nil
+    end
+
+    test "returns error for invalid attrs" do
+      project = project_fixture()
+      assert {:error, changeset} = import_asset_for_test(project, %{})
+      assert errors_on(changeset).filename != []
+    end
+
+    test "rejects raw inserts outside the workspace capacity guard" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "unguarded.png",
+        content_type: "image/png",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/unguarded.png"
+      }
+
+      assert {:error, :storage_accounting_lock_required} = Assets.import_asset(project, attrs)
+
+      assert {:error, :asset_import_capacity_required} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.import_asset(project, attrs)
+               end)
+
+      assert Assets.count_assets(project.id) == 0
+    end
+
+    test "rejects inserts larger than the capacity-authorized import total" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "over-budget.png",
+        content_type: "image/png",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/over-budget.png"
+      }
+
+      assert {:error, :asset_import_capacity_exceeded} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.with_import_capacity(project, 4999, fn ->
+                   Assets.import_asset(project, attrs)
+                 end)
+               end)
+
+      assert Assets.count_assets(project.id) == 0
+    end
+
+    test "failed family validation does not consume import capacity" do
+      project = project_fixture()
+      foreign_project = project_fixture()
+      foreign_asset = asset_fixture(foreign_project)
+      capacity_bytes = 5000
+
+      invalid_attrs = %{
+        filename: "invalid-family.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/invalid-family.png",
+        metadata: %{"original_asset_id" => foreign_asset.id}
+      }
+
+      valid_attrs = %{
+        filename: "valid-after-rejection.png",
+        content_type: "image/png",
+        size: capacity_bytes,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/valid-after-rejection.png"
+      }
+
+      assert {:ok, {{:error, :asset_family_identity_invalid}, {:ok, inserted}}} =
+               Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+                 Assets.with_import_capacity(project, capacity_bytes, fn ->
+                   {:ok, {Assets.import_asset(project, invalid_attrs), Assets.import_asset(project, valid_attrs)}}
+                 end)
+               end)
+
+      assert inserted.filename == "valid-after-rejection.png"
+      assert Assets.list_asset_ids(project.id) == [inserted.id]
+    end
+  end
+
+  describe "count_asset_usages/2" do
+    test "returns total count of usages" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user)
+
+      assert Assets.count_asset_usages(project.id, asset.id) == 0
+    end
+
+    test "counts flow node usages" do
+      import Storyarn.FlowsFixtures
+
+      user = user_fixture()
+      project = project_fixture(user)
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+      })
+
+      assert Assets.count_asset_usages(project.id, audio.id) == 1
+    end
+  end
+
+  describe "get_asset!/2" do
+    test "returns asset by id" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user)
+
+      found = Assets.get_asset!(project.id, asset.id)
+      assert found.id == asset.id
+    end
+
+    test "raises for non-existent asset" do
+      project = project_fixture()
+
+      assert_raise Ecto.NoResultsError, fn ->
+        Assets.get_asset!(project.id, 0)
+      end
+    end
+  end
+
+  describe "list_assets/2 pagination" do
+    test "respects limit option" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for _ <- 1..5, do: asset_fixture(project, user)
+
+      assets = Assets.list_assets(project.id, limit: 2)
+      assert length(assets) == 2
+    end
+
+    test "respects offset option" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for _ <- 1..5, do: asset_fixture(project, user)
+
+      all_assets = Assets.list_assets(project.id)
+      offset_assets = Assets.list_assets(project.id, offset: 2)
+      assert length(offset_assets) == length(all_assets) - 2
+    end
+
+    test "combines limit and offset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      for _ <- 1..10, do: asset_fixture(project, user)
+
+      assets = Assets.list_assets(project.id, limit: 3, offset: 2)
+      assert length(assets) == 3
+    end
+  end
+
+  describe "facade type check delegations" do
+    test "image?/1 delegates to Asset schema" do
+      assert Assets.image?(%Asset{content_type: "image/jpeg"})
+      assert Assets.image?(%Asset{content_type: "image/png"})
+      assert Assets.image?(%Asset{content_type: "image/gif"})
+      assert Assets.image?(%Asset{content_type: "image/webp"})
+      assert Assets.image?(%Asset{content_type: "image/svg+xml"})
+      refute Assets.image?(%Asset{content_type: "audio/mpeg"})
+      refute Assets.image?(%Asset{content_type: "application/pdf"})
+    end
+
+    test "audio?/1 delegates to Asset schema" do
+      assert Assets.audio?(%Asset{content_type: "audio/mpeg"})
+      assert Assets.audio?(%Asset{content_type: "audio/wav"})
+      assert Assets.audio?(%Asset{content_type: "audio/ogg"})
+      assert Assets.audio?(%Asset{content_type: "audio/webm"})
+      refute Assets.audio?(%Asset{content_type: "image/jpeg"})
+      refute Assets.audio?(%Asset{content_type: "application/pdf"})
+    end
+
+    test "allowed_content_type?/1 delegates to Asset schema" do
+      assert Assets.allowed_content_type?("image/jpeg")
+      assert Assets.allowed_content_type?("image/png")
+      assert Assets.allowed_content_type?("audio/mpeg")
+      assert Assets.allowed_content_type?("application/pdf")
+      refute Assets.allowed_content_type?("image/svg+xml")
+      refute Assets.allowed_content_type?("application/x-evil")
+      refute Assets.allowed_content_type?("text/html")
+      refute Assets.allowed_content_type?("video/mp4")
+    end
+  end
+
+  describe "storage delegations" do
+    test "storage_upload/3 uploads data and returns url" do
+      key = "test/temp/#{Ecto.UUID.generate()}/test_upload.txt"
+
+      assert {:ok, url} = Assets.storage_upload(key, "test content", "text/plain")
+      assert is_binary(url)
+      assert String.contains?(url, key)
+
+      # Cleanup
+      Assets.storage_delete(key)
+    end
+
+    test "storage_delete/1 deletes an uploaded file" do
+      key = "test/temp/#{Ecto.UUID.generate()}/test_delete.txt"
+      {:ok, _url} = Assets.storage_upload(key, "to be deleted", "text/plain")
+
+      assert :ok = Assets.storage_delete(key)
+    end
+
+    test "storage_delete/1 returns :ok for non-existent key" do
+      key = "test/temp/nonexistent-#{Ecto.UUID.generate()}/missing.txt"
+
+      assert :ok = Assets.storage_delete(key)
+    end
+  end
+
+  describe "image_processor delegations" do
+    test "image_processor_available?/0 returns a boolean" do
+      result = Assets.image_processor_available?()
+      assert is_boolean(result)
+    end
+
+    @tag skip:
+           if(!Assets.image_processor_available?(),
+             do: "Image processor not available"
+           )
+    test "image_processor_get_dimensions/1 with valid image" do
+      image_path = Path.join(["test", "fixtures", "images", "quadrant_map.png"])
+
+      assert {:ok, %{width: w, height: h}} = Assets.image_processor_get_dimensions(image_path)
+      assert is_integer(w) and w > 0
+      assert is_integer(h) and h > 0
+    end
+
+    @tag skip:
+           if(!Assets.image_processor_available?(),
+             do: "Image processor not available"
+           )
+    test "image_processor_get_dimensions/1 with nonexistent file" do
+      assert {:error, _reason} = Assets.image_processor_get_dimensions("/nonexistent/image.png")
+    end
+  end
+
+  describe "upload_and_create_asset/4" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "uploads file, creates asset record with correct attributes", %{
+      project: project,
+      user: user
+    } do
+      # Create a temporary file to upload
+      tmp_dir = System.tmp_dir!()
+      tmp_path = Path.join(tmp_dir, "test_upload_#{Ecto.UUID.generate()}.txt")
+      File.write!(tmp_path, "test file content")
+
+      entry = %UploadEntry{
+        client_name: "my_document.pdf",
+        client_type: "application/pdf",
+        client_size: 17
+      }
+
+      try do
+        assert {:ok, asset} = Assets.upload_and_create_asset(tmp_path, entry, project, user)
+        assert asset.filename == "my_document.pdf"
+        assert asset.content_type == "application/pdf"
+        assert asset.size == 17
+        assert asset.project_id == project.id
+        assert asset.uploaded_by_id == user.id
+        assert is_binary(asset.key)
+        assert is_binary(asset.url)
+
+        # Cleanup storage
+        Assets.storage_delete(asset.key)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
+    test "creates asset with image metadata when image processor is available", %{
+      project: project,
+      user: user
+    } do
+      image_path = Path.join(["test", "fixtures", "images", "quadrant_map.png"])
+
+      if Assets.image_processor_available?() and File.exists?(image_path) do
+        %{size: file_size} = File.stat!(image_path)
+
+        entry = %UploadEntry{
+          client_name: "quadrant_map.png",
+          client_type: "image/png",
+          client_size: file_size
+        }
+
+        assert {:ok, asset} = Assets.upload_and_create_asset(image_path, entry, project, user)
+        assert asset.content_type == "image/png"
+
+        # Image metadata should include width and height
+        assert is_map(asset.metadata)
+        assert is_integer(asset.metadata["width"])
+        assert is_integer(asset.metadata["height"])
+        assert asset.metadata["width"] > 0
+        assert asset.metadata["height"] > 0
+
+        # Cleanup storage
+        Assets.storage_delete(asset.key)
+      end
+    end
+
+    test "creates asset with empty metadata for non-image files", %{
+      project: project,
+      user: user
+    } do
+      tmp_dir = System.tmp_dir!()
+      tmp_path = Path.join(tmp_dir, "test_audio_#{Ecto.UUID.generate()}.mp3")
+      File.write!(tmp_path, "fake audio content")
+
+      entry = %UploadEntry{
+        client_name: "test_audio.mp3",
+        client_type: "audio/mpeg",
+        client_size: 18
+      }
+
+      try do
+        assert {:ok, asset} = Assets.upload_and_create_asset(tmp_path, entry, project, user)
+        assert asset.content_type == "audio/mpeg"
+        # Non-image files should have empty metadata
+        assert asset.metadata == %{}
+
+        # Cleanup storage
+        Assets.storage_delete(asset.key)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
+    test "cleans up unique storage after a database constraint error", %{project: project} do
+      tmp_dir = System.tmp_dir!()
+      tmp_path = Path.join(tmp_dir, "test_cleanup_#{Ecto.UUID.generate()}.pdf")
+      content = "test content for database cleanup"
+      File.write!(tmp_path, content)
+
+      entry = %UploadEntry{
+        client_name: "constraint-cleanup.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content)
+      }
+
+      nonexistent_user = %User{id: 9_200_000_000 + System.unique_integer([:positive])}
+      blob_key = blob_key_for(project, content, "application/pdf")
+      asset_glob = asset_file_glob(project.id, "constraint-cleanup.pdf")
+
+      cleanup_job_ids_before =
+        [worker: DeleteStorageObjectsWorker]
+        |> all_enqueued()
+        |> MapSet.new(& &1.id)
+
+      try do
+        assert_raise Ecto.ConstraintError, fn ->
+          Assets.upload_and_create_asset(tmp_path, entry, project, nonexistent_user)
+        end
+
+        assert Path.wildcard(asset_glob) == []
+
+        assert [] ==
+                 [worker: DeleteStorageObjectsWorker]
+                 |> all_enqueued()
+                 |> Enum.reject(&MapSet.member?(cleanup_job_ids_before, &1.id))
+
+        refute Repo.exists?(from asset in Asset, where: asset.project_id == ^project.id)
+
+        # The deterministic blob is a safe project-scoped cache. It is retained
+        # rather than risking deletion of snapshot content adopted concurrently.
+        assert {:ok, ^content} = Storage.download(blob_key)
+      after
+        File.rm(tmp_path)
+        Storage.delete(blob_key)
+        asset_glob |> Path.wildcard() |> Enum.each(&File.rm/1)
+      end
+    end
+
+    test "rejects caller-owned transactions before writing storage", %{
+      project: project,
+      user: user
+    } do
+      content = "transaction-owned upload"
+      blob_key = blob_key_for(project, content, "application/pdf")
+
+      assert {:ok, {:error, :asset_upload_transaction_owner_required}} =
+               Repo.transaction(fn ->
+                 Assets.upload_binary_and_create_asset(
+                   content,
+                   %{filename: "external-transaction.pdf", content_type: "application/pdf"},
+                   project,
+                   user
+                 )
+               end)
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where: asset.project_id == ^project.id and asset.blob_hash == ^BlobStore.compute_hash(content)
+             )
+
+      assert {:error, :enoent} = Storage.download(blob_key)
+    end
+
+    test "rejects and durably removes a corrupt canonical blob before a safe retry", %{
+      project: project,
+      user: user
+    } do
+      content = "canonical upload content"
+      blob_key = blob_key_for(project, content, "application/pdf")
+
+      assert {:ok, _url} = Storage.upload(blob_key, "partial corrupt bytes", "application/pdf")
+
+      on_exit(fn -> Storage.delete(blob_key) end)
+
+      assert {:error, :blob_hash_mismatch} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{
+                   filename: "canonical.pdf",
+                   content_type: "application/pdf"
+                 },
+                 project,
+                 user
+               )
+
+      refute Repo.exists?(
+               from asset in Asset,
+                 where:
+                   asset.project_id == ^project.id and
+                     asset.blob_hash == ^BlobStore.compute_hash(content)
+             )
+
+      # Rollback compensation owns the verified-invalid object and removes it
+      # immediately. A durable cleanup job is only needed when that delete
+      # cannot complete.
+      assert [] = all_enqueued(worker: DeleteStorageObjectsWorker)
+      assert {:error, :enoent} = Storage.download(blob_key)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{
+                   filename: "canonical.pdf",
+                   content_type: "application/pdf"
+                 },
+                 project,
+                 user
+               )
+
+      on_exit(fn -> Storage.delete(asset.key) end)
+
+      assert asset.blob_hash == BlobStore.compute_hash(content)
+      assert {:ok, ^content} = Storage.download(blob_key)
+    end
+  end
+
+  describe "change_asset/2 with attrs" do
+    test "returns changeset with applied changes" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user)
+
+      changeset = Assets.change_asset(asset, %{metadata: %{"width" => 1024}})
+      assert %Ecto.Changeset{} = changeset
+      assert Ecto.Changeset.get_change(changeset, :metadata) == %{"width" => 1024}
+    end
+
+    test "returns changeset with url change" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user)
+
+      changeset = Assets.change_asset(asset, %{url: "/new/url.jpg"})
+      assert %Ecto.Changeset{} = changeset
+      assert Ecto.Changeset.get_change(changeset, :url) == "/new/url.jpg"
+    end
+  end
+
+  describe "count_asset_usages/2 with multiple usage types" do
+    test "counts combined flow node and localized voice-over usages" do
+      import Storyarn.FlowsFixtures
+
+      user = user_fixture()
+      project = project_fixture(user)
+      audio = audio_asset_fixture(project, user)
+      flow = flow_fixture(project)
+
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"audio_asset_id" => audio.id, "text" => "Hello"}
+      })
+
+      text = localized_text_fixture(project.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(text, %{
+                 vo_asset_id: audio.id,
+                 vo_status: "recorded"
+               })
+
+      assert Assets.count_asset_usages(project.id, audio.id) == 2
+    end
+
+    test "counts combined avatar, banner, and gallery usages" do
+      import Storyarn.SheetsFixtures
+
+      user = user_fixture()
+      project = project_fixture(user)
+      image = image_asset_fixture(project, user)
+
+      avatar_sheet = sheet_fixture(project, %{name: "Hero"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(avatar_sheet, image.id, %{is_default: true})
+
+      _banner_sheet = sheet_fixture(project, %{name: "Location", banner_asset_id: image.id})
+
+      gallery_sheet = sheet_fixture(project, %{name: "Gallery"})
+      gallery_block = block_fixture(gallery_sheet, %{type: "gallery"})
+      {:ok, _gallery_image} = Storyarn.Sheets.add_gallery_image(gallery_block, image.id)
+
+      assert Assets.count_asset_usages(project.id, image.id) == 3
+    end
+  end
+
+  describe "list_assets/2 combined filters" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "filters by content_type and search combined", %{project: project, user: user} do
+      _image1 = image_asset_fixture(project, user, %{filename: "hero_portrait.png"})
+      _image2 = image_asset_fixture(project, user, %{filename: "villain_portrait.png"})
+      _audio = audio_asset_fixture(project, user, %{filename: "hero_theme.mp3"})
+
+      # Search for "hero" but only images
+      assets = Assets.list_assets(project.id, content_type: "image/", search: "hero")
+      assert length(assets) == 1
+      assert hd(assets).filename == "hero_portrait.png"
+    end
+
+    test "filters by images_only and search combined", %{project: project, user: user} do
+      _image = image_asset_fixture(project, user, %{filename: "hero_pic.png"})
+      _audio = audio_asset_fixture(project, user, %{filename: "hero_music.mp3"})
+
+      assets = Assets.list_assets(project.id, images_only: true, search: "hero")
+      assert length(assets) == 1
+      assert hd(assets).filename == "hero_pic.png"
+    end
+
+    test "filters with content_type, search, and limit", %{project: project, user: user} do
+      for i <- 1..5 do
+        image_asset_fixture(project, user, %{filename: "scene_#{i}.png"})
+      end
+
+      _audio = audio_asset_fixture(project, user, %{filename: "scene_music.mp3"})
+
+      assets = Assets.list_assets(project.id, content_type: "image/", search: "scene", limit: 3)
+      assert length(assets) == 3
+    end
+
+    test "returns empty for project with no matching assets", %{project: project} do
+      assets = Assets.list_assets(project.id, search: "nonexistent")
+      assert assets == []
+    end
+  end
+
+  describe "update_asset/2 edge cases" do
+    test "updates metadata to nil" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user, %{metadata: %{"width" => 800}})
+
+      assert {:ok, updated} = Assets.update_asset(asset, %{metadata: nil})
+      assert updated.metadata == nil
+    end
+
+    test "does not allow updating filename through update_changeset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user, %{filename: "original.jpg"})
+
+      # update_changeset only casts :url and :metadata
+      assert {:ok, updated} = Assets.update_asset(asset, %{filename: "changed.jpg"})
+      assert updated.filename == "original.jpg"
+    end
+
+    test "does not allow updating content_type through update_changeset" do
+      user = user_fixture()
+      project = project_fixture(user)
+      asset = asset_fixture(project, user, %{content_type: "image/jpeg"})
+
+      assert {:ok, updated} = Assets.update_asset(asset, %{content_type: "audio/mpeg"})
+      assert updated.content_type == "image/jpeg"
+    end
+  end
+
+  describe "generate_key/2 edge cases" do
+    test "generates different keys for same filename" do
+      project = project_fixture()
+
+      key1 = Assets.generate_key(project, "same.jpg")
+      key2 = Assets.generate_key(project, "same.jpg")
+
+      refute key1 == key2
+    end
+
+    test "includes project id in key" do
+      project = project_fixture()
+      key = Assets.generate_key(project, "test.jpg")
+
+      assert String.contains?(key, "projects/#{project.id}/")
+    end
+  end
+
+  describe "thumbnail_key/1 edge cases" do
+    test "handles keys with multiple path segments" do
+      key = "projects/abc123/assets/uuid-456/deep/nested/image.jpg"
+      thumb = Assets.thumbnail_key(key)
+
+      assert thumb == "projects/abc123/thumbnails/uuid-456/deep/nested/image.jpg"
+    end
+
+    test "returns key unchanged when no /assets/ segment" do
+      key = "other/path/image.jpg"
+      thumb = Assets.thumbnail_key(key)
+
+      assert thumb == "other/path/image.jpg"
+    end
+  end
+
+  describe "get_asset_usages/2 edge cases" do
+    test "returns empty lists for non-existent asset id" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      usages = Assets.get_asset_usages(project.id, 0)
+
+      assert usages.flow_nodes == []
+      assert usages.sheet_avatars == []
+      assert usages.sheet_banners == []
+    end
+
+    test "returns combined avatar and banner usages on different sheets" do
+      import Storyarn.SheetsFixtures
+
+      user = user_fixture()
+      project = project_fixture(user)
+      image = image_asset_fixture(project, user)
+
+      avatar_sheet = sheet_fixture(project, %{name: "Character"})
+      {:ok, _} = Storyarn.Sheets.add_avatar(avatar_sheet, image.id, %{is_default: true})
+      _banner_sheet = sheet_fixture(project, %{name: "Location", banner_asset_id: image.id})
+
+      usages = Assets.get_asset_usages(project.id, image.id)
+
+      assert length(usages.sheet_avatars) == 1
+      assert length(usages.sheet_banners) == 1
+      assert usages.flow_nodes == []
+    end
+  end
+
+  describe "import_asset/2 edge cases" do
+    test "creates asset with metadata" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "imported_with_meta.png",
+        content_type: "image/png",
+        size: 10_000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/imported_with_meta.png",
+        url: "/uploads/imported.png",
+        metadata: %{"width" => 1920, "height" => 1080}
+      }
+
+      assert {:ok, asset} = import_asset_for_test(project, attrs)
+      assert asset.metadata == %{"width" => 1920, "height" => 1080}
+    end
+
+    test "validates content_type on import" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "bad.exe",
+        content_type: "application/x-executable",
+        size: 5000,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/bad.exe",
+        url: "/uploads/bad.exe"
+      }
+
+      assert {:error, changeset} = import_asset_for_test(project, attrs)
+      assert errors_on(changeset).content_type != []
+    end
+
+    test "validates size on import" do
+      project = project_fixture()
+
+      attrs = %{
+        filename: "zero.png",
+        content_type: "image/png",
+        size: 0,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/zero.png",
+        url: "/uploads/zero.png"
+      }
+
+      assert {:error, changeset} = import_asset_for_test(project, attrs)
+      assert errors_on(changeset).size != []
+    end
+  end
+
+  describe "sanitize_filename/1 additional cases" do
+    test "handles empty extension" do
+      result = Assets.sanitize_filename("noextension")
+      assert result == "noextension"
+    end
+
+    test "handles multiple consecutive special characters" do
+      result = Assets.sanitize_filename("a!!!b@@@c.jpg")
+      assert result == "a___b___c.jpg"
+    end
+
+    test "handles filename that is only special characters" do
+      result = Assets.sanitize_filename("@#$.jpg")
+      assert result == "___.jpg"
+    end
+
+    test "handles backslash path on Windows-style paths" do
+      result = Assets.sanitize_filename("C:\\Users\\Admin\\Desktop\\photo.png")
+      assert result == "photo.png"
+    end
+
+    test "handles mixed path separators" do
+      result = Assets.sanitize_filename("/home/user\\documents/file.txt")
+      assert result == "file.txt"
+    end
+  end
+
+  describe "upload_and_create_asset/4 quota enforcement" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "rejects upload when workspace storage limit is reached", %{
+      project: project,
+      user: user
+    } do
+      storage_limit = 250 * 1024 * 1024
+
+      # Insert an asset that fills the entire storage limit
+      %Asset{}
+      |> Ecto.Changeset.change(%{
+        filename: "huge_file.zip",
+        content_type: "application/zip",
+        size: storage_limit,
+        key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/huge_file.zip",
+        url: "https://example.com/huge_file.zip",
+        project_id: project.id,
+        uploaded_by_id: user.id
+      })
+      |> Repo.insert!()
+
+      # Create a temp file for the upload attempt
+      tmp_path = Path.join(System.tmp_dir!(), "quota_test_#{Ecto.UUID.generate()}.txt")
+      File.write!(tmp_path, "small content")
+
+      entry = %UploadEntry{
+        client_name: "new_file.pdf",
+        client_type: "application/pdf",
+        client_size: 1024
+      }
+
+      try do
+        assert {:error, :limit_reached, %{resource: :storage_bytes_per_workspace}} =
+                 Assets.upload_and_create_asset(tmp_path, entry, project, user)
+      after
+        File.rm(tmp_path)
+      end
+    end
+
+    test "accepts upload when within storage limit", %{project: project, user: user} do
+      tmp_path = Path.join(System.tmp_dir!(), "quota_ok_#{Ecto.UUID.generate()}.txt")
+      File.write!(tmp_path, "small content")
+
+      entry = %UploadEntry{
+        client_name: "small_file.pdf",
+        client_type: "application/pdf",
+        client_size: 13
+      }
+
+      try do
+        assert {:ok, asset} = Assets.upload_and_create_asset(tmp_path, entry, project, user)
+        assert asset.filename == "small_file.pdf"
+        assert asset.project_id == project.id
+
+        # Cleanup storage
+        Assets.storage_delete(asset.key)
+      after
+        File.rm(tmp_path)
+      end
+    end
+  end
+
+  describe "upload_binary_and_create_asset/4 validation" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "rejects unsupported content type before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = "<html>not a supported asset</html>"
+      content_type = "text/html"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "payload.html", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{content_type: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "rejects SVG uploads before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg"><script>alert(document.domain)</script></svg>
+      """
+
+      content_type = "image/svg+xml"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "payload.svg", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{content_type: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "sanitizes explicit SVG icon uploads before public storage", %{
+      project: project,
+      user: user
+    } do
+      content = ~S"""
+      <svg xmlns="http://www.w3.org/2000/svg">
+        <script>alert(document.domain)</script>
+        <a href="javascript:alert(1)"><circle cx="4" cy="4" r="3"/></a>
+      </svg>
+      """
+
+      assert {:ok, asset} =
+               Assets.upload_sanitized_svg_and_create_asset(
+                 content,
+                 %{filename: "pin.svg", content_type: "image/svg+xml"},
+                 project,
+                 user
+               )
+
+      on_exit(fn ->
+        Assets.storage_delete(asset.key)
+        delete_storage_blob(BlobStore.blob_key(project.id, asset.blob_hash, "svg"))
+      end)
+
+      assert asset.content_type == "image/svg+xml"
+      assert asset.metadata["sanitized_svg"] == true
+      assert {:ok, stored_svg} = Assets.storage_download(asset.key)
+      assert stored_svg =~ "<svg"
+      refute stored_svg =~ "<script"
+      refute stored_svg =~ "javascript:"
+    end
+
+    test "rejects zero byte content before writing blob storage", %{
+      project: project,
+      user: user
+    } do
+      content = ""
+      content_type = "image/png"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert {:error, changeset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "empty.png", content_type: content_type},
+                 project,
+                 user
+               )
+
+      assert %{size: [_ | _]} = errors_on(changeset)
+      assert {:error, _} = Assets.storage_download(blob_key)
+      assert Assets.total_storage_size(project.id) == 0
+    end
+
+    test "stores a content addressed blob for valid binary uploads", %{
+      project: project,
+      user: user
+    } do
+      content = "%PDF-1.4\nvalid upload"
+      content_type = "application/pdf"
+      blob_key = blob_key_for(project, content, content_type)
+
+      :ok = delete_storage_blob(blob_key)
+      on_exit(fn -> delete_storage_blob(blob_key) end)
+
+      assert {:ok, asset} =
+               Assets.upload_binary_and_create_asset(
+                 content,
+                 %{filename: "valid.pdf", content_type: content_type},
+                 project,
+                 user
+               )
+
+      on_exit(fn -> Assets.storage_delete(asset.key) end)
+
+      assert asset.blob_hash == BlobStore.compute_hash(content)
+      assert {:ok, ^content} = Assets.storage_download(blob_key)
+    end
+  end
+
+  describe "blob hash deduplication" do
+    setup do
+      user = user_fixture()
+      project = project_fixture(user)
+      %{project: project, user: user}
+    end
+
+    test "uploading same content twice produces same blob_hash", %{
+      project: project,
+      user: user
+    } do
+      content = "identical content for dedup test"
+
+      tmp_path_a = Path.join(System.tmp_dir!(), "dedup_a_#{Ecto.UUID.generate()}.pdf")
+      tmp_path_b = Path.join(System.tmp_dir!(), "dedup_b_#{Ecto.UUID.generate()}.pdf")
+      File.write!(tmp_path_a, content)
+      File.write!(tmp_path_b, content)
+
+      entry_a = %UploadEntry{
+        client_name: "file_a.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content)
+      }
+
+      entry_b = %UploadEntry{
+        client_name: "file_b.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content)
+      }
+
+      try do
+        assert {:ok, asset_a} = Assets.upload_and_create_asset(tmp_path_a, entry_a, project, user)
+        assert {:ok, asset_b} = Assets.upload_and_create_asset(tmp_path_b, entry_b, project, user)
+
+        assert asset_a.blob_hash == asset_b.blob_hash
+        assert asset_a.blob_hash == BlobStore.compute_hash(content)
+
+        # Different filenames, different keys
+        refute asset_a.key == asset_b.key
+        refute asset_a.id == asset_b.id
+
+        # Cleanup
+        Assets.storage_delete(asset_a.key)
+        Assets.storage_delete(asset_b.key)
+      after
+        File.rm(tmp_path_a)
+        File.rm(tmp_path_b)
+      end
+    end
+
+    test "uploading different content produces different blob_hash", %{
+      project: project,
+      user: user
+    } do
+      content_x = "content version X"
+      content_y = "content version Y"
+
+      tmp_path_x = Path.join(System.tmp_dir!(), "diff_x_#{Ecto.UUID.generate()}.pdf")
+      tmp_path_y = Path.join(System.tmp_dir!(), "diff_y_#{Ecto.UUID.generate()}.pdf")
+      File.write!(tmp_path_x, content_x)
+      File.write!(tmp_path_y, content_y)
+
+      entry_x = %UploadEntry{
+        client_name: "file_x.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content_x)
+      }
+
+      entry_y = %UploadEntry{
+        client_name: "file_y.pdf",
+        client_type: "application/pdf",
+        client_size: byte_size(content_y)
+      }
+
+      try do
+        assert {:ok, asset_x} = Assets.upload_and_create_asset(tmp_path_x, entry_x, project, user)
+        assert {:ok, asset_y} = Assets.upload_and_create_asset(tmp_path_y, entry_y, project, user)
+
+        refute asset_x.blob_hash == asset_y.blob_hash
+        assert asset_x.blob_hash == BlobStore.compute_hash(content_x)
+        assert asset_y.blob_hash == BlobStore.compute_hash(content_y)
+
+        # Cleanup
+        Assets.storage_delete(asset_x.key)
+        Assets.storage_delete(asset_y.key)
+      after
+        File.rm(tmp_path_x)
+        File.rm(tmp_path_y)
+      end
+    end
+  end
+
+  defp capture_repo_queries(fun) when is_function(fun, 0) do
+    handler_id = "asset-family-query-budget-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :repo, :query],
+        fn _event, _measurements, %{query: query}, {pid, ref} ->
+          if self() == pid, do: send(pid, {ref, query})
+        end,
+        {test_pid, marker}
+      )
+
+    try do
+      {fun.(), drain_repo_queries(marker)}
+    after
+      :telemetry.detach(handler_id)
+    end
+  end
+
+  defp drain_repo_queries(marker, queries \\ []) do
+    receive do
+      {^marker, query} -> drain_repo_queries(marker, [query | queries])
+    after
+      0 -> Enum.reverse(queries)
+    end
+  end
+
+  defp import_asset_for_test(project, attrs) do
+    size = Map.get(attrs, :size, Map.get(attrs, "size", 0))
+    capacity_bytes = if is_integer(size) and size > 0, do: size, else: 0
+
+    Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+      Assets.with_import_capacity(project, capacity_bytes, fn ->
+        Assets.import_asset(project, attrs)
+      end)
+    end)
+  end
+
+  defp blob_key_for(project, content, content_type) do
+    BlobStore.blob_key(
+      project.id,
+      BlobStore.compute_hash(content),
+      BlobStore.ext_from_content_type(content_type)
+    )
+  end
+
+  defp asset_file_glob(project_id, filename) do
+    Path.join([storage_upload_dir(), "projects", to_string(project_id), "assets", "*", filename])
+  end
+
+  defp storage_upload_dir do
+    :storyarn
+    |> Application.fetch_env!(:storage)
+    |> Keyword.fetch!(:upload_dir)
+    |> Path.expand()
+  end
+
+  describe "count_assets_by_type/1 edge cases" do
+    test "returns empty map for project without assets" do
+      project = project_fixture()
+
+      counts = Assets.count_assets_by_type(project.id)
+      assert counts == %{}
+    end
+
+    test "counts multiple content type categories" do
+      user = user_fixture()
+      project = project_fixture(user)
+
+      _img1 = image_asset_fixture(project, user)
+      _img2 = image_asset_fixture(project, user)
+      _audio1 = audio_asset_fixture(project, user)
+
+      attrs =
+        valid_asset_attributes(%{
+          filename: "doc.pdf",
+          content_type: "application/pdf",
+          key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/doc.pdf"
+        })
+
+      {:ok, _pdf} = Assets.create_asset(project, user, attrs)
+
+      counts = Assets.count_assets_by_type(project.id)
+      assert counts["image"] == 2
+      assert counts["audio"] == 1
+      assert counts["application"] == 1
+    end
+  end
+end

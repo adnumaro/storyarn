@@ -12,7 +12,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   import Ecto.Query, warn: false
   import Storyarn.Sheets.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.AvatarIntegrity
   alias Storyarn.Sheets.Block

@@ -7,10 +7,10 @@ defmodule Storyarn.Flows.PlayerCatalogTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Flows
   alias Storyarn.Flows.Persistence.SheetRecord
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers

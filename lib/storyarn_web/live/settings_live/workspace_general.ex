@@ -5,11 +5,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
-  alias Storyarn.Assets
-  alias Storyarn.Assets.ImageProcessor
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Platform.FeatureFlags
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.ImageProcessor
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.UploadPolicy
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption

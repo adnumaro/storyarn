@@ -1,9 +1,9 @@
 defmodule Storyarn.SnapshotReadSwitchStorage do
   @moduledoc false
 
-  @behaviour Storyarn.Assets.Storage
+  @behaviour Storyarn.Projects.Assets.Storage
 
-  alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Projects.Assets.Storage.Local
 
   def start_link(replacements) when is_map(replacements) do
     Agent.start_link(

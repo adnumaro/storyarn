@@ -5,8 +5,8 @@ defmodule Storyarn.Platform.Billing.LimitsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Platform.Billing
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
 

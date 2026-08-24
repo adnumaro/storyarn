@@ -1,9 +1,9 @@
 defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Projects.Versioning.Builders.SceneBuilder
   alias Storyarn.Scenes.Versioning.SceneSnapshot
   alias Storyarn.Sheets.ReferenceTracker
-  alias Storyarn.Versioning.Builders.SceneBuilder
 
   @scene_web_sources [
     "lib/storyarn_web/live/scene_sidebar_live.ex"
@@ -95,8 +95,23 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
     policy = File.read!("config/architecture_boundaries.exs")
 
     refute File.exists?("lib/storyarn/scenes/project_assets.ex")
-    refute source =~ "Storyarn.Projects"
-    refute source =~ "Storyarn.Assets.BlobStore"
+
+    foreign_projects_refs =
+      ~r/Storyarn\.Projects\.[A-Za-z.]+/
+      |> Regex.scan(source)
+      |> List.flatten()
+      |> Enum.uniq()
+      |> Kernel.--([
+        "Storyarn.Projects.Assets.StorageHash",
+        "Storyarn.Projects.Assets.StorageKeyLock",
+        "Storyarn.Projects.Assets.Storage"
+      ])
+
+    assert foreign_projects_refs == [],
+           "Scene asset commands may use only the allowed storage technical contracts, got: " <>
+             inspect(foreign_projects_refs)
+
+    refute source =~ "Storyarn.Projects.Assets.BlobStore"
     refute policy =~ "lib/storyarn/scenes/project_assets.ex"
   end
 

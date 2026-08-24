@@ -2,15 +2,21 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
   use ExUnit.Case, async: true
 
   @projects_domain_sources ["lib/storyarn/projects.ex" | Path.wildcard("lib/storyarn/projects/**/*.ex")] ++
-                             ["lib/storyarn/references.ex" | Path.wildcard("lib/storyarn/references/**/*.ex")] ++
-                             ["lib/storyarn/versioning.ex" | Path.wildcard("lib/storyarn/versioning/**/*.ex")] ++
-                             ["lib/storyarn/exports.ex" | Path.wildcard("lib/storyarn/exports/**/*.ex")] ++
-                             ["lib/storyarn/imports.ex" | Path.wildcard("lib/storyarn/imports/**/*.ex")] ++
                              [
-                               "lib/storyarn/project_templates.ex"
-                               | Path.wildcard("lib/storyarn/project_templates/**/*.ex")
+                               "lib/storyarn/projects/references.ex"
+                               | Path.wildcard("lib/storyarn/projects/references/**/*.ex")
                              ] ++
-                             ["lib/storyarn/assets.ex" | Path.wildcard("lib/storyarn/assets/**/*.ex")]
+                             [
+                               "lib/storyarn/projects/versioning.ex"
+                               | Path.wildcard("lib/storyarn/projects/versioning/**/*.ex")
+                             ] ++
+                             ["lib/storyarn/projects/exports.ex" | Path.wildcard("lib/storyarn/projects/exports/**/*.ex")] ++
+                             ["lib/storyarn/projects/imports.ex" | Path.wildcard("lib/storyarn/projects/imports/**/*.ex")] ++
+                             [
+                               "lib/storyarn/projects/project_templates.ex"
+                               | Path.wildcard("lib/storyarn/projects/project_templates/**/*.ex")
+                             ] ++
+                             ["lib/storyarn/projects/assets.ex" | Path.wildcard("lib/storyarn/projects/assets/**/*.ex")]
 
   @projects_web_sources Path.wildcard("lib/storyarn_web/live/project_live/**/*.ex") ++
                           Path.wildcard("lib/storyarn_web/live/project_settings_live/**/*.ex") ++

@@ -9,7 +9,7 @@ defmodule Storyarn.Platform.GlobalSearch.AdvancedSearchTest do
 
   alias Storyarn.Platform.GlobalSearch
   alias Storyarn.Platform.GlobalSearch.AdvancedSearch
-  alias Storyarn.References
+  alias Storyarn.Projects.References
 
   setup do
     user = user_fixture()

@@ -11,7 +11,7 @@ defmodule Storyarn.Application do
       StoryarnWeb.Telemetry,
       Storyarn.Repo,
       Storyarn.Platform.Vault,
-      Storyarn.Imports.ErrorDeduplicator,
+      Storyarn.Projects.Imports.ErrorDeduplicator,
       Storyarn.Platform.RateLimiter.child_spec_for_backend(),
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},
@@ -20,8 +20,8 @@ defmodule Storyarn.Application do
       Storyarn.Platform.Dashboards.Cache,
       Storyarn.Flows,
       {Task.Supervisor, name: Storyarn.TaskSupervisor},
-      Storyarn.Assets.Storage.Local.ConditionalCopyRegistry,
-      Storyarn.Assets.Storage.Local.ConditionalCopySweeper,
+      Storyarn.Projects.Assets.Storage.Local.ConditionalCopyRegistry,
+      Storyarn.Projects.Assets.Storage.Local.ConditionalCopySweeper,
       {Oban, Application.fetch_env!(:storyarn, Oban)},
       # Start to serve requests, typically the last entry
       StoryarnWeb.Endpoint

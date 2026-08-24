@@ -6,6 +6,7 @@ defmodule Storyarn.Scenes.VersioningTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
+  alias Storyarn.Projects.Versioning, as: LegacyVersioning
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -14,7 +15,6 @@ defmodule Storyarn.Scenes.VersioningTest do
   alias Storyarn.Scenes.Versioning.RestorePolicy
   alias Storyarn.Scenes.Versioning.SceneSnapshot
   alias Storyarn.Scenes.Versioning.SnapshotStorage
-  alias Storyarn.Versioning, as: LegacyVersioning
 
   setup do
     previous_policy = Application.get_env(:storyarn, RestorePolicy)

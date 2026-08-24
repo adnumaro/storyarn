@@ -17,7 +17,7 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.Persistence.TableColumnRecord
   alias Storyarn.Projects.Persistence.TableRowRecord
-  alias Storyarn.References.ProjectReferenceIntegrity
+  alias Storyarn.Projects.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
 
   def list_shortcuts(project_id) do

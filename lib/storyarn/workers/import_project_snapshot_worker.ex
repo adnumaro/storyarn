@@ -11,7 +11,7 @@ defmodule Storyarn.Workers.ImportProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @impl Oban.Worker
   def perform(%Oban.Job{id: job_id, args: %{"import_id" => import_id}, attempt: attempt, max_attempts: max_attempts}) do

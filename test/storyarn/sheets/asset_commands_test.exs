@@ -4,8 +4,8 @@ defmodule Storyarn.Sheets.AssetCommandsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets.Storage
   alias Storyarn.Platform
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Persistence.AssetRecord
 

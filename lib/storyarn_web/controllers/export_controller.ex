@@ -3,9 +3,9 @@ defmodule StoryarnWeb.ExportController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Exports
-  alias Storyarn.Exports.SizeGuard
   alias Storyarn.Projects
+  alias Storyarn.Projects.Exports
+  alias Storyarn.Projects.Exports.SizeGuard
   alias Storyarn.Projects.NameNormalizer
 
   require Logger

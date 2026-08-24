@@ -12,7 +12,7 @@ defmodule Storyarn.Flows.NodeRestoreIntegrityTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization.RuntimeKey
-  alias Storyarn.References
+  alias Storyarn.Projects.References
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.EntityReference

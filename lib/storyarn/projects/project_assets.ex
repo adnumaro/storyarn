@@ -1,10 +1,10 @@
 defmodule Storyarn.Projects.ProjectAssets do
   @moduledoc false
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.BlobStore
-  alias Storyarn.Versioning.AssetMaterializationScope
-  alias Storyarn.Versioning.MaterializationHelpers
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Versioning.AssetMaterializationScope
+  alias Storyarn.Projects.Versioning.MaterializationHelpers
 
   def list_image_asset_ids(project_id) do
     Assets.list_asset_ids(project_id, images_only: true)

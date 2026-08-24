@@ -3,9 +3,9 @@ defmodule Storyarn.VersioningFixtures do
 
   import Ecto.Query
 
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Repo
-  alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.SnapshotArchiveStorage
 
   def pending_project_snapshot_fixture(project, attrs \\ %{}) do
     attrs = Map.new(attrs)

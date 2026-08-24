@@ -7,13 +7,13 @@ defmodule Storyarn.Scenes.Versioning.SceneSnapshotContractTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.BlobStore
   alias Storyarn.FlowsFixtures
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Project
-  alias Storyarn.References.EntityReference
-  alias Storyarn.References.VariableReference
+  alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.References.VariableReference
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
@@ -1753,7 +1753,7 @@ defmodule Storyarn.Scenes.Versioning.SceneSnapshotContractTest do
                  String.contains?(query, ~s(FROM "assets")) do
               tracker_active? =
                 Enum.any?(Process.get(), fn
-                  {{Storyarn.Assets.StorageCompensation, tracker}, _tracked}
+                  {{Storyarn.Projects.Assets.StorageCompensation, tracker}, _tracked}
                   when is_reference(tracker) ->
                     true
 

@@ -9,12 +9,12 @@ defmodule Storyarn.Sheets.AssetCommands do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageHash
-  alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageHash
+  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
   alias Storyarn.Sheets.Events
   alias Storyarn.Sheets.ImageProcessor

@@ -13,8 +13,8 @@ defmodule StoryarnWeb.E2E.TemplatesTest do
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates
-  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
+  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.Repo
   alias Storyarn.Workers.InstallProjectTemplateWorker
 

@@ -1,9 +1,9 @@
 defmodule Storyarn.Architecture.SheetsWebFacadeBoundaryTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.Builders.SheetBuilder
   alias Storyarn.Sheets.Versioning.SheetSnapshot
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.Builders.SheetBuilder
 
   @sheet_web_sources [
     "lib/storyarn_web/live/sheets_sidebar_live.ex"

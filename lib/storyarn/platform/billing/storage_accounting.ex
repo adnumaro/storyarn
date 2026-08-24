@@ -15,9 +15,6 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Platform.Billing.Persistence.UserRecord, as: User
   alias Storyarn.Platform.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Platform.Billing.Plan
@@ -25,15 +22,18 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
   alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Billing.SubscriptionCrud
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
+  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Projects.Versioning.SnapshotObjectFormat
+  alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
+  alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Repo
-  alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.ProjectSnapshotLeasePolicy
-  alias Storyarn.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotObjectFormat
-  alias Storyarn.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Versioning.WorkspaceSnapshotImport
 
   @accounting_version 1
   @default_reservation_ttl_seconds 24 * 60 * 60
@@ -2513,7 +2513,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
 
     temporary_object_key?(storage_key, temporary_prefix) or
       restore_project_asset_key?(storage_key, project_id) or
-      match?({:ok, ^project_id, _hash}, Storyarn.Assets.StorageKeyLock.project_blob_identity(storage_key))
+      match?({:ok, ^project_id, _hash}, Storyarn.Projects.Assets.StorageKeyLock.project_blob_identity(storage_key))
   end
 
   defp restore_project_asset_key?(storage_key, project_id) do
