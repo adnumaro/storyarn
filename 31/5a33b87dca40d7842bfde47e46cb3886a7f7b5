@@ -1,0 +1,536 @@
+lib/storyarn/platform/global_search/persistence/scene_pin_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-12
+test/storyarn/imports/import_lifecycle_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 16
+  s_1837e1b58927a7::t_246ded578cd540 17-18,1592
+test/storyarn/workers/trash_retention_worker_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+lib/storyarn/platform/global_search/persistence/scene_annotation_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+lib/storyarn/platform/global_search/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-20
+test/storyarn/platform/billing/limits_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-501
+lib/storyarn/workspaces/invitations.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14-16
+test/storyarn/platform/global_search/advanced_search_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-1502
+test/storyarn/platform/collaboration_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-222
+test/storyarn/platform/analytics/posthog_adapter_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-44
+test/storyarn/sheets/versioning_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/platform/notifications/notification.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-153
+lib/storyarn/workspaces/workspace_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn_web/live/hooks/notifications.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+lib/storyarn/platform/product_metrics.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9,12-13
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 32-33,35-36,233-234,244-250,257-278,280-282,436,469,475,481,498,505,512,519,526,533,540,547,554,561,568,574,580,586,635,641,647,653,660,666,672,678,684,696,702,708,714,720,726,732,750,762,768,774,780,787,793,799,806,812,818,824,830,837,843,850,856,863,870,876,882,889,895,908,914,921,927,933,945,951,1059,1168,1253,1276,1348,1381,1387
+lib/storyarn/sheets/dialogue_audio.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11
+lib/storyarn/platform/billing/persistence/project_template_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-13
+lib/storyarn/versioning/project_snapshot_restore_executor.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 18-20
+lib/storyarn/sheets/block_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6
+lib/storyarn/sheets/gallery_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6
+lib/storyarn/platform/global_search/persistence/scene_layer_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+test/storyarn/platform/collaboration/dead_channels_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-32
+lib/storyarn/versioning/project_snapshot.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+lib/storyarn/platform/billing/persistence/project_template_version_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-13
+lib/storyarn/platform/billing/subscription.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-51
+lib/storyarn/versioning/project_snapshot_asset_materializer.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 24
+test/storyarn/versioning/project_snapshot_reconciliation_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12-13
+lib/storyarn/platform/global_search/scene_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,6-11
+lib/storyarn/platform/billing/storage_reservation.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-621
+lib/storyarn/platform/billing/persistence/entity_version_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-17
+lib/storyarn/scenes/ambient_flow_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6
+lib/storyarn/platform/global_search/flow_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,6-8
+test/storyarn/platform/product_metrics_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 4
+lib/storyarn/platform/onboarding.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,13
+test/storyarn_web/live/workspace_live/template_creation_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11
+lib/storyarn_web/live/shared/collaboration_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 30-31,142,157
+lib/storyarn/platform/billing/persistence/user_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-13
+lib/storyarn/platform/notifications/persistence/user_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-17
+lib/storyarn/projects/project_trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+lib/storyarn/platform/global_search/sheet_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,6-10
+lib/storyarn/imports/resume.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 29
+lib/storyarn_web/components/layouts.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10-11
+test/storyarn/versioning/workspace_snapshot_imports_integration_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 22
+  s_1837e1b58927a7::t_23e9f667893842 23
+lib/storyarn_web/live/scene_live/handlers/collaboration_handlers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+test/storyarn/architecture/dependency_policy_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 99,110,116-117,120-121,129,133
+test/storyarn/versioning/snapshot_archive_storage_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13-14
+lib/storyarn/versioning/snapshot_archive_storage.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 17-18
+lib/storyarn/scenes/versioning.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15
+lib/storyarn/references/variable_reference_tracker.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 29
+lib/storyarn/platform/billing/persistence/scene_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+lib/storyarn/platform/billing.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-124
+lib/storyarn/platform/global_search/persistence/block_gallery_image_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-15
+lib/storyarn/platform/global_search/persistence/flow_connection_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+test/storyarn/platform/collaboration/cursor_tracker_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-140
+lib/storyarn/platform/global_search/variable_query.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-147
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+test/storyarn/platform/notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-868
+lib/storyarn/application.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 18-19
+lib/storyarn/platform/collaboration/cursor_tracker.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-72
+test/storyarn/workers/localization_batch_translation_worker_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14-15
+lib/storyarn/assets.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 25-26
+test/storyarn/platform/billing/subscription_crud_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-181
+lib/storyarn/platform/global_search/advanced_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-209
+test/storyarn/platform/command_palette_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-215
+lib/storyarn_web/live/hooks/palette.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11,31-34
+  s_1837e1b58927a7::t_0f1ba416d106ae 35
+lib/storyarn/versioning.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 16
+lib/storyarn_web/live/sheets_sidebar_live.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+test/storyarn/platform/global_search/variable_query_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-176
+lib/storyarn/versioning/project_recovery.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+lib/storyarn/sheets/versioning.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15
+lib/storyarn/assets/blob_store.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 17
+lib/storyarn/flows/node_create.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 79
+lib/storyarn_web/live_vue_encoders.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 26
+test/storyarn/scenes/zone_image_extractor_integration_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 33
+lib/storyarn/platform/billing/persistence/flow_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn/platform/notifications.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,15-20
+test/storyarn/assets/blob_store_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+test/storyarn/project_templates_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13-14
+  s_1837e1b58927a7::t_df59cf87d8dfbf 15
+test/storyarn_web/live/hooks/notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8-9
+lib/storyarn/projects/sheet_project_trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15
+lib/storyarn/versioning/project_snapshot_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+test/storyarn_web/live/user_live/registration_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15-16
+lib/storyarn_web/live/scene_live/index.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 26
+lib/storyarn/versioning/project_snapshot_restore.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15
+lib/storyarn/platform/collaboration/colors.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-45
+lib/storyarn/projects/project_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+test/storyarn/scenes/dashboard_invalidation_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 28
+lib/storyarn/platform/billing/persistence/flow_node_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+lib/storyarn/platform/command_palette/operation.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-40
+test/storyarn_web/controllers/upload_controller_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+lib/storyarn/flows.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 255
+lib/storyarn/platform/global_search/variable_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-529
+lib/storyarn/platform/global_search/persistence/flow_node_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-11
+lib/storyarn/platform/global_search/persistence/scene_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-30
+lib/storyarn/platform/billing/persistence/workspace_membership_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-16
+test/storyarn/versioning/project_snapshot_reconciliation_repair_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10-11
+lib/storyarn/platform/onboarding/persistence/user_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-17
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 395
+lib/storyarn_web/live/asset_sidebar_live.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+test/storyarn/versioning/project_snapshot_download_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn/platform/billing/persistence/project_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-14
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 952,983
+test/storyarn/versioning/project_snapshot_lifecycle_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11-12
+test/storyarn/sheets/table_crud_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+lib/storyarn/platform/command_palette/registry.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-191
+test/storyarn/platform/dashboards/cache_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn/versioning/project_snapshot_download.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+test/storyarn/scenes/ambient_flow_crud_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/platform/global_search/destinations.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-276
+lib/storyarn/platform/global_search/persistence/flow_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-30
+lib/storyarn/platform/collaboration/presence.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-140
+test/storyarn_web/controllers/snapshot_download_controller_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+lib/storyarn/project_templates/publication_runner.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+lib/storyarn/platform/collaboration/locks.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-329
+lib/storyarn/imports/notification_delivery.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+test/storyarn/platform/analytics_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-292
+lib/storyarn_web/live/flow_live/helpers/collaboration_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11
+lib/storyarn/platform/onboarding/tutorial_progress.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-69
+test/storyarn_web/live/hooks/palette_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13-14,937
+test/storyarn/sheets/property_inheritance_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+lib/storyarn/platform/global_search/persistence/scene_zone_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-12
+lib/storyarn/platform/billing/persistence/workspace_invitation_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-17
+test/storyarn/projects/project_deletion_storage_lock_concurrency_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+lib/storyarn/platform/billing/persistence/sheet_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-14
+lib/storyarn/versioning/workspace_snapshot_imports.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11-12
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12,17
+  s_1837e1b58927a7::t_2d95f59178ce6a 320-321,323-327
+test/storyarn/scenes/structural_notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+test/storyarn/localization/structural_notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+lib/storyarn/platform/dashboards/cache.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15
+test/storyarn/versioning/project_snapshot_restore_lifecycle_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13-15
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9,187
+lib/storyarn/assets/asset_trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6,10
+test/storyarn/versioning/project_snapshot_asset_materializer_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+lib/storyarn/platform/global_search/persistence/table_row_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-16
+lib/storyarn/platform/analytics/event_contract.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-73
+test/support/e2e_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+test/storyarn/versioning/project_snapshot_restore_executor_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 2031
+  s_1837e1b58927a7::t_c41bb6ae476ed1 29
+lib/storyarn/platform/billing/persistence/project_invitation_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-16
+lib/storyarn_web/live/shared/onboarding_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6-7
+lib/storyarn/platform/command_palette/persistence/user_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-17
+lib/storyarn/versioning/project_snapshot_reconciliation.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 16-17
+lib/storyarn/flows/flow_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 121
+  s_1837e1b58927a7::t_71ab8cb4cd23c2 24
+test/storyarn/sheets/block_crud_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+lib/storyarn/sheets/table_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6
+test/storyarn_web/live/asset_live/index_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 636
+  s_1837e1b58927a7::t_081ac1a073581b 13
+lib/storyarn/projects/invitation_operations.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 21
+test/storyarn_web/live/scene_live/show_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12-13
+lib/storyarn/platform/command_palette/definition.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-245
+test/storyarn/platform/global_search/scene_search_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-46
+test/e2e/onboarding_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+lib/storyarn/projects/flow_project_trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn/platform/global_search/persistence/table_column_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-16
+lib/storyarn/platform/command_palette.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-140
+test/storyarn/assets/upload_decision_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+test/storyarn/platform/billing/storage_cleanup_inventory_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-13
+lib/storyarn/platform/entitlements.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9-10
+test/storyarn/platform/collaboration/locks_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-390
+test/storyarn/platform/global_search/destinations_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-292
+lib/storyarn_web/live/settings_live/tutorials.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8-9
+test/storyarn/platform/billing/storage_accounting_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,13-15
+lib/storyarn/platform/global_search/persistence/scene_connection_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-10
+test/storyarn/versioning/project_snapshot_build_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 21-22
+  s_1837e1b58927a7::t_c76bfcdba5df53 23-24
+lib/storyarn/sheets/sheet_queries.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 225
+lib/storyarn/versioning/project_snapshot_build.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 18-20
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 6
+lib/storyarn/platform/billing/plan.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-68
+test/support/analytics_broken_event_contract.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 4
+lib/storyarn/platform/billing/persistence/workspace_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-15
+lib/storyarn/platform/billing/storage_accounting.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,21-26
+test/storyarn_web/live/settings_live/tutorials_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 8
+test/storyarn/sheets/gallery_crud_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/project_templates/installation.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10-11
+test/storyarn/platform/billing/plan_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-57
+test/storyarn_web/live/scene_live/handlers/collaboration_handlers_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 13
+test/support/analytics_event_contract.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 4
+lib/storyarn/platform/billing/storage_cleanup_inventory.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-13
+lib/storyarn_web/live/scene_live/show.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 28-29
+lib/storyarn_web/live/shared/project_chrome_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+test/storyarn/platform/onboarding_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-96
+lib/storyarn_web/live/project_live/show.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+test/storyarn/platform/analytics/allowlist_fail_closed_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-140
+lib/storyarn/platform/billing/subscription_crud.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-73
+test/storyarn_web/live/localization_live/index_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+test/storyarn/platform/shared/invitation_concurrency_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+lib/storyarn/imports/expiration.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 24
+lib/storyarn/versioning/project_snapshot_lifecycle.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 17-18
+lib/storyarn/platform/analytics/posthog_adapter.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-24
+lib/storyarn/platform/analytics.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-374
+lib/storyarn_web/live/sheet_live/handlers/lock_handlers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/platform/analytics/noop_adapter.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-6
+lib/storyarn_web/live/scene_sidebar_live.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 14
+lib/storyarn/imports/execution.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 26
+  s_1837e1b58927a7::t_56690b4907ef0f 27-28
+test/storyarn/sheets/structural_notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10-11
+test/storyarn/versioning/project_snapshot_restore_lock_concurrency_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11
+lib/storyarn/projects/scene_project_trash.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn/platform/notifications/project_access.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-57
+lib/storyarn_web/live/presence_live.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 18
+test/storyarn/platform/billing/storage_reservation_cleanup_keys_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-99
+test/storyarn/references/ambient_flow_variable_usage_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 10
+test/storyarn/platform/billing/storage_accounting_concurrency_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-281
+lib/storyarn/versioning/materialization_helpers.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn_web/live/asset_live/index.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 7
+lib/storyarn_web/live/sheet_live/index.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 26
+lib/storyarn/platform/billing/persistence/project_membership_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-18
+lib/storyarn_web/live/sheet_live/show.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15-16
+lib/storyarn/platform/billing/persistence/workspace_snapshot_import_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-20
+lib/storyarn/assets/storage_compensation.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 12
+lib/storyarn_web/live/hooks/onboarding.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9-11
+lib/storyarn/platform/collaboration.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-302
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 9
+lib/storyarn/platform/global_search.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-27
+lib/storyarn/sheets.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 16,95
+test/storyarn/architecture/projects_boundary_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 34-35
+test/storyarn_web/live/project_live/settings_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 16-17
+  s_1837e1b58927a7::t_79b59d96172261 18
+test/storyarn/assets/storage_compensation_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 15-16
+test/storyarn/platform/flow_structural_notifications_test.exs
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 11-12
+lib/storyarn/platform/global_search/persistence/block_record.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1-18
+lib/storyarn/platform/billing/limits.ex
+  s_1837e1b58927a7::t_74b7a5f2c9b43d 1,9-25
+lib/storyarn/flows/connection_crud.ex
+  s_1837e1b58927a7::t_5246405e27e2e4 12
+lib/storyarn/flows/node_delete.ex
+  s_1837e1b58927a7::t_afa89b99dee856 13
+lib/storyarn/flows/node_update.ex
+  s_1837e1b58927a7::t_64b70b0dcf34e3 17
+lib/storyarn/flows/sequence_crud.ex
+  s_1837e1b58927a7::t_93b311bbf110a5 26
+lib/storyarn/flows/versioning.ex
+  s_1837e1b58927a7::t_627aa983140cea 24
+lib/storyarn/imports/materializer.ex
+  s_1837e1b58927a7::t_373996e5b2b922 25-26
+lib/storyarn/imports/replacement.ex
+  s_1837e1b58927a7::t_35704b1efda921 17
+lib/storyarn/platform.ex
+  s_1837e1b58927a7::t_25ef06b1e054d0 14
+lib/storyarn/scenes/scene_crud.ex
+  s_1837e1b58927a7::t_9660b1961ff1c6 13
+lib/storyarn/sheets/sheet_crud.ex
+  s_1837e1b58927a7::t_7861f8d5790644 7
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_1837e1b58927a7::t_5cdcf404e91017 15
+lib/storyarn_web/live/flow_live/index.ex
+  s_1837e1b58927a7::t_ad87564be5d6aa 26
+lib/storyarn_web/live/flow_live/show.ex
+  s_1837e1b58927a7::t_b4c981a688517e 7
+lib/storyarn_web/live/flow_live/version_viewer.ex
+  s_1837e1b58927a7::t_5b033288f444c2 12
+lib/storyarn_web/live/flow_sidebar_live.ex
+  s_1837e1b58927a7::t_7a585683adbe8d 15
+lib/storyarn_web/live/localization_sidebar_live.ex
+  s_1837e1b58927a7::t_d30401d4366ccb 20
+lib/storyarn_web/live/workspace_live/show.ex
+  s_1837e1b58927a7::t_bd1d581644a80f 9
+test/storyarn/assets/asset_trash_test.exs
+  s_1837e1b58927a7::t_581c22184e3f3f 19
+test/storyarn/assets_test.exs
+  s_1837e1b58927a7::t_d5ee27f108f9db 23-24
+test/storyarn/flows/connection_crud_test.exs
+  s_1837e1b58927a7::t_04d503d97fb206 9
+test/storyarn/flows/flow_crud_test.exs
+  s_1837e1b58927a7::t_87e50be0160e32 11
+test/storyarn/flows/flow_restore_integrity_test.exs
+  s_1837e1b58927a7::t_bd364178531cdb 17
+test/storyarn/flows/node_crud_test.exs
+  s_1837e1b58927a7::t_f57dea5c3d262a 14
+test/storyarn/flows/sequence_crud_test.exs
+  s_1837e1b58927a7::t_5377b782d9ae47 14
+test/storyarn/imports/materializer_test.exs
+  s_1837e1b58927a7::t_5da69da4c84bcb 21-22
+test/storyarn/projects/flow_project_trash_test.exs
+  s_1837e1b58927a7::t_b0c292313c30e8 11
+test/storyarn/projects/soft_delete_test.exs
+  s_1837e1b58927a7::t_6c92f66a087d79 17
+test/storyarn/references/variable_reference_tracker_test.exs
+  s_1837e1b58927a7::t_ff92f3cc269d36 12
+test/storyarn/sheets_test.exs
+  s_1837e1b58927a7::t_1795d074dc46db 13
+test/storyarn_web/live/flow_live/helpers/connection_helpers_test.exs
+  s_1837e1b58927a7::t_1efc084e52feb4 9
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "315a33b87dca40d7842bfde47e46cb3886a7f7b5",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
