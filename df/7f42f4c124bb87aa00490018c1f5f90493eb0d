@@ -1,0 +1,75 @@
+lib/storyarn/ai/route_option.ex
+  s_1837e1b58927a7::t_080a905db7e600 9
+lib/storyarn/notifications/notification.ex
+  s_1837e1b58927a7::t_69702afac63497 15
+lib/storyarn/notifications.ex
+  s_1837e1b58927a7::t_69702afac63497 20,56,60,215,476
+  s_1837e1b58927a7::t_080a905db7e600 15-16,157-163,186-189
+  s_1837e1b58927a7::t_71d67c70ed0204 134,141,550
+lib/storyarn/projects.ex
+  s_1837e1b58927a7::t_3501b7c0fe6f16 443-448
+lib/storyarn/billing/persistence/project_record.ex
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-14
+lib/storyarn/billing/persistence/project_invitation_record.ex
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-16
+lib/storyarn/billing/persistence/project_membership_record.ex
+  s_1837e1b58927a7::t_080a905db7e600 7-8
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-5,10-12,15-18
+  s_1837e1b58927a7::t_b0875a23cda543 6,9,13-14
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_080a905db7e600 471-472,478-479,485-486,492-493,499-500,506-507,513-514,520-521,527-528,534-535
+  s_1837e1b58927a7::t_e1364852c52192 456-461
+  s_1837e1b58927a7::t_7c3bfcec1be91d 94,200
+  s_1837e1b58927a7::t_922780acc5286f 455,462-470,473-477,480-484,487-491,494-498,501-505,508-512,515-519,522-526,529-533,536-602
+config/architecture_baselines/infrastructure.json
+  s_1837e1b58927a7::t_7c3bfcec1be91d 3
+lib/storyarn/billing/persistence/project_template_version_record.ex
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-13
+lib/storyarn/billing/persistence/workspace_snapshot_import_record.ex
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-20
+config/architecture_baselines/platform.json
+  s_1837e1b58927a7::t_e1364852c52192 3
+lib/storyarn/ai/operation.ex
+  s_1837e1b58927a7::t_080a905db7e600 8
+lib/storyarn/billing/persistence/project_template_record.ex
+  s_1837e1b58927a7::t_b70a7c3a6839bc 1-13
+lib/storyarn_web/private_media.ex
+  s_1837e1b58927a7::t_3501b7c0fe6f16 16,109-110
+lib/storyarn/workers/deliver_invitation_worker.ex
+  s_1837e1b58927a7::t_3501b7c0fe6f16 11,33,67
+lib/storyarn/notifications/project_access.ex
+  s_1837e1b58927a7::t_91cf6d33041027 1-57
+lib/storyarn/ai/policy_decision.ex
+  s_1837e1b58927a7::t_080a905db7e600 8-9,13
+  s_1837e1b58927a7::t_ea6710f6c529a0 299
+  s_1837e1b58927a7::t_5765c97047f1e1 187,222
+lib/storyarn/ai/project_access.ex
+  s_1837e1b58927a7::t_dea27e17432f52 53-58
+  s_1837e1b58927a7::t_5765c97047f1e1 1-38,59,61-84
+  s_1837e1b58927a7::t_656f15e3eafc95 60
+  s_1837e1b58927a7::t_ea6710f6c529a0 39-52
+lib/storyarn/billing/limits.ex
+  s_1837e1b58927a7::t_080a905db7e600 12-16,22,101-102,118-119
+  s_1837e1b58927a7::t_3bf368fed4a947 64,74,87,91,106,123,196,412
+lib/storyarn/ai/context.ex
+  s_1837e1b58927a7::t_5765c97047f1e1 106
+  s_1837e1b58927a7::t_080a905db7e600 17
+lib/storyarn/ai/result.ex
+  s_1837e1b58927a7::t_080a905db7e600 8
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "df7f42f4c124bb87aa00490018c1f5f90493eb0d",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
