@@ -8,9 +8,9 @@ defmodule Storyarn.Projects.ProjectTrash do
   alias Storyarn.Billing
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
 
   @item_types ~w(sheet flow scene asset)
   @default_per_page 25

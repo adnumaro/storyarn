@@ -522,11 +522,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/projects/project_trash.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning.ex",
       "lib/storyarn/billing.ex",
       "runtime"
@@ -902,11 +897,6 @@
       "export"
     ],
     [
-      "lib/storyarn/workers/trash_retention_worker.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/controllers/export_controller.ex",
       "lib/storyarn/shared/name_normalizer.ex",
       "runtime"
@@ -938,11 +928,6 @@
     ],
     [
       "lib/storyarn_web/live/project_live/show.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/project_settings_live/trash.ex",
       "lib/storyarn/sheets.ex",
       "runtime"
     ],

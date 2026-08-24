@@ -8,6 +8,12 @@ defmodule Storyarn.References do
   alias Storyarn.References.VariableUsage
 
   defdelegate update_block_references(block, opts \\ []), to: EntityTracker
+
+  @spec lock_and_normalize_block_value(integer(), String.t(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate lock_and_normalize_block_value(project_id, block_type, value),
+    to: Storyarn.References.EntityReferenceProjection
+
   @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
   defdelegate update_flow_node_entity_references(node, opts \\ []), to: EntityTracker
   defdelegate update_scene_pin_entity_references(pin, opts \\ []), to: EntityTracker

@@ -154,6 +154,23 @@ defmodule Storyarn.Projects.LocalizationProjection do
     |> normalize_lock_result()
   end
 
+  @doc "Hard-deletes every localization row for the given sources."
+  @spec purge_texts_for_source(String.t(), integer()) :: {non_neg_integer(), nil}
+  def purge_texts_for_source(source_type, source_id) do
+    purge_texts_for_sources(source_type, [source_id])
+  end
+
+  @spec purge_texts_for_sources(String.t(), [integer()]) :: {non_neg_integer(), nil}
+  def purge_texts_for_sources(_source_type, []), do: {0, nil}
+
+  def purge_texts_for_sources(source_type, source_ids) do
+    Repo.delete_all(
+      from(text in LocalizedText,
+        where: text.source_type == ^source_type and text.source_id in ^source_ids
+      )
+    )
+  end
+
   def archive_texts_for_sources(_source_type, [], _reason), do: {0, nil}
 
   def archive_texts_for_sources(source_type, source_ids, reason) do

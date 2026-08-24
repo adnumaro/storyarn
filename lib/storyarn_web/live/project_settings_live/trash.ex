@@ -6,7 +6,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
   alias Storyarn.Assets
   alias Storyarn.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
   @page_size 25
@@ -288,7 +287,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     |> assign(:trash_type_counts, page.type_counts)
   end
 
-  defp fetch_trashed_item(project_id, "sheet", id), do: fetch_item(:sheet, Sheets.get_trashed_sheet(project_id, id))
+  defp fetch_trashed_item(project_id, "sheet", id), do: fetch_item(:sheet, Projects.get_trashed_sheet(project_id, id))
 
   defp fetch_trashed_item(project_id, "flow", id),
     do: fetch_item(:flow, Projects.get_flow_including_deleted(project_id, id))
@@ -337,7 +336,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   defp normalize_page(_page), do: 1
 
-  defp restore_item(%{type: :sheet, entity: sheet}), do: Sheets.restore_sheet(sheet)
+  defp restore_item(%{type: :sheet, entity: sheet}), do: Projects.restore_trashed_sheet(sheet)
 
   defp restore_item(%{type: :flow, entity: %{id: flow_id, project_id: project_id}}) do
     Projects.restore_trashed_flow(project_id, flow_id)
@@ -377,7 +376,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   defp asset_purge_error_message(_reason), do: dgettext("projects", "Failed to delete item.")
 
-  defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
+  defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Projects.permanently_delete_trashed_sheet(sheet)
 
   defp permanently_delete_item(%{type: :flow, entity: flow}),
     do: Projects.permanently_delete_trashed_flow(flow.project_id, flow.id)

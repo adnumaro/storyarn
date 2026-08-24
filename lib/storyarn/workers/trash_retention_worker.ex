@@ -23,7 +23,6 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
 
   alias Storyarn.Projects
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets
 
   require Logger
 
@@ -82,7 +81,7 @@ defmodule Storyarn.Workers.TrashRetentionWorker do
   defp expired?(_deleted_at, _item, _now), do: false
 
   defp permanently_delete_item(%{type: "sheet"} = item) do
-    Projects.delete_retention_candidate(item, &Sheets.permanently_delete_sheet/1)
+    Projects.delete_retention_candidate(item, &Projects.permanently_delete_trashed_sheet/1)
   end
 
   defp permanently_delete_item(%{type: "flow"} = item) do

@@ -31,6 +31,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.SceneHealthReadModel
   alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Projects.SceneReadModel
+  alias Storyarn.Projects.SheetProjectTrash
 
   @doc false
   defdelegate ensure_source_language(project), to: LocalizationSettings
@@ -224,6 +225,15 @@ defmodule Storyarn.Projects do
   defdelegate permanently_delete_trashed_flow(project_id, flow_id),
     to: FlowProjectTrash,
     as: :hard_delete
+
+  @doc "Gets a trashed Sheet scoped to its project for the Project trash surfaces."
+  defdelegate get_trashed_sheet(project_id, sheet_id), to: SheetProjectTrash, as: :get_trashed
+
+  @doc "Restores a trashed Sheet through the Project lifecycle boundary."
+  defdelegate restore_trashed_sheet(sheet), to: SheetProjectTrash, as: :restore
+
+  @doc "Permanently deletes a trashed Sheet through the Project lifecycle boundary."
+  defdelegate permanently_delete_trashed_sheet(sheet), to: SheetProjectTrash, as: :hard_delete
 
   @doc "Permanently deletes a trashed Scene through the Project lifecycle boundary."
   defdelegate permanently_delete_trashed_scene(scene),

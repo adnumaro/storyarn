@@ -39,6 +39,11 @@ defmodule Storyarn.Projects.Persistence.BlockRecord do
   @block_types ~w(text rich_text number select multi_select date boolean reference table gallery)
   @scopes ~w(self children)
 
+  @doc "Changeset for updating only the value of a block."
+  def value_changeset(block, attrs) do
+    cast(block, attrs, [:value])
+  end
+
   @doc "The closed catalog of block types a snapshot may carry."
   def types, do: @block_types
 
