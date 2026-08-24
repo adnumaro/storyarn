@@ -37,11 +37,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn_web/helpers/authorize.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/hooks/notifications.ex",
       "lib/storyarn/notifications.ex",
       "runtime"
@@ -52,33 +47,13 @@
       "runtime"
     ],
     [
-      "lib/storyarn_web/live/hooks/palette.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/hooks/project_scope.ex",
       "lib/storyarn/projects.ex",
       "runtime"
     ],
     [
-      "lib/storyarn_web/live/hooks/workspace_scope.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/landing_live/index.ex",
       "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/live/landing_live/index.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/landing_live/index.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "export"
     ],
     [
@@ -119,16 +94,6 @@
     [
       "lib/storyarn_web/user_auth.ex",
       "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/user_auth.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/user_auth.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "export"
     ]
   ],

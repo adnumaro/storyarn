@@ -1,11 +1,11 @@
 defmodule Storyarn.Projects.Memberships do
   @moduledoc false
 
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.MembershipOperations
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @config %{
     membership_schema: ProjectMembership,

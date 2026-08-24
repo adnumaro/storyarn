@@ -12,10 +12,10 @@ defmodule Storyarn.AI.Allowance do
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
 
   @account_lock_namespace 981_006
   @default_expiration_batch_size 100
@@ -29,7 +29,7 @@ defmodule Storyarn.AI.Allowance do
 
   @spec summary(Scope.t(), pos_integer()) :: {:ok, summary()} | {:error, :unauthorized}
   def summary(%Scope{} = scope, workspace_id) do
-    case Workspaces.get_workspace(scope, workspace_id) do
+    case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, workspace, _membership} -> {:ok, refresh_and_summarize(workspace.id)}
       _error -> {:error, :unauthorized}
     end

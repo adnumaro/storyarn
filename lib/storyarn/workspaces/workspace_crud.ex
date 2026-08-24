@@ -174,10 +174,16 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
     |> Repo.update()
   end
 
+  def update_workspace(%{id: id}, attrs) do
+    Workspace
+    |> Repo.get!(id)
+    |> update_workspace(attrs)
+  end
+
   @doc """
   Deletes a workspace.
   """
-  def delete_workspace(%Workspace{} = workspace) do
+  def delete_workspace(%{id: _} = workspace) do
     result =
       Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
         with {:ok, cleanup_intents} <- Versioning.prepare_workspace_snapshot_hard_delete(locked_workspace),

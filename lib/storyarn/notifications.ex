@@ -13,13 +13,13 @@ defmodule Storyarn.Notifications do
   alias Ecto.Changeset
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
+  alias Storyarn.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Notifications.Notification
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @default_limit 20
   @max_limit 100

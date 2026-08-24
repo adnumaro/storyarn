@@ -11,14 +11,14 @@ defmodule Storyarn.AI.IntegrationAssignments do
   alias Storyarn.AI.Audit
   alias Storyarn.AI.Integration
   alias Storyarn.AI.IntegrationWorkspaceAssignment
+  alias Storyarn.AI.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.Policy
+  alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.FeatureFlags
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @lock_namespace 981_006
 
@@ -56,7 +56,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   @doc "Returns actor-visible workspace states for one actor-owned active integration."
   @spec list_states(Scope.t(), Integration.t()) :: [map()]
   def list_states(%Scope{user: %{id: user_id}} = scope, %Integration{user_id: user_id, revoked_at: nil} = integration) do
-    workspaces = Workspaces.list_workspaces(scope)
+    workspaces = WorkspaceAccess.list_workspaces(scope)
     workspace_ids = Enum.map(workspaces, & &1.workspace.id)
     policies = policies_by_workspace(workspace_ids)
     assignments = assignments_by_workspace(user_id, integration.id, workspace_ids)
@@ -253,7 +253,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   end
 
   defp workspace_access(scope, workspace_id) do
-    case Workspaces.get_workspace(scope, workspace_id) do
+    case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, workspace, membership} -> {:ok, workspace, membership}
       _error -> {:error, :workspace_unavailable}
     end

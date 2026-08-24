@@ -17,6 +17,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Billing
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
@@ -27,7 +28,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Versioning.SnapshotCleanupIntent
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
-  alias Storyarn.Workspaces.Workspace
 
   # R2 lists at most 1,000 objects per page. Matching that provider bound keeps
   # a maximum snapshot to 21 durable row transitions per delete pass instead
@@ -179,7 +179,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   @doc false
   @spec prepare_workspace_hard_delete(Workspace.t()) ::
           {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
-  def prepare_workspace_hard_delete(%Workspace{id: workspace_id}) when is_integer(workspace_id) do
+  def prepare_workspace_hard_delete(%{id: workspace_id}) when is_integer(workspace_id) do
     if Billing.workspace_lock_held?(workspace_id) do
       prepare_workspace_hard_delete_locked(workspace_id)
     else

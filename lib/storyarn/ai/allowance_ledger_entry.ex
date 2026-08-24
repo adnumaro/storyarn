@@ -7,7 +7,7 @@ defmodule Storyarn.AI.AllowanceLedgerEntry do
   alias Storyarn.AI.AllowanceGrant
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.Operation
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_ledger_entries" do
     field :workspace_id_snapshot, :integer

@@ -10,7 +10,6 @@ defmodule StoryarnWeb.TemplateLive.Show do
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
@@ -473,7 +472,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
     with {:ok, installation_id} <- parse_installation_id(installation_id),
          %{
            id: ^installation_id,
-           workspace: %Workspace{} = workspace
+           workspace: %{id: _} = workspace
          } <- socket.assigns.installation_failure,
          {:ok, _installation} <-
            ProjectTemplates.dismiss_installation_failure(

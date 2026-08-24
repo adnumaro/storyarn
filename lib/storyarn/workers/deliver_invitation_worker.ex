@@ -10,7 +10,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
 
   alias Storyarn.Projects.Invitations, as: ProjectInvitations
   alias Storyarn.Shared.EncryptedBinary
-  alias Storyarn.Workspaces.Invitations, as: WorkspaceInvitations
+  alias Storyarn.Workspaces
 
   require Logger
 
@@ -32,7 +32,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
 
   defp deliver("project", token, opts), do: ProjectInvitations.deliver_invitation_email(token, opts)
 
-  defp deliver("workspace", token, opts), do: WorkspaceInvitations.deliver_invitation_email(token, opts)
+  defp deliver("workspace", token, opts), do: Workspaces.deliver_invitation_email(token, opts)
 
   defp deliver(_context, _token, _opts), do: {:cancel, :invalid_invitation_context}
 
@@ -66,7 +66,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
 
   defp cancel_invitation("project", token), do: ProjectInvitations.cancel_invitation_delivery(token)
 
-  defp cancel_invitation("workspace", token), do: WorkspaceInvitations.cancel_invitation_delivery(token)
+  defp cancel_invitation("workspace", token), do: Workspaces.cancel_invitation_delivery(token)
 
   defp cancel_invitation(_context, _token), do: :ok
 

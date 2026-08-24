@@ -8,9 +8,9 @@ defmodule Storyarn.ProjectTemplates.ProjectTemplateInstall do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Workspaces.Workspace
 
   @statuses ~w(queued running retrying completed failed)
   @active_statuses ~w(queued running retrying)

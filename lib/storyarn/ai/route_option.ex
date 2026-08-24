@@ -7,8 +7,8 @@ defmodule Storyarn.AI.RouteOption do
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Context.PersistenceContract
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
-  alias Storyarn.Workspaces.Workspace
 
   @derive {Inspect, except: [:token_hash, :credential_ref]}
 

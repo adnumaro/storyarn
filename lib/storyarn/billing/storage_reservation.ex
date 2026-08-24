@@ -10,10 +10,10 @@ defmodule Storyarn.Billing.StorageReservation do
 
   import Ecto.Changeset
 
+  alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Workspaces.Workspace
 
   @kinds ~w(snapshot_build restore_staging snapshot_export)
   @statuses ~w(active committed released)

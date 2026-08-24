@@ -4,10 +4,10 @@ defmodule Storyarn.AI.Policy do
   import Ecto.Query
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.AI.WorkspacePolicyAudit
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
 
   @lock_namespace 981_004
 
@@ -15,7 +15,7 @@ defmodule Storyarn.AI.Policy do
   def get(%Scope{user: nil}, _workspace_id), do: {:error, :unauthorized}
 
   def get(%Scope{} = scope, workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
-    case Workspaces.get_workspace(scope, workspace_id) do
+    case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, workspace, _membership} -> {:ok, get_effective(workspace.id)}
       _error -> {:error, :unauthorized}
     end
@@ -39,8 +39,8 @@ defmodule Storyarn.AI.Policy do
   def update(%Scope{}, _workspace_id, _lanes), do: {:error, :invalid_policy}
 
   defp update_authorized(scope, workspace_id, user_id, lanes) do
-    with {:ok, workspace, membership} <- Workspaces.get_workspace(scope, workspace_id),
-         true <- Workspaces.can?(membership.role, :manage_workspace) do
+    with {:ok, workspace, membership} <- WorkspaceAccess.get_workspace(scope, workspace_id),
+         true <- WorkspaceAccess.can?(membership.role, :manage_workspace) do
       Repo.transaction(fn -> update_locked(workspace.id, user_id, lanes) end)
     else
       false -> {:error, :unauthorized}

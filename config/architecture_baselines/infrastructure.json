@@ -7,38 +7,8 @@
       "export"
     ],
     [
-      "lib/storyarn/ai/allowance.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/allowance.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/allowance_account.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/allowance_grant.ex",
       "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/allowance_grant.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/allowance_ledger_entry.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/allowance_reservation.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -72,16 +42,6 @@
       "export"
     ],
     [
-      "lib/storyarn/ai/integration_assignments.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/integration_assignments.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/integration_crud.ex",
       "lib/storyarn/accounts/user.ex",
       "export"
@@ -89,11 +49,6 @@
     [
       "lib/storyarn/ai/integration_workspace_assignment.ex",
       "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/integration_workspace_assignment.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -107,11 +62,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/ai/operation.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/operations.ex",
       "lib/storyarn/accounts/scope.ex",
       "runtime"
@@ -122,18 +72,8 @@
       "export"
     ],
     [
-      "lib/storyarn/ai/operator_alert.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/personal_consent.ex",
       "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/personal_consent.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -142,39 +82,14 @@
       "runtime"
     ],
     [
-      "lib/storyarn/ai/personal_preference.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/personal_preferences.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
     ],
     [
-      "lib/storyarn/ai/personal_preferences.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/personal_preferences.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/personal_preferences.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/policy.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
-    ],
-    [
-      "lib/storyarn/ai/policy.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
     ],
     [
       "lib/storyarn/ai/policy_decision.ex",
@@ -207,26 +122,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/ai/policy_decision.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/policy_decision.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/ai/policy_decision.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/provider_budget_reservation.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/result.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
@@ -234,11 +129,6 @@
     [
       "lib/storyarn/ai/result.ex",
       "lib/storyarn/projects/project.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/result.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -257,28 +147,13 @@
       "runtime"
     ],
     [
-      "lib/storyarn/ai/route_option.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/workspace_policy.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
-      "lib/storyarn/ai/workspace_policy.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/ai/workspace_policy_audit.ex",
       "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/ai/workspace_policy_audit.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -322,11 +197,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/global_search/destinations.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/global_search/variable_search.ex",
       "lib/storyarn/references.ex",
       "runtime"
@@ -362,41 +232,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/release.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/shared/invitation_notifier.ex",
-      "lib/storyarn/emails/templates.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/shared/invitation_operations.ex",
-      "lib/storyarn/accounts/user.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/shared/invitation_operations.ex",
-      "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/shared/invitation_operations.ex",
-      "lib/storyarn/projects/project.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/shared/invitation_operations.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/shared/membership_operations.ex",
-      "lib/storyarn/accounts/scope.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/workers/build_project_snapshot_worker.ex",
       "lib/storyarn/versioning.ex",
       "runtime"
@@ -419,11 +254,6 @@
     [
       "lib/storyarn/workers/deliver_invitation_worker.ex",
       "lib/storyarn/projects/invitations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/workers/deliver_invitation_worker.ex",
-      "lib/storyarn/workspaces/invitations.ex",
       "runtime"
     ],
     [

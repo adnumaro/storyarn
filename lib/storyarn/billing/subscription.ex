@@ -7,8 +7,8 @@ defmodule Storyarn.Billing.Subscription do
 
   import Ecto.Changeset
 
+  alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Billing.Plan
-  alias Storyarn.Workspaces.Workspace
 
   schema "subscriptions" do
     field :plan, :string, default: "free"

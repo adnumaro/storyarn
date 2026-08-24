@@ -18,18 +18,18 @@ defmodule Storyarn.AI.PersonalPreferences do
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.ModelCatalog.Entry
+  alias Storyarn.AI.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.PersonalPreference
   alias Storyarn.AI.PersonalProviders
   alias Storyarn.AI.PersonalRoles
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Providers
   alias Storyarn.AI.Task
+  alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.FeatureFlags
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @lock_namespace 981_007
 
@@ -49,7 +49,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   @spec overview(Scope.t()) :: {:ok, map()} | {:error, mutation_error()}
   def overview(%Scope{user: %{id: user_id}} = scope) do
     with :ok <- feature_enabled(scope) do
-      workspace_entries = Workspaces.list_workspaces(scope)
+      workspace_entries = WorkspaceAccess.list_workspaces(scope)
       workspace_ids = Enum.map(workspace_entries, & &1.workspace.id)
       data = overview_data(user_id, workspace_ids)
 
@@ -740,7 +740,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   end
 
   defp workspace_access(scope, workspace_id) do
-    case Workspaces.get_workspace(scope, workspace_id) do
+    case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, workspace, membership} -> {:ok, workspace, membership}
       _error -> {:error, :workspace_unavailable}
     end
@@ -750,7 +750,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   defp eligible?("owner", %WorkspacePolicy{}), do: true
 
   defp eligible?(role, %WorkspacePolicy{allowed_lanes: lanes}) do
-    Workspaces.can?(role, :use_ai) and "personal_byok" in lanes
+    WorkspaceAccess.can?(role, :use_ai) and "personal_byok" in lanes
   end
 
   defp require_workspace_membership(nil), do: {:error, :workspace_unavailable}

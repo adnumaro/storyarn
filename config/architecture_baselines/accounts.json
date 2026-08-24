@@ -11,11 +11,26 @@
       "lib/storyarn/workers/request_reset_password_instructions_worker.ex",
       "runtime"
     ],
-    ["lib/storyarn/accounts/registration.ex", "lib/storyarn/analytics.ex", "runtime"],
-    ["lib/storyarn/accounts/registration.ex", "lib/storyarn/workspaces.ex", "runtime"],
-    ["lib/storyarn/accounts/user.ex", "lib/storyarn/shared/validations.ex", "runtime"],
-    ["lib/storyarn/accounts/user_notifier.ex", "lib/storyarn/emails/templates.ex", "runtime"],
-    ["lib/storyarn/accounts/user_notifier.ex", "lib/storyarn/mailer.ex", "runtime"],
+    [
+      "lib/storyarn/accounts/registration.ex",
+      "lib/storyarn/analytics.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/accounts/user.ex",
+      "lib/storyarn/shared/validations.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/accounts/user_notifier.ex",
+      "lib/storyarn/emails/templates.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/accounts/user_notifier.ex",
+      "lib/storyarn/mailer.ex",
+      "runtime"
+    ],
     [
       "lib/storyarn_web/controllers/user_session_controller.ex",
       "lib/storyarn/analytics.ex",
@@ -26,8 +41,16 @@
       "lib/storyarn/shared/validations.ex",
       "runtime"
     ],
-    ["lib/storyarn_web/live/user_live/login.ex", "lib/storyarn/mailer.ex", "runtime"],
-    ["lib/storyarn_web/live/user_live/login.ex", "lib/storyarn/shared/validations.ex", "runtime"]
+    [
+      "lib/storyarn_web/live/user_live/login.ex",
+      "lib/storyarn/mailer.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn_web/live/user_live/login.ex",
+      "lib/storyarn/shared/validations.ex",
+      "runtime"
+    ]
   ],
   "version": 1
 }

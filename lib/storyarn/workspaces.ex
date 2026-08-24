@@ -133,7 +133,7 @@ defmodule Storyarn.Workspaces do
   @doc """
   Deletes a workspace.
   """
-  @spec delete_workspace(workspace()) :: {:ok, workspace()} | {:error, term()}
+  @spec delete_workspace(%{id: integer()}) :: {:ok, map()} | {:error, term()}
   defdelegate delete_workspace(workspace), to: WorkspaceCrud
 
   # =============================================================================
@@ -284,6 +284,12 @@ defmodule Storyarn.Workspaces do
   """
   @spec revoke_invitation(invitation()) :: {:ok, invitation()} | {:error, changeset()}
   defdelegate revoke_invitation(invitation), to: Invitations
+
+  @doc false
+  defdelegate deliver_invitation_email(encoded_token, opts \\ []), to: Invitations
+
+  @doc false
+  defdelegate cancel_invitation_delivery(encoded_token), to: Invitations
 
   @doc """
   Gets a pending invitation by ID.

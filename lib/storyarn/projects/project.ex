@@ -12,10 +12,10 @@ defmodule Storyarn.Projects.Project do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Platform
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Workspaces.Workspace
 
   @type t :: %__MODULE__{
           id: integer() | nil,

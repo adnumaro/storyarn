@@ -6,7 +6,6 @@ defmodule Storyarn.Billing.SubscriptionCrud do
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.Subscription
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Workspace
 
   @doc """
   Gets the subscription for a workspace.
@@ -18,7 +17,7 @@ defmodule Storyarn.Billing.SubscriptionCrud do
   @doc """
   Creates a subscription for a workspace (defaults to free plan).
   """
-  def create_subscription(%Workspace{} = workspace, plan \\ Plan.default_plan()) do
+  def create_subscription(%{id: _} = workspace, plan \\ Plan.default_plan()) do
     %Subscription{}
     |> Subscription.create_changeset(%{workspace_id: workspace.id, plan: plan, status: "active"})
     |> Repo.insert()
@@ -36,7 +35,7 @@ defmodule Storyarn.Billing.SubscriptionCrud do
   @doc """
   Returns the plan key for a workspace. Defaults to the default plan if no subscription exists.
   """
-  def plan_for(%Workspace{} = workspace) do
+  def plan_for(%{id: _} = workspace) do
     plan_for_workspace_id(workspace.id)
   end
 

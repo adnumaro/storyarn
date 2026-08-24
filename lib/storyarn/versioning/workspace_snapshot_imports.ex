@@ -12,7 +12,9 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Billing
   alias Storyarn.Notifications
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectRecovery
@@ -20,9 +22,6 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Workers.ImportProjectSnapshotWorker
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   require Logger
 
@@ -39,14 +38,14 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   @doc "Validates and stages a local upload without holding a database checkout during file I/O."
   def request(scope, workspace, uploaded_path, attrs, opts \\ [])
 
-  def request(%Scope{} = scope, %Workspace{} = workspace, uploaded_path, attrs, opts)
+  def request(%Scope{} = scope, %{id: _} = workspace, uploaded_path, attrs, opts)
       when is_binary(uploaded_path) and is_map(attrs) and is_list(opts) do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
     storage = Keyword.get(opts, :storage, Storage)
 
     with {:ok, workspace, _membership} <-
-           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
-         {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
+           WorkspaceAccess.authorize(scope, workspace.id, :access_workspace_settings),
+         {:ok, _workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
          {:ok, original_filename} <- original_filename(attrs),
          {:ok, preflight} <- reader.preflight_file(uploaded_path),
          :ok <- validate_preflight(preflight),
@@ -67,22 +66,22 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
       {:error, :snapshot_import_unavailable}
   end
 
-  def request(%Scope{}, %Workspace{}, _uploaded_path, _attrs, _opts), do: {:error, :unauthorized}
+  def request(%Scope{}, %{id: _}, _uploaded_path, _attrs, _opts), do: {:error, :unauthorized}
   def request(_scope, _workspace, _uploaded_path, _attrs, _opts), do: {:error, :invalid_snapshot_import_request}
 
   @doc "Creates the durable owner of one direct-upload key before bytes leave the browser."
-  def prepare_upload(%Scope{user: %User{}} = scope, %Workspace{} = workspace, attrs) when is_map(attrs),
+  def prepare_upload(%Scope{user: %User{}} = scope, %{id: _} = workspace, attrs) when is_map(attrs),
     do: prepare_upload(scope, workspace, attrs, false)
 
   def prepare_upload(_scope, _workspace, _attrs), do: {:error, :invalid_snapshot_import_request}
 
-  defp prepare_upload(%Scope{user: %User{}} = scope, %Workspace{} = workspace, attrs, enforce_grant_limit?)
+  defp prepare_upload(%Scope{user: %User{}} = scope, %{id: _} = workspace, attrs, enforce_grant_limit?)
        when is_map(attrs) and is_boolean(enforce_grant_limit?) do
     with {:ok, original_filename} <- original_filename(attrs),
          {:ok, archive_size_bytes} <- archive_size_bytes(attrs),
          {:ok, workspace, _membership} <-
-           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
-         {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project) do
+           WorkspaceAccess.authorize(scope, workspace.id, :access_workspace_settings),
+         {:ok, _workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project) do
       insert_upload_owner(scope, workspace, original_filename, archive_size_bytes, enforce_grant_limit?)
     end
   end
@@ -92,8 +91,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   @doc "Creates an owned upload and returns a short-lived direct PUT."
   def prepare_external_upload(scope, workspace, attrs, opts \\ [])
 
-  def prepare_external_upload(%Scope{} = scope, %Workspace{} = workspace, attrs, opts)
-      when is_map(attrs) and is_list(opts) do
+  def prepare_external_upload(%Scope{} = scope, %{id: _} = workspace, attrs, opts) when is_map(attrs) and is_list(opts) do
     storage = Keyword.get(opts, :storage, Storage)
 
     with {:ok, upload} <- prepare_upload(scope, workspace, attrs, true) do
@@ -128,7 +126,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   @doc "Preflights an owned private object, reserves capacity, and enqueues its asynchronous import."
   def request_stored(scope, workspace, import_id, opts \\ [])
 
-  def request_stored(%Scope{} = scope, %Workspace{} = workspace, import_id, opts)
+  def request_stored(%Scope{} = scope, %{id: _} = workspace, import_id, opts)
       when is_integer(import_id) and import_id > 0 and is_list(opts) do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
 
@@ -151,10 +149,10 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def request_stored(_scope, _workspace, _import_id, _opts), do: {:error, :invalid_snapshot_import_request}
 
   @doc false
-  def upload_progress(%Scope{} = scope, %Workspace{} = workspace, import_id, percent)
+  def upload_progress(%Scope{} = scope, %{id: _} = workspace, import_id, percent)
       when is_integer(import_id) and import_id > 0 and is_integer(percent) and percent in 0..100 do
     with {:ok, _workspace, _membership} <-
-           Workspaces.authorize(scope, workspace.id, :access_workspace_settings),
+           WorkspaceAccess.authorize(scope, workspace.id, :access_workspace_settings),
          {1, _rows} <- heartbeat_upload(scope.user.id, workspace.id, import_id, percent),
          %WorkspaceSnapshotImport{} = updated <- Repo.get(WorkspaceSnapshotImport, import_id) do
       publish(updated)
@@ -167,12 +165,11 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def upload_progress(_scope, _workspace, _import_id, _percent), do: {:error, :workspace_snapshot_upload_not_found}
 
   @doc false
-  def cancel_upload(%Scope{} = scope, %Workspace{} = workspace, import_id),
-    do: discard_upload(scope, workspace, import_id)
+  def cancel_upload(%Scope{} = scope, %{id: _} = workspace, import_id), do: discard_upload(scope, workspace, import_id)
 
   @doc "Lists recent imports visible in one workspace settings surface."
-  def list(%Scope{} = scope, %Workspace{id: workspace_id}) do
-    case Workspaces.authorize(scope, workspace_id, :access_workspace_settings) do
+  def list(%Scope{} = scope, %{id: workspace_id}) do
+    case WorkspaceAccess.authorize(scope, workspace_id, :access_workspace_settings) do
       {:ok, _workspace, _membership} ->
         active =
           WorkspaceSnapshotImport
@@ -205,7 +202,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   def subscribe(_workspace_id), do: {:error, :invalid_workspace}
 
   @doc false
-  def prepare_workspace_hard_delete(%Workspace{id: workspace_id}) when is_integer(workspace_id) do
+  def prepare_workspace_hard_delete(%{id: workspace_id}) when is_integer(workspace_id) do
     if Billing.workspace_lock_held?(workspace_id) do
       active_import? =
         WorkspaceSnapshotImport
@@ -364,9 +361,9 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     Repo.update_all(query, [])
   end
 
-  defp owned_upload(%Scope{user: %User{id: user_id}} = scope, %Workspace{id: workspace_id}, import_id) do
+  defp owned_upload(%Scope{user: %User{id: user_id}} = scope, %{id: workspace_id}, import_id) do
     with {:ok, _workspace, _membership} <-
-           Workspaces.authorize(scope, workspace_id, :access_workspace_settings),
+           WorkspaceAccess.authorize(scope, workspace_id, :access_workspace_settings),
          %WorkspaceSnapshotImport{} = upload <-
            WorkspaceSnapshotImport
            |> where(
@@ -432,7 +429,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp discard_upload(%Scope{} = scope, %Workspace{} = workspace, import_id) do
+  defp discard_upload(%Scope{} = scope, %{id: _} = workspace, import_id) do
     result =
       Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
         with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
@@ -955,7 +952,7 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   # The workspace row is always locked first by StorageAccounting. Locking the
   # membership next makes authorization atomic with admission/publication and
   # serializes concurrent role changes or membership removal until commit.
-  defp authorize_locked_import_member(%Scope{user: %User{id: user_id}}, %Workspace{id: workspace_id}) do
+  defp authorize_locked_import_member(%Scope{user: %User{id: user_id}}, %{id: workspace_id}) do
     membership =
       WorkspaceMembership
       |> where(
@@ -967,8 +964,8 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
 
     case membership do
       %WorkspaceMembership{role: role} = membership ->
-        if WorkspaceMembership.can?(role, :access_workspace_settings) and
-             WorkspaceMembership.can?(role, :create_project),
+        if WorkspaceAccess.can?(role, :access_workspace_settings) and
+             WorkspaceAccess.can?(role, :create_project),
            do: {:ok, membership},
            else: {:error, :unauthorized}
 

@@ -6,7 +6,7 @@ defmodule Storyarn.AI.PersonalConsent do
 
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Integration
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   @capabilities ~w(translation suggestions tasks images speech)
 

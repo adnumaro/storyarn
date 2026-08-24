@@ -13,9 +13,9 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImport do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workspaces.Workspace
 
   @statuses ~w(uploading queued running retrying completed failed)
   @active_statuses ~w(uploading queued running retrying)

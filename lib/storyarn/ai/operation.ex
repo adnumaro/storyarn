@@ -6,10 +6,10 @@ defmodule Storyarn.AI.Operation do
 
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Context.PersistenceContract
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.RouteOption
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Workspaces.Workspace
 
   @execution_statuses ~w(queued running succeeded failed cancelled unknown)
   @dispositions ~w(accepted dismissed abandoned)

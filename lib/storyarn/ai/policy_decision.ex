@@ -5,17 +5,17 @@ defmodule Storyarn.AI.PolicyDecision do
 
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Policy
   alias Storyarn.AI.Task
+  alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.FeatureFlags
   alias Storyarn.Projects
   alias Storyarn.Projects.Memberships, as: ProjectMemberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @enforce_keys [
     :actor_id,
@@ -178,7 +178,7 @@ defmodule Storyarn.AI.PolicyDecision do
   defp valid_data_scope(%ExecutionIntent{}, %Task{}), do: {:error, :invalid_scope}
 
   defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: nil}, false) do
-    case Workspaces.get_workspace(scope, workspace_id) do
+    case WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, _workspace, membership} -> {:ok, %{workspace_role: membership.role, project_role: nil}}
       _error -> {:error, :unauthorized}
     end
@@ -187,7 +187,7 @@ defmodule Storyarn.AI.PolicyDecision do
   defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: project_id}, false) do
     with {:ok, project, project_membership} <- Projects.get_project(scope, project_id),
          true <- project.workspace_id == workspace_id,
-         {:ok, _workspace, workspace_membership} <- Workspaces.get_workspace(scope, workspace_id) do
+         {:ok, _workspace, workspace_membership} <- WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, %{workspace_role: workspace_membership.role, project_role: project_membership.role}}
     else
       _error -> {:error, :unauthorized}
@@ -296,7 +296,7 @@ defmodule Storyarn.AI.PolicyDecision do
   defp role_for_scope(access, :workspace), do: access.workspace_role
   defp role_for_scope(access, scope) when scope in [:project, :entity], do: access.project_role
 
-  defp permission_module(:workspace), do: Workspaces
+  defp permission_module(:workspace), do: WorkspaceAccess
   defp permission_module(scope) when scope in [:project, :entity], do: Projects
 
   # Workspace owners govern data egress for the workspace and may always make

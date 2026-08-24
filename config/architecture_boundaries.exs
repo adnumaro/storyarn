@@ -60,6 +60,10 @@ boundaries = %{
     "lib/storyarn/assets/",
     "lib/storyarn/references.ex",
     "lib/storyarn/references/",
+    "lib/storyarn/shared/invitation_notifier.ex",
+    "lib/storyarn/shared/invitation_operations.ex",
+    "lib/storyarn/shared/invitation_schema.ex",
+    "lib/storyarn/shared/membership_operations.ex",
     "lib/storyarn/versioning.ex",
     "lib/storyarn/versioning/",
     "lib/storyarn/exports.ex",
@@ -68,7 +72,6 @@ boundaries = %{
     "lib/storyarn/imports/",
     "lib/storyarn/project_templates.ex",
     "lib/storyarn/project_templates/",
-    "lib/storyarn/shortcuts.ex",
     "lib/storyarn/workers/trash_retention_worker.ex",
     "lib/storyarn_web/controllers/export_controller.ex",
     "lib/storyarn_web/controllers/private_media_controller.ex",
@@ -162,6 +165,10 @@ boundaries = %{
     "lib/storyarn/ai/operation.ex",
     "lib/storyarn/ai/operations.ex",
     "lib/storyarn/ai/operator_alert.ex",
+    "lib/storyarn/ai/persistence/project_membership_record.ex",
+    "lib/storyarn/ai/persistence/project_record.ex",
+    "lib/storyarn/ai/persistence/workspace_membership_record.ex",
+    "lib/storyarn/ai/persistence/workspace_record.ex",
     "lib/storyarn/ai/personal_consent.ex",
     "lib/storyarn/ai/personal_consents.ex",
     "lib/storyarn/ai/personal_preference.ex",
@@ -199,6 +206,7 @@ boundaries = %{
     "lib/storyarn/ai/tasks/managed_diagnostic.ex",
     "lib/storyarn/ai/telemetry.ex",
     "lib/storyarn/ai/usage_event.ex",
+    "lib/storyarn/ai/workspace_access.ex",
     "lib/storyarn/ai/workspace_policy.ex",
     "lib/storyarn/ai/workspace_policy_audit.ex",
     "lib/storyarn/analytics.ex",
@@ -266,11 +274,7 @@ boundaries = %{
     "lib/storyarn/shared/html_sanitizer.ex",
     "lib/storyarn/shared/html_utils.ex",
     "lib/storyarn/shared/import_helpers.ex",
-    "lib/storyarn/shared/invitation_notifier.ex",
-    "lib/storyarn/shared/invitation_operations.ex",
-    "lib/storyarn/shared/invitation_schema.ex",
     "lib/storyarn/shared/map_utils.ex",
-    "lib/storyarn/shared/membership_operations.ex",
     "lib/storyarn/shared/name_normalizer.ex",
     "lib/storyarn/shared/search_helpers.ex",
     "lib/storyarn/shared/severity.ex",
@@ -651,6 +655,84 @@ forbidden_dependencies =
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The workspace home lists and creates projects through the public Projects facade"
+    },
+    %{
+      source: "lib/storyarn/accounts/registration.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Registration provisions each new account's default workspace through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn/global_search/destinations.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Global search resolves reachable workspaces through the public Workspaces access reads"
+    },
+    %{
+      source: "lib/storyarn/release.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn/workers/deliver_invitation_worker.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The durable invitation delivery worker calls back into the public Workspaces facade to render and send"
+    },
+    %{
+      source: "lib/storyarn_web/controllers/private_media_controller.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Private media authorizes workspace access through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/template_live/show.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Template installation pages list the user's workspaces through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/helpers/authorize.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The shared Web authorization helper checks workspace permissions through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The global command palette resolves workspace scope through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/workspace_scope.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The workspace-scope mount hook loads the active workspace through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/landing_live/index.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The landing page routes signed-in users to their default workspace through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/landing_live/index.ex",
+      target: "lib/storyarn/workspaces/workspace.ex",
+      kinds: ["export"],
+      reason: "The landing page pattern-matches the Workspace struct returned by the public facade"
+    },
+    %{
+      source: "lib/storyarn_web/user_auth.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "Session plumbing resolves the user's workspaces through the public Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/user_auth.ex",
+      target: "lib/storyarn/workspaces/workspace.ex",
+      kinds: ["export"],
+      reason: "Session plumbing pattern-matches the Workspace struct returned by the public facade"
     },
     %{
       source: "lib/storyarn/global_search/variable_search.ex",

@@ -11,6 +11,9 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.PortableBundle
@@ -21,9 +24,6 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.SnapshotStorage
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   require Logger
 
@@ -735,7 +735,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
   defp validate_workspace_exists(workspace_id), do: {:error, {:invalid_workspace_id, workspace_id}}
 
   defp validate_source_project_scope(%{source_user_id: source_user_id, verify_workspace_id: workspace_id}) do
-    case Workspaces.authorize(Scope.for_user(Repo.get!(User, source_user_id)), workspace_id, :create_project) do
+    case WorkspaceAccess.authorize(Scope.for_user(Repo.get!(User, source_user_id)), workspace_id, :create_project) do
       {:ok, _workspace, _membership} -> :ok
       {:error, reason} -> {:error, {:source_project_unauthorized, reason}}
     end
@@ -1123,7 +1123,7 @@ defmodule Storyarn.ProjectTemplates.PortableImport do
            )
            |> lock("FOR SHARE")
            |> Repo.one(),
-         true <- Workspaces.can?(role, :create_project) do
+         true <- WorkspaceAccess.can?(role, :create_project) do
       :ok
     else
       nil -> {:error, :source_project_unauthorized}

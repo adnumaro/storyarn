@@ -8,15 +8,15 @@ defmodule Storyarn.Projects.ProjectCrud do
   alias Storyarn.Assets
   alias Storyarn.Billing
   alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
   alias Storyarn.Shared.NameNormalizer
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
 
   @doc """
   Lists all projects the user has access to (owned or as a member).
@@ -37,7 +37,7 @@ defmodule Storyarn.Projects.ProjectCrud do
     Project
     |> where([p], p.workspace_id == ^workspace_id and is_nil(p.deleted_at))
     |> join(:left, [p], pm in ProjectMembership, on: pm.project_id == p.id and pm.user_id == ^user.id)
-    |> join(:left, [p, pm], wm in Storyarn.Workspaces.WorkspaceMembership,
+    |> join(:left, [p, pm], wm in Storyarn.Projects.Persistence.WorkspaceMembershipRecord,
       on: wm.workspace_id == p.workspace_id and wm.user_id == ^user.id
     )
     |> where([p, pm, wm], not is_nil(pm.id) or not is_nil(wm.id))
@@ -95,7 +95,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   """
   def create_project(%Scope{user: user}, attrs) do
     with {:ok, workspace, membership} <- authorized_workspace_for_create(attrs, user),
-         true <- Workspaces.can?(membership.role, :create_project) do
+         true <- WorkspaceAccess.can?(membership.role, :create_project) do
       do_create_project(user, workspace.id, attrs)
     else
       false -> {:error, :unauthorized}
@@ -122,7 +122,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   defp authorized_workspace_for_create(attrs, user) do
     case attrs[:workspace_id] || attrs["workspace_id"] do
       nil -> {:error, :not_found}
-      workspace_id -> Workspaces.get_workspace(Scope.for_user(user), workspace_id)
+      workspace_id -> WorkspaceAccess.get_workspace(Scope.for_user(user), workspace_id)
     end
   end
 

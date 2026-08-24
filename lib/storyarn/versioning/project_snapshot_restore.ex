@@ -14,10 +14,10 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestore do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Accounts.User
   alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Workspaces.Workspace
 
   @statuses ~w(queued running retrying completed failed)
   @active_statuses ~w(queued running retrying)

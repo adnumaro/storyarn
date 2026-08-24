@@ -4,7 +4,7 @@ defmodule Storyarn.AI.AllowanceAccount do
 
   import Ecto.Changeset
 
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_accounts" do
     field :status, :string, default: "active"

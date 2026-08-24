@@ -5,7 +5,7 @@ defmodule Storyarn.AI.AllowanceReservation do
   import Ecto.Changeset
 
   alias Storyarn.AI.Operation
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_reservations" do
     field :workspace_id_snapshot, :integer

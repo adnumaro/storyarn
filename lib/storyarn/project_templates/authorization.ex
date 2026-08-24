@@ -5,10 +5,10 @@ defmodule Storyarn.ProjectTemplates.Authorization do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   def ensure_private_visibility(attrs) do
     visibility = Map.get(attrs, :visibility) || Map.get(attrs, "visibility") || "private"

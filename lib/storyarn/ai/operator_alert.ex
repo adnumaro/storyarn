@@ -5,7 +5,7 @@ defmodule Storyarn.AI.OperatorAlert do
   import Ecto.Changeset
 
   alias Storyarn.AI.Operation
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_operator_alerts" do
     field :dedupe_key, :string

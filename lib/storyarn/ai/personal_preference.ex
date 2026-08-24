@@ -13,7 +13,7 @@ defmodule Storyarn.AI.PersonalPreference do
 
   alias Storyarn.Accounts.User
   alias Storyarn.AI.Integration
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   @type t :: %__MODULE__{}
 

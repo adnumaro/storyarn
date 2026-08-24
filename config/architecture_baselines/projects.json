@@ -142,11 +142,6 @@
       "export"
     ],
     [
-      "lib/storyarn/project_templates/authorization.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/project_templates/deletion.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
@@ -187,21 +182,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/project_templates/installation.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/installation.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/installation.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/project_templates/portable_export.ex",
       "lib/storyarn/shared/name_normalizer.ex",
       "runtime"
@@ -222,21 +202,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/project_templates/portable_import.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/portable_import.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/portable_import.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/project_templates/project_template.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
@@ -249,11 +214,6 @@
     [
       "lib/storyarn/project_templates/project_template_install.ex",
       "lib/storyarn/accounts/user.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/project_templates/project_template_install.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -292,44 +252,14 @@
       "runtime"
     ],
     [
-      "lib/storyarn/project_templates/publication_runner.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/project_templates/publication_runner.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/project_templates/template_queries.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
     ],
     [
-      "lib/storyarn/project_templates/template_queries.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/projects/dashboard.ex",
       "lib/storyarn/shared/severity.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/projects/invitations.ex",
-      "lib/storyarn/shared/invitation_operations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/memberships.ex",
-      "lib/storyarn/shared/membership_operations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/memberships.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "export"
     ],
     [
       "lib/storyarn/projects/project.ex",
@@ -339,11 +269,6 @@
     [
       "lib/storyarn/projects/project.ex",
       "lib/storyarn/shared/validations.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project.ex",
-      "lib/storyarn/workspaces/workspace.ex",
       "runtime"
     ],
     [
@@ -367,29 +292,9 @@
       "runtime"
     ],
     [
-      "lib/storyarn/projects/project_crud.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project_crud.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/projects/project_crud.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/projects/project_invitation.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/projects/project_invitation.ex",
-      "lib/storyarn/shared/invitation_schema.ex",
-      "compile"
     ],
     [
       "lib/storyarn/projects/project_invitation.ex",
@@ -405,6 +310,36 @@
       "lib/storyarn/projects/project_trash.ex",
       "lib/storyarn/billing.ex",
       "runtime"
+    ],
+    [
+      "lib/storyarn/shared/invitation_notifier.ex",
+      "lib/storyarn/emails/templates.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/shared/invitation_notifier.ex",
+      "lib/storyarn/mailer.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/shared/invitation_operations.ex",
+      "lib/storyarn/accounts/user.ex",
+      "export"
+    ],
+    [
+      "lib/storyarn/shared/invitation_operations.ex",
+      "lib/storyarn/billing.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/shared/invitation_operations.ex",
+      "lib/storyarn/workers/deliver_invitation_worker.ex",
+      "runtime"
+    ],
+    [
+      "lib/storyarn/shared/membership_operations.ex",
+      "lib/storyarn/accounts/scope.ex",
+      "export"
     ],
     [
       "lib/storyarn/versioning.ex",
@@ -517,11 +452,6 @@
       "compile"
     ],
     [
-      "lib/storyarn/versioning/project_snapshot_lifecycle.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/versioning/project_snapshot_reconciliation.ex",
       "lib/storyarn/billing.ex",
       "runtime"
@@ -560,11 +490,6 @@
       "lib/storyarn/versioning/project_snapshot_restore.ex",
       "lib/storyarn/billing/storage_reservation.ex",
       "export"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
     ],
     [
       "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
@@ -632,11 +557,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/workspace_snapshot_import.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/workspace_snapshot_imports.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
@@ -662,28 +582,8 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/workspace_snapshot_imports.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/workspace_snapshot_imports.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/versioning/workspace_snapshot_imports.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "export"
-    ],
-    [
       "lib/storyarn_web/controllers/export_controller.ex",
       "lib/storyarn/shared/name_normalizer.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/controllers/private_media_controller.ex",
-      "lib/storyarn/workspaces.ex",
       "runtime"
     ],
     [
@@ -720,16 +620,6 @@
       "lib/storyarn_web/live/project_settings_live/version_control.ex",
       "lib/storyarn/billing.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/template_live/show.ex",
-      "lib/storyarn/workspaces.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/live/template_live/show.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
     ]
   ],
   "version": 1

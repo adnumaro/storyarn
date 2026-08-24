@@ -11,6 +11,9 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Billing.Persistence.FlowRecord
   alias Storyarn.Billing.Persistence.SceneRecord
   alias Storyarn.Billing.Persistence.SheetRecord
+  alias Storyarn.Billing.Persistence.WorkspaceInvitationRecord, as: WorkspaceInvitation
+  alias Storyarn.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
@@ -22,9 +25,6 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.WorkspaceSnapshotImport
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceInvitation
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
   Checks if a user can create another workspace.
@@ -84,7 +84,7 @@ defmodule Storyarn.Billing.Limits do
   Accepts either a workspace or a project struct — for projects, resolves
   the workspace_id to check workspace-level member limits.
   """
-  def can_invite_member?(%Workspace{} = workspace) do
+  def can_invite_member?(%{id: _} = workspace) when not is_struct(workspace, Project) do
     check_member_limit(workspace.id)
   end
 
@@ -98,7 +98,7 @@ defmodule Storyarn.Billing.Limits do
   Emails that already occupy a slot through a membership or active invitation
   may be invited to another project without consuming additional capacity.
   """
-  def can_invite_member?(%Workspace{} = workspace, email) when is_binary(email) do
+  def can_invite_member?(%{id: _} = workspace, email) when not is_struct(workspace, Project) and is_binary(email) do
     check_member_limit(workspace.id, email)
   end
 
@@ -114,7 +114,7 @@ defmodule Storyarn.Billing.Limits do
   check protects legacy or externally-created invitations from exceeding the
   plan when they are accepted.
   """
-  def can_accept_member?(%Workspace{} = workspace, email) when is_binary(email) do
+  def can_accept_member?(%{id: _} = workspace, email) when not is_struct(workspace, Project) and is_binary(email) do
     check_membership_limit(workspace.id, email)
   end
 

@@ -5,7 +5,7 @@ defmodule Storyarn.AI.ProviderBudgetReservation do
   import Ecto.Changeset
 
   alias Storyarn.AI.Operation
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   schema "ai_provider_budget_reservations" do
     field :workspace_id_snapshot, :integer

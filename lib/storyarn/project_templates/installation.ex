@@ -12,7 +12,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Billing
   alias Storyarn.Notifications
   alias Storyarn.Projects
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.ProjectTemplates.Artifact
   alias Storyarn.ProjectTemplates.Audit
   alias Storyarn.ProjectTemplates.Authorization
@@ -25,9 +27,6 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Versioning.ProjectRecovery
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.InstallProjectTemplateWorker
-  alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   require Logger
 
@@ -48,16 +47,11 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   @spec request_template_instantiation(Scope.t(), ProjectTemplateVersion.t(), Workspace.t(), map()) ::
           {:ok, ProjectTemplateInstall.t()} | {:error, term()}
-  def request_template_instantiation(
-        %Scope{} = scope,
-        %ProjectTemplateVersion{} = version,
-        %Workspace{} = workspace,
-        attrs
-      ) do
+  def request_template_instantiation(%Scope{} = scope, %ProjectTemplateVersion{} = version, %{id: _} = workspace, attrs) do
     version = Repo.preload(version, [:project_template])
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
-         {:ok, workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
+         {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
          :ok <- Billing.can_create_project?(workspace) do
       name = install_name(attrs, version)
       source = install_source(attrs)
@@ -111,11 +105,11 @@ defmodule Storyarn.ProjectTemplates.Installation do
 
   @spec instantiate_template(Scope.t(), ProjectTemplateVersion.t(), Workspace.t(), map()) ::
           {:ok, Project.t()} | {:error, term()}
-  def instantiate_template(%Scope{} = scope, %ProjectTemplateVersion{} = version, %Workspace{} = workspace, attrs) do
+  def instantiate_template(%Scope{} = scope, %ProjectTemplateVersion{} = version, %{id: _} = workspace, attrs) do
     version = Repo.preload(version, [:project_template])
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
-         {:ok, workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :create_project),
+         {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
          :ok <- Billing.can_create_project?(workspace),
          {:ok, snapshot, asset_source_keys} <- load_verified_template_snapshot(version) do
       case instantiate_template_transaction(
@@ -133,8 +127,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   @spec list_active_workspace_installations(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
-  def list_active_workspace_installations(%Scope{} = scope, %Workspace{} = workspace) do
-    case Workspaces.authorize(scope, workspace.id, :view) do
+  def list_active_workspace_installations(%Scope{} = scope, %{id: _} = workspace) do
+    case WorkspaceAccess.authorize(scope, workspace.id, :view) do
       {:ok, _workspace, _membership} ->
         ProjectTemplateInstall
         |> where([install], install.workspace_id == ^workspace.id and install.status in ^@active_statuses)
@@ -148,8 +142,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   end
 
   @spec list_pending_workspace_installation_failures(Scope.t(), Workspace.t()) :: [ProjectTemplateInstall.t()]
-  def list_pending_workspace_installation_failures(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace) do
-    case Workspaces.authorize(scope, workspace.id, :view) do
+  def list_pending_workspace_installation_failures(%Scope{user: %{id: user_id}} = scope, %{id: _} = workspace) do
+    case WorkspaceAccess.authorize(scope, workspace.id, :view) do
       {:ok, _workspace, _membership} ->
         ProjectTemplateInstall
         |> where(
@@ -167,7 +161,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  def list_pending_workspace_installation_failures(%Scope{}, %Workspace{}), do: []
+  def list_pending_workspace_installation_failures(%Scope{}, %{id: _}), do: []
 
   @spec list_pending_template_installation_failures(Scope.t(), ProjectTemplate.t()) ::
           [ProjectTemplateInstall.t()]
@@ -198,9 +192,9 @@ defmodule Storyarn.ProjectTemplates.Installation do
   def list_pending_template_installation_failures(%Scope{}, %ProjectTemplate{}), do: []
 
   @spec pending_installation_failure?(Scope.t(), Workspace.t(), integer()) :: boolean()
-  def pending_installation_failure?(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace, installation_id)
+  def pending_installation_failure?(%Scope{user: %{id: user_id}} = scope, %{id: _} = workspace, installation_id)
       when is_integer(installation_id) do
-    case Workspaces.authorize(scope, workspace.id, :view) do
+    case WorkspaceAccess.authorize(scope, workspace.id, :view) do
       {:ok, _workspace, _membership} ->
         Repo.exists?(
           from install in ProjectTemplateInstall,
@@ -215,14 +209,14 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  def pending_installation_failure?(%Scope{}, %Workspace{}, _installation_id), do: false
+  def pending_installation_failure?(%Scope{}, %{id: _}, _installation_id), do: false
 
   @spec dismiss_installation_failure(Scope.t(), Workspace.t(), integer()) ::
           {:ok, ProjectTemplateInstall.t()}
           | {:error, :not_found | :unauthorized | Ecto.Changeset.t()}
-  def dismiss_installation_failure(%Scope{user: %{id: user_id}} = scope, %Workspace{} = workspace, installation_id)
+  def dismiss_installation_failure(%Scope{user: %{id: user_id}} = scope, %{id: _} = workspace, installation_id)
       when is_integer(installation_id) do
-    with {:ok, _workspace, _membership} <- Workspaces.authorize(scope, workspace.id, :view),
+    with {:ok, _workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :view),
          {:ok, {install, changed?}} <-
            dismiss_installation_failure_transaction(installation_id, workspace.id, user_id) do
       install = preload_install(install)
@@ -231,7 +225,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  def dismiss_installation_failure(%Scope{}, %Workspace{}, _installation_id), do: {:error, :unauthorized}
+  def dismiss_installation_failure(%Scope{}, %{id: _}, _installation_id), do: {:error, :unauthorized}
 
   defp dismiss_installation_failure_transaction(installation_id, workspace_id, user_id) do
     Repo.transact(fn ->
@@ -287,7 +281,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  def subscribe_workspace_installations(%Workspace{id: workspace_id}) do
+  def subscribe_workspace_installations(%{id: workspace_id}) do
     Phoenix.PubSub.subscribe(Storyarn.PubSub, workspace_topic(workspace_id))
   end
 
@@ -358,7 +352,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
              install.project_template_version.project_template
            ),
          {:ok, _workspace, _membership} <-
-           Workspaces.authorize(scope, install.workspace_id, :create_project) do
+           WorkspaceAccess.authorize(scope, install.workspace_id, :create_project) do
       normalize_worker_authorization(Billing.can_create_project?(install.workspace))
     end
   end
@@ -596,7 +590,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
     end
   end
 
-  defp lock_and_authorize_instantiation(%Scope{user: %{id: user_id}}, %ProjectTemplateVersion{} = version, %Workspace{
+  defp lock_and_authorize_instantiation(%Scope{user: %{id: user_id}}, %ProjectTemplateVersion{} = version, %{
          id: workspace_id
        }) do
     membership =
@@ -606,7 +600,7 @@ defmodule Storyarn.ProjectTemplates.Installation do
       |> Repo.one()
 
     with %WorkspaceMembership{role: role} <- membership,
-         true <- Workspaces.can?(role, :create_project),
+         true <- WorkspaceAccess.can?(role, :create_project),
          %ProjectTemplate{} = template <- lock_installation_template(version.project_template_id) do
       authorize_locked_template_visibility(template, user_id)
     else

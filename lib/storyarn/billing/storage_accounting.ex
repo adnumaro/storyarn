@@ -19,6 +19,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
+  alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageCleanupInventory
   alias Storyarn.Billing.StorageReservation
@@ -33,7 +34,6 @@ defmodule Storyarn.Billing.StorageAccounting do
   alias Storyarn.Versioning.SnapshotObjectFormat
   alias Storyarn.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Versioning.WorkspaceSnapshotImport
-  alias Storyarn.Workspaces.Workspace
 
   @accounting_version 1
   @default_reservation_ttl_seconds 24 * 60 * 60
@@ -166,8 +166,7 @@ defmodule Storyarn.Billing.StorageAccounting do
   @doc "Checks a requested allocation against exact product-accounted workspace bytes."
   @spec check_capacity(Workspace.t(), non_neg_integer()) ::
           :ok | {:error, :limit_reached, map()} | {:error, :invalid_storage_allocation}
-  def check_capacity(%Workspace{} = workspace, requested_bytes)
-      when is_integer(requested_bytes) and requested_bytes >= 0 do
+  def check_capacity(%{id: _} = workspace, requested_bytes) when is_integer(requested_bytes) and requested_bytes >= 0 do
     plan = SubscriptionCrud.plan_for(workspace)
     limit = Plan.limit(plan, :storage_bytes_per_workspace)
     usage = capacity_usage(workspace.id)
@@ -175,7 +174,7 @@ defmodule Storyarn.Billing.StorageAccounting do
     check_capacity_limit(usage, requested_bytes, limit)
   end
 
-  def check_capacity(%Workspace{}, _requested_bytes), do: {:error, :invalid_storage_allocation}
+  def check_capacity(%{id: _}, _requested_bytes), do: {:error, :invalid_storage_allocation}
 
   defp capacity_usage(workspace_id) do
     usage = workspace_usage(workspace_id)

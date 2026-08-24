@@ -5,7 +5,7 @@ defmodule Storyarn.AI.WorkspacePolicy do
   import Ecto.Changeset
 
   alias Storyarn.Accounts.User
-  alias Storyarn.Workspaces.Workspace
+  alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
 
   @initial_lanes ~w(managed personal_byok)
 

@@ -18,6 +18,7 @@ defmodule Storyarn.Shared.InvitationOperations do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Billing
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.RateLimiter
   alias Storyarn.Repo
@@ -25,7 +26,6 @@ defmodule Storyarn.Shared.InvitationOperations do
   alias Storyarn.Shared.InvitationNotifier
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.DeliverInvitationWorker
-  alias Storyarn.Workspaces.Workspace
 
   require Logger
 

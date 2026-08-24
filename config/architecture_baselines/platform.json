@@ -32,21 +32,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/billing/limits.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn/billing/limits.ex",
-      "lib/storyarn/workspaces/workspace_invitation.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/billing/limits.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/billing/storage_accounting.ex",
       "lib/storyarn/accounts/user.ex",
       "export"
@@ -102,11 +87,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/billing/storage_accounting.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
-    ],
-    [
       "lib/storyarn/billing/storage_reservation.ex",
       "lib/storyarn/projects/project.ex",
       "runtime"
@@ -115,21 +95,6 @@
       "lib/storyarn/billing/storage_reservation.ex",
       "lib/storyarn/versioning/project_snapshot.ex",
       "runtime"
-    ],
-    [
-      "lib/storyarn/billing/storage_reservation.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/billing/subscription.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/billing/subscription_crud.ex",
-      "lib/storyarn/workspaces/workspace.ex",
-      "export"
     ],
     [
       "lib/storyarn/notifications.ex",
@@ -154,11 +119,6 @@
     [
       "lib/storyarn/notifications.ex",
       "lib/storyarn/projects/project_membership.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/notifications.ex",
-      "lib/storyarn/workspaces/workspace_membership.ex",
       "runtime"
     ],
     [

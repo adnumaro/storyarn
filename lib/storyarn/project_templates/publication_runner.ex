@@ -8,6 +8,8 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Billing
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.ProjectTemplates.Artifact
@@ -22,8 +24,6 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
   alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Versioning.SnapshotStorage
   alias Storyarn.Workers.PublishProjectTemplateWorker
-  alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   def request_template_publication(%Scope{} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
