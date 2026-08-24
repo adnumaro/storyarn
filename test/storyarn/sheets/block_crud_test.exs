@@ -1153,67 +1153,6 @@ defmodule Storyarn.Sheets.BlockCrudTest do
   # import_block/2
   # ===========================================================================
 
-  describe "import_block/2" do
-    setup :setup_context
-
-    test "creates a block without side effects", %{sheet: sheet} do
-      {:ok, block} =
-        Sheets.import_block(sheet.id, %{
-          type: "text",
-          config: %{"label" => "Imported"},
-          value: %{"content" => "Imported runtime words"},
-          variable_name: "imported",
-          position: 0
-        })
-
-      assert block.type == "text"
-      assert block.config["label"] == "Imported"
-      assert block.word_count == 3
-    end
-
-    test "does not auto-deduplicate variable names (relies on DB constraint)", %{sheet: sheet} do
-      {:ok, _b1} =
-        Sheets.import_block(sheet.id, %{
-          type: "text",
-          config: %{"label" => "Name"},
-          variable_name: "name",
-          position: 0
-        })
-
-      # import_block does NOT deduplicate in code, but the DB has a unique
-      # constraint on (sheet_id, variable_name), so a duplicate raises
-      assert_raise Ecto.ConstraintError, fn ->
-        Sheets.import_block(sheet.id, %{
-          type: "text",
-          config: %{"label" => "Name"},
-          variable_name: "name",
-          position: 1
-        })
-      end
-    end
-
-    test "allows different variable names", %{sheet: sheet} do
-      {:ok, b1} =
-        Sheets.import_block(sheet.id, %{
-          type: "text",
-          config: %{"label" => "Name"},
-          variable_name: "name",
-          position: 0
-        })
-
-      {:ok, b2} =
-        Sheets.import_block(sheet.id, %{
-          type: "number",
-          config: %{"label" => "Age"},
-          variable_name: "age",
-          position: 1
-        })
-
-      assert b1.variable_name == "name"
-      assert b2.variable_name == "age"
-    end
-  end
-
   # ===========================================================================
   # ensure_unique_variable_name (via public wrapper)
   # ===========================================================================

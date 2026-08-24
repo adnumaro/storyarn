@@ -1295,43 +1295,6 @@ defmodule Storyarn.Sheets.TableCrud do
   # Import helpers (raw insert, no side effects)
   # =============================================================================
 
-  @doc """
-  Creates a table column for import. Raw insert — no auto-slug dedup,
-  no auto-position, no cell propagation, no child sync.
-  Returns `{:ok, column}` or `{:error, changeset}`.
-  """
-  def import_column(block_id, attrs) do
-    Repo.transaction(fn ->
-      _scope = lock_table_scope!(block_id)
-
-      case %TableColumn{block_id: block_id}
-           |> TableColumn.create_changeset(attrs)
-           |> Repo.insert() do
-        {:ok, column} -> column
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
-  end
-
-  @doc """
-  Creates a table row for import. Raw insert — no auto-position, no slug dedup.
-  Returns `{:ok, row}` or `{:error, changeset}`.
-  """
-  def import_row(block_id, attrs) do
-    Repo.transaction(fn ->
-      scope = lock_table_scope!(block_id)
-      cells = attrs[:cells] || attrs["cells"] || %{}
-      validate_cell_keys!(scope, cells, enforce_required: false)
-
-      case %TableRow{block_id: block_id}
-           |> TableRow.create_changeset(attrs)
-           |> Repo.insert() do
-        {:ok, row} -> row
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end)
-  end
-
   defp maybe_force_formula_constant(attrs) do
     type = attrs[:type] || attrs["type"]
 

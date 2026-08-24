@@ -1,7 +1,7 @@
-defmodule Storyarn.Shared.FormulaEngineTest do
+defmodule Storyarn.Sheets.FormulaEngineTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Shared.FormulaEngine
+  alias Storyarn.Sheets.FormulaEngine
 
   # ===========================================================================
   # parse/1

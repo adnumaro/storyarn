@@ -117,58 +117,58 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:256
+#: lib/storyarn_web/live/project_settings_live/trash.ex:255
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:25
+#: lib/storyarn_web/live/project_settings_live/trash.ex:24
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr "Papelera"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:27
+#: lib/storyarn_web/live/project_settings_live/trash.ex:26
 #, elixir-autogen, elixir-format
 msgid "Restore deleted project items or remove them permanently."
 msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:92
+#: lib/storyarn_web/live/project_settings_live/trash.ex:91
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:165
-#: lib/storyarn_web/live/project_settings_live/trash.ex:180
+#: lib/storyarn_web/live/project_settings_live/trash.ex:164
+#: lib/storyarn_web/live/project_settings_live/trash.ex:179
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:168
-#: lib/storyarn_web/live/project_settings_live/trash.ex:353
-#: lib/storyarn_web/live/project_settings_live/trash.ex:356
+#: lib/storyarn_web/live/project_settings_live/trash.ex:167
+#: lib/storyarn_web/live/project_settings_live/trash.ex:352
+#: lib/storyarn_web/live/project_settings_live/trash.ex:355
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:187
-#: lib/storyarn_web/live/project_settings_live/trash.ex:226
+#: lib/storyarn_web/live/project_settings_live/trash.ex:186
+#: lib/storyarn_web/live/project_settings_live/trash.ex:225
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:204
-#: lib/storyarn_web/live/project_settings_live/trash.ex:219
+#: lib/storyarn_web/live/project_settings_live/trash.ex:203
+#: lib/storyarn_web/live/project_settings_live/trash.ex:218
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:222
-#: lib/storyarn_web/live/project_settings_live/trash.ex:378
+#: lib/storyarn_web/live/project_settings_live/trash.ex:221
+#: lib/storyarn_web/live/project_settings_live/trash.ex:377
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:260
+#: lib/storyarn_web/live/project_settings_live/trash.ex:259
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
@@ -289,27 +289,27 @@ msgstr "Revisa el uso del proyecto y del workspace frente a los límites del pla
 msgid "Usage Limits"
 msgstr "Límites de uso"
 
-#: lib/storyarn/exports/validator.ex:448
+#: lib/storyarn/exports/validator.ex:449
 #, elixir-autogen, elixir-format
 msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
 msgstr "%{excluded} de %{total} textos no están listos para publicación en el idioma \"%{locale}\""
 
-#: lib/storyarn/exports/validator.ex:479
+#: lib/storyarn/exports/validator.ex:480
 #, elixir-autogen, elixir-format
 msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
 msgstr "%{missing} de %{total} textos no tienen traducción de previsualización para el idioma \"%{locale}\""
 
-#: lib/storyarn/exports/validator.ex:505
+#: lib/storyarn/exports/validator.ex:506
 #, elixir-autogen, elixir-format
 msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr "La exportación de previsualización incluye %{count} textos no finales o desactualizados para el idioma \"%{locale}\""
 
-#: lib/storyarn/exports/validator.ex:255
+#: lib/storyarn/exports/validator.ex:256
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no Entry node"
 msgstr "El flujo \"%{name}\" no tiene nodo Entry"
 
-#: lib/storyarn/exports/validator.ex:389
+#: lib/storyarn/exports/validator.ex:390
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
 msgstr "El flujo \"%{name}\" forma parte de una cadena circular de referencias entre subflujos"
@@ -324,7 +324,7 @@ msgstr "El operador '%{operator}' no es compatible con %{engine}"
 msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
 msgstr "El operador '%{operator}' requiere la función personalizada '%{func_name}' en %{engine}"
 
-#: lib/storyarn/exports/validator.ex:557
+#: lib/storyarn/exports/validator.ex:558
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr "La ficha \"%{name}\" no tiene referencias desde flujos ni escenas"
@@ -966,14 +966,14 @@ msgid_plural "Localization ID \"%{id}\" is used by %{count} dialogues"
 msgstr[0] "El ID de localización \"%{id}\" se usa en un diálogo más de una vez"
 msgstr[1] "El ID de localización \"%{id}\" se usa en %{count} diálogos"
 
-#: lib/storyarn/exports/validator.ex:346
+#: lib/storyarn/exports/validator.ex:347
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no speaker assigned"
 msgid_plural "%{count} dialogues have no speaker assigned"
 msgstr[0] "Un diálogo no tiene personaje asignado"
 msgstr[1] "%{count} diálogos no tienen personaje asignado"
 
-#: lib/storyarn/exports/validator.ex:327
+#: lib/storyarn/exports/validator.ex:328
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no text"
 msgid_plural "%{count} dialogues have no text"
@@ -1010,7 +1010,7 @@ msgstr "Varias fichas colapsan al identificador de ejecución \"%{identifier}\" 
 msgid "Multiple variables collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr "Varias variables colapsan al identificador de ejecución \"%{identifier}\" en %{format}"
 
-#: lib/storyarn/exports/validator.ex:295
+#: lib/storyarn/exports/validator.ex:296
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has connections from outputs the exporter cannot preserve"
 msgstr "\"%{node}\" del flujo \"%{flow}\" tiene conexiones desde salidas que el exportador no puede conservar"
@@ -1065,7 +1065,7 @@ msgstr "El XML de articy:draft no representa las condiciones de los diálogos"
 msgid "Exit flow references are not represented by this serializer"
 msgstr "Este serializador no representa las referencias de salida a otros flujos"
 
-#: lib/storyarn/exports/validator.ex:270
+#: lib/storyarn/exports/validator.ex:271
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one"
 msgstr "El flujo \"%{name}\" tiene %{count} nodos Entry; la exportación solo puede conservar uno"
@@ -1222,12 +1222,12 @@ msgstr "La eliminación de la snapshot ha comenzado."
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:363
+#: lib/storyarn_web/live/project_settings_live/trash.ex:362
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:372
+#: lib/storyarn_web/live/project_settings_live/trash.ex:371
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."

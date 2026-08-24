@@ -17,7 +17,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   alias Storyarn.Sheets.Persistence.FlowNodeRecord
   alias Storyarn.Sheets.Persistence.FlowRecord
   alias Storyarn.Sheets.Persistence.VariableReferenceRecord
-  alias Storyarn.Sheets.SceneReadModel
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
@@ -1117,41 +1116,6 @@ defmodule Storyarn.Sheets.SheetQueries do
   end
 
   @doc """
-  Lists all non-deleted sheets with blocks, table_columns, and table_rows preloaded.
-  Used by the export DataCollector.
-  """
-  def list_sheets_for_export(project_id, opts \\ []) do
-    filter_ids = Keyword.get(opts, :filter_ids, :all)
-
-    blocks_query =
-      from(b in Block,
-        where: is_nil(b.deleted_at),
-        preload: [:table_columns, :table_rows],
-        # An export is a file people diff. Two blocks at one position would
-        # otherwise swap places between runs with nothing having changed.
-        order_by: [asc: b.position, asc: b.id]
-      )
-
-    query =
-      from(s in Sheet,
-        where: s.project_id == ^project_id and is_nil(s.deleted_at),
-        preload: [blocks: ^blocks_query, avatars: :asset],
-        order_by: [asc: s.position, asc: s.name]
-      )
-
-    query
-    |> maybe_filter_export_ids(filter_ids)
-    |> Repo.all()
-  end
-
-  @doc """
-  Counts non-deleted sheets for a project.
-  """
-  def count_sheets(project_id) do
-    Repo.aggregate(from(s in Sheet, where: s.project_id == ^project_id and is_nil(s.deleted_at)), :count)
-  end
-
-  @doc """
   Lists active project sheets with no preloads, in tree order.
 
   For project-wide sweeps that need sheet identity and tree shape (`parent_id`,
@@ -1189,47 +1153,6 @@ defmodule Storyarn.Sheets.SheetQueries do
     )
     |> maybe_filter_export_ids(filter_ids)
     |> Repo.all()
-  end
-
-  @doc """
-  Lists existing shortcuts for sheets in a project.
-  Used by the import parser for conflict detection.
-  """
-  def list_shortcuts(project_id) do
-    from(s in Sheet,
-      where: s.project_id == ^project_id and is_nil(s.deleted_at),
-      select: s.shortcut
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc """
-  Detects shortcut conflicts between imported sheets and existing ones.
-  """
-  def detect_shortcut_conflicts(project_id, shortcuts) when is_list(shortcuts) do
-    if shortcuts == [] do
-      []
-    else
-      Repo.all(
-        from(s in Sheet,
-          where: s.project_id == ^project_id and s.shortcut in ^shortcuts and is_nil(s.deleted_at),
-          select: s.shortcut
-        )
-      )
-    end
-  end
-
-  @doc """
-  Soft-deletes existing sheets with the given shortcut (for overwrite import strategy).
-  """
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    now = Storyarn.Shared.TimeHelpers.now()
-
-    Repo.update_all(
-      from(s in Sheet, where: s.project_id == ^project_id and s.shortcut == ^shortcut and is_nil(s.deleted_at)),
-      set: [deleted_at: now]
-    )
   end
 
   @doc """
@@ -1553,14 +1476,6 @@ defmodule Storyarn.Sheets.SheetQueries do
         order_by: [asc: s.name]
       )
     )
-  end
-
-  @doc """
-  Lists sheet IDs referenced by scene pins in a project.
-  Used by the export Validator for orphan sheet detection.
-  """
-  def list_pin_referenced_sheet_ids(project_id) do
-    SceneReadModel.list_pin_referenced_sheet_ids(project_id)
   end
 
   defp maybe_filter_export_ids(query, :all), do: query

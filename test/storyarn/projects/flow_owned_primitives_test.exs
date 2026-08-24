@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.FlowOwnedPrimitivesTest do
 
   alias Storyarn.Projects.FlowFormulaEngine
   alias Storyarn.Projects.FlowWordCount
-  alias Storyarn.Shared.FormulaEngine, as: PreviousFormulaEngine
+  alias Storyarn.Sheets.FormulaEngine, as: PreviousFormulaEngine
 
   test "Project-owned Flow word counts preserve the imported and repaired node contract" do
     cases = [

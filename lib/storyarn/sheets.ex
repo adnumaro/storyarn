@@ -1069,30 +1069,11 @@ defmodule Storyarn.Sheets do
   @doc "Returns the project_id for a sheet by its ID."
   defdelegate get_sheet_project_id(sheet_id), to: SheetQueries
 
-  @doc "Lists sheets with blocks and table data preloaded. Opts: [filter_ids: :all | [ids]]."
-  defdelegate list_sheets_for_export(project_id, opts \\ []), to: SheetQueries
-
-  @doc "Counts non-deleted sheets for a project."
-  defdelegate count_sheets(project_id), to: SheetQueries
-
   @doc "Lists all non-deleted blocks for the given sheet IDs."
   defdelegate list_blocks_for_sheet_ids(sheet_ids), to: SheetQueries
 
   @doc "Lists brief sheet data (id, name, shortcut) for validator. Opts: [filter_ids: :all | [ids]]."
   defdelegate list_sheets_brief(project_id, opts \\ []), to: SheetQueries
-
-  @doc "Lists existing sheet shortcuts for a project."
-  defdelegate list_sheet_shortcuts(project_id), to: SheetQueries, as: :list_shortcuts
-
-  @doc "Detects shortcut conflicts between imported sheets and existing ones."
-  defdelegate detect_sheet_shortcut_conflicts(project_id, shortcuts),
-    to: SheetQueries,
-    as: :detect_shortcut_conflicts
-
-  @doc "Soft-deletes existing sheets with the given shortcut (overwrite import strategy)."
-  defdelegate soft_delete_sheet_by_shortcut(project_id, shortcut),
-    to: SheetQueries,
-    as: :soft_delete_by_shortcut
 
   @doc "Returns stale variable reference data for flow nodes."
   defdelegate check_stale_flow_node_variable_references(block_id, project_id), to: SheetQueries
@@ -1129,26 +1110,8 @@ defmodule Storyarn.Sheets do
   @doc "Lists sheets using a specific asset as their banner."
   defdelegate list_sheets_using_asset_as_banner(project_id, asset_id), to: SheetQueries
 
-  @doc "Lists sheet IDs referenced by scene pins in a project."
-  defdelegate list_pin_referenced_sheet_ids(project_id), to: SheetQueries
-
   @doc "Lists Scene-owned placements that display a Sheet."
   defdelegate list_scene_appearances(sheet_id), to: SceneReadModel, as: :list_sheet_appearances
-
-  @doc "Creates a sheet for import (raw insert, no side effects)."
-  defdelegate import_sheet(project_id, attrs), to: SheetCrud
-
-  @doc "Updates a sheet's parent_id after import."
-  defdelegate link_sheet_import_parent(sheet, parent_id), to: SheetCrud, as: :link_import_parent
-
-  @doc "Creates a block for import (raw insert, no side effects)."
-  defdelegate import_block(sheet_id, attrs), to: BlockCrud
-
-  @doc "Creates a table column for import (raw insert, no side effects)."
-  defdelegate import_table_column(block_id, attrs), to: TableCrud, as: :import_column
-
-  @doc "Creates a table row for import (raw insert, no side effects)."
-  defdelegate import_table_row(block_id, attrs), to: TableCrud, as: :import_row
 
   # =============================================================================
   # Dashboard Stats

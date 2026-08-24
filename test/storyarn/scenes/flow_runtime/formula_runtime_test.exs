@@ -1,10 +1,10 @@
 defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Flows.FormulaRuntime, as: PreviousFormulaRuntime
   alias Storyarn.Scenes.FlowRuntime.FormulaEngine
   alias Storyarn.Scenes.FlowRuntime.FormulaRuntime
-  alias Storyarn.Shared.FormulaEngine, as: PreviousFormulaEngine
-  alias Storyarn.Shared.FormulaRuntime, as: PreviousFormulaRuntime
+  alias Storyarn.Sheets.FormulaEngine, as: PreviousFormulaEngine
 
   test "Scenes-owned formula engine preserves the exploration expression contract" do
     cases = [
@@ -65,8 +65,13 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
       "sheet.table.row.total" => variable(7, "formula", formula: %{expression: "", bindings: nil})
     }
 
-    assert FormulaRuntime.recompute_formulas(variables) ==
-             PreviousFormulaRuntime.recompute_formulas(variables)
+    # Pinned against the retired shared runtime's behavior: explicit nil
+    # bindings fall back to no dependencies and the unparsable empty
+    # expression clears the value. (The Flow copy diverges here — it predates
+    # the shared module's nil guard — so this is a value pin, not a
+    # comparison.)
+    assert %{"sheet.table.row.total" => %{value: nil, source: :initial}} =
+             FormulaRuntime.recompute_formulas(variables)
   end
 
   test "Scenes-owned runtime preserves same-row binding translation" do

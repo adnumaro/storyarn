@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:240
-#: lib/storyarn/versioning/conflict_detector.ex:385
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:286
 #, elixir-autogen, elixir-format
 msgid "%{count} missing %{type}"
 msgid_plural "%{count} missing %{type}"
@@ -21,126 +21,119 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning.ex:742
 #: lib/storyarn/scenes/versioning.ex:737
-#: lib/storyarn/versioning/version_crud.ex:503
+#: lib/storyarn/sheets/versioning.ex:737
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:217
+#: lib/storyarn_web/live/sheet_live/version_events.ex:248
 #, elixir-autogen, elixir-format
 msgid "Could not create safety backup before restoring. Restore aborted."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:130
 #: lib/storyarn_web/live/flow_live/version_events.ex:157
 #: lib/storyarn_web/live/flow_live/version_events.ex:160
 #: lib/storyarn_web/live/scene_live/version_events.ex:157
 #: lib/storyarn_web/live/scene_live/version_events.ex:160
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:128
+#: lib/storyarn_web/live/sheet_live/version_events.ex:141
+#: lib/storyarn_web/live/sheet_live/version_events.ex:144
 #, elixir-autogen, elixir-format
 msgid "Could not create version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:179
 #: lib/storyarn_web/live/flow_live/version_events.ex:215
 #: lib/storyarn_web/live/scene_live/version_events.ex:215
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:174
+#: lib/storyarn_web/live/sheet_live/version_events.ex:197
 #, elixir-autogen, elixir-format
 msgid "Could not delete version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_history_helpers.ex:183
 #: lib/storyarn_web/live/flow_live/version_history.ex:166
 #: lib/storyarn_web/live/scene_live/version_history.ex:166
-#: lib/storyarn_web/live/sheet_live/helpers/history_data_helpers.ex:132
+#: lib/storyarn_web/live/sheet_live/version_history.ex:164
 #, elixir-autogen, elixir-format
 msgid "Could not load version snapshot."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:166
 #: lib/storyarn_web/live/flow_live/version_events.ex:199
 #: lib/storyarn_web/live/flow_live/version_events.ex:202
 #: lib/storyarn_web/live/scene_live/version_events.ex:199
 #: lib/storyarn_web/live/scene_live/version_events.ex:202
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:161
+#: lib/storyarn_web/live/sheet_live/version_events.ex:181
+#: lib/storyarn_web/live/sheet_live/version_events.ex:184
 #, elixir-autogen, elixir-format
 msgid "Could not name version."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:106
-#: lib/storyarn_web/helpers/version_event_helpers.ex:221
 #: lib/storyarn_web/live/flow_live/version_events.ex:130
 #: lib/storyarn_web/live/flow_live/version_events.ex:274
 #: lib/storyarn_web/live/scene_live/version_events.ex:130
 #: lib/storyarn_web/live/scene_live/version_events.ex:274
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:251
+#: lib/storyarn_web/live/sheet_live/version_events.ex:114
+#: lib/storyarn_web/live/sheet_live/version_events.ex:282
 #, elixir-autogen, elixir-format
 msgid "Could not restore version."
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:836
 #: lib/storyarn/scenes/versioning.ex:831
-#: lib/storyarn/versioning/version_crud.ex:642
+#: lib/storyarn/sheets/versioning.ex:831
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:274
+#: lib/storyarn_web/live/sheet_live/version_events.ex:305
 #, elixir-autogen, elixir-format
 msgid "Restored to version %{number}"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:244
+#: lib/storyarn_web/live/sheet_live/version_events.ex:275
 #, elixir-autogen, elixir-format
 msgid "The safety backup is no longer available. Restore was aborted. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:228
+#: lib/storyarn_web/live/sheet_live/version_events.ex:259
 #, elixir-autogen, elixir-format
 msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:127
 #: lib/storyarn_web/live/flow_live/version_events.ex:151
 #: lib/storyarn_web/live/scene_live/version_events.ex:151
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:125
+#: lib/storyarn_web/live/sheet_live/version_events.ex:135
 #, elixir-autogen, elixir-format
 msgid "Version created."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:176
 #: lib/storyarn_web/live/flow_live/version_events.ex:212
 #: lib/storyarn_web/live/scene_live/version_events.ex:212
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:171
+#: lib/storyarn_web/live/sheet_live/version_events.ex:194
 #, elixir-autogen, elixir-format
 msgid "Version deleted."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:163
 #: lib/storyarn_web/live/flow_live/version_events.ex:196
 #: lib/storyarn_web/live/scene_live/version_events.ex:196
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:158
+#: lib/storyarn_web/live/sheet_live/version_events.ex:178
 #, elixir-autogen, elixir-format
 msgid "Version named successfully."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:152
 #: lib/storyarn_web/live/flow_live/version_events.ex:182
 #: lib/storyarn_web/live/scene_live/version_events.ex:182
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:138
+#: lib/storyarn_web/live/sheet_live/version_events.ex:166
 #, elixir-autogen, elixir-format
 msgid "Version not found."
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:254
-#: lib/storyarn/versioning/conflict_detector.ex:401
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:302
 #, elixir-autogen, elixir-format
 msgid "asset"
 msgid_plural "assets"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:409
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:310
 #, elixir-autogen, elixir-format
 msgid "block"
 msgid_plural "blocks"
@@ -148,7 +141,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:256
-#: lib/storyarn/versioning/conflict_detector.ex:405
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:306
 #, elixir-autogen, elixir-format
 msgid "flow"
 msgid_plural "flows"
@@ -156,7 +149,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:257
-#: lib/storyarn/versioning/conflict_detector.ex:407
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:308
 #, elixir-autogen, elixir-format
 msgid "scene"
 msgid_plural "scenes"
@@ -164,7 +157,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:255
-#: lib/storyarn/versioning/conflict_detector.ex:403
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:304
 #, elixir-autogen, elixir-format
 msgid "sheet"
 msgid_plural "sheets"
@@ -173,22 +166,21 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:235
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:248
-#: lib/storyarn/versioning/conflict_detector.ex:393
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:294
 #, elixir-autogen, elixir-format
 msgid "shortcut collision"
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:111
 #: lib/storyarn_web/live/flow_live/version_events.ex:135
 #: lib/storyarn_web/live/flow_live/version_events.ex:154
 #: lib/storyarn_web/live/scene_live/version_events.ex:135
 #: lib/storyarn_web/live/scene_live/version_events.ex:154
-#: lib/storyarn_web/live/sheet_live/handlers/history_handlers.ex:109
+#: lib/storyarn_web/live/sheet_live/version_events.ex:119
+#: lib/storyarn_web/live/sheet_live/version_events.ex:138
 #, elixir-autogen, elixir-format
 msgid "Title is required."
 msgstr ""
 
-#: lib/storyarn_web/helpers/version_event_helpers.ex:217
 #: lib/storyarn_web/live/flow_live/version_events.ex:270
 #: lib/storyarn_web/live/scene_live/version_events.ex:270
 #, elixir-autogen, elixir-format
@@ -197,26 +189,26 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/version_viewer.ex:124
 #: lib/storyarn_web/live/scene_live/version_viewer.ex:113
-#: lib/storyarn_web/live/version_viewer_live.ex:135
+#: lib/storyarn_web/live/sheet_live/version_viewer.ex:120
 #, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/version_viewer.ex:125
 #: lib/storyarn_web/live/scene_live/version_viewer.ex:114
-#: lib/storyarn_web/live/version_viewer_live.ex:136
+#: lib/storyarn_web/live/sheet_live/version_viewer.ex:121
 #, elixir-autogen, elixir-format
 msgid "Version unavailable"
 msgstr ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:413
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:314
 #, elixir-autogen, elixir-format
 msgid "avatar"
 msgid_plural "avatars"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/versioning/conflict_detector.ex:411
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:312
 #, elixir-autogen, elixir-format
 msgid "reference"
 msgid_plural "references"
@@ -225,72 +217,62 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:177
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:163
-#: lib/storyarn/versioning/conflict_detector.ex:132
 #, elixir-autogen, elixir-format
 msgid "%{source} #%{id} — malformed variable reference"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:162
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:148
-#: lib/storyarn/versioning/conflict_detector.ex:117
 #, elixir-autogen, elixir-format
 msgid "%{source} #%{id} — unresolved %{kind} variable"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:194
-#: lib/storyarn/versioning/conflict_detector.ex:153
 #, elixir-autogen, elixir-format
 msgid "Flow node"
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:183
-#: lib/storyarn/versioning/conflict_detector.ex:157
 #, elixir-autogen, elixir-format
 msgid "Scene ambient flow"
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:180
-#: lib/storyarn/versioning/conflict_detector.ex:154
 #, elixir-autogen, elixir-format
 msgid "Scene pin"
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:181
-#: lib/storyarn/versioning/conflict_detector.ex:155
 #, elixir-autogen, elixir-format
 msgid "Scene zone"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:195
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:185
-#: lib/storyarn/versioning/conflict_detector.ex:159
 #, elixir-autogen, elixir-format
 msgid "Snapshot source"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:190
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:176
-#: lib/storyarn/versioning/conflict_detector.ex:146
 #, elixir-autogen, elixir-format
 msgid "Snapshot variable references could not be validated"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:197
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:187
-#: lib/storyarn/versioning/conflict_detector.ex:161
 #, elixir-autogen, elixir-format
 msgid "read"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:199
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:189
-#: lib/storyarn/versioning/conflict_detector.ex:163
 #, elixir-autogen, elixir-format
 msgid "referenced"
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:258
-#: lib/storyarn/versioning/conflict_detector.ex:415
+#: lib/storyarn/sheets/versioning/conflict_detector.ex:316
 #, elixir-autogen, elixir-format
 msgid "variable"
 msgid_plural "variables"
@@ -299,7 +281,6 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:198
 #: lib/storyarn/scenes/versioning/conflict_detector.ex:188
-#: lib/storyarn/versioning/conflict_detector.ex:162
 #, elixir-autogen, elixir-format
 msgid "write"
 msgstr ""

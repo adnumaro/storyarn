@@ -136,6 +136,9 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # These are explicit composition seams, not permissions for feature tests to
   # reach into Flows. Keep every exception scoped to one file and one module.
   @integration_exceptions %{
+    "test/storyarn/scenes/flow_runtime/formula_runtime_test.exs" => [
+      "Storyarn.Flows.FormulaRuntime"
+    ],
     "test/storyarn/sheets/versioning/sheet_snapshot_contract_test.exs" => [
       "Storyarn.Flows.EntityTrashRefs"
     ],

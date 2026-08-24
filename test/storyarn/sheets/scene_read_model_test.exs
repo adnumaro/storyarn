@@ -29,7 +29,6 @@ defmodule Storyarn.Sheets.SceneReadModelTest do
     pin_fixture(scene, %{"sheet_id" => sheet.id})
 
     assert SceneReadModel.project_id(scene.id) == project.id
-    assert SceneReadModel.list_pin_referenced_sheet_ids(project.id) == MapSet.new([sheet.id])
   end
 
   test "preserves the legacy zone-only appearances contract without active-Scene filtering", %{

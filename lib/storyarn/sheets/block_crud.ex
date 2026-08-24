@@ -1383,19 +1383,4 @@ defmodule Storyarn.Sheets.BlockCrud do
   # =============================================================================
   # Import helpers (raw insert, no side effects)
   # =============================================================================
-
-  @doc """
-  Creates a block for import. Raw insert — no auto-position, no default config/value,
-  no variable name uniqueness, no property propagation.
-  Returns `{:ok, block}` or `{:error, changeset}`.
-  """
-  def import_block(sheet_id, attrs) do
-    type = attrs[:type] || attrs["type"]
-    value = attrs[:value] || attrs["value"]
-
-    %Block{sheet_id: sheet_id}
-    |> Block.create_changeset(attrs)
-    |> Ecto.Changeset.put_change(:word_count, WordCount.for_block(type, value))
-    |> Repo.insert()
-  end
 end

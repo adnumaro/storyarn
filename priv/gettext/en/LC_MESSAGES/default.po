@@ -51,54 +51,49 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:187
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:243
 #: lib/storyarn_web/live/flow_live/show.ex:1701
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:99
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:116
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:98
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:115
 #, elixir-autogen, elixir-format
 msgid "Item limit reached for your plan"
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/sheet.ex:80
 #: lib/storyarn_web/live/flow_live/compare.ex:101
 #: lib/storyarn_web/live/flow_live/version_viewer.ex:138
 #: lib/storyarn_web/live/scene_live/compare.ex:101
 #: lib/storyarn_web/live/scene_live/version_viewer.ex:127
-#: lib/storyarn_web/live/version_viewer_live.ex:149
+#: lib/storyarn_web/live/sheet_live/compare.ex:101
+#: lib/storyarn_web/live/sheet_live/version_viewer.ex:134
 #, elixir-autogen, elixir-format
 msgid "Auto-snapshot"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:663
 #: lib/storyarn/scenes/versioning.ex:658
-#: lib/storyarn/versioning/version_crud.ex:784
+#: lib/storyarn/sheets/versioning.ex:658
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:647
 #: lib/storyarn/scenes/versioning.ex:642
-#: lib/storyarn/versioning/version_crud.ex:771
+#: lib/storyarn/sheets/versioning.ex:642
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr ""
 
-#: lib/storyarn/versioning/snapshot_diff.ex:60
-#, elixir-autogen, elixir-format
-msgid "No changes detected"
-msgstr ""
-
-#: lib/storyarn_web/live/compare_live/sheet.ex:64
+#: lib/storyarn_web/live/sheet_live/compare.ex:52
 #, elixir-autogen, elixir-format
 msgid "Sheet not found"
 msgstr ""
 
-#: lib/storyarn_web/live/compare_live/sheet.ex:104
 #: lib/storyarn_web/live/flow_live/compare.ex:84
 #: lib/storyarn_web/live/scene_live/compare.ex:84
+#: lib/storyarn_web/live/sheet_live/compare.ex:84
 #, elixir-autogen, elixir-format
 msgid "Version not found"
 msgstr ""
 
-#: lib/storyarn_web/live/sheets_sidebar_live.ex:161
+#: lib/storyarn_web/live/sheets_sidebar_live.ex:160
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to edit."
 msgstr ""
@@ -127,12 +122,14 @@ msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:674
 #: lib/storyarn/scenes/versioning.ex:669
+#: lib/storyarn/sheets/versioning.ex:669
 #, elixir-autogen, elixir-format
 msgid "%{added} added, %{modified} modified, %{removed} removed"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:667
 #: lib/storyarn/scenes/versioning.ex:662
+#: lib/storyarn/sheets/versioning.ex:662
 #, elixir-autogen, elixir-format
 msgid "No changes"
 msgstr ""

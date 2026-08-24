@@ -63,18 +63,6 @@ defmodule Storyarn.Sheets.SceneReadModel do
   end
 
   @doc false
-  def list_pin_referenced_sheet_ids(project_id) do
-    from(pin in ScenePinRecord,
-      join: scene in SceneRecord,
-      on: pin.scene_id == scene.id,
-      where: scene.project_id == ^project_id and not is_nil(pin.sheet_id),
-      select: pin.sheet_id
-    )
-    |> Repo.all()
-    |> MapSet.new()
-  end
-
-  @doc false
   def list_sheet_appearances(sheet_id) do
     Repo.all(
       from(zone in SceneZoneRecord,

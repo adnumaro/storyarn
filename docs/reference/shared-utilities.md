@@ -37,57 +37,23 @@ NameNormalizer.shortcutify("MC.Jaime")  # => "mc.jaime"
 
 ---
 
-## `Storyarn.Shared.ShortcutHelpers`
+## Shortcut lifecycle (consumer-owned)
 
-**File:** `lib/storyarn/shared/shortcut_helpers.ex`
-
-Shortcut lifecycle management shared by ALL CRUD modules (FlowCrud, SheetCrud, SceneCrud).
-
-| Function                                | Purpose                                                                |
-| --------------------------------------- | ---------------------------------------------------------------------- |
-| `maybe_generate_shortcut/4`             | Auto-generates shortcut from name if not present in attrs              |
-| `name_changing?/2`                      | Returns true if attrs contain a new, non-empty name                    |
-| `missing_shortcut?/1`                   | Returns true if entity shortcut is nil/empty                           |
-| `generate_shortcut_from_name/3`         | Generates shortcut from name using generator function                  |
-| `maybe_assign_position/4`               | Auto-assigns next position if not in attrs                             |
-| `maybe_generate_shortcut_on_update/3-4` | Handles shortcut regeneration on update (with optional backlink check) |
-
-```elixir
-# On entity create - auto-generate shortcut
-attrs = ShortcutHelpers.maybe_generate_shortcut(attrs, project_id, nil, &generate_shortcut/3)
-
-# On entity update - regenerate shortcut with backlink protection
-attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(entity, attrs, &generate_shortcut/3,
-  check_backlinks_fn: &has_backlinks?/1
-)
-```
+`Storyarn.Shared.ShortcutHelpers` and the global `Storyarn.Shortcuts` module
+were deleted during the ENG-92 bounded-context migration. Each tool owns its
+shortcut policy (e.g. `Storyarn.Sheets.ShortcutGenerator`,
+`Storyarn.Flows.ShortcutGenerator`). Copy the pattern into the owning context
+instead of recreating a shared module.
 
 ---
 
-## `Storyarn.Shared.TreeOperations`
+## Tree operations (consumer-owned)
 
-**File:** `lib/storyarn/shared/tree_operations.ex`
-
-Generic tree manipulation for ANY entity with `parent_id` + `position` fields. Used by sheets, flows and scenes.
-
-| Function                        | Purpose                                                                                                                                         |
-| ------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| `reorder/5`                     | Reorder siblings within a parent (transactional)                                                                                                |
-| `move_to_position/5`            | Move entity to new parent at position                                                                                                           |
-| `next_position/3`               | Get next available position for new child                                                                                                       |
-| `list_by_parent/3`              | List children ordered by position                                                                                                               |
-| `update_position_only/3`        | Update just position field                                                                                                                      |
-| `reorder_source_container/4`    | Compact positions after removal                                                                                                                 |
-| `add_parent_filter/2`           | Add parent_id filter to query (handles nil for roots)                                                                                           |
-| `batch_set_positions/3`         | Single-statement position update for many rows. Takes a raw table name + required `:scope` opt; both are validated against hardcoded allowlists |
-| `descendant?/3-4`               | Cycle guard for reparenting; bails out past depth 100                                                                                           |
-| `build_tree_from_flat_list/1-2` | Nest a flat list into `:children` in memory                                                                                                     |
-
-```elixir
-TreeOperations.reorder(Sheet, project_id, parent_id, ordered_ids, &list_fn/2)
-TreeOperations.move_to_position(Flow, flow, new_parent_id, 2, &list_fn/2)
-TreeOperations.next_position(Map, project_id, parent_id)
-```
+`Storyarn.Shared.TreeOperations` was deleted during the ENG-92 migration.
+Each hierarchical tool carries its own copy closed over its schema
+(`Storyarn.Sheets.TreeOperations`, `Storyarn.Flows.TreeOperations`,
+`Storyarn.Scenes.TreeOperations`) including the `batch_set_positions`
+allowlists. Copy the pattern into the owning context.
 
 ---
 
@@ -281,9 +247,6 @@ One line each. Open the file before writing anything that overlaps.
 | Module                 | File                       | What it owns                                                                                                                      |
 | ---------------------- | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
 | `ColorUtils`           | `color_utils.ex`           | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization                                            |
-| `FormulaEngine`        | `formula_engine.ex`        | `parse/1`, `evaluate/2`, `compute/2`, `extract_symbols/1`, `to_latex/1`, `to_latex_substituted/2` — table formula columns         |
-| `FormulaRuntime`       | `formula_runtime.ex`       | `recompute_formulas/1`, `translate_same_row/2` — topological recompute of a runtime variables map after every mutation            |
-| `HierarchicalSchema`   | `hierarchical_schema.ex`   | `delete_changeset/1`, `restore_changeset/1`, `move_changeset/2`, `validate_core_fields/1`, `validate_description/1`, `deleted?/1` |
 | `HtmlUtils`            | `html_utils.ex`            | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer            |
 | `ImportHelpers`        | `import_helpers.ex`        | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                     |
 | `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the shared invitation schema/changesets (parameterized by `parent_key`, `allowed_roles`, …)            |
@@ -294,6 +257,11 @@ One line each. Open the file before writing anything that overlaps.
 | `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — denormalized at write time                                  |
 
 `EncryptedBinary` is covered above; it is a type, not a helper.
+
+`FormulaEngine`, `FormulaRuntime`, and `HierarchicalSchema` were deleted in the
+ENG-92 migration — each tool (and, for project coordination, `Storyarn.Projects`)
+carries its own copy (`Storyarn.Sheets.FormulaEngine`,
+`Storyarn.Flows.FormulaRuntime`, `Storyarn.Sheets.Schema`, …).
 
 ---
 

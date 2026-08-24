@@ -37,10 +37,13 @@ and only under `lib/storyarn_web/`. The rule above is broader than the linter.
 Storyarn currently protects four business boundaries: `Sheets`, `Flows`,
 `Scenes`, and `Project`. The Project boundary includes the project/global
 coordination code in `Projects`, `References`, `Versioning`, `Exports`,
-`Imports`, `ProjectTemplates`, and `Shortcuts`.
+`Imports`, and `ProjectTemplates`.
 
-New code dependencies between these boundaries are forbidden. Existing ones are
-legacy migration debt recorded exactly in the partitioned baselines under
+New code dependencies between these boundaries are forbidden. `Flows`,
+`Scenes`, `Localization`, and `Sheets` are sealed in both directions
+(`zero_debt_consumers` + `isolated_contexts`); coordinator access to their
+public facades requires an exact reviewed exception. Remaining edges are legacy
+migration debt recorded exactly in the partitioned baselines under
 `config/architecture_baselines/`; a facade call does not make such a dependency
 acceptable. Consumer-owned Ecto records may map the existing shared tables, but
 must not associate to schemas owned by another boundary. ENG-92 keeps the shared
@@ -88,7 +91,6 @@ dependency-kind strengthening, not individual call sites.
 | Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                                                                                                                                                                            |
 | Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                                                                                                                                                                                  |
 | RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                                                                                                                                                                                     |
-| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                                                                                                                                                                              |
 
 Snapshot lifecycle submodules under `Storyarn.Versioning` are
 `ProjectSnapshotBuild`, `ProjectSnapshotLifecycle`, `ProjectSnapshotPolicy`,
@@ -119,9 +121,9 @@ defmodule Storyarn.{Context}.{Entity}Crud do
   # Each context has its OWN TreeOperations wrapper — alias the local one,
   # not Storyarn.Shared.TreeOperations:
   alias Storyarn.{Context}.TreeOperations
-  # Entity-specific shortcut policy is also consumer-owned. Existing calls to
-  # the global Storyarn.Shortcuts module are migration debt, not a template:
-  alias Storyarn.{Context}.Shortcuts, as: ContextShortcuts
+  # Entity-specific shortcut policy is consumer-owned (the global
+  # Storyarn.Shortcuts module was deleted):
+  alias Storyarn.{Context}.ShortcutGenerator
   # Import only what you need — not all CRUD modules use the same set.
   # Soft delete is consumer-owned (e.g. Storyarn.Scenes.SoftDelete); there is
   # no Storyarn.Shared.SoftDelete anymore:
@@ -155,7 +157,7 @@ defmodule Storyarn.{Context}.{Entity}Crud do
       |> ShortcutHelpers.maybe_generate_shortcut(
         project.id,
         nil,
-        &ContextShortcuts.generate_{entity}_shortcut/3
+        &ShortcutGenerator.generate_{entity}_shortcut/3
       )
       # position_fn is called as fn.(project_id, parent_id) — arity 2
       |> ShortcutHelpers.maybe_assign_position(project.id, parent_id, &TreeOperations.next_position/2)
@@ -171,7 +173,7 @@ defmodule Storyarn.{Context}.{Entity}Crud do
       ShortcutHelpers.maybe_generate_shortcut_on_update(
         entity,
         attrs,
-        &ContextShortcuts.generate_{entity}_shortcut/3,
+        &ShortcutGenerator.generate_{entity}_shortcut/3,
         check_backlinks_fn: &has_backlinks?/1  # optional
       )
 

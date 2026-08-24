@@ -378,12 +378,12 @@ forbidden_dependencies =
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
   # when the current xref graph contains the exact same edge.
-  zero_debt_consumers: [:flows, :scenes, :localization],
+  zero_debt_consumers: [:flows, :scenes, :localization, :sheets],
 
-  # Flows, Scenes and Localization are sealed in both directions. Durable coordinator
-  # access to their public facades must use an exact exception; it cannot be
-  # accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:flows, :scenes, :localization],
+  # Flows, Scenes, Localization and Sheets are sealed in both directions. Durable
+  # coordinator access to their public facades must use an exact exception; it
+  # cannot be accepted by adding an inbound edge to another consumer's debt baseline.
+  isolated_contexts: [:flows, :scenes, :localization, :sheets],
 
   # Repo is deliberately shared during ENG-92. Ecto and other external
   # dependencies do not appear as repository paths in the xref JSON graph.

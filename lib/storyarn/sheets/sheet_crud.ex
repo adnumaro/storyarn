@@ -544,23 +544,4 @@ defmodule Storyarn.Sheets.SheetCrud do
   # =============================================================================
   # Import helpers (raw insert, no side effects)
   # =============================================================================
-
-  @doc """
-  Creates a sheet for import. Raw insert — no auto-shortcut, no auto-position,
-  no property inheritance. Returns `{:ok, sheet}` or `{:error, changeset}`.
-  """
-  def import_sheet(project_id, attrs) do
-    %Sheet{project_id: project_id}
-    |> Sheet.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  @doc """
-  Updates a sheet's parent_id after import (two-pass parent linking).
-  """
-  def link_import_parent(%Sheet{} = sheet, parent_id) do
-    sheet
-    |> Ecto.Changeset.change(%{parent_id: parent_id})
-    |> Repo.update!()
-  end
 end
