@@ -14,8 +14,8 @@ defmodule Storyarn.Versioning.SnapshotArchiveStorage do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing.StorageCleanupInventory
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageCleanupInventory
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshotLeasePolicy

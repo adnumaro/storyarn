@@ -5,8 +5,8 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Repo
 
   setup %{conn: conn} do

@@ -949,7 +949,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   @lock_heartbeat_interval 10_000
 
   defp handle_node_lock_acquisition(socket, node_id, user) do
-    alias Storyarn.Collaboration
+    alias Storyarn.Platform.Collaboration
 
     scope = {:flow, socket.assigns.flow.id}
 
@@ -980,7 +980,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   defp release_node_lock(socket, node_id) do
-    alias Storyarn.Collaboration
+    alias Storyarn.Platform.Collaboration
 
     scope = {:flow, socket.assigns.flow.id}
     user_id = socket.assigns.current_scope.user.id

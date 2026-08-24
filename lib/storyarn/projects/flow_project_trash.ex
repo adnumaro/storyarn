@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowEntityTrashReferences
   alias Storyarn.Projects.FlowLocalizationProjection

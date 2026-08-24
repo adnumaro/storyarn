@@ -7,11 +7,11 @@ defmodule Storyarn.Flows.NodeCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Localization
   alias Storyarn.Localization.RuntimeKey
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.References.EntityReference
   alias Storyarn.Repo
 

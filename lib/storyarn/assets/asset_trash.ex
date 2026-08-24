@@ -5,7 +5,7 @@ defmodule Storyarn.Assets.AssetTrash do
 
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo

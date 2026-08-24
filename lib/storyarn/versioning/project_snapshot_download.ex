@@ -10,7 +10,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownload do
   """
 
   alias Storyarn.Assets.Storage
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotCrud

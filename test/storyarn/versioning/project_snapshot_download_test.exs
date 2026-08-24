@@ -4,7 +4,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotDownloadTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Versioning
   alias Storyarn.Workers.BuildProjectSnapshotWorker

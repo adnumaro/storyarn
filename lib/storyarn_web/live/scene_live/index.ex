@@ -23,7 +23,7 @@ defmodule StoryarnWeb.SceneLive.Index do
       put_pending_delete_id: 2
     ]
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Scenes

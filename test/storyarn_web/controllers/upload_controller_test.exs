@@ -7,7 +7,7 @@ defmodule StoryarnWeb.UploadControllerTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias StoryarnWeb.UploadController
 
   describe "create/2" do

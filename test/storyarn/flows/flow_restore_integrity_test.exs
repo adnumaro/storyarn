@@ -8,13 +8,13 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowCrud
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets

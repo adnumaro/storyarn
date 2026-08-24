@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.TableCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block

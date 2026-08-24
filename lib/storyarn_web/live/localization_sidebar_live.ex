@@ -16,8 +16,8 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption
 

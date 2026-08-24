@@ -8,7 +8,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   (`palette_delete_search` / `palette_delete`) and product analytics
   (`palette_opened`, command/search metrics and operation lifecycle metrics).
 
-  Server-backed completion replies are built from `Storyarn.GlobalSearch` —
+  Server-backed completion replies are built from `Storyarn.Platform.GlobalSearch` —
   authorization lives in
   the domain layer and derives from the socket's `current_scope` only; ids
   arriving from the client are re-validated against the composed authorized
@@ -27,12 +27,12 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.AI
-  alias Storyarn.Analytics
-  alias Storyarn.Collaboration
-  alias Storyarn.CommandPalette
   alias Storyarn.Flows
-  alias Storyarn.GlobalSearch
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.CommandPalette
+  alias Storyarn.Platform.GlobalSearch
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets

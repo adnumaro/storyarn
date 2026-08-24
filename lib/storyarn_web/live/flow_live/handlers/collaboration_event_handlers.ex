@@ -11,8 +11,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers

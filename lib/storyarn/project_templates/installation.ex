@@ -7,8 +7,8 @@ defmodule Storyarn.ProjectTemplates.Installation do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Events

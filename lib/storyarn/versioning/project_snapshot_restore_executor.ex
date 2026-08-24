@@ -15,9 +15,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageCleanupInventory
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageCleanupInventory
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowProjectTrash

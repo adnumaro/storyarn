@@ -12,7 +12,7 @@ defmodule Storyarn.Platform.Dashboards.Cache do
   use GenServer
 
   alias Phoenix.PubSub
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
 
   require Logger
 

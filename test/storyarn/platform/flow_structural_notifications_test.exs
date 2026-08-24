@@ -8,8 +8,8 @@ defmodule Storyarn.Platform.FlowStructuralNotificationsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Repo
 
   setup do

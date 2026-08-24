@@ -9,7 +9,7 @@ defmodule StoryarnWeb.ProjectLive.Show do
   import StoryarnWeb.Live.Shared.DashboardHelpers,
     only: [fail_overview_load: 1, fail_issues_load: 1]
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.DashboardHandlers

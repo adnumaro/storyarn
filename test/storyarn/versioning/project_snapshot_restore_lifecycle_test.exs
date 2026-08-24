@@ -10,9 +10,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreLifecycleTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Versioning

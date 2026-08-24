@@ -392,7 +392,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       asset = image_asset_fixture(project, user, %{filename: "Shared Asset.png"})
       {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, user.id)
-      :ok = Storyarn.Collaboration.subscribe_changes({:assets, project.id})
+      :ok = Storyarn.Platform.Collaboration.subscribe_changes({:assets, project.id})
 
       {:ok, view, _html} =
         live(

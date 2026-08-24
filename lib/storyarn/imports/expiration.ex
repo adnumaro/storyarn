@@ -21,7 +21,7 @@ defmodule Storyarn.Imports.Expiration do
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Replacement
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 

@@ -8,8 +8,8 @@ defmodule Storyarn.References.VariableReferenceTrackerTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: ProjectFlowNodeRecord
   alias Storyarn.Projects.Persistence.LocalizedTextRecord
   alias Storyarn.References

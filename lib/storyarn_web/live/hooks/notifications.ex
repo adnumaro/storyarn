@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.NotificationHelpers
 

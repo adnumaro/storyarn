@@ -5,8 +5,8 @@ defmodule Storyarn.Flows.ConnectionCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
 
   # ===========================================================================
   # Setup helpers

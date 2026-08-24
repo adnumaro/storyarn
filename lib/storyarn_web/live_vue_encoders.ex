@@ -23,7 +23,7 @@ defmodule StoryarnWeb.LiveVueEncoders do
   )
 
   # Billing
-  Protocol.derive(LiveVue.Encoder, Storyarn.Billing.Subscription)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Platform.Billing.Subscription)
 
   # Flows
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Flow)

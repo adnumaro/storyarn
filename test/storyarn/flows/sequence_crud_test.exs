@@ -5,13 +5,13 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   defp setup_flow(_ctx \\ %{}) do

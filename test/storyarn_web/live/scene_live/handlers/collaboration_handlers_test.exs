@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
 

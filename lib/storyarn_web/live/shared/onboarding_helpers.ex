@@ -3,8 +3,8 @@ defmodule StoryarnWeb.Live.Shared.OnboardingHelpers do
   Serializes onboarding state for the shared LiveVue layout boundaries.
   """
 
-  alias Storyarn.Onboarding
-  alias Storyarn.Onboarding.TutorialProgress
+  alias Storyarn.Platform.Onboarding
+  alias Storyarn.Platform.Onboarding.TutorialProgress
 
   @spec client_config(Onboarding.summary(), atom() | String.t() | nil, boolean()) :: map() | nil
   def client_config(_summary, nil, _autostart), do: nil

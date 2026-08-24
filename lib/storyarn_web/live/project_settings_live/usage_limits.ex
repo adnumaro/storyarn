@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents,
     only: [serialize_byte_count: 1, serialize_storage_bucket: 1, serialize_storage_usage: 2]
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
 
   # ===========================================================================

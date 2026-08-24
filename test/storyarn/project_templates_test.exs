@@ -7,12 +7,12 @@ defmodule Storyarn.ProjectTemplatesTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.AssetsFixtures
-  alias Storyarn.Billing
   alias Storyarn.FlowsFixtures
   alias Storyarn.Localization
   alias Storyarn.LocalizationFixtures
-  alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow

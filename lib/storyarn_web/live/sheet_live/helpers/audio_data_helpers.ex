@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Sheets
   alias StoryarnWeb.PrivateMedia
 

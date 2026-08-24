@@ -12,7 +12,6 @@ defmodule Storyarn.Flows.Versioning do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.Limits
   alias Storyarn.Flows.Persistence.ProjectRecord
@@ -22,6 +21,7 @@ defmodule Storyarn.Flows.Versioning do
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Flows.Versioning.SnapshotStorage
   alias Storyarn.Flows.Versioning.VersionNumberLock
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 

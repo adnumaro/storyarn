@@ -5,8 +5,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpersTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
 
   # =============================================================================

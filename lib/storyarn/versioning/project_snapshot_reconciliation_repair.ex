@@ -12,8 +12,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationRepair do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo

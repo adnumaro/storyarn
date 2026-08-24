@@ -16,12 +16,12 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageAccounting
-  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageAccounting
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Repo

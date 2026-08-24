@@ -5,8 +5,8 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Analytics
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform.Onboarding
 
   @impl true
   def mount(_params, _session, socket) do

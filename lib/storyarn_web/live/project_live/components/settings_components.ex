@@ -11,7 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
   alias Storyarn.Projects.Validations
   alias Storyarn.References

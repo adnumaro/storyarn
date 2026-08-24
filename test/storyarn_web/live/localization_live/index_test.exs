@@ -7,7 +7,7 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Repo
 
   defp loc_path(project, locale \\ "es") do

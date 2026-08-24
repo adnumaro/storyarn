@@ -8,7 +8,7 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates
   alias Storyarn.ProjectTemplates.ProjectTemplate

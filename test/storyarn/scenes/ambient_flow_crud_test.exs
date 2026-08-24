@@ -6,7 +6,7 @@ defmodule Storyarn.Scenes.AmbientFlowCrudTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.References.VariableReference
   alias Storyarn.Scenes.AmbientFlowCrud
   alias Storyarn.Scenes.Persistence.FlowRecord

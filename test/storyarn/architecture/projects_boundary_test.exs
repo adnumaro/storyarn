@@ -31,8 +31,8 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     "lib/storyarn/sheets",
     "lib/storyarn/localization",
     "lib/storyarn/ai",
-    "lib/storyarn/billing",
-    "lib/storyarn/notifications",
+    "lib/storyarn/platform/billing",
+    "lib/storyarn/platform/notifications",
     "lib/storyarn/platform"
   ]
 

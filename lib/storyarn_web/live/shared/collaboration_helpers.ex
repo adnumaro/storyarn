@@ -27,8 +27,8 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Collaboration.Presence
 
   @doc """
   Sets up collaboration subscriptions for an editor.
@@ -139,7 +139,7 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   @doc """
   Handles a presence join event. Updates the online_users assign.
-  Call from handle_info matching `{Storyarn.Collaboration.Presence, {:join, presence}}`.
+  Call from handle_info matching `{Storyarn.Platform.Collaboration.Presence, {:join, presence}}`.
   """
   def handle_presence_join(socket, presence) do
     user_meta = presence_to_user_meta(presence)
@@ -154,7 +154,7 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   @doc """
   Handles a presence leave event. Updates the online_users assign.
-  Call from handle_info matching `{Storyarn.Collaboration.Presence, {:leave, presence}}`.
+  Call from handle_info matching `{Storyarn.Platform.Collaboration.Presence, {:leave, presence}}`.
   """
   def handle_presence_leave(socket, %{metas: %{metas: []}} = presence) do
     # Phoenix.Presence converts tracked keys to strings, but online_users

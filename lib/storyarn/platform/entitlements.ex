@@ -6,8 +6,8 @@ defmodule Storyarn.Platform.Entitlements do
   deciding how an entitlement constrains its own transaction.
   """
 
-  alias Storyarn.Billing.Plan
-  alias Storyarn.Billing.SubscriptionCrud
+  alias Storyarn.Platform.Billing.Plan
+  alias Storyarn.Platform.Billing.SubscriptionCrud
 
   @spec limit(pos_integer(), atom()) :: non_neg_integer() | nil
   def limit(workspace_id, resource) when is_integer(workspace_id) and workspace_id > 0 and is_atom(resource) do

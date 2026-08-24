@@ -9,8 +9,8 @@ defmodule Storyarn.SheetsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet

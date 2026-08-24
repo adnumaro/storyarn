@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.VersioningTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet

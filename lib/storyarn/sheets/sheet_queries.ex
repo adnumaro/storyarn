@@ -222,7 +222,7 @@ defmodule Storyarn.Sheets.SheetQueries do
   @doc """
   Searches sheets by name or shortcut across a pre-authorized set of projects.
 
-  Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
+  Callers OWN the authorization of `project_ids` (see `Storyarn.Platform.GlobalSearch`);
   this function never widens the set. Empty queries list the most recently
   updated sheets, mirroring `search_sheets/3` — pickers browse before typing.
   """

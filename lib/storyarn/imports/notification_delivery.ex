@@ -4,7 +4,7 @@ defmodule Storyarn.Imports.NotificationDelivery do
   import Ecto.Query, warn: false
 
   alias Storyarn.Imports.ProjectImportAttempt
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Repo

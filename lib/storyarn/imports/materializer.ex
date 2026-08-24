@@ -16,14 +16,14 @@ defmodule Storyarn.Imports.Materializer do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Imports.ImportPlan
   alias Storyarn.Imports.Parsers.Yarn.Expression
   alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Imports.Parsers.Yarn.SpeakerClassifier
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowImportPersistence
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode

@@ -12,8 +12,8 @@ defmodule Storyarn.Assets.StorageCompensationTest do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing.StorageCleanupInventory
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageCleanupInventory
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplate

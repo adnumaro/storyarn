@@ -8,8 +8,8 @@ defmodule StoryarnWeb.FlowLive.VersionViewer do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.PrivateMedia
 
   require Logger

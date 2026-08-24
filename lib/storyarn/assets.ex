@@ -22,8 +22,8 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
   alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Platform.Shared.TimeHelpers

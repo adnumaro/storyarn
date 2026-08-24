@@ -11,8 +11,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.MapUtils
   alias StoryarnWeb.Helpers.Authorize
 

@@ -6,11 +6,11 @@ defmodule Storyarn.Platform.ProductMetrics do
   external metric name and the exact coarse properties that may leave Storyarn.
   """
 
-  @behaviour Storyarn.Analytics.EventContract
+  @behaviour Storyarn.Platform.Analytics.EventContract
   @behaviour Storyarn.Platform.EventReaction
 
-  alias Storyarn.Analytics
-  alias Storyarn.Analytics.EventContract
+  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform.Analytics.EventContract
   alias Storyarn.Platform.EventReaction
 
   @creation_methods ~w(create duplicate wrap_selection)

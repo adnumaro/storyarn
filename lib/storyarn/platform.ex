@@ -9,9 +9,9 @@ defmodule Storyarn.Platform do
   path.
   """
 
-  alias Storyarn.Notifications
   alias Storyarn.Platform.Entitlements
   alias Storyarn.Platform.EventTracker
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.ProductMetrics.Taxonomy
 
   @doc "Routes a context-owned event through Platform reaction policy."

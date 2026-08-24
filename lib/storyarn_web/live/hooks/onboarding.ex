@@ -6,9 +6,9 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Analytics
-  alias Storyarn.Onboarding
-  alias Storyarn.Onboarding.TutorialProgress
+  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform.Onboarding
+  alias Storyarn.Platform.Onboarding.TutorialProgress
 
   @interaction_actions ~w(opened snoozed finished docs_opened)
   @interaction_sources ~w(auto manual settings)

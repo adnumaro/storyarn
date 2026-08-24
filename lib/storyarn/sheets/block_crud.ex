@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.BlockCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets.AssetReferences
   alias Storyarn.Sheets.Block

@@ -4,7 +4,7 @@ defmodule Storyarn.Platform.Dashboards.CacheTest do
   import ExUnit.CaptureLog
 
   alias Phoenix.PubSub
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Dashboards.Cache
 
   setup do

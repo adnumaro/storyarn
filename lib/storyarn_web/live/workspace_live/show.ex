@@ -5,8 +5,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Billing
   alias Storyarn.Platform
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
   alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces

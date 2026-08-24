@@ -17,10 +17,10 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImportsIntegrationTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project

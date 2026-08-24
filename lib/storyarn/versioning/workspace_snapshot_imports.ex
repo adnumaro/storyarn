@@ -8,8 +8,8 @@ defmodule Storyarn.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageHash
-  alias Storyarn.Billing
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership

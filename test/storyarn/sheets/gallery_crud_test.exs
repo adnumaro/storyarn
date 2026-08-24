@@ -6,7 +6,7 @@ defmodule Storyarn.Sheets.GalleryCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets

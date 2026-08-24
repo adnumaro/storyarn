@@ -7,7 +7,7 @@ defmodule Storyarn.Localization.StructuralNotificationsTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Localization
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Repo
 
   setup do

@@ -11,8 +11,6 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Imports
   alias Storyarn.Imports.ImportPlan
@@ -20,6 +18,8 @@ defmodule Storyarn.Imports.MaterializerTest do
   alias Storyarn.Imports.Parsers.Yarn.Layout
   alias Storyarn.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Localization
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects.FlowReadModel
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference

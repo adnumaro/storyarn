@@ -7,7 +7,7 @@ defmodule Storyarn.References.AmbientFlowVariableUsageTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.GlobalSearch
+  alias Storyarn.Platform.GlobalSearch
   alias Storyarn.References
   alias Storyarn.References.VariableProjectionQueries
   alias Storyarn.Repo

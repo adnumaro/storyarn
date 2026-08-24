@@ -7,7 +7,7 @@ defmodule Storyarn.Sheets.PropertyInheritanceTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.PropertyInheritance

@@ -15,7 +15,7 @@ defmodule StoryarnWeb.PresenceLive do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration.Presence
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   @impl true

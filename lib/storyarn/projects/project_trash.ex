@@ -5,7 +5,7 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet

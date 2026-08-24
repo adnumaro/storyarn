@@ -76,7 +76,7 @@ defmodule Storyarn.Flows.NodeCreate do
 
     case result do
       {:ok, _node} ->
-        Storyarn.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
+        Storyarn.Platform.Collaboration.broadcast_dashboard_change(flow.project_id, :flows)
 
       _ ->
         :ok

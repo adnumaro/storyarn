@@ -9,7 +9,7 @@ defmodule Storyarn.Assets.StorageCompensation do
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageHash
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion

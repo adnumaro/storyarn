@@ -11,8 +11,8 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.TranslationRun
   alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.TestSupport.FakeTranslationProvider
   alias Storyarn.Workers.LocalizationBatchTranslationWorker

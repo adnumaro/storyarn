@@ -3,8 +3,8 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers

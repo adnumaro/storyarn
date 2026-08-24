@@ -26,7 +26,7 @@ defmodule Storyarn.Imports.Resume do
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Queue
   alias Storyarn.Imports.Shared
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project

@@ -3,11 +3,11 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
   Builds the small, explicit notification read model consumed by the app shell.
 
   Notification schemas never cross the LiveVue boundary. This module exposes
-  only localized-copy inputs after `Storyarn.Notifications` has filtered by
+  only localized-copy inputs after `Storyarn.Platform.Notifications` has filtered by
   current access.
   """
 
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
 
   @type filter :: :all | :unread
 

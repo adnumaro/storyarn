@@ -7,15 +7,15 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.Scope
   alias Storyarn.Assets.Storage
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Imports
   alias Storyarn.Imports.ErrorDeduplicator
   alias Storyarn.Imports.PlanCleanupRequest
   alias Storyarn.Imports.PlanStorage
   alias Storyarn.Imports.ProjectImportAttempt
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
@@ -1589,7 +1589,7 @@ defmodule Storyarn.Imports.ImportLifecycleTest do
     refute_receive :notifications_changed
 
     assert Repo.aggregate(
-             from(notification in Storyarn.Notifications.Notification,
+             from(notification in Storyarn.Platform.Notifications.Notification,
                where:
                  notification.entity_type == "project_import" and
                    notification.entity_id == ^queued.id

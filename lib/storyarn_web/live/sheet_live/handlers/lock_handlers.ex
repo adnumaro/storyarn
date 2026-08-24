@@ -6,7 +6,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3]
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.MapUtils
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 

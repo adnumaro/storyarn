@@ -12,8 +12,6 @@ defmodule Storyarn.Imports.Execution do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.Materializer
   alias Storyarn.Imports.NotificationDelivery
@@ -25,7 +23,9 @@ defmodule Storyarn.Imports.Execution do
   alias Storyarn.Imports.Replacement
   alias Storyarn.Imports.Shared
   alias Storyarn.Imports.Telemetry
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project

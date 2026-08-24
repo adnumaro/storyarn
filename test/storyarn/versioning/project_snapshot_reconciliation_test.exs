@@ -9,8 +9,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Assets
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.SnapshotReadSwitchStorage

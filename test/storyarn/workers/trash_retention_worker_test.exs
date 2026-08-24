@@ -11,7 +11,7 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets

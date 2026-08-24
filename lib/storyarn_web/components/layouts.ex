@@ -7,8 +7,8 @@ defmodule StoryarnWeb.Layouts do
   use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
-  alias Storyarn.Analytics
-  alias Storyarn.CommandPalette
+  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform.CommandPalette
   alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.FeatureFlagHelpers
 

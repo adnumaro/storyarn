@@ -3,7 +3,6 @@ defmodule Storyarn.Flows.NodeDelete do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.AssetReferences
   alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.FlowNode
@@ -11,6 +10,7 @@ defmodule Storyarn.Flows.NodeDelete do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.VariableReferenceTracker
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   def delete_node(%FlowNode{} = node_hint) do

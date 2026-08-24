@@ -5,7 +5,7 @@ defmodule Storyarn.Scenes.StructuralNotificationsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Scenes
 
   setup do

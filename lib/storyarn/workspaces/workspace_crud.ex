@@ -4,7 +4,7 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Repo
   alias Storyarn.Versioning
   alias Storyarn.Workspaces.Events

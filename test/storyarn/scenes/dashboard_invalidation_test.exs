@@ -25,7 +25,7 @@ defmodule Storyarn.Scenes.DashboardInvalidationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Repo
   alias Storyarn.Scenes

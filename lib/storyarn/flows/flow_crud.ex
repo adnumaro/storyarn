@@ -3,7 +3,6 @@ defmodule Storyarn.Flows.FlowCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.AssetReferences
   alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.EntityTrashRef
@@ -22,6 +21,7 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.TreeOperations
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Platform
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -118,7 +118,7 @@ defmodule Storyarn.Flows.FlowCrud do
   @doc """
   Searches flows by name or shortcut across a pre-authorized set of projects.
 
-  Callers OWN the authorization of `project_ids` (see `Storyarn.GlobalSearch`);
+  Callers OWN the authorization of `project_ids` (see `Storyarn.Platform.GlobalSearch`);
   this function never widens the set. Empty queries list the most recently
   updated flows — pickers browse before typing.
   """

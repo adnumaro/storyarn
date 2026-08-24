@@ -13,8 +13,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotReconciliation do
   alias Ecto.Multi
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo

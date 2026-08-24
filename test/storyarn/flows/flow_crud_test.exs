@@ -6,9 +6,9 @@ defmodule Storyarn.Flows.FlowCrudTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.ScenesFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   # ===========================================================================

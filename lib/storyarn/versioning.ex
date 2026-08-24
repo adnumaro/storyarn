@@ -13,7 +13,7 @@ defmodule Storyarn.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Versioning.ChangeDetector
   alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Versioning.ProjectSnapshotBuild

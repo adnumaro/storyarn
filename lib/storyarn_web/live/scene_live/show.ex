@@ -25,8 +25,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Collaboration.Presence
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes

@@ -9,7 +9,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotAssetMaterializerTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Versioning.Builders.AssetHashResolver

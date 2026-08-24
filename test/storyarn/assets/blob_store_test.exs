@@ -10,7 +10,7 @@ defmodule Storyarn.Assets.BlobStoreTest do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.Storage.Local
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.SnapshotReadSwitchStorage
 

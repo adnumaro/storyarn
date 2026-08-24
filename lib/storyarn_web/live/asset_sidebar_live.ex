@@ -11,7 +11,7 @@ defmodule StoryarnWeb.AssetSidebarLive do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @asset_filters ~w(all image audio file)

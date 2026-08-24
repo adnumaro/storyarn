@@ -3,7 +3,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 

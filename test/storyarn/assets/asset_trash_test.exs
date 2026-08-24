@@ -15,8 +15,8 @@ defmodule Storyarn.Assets.AssetTrashTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Persistence.EntityTrashRefRecord
   alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Billing
   alias Storyarn.Localization
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets

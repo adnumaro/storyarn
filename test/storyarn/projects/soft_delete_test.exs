@@ -13,8 +13,8 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   alias Storyarn.Assets.Asset
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Billing.Subscription
   alias Storyarn.Localization
+  alias Storyarn.Platform.Billing.Subscription
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Sheets

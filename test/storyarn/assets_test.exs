@@ -19,9 +19,9 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Assets.Persistence.SequenceVisualLayerRecord
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
   alias Storyarn.Localization
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar

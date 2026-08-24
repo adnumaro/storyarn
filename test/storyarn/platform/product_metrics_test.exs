@@ -1,7 +1,7 @@
 defmodule Storyarn.Platform.ProductMetricsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Analytics.EventContract
+  alias Storyarn.Platform.Analytics.EventContract
   alias Storyarn.Platform.ProductMetrics
 
   @events %{

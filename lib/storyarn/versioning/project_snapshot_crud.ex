@@ -9,7 +9,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Versioning.ProjectSnapshot

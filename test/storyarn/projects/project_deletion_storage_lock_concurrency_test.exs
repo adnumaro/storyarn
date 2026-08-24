@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.ProjectDeletionStorageLockConcurrencyTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo

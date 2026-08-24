@@ -96,7 +96,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       classification_roots: classification_roots(),
       boundaries: %{
         flows: ["lib/storyarn/flows/"],
-        infrastructure: ["lib/storyarn/analytics.ex", "lib/storyarn/analytics/", "lib/storyarn/repo.ex"],
+        infrastructure: ["lib/storyarn/platform/analytics.ex", "lib/storyarn/platform/analytics/", "lib/storyarn/repo.ex"],
         presentation_adapters: [
           "lib/storyarn_web/router.ex",
           "lib/storyarn_web/live_vue_encoders.ex"
@@ -107,18 +107,18 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       forbidden_dependencies: protected_dependencies([:flows, :scenes]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: ["lib/storyarn/analytics.ex", "lib/storyarn/repo.ex"],
+      always_allowed_targets: ["lib/storyarn/platform/analytics.ex", "lib/storyarn/repo.ex"],
       exceptions: []
     }
 
     graph = %{
       "lib/storyarn/flows/query.ex" => %{
-        "lib/storyarn/analytics.ex" => "runtime",
-        "lib/storyarn/analytics/post_hog_adapter.ex" => "runtime",
+        "lib/storyarn/platform/analytics.ex" => "runtime",
+        "lib/storyarn/platform/analytics/post_hog_adapter.ex" => "runtime",
         "lib/storyarn/repo.ex" => "runtime"
       },
-      "lib/storyarn/analytics/service.ex" => %{
-        "lib/storyarn/analytics/post_hog_adapter.ex" => "runtime",
+      "lib/storyarn/platform/analytics/service.ex" => %{
+        "lib/storyarn/platform/analytics/post_hog_adapter.ex" => "runtime",
         "lib/storyarn/flows/flow.ex" => "runtime"
       }
     }
@@ -126,11 +126,11 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert DependencyPolicy.forbidden_edges(graph, policy) == %{
              flows:
                MapSet.new([
-                 {"lib/storyarn/flows/query.ex", "lib/storyarn/analytics/post_hog_adapter.ex", "runtime"}
+                 {"lib/storyarn/flows/query.ex", "lib/storyarn/platform/analytics/post_hog_adapter.ex", "runtime"}
                ]),
              infrastructure:
                MapSet.new([
-                 {"lib/storyarn/analytics/service.ex", "lib/storyarn/flows/flow.ex", "runtime"}
+                 {"lib/storyarn/platform/analytics/service.ex", "lib/storyarn/flows/flow.ex", "runtime"}
                ]),
              scenes: MapSet.new(),
              web_infrastructure: MapSet.new()

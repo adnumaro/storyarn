@@ -8,7 +8,7 @@ defmodule Storyarn.Sheets.DialogueAudio do
 
   import Ecto.Query
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Sheets.Persistence.AssetRecord
   alias Storyarn.Sheets.Persistence.FlowNodeRecord

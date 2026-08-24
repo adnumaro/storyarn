@@ -26,7 +26,7 @@ defmodule Storyarn.References.VariableReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.References.FlowCondition

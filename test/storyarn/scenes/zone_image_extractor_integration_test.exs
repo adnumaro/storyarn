@@ -30,7 +30,7 @@ defmodule Storyarn.Scenes.ZoneImageExtractorIntegrationTest do
 
   alias Storyarn.Assets
   alias Storyarn.Assets.Asset
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneZone
   alias Storyarn.Scenes.ZoneImageExtractor

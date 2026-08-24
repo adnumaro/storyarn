@@ -11,7 +11,7 @@ defmodule StoryarnWeb.SceneSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SceneLive.Helpers.PropsSerializer

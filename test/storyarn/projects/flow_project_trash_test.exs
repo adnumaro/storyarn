@@ -7,8 +7,8 @@ defmodule Storyarn.Projects.FlowProjectTrashTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Persistence.FlowEntityTrashReferenceRecord

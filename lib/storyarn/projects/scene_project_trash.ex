@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.SceneProjectTrash do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Projects.Project

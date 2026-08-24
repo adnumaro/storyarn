@@ -1,7 +1,7 @@
 defmodule StoryarnTest.AnalyticsEventContract do
   @moduledoc false
 
-  @behaviour Storyarn.Analytics.EventContract
+  @behaviour Storyarn.Platform.Analytics.EventContract
 
   @impl true
   def event(:usage), do: {:ok, "test usage event", ~w(item_id mode)}

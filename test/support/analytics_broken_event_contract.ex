@@ -1,7 +1,7 @@
 defmodule StoryarnTest.AnalyticsBrokenEventContract do
   @moduledoc false
 
-  @behaviour Storyarn.Analytics.EventContract
+  @behaviour Storyarn.Platform.Analytics.EventContract
 
   @impl true
   def event(_event), do: raise("broken analytics contract")

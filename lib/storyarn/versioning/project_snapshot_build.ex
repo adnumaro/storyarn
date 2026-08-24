@@ -15,9 +15,9 @@ defmodule Storyarn.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.UserRecord, as: User

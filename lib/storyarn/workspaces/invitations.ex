@@ -9,7 +9,7 @@ defmodule Storyarn.Workspaces.Invitations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers

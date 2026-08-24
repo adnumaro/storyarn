@@ -3,13 +3,13 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   def list_connections(flow_id) do

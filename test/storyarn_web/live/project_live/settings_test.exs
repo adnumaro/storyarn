@@ -12,10 +12,10 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.VersioningFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
   alias Storyarn.Localization
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Project

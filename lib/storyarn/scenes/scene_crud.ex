@@ -9,8 +9,8 @@ defmodule Storyarn.Scenes.SceneCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Platform
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo

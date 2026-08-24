@@ -10,7 +10,7 @@ defmodule Storyarn.Assets.UploadDecisionTest do
   alias Storyarn.Assets.BlobStore
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Repo
 
   @test_png_path "test/fixtures/images/quadrant_map.png"

@@ -12,8 +12,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.PropsSerializer
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Collaboration.Presence
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize

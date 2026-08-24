@@ -7,8 +7,8 @@ defmodule Storyarn.Sheets.StructuralNotificationsTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Notifications
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Repo
   alias Storyarn.Sheets
 

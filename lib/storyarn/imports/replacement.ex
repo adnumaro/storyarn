@@ -11,10 +11,10 @@ defmodule Storyarn.Imports.Replacement do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
   alias Storyarn.Imports.Error
   alias Storyarn.Imports.ProjectImportAttempt
   alias Storyarn.Imports.Telemetry
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow

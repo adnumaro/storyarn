@@ -4,7 +4,7 @@ defmodule Storyarn.Versioning.MaterializationHelpers do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet

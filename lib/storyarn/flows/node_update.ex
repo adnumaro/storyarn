@@ -3,7 +3,6 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.EntityReferenceTracker
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
@@ -15,6 +14,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.ReferenceIntegrity
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Flows.WordCount
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 

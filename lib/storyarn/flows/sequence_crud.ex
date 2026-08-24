@@ -14,7 +14,6 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
-  alias Storyarn.Collaboration
   alias Storyarn.Flows.AssetReferences
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
@@ -24,6 +23,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()

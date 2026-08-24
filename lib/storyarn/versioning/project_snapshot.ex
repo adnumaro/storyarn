@@ -10,7 +10,7 @@ defmodule Storyarn.Versioning.ProjectSnapshot do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project

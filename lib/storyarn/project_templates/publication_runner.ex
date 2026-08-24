@@ -5,7 +5,7 @@ defmodule Storyarn.ProjectTemplates.PublicationRunner do
 
   alias Storyarn.Assets.StorageCompensation
   alias Storyarn.Assets.StorageKeyLock
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Persistence.UserRecord, as: User

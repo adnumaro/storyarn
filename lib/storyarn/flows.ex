@@ -252,7 +252,7 @@ defmodule Storyarn.Flows do
   @spec search_flows(integer(), String.t(), keyword()) :: [flow()]
   defdelegate search_flows(project_id, query, opts \\ []), to: FlowCrud
 
-  @doc "Cross-project flow search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
+  @doc "Cross-project flow search over a pre-authorized project set (see `Storyarn.Platform.GlobalSearch`)."
   @spec search_flows_in_projects([integer()], String.t(), keyword()) :: [flow()]
   defdelegate search_flows_in_projects(project_ids, query, opts \\ []), to: FlowCrud
 

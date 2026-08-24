@@ -14,8 +14,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Assets.Storage
   alias Storyarn.Assets.StorageCleanupRequest
   alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Billing
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace

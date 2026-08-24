@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.ProjectCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Assets
-  alias Storyarn.Billing
+  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Memberships
