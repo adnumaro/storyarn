@@ -1,0 +1,54 @@
+test/storyarn/platform/product_metrics_test.exs
+  s_1837e1b58927a7::t_bafac242a1cb82 8-9,82-96
+  s_1837e1b58927a7::t_821e482a49d1ec 97-98
+lib/storyarn/accounts/events.ex
+  s_1837e1b58927a7::t_6dc8d40dcdda9f 12,34-42
+  s_1837e1b58927a7::t_6d6b9257922dbd 1-11,13-33,43-45
+lib/storyarn/accounts/registration.ex
+  s_1837e1b58927a7::t_60d9fa6b5da5d4 37,133
+  s_1837e1b58927a7::t_ef5a832cc25415 8
+lib/storyarn_web/live/user_live/forgot_password.ex
+  s_1837e1b58927a7::t_b2cb58e8ba71bc 133
+priv/gettext/identity.pot
+  s_1837e1b58927a7::t_c4ea04bcd1f39a 14,19,24-25,30,35,40,45-46,56,84,89,104-105
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_1837e1b58927a7::t_c4ea04bcd1f39a 14,19,24-25,30,35,40,45-46,56,84,89,104-105
+lib/storyarn/accounts.ex
+  s_1837e1b58927a7::t_b2cb58e8ba71bc 17,94-100
+  s_1837e1b58927a7::t_ef207561f0805d 101
+config/architecture_baselines/accounts.json
+  s_1837e1b58927a7::t_3700c075552de2 3
+lib/storyarn/platform/product_metrics.ex
+  s_1837e1b58927a7::t_60d9fa6b5da5d4 35-36,39,83,271
+  s_1837e1b58927a7::t_6dc8d40dcdda9f 38,81-82,84-86,269-270
+  s_1837e1b58927a7::t_e8cd0f7bfa0d13 272-273
+lib/storyarn_web/live/user_live/login.ex
+  s_1837e1b58927a7::t_b2cb58e8ba71bc 145
+lib/storyarn/accounts/user.ex
+  s_1837e1b58927a7::t_60d9fa6b5da5d4 70,83-84,87
+  s_1837e1b58927a7::t_6dc8d40dcdda9f 85-86
+  s_1837e1b58927a7::t_bace72cd0713fb 88-89
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_d37aabea544ec8 550-580
+  s_1837e1b58927a7::t_b83c2b3e718500 581-585
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_1837e1b58927a7::t_c4ea04bcd1f39a 14,19,24-25,30,35,40,45-46,56,84,89,104-105
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_1837e1b58927a7::t_b2cb58e8ba71bc 65
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.23",
+  "base_commit_sha": "84eabb694b3d68381646174c41976c4a4ae91f08",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
