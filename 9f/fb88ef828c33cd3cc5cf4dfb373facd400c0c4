@@ -1,0 +1,46 @@
+lib/storyarn/accounts.ex
+  s_1837e1b58927a7::t_f444256d63eb48 109-116
+lib/storyarn_web/live/user_live/reset_password.ex
+  s_1837e1b58927a7::t_f444256d63eb48 39,72
+priv/gettext/settings.pot
+  s_1837e1b58927a7::t_6a4c2cc34c419b 14,19,24,29
+priv/gettext/identity.pot
+  s_1837e1b58927a7::t_6a4c2cc34c419b 79
+lib/storyarn_web/controllers/user_session_controller.ex
+  s_1837e1b58927a7::t_f444256d63eb48 98
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_1837e1b58927a7::t_6a4c2cc34c419b 14,19,24,29
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_1837e1b58927a7::t_6a4c2cc34c419b 14,19,24,29
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_1837e1b58927a7::t_6a4c2cc34c419b 79
+lib/storyarn_web/live/user_live/registration.ex
+  s_1837e1b58927a7::t_f444256d63eb48 62
+docs/reference/domain-patterns.md
+  s_1837e1b58927a7::t_6a4c2cc34c419b 37-40,43,71
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_f5236c5aa6c9b4 388,393
+  s_1837e1b58927a7::t_64eb1e510fd75c 595-606
+lib/storyarn_web/live/settings_live/profile.ex
+  s_1837e1b58927a7::t_f444256d63eb48 119
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_1837e1b58927a7::t_6a4c2cc34c419b 79
+test/storyarn/architecture/accounts_web_facade_boundary_test.exs
+  s_1837e1b58927a7::t_d9ecbe96405e1e 1-135
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "9ffb88ef828c33cd3cc5cf4dfb373facd400c0c4",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
