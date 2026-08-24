@@ -1,0 +1,26 @@
+config/architecture_boundaries.exs
+  s_1837e1b58927a7::t_919e79bc78d160 405,410
+docs/reference/shared-utilities.md
+  s_1837e1b58927a7::t_c2e1dd32d84973 13-16,18,75-78,80,130-133,266
+test/storyarn/architecture/projects_boundary_test.exs
+  s_1837e1b58927a7::t_a941cb98208ca4 1-8,13-146
+  s_1837e1b58927a7::t_c2e1dd32d84973 9-12
+docs/reference/domain-patterns.md
+  s_1837e1b58927a7::t_c2e1dd32d84973 43-44,58-59,62-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b5e3413a9d69dbf19dff7dd102d7595e4b601e05",
+  "prompts": {},
+  "sessions": {
+    "s_1837e1b58927a7": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "780def57-b90e-46c1-89e0-ebed6cb90d54",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
