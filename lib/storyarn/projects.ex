@@ -440,6 +440,12 @@ defmodule Storyarn.Projects do
   @spec get_invitation_by_token(String.t()) :: {:ok, invitation()} | {:error, :invalid_token}
   defdelegate get_invitation_by_token(token), to: Invitations
 
+  @doc "Delivers a pending invitation email from the durable worker."
+  defdelegate deliver_invitation_email(token, opts), to: Invitations
+
+  @doc "Cancels a pending invitation delivery from the durable worker."
+  defdelegate cancel_invitation_delivery(token), to: Invitations
+
   @doc """
   Accepts an invitation and creates a membership for the user.
 

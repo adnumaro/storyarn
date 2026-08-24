@@ -8,13 +8,12 @@ defmodule StoryarnWeb.PrivateMedia do
 
   use StoryarnWeb, :verified_routes
 
-  alias Storyarn.Assets.Asset
   alias Storyarn.Assets.Storage
 
   @spec asset_url(Asset.t() | map() | nil) :: String.t() | nil
   def asset_url(nil), do: nil
 
-  def asset_url(%Asset{} = asset) do
+  def asset_url(%{id: _} = asset) do
     case preferred_asset_id(asset) do
       id when is_integer(id) -> ~p"/media/assets/#{id}"
       _ -> nil
@@ -107,6 +106,6 @@ defmodule StoryarnWeb.PrivateMedia do
 
   defp project_url_from_key(_project_id, _key), do: nil
 
-  defp preferred_asset_id(%Asset{metadata: %{"web_asset_id" => id}}) when is_integer(id), do: id
-  defp preferred_asset_id(%Asset{id: id}), do: id
+  defp preferred_asset_id(%{metadata: %{"web_asset_id" => id}}) when is_integer(id), do: id
+  defp preferred_asset_id(%{id: id}), do: id
 end

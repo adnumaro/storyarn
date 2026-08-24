@@ -12,12 +12,12 @@ defmodule Storyarn.Notifications do
 
   alias Ecto.Changeset
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Billing.Persistence.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Billing.Persistence.ProjectRecord, as: Project
   alias Storyarn.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Notifications.Notification
   alias Storyarn.Notifications.Persistence.UserRecord, as: User
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Notifications.ProjectAccess
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
 
@@ -53,11 +53,11 @@ defmodule Storyarn.Notifications do
   """
   @spec deliver(Scope.t(), User.t() | nil, Project.t(), map()) ::
           {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver(%{user: %{id: _} = recipient} = recipient_scope, actor, %Project{} = project, attrs) when is_map(attrs) do
+  def deliver(%{user: %{id: _} = recipient} = recipient_scope, actor, %{id: _} = project, attrs) when is_map(attrs) do
     if self_notification?(recipient, actor) do
       {:ok, :suppressed}
     else
-      case Projects.get_project(recipient_scope, project.id) do
+      case ProjectAccess.get_project(recipient_scope, project.id) do
         {:ok, authorized_project, _membership} ->
           insert_one(recipient, actor, authorized_project, attrs)
 
@@ -131,14 +131,14 @@ defmodule Storyarn.Notifications do
   """
   @spec deliver_to_project_members(Scope.t(), Project.t(), map()) ::
           {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_to_project_members(%{user: %{id: _} = actor} = actor_scope, %Project{} = project, attrs)
+  def deliver_to_project_members(%{user: %{id: _} = actor} = actor_scope, %{id: _, workspace_id: _} = project, attrs)
       when is_map(attrs) do
     with {:ok, authorized_project} <- authorize_project(actor_scope, project) do
       insert_for_effective_members(actor, authorized_project, attrs)
     end
   end
 
-  def deliver_to_project_members(%{user: _}, %Project{}, _attrs), do: {:error, :not_found}
+  def deliver_to_project_members(%{user: _}, %{id: _, workspace_id: _}, _attrs), do: {:error, :not_found}
 
   @doc """
   Inserts one structural content notification for every other effective project member.
@@ -154,10 +154,13 @@ defmodule Storyarn.Notifications do
           String.t(),
           %{required(:id) => integer(), required(:name) => String.t()}
         ) :: {:ok, delivery_outcome()} | {:error, delivery_error()}
-  def deliver_content_activity(%{user: %{id: _} = actor} = actor_scope, %Project{} = project, action, entity_type, %{
-        id: entity_id,
-        name: entity_name
-      })
+  def deliver_content_activity(
+        %{user: %{id: _} = actor} = actor_scope,
+        %{id: _, workspace_id: _} = project,
+        action,
+        entity_type,
+        %{id: entity_id, name: entity_name}
+      )
       when action in [:created, :deleted] and entity_type in @content_entity_types and is_integer(entity_id) and
              is_binary(entity_name) do
     ensure_inside_transaction!("deliver_content_activity/5")
@@ -180,7 +183,10 @@ defmodule Storyarn.Notifications do
     end
   end
 
-  def deliver_content_activity(%{user: _}, %Project{}, action, entity_type, %{id: entity_id, name: entity_name})
+  def deliver_content_activity(%{user: _}, %{id: _, workspace_id: _}, action, entity_type, %{
+        id: entity_id,
+        name: entity_name
+      })
       when action in [:created, :deleted] and entity_type in @content_entity_types and is_integer(entity_id) and
              is_binary(entity_name) do
     ensure_inside_transaction!("deliver_content_activity/5")
@@ -206,7 +212,7 @@ defmodule Storyarn.Notifications do
       when is_integer(project_id) do
     ensure_inside_transaction!("deliver_content_activity_by_project_id/5")
 
-    case Projects.get_project(actor_scope, project_id) do
+    case ProjectAccess.get_project(actor_scope, project_id) do
       {:ok, project, _membership} ->
         deliver_content_activity(actor_scope, project, action, entity_type, entity)
 
@@ -467,7 +473,7 @@ defmodule Storyarn.Notifications do
   end
 
   defp authorize_project(actor_scope, project) do
-    case Projects.get_project(actor_scope, project.id) do
+    case ProjectAccess.get_project(actor_scope, project.id) do
       {:ok, authorized_project, _membership} -> {:ok, authorized_project}
       {:error, _reason} -> {:error, :not_found}
     end
@@ -541,7 +547,7 @@ defmodule Storyarn.Notifications do
   defp actor_id(%{id: id}), do: id
   defp actor_id(nil), do: nil
 
-  defp project_id(%Project{id: id}), do: id
+  defp project_id(%{id: id}), do: id
   defp project_id(nil), do: nil
 
   defp created_notifications({:created, %Notification{} = notification}), do: [notification]

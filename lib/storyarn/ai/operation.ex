@@ -5,10 +5,10 @@ defmodule Storyarn.AI.Operation do
   import Ecto.Changeset
 
   alias Storyarn.AI.Context.PersistenceContract
+  alias Storyarn.AI.Persistence.ProjectRecord, as: Project
   alias Storyarn.AI.Persistence.UserRecord, as: User
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.RouteOption
-  alias Storyarn.Projects.Project
   alias Storyarn.Shared.TimeHelpers
 
   @execution_statuses ~w(queued running succeeded failed cancelled unknown)

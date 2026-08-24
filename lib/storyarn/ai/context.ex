@@ -14,9 +14,9 @@ defmodule Storyarn.AI.Context do
   alias Storyarn.AI.Context.SubjectRef
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.ProjectAccess
   alias Storyarn.AI.Task
   alias Storyarn.AI.Telemetry
-  alias Storyarn.Projects
 
   @spec build_context(Scope.t(), Task.t(), SubjectRef.t()) ::
           {:ok, Package.t()} | {:error, atom()}
@@ -103,7 +103,7 @@ defmodule Storyarn.AI.Context do
   def operation_current?(_scope, _task, _operation), do: {:error, :stale_context}
 
   defp authorize_project(scope, subject_ref) do
-    case Projects.get_project(scope, subject_ref.project_id) do
+    case ProjectAccess.get_project(scope, subject_ref.project_id) do
       {:ok, %{workspace_id: workspace_id} = project, membership}
       when workspace_id == subject_ref.workspace_id ->
         {:ok, project, membership}

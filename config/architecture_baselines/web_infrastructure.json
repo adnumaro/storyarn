@@ -2,31 +2,6 @@
   "consumer": "web_infrastructure",
   "edges": [
     [
-      "lib/storyarn_web/components/project_layout.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/components/sheet_components.ex",
-      "lib/storyarn/assets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn_web/components/sheet_components.ex",
-      "lib/storyarn/assets/asset.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/endpoint.ex",
-      "lib/storyarn/assets/upload_policy.ex",
-      "compile"
-    ],
-    [
-      "lib/storyarn_web/helpers/authorize.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/hooks/notifications.ex",
       "lib/storyarn/notifications.ex",
       "runtime"
@@ -37,11 +12,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn_web/live/hooks/project_scope.ex",
-      "lib/storyarn/projects.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn_web/live/shared/notification_helpers.ex",
       "lib/storyarn/notifications.ex",
       "runtime"
@@ -49,11 +19,6 @@
     [
       "lib/storyarn_web/live/shared/notification_helpers.ex",
       "lib/storyarn/notifications/notification.ex",
-      "export"
-    ],
-    [
-      "lib/storyarn_web/private_media.ex",
-      "lib/storyarn/assets/asset.ex",
       "export"
     ]
   ],

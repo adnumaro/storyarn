@@ -9,22 +9,22 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Billing.Persistence.EntityVersionRecord
   alias Storyarn.Billing.Persistence.FlowNodeRecord
   alias Storyarn.Billing.Persistence.FlowRecord
+  alias Storyarn.Billing.Persistence.ProjectInvitationRecord, as: ProjectInvitation
+  alias Storyarn.Billing.Persistence.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Billing.Persistence.ProjectRecord, as: Project
+  alias Storyarn.Billing.Persistence.ProjectTemplateRecord, as: ProjectTemplate
+  alias Storyarn.Billing.Persistence.ProjectTemplateVersionRecord, as: ProjectTemplateVersion
   alias Storyarn.Billing.Persistence.SceneRecord
   alias Storyarn.Billing.Persistence.SheetRecord
   alias Storyarn.Billing.Persistence.WorkspaceInvitationRecord, as: WorkspaceInvitation
   alias Storyarn.Billing.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Billing.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Billing.Persistence.WorkspaceSnapshotImportRecord, as: WorkspaceSnapshotImport
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectInvitation
-  alias Storyarn.Projects.ProjectMembership
-  alias Storyarn.ProjectTemplates.ProjectTemplate
-  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning.WorkspaceSnapshotImport
 
   @doc """
   Checks if a user can create another workspace.
@@ -61,7 +61,7 @@ defmodule Storyarn.Billing.Limits do
   @doc """
   Checks if a source project's workspace can publish another project template.
   """
-  def can_create_project_template?(%Project{} = source_project) do
+  def can_create_project_template?(%{id: _, workspace_id: _} = source_project) do
     plan = SubscriptionCrud.plan_for_workspace_id(source_project.workspace_id)
     limit = Plan.limit(plan, :project_templates_per_workspace)
     used = count_workspace_project_templates(source_project.workspace_id)
@@ -71,7 +71,7 @@ defmodule Storyarn.Billing.Limits do
   @doc """
   Checks if a template can publish another immutable version.
   """
-  def can_create_project_template_version?(%ProjectTemplate{} = template) do
+  def can_create_project_template_version?(%{id: _, source_project_id: _} = template) do
     plan = plan_for_template(template)
     limit = Plan.limit(plan, :project_template_versions_per_template)
     used = count_project_template_versions(template.id)
@@ -84,11 +84,11 @@ defmodule Storyarn.Billing.Limits do
   Accepts either a workspace or a project struct — for projects, resolves
   the workspace_id to check workspace-level member limits.
   """
-  def can_invite_member?(%{id: _} = workspace) when not is_struct(workspace, Project) do
+  def can_invite_member?(%{id: _} = workspace) when not is_map_key(workspace, :workspace_id) do
     check_member_limit(workspace.id)
   end
 
-  def can_invite_member?(%Project{} = project) do
+  def can_invite_member?(%{id: _, workspace_id: _} = project) do
     check_member_limit(project.workspace_id)
   end
 
@@ -98,11 +98,12 @@ defmodule Storyarn.Billing.Limits do
   Emails that already occupy a slot through a membership or active invitation
   may be invited to another project without consuming additional capacity.
   """
-  def can_invite_member?(%{id: _} = workspace, email) when not is_struct(workspace, Project) and is_binary(email) do
+  def can_invite_member?(%{id: _} = workspace, email)
+      when not is_map_key(workspace, :workspace_id) and is_binary(email) do
     check_member_limit(workspace.id, email)
   end
 
-  def can_invite_member?(%Project{} = project, email) when is_binary(email) do
+  def can_invite_member?(%{id: _, workspace_id: _} = project, email) when is_binary(email) do
     check_member_limit(project.workspace_id, email)
   end
 
@@ -114,11 +115,12 @@ defmodule Storyarn.Billing.Limits do
   check protects legacy or externally-created invitations from exceeding the
   plan when they are accepted.
   """
-  def can_accept_member?(%{id: _} = workspace, email) when not is_struct(workspace, Project) and is_binary(email) do
+  def can_accept_member?(%{id: _} = workspace, email)
+      when not is_map_key(workspace, :workspace_id) and is_binary(email) do
     check_membership_limit(workspace.id, email)
   end
 
-  def can_accept_member?(%Project{} = project, email) when is_binary(email) do
+  def can_accept_member?(%{id: _, workspace_id: _} = project, email) when is_binary(email) do
     check_membership_limit(project.workspace_id, email)
   end
 
@@ -191,7 +193,7 @@ defmodule Storyarn.Billing.Limits do
   Some limits are scoped to the project itself, while others are scoped to the
   containing workspace but directly affect project actions.
   """
-  def project_limits_usage(%Project{} = project) do
+  def project_limits_usage(%{id: _, workspace_id: _} = project) do
     consistent_usage_read(fn -> build_project_limits_usage(project) end)
   end
 
@@ -407,7 +409,7 @@ defmodule Storyarn.Billing.Limits do
     )
   end
 
-  defp plan_for_template(%ProjectTemplate{source_project_id: source_project_id}) when is_integer(source_project_id) do
+  defp plan_for_template(%{source_project_id: source_project_id}) when is_integer(source_project_id) do
     Project
     |> where([project], project.id == ^source_project_id)
     |> select([project], project.workspace_id)

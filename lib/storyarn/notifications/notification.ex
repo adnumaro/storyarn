@@ -12,8 +12,8 @@ defmodule Storyarn.Notifications.Notification do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
+  alias Storyarn.Billing.Persistence.ProjectRecord, as: Project
   alias Storyarn.Notifications.Persistence.UserRecord, as: User
-  alias Storyarn.Projects.Project
 
   @kinds ~w(async_operation content_created content_deleted)
   @entity_types ~w(

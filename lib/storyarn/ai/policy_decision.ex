@@ -5,16 +5,15 @@ defmodule Storyarn.AI.PolicyDecision do
 
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Operation
+  alias Storyarn.AI.Persistence.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.AI.Persistence.ProjectRecord, as: Project
   alias Storyarn.AI.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.AI.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Policy
+  alias Storyarn.AI.ProjectAccess
   alias Storyarn.AI.Task
   alias Storyarn.AI.WorkspaceAccess
   alias Storyarn.FeatureFlags
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Memberships, as: ProjectMemberships
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
 
   @enforce_keys [
@@ -185,7 +184,7 @@ defmodule Storyarn.AI.PolicyDecision do
   end
 
   defp resolve_access(%ExecutionIntent{scope: scope, workspace_id: workspace_id, project_id: project_id}, false) do
-    with {:ok, project, project_membership} <- Projects.get_project(scope, project_id),
+    with {:ok, project, project_membership} <- ProjectAccess.get_project(scope, project_id),
          true <- project.workspace_id == workspace_id,
          {:ok, _workspace, workspace_membership} <- WorkspaceAccess.get_workspace(scope, workspace_id) do
       {:ok, %{workspace_role: workspace_membership.role, project_role: project_membership.role}}
@@ -220,7 +219,7 @@ defmodule Storyarn.AI.PolicyDecision do
     workspace_membership = lock_workspace_membership(workspace_id, user_id)
 
     project_role =
-      ProjectMemberships.effective_role(
+      ProjectAccess.effective_role(
         membership_role(project_membership),
         membership_role(workspace_membership)
       )
@@ -297,7 +296,7 @@ defmodule Storyarn.AI.PolicyDecision do
   defp role_for_scope(access, scope) when scope in [:project, :entity], do: access.project_role
 
   defp permission_module(:workspace), do: WorkspaceAccess
-  defp permission_module(scope) when scope in [:project, :entity], do: Projects
+  defp permission_module(scope) when scope in [:project, :entity], do: ProjectAccess
 
   # Workspace owners govern data egress for the workspace and may always make
   # an explicit personal-BYOK choice themselves. The persisted personal lane

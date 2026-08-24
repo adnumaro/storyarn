@@ -8,7 +8,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
 
   use Oban.Worker, queue: :default, max_attempts: 5
 
-  alias Storyarn.Projects.Invitations, as: ProjectInvitations
+  alias Storyarn.Projects
   alias Storyarn.Shared.EncryptedBinary
   alias Storyarn.Workspaces
 
@@ -30,7 +30,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
     end
   end
 
-  defp deliver("project", token, opts), do: ProjectInvitations.deliver_invitation_email(token, opts)
+  defp deliver("project", token, opts), do: Projects.deliver_invitation_email(token, opts)
 
   defp deliver("workspace", token, opts), do: Workspaces.deliver_invitation_email(token, opts)
 
@@ -64,7 +64,7 @@ defmodule Storyarn.Workers.DeliverInvitationWorker do
     end
   end
 
-  defp cancel_invitation("project", token), do: ProjectInvitations.cancel_invitation_delivery(token)
+  defp cancel_invitation("project", token), do: Projects.cancel_invitation_delivery(token)
 
   defp cancel_invitation("workspace", token), do: Workspaces.cancel_invitation_delivery(token)
 
