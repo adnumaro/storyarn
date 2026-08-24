@@ -17,26 +17,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/assets.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/assets.ex",
-      "lib/storyarn/sheets/block_gallery_image.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/assets.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/assets.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/assets/asset.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
@@ -527,31 +507,6 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/sheets/reference_tracker.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/flow_builder.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/builders/scene_builder.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/builders/sheet_builder.ex",
       "lib/storyarn/shared/word_count.ex",
       "runtime"
@@ -562,33 +517,13 @@
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/change_detector.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/localization_snapshot_codec.ex",
       "lib/storyarn/accounts/user.ex",
       "runtime"
     ],
     [
-      "lib/storyarn/versioning/localization_snapshot_codec.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/materialization_helpers.ex",
       "lib/storyarn/billing.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/materialization_helpers.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/materialization_helpers.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
       "runtime"
     ],
     [
@@ -604,16 +539,6 @@
     [
       "lib/storyarn/versioning/project_recovery.ex",
       "lib/storyarn/shared/name_normalizer.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_recovery.ex",
-      "lib/storyarn/sheets/sheet.ex",
       "runtime"
     ],
     [
@@ -767,41 +692,6 @@
       "export"
     ],
     [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/block_gallery_image.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/sheet_avatar.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/table_column.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/project_snapshot_restore_executor.ex",
-      "lib/storyarn/sheets/table_row.ex",
-      "runtime"
-    ],
-    [
       "lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex",
       "lib/storyarn/accounts/scope.ex",
       "export"
@@ -820,16 +710,6 @@
       "lib/storyarn/versioning/project_snapshot_restore_lifecycle.ex",
       "lib/storyarn/workers/restore_project_snapshot_worker.ex",
       "compile"
-    ],
-    [
-      "lib/storyarn/versioning/referenced_tombstones.ex",
-      "lib/storyarn/sheets/block.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/versioning/referenced_tombstones.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
     ],
     [
       "lib/storyarn/versioning/snapshot_archive_smoke.ex",

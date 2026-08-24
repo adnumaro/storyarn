@@ -27,16 +27,16 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
+  alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.SheetReadModel
   alias Storyarn.References
   alias Storyarn.References.AvatarIntegrity
+  alias Storyarn.References.EntityReferenceProjection
   alias Storyarn.References.RichTextMentions
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.ReferenceTracker
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.LocalizationSnapshotCodec
@@ -783,7 +783,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
     if sheet_ids == [] do
       %{}
     else
-      sheets = Sheets.list_sheets_by_ids(project_id, sheet_ids)
+      sheets = SheetReadModel.list_by_ids(project_id, sheet_ids)
 
       Map.new(sheets, fn sheet ->
         {to_string(sheet.id),
@@ -814,7 +814,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
 
       sheet_ids ->
         project_id
-        |> Sheets.list_sheets_by_ids(sheet_ids)
+        |> SheetReadModel.list_by_ids(sheet_ids)
         |> Map.new(fn sheet ->
           {to_string(sheet.id),
            %{
@@ -3686,7 +3686,7 @@ defmodule Storyarn.Versioning.Builders.FlowBuilder do
   end
 
   defp flow_node_html_mention_refs(html) do
-    case ReferenceTracker.extract_block_value_references("rich_text", %{"content" => html}) do
+    case EntityReferenceProjection.extract_block_value_references("rich_text", %{"content" => html}) do
       {:ok, references} -> Enum.map(references, &flow_node_mention_ref/1)
       {:error, reason} -> [%{type: :reference, id: malformed_flow_mention_id(reason)}]
     end

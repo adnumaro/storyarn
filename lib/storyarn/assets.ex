@@ -26,20 +26,20 @@ defmodule Storyarn.Assets do
   alias Storyarn.Assets.UploadPolicy
   alias Storyarn.Billing
   alias Storyarn.Collaboration
+  alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
+  alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlSanitizer
   alias Storyarn.Shared.SearchHelpers
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
 
   require Logger
 

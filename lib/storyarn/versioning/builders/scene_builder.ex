@@ -24,11 +24,11 @@ defmodule Storyarn.Versioning.Builders.SceneBuilder do
   alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.SceneRoutePoints, as: RoutePoints
   alias Storyarn.References
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.AssetMaterializationScope
   alias Storyarn.Versioning.Builders.AssetHashResolver
   alias Storyarn.Versioning.DiffHelpers

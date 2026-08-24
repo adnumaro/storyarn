@@ -22,6 +22,8 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Billing.StorageReservation
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -38,9 +40,14 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
   alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
+  alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
+  alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.SceneProjectTrash
+  alias Storyarn.Projects.SheetProjectTrash
   alias Storyarn.References
   alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
@@ -48,13 +55,6 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.References.VariableReferenceTracker
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Sheets.TableColumn
-  alias Storyarn.Sheets.TableRow
   alias Storyarn.Versioning
   alias Storyarn.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Versioning.ProjectRecovery
@@ -755,7 +755,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutor do
              &FlowProjectTrash.delete_subtree_in_transaction/1
            ),
          :ok <- trash_roots(previous.scene_roots, &trash_scene/1) do
-      trash_roots(previous.sheet_roots, &Sheets.delete_sheet_subtree_in_transaction/1)
+      trash_roots(previous.sheet_roots, &SheetProjectTrash.delete_subtree_in_transaction/1)
     end
   end
 

@@ -22,6 +22,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
   alias Storyarn.Projects.Project
   alias Storyarn.References
   alias Storyarn.Repo
+  alias Storyarn.Shared.TimeHelpers
 
   @doc "Gets a trashed Sheet scoped to its project, with avatars preloaded."
   def get_trashed(project_id, sheet_id) do
@@ -116,6 +117,99 @@ defmodule Storyarn.Projects.SheetProjectTrash do
     end
     |> Repo.transaction()
     |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
+  end
+
+  @doc """
+  Soft-deletes a sheet and all its active descendants inside the caller's
+  transaction, archiving their localization rows — the exact cascade the Sheet
+  tool performs when trashing a subtree.
+  """
+  def delete_subtree_in_transaction(%SheetRecord{} = sheet) do
+    lock_active_project!(sheet.project_id)
+    sheet = lock_active_sheet!(sheet.id, sheet.project_id)
+
+    # Get all descendant IDs before deleting (under the locks above)
+    descendant_ids = get_descendant_ids(sheet.id, sheet.project_id)
+
+    # Soft delete all descendants
+    now = TimeHelpers.now()
+
+    if descendant_ids != [] do
+      Repo.update_all(from(s in SheetRecord, where: s.id in ^descendant_ids), set: [deleted_at: now])
+    end
+
+    archive_block_texts_for_sheets(sheet.project_id, [sheet.id | descendant_ids])
+
+    Enum.each(
+      [sheet.id | descendant_ids],
+      &LocalizationProjection.archive_texts_for_sources("sheet", [&1], "source_deleted")
+    )
+
+    # Soft delete the sheet itself
+    deleted =
+      sheet
+      |> SheetRecord.delete_changeset()
+      |> Repo.update!()
+
+    %{entity: deleted, deleted_ids: [deleted.id | descendant_ids]}
+  end
+
+  defp lock_active_sheet!(sheet_id, project_id) do
+    case Repo.one(
+           from(sheet in SheetRecord,
+             where:
+               sheet.id == ^sheet_id and sheet.project_id == ^project_id and
+                 is_nil(sheet.deleted_at),
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %SheetRecord{} = sheet -> sheet
+      nil -> Repo.rollback(:sheet_not_active)
+    end
+  end
+
+  defp get_descendant_ids(sheet_id, project_id) do
+    anchor =
+      from(s in "sheets",
+        where:
+          s.parent_id == ^sheet_id and
+            s.project_id == ^project_id and
+            is_nil(s.deleted_at),
+        select: %{id: s.id}
+      )
+
+    recursion =
+      from(s in "sheets",
+        join: d in "descendants",
+        on: s.parent_id == d.id,
+        where:
+          s.project_id == ^project_id and
+            is_nil(s.deleted_at),
+        select: %{id: s.id}
+      )
+
+    cte_query = union_all(anchor, ^recursion)
+
+    from("descendants")
+    |> recursive_ctes(true)
+    |> with_cte("descendants", as: ^cte_query)
+    |> select([d], d.id)
+    |> Repo.all()
+  end
+
+  defp archive_block_texts_for_sheets(project_id, sheet_ids) do
+    :ok = LocalizationProjection.lock_inventory!(project_id)
+
+    block_ids =
+      Repo.all(
+        from(block in BlockRecord,
+          where: block.sheet_id in ^sheet_ids,
+          select: block.id
+        )
+      )
+
+    LocalizationProjection.archive_texts_for_sources("block", block_ids, "source_deleted")
+    :ok
   end
 
   # ===========================================================================

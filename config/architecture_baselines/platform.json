@@ -28,11 +28,6 @@
     ],
     [
       "lib/storyarn/billing/limits.ex",
-      "lib/storyarn/sheets/sheet.ex",
-      "runtime"
-    ],
-    [
-      "lib/storyarn/billing/limits.ex",
       "lib/storyarn/versioning/workspace_snapshot_import.ex",
       "runtime"
     ],

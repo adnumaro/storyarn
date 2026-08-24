@@ -10,6 +10,7 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.Billing.Persistence.FlowNodeRecord
   alias Storyarn.Billing.Persistence.FlowRecord
   alias Storyarn.Billing.Persistence.SceneRecord
+  alias Storyarn.Billing.Persistence.SheetRecord
   alias Storyarn.Billing.Plan
   alias Storyarn.Billing.StorageAccounting
   alias Storyarn.Billing.SubscriptionCrud
@@ -20,7 +21,6 @@ defmodule Storyarn.Billing.Limits do
   alias Storyarn.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.Sheet
   alias Storyarn.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
@@ -240,7 +240,7 @@ defmodule Storyarn.Billing.Limits do
           )
       },
       item_breakdown: %{
-        sheets: count_active(Sheet, project.id),
+        sheets: count_active(SheetRecord, project.id),
         flows: count_active(FlowRecord, project.id),
         scenes: count_active(SceneRecord, project.id),
         flow_nodes: count_nodes(project.id)
@@ -517,7 +517,7 @@ defmodule Storyarn.Billing.Limits do
   @doc false
   def count_project_items(project_id) do
     count_nodes(project_id) +
-      count_active(Sheet, project_id) +
+      count_active(SheetRecord, project_id) +
       count_active(FlowRecord, project_id) +
       count_active(SceneRecord, project_id)
   end

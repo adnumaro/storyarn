@@ -3,6 +3,7 @@ defmodule Storyarn.Versioning.ReferencedTombstones do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -10,9 +11,8 @@ defmodule Storyarn.Versioning.ReferencedTombstones do
   alias Storyarn.Projects.Persistence.SceneAmbientFlowRecord, as: SceneAmbientFlow
   alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Sheet
 
   @format_version 1
   @max_pg_bigint 9_223_372_036_854_775_807

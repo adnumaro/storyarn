@@ -30,6 +30,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.Project
   alias Storyarn.References.EntityReference
   alias Storyarn.References.RichTextMentions
@@ -367,7 +368,7 @@ defmodule Storyarn.Versioning.ProjectSnapshotRestoreExecutorTest do
     project = Repo.get!(Project, context.restore.project_id)
     old_sheet = sheet_fixture(project, %{name: "Current graph must survive rollback"})
 
-    assert {:retry, {:project_snapshot_restore_count_mismatch, Sheet, 0, 1}} =
+    assert {:retry, {:project_snapshot_restore_count_mismatch, SheetRecord, 0, 1}} =
              ProjectSnapshotRestoreExecutor.execute(context.restore,
                archive_reader: EmptyArchiveReader,
                asset_materializer: EmptyMaterializer,

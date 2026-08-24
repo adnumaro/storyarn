@@ -37,6 +37,21 @@ defmodule Storyarn.Projects.SheetReadModel do
     |> Repo.all()
   end
 
+  @doc """
+  Lists active sheets by id with the banner and avatar preloads the project
+  snapshot builders serialize.
+  """
+  def list_by_ids(_project_id, []), do: []
+
+  def list_by_ids(project_id, ids) do
+    Repo.all(
+      from(sheet in SheetRecord,
+        where: sheet.project_id == ^project_id and sheet.id in ^ids and is_nil(sheet.deleted_at),
+        preload: [:banner_asset, avatars: :asset]
+      )
+    )
+  end
+
   defp maybe_filter_ids(query, :all), do: query
 
   defp maybe_filter_ids(query, ids) when is_list(ids) do

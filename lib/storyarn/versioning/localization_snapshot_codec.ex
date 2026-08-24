@@ -9,10 +9,10 @@ defmodule Storyarn.Versioning.LocalizationSnapshotCodec do
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Repo
   alias Storyarn.Shared.HtmlUtils
   alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Sheets.Sheet
 
   @manifest_fields ~w(count sha256 target_locales)
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
