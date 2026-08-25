@@ -15,9 +15,8 @@ defmodule Storyarn.Projects.Imports.Resume do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Imports.Error
   alias Storyarn.Projects.Imports.Execution
   alias Storyarn.Projects.Imports.Expiration
@@ -29,6 +28,7 @@ defmodule Storyarn.Projects.Imports.Resume do
   alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Projects.Imports.Queue
   alias Storyarn.Projects.Imports.Shared
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
@@ -56,7 +56,7 @@ defmodule Storyarn.Projects.Imports.Resume do
 
   @doc false
   def resume_latest_active_import(%{user: _} = scope, %Project{} = project, opts) when is_list(opts) do
-    case Projects.authorize(scope, project.id, @import_action) do
+    case Memberships.authorize(scope, project.id, @import_action) do
       {:ok, _project, _membership} ->
         case latest_active_import_attempt(project.id, scope.user.id) do
           %ProjectImportAttempt{} = attempt ->
@@ -112,7 +112,7 @@ defmodule Storyarn.Projects.Imports.Resume do
   @doc false
   def resume_import(%{user: _} = scope, %Project{} = project, attempt_id, opts)
       when is_integer(attempt_id) and attempt_id > 0 and attempt_id <= @max_safe_import_attempt_id and is_list(opts) do
-    case Projects.authorize(scope, project.id, @import_action) do
+    case Memberships.authorize(scope, project.id, @import_action) do
       {:ok, _project, _membership} ->
         resume_authorized_import(scope, project, attempt_id, opts)
 
@@ -142,7 +142,7 @@ defmodule Storyarn.Projects.Imports.Resume do
   defp resume_consistent_attempt(scope, project, attempt_id, user_id, attempt, opts, rebuilds_left) do
     preview_result = resume_preview(project.id, attempt, opts)
 
-    with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
+    with {:ok, _project, _membership} <- Memberships.authorize(scope, project.id, @import_action),
          {:ok, current_attempt} <- reconcile_resumed_attempt(project.id, attempt_id, user_id, opts) do
       finish_resumed_import(
         {scope, project, attempt_id, user_id},
@@ -382,7 +382,7 @@ defmodule Storyarn.Projects.Imports.Resume do
          _user_id,
          opts
        ) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
     PlanCleanup.cleanup_plan(expired, opts)
     Queue.broadcast(expired)
     {:ok, expired}

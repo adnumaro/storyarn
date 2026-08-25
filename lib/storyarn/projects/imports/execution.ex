@@ -12,11 +12,9 @@ defmodule Storyarn.Projects.Imports.Execution do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Imports.Error
   alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.Imports.NotificationDelivery
@@ -28,6 +26,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   alias Storyarn.Projects.Imports.Replacement
   alias Storyarn.Projects.Imports.Shared
   alias Storyarn.Projects.Imports.Telemetry
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
@@ -162,9 +161,14 @@ defmodule Storyarn.Projects.Imports.Execution do
     end
   end
 
-  defp authorize_worker(attempt) do
-    Projects.authorize(%{user: attempt.user}, attempt.project_id, @import_action)
+  defp authorize_worker(%{user: %{id: user_id}} = attempt) when is_integer(user_id) do
+    Memberships.authorize(%{user: attempt.user}, attempt.project_id, @import_action)
   end
+
+  # A deleted requester is not an ordinary authorization denial: the import
+  # can no longer establish its actor identity. Preserve the terminal import
+  # contract while NotificationDelivery suppresses the now-impossible target.
+  defp authorize_worker(_attempt), do: {:error, :unexpected_import_error}
 
   defp handled_execution_error(
          attempt,
@@ -257,7 +261,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   defp tag_started_attempt({:error, reason}), do: {:error, reason}
 
   defp materialize_once(attempt, project, plan, opts) do
-    Billing.transact_with_workspace_lock(
+    Platform.transact_with_workspace_lock(
       project.workspace_id,
       fn _workspace ->
         with_result =
@@ -392,7 +396,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   end
 
   defp finish_import({:materialized, completed, notification_outcome}, started_at, opts) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
     PlanCleanup.cleanup_plan(completed, opts)
     Telemetry.emit_stop(:execute, started_at, Telemetry.attempt_metadata(completed, "completed", "none"))
     replay_completed_side_effects(completed)
@@ -406,7 +410,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   end
 
   defp finish_import({:expired, attempt, notification_outcome}, started_at, opts) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
     cleanup_terminal_recovery_snapshot(attempt)
     attempt = refresh_attempt(attempt)
     PlanCleanup.cleanup_plan_if_pending(attempt, opts)
@@ -496,7 +500,7 @@ defmodule Storyarn.Projects.Imports.Execution do
         {:ok, terminal_attempt}
 
       {:ok, {:failed, failed, notification_outcome}} ->
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         cleanup_terminal_recovery_snapshot(failed)
         failed = refresh_attempt(failed)
         metadata = Telemetry.attempt_metadata(failed, "failed", code)

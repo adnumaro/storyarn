@@ -11,7 +11,7 @@ defmodule Storyarn.Application do
       StoryarnWeb.Telemetry,
       Storyarn.Repo,
       Storyarn.Platform.Vault,
-      Storyarn.Projects.Imports.ErrorDeduplicator,
+      Storyarn.Projects.import_error_deduplicator_child_spec(),
       Storyarn.Platform.RateLimiter.child_spec_for_backend(),
       {DNSCluster, query: Application.get_env(:storyarn, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyarn.PubSub},

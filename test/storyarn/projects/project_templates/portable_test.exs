@@ -17,11 +17,11 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.SheetsFixtures
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.WorkspacesFixtures
 
   describe "portable template bundles" do

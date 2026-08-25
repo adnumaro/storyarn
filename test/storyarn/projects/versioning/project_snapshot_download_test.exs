@@ -6,8 +6,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
 
   alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects
   alias Storyarn.Projects.Versioning
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   test "coalesces overlapping grants onto one renewed zero-byte lease" do
     user = user_fixture()
@@ -139,6 +140,50 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
                flunk("delivery must not start for a concurrently deleted project")
              end)
+
+    refute Repo.get_by(StorageReservation,
+             project_snapshot_id_snapshot: snapshot.id,
+             kind: "snapshot_export"
+           )
+  end
+
+  test "the public capability reauthorizes under the storage lock before creating a grant" do
+    user = user_fixture()
+    project = project_fixture(user)
+    snapshot = build_ready_snapshot(project, user)
+
+    project
+    |> Ecto.Changeset.change(deleted_at: TimeHelpers.now())
+    |> Repo.update!()
+
+    assert {:error, :unauthorized} =
+             Projects.with_authorized_project_snapshot_download(
+               user_scope_fixture(user),
+               project.id,
+               snapshot.id,
+               fn _delivery -> flunk("delivery must not start for a deleted project") end
+             )
+
+    refute Repo.get_by(StorageReservation,
+             project_snapshot_id_snapshot: snapshot.id,
+             kind: "snapshot_export"
+           )
+  end
+
+  test "the public capability never invokes the callback for an editor" do
+    owner = user_fixture()
+    editor = user_fixture()
+    project = project_fixture(owner)
+    snapshot = build_ready_snapshot(project, owner)
+    membership_fixture(project, editor, "editor")
+
+    assert {:error, :unauthorized} =
+             Projects.with_authorized_project_snapshot_download(
+               user_scope_fixture(editor),
+               project.id,
+               snapshot.id,
+               fn _delivery -> flunk("delivery must remain owner-only") end
+             )
 
     refute Repo.get_by(StorageReservation,
              project_snapshot_id_snapshot: snapshot.id,

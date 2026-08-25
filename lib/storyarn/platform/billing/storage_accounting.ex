@@ -15,24 +15,27 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Billing.Persistence.AssetRecord, as: Asset
+  alias Storyarn.Platform.Billing.Persistence.ProjectRecord, as: Project
+  alias Storyarn.Platform.Billing.Persistence.ProjectSnapshotRecord, as: ProjectSnapshot
+  alias Storyarn.Platform.Billing.Persistence.ProjectSnapshotRestoreRecord, as: ProjectSnapshotRestore
+
+  alias Storyarn.Platform.Billing.Persistence.SnapshotObjectPublicationClaimRecord,
+    as: SnapshotObjectPublicationClaim
+
+  alias Storyarn.Platform.Billing.Persistence.StorageCleanupOwnershipReceiptRecord,
+    as: StorageCleanupOwnershipReceipt
+
   alias Storyarn.Platform.Billing.Persistence.UserRecord, as: User
   alias Storyarn.Platform.Billing.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Platform.Billing.Persistence.WorkspaceSnapshotImportRecord, as: WorkspaceSnapshotImport
   alias Storyarn.Platform.Billing.Plan
   alias Storyarn.Platform.Billing.StorageCleanupInventory
+  alias Storyarn.Platform.Billing.StorageLeasePolicy
+  alias Storyarn.Platform.Billing.StorageProtocol
   alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Billing.SubscriptionCrud
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Assets.Asset
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.Versioning.ProjectSnapshot
-  alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
-  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Projects.Versioning.SnapshotObjectFormat
-  alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Repo
 
   @accounting_version 1
@@ -47,7 +50,6 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
   @provider_measurement_keys ~w(
     physical_bytes temporary_bytes orphan_bytes duplicate_bytes cleanup_pending_bytes
   )a
-  @snapshot_object_token_regex ~r/\A[A-Za-z0-9_-]{16}\z/
   @temporary_path_segment_regex ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
   @max_temporary_relative_key_bytes 512
   @max_temporary_path_segments 16
@@ -61,6 +63,14 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
                    is_positive_integer(generation)
 
   @type usage_bucket :: %{bytes: non_neg_integer(), count: non_neg_integer()}
+
+  @typedoc "Stable scalar contract exposed to the Project restore prelock callback."
+  @type snapshot_restore_prelock_context :: %{
+          workspace_id: pos_integer(),
+          project_id: pos_integer(),
+          project_owner_id: pos_integer() | nil,
+          project_deleted_by_id: pos_integer() | nil
+        }
 
   @type storage_usage :: %{
           accounting_version: pos_integer(),
@@ -459,7 +469,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
           Ecto.UUID.t(),
           pos_integer(),
           non_neg_integer(),
-          (map() -> {:ok, term()} | {:error, term()}),
+          (snapshot_restore_prelock_context() -> {:ok, term()} | {:error, term()}),
           (StorageReservation.t(), term() -> term())
         ) ::
           {:ok, %{reservation: StorageReservation.t(), result: term()}}
@@ -561,12 +571,9 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
   def recover_expired_snapshot_export_leases(_now, _opts), do: invalid_expired_snapshot_export_lease_recovery()
 
   @doc false
-  @spec settle_expired_snapshot_export_leases_locked(ProjectSnapshot.t(), pos_integer()) ::
+  @spec settle_expired_snapshot_export_leases_locked(map(), pos_integer()) ::
           :ok | {:error, term()}
-  def settle_expired_snapshot_export_leases_locked(
-        %ProjectSnapshot{id: snapshot_id, project_id: project_id},
-        workspace_id
-      )
+  def settle_expired_snapshot_export_leases_locked(%{id: snapshot_id, project_id: project_id}, workspace_id)
       when is_positive_integer(snapshot_id) and is_positive_integer(project_id) and is_positive_integer(workspace_id) do
     if workspace_lock_held?(workspace_id) do
       with true <- snapshot_in_workspace?(snapshot_id, project_id, workspace_id),
@@ -662,11 +669,11 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
       ) do
     expected_namespace = reservation_namespace(project_id, reservation.kind, lease_token)
 
-    case {storage_namespace == expected_namespace, snapshot_ready_identity(project_id, ready_prefix)} do
+    case {storage_namespace == expected_namespace, StorageProtocol.ready_prefix_token(project_id, ready_prefix)} do
       {true, {:ok, token}} ->
         {:ok,
          %{
-           staging: SnapshotArchiveStorage.staging_prefix(project_id, token),
+           staging: StorageProtocol.staging_prefix(project_id, token),
            ready: ready_prefix
          }}
 
@@ -1039,7 +1046,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
       | expires_at:
           DateTime.add(
             measured_at,
-            ProjectSnapshotLeasePolicy.download_export_lease_ttl_seconds(),
+            StorageLeasePolicy.download_export_lease_ttl_seconds(),
             :second
           ),
         accounting_measured_at: measured_at
@@ -1055,7 +1062,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
       expires_at:
         DateTime.add(
           measured_at,
-          ProjectSnapshotLeasePolicy.build_lease_ttl_seconds(),
+          StorageLeasePolicy.build_lease_ttl_seconds(),
           :second
         ),
       accounting_measured_at: measured_at
@@ -1187,7 +1194,14 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
        ), do: {:error, :storage_reservation_not_found}
 
   defp run_project_snapshot_restore_prelock(prelock_fun, workspace, project) do
-    case prelock_fun.(%{workspace: workspace, project: project}) do
+    lock_context = %{
+      workspace_id: workspace.id,
+      project_id: project.id,
+      project_owner_id: project.owner_id,
+      project_deleted_by_id: project.deleted_by_id
+    }
+
+    case prelock_fun.(lock_context) do
       {:ok, prelock_context} -> {:ok, prelock_context}
       {:error, _reason} = error -> error
       _invalid -> {:error, :invalid_project_snapshot_restore_prelock_result}
@@ -2118,9 +2132,9 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
          manifest_storage_key: manifest_storage_key
        })
        when lifecycle_state in ["pending", "building", "verifying"] and is_binary(object_prefix) do
-    archive_storage_key == SnapshotArchiveStorage.archive_key(object_prefix) and
-      manifest_storage_key == SnapshotArchiveStorage.manifest_key(object_prefix) and
-      SnapshotArchiveStorage.ready_prefix_for_project?(project_id, object_prefix)
+    archive_storage_key == StorageProtocol.archive_key(object_prefix) and
+      manifest_storage_key == StorageProtocol.manifest_key(object_prefix) and
+      StorageProtocol.ready_prefix_for_project?(project_id, object_prefix)
   end
 
   defp valid_reservation_target?(kind, %ProjectSnapshot{
@@ -2389,7 +2403,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
     # Cleanup ownership must remain provable after operators lower runtime
     # verification limits. The object-format hard bound contains the fixed
     # four-key archive cleanup; digest/count prove the exact inventory.
-    limits = SnapshotObjectFormat.hard_limits()
+    limits = StorageProtocol.hard_limits()
     max_count = max(2 * (limits.max_objects + 1), limits.max_assets + 2 * (limits.max_objects - 1))
 
     storage_keys != [] and length(storage_keys) <= max_count and
@@ -2513,14 +2527,14 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
 
     temporary_object_key?(storage_key, temporary_prefix) or
       restore_project_asset_key?(storage_key, project_id) or
-      match?({:ok, ^project_id, _hash}, Storyarn.Projects.Assets.StorageKeyLock.project_blob_identity(storage_key))
+      match?({:ok, ^project_id, _hash}, StorageProtocol.project_blob_identity(storage_key))
   end
 
   defp restore_project_asset_key?(storage_key, project_id) do
     case String.split(storage_key, "/", trim: false) do
       ["projects", encoded_project_id, "assets", uuid, filename] ->
         encoded_project_id == Integer.to_string(project_id) and match?({:ok, _uuid}, Ecto.UUID.cast(uuid)) and
-          filename != "" and filename not in [".", ".."] and Storage.canonical_key?(storage_key)
+          filename != "" and filename not in [".", ".."] and StorageProtocol.canonical_key?(storage_key)
 
       _invalid ->
         false
@@ -2545,7 +2559,8 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
   end
 
   defp snapshot_cleanup_key?(storage_key, staging_prefix, ready_prefix) do
-    snapshot_object_key?(storage_key, staging_prefix) or snapshot_object_key?(storage_key, ready_prefix)
+    StorageProtocol.snapshot_object_key?(staging_prefix, storage_key) or
+      StorageProtocol.snapshot_object_key?(ready_prefix, storage_key)
   end
 
   defp temporary_object_key?(storage_key, prefix) when is_binary(storage_key) and is_binary(prefix) do
@@ -2567,41 +2582,6 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
       length(segments) <= @max_temporary_path_segments and
       Enum.all?(segments, &Regex.match?(@temporary_path_segment_regex, &1))
   end
-
-  defp snapshot_object_key?(storage_key, prefix) do
-    if String.starts_with?(storage_key, prefix <> "/") do
-      relative_key = String.replace_prefix(storage_key, prefix <> "/", "")
-      valid_snapshot_object_tail?(prefix, String.split(relative_key, "/", trim: false))
-    else
-      false
-    end
-  end
-
-  defp valid_snapshot_object_tail?(prefix, ["manifest.json"]) do
-    String.contains?(prefix, "/snapshots/archives/v2/")
-  end
-
-  defp valid_snapshot_object_tail?(prefix, ["snapshot.zip"]) do
-    String.contains?(prefix, "/snapshots/archives/v2/")
-  end
-
-  defp valid_snapshot_object_tail?(_prefix, _parts), do: false
-
-  defp snapshot_ready_identity(project_id, ready_prefix)
-       when is_positive_integer(project_id) and is_binary(ready_prefix) do
-    case String.split(ready_prefix, "/", trim: false) do
-      ["projects", encoded_project_id, "snapshots", "archives", "v2", "ready", token] ->
-        if encoded_project_id == Integer.to_string(project_id) and
-             Regex.match?(@snapshot_object_token_regex, token),
-           do: {:ok, token},
-           else: :error
-
-      _parts ->
-        :error
-    end
-  end
-
-  defp snapshot_ready_identity(_project_id, _ready_prefix), do: :error
 
   defp cleanup_reference(cleanup_request_id), do: "storage_cleanup_request:#{cleanup_request_id}"
   defp no_write_reference(storage_namespace), do: "storage_not_started:#{storage_namespace}"
@@ -2729,10 +2709,10 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
        })
        when lifecycle_state in ["pending", "building", "verifying"] and is_binary(object_prefix) do
     valid_keys? =
-      archive_storage_key == SnapshotArchiveStorage.archive_key(object_prefix) and
-        manifest_storage_key == SnapshotArchiveStorage.manifest_key(object_prefix)
+      archive_storage_key == StorageProtocol.archive_key(object_prefix) and
+        manifest_storage_key == StorageProtocol.manifest_key(object_prefix)
 
-    if valid_keys? and SnapshotArchiveStorage.ready_prefix_for_project?(project_id, object_prefix) do
+    if valid_keys? and StorageProtocol.ready_prefix_for_project?(project_id, object_prefix) do
       {:ok,
        %{
          snapshot_id: snapshot_id,
@@ -2749,16 +2729,11 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
 
   defp owner_expectation(_reservation, _project_id, _snapshot), do: {:error, :storage_reservation_owner_mismatch}
 
-  defp validate_committed_owner(
-         reservation,
-         expectation,
-         {%ProjectSnapshot{} = owner, _transaction_metadata},
-         actual_bytes
-       ) do
+  defp validate_committed_owner(reservation, expectation, {%{id: _id} = owner, _transaction_metadata}, actual_bytes) do
     validate_committed_owner(reservation, expectation, owner, actual_bytes)
   end
 
-  defp validate_committed_owner(reservation, expectation, %ProjectSnapshot{id: snapshot_id}, actual_bytes)
+  defp validate_committed_owner(reservation, %{kind: "snapshot_build"} = expectation, %{id: snapshot_id}, actual_bytes)
        when snapshot_id == expectation.snapshot_id do
     expected_accounted_bytes = expectation.baseline_accounted_bytes + actual_bytes
 
@@ -2788,7 +2763,7 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
   defp validate_committed_owner(
          %StorageReservation{id: reservation_id},
          %{kind: "restore_staging"} = expectation,
-         %ProjectSnapshotRestore{id: restore_id},
+         %{id: restore_id},
          actual_bytes
        )
        when restore_id == expectation.restore_id do
@@ -2904,10 +2879,9 @@ defmodule Storyarn.Platform.Billing.StorageAccounting do
     if DateTime.after?(full_ttl, after_previous_expiry), do: full_ttl, else: after_previous_expiry
   end
 
-  defp reservation_ttl_seconds("snapshot_build", _reserved_bytes),
-    do: ProjectSnapshotLeasePolicy.build_lease_ttl_seconds()
+  defp reservation_ttl_seconds("snapshot_build", _reserved_bytes), do: StorageLeasePolicy.build_lease_ttl_seconds()
 
-  defp reservation_ttl_seconds("snapshot_export", 0), do: ProjectSnapshotLeasePolicy.download_export_lease_ttl_seconds()
+  defp reservation_ttl_seconds("snapshot_export", 0), do: StorageLeasePolicy.download_export_lease_ttl_seconds()
 
   defp reservation_ttl_seconds(_kind, _reserved_bytes), do: @default_reservation_ttl_seconds
 

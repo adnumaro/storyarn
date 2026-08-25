@@ -1,12 +1,13 @@
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicyTest do
   use ExUnit.Case, async: false
 
+  alias Storyarn.Platform.Billing.StorageLeasePolicy
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
 
   setup do
-    original = Application.fetch_env!(:storyarn, ProjectSnapshotLeasePolicy)
-    on_exit(fn -> Application.put_env(:storyarn, ProjectSnapshotLeasePolicy, original) end)
+    original = Application.fetch_env!(:storyarn, StorageLeasePolicy)
+    on_exit(fn -> Application.put_env(:storyarn, StorageLeasePolicy, original) end)
     %{original: original}
   end
 
@@ -15,7 +16,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicyTest do
   } do
     Application.put_env(
       :storyarn,
-      ProjectSnapshotLeasePolicy,
+      StorageLeasePolicy,
       original
       |> Keyword.put(:download_signed_url_ttl_seconds, 10)
       |> Keyword.put(:download_max_transfer_seconds, 20)
@@ -31,7 +32,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicyTest do
   } do
     Application.put_env(
       :storyarn,
-      ProjectSnapshotLeasePolicy,
+      StorageLeasePolicy,
       original
       |> Keyword.put(:build_heartbeat_interval_seconds, 60)
       |> Keyword.put(:build_lease_ttl_seconds, 120)
@@ -47,7 +48,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicyTest do
   } do
     Application.put_env(
       :storyarn,
-      ProjectSnapshotLeasePolicy,
+      StorageLeasePolicy,
       Keyword.put(original, :download_signed_url_ttl_seconds, 301)
     )
 

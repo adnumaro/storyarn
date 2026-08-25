@@ -31,6 +31,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.FlowStats
   alias Storyarn.Flows.FormulaRuntime
+  alias Storyarn.Flows.HealthFlags
   alias Storyarn.Flows.HubColors
   alias Storyarn.Flows.Instruction
   alias Storyarn.Flows.Limits
@@ -1076,7 +1077,7 @@ defmodule Storyarn.Flows do
       data:
         node.type
         |> resolve_node_colors(node.data || %{})
-        |> maybe_add_type_warning_flag(node.type, variable_types)
+        |> HealthFlags.add_type_warning(node.type, variable_types)
     }
   end
 
@@ -1183,8 +1184,8 @@ defmodule Storyarn.Flows do
     data =
       ctx.resolved_node_data
       |> Map.fetch!(node.id)
-      |> maybe_add_stale_flag(node.id, ctx.stale_node_ids)
-      |> maybe_add_type_warning_flag(node.type, ctx.variable_types)
+      |> HealthFlags.add_stale(node.id, ctx.stale_node_ids)
+      |> HealthFlags.add_type_warning(node.type, ctx.variable_types)
       |> maybe_add_referencing_flows(node.type, ctx.referencing_flows)
       |> maybe_add_unreachable_flag(node.id, node.type, ctx.unreachable_ids)
       |> maybe_add_dead_end_flag(node.id, node.type, ctx.dead_end_ids)
@@ -1269,53 +1270,7 @@ defmodule Storyarn.Flows do
   a project-wide sweep builds it once for every flow instead of once per node.
   """
   @spec add_health_flags([map()], MapSet.t(), %{String.t() => String.t()}) :: [map()]
-  def add_health_flags(nodes, stale_node_ids, variable_types) do
-    Enum.map(nodes, fn node ->
-      data =
-        node.data
-        |> maybe_add_stale_flag(node.id, stale_node_ids)
-        |> maybe_add_type_warning_flag(node.type, variable_types)
-
-      %{node | data: data}
-    end)
-  end
-
-  defp maybe_add_type_warning_flag(data, "instruction", variable_types) do
-    assignments = data["assignments"] || []
-
-    if Instruction.has_type_warnings?(assignments, variable_types) do
-      Map.put(data, "has_type_warnings", true)
-    else
-      data
-    end
-  end
-
-  defp maybe_add_type_warning_flag(data, "dialogue", variable_types) do
-    responses = data["responses"] || []
-
-    updated =
-      Enum.map(responses, fn response ->
-        assignments = response["instruction_assignments"] || []
-
-        if Instruction.has_type_warnings?(assignments, variable_types) do
-          Map.put(response, "has_type_warnings", true)
-        else
-          response
-        end
-      end)
-
-    Map.put(data, "responses", updated)
-  end
-
-  defp maybe_add_type_warning_flag(data, _type, _variable_types), do: data
-
-  defp maybe_add_stale_flag(data, node_id, stale_node_ids) do
-    if MapSet.member?(stale_node_ids, node_id) do
-      Map.put(data, "has_stale_refs", true)
-    else
-      data
-    end
-  end
+  defdelegate add_health_flags(nodes, stale_node_ids, variable_types), to: HealthFlags, as: :add
 
   defp maybe_add_unreachable_flag(data, id, type, unreachable_ids) do
     if NodeConnectionRules.can_be_unreachable?(type) and MapSet.member?(unreachable_ids, id),

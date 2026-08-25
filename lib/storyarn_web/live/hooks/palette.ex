@@ -28,11 +28,11 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   alias Storyarn.AI
   alias Storyarn.Flows
+  alias Storyarn.Platform
   alias Storyarn.Platform.Analytics
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.CommandPalette
   alias Storyarn.Platform.GlobalSearch
-  alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -624,7 +624,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp run_post_commit(nil), do: :ok
 
   defp run_post_commit({:entity_created, project_id, type, entity, notification_outcome}) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
 
     if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
 
@@ -633,7 +633,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids, notification_outcome}) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
 
     # Plain broadcast (not broadcast_from): the LV serving this event may
     # itself be showing a deleted entity and must navigate away too.

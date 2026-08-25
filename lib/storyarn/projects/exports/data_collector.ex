@@ -11,7 +11,6 @@ defmodule Storyarn.Projects.Exports.DataCollector do
 
   import Ecto.Query
 
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Exports.ExportOptions
@@ -35,6 +34,7 @@ defmodule Storyarn.Projects.Exports.DataCollector do
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
@@ -160,7 +160,7 @@ defmodule Storyarn.Projects.Exports.DataCollector do
   # -- Project --
 
   defp load_project(project_id) do
-    Projects.get_project!(project_id)
+    ProjectCrud.get_project!(project_id)
   end
 
   defp load_flow_shortcuts_by_id(project_id) do

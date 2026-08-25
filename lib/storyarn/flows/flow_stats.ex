@@ -3,14 +3,17 @@ defmodule Storyarn.Flows.FlowStats do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows
   alias Storyarn.Flows.ContentContract
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.HealthFlags
+  alias Storyarn.Flows.Instruction
+  alias Storyarn.Flows.NodeLabel
   alias Storyarn.Flows.Persistence.SheetRecord
   alias Storyarn.Flows.SpeakerSheetId
   alias Storyarn.Flows.StructuralAnalysis
   alias Storyarn.Flows.StructuralAnalysis.Topology
+  alias Storyarn.Flows.VariableCatalog
   alias Storyarn.Flows.VariableReferenceTracker
   alias Storyarn.Repo
 
@@ -175,9 +178,9 @@ defmodule Storyarn.Flows.FlowStats do
     variable_types =
       context
       |> Map.get_lazy(:referenceable_variables, fn ->
-        Flows.list_referenceable_variables(project_id)
+        VariableCatalog.list_referenceable(project_id)
       end)
-      |> Flows.variable_type_map()
+      |> Instruction.variable_type_map()
 
     # Batched, like the sheets and scenes sweeps: the per-flow pair of
     # stale-reference queries made this O(N) — 2 queries per flow — while the
@@ -191,8 +194,8 @@ defmodule Storyarn.Flows.FlowStats do
 
     Enum.flat_map(topologies, fn topology ->
       stale_node_ids = Map.get(stale_by_flow, topology.flow_id, MapSet.new())
-      nodes = Flows.add_health_flags(topology.nodes, stale_node_ids, variable_types)
-      node_labels = Map.new(nodes, &{&1.id, Flows.node_specific_label(&1)})
+      nodes = HealthFlags.add(topology.nodes, stale_node_ids, variable_types)
+      node_labels = Map.new(nodes, &{&1.id, NodeLabel.specific_for_node(&1)})
 
       %{topology | nodes: nodes}
       |> StructuralAnalysis.findings()

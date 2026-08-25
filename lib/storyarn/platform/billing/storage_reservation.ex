@@ -10,10 +10,11 @@ defmodule Storyarn.Platform.Billing.StorageReservation do
 
   import Ecto.Changeset
 
+  alias Storyarn.Platform.Billing.Persistence.ProjectRecord, as: Project
+  alias Storyarn.Platform.Billing.Persistence.ProjectSnapshotRecord, as: ProjectSnapshot
   alias Storyarn.Platform.Billing.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Platform.Billing.StorageCleanupInventory
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Platform.Billing.StorageProtocol
 
   @kinds ~w(snapshot_build restore_staging snapshot_export)
   @statuses ~w(active committed released)
@@ -488,11 +489,11 @@ defmodule Storyarn.Platform.Billing.StorageReservation do
   defp validate_cleanup_object_prefix(changeset) do
     case {get_field(changeset, :kind), get_field(changeset, :cleanup_object_prefix)} do
       {"snapshot_build", prefix} when is_binary(prefix) ->
-        validate_format(
-          changeset,
-          :cleanup_object_prefix,
-          ~r<\Aprojects/[1-9]\d*/snapshots/archives/v2/ready/[A-Za-z0-9_-]{16}\z>
-        )
+        project_id = get_field(changeset, :project_id_snapshot)
+
+        if StorageProtocol.ready_prefix_for_project?(project_id, prefix),
+          do: changeset,
+          else: add_error(changeset, :cleanup_object_prefix, "has invalid format")
 
       {"snapshot_build", _prefix} ->
         add_error(changeset, :cleanup_object_prefix, "can't be blank for an operation with a ready target")

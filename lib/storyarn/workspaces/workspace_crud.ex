@@ -3,15 +3,15 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Projects.Assets
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Platform
+  alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Events
   alias Storyarn.Workspaces.Persistence.ProjectMembershipRecord, as: ProjectMembership
   alias Storyarn.Workspaces.Persistence.ProjectRecord, as: Project
   alias Storyarn.Workspaces.Persistence.UserRecord
   alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceBanner
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @doc """
@@ -133,10 +133,10 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
       Repo.transact(fn ->
         locked_user = Repo.one!(from(u in UserRecord, where: u.id == ^user.id, lock: "FOR UPDATE"))
 
-        with :ok <- normalize_workspace_capacity(Billing.can_create_workspace?(locked_user)),
+        with :ok <- normalize_workspace_capacity(Platform.can_create_workspace?(locked_user)),
              {:ok, workspace} <- insert_workspace(user, attrs),
              {:ok, _membership} <- create_owner_membership(workspace, user),
-             {:ok, _subscription} <- Billing.create_subscription(workspace) do
+             {:ok, _subscription} <- Platform.create_subscription(workspace) do
           {:ok, workspace}
         end
       end)
@@ -190,18 +190,18 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   """
   def delete_workspace(%{id: _} = workspace) do
     result =
-      Billing.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
-        with {:ok, cleanup_intents} <- Versioning.prepare_workspace_snapshot_hard_delete(locked_workspace),
-             :ok <- Versioning.prepare_workspace_snapshot_import_hard_delete(locked_workspace),
-             :ok <- Assets.prepare_parent_hard_delete_locked(locked_workspace.id, :all),
-             {:ok, deleted_workspace} <- Repo.delete(locked_workspace) do
-          {:ok, {deleted_workspace, cleanup_intents}}
+      Platform.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+        with {:ok, workspace} <- get_locked_workspace(locked_workspace.id),
+             {:ok, project_cleanup} <- Projects.prepare_workspace_data_hard_delete(locked_workspace.id),
+             :ok <- WorkspaceBanner.prepare_hard_delete(workspace),
+             {:ok, deleted_workspace} <- Repo.delete(workspace) do
+          {:ok, {deleted_workspace, project_cleanup}}
         end
       end)
 
     case result do
-      {:ok, {deleted_workspace, cleanup_intents}} ->
-        :ok = Versioning.publish_committed_snapshot_cleanup_intents(cleanup_intents)
+      {:ok, {deleted_workspace, project_cleanup}} ->
+        :ok = Projects.publish_committed_workspace_data_hard_delete(project_cleanup)
         {:ok, deleted_workspace}
 
       error ->
@@ -210,6 +210,13 @@ defmodule Storyarn.Workspaces.WorkspaceCrud do
   end
 
   # Private helpers
+
+  defp get_locked_workspace(workspace_id) do
+    case Repo.get(Workspace, workspace_id) do
+      %Workspace{} = workspace -> {:ok, workspace}
+      nil -> {:error, :workspace_not_found}
+    end
+  end
 
   defp insert_workspace(user, attrs) do
     %Workspace{owner_id: user.id}

@@ -8,7 +8,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveSmoke do
   """
 
   alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.R2
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
@@ -39,7 +38,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveSmoke do
   """
   @spec run!(pos_integer()) :: result()
   def run!(snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0 do
-    ensure!(Storage.adapter() == R2, "The real S3-compatible production storage adapter is not configured.")
+    ensure!(Storage.external_upload?(), "The real S3-compatible production storage adapter is not configured.")
 
     snapshot = Repo.get(ProjectSnapshot, snapshot_id) || raise("Snapshot not found.")
     expected = verified_archive!(snapshot)

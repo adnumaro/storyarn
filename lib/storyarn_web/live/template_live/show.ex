@@ -7,19 +7,18 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   import StoryarnWeb.TemplateLive.Helpers
 
-  alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
   alias Storyarn.Workspaces
 
   @impl true
   def mount(%{"id" => id}, _session, socket) do
-    case ProjectTemplates.get_template(socket.assigns.current_scope, id) do
+    case Projects.get_project_template(socket.assigns.current_scope, id) do
       {:ok, template} ->
         installable_workspaces = installable_workspaces(socket.assigns.current_scope)
 
         if connected?(socket) do
-          ProjectTemplates.subscribe_template_publications(template)
-          ProjectTemplates.subscribe_user_installations(socket.assigns.current_scope)
+          Projects.subscribe_project_template_publications(template)
+          Projects.subscribe_user_template_installations(socket.assigns.current_scope)
         end
 
         {:ok,
@@ -446,10 +445,11 @@ defmodule StoryarnWeb.TemplateLive.Show do
          {:ok, workspace, _membership} <- Workspaces.get_workspace(socket.assigns.current_scope, workspace_id),
          {:ok, version} <- fetch_install_version(socket, install_params["version_id"]),
          {:ok, _installation} <-
-           ProjectTemplates.request_template_instantiation(
+           Projects.request_project_template_instantiation(
              socket.assigns.current_scope,
-             version,
-             workspace,
+             socket.assigns.template.id,
+             version.id,
+             workspace.id,
              Map.put(install_params, "source", "template_show")
            ) do
       {:noreply,
@@ -475,9 +475,9 @@ defmodule StoryarnWeb.TemplateLive.Show do
            workspace: %{id: _} = workspace
          } <- socket.assigns.installation_failure,
          {:ok, _installation} <-
-           ProjectTemplates.dismiss_installation_failure(
+           Projects.dismiss_project_template_installation_failure(
              socket.assigns.current_scope,
-             workspace,
+             workspace.id,
              installation_id
            ) do
       {:noreply,
@@ -494,11 +494,11 @@ defmodule StoryarnWeb.TemplateLive.Show do
     version_notes = get_in(params, ["publication", "version_notes"])
 
     case template.source_project do
-      %Project{} = source_project ->
-        case ProjectTemplates.request_template_version_publication(
+      %{id: source_project_id} ->
+        case Projects.request_project_template_version_publication(
                socket.assigns.current_scope,
-               template,
-               source_project,
+               template.id,
+               source_project_id,
                %{
                  "name" => template.name,
                  "description" => template.description,
@@ -532,7 +532,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
   end
 
   def handle_event("archive_template", _params, socket) do
-    case ProjectTemplates.archive_template(socket.assigns.current_scope, socket.assigns.template) do
+    case Projects.archive_project_template(socket.assigns.current_scope, socket.assigns.template) do
       {:ok, _template} ->
         {:noreply,
          socket
@@ -546,7 +546,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   @impl true
   def handle_info({:project_template_publication_updated, _publication}, socket) do
-    case ProjectTemplates.get_template(socket.assigns.current_scope, socket.assigns.template.id) do
+    case Projects.get_project_template(socket.assigns.current_scope, socket.assigns.template.id) do
       {:ok, template} ->
         {:noreply,
          socket
@@ -595,28 +595,33 @@ defmodule StoryarnWeb.TemplateLive.Show do
   defp apply_installation_update(socket, _installation), do: socket
 
   defp assign_template(socket, template) do
-    versions = ProjectTemplates.list_template_versions(socket.assigns.current_scope, template)
+    versions = Projects.list_project_template_versions(socket.assigns.current_scope, template)
 
     publications =
-      ProjectTemplates.list_template_publications(socket.assigns.current_scope, project_template_id: template.id)
+      Projects.list_project_template_publications(socket.assigns.current_scope,
+        project_template_id: template.id
+      )
 
     socket
     |> assign(:page_title, template.name)
     |> assign(:template, template)
     |> assign(:current_version, template.current_version)
     |> assign(:versions, versions)
-    |> assign(:can_publish, ProjectTemplates.can_manage_template?(socket.assigns.current_scope, template))
+    |> assign(:can_publish, Projects.can_manage_project_template?(socket.assigns.current_scope, template))
     |> assign(:publish_form, publish_form())
     |> assign(:publications, publications)
     |> assign(:has_active_publication, Enum.any?(publications, &active_publication?/1))
-    |> assign(:installs, ProjectTemplates.list_template_installs(socket.assigns.current_scope, template, limit: 10))
+    |> assign(
+      :installs,
+      Projects.list_project_template_installs(socket.assigns.current_scope, template, limit: 10)
+    )
     |> assign_active_installations(template)
     |> assign_pending_installation_failures(template)
   end
 
   defp assign_active_installations(socket, template) do
     installations =
-      ProjectTemplates.list_active_template_installations(socket.assigns.current_scope, template)
+      Projects.list_active_project_template_installations(socket.assigns.current_scope, template)
 
     socket
     |> assign(:active_installations, installations)
@@ -629,7 +634,7 @@ defmodule StoryarnWeb.TemplateLive.Show do
 
   defp assign_pending_installation_failures(socket, template) do
     failures =
-      ProjectTemplates.list_pending_template_installation_failures(
+      Projects.list_pending_project_template_installation_failures(
         socket.assigns.current_scope,
         template
       )

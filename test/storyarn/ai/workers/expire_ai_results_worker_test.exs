@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.ExpireAIResultsWorkerTest do
   use Storyarn.DataCase, async: false
 
-  alias Storyarn.AI.Workers.ExpireAIResultsWorker
+  alias Storyarn.Workers.ExpireAIResultsWorker
   alias StoryarnWeb.Telemetry
 
   @event [:storyarn, :ai, :expiration, :stop]

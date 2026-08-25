@@ -1,6 +1,7 @@
 defmodule StoryarnWeb.UploadControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
+  import Storyarn.AccountsFixtures
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
@@ -119,6 +120,33 @@ defmodule StoryarnWeb.UploadControllerTest do
         |> UploadController.create(params)
 
       assert %{"error" => "upload_failed"} = json_response(conn, 422)
+      assert Assets.list_assets(project.id) == []
+    end
+
+    test "a viewer is rejected before the upload file is read", %{conn: conn, user: viewer} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      {:ok, _membership} = Storyarn.Projects.create_membership(project.id, viewer.id, "viewer")
+
+      params = %{
+        "workspace_slug" => workspace.slug,
+        "project_slug" => project.slug,
+        "file" => %Plug.Upload{
+          # An authorized request would reject this before attempting a read.
+          path: Path.join(File.cwd!(), "forged.png"),
+          filename: "forged.png",
+          content_type: "image/png"
+        }
+      }
+
+      conn =
+        conn
+        |> Map.put(:params, params)
+        |> assign(:current_scope, Scope.for_user(viewer))
+        |> UploadController.create(params)
+
+      assert %{"error" => "forbidden"} = json_response(conn, 403)
       assert Assets.list_assets(project.id) == []
     end
 

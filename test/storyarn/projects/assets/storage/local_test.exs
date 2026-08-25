@@ -208,6 +208,15 @@ defmodule Storyarn.Projects.Assets.Storage.LocalTest do
   end
 
   describe "namespace_fingerprint/0" do
+    test "matches fingerprints persisted before the adapter module moved under Projects", %{
+      test_dir: test_dir
+    } do
+      File.mkdir_p!(test_dir)
+
+      assert Local.namespace_fingerprint() ==
+               {:ok, legacy_local_namespace_fingerprint(test_dir)}
+    end
+
     test "binds the absolute storage root", %{test_dir: test_dir} do
       assert {:ok, original} = Local.namespace_fingerprint()
       assert original =~ ~r/\A[0-9a-f]{64}\z/
@@ -287,6 +296,28 @@ defmodule Storyarn.Projects.Assets.Storage.LocalTest do
       assert {:ok, after_sibling} = Local.namespace_fingerprint()
       assert after_sibling == original
     end
+  end
+
+  defp legacy_local_namespace_fingerprint(root) do
+    root = Path.expand(root)
+    ["/" | components] = Path.split(root)
+
+    {_path, identities} =
+      Enum.reduce(components, {"/", [directory_identity!("/")]}, fn component, {parent, identities} ->
+        path = Path.join(parent, component)
+        {path, [directory_identity!(path) | identities]}
+      end)
+
+    ["Elixir.Storyarn.Assets.Storage.Local", root, Enum.reverse(identities)]
+    |> Jason.encode_to_iodata!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+  end
+
+  defp directory_identity!(path) do
+    stat = File.lstat!(path)
+    assert stat.type == :directory
+    ["directory", path, stat.major_device, stat.minor_device, stat.inode]
   end
 
   describe "download/1" do

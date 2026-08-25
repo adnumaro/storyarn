@@ -4,7 +4,6 @@ defmodule Storyarn.Projects.LocalizationSettings do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform
-  alias Storyarn.Projects
   alias Storyarn.Projects.LocalizationLanguageCatalog
   alias Storyarn.Projects.LocalizationLocaleCode
   alias Storyarn.Projects.LocalizationProjection
@@ -12,6 +11,7 @@ defmodule Storyarn.Projects.LocalizationSettings do
   alias Storyarn.Projects.Persistence.LocalizedTextRecord
   alias Storyarn.Projects.Persistence.ProjectLanguageRecord
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Repo
 
   def ensure_source_language(%Project{} = project) do
@@ -205,7 +205,7 @@ defmodule Storyarn.Projects.LocalizationSettings do
 
   defp authorize_actor_project(%{user: %{id: actor_id}} = actor_scope, project)
        when is_integer(actor_id) and actor_id > 0 do
-    case Projects.get_project(actor_scope, project.id) do
+    case ProjectCrud.get_project(actor_scope, project.id) do
       {:ok, authorized_project, _membership} -> {:ok, authorized_project}
       {:error, _reason} -> {:error, :not_found}
     end

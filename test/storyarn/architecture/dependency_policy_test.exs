@@ -31,7 +31,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
            }
   end
 
-  test "an exact documented exception allows only its listed dependency kind" do
+  test "an exact migration exception allows only its listed dependency kind" do
     policy =
       policy([
         %{
@@ -56,6 +56,98 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              MapSet.new([
                {"lib/storyarn/flows/query.ex", "lib/storyarn/scenes/scene.ex", "compile"}
              ])
+  end
+
+  test "durable contracts terminate only at root facades or explicit technical targets" do
+    root_contract = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason: "Flows consumes the public Sheets facade"
+    }
+
+    assert policy()
+           |> Map.put(:durable_contracts, [root_contract])
+           |> DependencyPolicy.validate_policy!()
+
+    internal_contract = %{root_contract | target: "lib/storyarn/sheets/sheet.ex"}
+
+    assert_raise ArgumentError, ~r/durable contract target must be a bounded-context root facade/, fn ->
+      policy()
+      |> Map.put(:durable_contracts, [internal_contract])
+      |> DependencyPolicy.validate_policy!()
+    end
+
+    technical_contract = %{root_contract | target: "lib/storyarn/repo.ex"}
+
+    assert policy()
+           |> Map.put(:durable_contracts, [technical_contract])
+           |> DependencyPolicy.validate_policy!()
+  end
+
+  test "root-facade access cannot be disguised as migration debt" do
+    migration_exception = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason: "This is already a durable public contract"
+    }
+
+    assert_raise ArgumentError, ~r/move it to durable_contracts/, fn ->
+      [migration_exception] |> policy() |> DependencyPolicy.validate_policy!()
+    end
+  end
+
+  test "reviewed edges cannot excuse same-boundary dependencies" do
+    same_boundary_edge = %{
+      source: "lib/storyarn_web/live/flow_live/show.ex",
+      target: "lib/storyarn/flows/flow.ex",
+      kinds: ["runtime"],
+      reason: "Web should call the root facade instead"
+    }
+
+    assert_raise ArgumentError, ~r/reviewed architecture edges must cross a boundary, got :flows/, fn ->
+      [same_boundary_edge] |> policy() |> DependencyPolicy.validate_policy!()
+    end
+  end
+
+  test "reviewed policy edges are exact and stale entries are reported by class" do
+    durable_contract = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason: "Flows consumes the public Sheets facade"
+    }
+
+    migration_exception = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/scenes/scene.ex",
+      kinds: ["runtime"],
+      reason: "Legacy direct schema access"
+    }
+
+    policy =
+      [migration_exception]
+      |> policy()
+      |> Map.put(:durable_contracts, [durable_contract])
+
+    graph = %{
+      "lib/storyarn/flows/query.ex" => %{
+        "lib/storyarn/sheets.ex" => "runtime"
+      }
+    }
+
+    assert DependencyPolicy.stale_reviewed_edges(graph, policy) == %{
+             durable_contracts: [],
+             migration_exceptions: [
+               {"lib/storyarn/flows/query.ex", "lib/storyarn/scenes/scene.ex", "runtime"}
+             ]
+           }
+
+    assert DependencyPolicy.reviewed_edge_counts(policy) == %{
+             durable_contracts: 1,
+             migration_exceptions: 1
+           }
   end
 
   test "directional allowances permit only the declared source root, target, and kind" do
@@ -91,7 +183,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
   test "infrastructure prevents hidden tool bridges while allowing exact public targets" do
     policy = %{
-      version: 1,
+      version: 2,
       bounded_contexts: [:flows, :scenes],
       classification_roots: classification_roots(),
       boundaries: %{
@@ -107,8 +199,10 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       forbidden_dependencies: protected_dependencies([:flows, :scenes]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: ["lib/storyarn/platform/analytics.ex", "lib/storyarn/repo.ex"],
-      exceptions: []
+      globally_allowed_technical_targets: ["lib/storyarn/platform/analytics.ex", "lib/storyarn/repo.ex"],
+      additional_durable_contract_targets: [],
+      durable_contracts: [],
+      migration_exceptions: []
     }
 
     graph = %{
@@ -139,7 +233,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
   test "specific Web roots beat Web infrastructure and shared Web cannot bridge into tools" do
     policy = %{
-      version: 1,
+      version: 2,
       bounded_contexts: [:flows, :sheets],
       classification_roots: classification_roots(),
       boundaries: %{
@@ -152,8 +246,10 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       forbidden_dependencies: protected_dependencies([:flows, :sheets]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: [],
-      exceptions: []
+      globally_allowed_technical_targets: [],
+      additional_durable_contract_targets: [],
+      durable_contracts: [],
+      migration_exceptions: []
     }
 
     graph = %{
@@ -182,7 +278,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
   test "presentation adapters may encode domain values but domains cannot import LiveVue adapters" do
     policy = %{
-      version: 1,
+      version: 2,
       bounded_contexts: [:flows],
       classification_roots: classification_roots(),
       boundaries: %{
@@ -197,8 +293,10 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       forbidden_dependencies: protected_dependencies([:flows]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: [],
-      exceptions: []
+      globally_allowed_technical_targets: [],
+      additional_durable_contract_targets: [],
+      durable_contracts: [],
+      migration_exceptions: []
     }
 
     graph = %{
@@ -220,6 +318,29 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              infrastructure: MapSet.new(),
              web_infrastructure: MapSet.new()
            }
+  end
+
+  test "committed policy makes context-owned Web surfaces enter through the facade" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    graph = %{
+      "lib/storyarn_web/live/flow_live/show.ex" => %{
+        "lib/storyarn/flows.ex" => "runtime",
+        "lib/storyarn/flows/flow.ex" => "runtime"
+      },
+      "lib/storyarn_web/live_vue_encoders.ex" => %{
+        "lib/storyarn/flows/flow.ex" => "compile"
+      }
+    }
+
+    assert DependencyPolicy.forbidden_edges(graph, policy).flows ==
+             MapSet.new([
+               {
+                 "lib/storyarn_web/live/flow_live/show.ex",
+                 "lib/storyarn/flows/flow.ex",
+                 "runtime"
+               }
+             ])
   end
 
   test "comparison rejects new and stale edges" do
@@ -400,14 +521,14 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     end
   end
 
-  test "always-allowed targets cannot bypass a bounded context" do
-    assert_raise ArgumentError, ~r/always-allowed target belongs to bounded context :flows/, fn ->
-      policy = %{policy() | always_allowed_targets: ["lib/storyarn/flows/flow.ex"]}
+  test "globally allowed technical targets cannot bypass a bounded context" do
+    assert_raise ArgumentError, ~r/globally allowed technical target belongs to bounded context :flows/, fn ->
+      policy = %{policy() | globally_allowed_technical_targets: ["lib/storyarn/flows/flow.ex"]}
       DependencyPolicy.validate_policy!(policy)
     end
 
-    assert_raise ArgumentError, ~r/always-allowed target is not classified/, fn ->
-      policy = %{policy() | always_allowed_targets: ["lib/storyarn/new_technical_helper.ex"]}
+    assert_raise ArgumentError, ~r/globally allowed technical target is not classified/, fn ->
+      policy = %{policy() | globally_allowed_technical_targets: ["lib/storyarn/new_technical_helper.ex"]}
       DependencyPolicy.validate_policy!(policy)
     end
   end
@@ -574,9 +695,9 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     end
   end
 
-  defp policy(exceptions \\ []) do
+  defp policy(migration_exceptions \\ []) do
     %{
-      version: 1,
+      version: 2,
       bounded_contexts: [:flows, :scenes, :sheets],
       classification_roots: classification_roots(),
       boundaries: %{
@@ -590,8 +711,10 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       forbidden_dependencies: protected_dependencies([:flows, :scenes, :sheets]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: ["lib/storyarn/repo.ex"],
-      exceptions: exceptions
+      globally_allowed_technical_targets: ["lib/storyarn/repo.ex"],
+      additional_durable_contract_targets: [],
+      durable_contracts: [],
+      migration_exceptions: migration_exceptions
     }
   end
 

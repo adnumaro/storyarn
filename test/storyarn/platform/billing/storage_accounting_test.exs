@@ -20,8 +20,8 @@ defmodule Storyarn.Platform.Billing.StorageAccountingTest do
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   @checksum String.duplicate("a", 64)
 
@@ -1195,6 +1195,49 @@ defmodule Storyarn.Platform.Billing.StorageAccountingTest do
       usage = Billing.workspace_storage_usage(context.workspace.id)
       assert usage.active_reservations.bytes == 0
       assert usage.current_assets.bytes == 0
+    end
+
+    test "restore prelock exposes only the public scalar lock contract", context do
+      snapshot = insert_full_snapshot!(context.project, 1, %{project: 10, metadata: 10, assets: 0})
+      assert {:ok, reservation} = reserve(context, "scalar-prelock", "restore_staging", 0, snapshot)
+      restore = insert_running_restore!(context, snapshot, reservation)
+
+      expected_lock_context = %{
+        workspace_id: context.workspace.id,
+        project_id: context.project.id,
+        project_owner_id: context.project.owner_id,
+        project_deleted_by_id: context.project.deleted_by_id
+      }
+
+      assert {:ok, %{result: completed_owner}} =
+               Billing.commit_project_snapshot_restore_reservation(
+                 reservation.id,
+                 reservation.lease_token,
+                 reservation.generation,
+                 0,
+                 fn lock_context ->
+                   send(self(), {:restore_prelock_context, lock_context})
+                   {:ok, :actors_prelocked}
+                 end,
+                 fn _reservation, :actors_prelocked ->
+                   completed =
+                     restore
+                     |> ProjectSnapshotRestore.complete_changeset(
+                       %{
+                         result_digest: String.duplicate("b", 64),
+                         restored_asset_count: 0
+                       },
+                       TimeHelpers.now()
+                     )
+                     |> Repo.update!()
+
+                   {:ok, completed}
+                 end
+               )
+
+      assert_receive {:restore_prelock_context, ^expected_lock_context}
+      assert completed_owner.id == restore.id
+      assert completed_owner.status == "completed"
     end
 
     test "database rejects storage-start evidence on a zero-byte export lease", context do

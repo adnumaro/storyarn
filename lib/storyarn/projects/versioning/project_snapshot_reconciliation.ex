@@ -11,11 +11,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   import Ecto.Query
 
   alias Ecto.Multi
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
+  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotLifecycle
@@ -24,8 +24,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Workers.InspectProjectSnapshotsWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
   require Logger
 
@@ -41,9 +41,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   @max_bigint 9_223_372_036_854_775_807
   @inventory_digest_seed String.duplicate("0", 64)
   @provider_prefix "projects/"
-  @build_worker "Storyarn.Projects.Workers.BuildProjectSnapshotWorker"
+  @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
   @archive_build_queue "snapshot_archives"
-  @inspection_worker "Storyarn.Projects.Workers.InspectProjectSnapshotsWorker"
+  @inspection_worker "Storyarn.Workers.InspectProjectSnapshotsWorker"
   @active_build_job_states ~w(available scheduled executing retryable)
   @finding_insert_fields ProjectSnapshotReconciliationFinding.__schema__(:fields) -- [:id]
   @snapshot_key_pattern ~r<\Aprojects/([1-9]\d*)/snapshots/archives/v2/(ready|staging)/([A-Za-z0-9_-]{16})/(.+)\z>
@@ -1471,7 +1471,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp operation_prefixes_match?(reservation, subject) do
-    case Billing.storage_reservation_object_prefixes(reservation) do
+    case PlatformStorageReservations.object_prefixes(reservation) do
       {:ok, %{staging: staging, ready: ready}} ->
         staging == subject.prefix and ready == subject.ready_prefix
 
@@ -1481,7 +1481,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp operation_prefix_owned?(reservation, prefix) do
-    case Billing.storage_reservation_object_prefixes(reservation) do
+    case PlatformStorageReservations.object_prefixes(reservation) do
       {:ok, prefixes} -> prefix in Map.values(prefixes)
       _invalid -> false
     end

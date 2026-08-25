@@ -69,6 +69,18 @@ defmodule Storyarn.Workspaces.WorkspaceTest do
       refute cs.valid?
       assert errors_on(cs)[:description]
     end
+
+    test "does not seed a banner outside the banner lifecycle" do
+      cs =
+        Workspace.create_changeset(%Workspace{}, %{
+          name: "My Workspace",
+          slug: "my-workspace",
+          banner_url: "https://untrusted.example/banner.png"
+        })
+
+      assert cs.valid?
+      refute Ecto.Changeset.get_change(cs, :banner_url)
+    end
   end
 
   # =============================================================================
@@ -206,6 +218,33 @@ defmodule Storyarn.Workspaces.WorkspaceTest do
       # slug is not in update_changeset's cast list, so change is ignored
       assert cs.valid?
       refute Ecto.Changeset.get_change(cs, :slug)
+    end
+
+    test "does not allow generic updates to bypass the banner lifecycle" do
+      cs =
+        Workspace.update_changeset(%Workspace{name: "Test", banner_url: nil}, %{
+          banner_url: "https://untrusted.example/banner.png"
+        })
+
+      assert cs.valid?
+      refute Ecto.Changeset.get_change(cs, :banner_url)
+    end
+  end
+
+  describe "banner_changeset/2" do
+    test "changes only the persisted banner URL" do
+      cs =
+        Workspace.banner_changeset(%Workspace{name: "Test", banner_url: nil}, %{
+          banner_url: "workspace-banner-test:///workspaces/test/banner/banner.png",
+          name: "Bypassed name"
+        })
+
+      assert cs.valid?
+
+      assert Ecto.Changeset.get_change(cs, :banner_url) ==
+               "workspace-banner-test:///workspaces/test/banner/banner.png"
+
+      refute Ecto.Changeset.get_change(cs, :name)
     end
   end
 

@@ -3,25 +3,25 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
   Builds the small, explicit notification read model consumed by the app shell.
 
   Notification schemas never cross the LiveVue boundary. This module exposes
-  only localized-copy inputs after `Storyarn.Platform.Notifications` has filtered by
+  only localized-copy inputs after `Storyarn.Platform` has filtered by
   current access.
   """
 
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
 
   @type filter :: :all | :unread
 
   @spec client_state(Storyarn.Accounts.Scope.t(), filter()) :: map()
   def client_state(scope, filter \\ :all) do
     notifications =
-      Notifications.list_notifications(scope,
+      Platform.list_notifications(scope,
         unread_only: filter == :unread
       )
 
     %{
       filter: Atom.to_string(filter),
       items: Enum.map(notifications, &serialize/1),
-      unreadCount: Notifications.unread_count(scope)
+      unreadCount: Platform.unread_notification_count(scope)
     }
   end
 

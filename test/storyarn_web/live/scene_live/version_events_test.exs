@@ -177,9 +177,13 @@ defmodule StoryarnWeb.SceneLive.VersionEventsTest do
       assert Scenes.count_versions(context.scene.id) == 1
     end
 
-    test "review defers actor validation and safety creation until confirmation", context do
-      invalid_user = %{context.user | id: -1}
-      socket = restore_socket(%{context | user: invalid_user}, "editor")
+    test "review uses the canonical editor membership and defers safety creation", context do
+      editor = user_fixture()
+      membership_fixture(context.project, editor, "editor")
+
+      # The cached role is deliberately stale: authorization must use the
+      # persisted membership for this project.
+      socket = restore_socket(%{context | user: editor}, "viewer")
 
       assert {:noreply, result} =
                VersionEvents.handle_review_restore(
@@ -219,7 +223,12 @@ defmodule StoryarnWeb.SceneLive.VersionEventsTest do
     end
 
     test "a viewer cannot forge any restore event", context do
-      socket = restore_socket(context, "viewer")
+      viewer = user_fixture()
+      membership_fixture(context.project, viewer, "viewer")
+
+      # A forged/stale editor assign must not override the canonical viewer
+      # membership re-read by every restore event.
+      socket = restore_socket(%{context | user: viewer}, "editor")
       params = restore_params(context.version, "viewer-request")
       config = scene_version_config()
 

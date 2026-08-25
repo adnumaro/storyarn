@@ -3,6 +3,16 @@ defmodule Storyarn.Projects.Assets.UploadPolicyTest do
 
   alias Storyarn.Projects.Assets.UploadPolicy
 
+  test "request size is derived from the shared compile-time HTTP limit" do
+    limits = Application.fetch_env!(:storyarn, :project_asset_upload_limits)
+
+    assert UploadPolicy.max_file_size() == Keyword.fetch!(limits, :max_image_size)
+
+    assert UploadPolicy.max_request_size() ==
+             Keyword.fetch!(limits, :max_image_size) +
+               Keyword.fetch!(limits, :multipart_request_overhead)
+  end
+
   describe "validate_base64_size/2" do
     test "accepts the maximum encoded size for the profile" do
       profile = %{max_file_size: 3}

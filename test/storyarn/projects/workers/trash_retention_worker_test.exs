@@ -13,10 +13,10 @@ defmodule Storyarn.Workers.TrashRetentionWorkerTest do
   alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
-  alias Storyarn.Projects.Workers.TrashRetentionWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Workers.TrashRetentionWorker
 
   setup do
     original_config = Application.get_env(:storyarn, TrashRetentionWorker)

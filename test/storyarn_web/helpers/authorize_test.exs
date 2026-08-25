@@ -1,7 +1,12 @@
 defmodule StoryarnWeb.Helpers.AuthorizeTest do
-  use ExUnit.Case, async: true
+  use Storyarn.DataCase, async: true
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Accounts.Scope
+  alias Storyarn.Repo
   alias StoryarnWeb.Helpers.Authorize
 
   defp socket_with_membership(role) do
@@ -19,12 +24,6 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
   defp socket_with_nil_membership do
     %Socket{
       assigns: %{__changed__: %{}, flash: %{}, membership: nil}
-    }
-  end
-
-  defp socket_with_can_edit(can_edit) do
-    %Socket{
-      assigns: %{__changed__: %{}, flash: %{}, can_edit: can_edit}
     }
   end
 
@@ -50,6 +49,43 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
     test "denies when membership is nil" do
       assert {:error, :unauthorized} =
                Authorize.authorize(socket_with_nil_membership(), :edit_content)
+    end
+
+    test "reauthorizes sticky child LiveViews that carry only project_id" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      editor = user_fixture()
+      membership = membership_fixture(project, editor, "editor")
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          current_scope: Scope.for_user(editor),
+          project_id: project.id,
+          membership: %{role: "editor"}
+        }
+      }
+
+      assert :ok = Authorize.authorize(socket, :edit_content)
+      Repo.update!(Ecto.Changeset.change(membership, role: "viewer"))
+
+      assert {:error, :unauthorized} = Authorize.authorize(socket, :edit_content)
+    end
+
+    test "a scoped socket without a resource identity fails closed" do
+      user = user_fixture()
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          current_scope: Scope.for_user(user),
+          membership: %{role: "owner"}
+        }
+      }
+
+      assert {:error, :unauthorized} = Authorize.authorize(socket, :edit_content)
     end
   end
 
@@ -100,8 +136,9 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
       assert :ok = Authorize.authorize(socket_with_membership("owner"), :manage_workspace)
     end
 
-    test "allows admin" do
-      assert :ok = Authorize.authorize(socket_with_membership("admin"), :manage_workspace)
+    test "denies admin because workspace management is owner-only" do
+      assert {:error, :unauthorized} =
+               Authorize.authorize(socket_with_membership("admin"), :manage_workspace)
     end
 
     test "denies member" do
@@ -180,8 +217,8 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
   end
 
   describe "with_edit_authorization/2" do
-    test "executes function when can_edit is true" do
-      socket = socket_with_can_edit(true)
+    test "executes function for a canonically authorized membership" do
+      socket = socket_with_membership("editor")
 
       result =
         Authorize.with_edit_authorization(socket, fn socket ->
@@ -191,8 +228,8 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
       assert {:noreply, %Socket{}} = result
     end
 
-    test "returns unauthorized flash when can_edit is false" do
-      socket = socket_with_can_edit(false)
+    test "returns unauthorized flash for a read-only membership" do
+      socket = socket_with_membership("viewer")
 
       result =
         Authorize.with_edit_authorization(socket, fn _socket ->
@@ -203,8 +240,10 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
       assert result_socket.assigns.flash["error"]
     end
 
-    test "returns unauthorized flash when can_edit is nil" do
-      socket = socket_with_can_edit(nil)
+    test "does not trust a stale can_edit assign without membership" do
+      socket = %Socket{
+        assigns: %{__changed__: %{}, flash: %{}, can_edit: true}
+      }
 
       result =
         Authorize.with_edit_authorization(socket, fn _socket ->

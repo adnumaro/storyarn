@@ -11,14 +11,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotPolicy
@@ -26,8 +27,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Workers.CleanupProjectSnapshotWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.CleanupProjectSnapshotWorker
 
   # R2 lists at most 1,000 objects per page. Matching that provider bound keeps
   # a maximum snapshot to 21 durable row transitions per delete pass instead
@@ -40,13 +41,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @terminal_job_states ~w(completed discarded cancelled)
   @active_job_states ~w(available scheduled executing retryable)
   @cleanup_worker inspect(CleanupProjectSnapshotWorker)
-  @build_worker "Storyarn.Projects.Workers.BuildProjectSnapshotWorker"
+  @build_worker "Storyarn.Workers.BuildProjectSnapshotWorker"
   @archive_build_queue "snapshot_archives"
   @build_recovery_quarantine_seconds 15 * 60
   @cleanup_job_rescue_after_seconds 3 * 60 * 60
   @maintenance_workers [
-    "Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker",
-    "Storyarn.Projects.Workers.ReconcileProjectSnapshotCleanupWorker"
+    "Storyarn.Workers.ProjectSnapshotRetentionWorker",
+    "Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker"
   ]
   @maintenance_job_stale_after_seconds 30 * 60
   @hard_delete_reasons ~w(project_hard_delete workspace_hard_delete)a
@@ -122,10 +123,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
           {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
   def delete(%{user: %{id: user_id}} = scope, %Project{} = project, snapshot_id)
       when is_integer(user_id) and is_integer(snapshot_id) and snapshot_id > 0 do
-    case Projects.authorize(scope, project.id, :manage_project) do
+    case Memberships.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->
         result =
-          Billing.transact_with_workspace_lock(authorized_project.workspace_id, fn _workspace ->
+          Platform.transact_with_workspace_lock(authorized_project.workspace_id, fn _workspace ->
             delete_user_snapshot_locked(authorized_project, snapshot_id, user_id)
           end)
 
@@ -152,14 +153,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
       not Repo.in_transaction?() ->
         {:error, :snapshot_cleanup_transaction_required}
 
-      not Billing.workspace_lock_held?(workspace_id) ->
+      not Platform.workspace_lock_held?(workspace_id) ->
         {:error, :snapshot_cleanup_workspace_lock_required}
 
       snapshot.lifecycle_state not in @deletable_user_states ->
         {:error, :snapshot_not_deletable}
 
       true ->
-        with :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+        with :ok <- Platform.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
              :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
           create_cleanup_and_delete(snapshot, workspace_id, :abandoned_import, :system)
         end
@@ -180,7 +181,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @spec prepare_workspace_hard_delete(Workspace.t()) ::
           {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
   def prepare_workspace_hard_delete(%{id: workspace_id}) when is_integer(workspace_id) do
-    if Billing.workspace_lock_held?(workspace_id) do
+    if Platform.workspace_lock_held?(workspace_id) do
       prepare_workspace_hard_delete_locked(workspace_id)
     else
       {:error, :snapshot_cleanup_workspace_lock_required}
@@ -260,7 +261,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
         result =
-          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+          Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
             delete_retention_candidate_locked(candidate, database_clock_now())
           end)
 
@@ -382,7 +383,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
         result =
-          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+          Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
             delete_expired_build_candidate_locked(candidate, database_clock_now(), namespace_expectation)
           end)
 
@@ -706,7 +707,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     with %Project{} <- lock_active_project(project.id, project.workspace_id),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project.id, snapshot_id),
          true <- snapshot.lifecycle_state in @deletable_user_states,
-         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
+         :ok <- Platform.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id),
          {:ok, intent} <- create_cleanup_and_delete(snapshot, project.workspace_id, :user_delete, {:user, user_id}) do
       {:ok, {:created, intent}}
@@ -719,7 +720,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   defp prepare_project_hard_delete(%Project{id: project_id, workspace_id: workspace_id}, reason)
        when reason in @hard_delete_reasons and is_integer(project_id) and is_integer(workspace_id) do
-    if Billing.workspace_lock_held?(workspace_id) do
+    if Platform.workspace_lock_held?(workspace_id) do
       prepare_project_hard_delete_locked(project_id, workspace_id, reason)
     else
       {:error, :snapshot_cleanup_workspace_lock_required}
@@ -735,7 +736,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp prepare_hard_delete_snapshot(snapshot, {:ok, intents}, workspace_id, reason) do
-    with :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
+    with :ok <- Platform.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
          :ok <- ensure_hard_delete_operations_supported(snapshot),
          {:ok, intent} <- create_cleanup_and_delete(snapshot, workspace_id, reason, :system) do
       {:cont, {:ok, [intent | intents]}}
@@ -806,7 +807,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     with %Project{} = project <- lock_active_project(project_id, Map.get(candidate, :workspace_id)),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          :ok <- revalidate_retention_candidate(snapshot, project, candidate, now),
-         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
+         :ok <- Platform.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
       snapshot
       |> create_cleanup_and_delete(project.workspace_id, :retention, :system)
@@ -825,7 +826,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project_id, snapshot_id),
          %StorageReservation{} = reservation <- lock_build_reservation(snapshot_id, candidate),
          :ok <- revalidate_expired_build_candidate(snapshot, project, reservation, candidate, now),
-         :ok <- Billing.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
+         :ok <- Platform.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_expired_build_operation_supported(snapshot, reservation) do
       snapshot
       |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system, namespace_expectation)
@@ -1078,7 +1079,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     Enum.reduce_while(reservations, :ok, fn reservation, :ok ->
       with :ok <- prepare_publication_claim_for_release(reservation),
            {:ok, _released} <-
-             Billing.release_storage_reservation(
+             PlatformStorageReservations.release(
                reservation.id,
                reservation.lease_token,
                reservation.generation,
@@ -1111,7 +1112,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
         cleanup_scope: Map.put(scope, :cleanup_request_id, cleanup_request_id)
       }
 
-      case Billing.release_storage_reservation(
+      case PlatformStorageReservations.release(
              reservation.id,
              reservation.lease_token,
              reservation.generation,

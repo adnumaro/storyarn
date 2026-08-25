@@ -50,6 +50,14 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       Application.put_env(:storyarn, :storage, [])
       assert Storage.adapter() == Local
     end
+
+    test "reports direct external upload support without leaking the concrete adapter to callers" do
+      Application.put_env(:storyarn, :storage, adapter: :local)
+      refute Storage.external_upload?()
+
+      Application.put_env(:storyarn, :storage, adapter: :r2)
+      assert Storage.external_upload?()
+    end
   end
 
   describe "multipart cleanup policy" do

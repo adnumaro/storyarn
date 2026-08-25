@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.BuildProjectSnapshotWorkerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   test "uses the canonical archive queue" do
     assert Keyword.fetch!(BuildProjectSnapshotWorker.__opts__(), :queue) == :snapshot_archives

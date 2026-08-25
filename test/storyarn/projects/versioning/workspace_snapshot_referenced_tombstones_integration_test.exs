@@ -26,8 +26,6 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Projects.Workers.ImportProjectSnapshotWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Scene
@@ -36,6 +34,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Sheet
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.ImportProjectSnapshotWorker
 
   @type_rank %{"sheet" => 0, "flow" => 1, "scene" => 2, "block" => 3, "flow_node" => 4}
   @entry_keys ~w(deleted_at entity_type id owner snapshot)

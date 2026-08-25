@@ -1,6 +1,8 @@
 defmodule Storyarn.Projects.Memberships do
   @moduledoc false
 
+  import Ecto.Query, warn: false
+
   alias Storyarn.Projects.MembershipOperations
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
@@ -74,5 +76,85 @@ defmodule Storyarn.Projects.Memberships do
 
   def remove_member(membership), do: MembershipOperations.remove_member(membership)
 
-  def authorize(scope, project_id, action), do: MembershipOperations.authorize(@config, scope, project_id, action)
+  def authorize(%{user: %{id: user_id}}, project_id, action)
+      when is_integer(project_id) and project_id > 0 and is_integer(user_id) and user_id > 0 do
+    with %Project{} = project <-
+           Repo.one(from(project in Project, where: project.id == ^project_id and is_nil(project.deleted_at))),
+         %ProjectMembership{role: role} = membership <-
+           get_effective_membership(project.id, user_id, project.workspace_id),
+         true <- ProjectMembership.can?(role, action) do
+      {:ok, project, membership}
+    else
+      nil -> {:error, :not_found}
+      false -> {:error, :unauthorized}
+    end
+  end
+
+  def authorize(_scope, _project_id, _action), do: {:error, :unauthorized}
+
+  @doc false
+  @spec authorize_locked(map(), pos_integer(), atom()) ::
+          {:ok, Project.t(), ProjectMembership.t()}
+          | {:error, :not_found | :unauthorized | :authorization_transaction_required}
+  def authorize_locked(%{user: %{id: user_id}}, project_id, action)
+      when is_integer(project_id) and project_id > 0 and is_integer(user_id) and user_id > 0 do
+    if Repo.in_transaction?() do
+      with %Project{} = project <- lock_project(project_id),
+           %ProjectMembership{role: role} = membership <- locked_effective_membership(project, user_id),
+           true <- ProjectMembership.can?(role, action) do
+        {:ok, project, membership}
+      else
+        nil -> {:error, :not_found}
+        false -> {:error, :unauthorized}
+      end
+    else
+      {:error, :authorization_transaction_required}
+    end
+  end
+
+  def authorize_locked(_scope, _project_id, _action), do: {:error, :unauthorized}
+
+  defp lock_project(project_id) do
+    Repo.one(
+      from(project in Project,
+        where: project.id == ^project_id and is_nil(project.deleted_at),
+        lock: "FOR SHARE"
+      )
+    )
+  end
+
+  defp locked_effective_membership(%Project{} = project, user_id) do
+    case lock_project_membership(project.id, user_id) do
+      %ProjectMembership{} = membership -> membership
+      nil -> lock_workspace_membership(project, user_id)
+    end
+  end
+
+  defp lock_project_membership(project_id, user_id) do
+    Repo.one(
+      from(membership in ProjectMembership,
+        where: membership.project_id == ^project_id and membership.user_id == ^user_id,
+        lock: "FOR SHARE"
+      )
+    )
+  end
+
+  defp lock_workspace_membership(%Project{} = project, user_id) do
+    case Repo.one(
+           from(membership in WorkspaceMembership,
+             where: membership.workspace_id == ^project.workspace_id and membership.user_id == ^user_id,
+             lock: "FOR SHARE"
+           )
+         ) do
+      %WorkspaceMembership{role: workspace_role} ->
+        %ProjectMembership{
+          project_id: project.id,
+          user_id: user_id,
+          role: Map.get(@workspace_to_project_role, workspace_role, "viewer")
+        }
+
+      nil ->
+        nil
+    end
+  end
 end

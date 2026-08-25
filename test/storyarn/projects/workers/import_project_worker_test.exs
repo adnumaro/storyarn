@@ -7,8 +7,8 @@ defmodule Storyarn.Workers.ImportProjectWorkerTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.ProjectImportAttempt
-  alias Storyarn.Projects.Workers.ImportProjectWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.ImportProjectWorker
 
   test "snapshot snoozes preserve the three-attempt import failure budget" do
     assert Keyword.fetch!(ImportProjectWorker.__opts__(), :queue) == :imports

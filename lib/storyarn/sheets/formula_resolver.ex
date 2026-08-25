@@ -13,8 +13,8 @@ defmodule Storyarn.Sheets.FormulaResolver do
   """
 
   alias Storyarn.Platform.Shared.MapUtils
-  alias Storyarn.Sheets
   alias Storyarn.Sheets.FormulaEngine
+  alias Storyarn.Sheets.SheetQueries
 
   @doc """
   Injects `__result` and `__resolved` into every formula cell of a batch of table
@@ -47,7 +47,7 @@ defmodule Storyarn.Sheets.FormulaResolver do
       end)
       |> Enum.uniq()
 
-    if cross_refs == [], do: %{}, else: Sheets.resolve_variable_values(project_id, cross_refs)
+    if cross_refs == [], do: %{}, else: SheetQueries.resolve_variable_values(project_id, cross_refs)
   end
 
   defp enrich_table(%{columns: columns, rows: rows} = data, cross_values) do

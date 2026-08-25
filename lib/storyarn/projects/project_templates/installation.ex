@@ -4,10 +4,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKeyLock
@@ -15,6 +13,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectTemplates.Artifact
   alias Storyarn.Projects.ProjectTemplates.Audit
   alias Storyarn.Projects.ProjectTemplates.Authorization
@@ -24,9 +23,9 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   alias Storyarn.Projects.Versioning.Builders.AssetCopyError
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
+  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   require Logger
 
@@ -52,7 +51,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
          {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
-         :ok <- Billing.can_create_project?(workspace) do
+         :ok <- Platform.can_create_project?(workspace) do
       name = install_name(attrs, version)
       source = install_source(attrs)
       idempotency_key = idempotency_key(scope.user.id, workspace.id, version.id, name)
@@ -110,7 +109,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
          {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
-         :ok <- Billing.can_create_project?(workspace),
+         :ok <- Platform.can_create_project?(workspace),
          {:ok, snapshot, asset_source_keys} <- load_verified_template_snapshot(version) do
       case instantiate_template_transaction(
              scope,
@@ -309,7 +308,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
                |> Keyword.merge(Keyword.take(opts, [:before_install_transaction_commit]))
                |> maybe_put_asset_source_keys(asset_source_keys)
              ) do
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         completed = get_install!(install.id)
         publish_finished(completed, project, started_at)
         {:ok, completed}
@@ -353,7 +352,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
            ),
          {:ok, _workspace, _membership} <-
            WorkspaceAccess.authorize(scope, install.workspace_id, :create_project) do
-      normalize_worker_authorization(Billing.can_create_project?(install.workspace))
+      normalize_worker_authorization(Platform.can_create_project?(install.workspace))
     end
   end
 
@@ -485,7 +484,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     try do
       result =
-        Billing.with_storage_accounting_lock(
+        Platform.with_storage_accounting_lock(
           workspace.id,
           fn _locked_workspace ->
             project = instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts)
@@ -580,7 +579,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   defp normalize_materialization_error(reason), do: {:error, {:asset_copy_failed, reason}}
 
   defp instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts) do
-    with :ok <- Projects.lock_and_check_workspace_capacity(workspace.id),
+    with :ok <- ProjectCrud.lock_and_check_workspace_capacity(workspace.id),
          :ok <- lock_and_authorize_instantiation(scope, version, workspace),
          {:ok, project} <- do_instantiate_template(scope, version, workspace, attrs, snapshot, opts) do
       project
@@ -745,7 +744,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
     if permanent? or attempt >= max_attempts do
       case fail_install(install, code, message, attempt, max_attempts) do
         {:ok, {failed, notification_outcome}} ->
-          Notifications.publish_committed(notification_outcome)
+          Platform.publish_notification_delivery(notification_outcome)
 
           log_terminal_failure(failed, code)
 
@@ -837,7 +836,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   end
 
   defp deliver_install_result(%ProjectTemplateInstall{} = install, project, requester, status) do
-    Notifications.deliver_async_result(
+    Platform.deliver_scoped_async_result(
       %{user: requester},
       project,
       %{

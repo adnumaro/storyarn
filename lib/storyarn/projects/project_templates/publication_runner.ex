@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKeyLock
@@ -21,13 +21,13 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.ProjectTemplates.TemplateQueries
   alias Storyarn.Projects.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Workers.PublishProjectTemplateWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.PublishProjectTemplateWorker
 
   def request_template_publication(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
-         :ok <- Billing.can_create_project_template?(source_project) do
+         :ok <- Platform.can_create_project_template?(source_project) do
       source_project
       |> new_template_publication_changeset(scope, attrs)
       |> insert_publication_and_enqueue()
@@ -44,7 +44,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
          :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
-         :ok <- Billing.can_create_project_template_version?(template) do
+         :ok <- Platform.can_create_project_template_version?(template) do
       template
       |> template_version_publication_changeset(scope, source_project, attrs)
       |> insert_publication_and_enqueue()
@@ -81,7 +81,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   def create_template_from_project(%{user: _} = scope, %Project{} = source_project, attrs) do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
-         :ok <- Billing.can_create_project_template?(source_project),
+         :ok <- Platform.can_create_project_template?(source_project),
          {:ok, publication} <-
            source_project
            |> new_template_publication_changeset(scope, attrs)
@@ -95,7 +95,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     with :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
-         :ok <- Billing.can_create_project_template_version?(template),
+         :ok <- Platform.can_create_project_template_version?(template),
          {:ok, publication} <-
            template
            |> template_version_publication_changeset(scope, source_project, %{
@@ -131,7 +131,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     with :ok <- Authorization.authorize_template_manager(scope, template),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
-         :ok <- Billing.can_create_project_template_version?(template),
+         :ok <- Platform.can_create_project_template_version?(template),
          {:ok, publication} <-
            template
            |> template_version_publication_changeset(scope, source_project, attrs)
@@ -586,7 +586,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   defp reauthorize_publication_for_finalize(scope, %ProjectTemplatePublication{mode: "new"}, source_project, nil) do
     with {:ok, _source_project} <-
            Authorization.authorize_source_project(scope, source_project),
-         :ok <- Billing.can_create_project_template?(source_project) do
+         :ok <- Platform.can_create_project_template?(source_project) do
       :ok
     else
       {:error, :limit_reached, details} ->
@@ -615,7 +615,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
            Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.authorize_template_manager(scope, template),
          :ok <- Authorization.ensure_template_source(template, source_project),
-         :ok <- Billing.can_create_project_template_version?(template) do
+         :ok <- Platform.can_create_project_template_version?(template) do
       :ok
     else
       {:error, :limit_reached, details} ->
@@ -744,7 +744,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   end
 
   defp authorize_publication_template_for_worker(scope, %ProjectTemplatePublication{mode: "new"}, source_project) do
-    case Billing.can_create_project_template?(source_project) do
+    case Platform.can_create_project_template?(source_project) do
       :ok ->
         {:ok, scope, source_project, nil}
 
@@ -763,7 +763,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     with %ProjectTemplate{status: "active"} = template <- template,
          :ok <- Authorization.authorize_template_manager(scope, template),
          :ok <- Authorization.ensure_template_source(template, source_project),
-         :ok <- Billing.can_create_project_template_version?(template) do
+         :ok <- Platform.can_create_project_template_version?(template) do
       {:ok, scope, source_project, template}
     else
       nil ->

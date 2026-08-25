@@ -1,31 +1,26 @@
 defmodule Storyarn.Projects.InvitationNotifier do
   @moduledoc """
-  Generic invitation email delivery serving the Projects context. The
-  workspace arm moved into `Storyarn.Workspaces.InvitationNotifier` during
-  the ENG-92 bounded-context migration.
+  Project invitation email delivery.
 
-  Parameterized by the config map from `InvitationOperations`, which must
-  additionally include:
-
-    - `parent_assoc` — atom key to fetch parent name (e.g., `:project` or `:workspace`)
-    - `template` — function name in `Storyarn.Platform.Emails.Templates` (e.g., `:project_invitation`)
+  The invitation intent and content remain inside Projects; Platform provides
+  only the technical mail transport.
   """
 
   import Swoosh.Email
 
-  alias Storyarn.Platform.Emails.Templates
   alias Storyarn.Platform.Mailer
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.InvitationEmail
 
   require Logger
 
   @seconds_per_day 86_400
 
   @doc """
-  Delivers an invitation email using the config's template function.
+  Delivers a project invitation email.
   """
-  def deliver_invitation(config, invitation, url, opts \\ []) do
-    entity_name = invitation |> Map.fetch!(config.parent_assoc) |> Map.fetch!(:name)
+  def deliver_invitation(invitation, url, opts \\ []) do
+    project_name = invitation.project.name
 
     inviter_name =
       Keyword.get_lazy(opts, :inviter_name, fn ->
@@ -38,14 +33,7 @@ defmodule Storyarn.Projects.InvitationNotifier do
     days = remaining_days(invitation.expires_at)
 
     {subject, html, text} =
-      apply(Templates, config.template, [
-        invitation.email,
-        entity_name,
-        inviter_name,
-        invitation.role,
-        url,
-        days
-      ])
+      InvitationEmail.render(project_name, inviter_name, invitation.role, url, days)
 
     deliver(invitation.email, subject, html, text)
   end

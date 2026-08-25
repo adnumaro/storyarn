@@ -10,17 +10,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageCleanupInventory
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageHash
   alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
@@ -41,9 +38,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Persistence.UserRecord, as: User
+  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.References
@@ -53,6 +52,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.References.VariableReferenceTracker
   alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Projects.SheetProjectTrash
+  alias Storyarn.Projects.StorageCleanupInventory
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Projects.Versioning.ProjectRecovery
@@ -154,7 +154,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     case bound_reservation(restore) do
       %StorageReservation{status: "active", storage_started_at: nil} = reservation ->
         release_fun =
-          Keyword.get(opts, :settlement_release_reservation, &Billing.release_storage_reservation/4)
+          Keyword.get(opts, :settlement_release_reservation, &PlatformStorageReservations.release/4)
 
         release_without_writes(reservation, release_fun)
 
@@ -169,7 +169,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
           )
 
         release_fun =
-          Keyword.get(opts, :settlement_release_reservation, &Billing.release_storage_reservation/4)
+          Keyword.get(opts, :settlement_release_reservation, &PlatformStorageReservations.release/4)
 
         release_stored_inventory(reservation, cleanup_keys, persist_fun, release_fun)
 
@@ -192,7 +192,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          true <- project.workspace_id == restore.workspace_id,
          %User{} = actor <- Repo.get(User, restore.requested_by_id),
          {:ok, %Project{id: project_id, deleted_at: nil}, _membership} <-
-           Projects.authorize(%{user: actor}, project.id, :manage_project),
+           Memberships.authorize(%{user: actor}, project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
          :ok <- validate_canonical_project_fields(project, archive_plan.project),
@@ -479,7 +479,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     cleanup_plan = %{temporary_prefix: reservation.storage_namespace, storage_keys: storage_keys}
 
     with {:ok, reservation} <-
-           Billing.mark_storage_reservation_started(
+           PlatformStorageReservations.mark_started(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -575,7 +575,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp commit_restore(context, tracker) do
     reservation = context.reservation
 
-    case Billing.commit_project_snapshot_restore_reservation(
+    case PlatformStorageReservations.commit_restore(
            reservation.id,
            reservation.lease_token,
            reservation.generation,
@@ -589,13 +589,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
-  defp prelock_localization_actors(%{workspace: _workspace, project: project}, context) do
-    required_actor_ids = [context.restore.requested_by_id, project.owner_id]
+  defp prelock_localization_actors(
+         %{
+           workspace_id: _workspace_id,
+           project_id: _project_id,
+           project_owner_id: project_owner_id,
+           project_deleted_by_id: project_deleted_by_id
+         },
+         context
+       ) do
+    required_actor_ids = [context.restore.requested_by_id, project_owner_id]
 
     case context.recovery.lock_materializable_localization_actors(
            context.archive_plan.project,
            required_actor_ids: required_actor_ids,
-           additional_actor_ids: Enum.reject([project.deleted_by_id], &is_nil/1)
+           additional_actor_ids: Enum.reject([project_deleted_by_id], &is_nil/1)
          ) do
       {:ok, %MapSet{} = actor_ids} ->
         if Enum.all?(required_actor_ids, &MapSet.member?(actor_ids, &1)),
@@ -1846,7 +1854,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
             reservation,
             reservation.cleanup_storage_keys,
             &StorageCompensation.persist_planned_cleanup_request/1,
-            &Billing.release_storage_reservation/4
+            &PlatformStorageReservations.release/4
           )
         else
           release_with_cleanup(reservation, context)
@@ -1863,7 +1871,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp release_active_reservation(_restore, _context), do: :ok
 
   defp release_without_writes(reservation) do
-    release_without_writes(reservation, &Billing.release_storage_reservation/4)
+    release_without_writes(reservation, &PlatformStorageReservations.release/4)
   end
 
   defp release_without_writes(reservation, release_fun) when is_function(release_fun, 4) do
@@ -1918,7 +1926,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
            }
          },
          {:ok, _reservation} <-
-           Billing.release_storage_reservation(
+           PlatformStorageReservations.release(
              reservation.id,
              reservation.lease_token,
              reservation.generation,

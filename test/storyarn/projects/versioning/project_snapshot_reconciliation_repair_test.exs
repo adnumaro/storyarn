@@ -19,11 +19,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Projects.Workers.CleanupProjectSnapshotWorker
-  alias Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker
   alias Storyarn.Repo
   alias Storyarn.SnapshotReadSwitchStorage
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.CleanupProjectSnapshotWorker
+  alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
   alias Storyarn.Workspaces
 
   setup do
@@ -109,7 +109,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
     assert Repo.aggregate(
              from(job in Oban.Job,
                where:
-                 job.worker == "Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker" and
+                 job.worker == "Storyarn.Workers.RepairProjectSnapshotFindingWorker" and
                    fragment("(?->>'action_id')::bigint = ?", job.args, ^action.id)
              ),
              :count

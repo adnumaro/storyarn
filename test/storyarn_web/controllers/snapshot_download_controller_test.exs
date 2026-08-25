@@ -13,9 +13,9 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshot
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Repo
   alias Storyarn.SnapshotReadSwitchStorage
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   setup :register_and_log_in_user
 

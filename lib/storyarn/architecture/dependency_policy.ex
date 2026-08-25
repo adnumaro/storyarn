@@ -22,6 +22,11 @@ defmodule Storyarn.Architecture.DependencyPolicy do
           to: String.t()
         }
 
+  @type reviewed_edges :: %{
+          durable_contracts: [edge()],
+          migration_exceptions: [edge()]
+        }
+
   @spec load!(Path.t()) :: map()
   def load!(path) do
     {policy, _binding} = Code.eval_file(path)
@@ -154,23 +159,55 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     end)
   end
 
+  @doc """
+  Returns reviewed policy edges that no longer exist in the xref graph.
+
+  Durable contracts and migration exceptions are deliberately checked outside
+  the forbidden-dependency baseline: both are exact reviewed edges, so neither
+  may survive in policy after the corresponding dependency disappears.
+  """
+  @spec stale_reviewed_edges(map(), map()) :: reviewed_edges()
+  def stale_reviewed_edges(graph, policy) when is_map(graph) do
+    policy = validate_policy!(policy)
+    actual_edges = graph_edges(graph)
+
+    %{
+      durable_contracts: stale_policy_edges(policy.durable_contracts, actual_edges),
+      migration_exceptions: stale_policy_edges(policy.migration_exceptions, actual_edges)
+    }
+  end
+
+  @doc "Returns the number of exact durable and temporary policy edges."
+  @spec reviewed_edge_counts(map()) :: %{
+          durable_contracts: non_neg_integer(),
+          migration_exceptions: non_neg_integer()
+        }
+  def reviewed_edge_counts(policy) do
+    policy = validate_policy!(policy)
+
+    %{
+      durable_contracts: count_policy_edges(policy.durable_contracts),
+      migration_exceptions: count_policy_edges(policy.migration_exceptions)
+    }
+  end
+
   @spec validate_policy!(map()) :: map()
   def validate_policy!(
         %{
-          version: 1,
+          version: 2,
           bounded_contexts: bounded_contexts,
           classification_roots: classification_roots,
           boundaries: boundaries,
           forbidden_dependencies: forbidden,
           zero_debt_consumers: zero_debt_consumers,
           isolated_contexts: isolated_contexts,
-          always_allowed_targets: allowed_targets,
-          exceptions: exceptions
+          globally_allowed_technical_targets: globally_allowed_technical_targets,
+          additional_durable_contract_targets: additional_durable_contract_targets,
+          durable_contracts: _durable_contracts,
+          migration_exceptions: _migration_exceptions
         } = policy
-      )
-      when is_list(bounded_contexts) and is_list(classification_roots) and is_map(boundaries) and is_map(forbidden) and
-             is_list(zero_debt_consumers) and is_list(isolated_contexts) and is_list(allowed_targets) and
-             is_list(exceptions) do
+      ) do
+    validate_policy_types!(policy)
     validate_classification_roots!(classification_roots)
     validate_boundaries!(boundaries, classification_roots)
     validate_forbidden_dependencies!(forbidden, boundaries)
@@ -178,18 +215,46 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     validate_protected_dependency_matrix!(bounded_contexts, forbidden)
     validate_zero_debt_consumers!(zero_debt_consumers, forbidden)
     validate_isolated_contexts!(isolated_contexts, bounded_contexts, zero_debt_consumers)
-    validate_allowed_targets!(allowed_targets, boundaries, bounded_contexts)
+    validate_globally_allowed_technical_targets!(globally_allowed_technical_targets, boundaries, bounded_contexts)
+
+    validate_additional_durable_contract_targets!(
+      additional_durable_contract_targets,
+      boundaries,
+      bounded_contexts
+    )
+
     validate_path_denials!(Map.get(policy, :path_denials, []))
     validate_directional_allowances!(Map.get(policy, :directional_allowances, []), boundaries)
-    Enum.each(exceptions, &validate_exception!(&1, boundaries))
+    validate_reviewed_edges!(policy)
     policy
   end
 
-  def validate_policy!(_policy) do
+  def validate_policy!(_policy), do: invalid_policy!()
+
+  defp validate_policy_types!(policy) do
+    valid_types? =
+      Enum.all?([
+        is_list(policy.bounded_contexts),
+        is_list(policy.classification_roots),
+        is_map(policy.boundaries),
+        is_map(policy.forbidden_dependencies),
+        is_list(policy.zero_debt_consumers),
+        is_list(policy.isolated_contexts),
+        is_list(policy.globally_allowed_technical_targets),
+        is_list(policy.additional_durable_contract_targets),
+        is_list(policy.durable_contracts),
+        is_list(policy.migration_exceptions)
+      ])
+
+    if valid_types?, do: :ok, else: invalid_policy!()
+  end
+
+  defp invalid_policy! do
     raise ArgumentError,
-          "architecture policy must define version 1, bounded_contexts, boundaries, " <>
+          "architecture policy must define version 2, bounded_contexts, boundaries, " <>
             "classification_roots, forbidden_dependencies, zero_debt_consumers, isolated_contexts, " <>
-            "always_allowed_targets, and exceptions"
+            "globally_allowed_technical_targets, additional_durable_contract_targets, " <>
+            "durable_contracts, and migration_exceptions"
   end
 
   defp forbidden?(_source, nil, _target, _target_boundary, _kind, _policy), do: false
@@ -198,9 +263,9 @@ defmodule Storyarn.Architecture.DependencyPolicy do
 
   defp forbidden?(source, source_boundary, target, target_boundary, kind, policy) do
     target_boundary in Map.get(policy.forbidden_dependencies, source_boundary, []) and
-      not matches_any_root?(target, policy.always_allowed_targets) and
+      not matches_any_root?(target, policy.globally_allowed_technical_targets) and
       not directional_allowance?(source, target, kind, Map.get(policy, :directional_allowances, [])) and
-      not exception?(source, target, kind, policy.exceptions)
+      not reviewed_edge?(source, target, kind, policy)
   end
 
   defp directional_allowance?(source, target, kind, allowances) do
@@ -227,7 +292,7 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     forbidden_edge? =
       source_boundary != nil and Map.has_key?(edges, source_boundary) and
         ((path_denied?(source, target, kind, Map.get(policy, :path_denials, [])) and
-            not exception?(source, target, kind, policy.exceptions)) or
+            not reviewed_edge?(source, target, kind, policy)) or
            forbidden?(source, source_boundary, target, target_boundary, kind, policy))
 
     if forbidden_edge? do
@@ -245,9 +310,9 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     end)
   end
 
-  defp exception?(source, target, kind, exceptions) do
-    Enum.any?(exceptions, fn exception ->
-      exception.source == source and exception.target == target and kind in exception.kinds
+  defp reviewed_edge?(source, target, kind, policy) do
+    Enum.any?(policy.durable_contracts ++ policy.migration_exceptions, fn contract ->
+      contract.source == source and contract.target == target and kind in contract.kinds
     end)
   end
 
@@ -443,23 +508,63 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     end
   end
 
-  defp validate_allowed_targets!(allowed_targets, boundaries, bounded_contexts) do
-    Enum.each(allowed_targets, fn target ->
+  defp validate_globally_allowed_technical_targets!(targets, boundaries, bounded_contexts) do
+    Enum.each(targets, fn target ->
       validate_root!(target)
       target_boundary = boundary_for(target, boundaries)
 
       cond do
+        String.ends_with?(target, "/") ->
+          raise ArgumentError,
+                "globally allowed technical targets must name one exact file: #{target}"
+
         is_nil(target_boundary) ->
-          raise ArgumentError, "always-allowed target is not classified: #{target}"
+          raise ArgumentError, "globally allowed technical target is not classified: #{target}"
 
         target_boundary in bounded_contexts ->
           raise ArgumentError,
-                "always-allowed target belongs to bounded context #{inspect(target_boundary)}: #{target}"
+                "globally allowed technical target belongs to bounded context " <>
+                  "#{inspect(target_boundary)}: #{target}"
 
         true ->
           :ok
       end
     end)
+  end
+
+  defp validate_additional_durable_contract_targets!(contracts, boundaries, bounded_contexts) do
+    Enum.each(contracts, fn
+      %{target: target, reason: reason} when is_binary(target) and is_binary(reason) and reason != "" ->
+        validate_root!(target)
+        target_boundary = boundary_for(target, boundaries)
+
+        cond do
+          String.ends_with?(target, "/") ->
+            raise ArgumentError, "additional durable contract target must name one exact file: #{target}"
+
+          is_nil(target_boundary) ->
+            raise ArgumentError, "additional durable contract target is not classified: #{target}"
+
+          target_boundary in bounded_contexts ->
+            raise ArgumentError,
+                  "additional durable contract target belongs to bounded context " <>
+                    "#{inspect(target_boundary)}: #{target}"
+
+          true ->
+            :ok
+        end
+
+      invalid ->
+        raise ArgumentError, "invalid additional durable contract target: #{inspect(invalid)}"
+    end)
+
+    targets = Enum.map(contracts, & &1.target)
+    duplicates = targets -- Enum.uniq(targets)
+
+    if duplicates != [] do
+      raise ArgumentError,
+            "additional durable contract targets must be unique: #{inspect(Enum.uniq(duplicates))}"
+    end
   end
 
   defp validate_path_denials!(denials) when is_list(denials) do
@@ -589,21 +694,113 @@ defmodule Storyarn.Architecture.DependencyPolicy do
     end)
   end
 
-  defp validate_exception!(%{source: source, target: target, kinds: kinds, reason: reason}, boundaries)
+  defp validate_reviewed_edges!(policy) do
+    Enum.each(policy.durable_contracts, fn contract ->
+      validate_reviewed_edge!(contract, policy.boundaries)
+
+      if not durable_contract_target?(contract.target, policy) do
+        raise ArgumentError,
+              "durable contract target must be a bounded-context root facade, a globally allowed " <>
+                "technical target, or an additional durable contract target: #{contract.target}"
+      end
+    end)
+
+    Enum.each(policy.migration_exceptions, fn exception ->
+      validate_reviewed_edge!(exception, policy.boundaries)
+
+      if durable_contract_target?(exception.target, policy) do
+        raise ArgumentError,
+              "migration exception points to a durable contract target; move it to durable_contracts: " <>
+                "#{exception.source} -> #{exception.target}"
+      end
+    end)
+
+    durable_keys = reviewed_edge_keys(policy.durable_contracts)
+    migration_keys = reviewed_edge_keys(policy.migration_exceptions)
+
+    validate_unique_reviewed_edges!(durable_keys, "durable contracts")
+    validate_unique_reviewed_edges!(migration_keys, "migration exceptions")
+
+    overlaps =
+      durable_keys
+      |> MapSet.new()
+      |> MapSet.intersection(MapSet.new(migration_keys))
+      |> Enum.sort()
+
+    if overlaps != [] do
+      raise ArgumentError,
+            "reviewed dependency edges cannot be both durable contracts and migration exceptions: " <>
+              inspect(overlaps)
+    end
+  end
+
+  defp durable_contract_target?(target, policy) do
+    target in root_facade_targets(policy) or target in policy.globally_allowed_technical_targets or
+      target in Enum.map(policy.additional_durable_contract_targets, & &1.target)
+  end
+
+  defp root_facade_targets(policy) do
+    Enum.map(policy.bounded_contexts, &"lib/storyarn/#{&1}.ex")
+  end
+
+  defp reviewed_edge_keys(edges) do
+    Enum.flat_map(edges, fn edge ->
+      Enum.map(edge.kinds, &{edge.source, edge.target, &1})
+    end)
+  end
+
+  defp validate_unique_reviewed_edges!(keys, label) do
+    duplicates = keys -- Enum.uniq(keys)
+
+    if duplicates != [] do
+      raise ArgumentError, "#{label} must be unique: #{inspect(Enum.uniq(duplicates))}"
+    end
+  end
+
+  defp validate_reviewed_edge!(%{source: source, target: target, kinds: kinds, reason: reason}, boundaries)
        when is_binary(source) and is_binary(target) and is_list(kinds) and kinds != [] and is_binary(reason) and
               reason != "" do
     source = normalize_path!(source)
     target = normalize_path!(target)
+    source_boundary = boundary_for(source, boundaries)
+    target_boundary = boundary_for(target, boundaries)
 
-    if is_nil(boundary_for(source, boundaries)) or is_nil(boundary_for(target, boundaries)) do
-      raise ArgumentError, "architecture exceptions must connect two classified paths"
+    if is_nil(source_boundary) or is_nil(target_boundary) do
+      raise ArgumentError, "reviewed architecture edges must connect two classified paths"
+    end
+
+    if source_boundary == target_boundary do
+      raise ArgumentError,
+            "reviewed architecture edges must cross a boundary, got #{inspect(source_boundary)}: " <>
+              "#{source} -> #{target}"
     end
 
     Enum.each(kinds, &validate_kind!/1)
   end
 
-  defp validate_exception!(invalid, _boundaries) do
-    raise ArgumentError, "invalid architecture exception: #{inspect(invalid)}"
+  defp validate_reviewed_edge!(invalid, _boundaries) do
+    raise ArgumentError, "invalid reviewed architecture edge: #{inspect(invalid)}"
+  end
+
+  defp graph_edges(graph) do
+    Enum.reduce(graph, MapSet.new(), fn {source, dependencies}, edges ->
+      source = normalize_path!(source)
+
+      Enum.reduce(dependencies, edges, fn {target, kind}, source_edges ->
+        MapSet.put(source_edges, {source, normalize_path!(target), validate_kind!(kind)})
+      end)
+    end)
+  end
+
+  defp stale_policy_edges(policy_edges, actual_edges) do
+    policy_edges
+    |> reviewed_edge_keys()
+    |> Enum.reject(&MapSet.member?(actual_edges, &1))
+    |> Enum.sort()
+  end
+
+  defp count_policy_edges(policy_edges) do
+    Enum.reduce(policy_edges, 0, &(length(&1.kinds) + &2))
   end
 
   defp validate_root!(root) when is_binary(root) and root != "" do

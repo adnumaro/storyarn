@@ -115,7 +115,30 @@ defmodule StoryarnWeb.PrivateMediaTest do
       banner_url: "https://t3.storage.dev/private-bucket/workspaces/writers-room/banner/image.png"
     }
 
-    assert PrivateMedia.workspace_banner_url(workspace) ==
-             "/media/workspaces/writers-room/banner"
+    url = PrivateMedia.workspace_banner_url(workspace)
+    uri = URI.parse(url)
+
+    assert uri.path == "/media/workspaces/writers-room/banner"
+    assert uri.query =~ ~r/\Arevision=[A-Za-z0-9_-]{16}\z/
+    refute url =~ "t3.storage.dev"
+    refute url =~ "private-bucket"
+  end
+
+  test "workspace_banner_url/1 changes its opaque revision when the stored banner changes" do
+    workspace = %{
+      slug: "writers-room",
+      banner_url: "https://storage.invalid/workspaces/writers-room/banner/first.png"
+    }
+
+    first_url = PrivateMedia.workspace_banner_url(workspace)
+
+    second_url =
+      PrivateMedia.workspace_banner_url(%{
+        workspace
+        | banner_url: String.replace(workspace.banner_url, "first", "second")
+      })
+
+    assert first_url == PrivateMedia.workspace_banner_url(workspace)
+    refute first_url == second_url
   end
 end

@@ -18,6 +18,11 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
   @multipart_cleanup_page_size 100
   @multipart_cleanup_max_uploads 10_000
 
+  # This value is part of the persisted cleanup and reconciliation contract.
+  # Keep the pre-Projects namespace so moving this adapter cannot strand work
+  # that was captured by an older release.
+  @namespace_identity "Elixir.Storyarn.Assets.Storage.R2"
+
   @impl true
   def upload(key, data, content_type) do
     bucket = bucket()
@@ -508,7 +513,7 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
            ]),
          {:ok, port} <- normalize_namespace_port(Keyword.get(s3_config, :port)) do
       fingerprint =
-        ([Atom.to_string(__MODULE__) | namespace_parts] ++ [port])
+        ([@namespace_identity | namespace_parts] ++ [port])
         |> Jason.encode_to_iodata!()
         |> then(&:crypto.hash(:sha256, &1))
         |> Base.encode16(case: :lower)

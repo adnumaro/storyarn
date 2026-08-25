@@ -15,7 +15,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
@@ -455,7 +455,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
     result =
       if ReviewDecisions.resolved?(plan) do
         project.workspace_id
-        |> Billing.transact_with_workspace_lock(
+        |> Platform.transact_with_workspace_lock(
           fn _workspace ->
             project
             |> materialize_in_transaction(plan, opts)
@@ -492,7 +492,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
   def materialize_in_transaction(project, %ImportPlan{data: data} = plan, opts) do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
-      not Billing.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
+      not Platform.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
       not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> do_materialize_in_transaction(project, data, opts)
@@ -507,7 +507,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
   def materialize_locked_project_in_transaction(%Project{deleted_at: nil} = project, %ImportPlan{data: data} = plan, opts) do
     cond do
       not Repo.in_transaction?() -> {:error, :import_transaction_required}
-      not Billing.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
+      not Platform.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
       ImportPlan.error?(plan) -> {:error, :import_plan_has_errors}
       not ReviewDecisions.resolved?(plan) -> {:error, :invalid_import_review}
       true -> materialize_validated_project(project, data, opts)

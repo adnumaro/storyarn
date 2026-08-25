@@ -16,11 +16,11 @@ defmodule Storyarn.Workers.ReconcileAIReservationsWorkerTest do
   alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.Result
   alias Storyarn.AI.UsageEvent
-  alias Storyarn.AI.Workers.AIExecutionWorker
-  alias Storyarn.AI.Workers.ExpireAIResultsWorker
-  alias Storyarn.AI.Workers.ReconcileAIReservationsWorker
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
+  alias Storyarn.Workers.AIExecutionWorker
+  alias Storyarn.Workers.ExpireAIResultsWorker
+  alias Storyarn.Workers.ReconcileAIReservationsWorker
   alias StoryarnTest.AI.ContractTask
 
   # Pinned through config in `setup` rather than read from the worker's default,

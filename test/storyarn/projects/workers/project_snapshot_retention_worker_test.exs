@@ -2,7 +2,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorkerTest do
   use ExUnit.Case, async: true
 
   alias Oban.Plugins.Cron
-  alias Storyarn.Projects.Workers.ProjectSnapshotRetentionWorker
+  alias Storyarn.Workers.ProjectSnapshotRetentionWorker
 
   @eng_37_floor_seconds 15 * 60
   @expired_build_reclamation_sla_seconds 15 * 60

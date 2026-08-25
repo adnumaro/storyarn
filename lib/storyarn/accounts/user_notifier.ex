@@ -4,7 +4,7 @@ defmodule Storyarn.Accounts.UserNotifier do
   """
   import Swoosh.Email
 
-  alias Storyarn.Platform.Emails.Templates
+  alias Storyarn.Accounts.UserEmail
   alias Storyarn.Platform.Mailer
 
   require Logger
@@ -39,7 +39,7 @@ defmodule Storyarn.Accounts.UserNotifier do
   Deliver instructions to update a user email.
   """
   def deliver_update_email_instructions(user, url) do
-    {subject, html, text} = Templates.update_email(user.email, url)
+    {subject, html, text} = UserEmail.update_email(user.email, url)
     deliver(user.email, subject, html, text)
   end
 
@@ -51,19 +51,7 @@ defmodule Storyarn.Accounts.UserNotifier do
   end
 
   def deliver_reset_password_instructions(email, url) when is_binary(email) do
-    {subject, html, text} = Templates.reset_password(email, url)
-    deliver(email, subject, html, text)
-  end
-
-  @doc """
-  Deliver project/workspace invitation email.
-  """
-  def deliver_invitation(email, type, entity_name, role, url, days) do
-    {subject, html, text} =
-      if type == "project",
-        do: Templates.project_invitation(email, entity_name, "Storyarn", role, url, days),
-        else: Templates.workspace_invitation(email, entity_name, "Storyarn", role, url, days)
-
+    {subject, html, text} = UserEmail.reset_password(email, url)
     deliver(email, subject, html, text)
   end
 end

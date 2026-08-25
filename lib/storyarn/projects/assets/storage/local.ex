@@ -16,6 +16,11 @@ defmodule Storyarn.Projects.Assets.Storage.Local do
   @conditional_copy_suffix_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
   @default_conditional_copy_stale_after_seconds 3_600
 
+  # This value is part of the persisted cleanup and reconciliation contract.
+  # Keep the pre-Projects namespace so moving this adapter cannot strand work
+  # that was captured by an older release.
+  @namespace_identity "Elixir.Storyarn.Assets.Storage.Local"
+
   @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def upload(key, data, _content_type) do
@@ -258,7 +263,7 @@ defmodule Storyarn.Projects.Assets.Storage.Local do
 
     with {:ok, root_identity} <- safe_upload_root_identity(root) do
       fingerprint =
-        [Atom.to_string(__MODULE__), root, root_identity]
+        [@namespace_identity, root, root_identity]
         |> Jason.encode_to_iodata!()
         |> then(&:crypto.hash(:sha256, &1))
         |> Base.encode16(case: :lower)

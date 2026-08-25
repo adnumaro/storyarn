@@ -3,21 +3,21 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupPersistenceError
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageHash
   alias Storyarn.Projects.Assets.StorageKeyLock
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
-  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   require Logger
 

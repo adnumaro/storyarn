@@ -7,7 +7,9 @@ defmodule Storyarn.Platform.Billing.Persistence.ProjectRecord do
 
   schema "projects" do
     field :workspace_id, :id
+    field :owner_id, :id
     field :deleted_at, :utc_datetime
+    field :deleted_by_id, :id
 
     timestamps(type: :utc_datetime)
   end

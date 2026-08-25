@@ -17,7 +17,6 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.AssetMaterializationCache
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
-  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -25,6 +24,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias StoryarnTest.ProjectsSheetBuilderTestAdapter, as: SheetBuilder
 
   setup do
@@ -1463,17 +1463,6 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
       LocalizationSnapshotCodec.manifest(
         rows,
         snapshot["localization_manifest"]["target_locales"]
-      )
-    )
-  end
-
-  defp sheet_localization_state(sheet_id, block_id) do
-    Repo.all(
-      from(text in LocalizedText,
-        where:
-          (text.source_type == "sheet" and text.source_id == ^sheet_id) or
-            (text.source_type == "block" and text.source_id == ^block_id),
-        order_by: [asc: text.id]
       )
     )
   end

@@ -82,10 +82,11 @@ defmodule StoryarnWeb.Helpers.Authorize do
   end
 
   @doc """
-  Executes a function if the socket's `can_edit` assign is truthy.
+  Executes a function after canonical project edit authorization.
 
-  Used by LiveView components that check `can_edit` instead of membership role.
-  The function receives the socket and must return `{:noreply, socket}`.
+  This is a compatibility spelling for LiveViews that historically checked a
+  cached `can_edit` assign. It deliberately delegates to `authorize/2`: a
+  mounted socket may outlive a membership change.
 
   ## Examples
 
@@ -100,11 +101,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
           (Socket.t() -> {:noreply, Socket.t()})
         ) :: {:noreply, Socket.t()}
   def with_edit_authorization(socket, success_fn) do
-    if socket.assigns[:can_edit] do
-      success_fn.(socket)
-    else
-      {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
-    end
+    with_authorization(socket, :edit_content, success_fn)
   end
 
   defp unauthorized_message do
@@ -117,9 +114,9 @@ defmodule StoryarnWeb.Helpers.Authorize do
 
   Returns `:ok` if authorized, `{:error, :unauthorized}` otherwise.
 
-  The function looks at socket assigns to determine authorization:
-  - For project actions: checks `@can_edit` or `@membership` with Projects.can?
-  - For workspace actions: checks `@membership` role
+  Mounted production sockets are reauthorized through the owning context using
+  `current_scope` plus the assigned resource identity. The cached-membership
+  fallback exists only for isolated tests that omit `current_scope` entirely.
 
   ## Examples
 
@@ -137,93 +134,92 @@ defmodule StoryarnWeb.Helpers.Authorize do
   @spec authorize(Socket.t(), atom()) :: :ok | {:error, :unauthorized}
   def authorize(socket, action)
 
-  # Project content editing actions
-  # Always check membership role directly to avoid stale cached permissions
-  def authorize(%{assigns: assigns}, :edit_content) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when is_binary(role) ->
-        if Projects.can?(role, :edit_content) do
-          :ok
-        else
-          {:error, :unauthorized}
-        end
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  # A mounted socket's membership can become stale after a role change. When
+  # the resource identity and scope are available, every mutation re-reads the
+  # canonical membership through its owning context. The role-only fallback is
+  # reserved for isolated helper/handler tests that intentionally build a
+  # minimal socket without a resource.
+  def authorize(%{assigns: assigns}, :edit_content), do: authorize_project(assigns, :edit_content)
 
   # AI execution: a distinct action because a viewer may read content but must
   # never spend a workspace's AI allowance.
-  def authorize(%{assigns: assigns}, :use_ai) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when is_binary(role) ->
-        if Projects.can?(role, :use_ai), do: :ok, else: {:error, :unauthorized}
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  def authorize(%{assigns: assigns}, :use_ai), do: authorize_project(assigns, :use_ai)
 
   # Project management (settings, deletion)
-  def authorize(%{assigns: assigns}, :manage_project) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when is_binary(role) ->
-        if Projects.can?(role, :manage_project) do
-          :ok
-        else
-          {:error, :unauthorized}
-        end
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  def authorize(%{assigns: assigns}, :manage_project), do: authorize_project(assigns, :manage_project)
 
   # Project member management (invitations, removals)
-  def authorize(%{assigns: assigns}, :manage_members) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when is_binary(role) ->
-        if Projects.can?(role, :manage_members) do
-          :ok
-        else
-          {:error, :unauthorized}
-        end
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  def authorize(%{assigns: assigns}, :manage_members), do: authorize_project(assigns, :manage_members)
 
   # Workspace management (settings, deletion)
-  def authorize(%{assigns: assigns}, :manage_workspace) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when role in ["owner", "admin"] ->
-        :ok
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  def authorize(%{assigns: assigns}, :manage_workspace), do: authorize_workspace(assigns, :manage_workspace)
 
   # Workspace member management
-  def authorize(%{assigns: assigns}, :manage_workspace_members) do
-    case Map.get(assigns, :membership) do
-      %{role: role} when is_binary(role) ->
-        if Workspaces.can?(role, :manage_members) do
-          :ok
-        else
-          {:error, :unauthorized}
-        end
-
-      _ ->
-        {:error, :unauthorized}
-    end
-  end
+  def authorize(%{assigns: assigns}, :manage_workspace_members), do: authorize_workspace(assigns, :manage_members)
 
   # The context independently scopes notification mutations to this user.
   def authorize(%{assigns: %{current_scope: %{user: %{id: _}}}}, :manage_notifications), do: :ok
 
   # Catch-all: deny unknown actions
   def authorize(_socket, _action), do: {:error, :unauthorized}
+
+  defp authorize_project(%{current_scope: %{user: %{id: _}} = scope, project: %{id: project_id}}, action)
+       when is_integer(project_id) do
+    case Projects.authorize(scope, project_id, action) do
+      {:ok, _project, _membership} -> :ok
+      {:error, _reason} -> {:error, :unauthorized}
+    end
+  end
+
+  # Sticky child LiveViews such as FlowSidebarLive and
+  # LocalizationToolbarLive receive the project identity as a scalar session
+  # value rather than a Project struct. They must still re-read membership on
+  # every mutation.
+  defp authorize_project(%{current_scope: %{user: %{id: _}} = scope, project_id: project_id}, action)
+       when is_integer(project_id) do
+    case Projects.authorize(scope, project_id, action) do
+      {:ok, _project, _membership} -> :ok
+      {:error, _reason} -> {:error, :unauthorized}
+    end
+  end
+
+  # A production socket with a scope but no trustworthy resource identity must
+  # fail closed. Never downgrade it to the cached-role compatibility path.
+  defp authorize_project(%{current_scope: %{user: %{id: _}}}, _action), do: {:error, :unauthorized}
+
+  defp authorize_project(assigns, action) do
+    authorize_cached_role(assigns, action, &Projects.can?/2)
+  end
+
+  defp authorize_workspace(%{current_scope: %{user: %{id: _}} = scope, workspace: %{id: workspace_id}}, action)
+       when is_integer(workspace_id) do
+    case Workspaces.authorize(scope, workspace_id, action) do
+      {:ok, _workspace, _membership} -> :ok
+      {:error, _reason} -> {:error, :unauthorized}
+    end
+  end
+
+  defp authorize_workspace(%{current_scope: %{user: %{id: _}} = scope, workspace_id: workspace_id}, action)
+       when is_integer(workspace_id) do
+    case Workspaces.authorize(scope, workspace_id, action) do
+      {:ok, _workspace, _membership} -> :ok
+      {:error, _reason} -> {:error, :unauthorized}
+    end
+  end
+
+  defp authorize_workspace(%{current_scope: %{user: %{id: _}}}, _action), do: {:error, :unauthorized}
+
+  defp authorize_workspace(assigns, action) do
+    authorize_cached_role(assigns, action, &Workspaces.can?/2)
+  end
+
+  defp authorize_cached_role(assigns, action, permission?) do
+    case Map.get(assigns, :membership) do
+      %{role: role} when is_binary(role) ->
+        if permission?.(role, action), do: :ok, else: {:error, :unauthorized}
+
+      _missing_membership ->
+        {:error, :unauthorized}
+    end
+  end
 end

@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.InstallProjectTemplateWorkerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
+  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   test "snoozes session lock contention without consuming the retry budget" do
     assert {:snooze, 30} =

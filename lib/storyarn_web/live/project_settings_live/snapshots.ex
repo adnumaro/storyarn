@@ -6,9 +6,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   alias Storyarn.Projects
-  alias Storyarn.Projects.Versioning
-  alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias StoryarnWeb.Helpers.Authorize
 
   @active_restore_statuses ~w(queued running retrying)
@@ -153,24 +150,35 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   defp snapshot_delete_status(_snapshot, _reservation, false), do: "active_operation"
 
   defp snapshot_restorable?(snapshot) do
-    Versioning.project_snapshot_restore_enabled?() and
+    Projects.project_snapshot_restore_enabled?() and
       snapshot.format_version == 2 and snapshot.mode == "full" and
       snapshot.lifecycle_state == "ready" and snapshot.integrity_state == "verified" and
       snapshot.accounting_version == 1 and snapshot.restore_contract_version == 1
   end
 
-  defp serialize_restore_operation(%ProjectSnapshotRestore{} = restore) do
+  defp serialize_restore_operation(%{
+         id: id,
+         status: status,
+         phase: phase,
+         attempt: attempt,
+         requested_at: requested_at,
+         state_updated_at: state_updated_at,
+         completed_at: completed_at,
+         failed_at: failed_at,
+         failure_code: failure_code,
+         failure_message: failure_message
+       }) do
     %{
-      id: restore.id,
-      status: restore.status,
-      phase: restore.phase,
-      attempt: restore.attempt,
-      requestedAt: serialize_datetime(restore.requested_at),
-      stateUpdatedAt: serialize_datetime(restore.state_updated_at),
-      completedAt: serialize_datetime(restore.completed_at),
-      failedAt: serialize_datetime(restore.failed_at),
-      failureCode: restore.failure_code,
-      failureMessage: restore.failure_message
+      id: id,
+      status: status,
+      phase: phase,
+      attempt: attempt,
+      requestedAt: serialize_datetime(requested_at),
+      stateUpdatedAt: serialize_datetime(state_updated_at),
+      completedAt: serialize_datetime(completed_at),
+      failedAt: serialize_datetime(failed_at),
+      failureCode: failure_code,
+      failureMessage: failure_message
     }
   end
 
@@ -198,7 +206,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
        })
        when is_binary(prefix) and is_binary(archive_key) and is_integer(archive_size) and archive_size > 0 and
               is_binary(archive_checksum) do
-    SnapshotArchiveStorage.ready_archive_key?(project_id, prefix, archive_key) and
+    Projects.ready_project_snapshot_archive_key?(project_id, prefix, archive_key) and
       Regex.match?(~r/\A[0-9a-f]{64}\z/, archive_checksum)
   end
 
@@ -240,12 +248,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     %{project: project, membership: membership} = socket.assigns
 
     if Projects.can?(membership.role, :manage_project) do
-      accounting = snapshot_storage_accounting(project)
-      restores = Versioning.list_project_snapshot_restores(project.id)
+      accounting = snapshot_storage_accounting(socket.assigns.current_scope, project)
+      restores = Projects.list_project_snapshot_restores(project.id)
 
       if connected?(socket) do
-        Versioning.subscribe_project_snapshots(project.id)
-        Versioning.subscribe_project_snapshot_restores(project.id)
+        Projects.subscribe_project_snapshots(project.id)
+        Projects.subscribe_project_snapshot_restores(project.id)
       end
 
       socket =
@@ -258,7 +266,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         |> assign(:storage_usage, accounting.storage_usage)
         |> assign(:storage_limit, accounting.storage_limit)
         |> assign(:snapshot_restores, restores)
-        |> assign(:snapshot_build_statuses, Versioning.project_snapshot_build_statuses(accounting.snapshots))
+        |> assign(:snapshot_build_statuses, Projects.project_snapshot_build_statuses(accounting.snapshots))
         |> assign(:snapshot_build_status_timer, nil)
         |> schedule_build_status_refresh()
 
@@ -300,7 +308,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         description: params["description"]
       }
 
-      case Versioning.request_full_project_snapshot(
+      case Projects.request_full_project_snapshot(
              socket.assigns.current_scope,
              socket.assigns.project,
              attrs
@@ -329,7 +337,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
            {:ok, snapshot} <-
-             Versioning.cancel_project_snapshot(
+             Projects.cancel_project_snapshot(
                socket.assigns.current_scope,
                socket.assigns.project,
                snapshot_id
@@ -355,7 +363,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       with false <- project_restore_active_now?(socket.assigns.project.id),
            {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
            {:ok, _intent} <-
-             Versioning.delete_project_snapshot(
+             Projects.delete_project_snapshot(
                socket.assigns.current_scope,
                socket.assigns.project,
                snapshot_id
@@ -388,7 +396,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     with :ok <- Authorize.authorize(socket, :manage_project),
          {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
          {:ok, restore} <-
-           Versioning.request_project_snapshot_restore(
+           Projects.request_project_snapshot_restore(
              socket.assigns.current_scope,
              socket.assigns.project,
              snapshot_id,
@@ -446,12 +454,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     |> refresh_snapshot_accounting()
     |> assign(
       :snapshot_restores,
-      Versioning.list_project_snapshot_restores(socket.assigns.project.id)
+      Projects.list_project_snapshot_restores(socket.assigns.project.id)
     )
   end
 
   defp refresh_snapshot_accounting(socket) do
-    accounting = snapshot_storage_accounting(socket.assigns.project)
+    accounting = snapshot_storage_accounting(socket.assigns.current_scope, socket.assigns.project)
 
     socket
     |> assign(:snapshots, accounting.snapshots)
@@ -460,7 +468,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     |> assign(:snapshot_slots_limit, accounting.snapshot_slots_limit)
     |> assign(:storage_usage, accounting.storage_usage)
     |> assign(:storage_limit, accounting.storage_limit)
-    |> assign(:snapshot_build_statuses, Versioning.project_snapshot_build_statuses(accounting.snapshots))
+    |> assign(:snapshot_build_statuses, Projects.project_snapshot_build_statuses(accounting.snapshots))
     |> schedule_build_status_refresh()
   end
 
@@ -468,7 +476,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     assign(
       socket,
       :snapshot_build_statuses,
-      Versioning.project_snapshot_build_statuses(socket.assigns.snapshots)
+      Projects.project_snapshot_build_statuses(socket.assigns.snapshots)
     )
   end
 
@@ -516,7 +524,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   defp project_restore_active_now?(project_id) do
     project_id
-    |> Versioning.list_project_snapshot_restores()
+    |> Projects.list_project_snapshot_restores()
     |> project_restore_active?()
   end
 

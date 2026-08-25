@@ -8,7 +8,6 @@ defmodule StoryarnWeb.UserAuth do
   import Plug.Conn
 
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.Scope
   alias Storyarn.Workspaces
 
   @locales Gettext.known_locales(Storyarn.Gettext)
@@ -84,10 +83,10 @@ defmodule StoryarnWeb.UserAuth do
     with {token, conn} <- ensure_user_token(conn),
          {user, token_inserted_at} <- Accounts.get_user_by_session_token(token) do
       conn
-      |> assign(:current_scope, Scope.for_user(user))
+      |> assign(:current_scope, Accounts.scope_for_user(user))
       |> maybe_reissue_user_session_token(user, token_inserted_at)
     else
-      nil -> assign(conn, :current_scope, Scope.for_user(nil))
+      nil -> assign(conn, :current_scope, Accounts.scope_for_user(nil))
     end
   end
 
@@ -253,7 +252,7 @@ defmodule StoryarnWeb.UserAuth do
     socket = mount_current_scope(socket, session)
 
     case socket.assigns.current_scope do
-      %Scope{user: %Accounts.User{} = user} ->
+      %{user: %{id: _} = user} ->
         socket = Phoenix.LiveView.redirect(socket, to: signed_in_path(user))
         {:halt, socket}
 
@@ -310,7 +309,7 @@ defmodule StoryarnWeb.UserAuth do
             Accounts.get_user_by_session_token(user_token)
           end || {nil, nil}
 
-        Scope.for_user(user)
+        Accounts.scope_for_user(user)
       end)
 
     user = socket.assigns.current_scope && socket.assigns.current_scope.user
@@ -329,7 +328,7 @@ defmodule StoryarnWeb.UserAuth do
     Phoenix.Component.assign(socket, :locale, locale)
   end
 
-  defp put_error_tracking_context(%Accounts.User{id: user_id}) do
+  defp put_error_tracking_context(%{id: user_id}) when is_integer(user_id) do
     PostHog.set_context(%{distinct_id: "user:#{user_id}"})
   end
 
@@ -366,14 +365,14 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   @doc "Returns the path to redirect to after log in."
-  def signed_in_path(%Accounts.User{} = user) do
+  def signed_in_path(%{id: user_id} = user) when is_integer(user_id) do
     case Workspaces.get_default_workspace(user) do
-      %Workspaces.Workspace{slug: slug} -> "/workspaces/#{slug}"
+      %{slug: slug} when is_binary(slug) -> "/workspaces/#{slug}"
       nil -> "/workspaces/new"
     end
   end
 
-  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %Scope{user: %Accounts.User{} = user}}}) do
+  def signed_in_path(%Plug.Conn{assigns: %{current_scope: %{user: %{id: _} = user}}}) do
     signed_in_path(user)
   end
 
@@ -383,7 +382,7 @@ defmodule StoryarnWeb.UserAuth do
   def sudo_mode?(user), do: Accounts.sudo_mode?(user, @sudo_mode_minutes)
 
   @doc "Issues a 20-minute sudo grant bound to one user and one session token."
-  def issue_sudo_grant(%Accounts.User{id: user_id}, session_token, opts \\ []) when is_binary(session_token) do
+  def issue_sudo_grant(%{id: user_id}, session_token, opts \\ []) when is_integer(user_id) and is_binary(session_token) do
     payload = {:sudo_grant, user_id, session_fingerprint(session_token)}
     token_opts = [max_age: @sudo_grant_max_age] ++ Keyword.take(opts, [:signed_at])
 
@@ -391,8 +390,8 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   @doc "Authorizes sudo mode using either recent authentication or a valid signed grant."
-  def authorize_sudo(%Accounts.User{} = user, session_token, grant) when is_binary(session_token) do
-    scope = Scope.for_user(user)
+  def authorize_sudo(%{id: user_id} = user, session_token, grant) when is_integer(user_id) and is_binary(session_token) do
+    scope = Accounts.scope_for_user(user)
 
     if Accounts.session_token_active?(scope, session_token) do
       cond do
@@ -408,15 +407,16 @@ defmodule StoryarnWeb.UserAuth do
   def authorize_sudo(_user, _session_token, _grant), do: :error
 
   @doc "Returns whether the supplied signed grant is valid for this active session."
-  def sudo_grant_valid?(%Accounts.User{} = user, session_token, grant) when is_binary(session_token) do
-    Accounts.session_token_active?(Scope.for_user(user), session_token) and
+  def sudo_grant_valid?(%{id: user_id} = user, session_token, grant)
+      when is_integer(user_id) and is_binary(session_token) do
+    Accounts.session_token_active?(Accounts.scope_for_user(user), session_token) and
       signed_sudo_grant_matches?(grant, user, session_token)
   end
 
   def sudo_grant_valid?(_user, _session_token, _grant), do: false
 
   @doc "Issues a short-lived handoff that may rotate only the current session after password confirmation."
-  def issue_sudo_handoff(%Accounts.User{id: user_id} = user, session_token) when is_binary(session_token) do
+  def issue_sudo_handoff(%{id: user_id} = user, session_token) when is_integer(user_id) and is_binary(session_token) do
     nonce = Accounts.generate_sudo_handoff_nonce(user)
     payload = {:sudo_handoff, user_id, session_fingerprint(session_token), nonce}
 
@@ -424,8 +424,9 @@ defmodule StoryarnWeb.UserAuth do
   end
 
   @doc "Returns whether the supplied sudo handoff is valid for this active session."
-  def sudo_handoff_valid?(%Accounts.User{} = user, session_token, handoff) when is_binary(session_token) do
-    scope = Scope.for_user(user)
+  def sudo_handoff_valid?(%{id: user_id} = user, session_token, handoff)
+      when is_integer(user_id) and is_binary(session_token) do
+    scope = Accounts.scope_for_user(user)
 
     with true <- Accounts.session_token_active?(scope, session_token),
          {:ok, nonce} <- signed_sudo_handoff_nonce(handoff, user, session_token) do
@@ -438,8 +439,9 @@ defmodule StoryarnWeb.UserAuth do
   def sudo_handoff_valid?(_user, _session_token, _handoff), do: false
 
   @doc "Atomically consumes a valid handoff so one password confirmation rotates at most one session."
-  def consume_sudo_handoff(%Accounts.User{} = user, session_token, handoff) when is_binary(session_token) do
-    scope = Scope.for_user(user)
+  def consume_sudo_handoff(%{id: user_id} = user, session_token, handoff)
+      when is_integer(user_id) and is_binary(session_token) do
+    scope = Accounts.scope_for_user(user)
 
     with true <- Accounts.session_token_active?(scope, session_token),
          {:ok, nonce} <- signed_sudo_handoff_nonce(handoff, user, session_token),
@@ -551,7 +553,7 @@ defmodule StoryarnWeb.UserAuth do
       |> Enum.any?(&(&1 in [".", ".."]))
   end
 
-  defp signed_sudo_grant_matches?(grant, %Accounts.User{id: user_id}, session_token) when is_binary(grant) do
+  defp signed_sudo_grant_matches?(grant, %{id: user_id}, session_token) when is_integer(user_id) and is_binary(grant) do
     expected_fingerprint = session_fingerprint(session_token)
 
     case Phoenix.Token.verify(StoryarnWeb.Endpoint, @sudo_grant_salt, grant, max_age: @sudo_grant_max_age) do
@@ -566,7 +568,8 @@ defmodule StoryarnWeb.UserAuth do
 
   defp signed_sudo_grant_matches?(_grant, _user, _session_token), do: false
 
-  defp signed_sudo_handoff_nonce(handoff, %Accounts.User{id: user_id}, session_token) when is_binary(handoff) do
+  defp signed_sudo_handoff_nonce(handoff, %{id: user_id}, session_token)
+       when is_integer(user_id) and is_binary(handoff) do
     expected_fingerprint = session_fingerprint(session_token)
 
     case Phoenix.Token.verify(StoryarnWeb.Endpoint, @sudo_handoff_salt, handoff, max_age: @sudo_handoff_max_age) do

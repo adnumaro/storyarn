@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Projects.Assets
   alias StoryarnWeb.Helpers.Authorize
 
   @page_size 25
@@ -145,7 +144,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     with {:ok, asset_id} <- parse_positive_integer(id),
          {:ok, expected_generation} <- parse_non_negative_integer(generation),
          {:ok, _restored} <-
-           Assets.restore_trashed_asset(
+           Projects.restore_trashed_asset(
              socket.assigns.project.id,
              asset_id,
              expected_generation,
@@ -191,7 +190,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     with {:ok, asset_id} <- parse_positive_integer(id),
          {:ok, expected_generation} <- parse_non_negative_integer(generation),
          {:ok, _purged} <-
-           Assets.purge_trashed_asset(
+           Projects.purge_trashed_asset(
              socket.assigns.project.id,
              asset_id,
              expected_generation,
@@ -387,7 +386,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   defp purge_asset_items(items, project_id, actor_id) do
     candidates = Enum.map(items, &{&1.id, &1.deletion_generation})
-    [Assets.purge_trashed_assets(project_id, candidates, actor_id)]
+    [Projects.purge_trashed_assets(project_id, candidates, actor_id)]
   end
 
   defp purge_listed_item(item, project_id) do

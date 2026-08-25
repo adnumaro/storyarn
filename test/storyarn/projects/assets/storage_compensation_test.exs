@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKeyLock
+  alias Storyarn.Projects.Persistence.StorageReservationRecord
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
@@ -953,11 +954,13 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       Storage.adapter().delete(concurrently_owned_key)
     end)
 
-    owner =
+    platform_owner =
       insert_active_restore_reservation!(project, snapshot, [
         owned_key,
         concurrently_owned_key
       ])
+
+    owner = Repo.get!(StorageReservationRecord, platform_owner.id)
 
     _concurrent_owner =
       insert_active_restore_reservation!(project, snapshot, [concurrently_owned_key])

@@ -6,8 +6,9 @@ defmodule Storyarn.Projects.Assets.UploadPolicy do
   assets such as a square avatar or a wide sheet banner.
   """
 
-  @max_image_size 52_428_800
-  @multipart_request_overhead 1_048_576
+  @upload_limits Application.compile_env!(:storyarn, :project_asset_upload_limits)
+  @max_image_size Keyword.fetch!(@upload_limits, :max_image_size)
+  @multipart_request_overhead Keyword.fetch!(@upload_limits, :multipart_request_overhead)
   @image_types ~w(image/jpeg image/png image/gif image/webp)
 
   @profiles %{

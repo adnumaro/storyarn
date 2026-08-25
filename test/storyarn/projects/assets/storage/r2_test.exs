@@ -350,6 +350,20 @@ defmodule Storyarn.Projects.Assets.Storage.R2Test do
   end
 
   describe "namespace_fingerprint/0" do
+    test "matches fingerprints persisted before the adapter module moved under Projects" do
+      legacy_fingerprint =
+        namespace_fingerprint([
+          "Elixir.Storyarn.Assets.Storage.R2",
+          "https://t3.storage.dev",
+          "private-bucket",
+          "t3.storage.dev",
+          "https://",
+          nil
+        ])
+
+      assert R2.namespace_fingerprint() == {:ok, legacy_fingerprint}
+    end
+
     test "binds the endpoint and bucket without exposing credentials" do
       assert {:ok, original} = R2.namespace_fingerprint()
       assert original =~ ~r/\A[0-9a-f]{64}\z/
@@ -364,6 +378,13 @@ defmodule Storyarn.Projects.Assets.Storage.R2Test do
       refute changed == original
       refute changed =~ "test-secret-key"
     end
+  end
+
+  defp namespace_fingerprint(parts) do
+    parts
+    |> Jason.encode_to_iodata!()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
   end
 
   describe "put_if_absent/3" do

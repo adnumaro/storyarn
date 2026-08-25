@@ -1,5 +1,6 @@
 defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   use StoryarnWeb.ConnCase, async: true
+  use Oban.Testing, repo: Storyarn.Repo
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
@@ -7,6 +8,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
   alias Storyarn.AI
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Workers.DeleteWorkspaceBannerWorker
   alias Storyarn.Workspaces
 
   defp get_general_vue(view) do
@@ -334,7 +336,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert updated.source_locale == "es"
     end
 
-    test "admin can update workspace", %{conn: conn} do
+    test "admin cannot forge a workspace update", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
       admin = user_fixture()
@@ -345,10 +347,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      result =
-        render_click(view, "save", %{"workspace" => %{"name" => "Admin Updated Name"}})
+      assert get_general_vue(view).props["can-edit-workspace"] == false
 
-      assert result =~ "Workspace updated successfully."
+      render_click(view, "save", %{"workspace" => %{"name" => "Admin Updated Name"}})
+      assert Workspaces.get_workspace!(workspace.id).name == workspace.name
     end
   end
 
@@ -458,6 +460,66 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert html =~ "Invalid file data or upload failed."
       assert Workspaces.get_workspace!(workspace.id).banner_url == nil
     end
+
+    test "rejects a forged upload from a non-owner", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      admin = user_fixture()
+      workspace_membership_fixture(workspace, admin, "admin")
+      image_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(admin)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "banner.jpg",
+          "content_type" => "image/jpeg",
+          "data" => "data:image/jpeg;base64,#{Base.encode64(image_data)}"
+        })
+
+      refute html =~ "Banner uploaded successfully."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+    end
+
+    test "removes the persisted banner and its owned object", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+      image_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      render_click(view, "upload_workspace_banner", %{
+        "filename" => "banner.jpg",
+        "content_type" => "image/jpeg",
+        "data" => "data:image/jpeg;base64,#{Base.encode64(image_data)}"
+      })
+
+      banner_url = Workspaces.get_workspace!(workspace.id).banner_url
+      assert {:ok, key} = Storage.key_from_url(banner_url)
+      on_exit(fn -> Storage.delete(key) end)
+
+      html = render_click(view, "remove_workspace_banner", %{})
+
+      assert html =~ "Banner removed successfully."
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+
+      assert_enqueued(
+        worker: DeleteWorkspaceBannerWorker,
+        args: %{"workspace_slug" => workspace.slug, "storage_key" => key}
+      )
+
+      assert :ok =
+               perform_job(DeleteWorkspaceBannerWorker, %{
+                 "workspace_slug" => workspace.slug,
+                 "storage_key" => key
+               })
+
+      assert {:error, :enoent} = Storage.stat(key)
+    end
   end
 
   describe "delete event" do
@@ -487,11 +549,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
         |> log_in_user(admin)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      result = render_click(view, "delete", %{})
-      assert result =~ "Only the workspace owner can delete the workspace."
+      assert get_general_vue(view).props["is-owner"] == false
 
-      # Workspace should still exist
-      assert Workspaces.get_workspace!(workspace.id)
+      render_click(view, "delete", %{})
+      assert %Storyarn.Workspaces.Workspace{id: id} = Workspaces.get_workspace!(workspace.id)
+      assert id == workspace.id
     end
   end
 end

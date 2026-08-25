@@ -11,11 +11,11 @@ defmodule Storyarn.Workers.LocalizationBatchTranslationWorkerTest do
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.TranslationRun
   alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Localization.Workers.LocalizationBatchTranslationWorker
   alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.TestSupport.FakeTranslationProvider
+  alias Storyarn.Workers.LocalizationBatchTranslationWorker
 
   setup do
     Application.put_env(:storyarn, :localization_translation_provider, FakeTranslationProvider)

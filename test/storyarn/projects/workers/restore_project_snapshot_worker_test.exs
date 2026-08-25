@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.RestoreProjectSnapshotWorkerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Workers.RestoreProjectSnapshotWorker
+  alias Storyarn.Workers.RestoreProjectSnapshotWorker
 
   test "uses the isolated snapshot restore queue and a stable unique delivery" do
     opts = RestoreProjectSnapshotWorker.__opts__()

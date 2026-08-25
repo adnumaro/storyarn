@@ -3,9 +3,10 @@ defmodule Storyarn.Projects.ProjectTemplates.Authorization do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Projects
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectCrud
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Repo
 
@@ -20,9 +21,10 @@ defmodule Storyarn.Projects.ProjectTemplates.Authorization do
   end
 
   def authorize_source_project(%{user: user} = scope, %Project{id: project_id}) when not is_nil(user) do
-    case Projects.get_project(scope, project_id) do
+    case ProjectCrud.get_project(scope, project_id) do
       {:ok, project, membership} ->
-        if Projects.can?(membership.role, :manage_project) or source_project_admin?(user.id, project.workspace_id) do
+        if ProjectMembership.can?(membership.role, :manage_project) or
+             source_project_admin?(user.id, project.workspace_id) do
           {:ok, project}
         else
           {:error, :unauthorized}

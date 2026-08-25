@@ -3,7 +3,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
@@ -85,7 +85,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
           :version_control_form,
           to_form(version_control_changeset(project), as: "version_control")
         )
-        |> assign(:version_usage, Billing.project_usage(project.id, project.workspace_id))
+        |> assign(:version_usage, Platform.project_usage(project.id, project.workspace_id))
 
       {:ok, socket}
     else

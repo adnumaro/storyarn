@@ -9,8 +9,8 @@ defmodule Storyarn.AccountsTest do
   alias Storyarn.Accounts.Scope
   alias Storyarn.Accounts.User
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.Accounts.Workers.DeliverResetPasswordInstructionsWorker
-  alias Storyarn.Accounts.Workers.RequestResetPasswordInstructionsWorker
+  alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
+  alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
 
   describe "get_user_by_email/1" do
     test "does not return the user if the email does not exist" do
@@ -227,7 +227,11 @@ defmodule Storyarn.AccountsTest do
         args: %{"email" => email}
       )
 
-      job = Repo.get_by!(Oban.Job, worker: inspect(RequestResetPasswordInstructionsWorker))
+      job =
+        Repo.get_by!(Oban.Job,
+          worker: inspect(RequestResetPasswordInstructionsWorker)
+        )
+
       assert :ok = perform_job(RequestResetPasswordInstructionsWorker, job.args)
       refute_enqueued(worker: DeliverResetPasswordInstructionsWorker)
     end

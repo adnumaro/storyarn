@@ -373,11 +373,13 @@ only while their owning context is being migrated.
 | Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                              |
 | Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                                    |
 | Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                                   |
+| AI              | `Storyarn.AI`           | AI policy, integrations, model/provider selection, execution, audit and future AI product behavior                                           |
 
-AI is not a bounded context or a shared business layer. Projects is the only writer of AI model, team and
-configuration records. Each consuming bounded context owns its prompts, context construction and AI operations,
-and reads the Project-owned configuration through consumer-local read models. Provider clients and execution
-plumbing may be shared only as technical adapters without consumer-specific business rules.
+AI is a bounded context, not a shared business layer. Projects remains the only writer of the current AI model,
+team and configuration records until that ownership is revisited deliberately. Consuming contexts may own their
+domain-specific prompts and context construction, but AI owns provider policy, execution and its growing product
+behavior. Its current dependency graph is intentionally left transitional by ENG-92; that is migration state, not
+permission to treat AI as a utility layer.
 
 `Platform` is a supporting control-plane context, not an umbrella for arbitrary shared code. Mail transport remains
 infrastructure, while each initiating context owns its email intent and copy. Accounts, Workspaces and Projects own
@@ -390,7 +392,7 @@ than being added as synchronous callbacks to the event tracker.
 
 ### Application and infrastructure modules
 
-Code may remain outside the eight context directories only when it is an application coordinator or a technical
+Code may remain outside the nine context directories only when it is an application coordinator or a technical
 adapter and owns no domain model or business rule:
 
 - `StoryarnWeb` is the presentation adapter. It may compose public context facades but never call their internals.
@@ -400,12 +402,14 @@ adapter and owns no domain model or business rule:
   read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
 - `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It
   must never become a catch-all for business behavior.
-- Legacy namespaces such as `Storyarn.AI`, `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`, `Storyarn.Platform.Emails`,
+- Legacy namespaces such as `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`, `Storyarn.Platform.Emails`,
   `Storyarn.Platform.Notifications`, `Storyarn.Projects.References`, `Storyarn.Projects.Versioning`, `Storyarn.Projects.Imports`, `Storyarn.Projects.Exports` and
   `Storyarn.Projects.ProjectTemplates` are not additional bounded contexts. Business code in them must move to its owner
   above; only compatibility facades or technical adapters may remain during migration.
 
-Background jobs are Oban workers in `lib/storyarn/projects/workers/`; they are application adapters, not bounded contexts.
+Background jobs live under `lib/storyarn/workers/{owner}/`. Each owner slice belongs to the corresponding bounded
+context in the architecture ratchet; `Storyarn.Workers.*` is only the stable technical identity persisted by Oban,
+not a bounded context or shared business layer. Worker implementations orchestrate through their owner's public facade.
 
 ## Event Contracts
 

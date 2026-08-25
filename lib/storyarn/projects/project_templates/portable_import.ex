@@ -4,7 +4,6 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
@@ -14,6 +13,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.ProjectTemplates.Artifact
   alias Storyarn.Projects.ProjectTemplates.Audit
   alias Storyarn.Projects.ProjectTemplates.PortableBundle
@@ -1112,7 +1112,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   defp lock_source_project_scope(plan) do
     with %User{} = source_user <- lock_source_user(plan.source_user_id),
          :ok <- authorize_locked_source_manager(plan.visibility, source_user),
-         :ok <- Projects.lock_and_check_workspace_capacity(plan.verify_workspace_id),
+         :ok <- ProjectCrud.lock_and_check_workspace_capacity(plan.verify_workspace_id),
          %WorkspaceMembership{role: role} <-
            WorkspaceMembership
            |> where(

@@ -14,8 +14,8 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.InstallProjectTemplateWorker
 
   defp get_dashboard_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/workspace/dashboard/WorkspaceDashboard")

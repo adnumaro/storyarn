@@ -12,7 +12,6 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   import Ecto.Query, warn: false
   import Storyarn.Sheets.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
-  alias Storyarn.Projects.References
   alias Storyarn.Repo
   alias Storyarn.Sheets.AvatarIntegrity
   alias Storyarn.Sheets.Block
@@ -25,6 +24,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.VariableReferenceRebuilder
   alias Storyarn.Sheets.Versioning.AssetHashResolver
   alias Storyarn.Sheets.Versioning.AssetMaterializationScope
   alias Storyarn.Sheets.Versioning.DiffHelpers
@@ -685,7 +685,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
              sheet.blocks,
              &rebuild_instantiated_block_references(&1, project_id)
            ) do
-      References.rebuild_project_variable_references(project_id)
+      VariableReferenceRebuilder.rebuild_project(project_id)
     end
   end
 
@@ -793,7 +793,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
              locked_sheet.project_id,
              opts
            ),
-         :ok <- References.rebuild_project_variable_references(locked_sheet.project_id),
+         :ok <- VariableReferenceRebuilder.rebuild_project(locked_sheet.project_id),
          :ok <- verify_active_block_ids(locked_sheet.id, block_data.block_id_map) do
       {:ok, {updated_sheet, block_data}}
     else

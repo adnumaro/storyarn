@@ -11,12 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
-  alias Storyarn.Platform.Billing
   alias Storyarn.Projects
-  alias Storyarn.Projects.References
-  alias Storyarn.Projects.Validations
-  alias Storyarn.Projects.Versioning
-  alias Storyarn.Repo
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -32,7 +27,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     |> Ecto.Changeset.cast(params, Map.keys(types))
     |> Ecto.Changeset.update_change(:email, &String.trim/1)
     |> Ecto.Changeset.validate_required([:email, :role])
-    |> Validations.validate_email_format()
+    |> Projects.validate_project_email_format()
     |> Ecto.Changeset.validate_inclusion(:role, @project_invite_roles)
   end
 
@@ -137,7 +132,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   # ---------------------------------------------------------------------------
 
   def do_repair_variable_references(socket) do
-    do_repair_variable_references(socket, &References.repair_stale_variable_references/1)
+    do_repair_variable_references(socket, &Projects.repair_stale_project_variable_references/1)
   end
 
   @doc false
@@ -166,26 +161,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   @doc false
-  def snapshot_storage_accounting(project) do
-    result =
-      Repo.repeatable_read(
-        fn ->
-          snapshots = Versioning.list_project_snapshots(project.id)
-          plan = Billing.plan_for(project.workspace)
-
-          %{
-            snapshots: snapshots,
-            snapshot_reservations: Billing.active_storage_reservations_by_snapshot(Enum.map(snapshots, & &1.id)),
-            snapshot_slots_used: Billing.project_snapshot_slot_usage(project.id),
-            snapshot_slots_limit: Billing.plan_limit(plan, :project_snapshots_per_project),
-            storage_usage: Billing.workspace_storage_usage(project.workspace_id),
-            storage_limit: Billing.plan_limit(plan, :storage_bytes_per_workspace)
-          }
-        end,
-        timeout: :infinity
-      )
-
-    case result do
+  def snapshot_storage_accounting(scope, project) do
+    case Projects.project_snapshot_accounting(scope, project.id) do
       {:ok, accounting} -> accounting
       {:error, reason} -> raise "snapshot accounting read failed: #{inspect(reason)}"
     end

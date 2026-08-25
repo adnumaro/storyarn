@@ -55,7 +55,7 @@ defmodule Storyarn.Workspaces.Workspace do
   """
   def create_changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:name, :description, :slug, :banner_url, :color, :source_locale])
+    |> cast(attrs, [:name, :description, :slug, :color, :source_locale])
     |> validate_required([:name, :slug])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
@@ -69,11 +69,16 @@ defmodule Storyarn.Workspaces.Workspace do
   """
   def update_changeset(workspace, attrs) do
     workspace
-    |> cast(attrs, [:name, :description, :banner_url, :color, :source_locale])
+    |> cast(attrs, [:name, :description, :color, :source_locale])
     |> validate_required([:name])
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
     |> validate_color()
+  end
+
+  @doc false
+  def banner_changeset(workspace, attrs) do
+    cast(workspace, attrs, [:banner_url])
   end
 
   defp validate_color(changeset) do

@@ -4,16 +4,15 @@ defmodule Storyarn.Workspaces.Invitations do
 
   Absorbed the workspace half of the retired shared invitation machinery,
   byte-for-byte over Workspace-owned records. Billing seat checks and the
-  durable delivery worker remain reviewed coordination seams.
+  durable delivery contract remains a reviewed coordination seam.
   """
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Repo
   alias Storyarn.Workspaces.InvitationNotifier
   alias Storyarn.Workspaces.Memberships
@@ -189,7 +188,7 @@ defmodule Storyarn.Workspaces.Invitations do
     Repo.transact(fn ->
       with {:ok, locked_workspace} <- lock_workspace(workspace),
            :ok <- ensure_invitation_available(locked_workspace.id, email),
-           :ok <- normalize_limit_result(Billing.can_invite_member?(locked_workspace, email)),
+           :ok <- normalize_limit_result(Platform.can_invite_member?(locked_workspace, email)),
            :ok <- delete_inactive_invitation(locked_workspace.id, email),
            {:ok, invitation} <- insert_invitation(changeset),
            {:ok, _job} <- enqueue_delivery(encoded_token, opts) do
@@ -253,8 +252,7 @@ defmodule Storyarn.Workspaces.Invitations do
       }
       |> Enum.reject(fn {_key, value} -> is_nil(value) end)
       |> Map.new()
-      |> DeliverInvitationWorker.new()
-      |> Oban.insert()
+      |> Platform.enqueue_invitation_delivery()
     end
   end
 
@@ -315,7 +313,7 @@ defmodule Storyarn.Workspaces.Invitations do
          {:ok, current_invitation} <- lock_invitation(invitation),
          {:ok, current_user} <- lock_user(user),
          :ok <- validate_invitation_acceptance(current_invitation, current_user),
-         :ok <- normalize_limit_result(Billing.can_accept_member?(locked_workspace, current_user.email)),
+         :ok <- normalize_limit_result(Platform.can_accept_member?(locked_workspace, current_user.email)),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            Memberships.create_membership(

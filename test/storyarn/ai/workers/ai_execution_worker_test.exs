@@ -1,7 +1,7 @@
 defmodule Storyarn.Workers.AIExecutionWorkerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.AI.Workers.AIExecutionWorker
+  alias Storyarn.Workers.AIExecutionWorker
 
   test "terminalizes a queued operation when the final recovery attempt fails" do
     test_pid = self()

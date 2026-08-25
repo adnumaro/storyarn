@@ -8,6 +8,7 @@ defmodule Storyarn.Projects.ProjectTemplates do
   """
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectTemplates.Authorization
   alias Storyarn.Projects.ProjectTemplates.Deletion
@@ -20,7 +21,6 @@ defmodule Storyarn.Projects.ProjectTemplates do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.ProjectTemplates.PublicationRunner
   alias Storyarn.Projects.ProjectTemplates.TemplateQueries
-  alias Storyarn.Workspaces.Workspace
 
   @type scope :: Scope.t()
   @type attrs :: map()

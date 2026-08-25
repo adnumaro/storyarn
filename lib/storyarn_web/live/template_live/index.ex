@@ -7,7 +7,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   import StoryarnWeb.TemplateLive.Helpers
 
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
 
   @section_per_page 9
 
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
               <%= for template <- @private_page.entries do %>
                 <.template_card
                   template={template}
-                  can_manage={ProjectTemplates.can_manage_template?(@current_scope, template)}
+                  can_manage={Projects.can_manage_project_template?(@current_scope, template)}
                 />
               <% end %>
               <div
@@ -148,7 +148,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
               <%= for template <- @archived_page.entries do %>
                 <.template_card
                   template={template}
-                  can_manage={ProjectTemplates.can_manage_template?(@current_scope, template)}
+                  can_manage={Projects.can_manage_project_template?(@current_scope, template)}
                   archived
                   pending_delete={@pending_delete_template_id == template.id}
                 />
@@ -182,8 +182,8 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   def handle_event("archive_template", %{"id" => id}, socket) do
     with {:ok, template_id} <- parse_template_id(id),
-         {:ok, template} <- ProjectTemplates.get_template(socket.assigns.current_scope, template_id),
-         {:ok, _template} <- ProjectTemplates.archive_template(socket.assigns.current_scope, template) do
+         {:ok, template} <- Projects.get_project_template(socket.assigns.current_scope, template_id),
+         {:ok, _template} <- Projects.archive_project_template(socket.assigns.current_scope, template) do
       {:noreply,
        socket
        |> assign(:pending_delete_template_id, nil)
@@ -197,8 +197,9 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   def handle_event("unarchive_template", %{"id" => id}, socket) do
     with {:ok, template_id} <- parse_template_id(id),
-         {:ok, template} <- ProjectTemplates.get_template(socket.assigns.current_scope, template_id, status: "archived"),
-         {:ok, _template} <- ProjectTemplates.unarchive_template(socket.assigns.current_scope, template) do
+         {:ok, template} <-
+           Projects.get_project_template(socket.assigns.current_scope, template_id, status: "archived"),
+         {:ok, _template} <- Projects.unarchive_project_template(socket.assigns.current_scope, template) do
       {:noreply,
        socket
        |> assign(:pending_delete_template_id, nil)
@@ -212,8 +213,9 @@ defmodule StoryarnWeb.TemplateLive.Index do
 
   def handle_event("delete_template", %{"id" => id}, socket) do
     with {:ok, template_id} <- parse_template_id(id),
-         {:ok, template} <- ProjectTemplates.get_template(socket.assigns.current_scope, template_id, status: "archived"),
-         {:ok, _template} <- ProjectTemplates.delete_template(socket.assigns.current_scope, template) do
+         {:ok, template} <-
+           Projects.get_project_template(socket.assigns.current_scope, template_id, status: "archived"),
+         {:ok, _template} <- Projects.delete_project_template(socket.assigns.current_scope, template) do
       {:noreply,
        socket
        |> assign(:pending_delete_template_id, nil)
@@ -379,7 +381,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
     search = params |> Map.get("q", "") |> normalize_search()
 
     private_page =
-      ProjectTemplates.paginate_templates(socket.assigns.current_scope,
+      Projects.paginate_project_templates(socket.assigns.current_scope,
         status: "active",
         visibility: "private",
         search: search,
@@ -388,7 +390,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
       )
 
     public_page =
-      ProjectTemplates.paginate_templates(socket.assigns.current_scope,
+      Projects.paginate_project_templates(socket.assigns.current_scope,
         status: "active",
         visibility: "public",
         search: search,
@@ -397,7 +399,7 @@ defmodule StoryarnWeb.TemplateLive.Index do
       )
 
     archived_page =
-      ProjectTemplates.paginate_templates(socket.assigns.current_scope,
+      Projects.paginate_project_templates(socket.assigns.current_scope,
         status: "archived",
         search: search,
         page: Map.get(params, "archived_page"),

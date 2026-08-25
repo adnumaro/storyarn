@@ -18,6 +18,10 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
                              ] ++
                              ["lib/storyarn/projects/assets.ex" | Path.wildcard("lib/storyarn/projects/assets/**/*.ex")]
 
+  @projects_business_sources "lib/storyarn/projects/**/*.ex"
+                             |> Path.wildcard()
+                             |> Enum.reject(&String.contains?(&1, ["/workers/", "/adapter/", "/adapters/"]))
+
   @projects_web_sources Path.wildcard("lib/storyarn_web/live/project_live/**/*.ex") ++
                           Path.wildcard("lib/storyarn_web/live/project_settings_live/**/*.ex") ++
                           Path.wildcard("lib/storyarn_web/live/asset_live/**/*.ex") ++
@@ -28,6 +32,21 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
                             "lib/storyarn_web/controllers/snapshot_download_controller.ex",
                             "lib/storyarn_web/controllers/upload_controller.ex"
                           ]
+
+  # Protocol derivation is a presentation adapter that must name the encoded
+  # struct at compile time. All executable Web code enters through Projects.
+  @projects_web_facade_sources Path.wildcard("lib/storyarn_web/**/*.ex") --
+                                 ["lib/storyarn_web/live_vue_encoders.ex"]
+
+  @project_facade_coordinators [
+    "lib/storyarn/platform/global_search/variable_search.ex",
+    "lib/storyarn/platform/release.ex"
+  ]
+
+  @web_technical_project_contracts %{
+    "lib/storyarn_web/private_download.ex" => [[:Storyarn, :Projects, :Assets, :Storage]],
+    "lib/storyarn_web/private_media.ex" => [[:Storyarn, :Projects, :Assets, :Storage]]
+  }
 
   @foreign_domain_roots [
     "lib/storyarn/accounts",
@@ -55,6 +74,51 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     """
   end
 
+  test "Projects business modules do not re-enter the root facade" do
+    violations =
+      @projects_business_sources
+      |> Enum.flat_map(&projects_facade_references/1)
+      |> Enum.sort()
+
+    assert violations == [], """
+    Code inside the Projects boundary must collaborate through the exact
+    internal module that owns the operation. Calling Storyarn.Projects from a
+    Projects business module creates a facade cycle. Workers and technical
+    adapters are the only allowed in-boundary facade consumers:
+
+    #{Enum.join(violations, "\n")}
+    """
+  end
+
+  test "StoryarnWeb enters Projects only through the root facade" do
+    violations =
+      @projects_web_facade_sources
+      |> Enum.flat_map(&internal_projects_references/1)
+      |> Enum.sort()
+
+    assert violations == [], """
+    StoryarnWeb may call only the public Storyarn.Projects facade. Move the
+    operation behind Storyarn.Projects instead of importing a Project internal:
+
+    #{Enum.join(violations, "\n")}
+    """
+  end
+
+  test "external coordinators enter Projects only through the root facade" do
+    violations =
+      @project_facade_coordinators
+      |> Enum.flat_map(&internal_projects_references/1)
+      |> Enum.sort()
+
+    assert violations == [], """
+    External coordinators may call only the public Storyarn.Projects facade.
+    Move the operation behind Storyarn.Projects instead of importing a Project
+    internal:
+
+    #{Enum.join(violations, "\n")}
+    """
+  end
+
   test "Project Web cannot publish generic business facts" do
     violations =
       Enum.filter(@projects_web_sources, fn path ->
@@ -71,8 +135,9 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     """
   end
 
-  test "the ratchet seals every boundary and the debt baseline stays empty" do
+  test "the ratchet seals every boundary with an empty migration baseline" do
     config = File.read!("config/architecture_boundaries.exs")
+    {policy, _binding} = Code.eval_file("config/architecture_boundaries.exs")
 
     for context <- ~w(accounts flows localization platform projects scenes sheets workspaces) do
       assert config =~ ~r/zero_debt_consumers:[^\]]*:#{context}/s
@@ -84,8 +149,14 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
 
     for baseline <- Path.wildcard("config/architecture_baselines/*.json") do
       assert %{"edges" => []} = baseline |> File.read!() |> JSON.decode!(),
-             "#{baseline} must stay empty: the ENG-92 debt is fully repaid"
+             "#{baseline} must stay empty: sealed consumers cannot accept hidden debt"
     end
+
+    assert policy.migration_exceptions == [],
+           "completed migrations must not leave internal cross-boundary debt behind"
+
+    assert policy.durable_contracts != [],
+           "reviewed root-facade calls must remain explicit durable contracts"
   end
 
   test "the dissolved shared namespace stays dissolved" do
@@ -142,5 +213,104 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     |> Enum.filter(&match?(%{segments: [:StoryarnWeb | _]}, &1))
     |> Enum.map(&"#{path}:#{&1.line}: #{Enum.join(&1.segments, ".")}")
     |> Enum.uniq()
+  end
+
+  defp projects_facade_references(path) do
+    source = File.read!(path)
+    ast = Code.string_to_quoted!(source, file: path, columns: true)
+
+    {_ast, references} =
+      Macro.prewalk(ast, [], fn
+        {:__aliases__, meta, [:Storyarn, :Projects]} = node, references ->
+          {node, ["#{path}:#{meta[:line]}: Storyarn.Projects" | references]}
+
+        node, references ->
+          {node, references}
+      end)
+
+    grouped_aliases =
+      source
+      |> String.split("\n")
+      |> Enum.with_index(1)
+      |> Enum.flat_map(fn {line, line_number} ->
+        if Regex.match?(~r/\balias\s+Storyarn\.\{[^}]*\bProjects\b/, line) do
+          ["#{path}:#{line_number}: #{String.trim(line)}"]
+        else
+          []
+        end
+      end)
+
+    Enum.uniq(references ++ grouped_aliases)
+  end
+
+  defp internal_projects_references(path) do
+    source = File.read!(path)
+    ast = Code.string_to_quoted!(source, file: path, columns: true)
+    local_aliases = projects_facade_aliases(ast)
+
+    ast
+    |> module_aliases()
+    |> Enum.filter(&internal_projects_alias?(&1.segments, local_aliases))
+    |> Enum.reject(&technical_project_contract?(path, &1.segments))
+    |> Enum.map(&"#{path}:#{&1.line}: #{Enum.join(&1.segments, ".")}")
+    |> Kernel.++(grouped_projects_alias_violations(path, source))
+    |> Enum.uniq()
+  end
+
+  defp projects_facade_aliases(ast) do
+    {_ast, aliases} =
+      Macro.prewalk(ast, MapSet.new([:Projects]), fn
+        {:alias, _meta, [{:__aliases__, _, [:Storyarn, :Projects]}, opts]} = node, aliases
+        when is_list(opts) ->
+          alias_name =
+            case Keyword.get(opts, :as) do
+              {:__aliases__, _, [name]} -> name
+              _other -> :Projects
+            end
+
+          {node, MapSet.put(aliases, alias_name)}
+
+        node, aliases ->
+          {node, aliases}
+      end)
+
+    aliases
+  end
+
+  defp module_aliases(ast) do
+    {_ast, aliases} =
+      Macro.prewalk(ast, [], fn
+        {:__aliases__, meta, segments} = node, aliases ->
+          {node, [%{segments: segments, line: meta[:line]} | aliases]}
+
+        node, aliases ->
+          {node, aliases}
+      end)
+
+    aliases
+  end
+
+  defp internal_projects_alias?([:Storyarn, :Projects, _internal | _rest], _local_aliases), do: true
+
+  defp internal_projects_alias?([local_alias, _internal | _rest], local_aliases),
+    do: MapSet.member?(local_aliases, local_alias)
+
+  defp internal_projects_alias?(_segments, _local_aliases), do: false
+
+  defp technical_project_contract?(path, segments) do
+    segments in Map.get(@web_technical_project_contracts, path, [])
+  end
+
+  defp grouped_projects_alias_violations(path, source) do
+    source
+    |> String.split("\n")
+    |> Enum.with_index(1)
+    |> Enum.flat_map(fn {line, line_number} ->
+      if Regex.match?(~r/\bStoryarn\.Projects\.\{/, line) do
+        ["#{path}:#{line_number}: #{String.trim(line)}"]
+      else
+        []
+      end
+    end)
   end
 end

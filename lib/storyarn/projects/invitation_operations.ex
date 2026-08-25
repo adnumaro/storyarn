@@ -10,7 +10,6 @@ defmodule Storyarn.Projects.InvitationOperations do
   - `parent_key` — e.g., :project_id
   - `rate_limit_context` — e.g., "project"
   - `parent_assoc` — e.g., :project
-  - `template` — e.g., :project_invitation
   - `invitation_path_prefix` — e.g., "/projects/invitations"
   - `memberships_module` — e.g., Projects.Memberships
   - `preload_after_insert` — e.g., [:project, :invited_by]
@@ -18,11 +17,10 @@ defmodule Storyarn.Projects.InvitationOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Projects.InvitationNotifier
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
@@ -70,7 +68,7 @@ defmodule Storyarn.Projects.InvitationOperations do
     case get_invitation_by_token(config, encoded_token) do
       {:ok, invitation} ->
         url = invitation_url(config.invitation_path_prefix, encoded_token)
-        InvitationNotifier.deliver_invitation(config, invitation, url, opts)
+        InvitationNotifier.deliver_invitation(invitation, url, opts)
 
       {:error, :invalid_token} ->
         {:cancel, :invitation_unavailable}
@@ -198,7 +196,7 @@ defmodule Storyarn.Projects.InvitationOperations do
            {:ok, locked_parent} <- lock_available_parent(config, parent, locked_workspace),
            parent_id = Map.fetch!(locked_parent, :id),
            :ok <- ensure_invitation_available(config, parent_id, email),
-           :ok <- normalize_limit_result(Billing.can_invite_member?(locked_parent, email)),
+           :ok <- normalize_limit_result(Platform.can_invite_member?(locked_parent, email)),
            :ok <- delete_inactive_invitation(config, parent_id, email),
            {:ok, invitation} <- insert_invitation(config, changeset),
            {:ok, _job} <- enqueue_delivery(config, encoded_token, opts) do
@@ -262,8 +260,7 @@ defmodule Storyarn.Projects.InvitationOperations do
       }
       |> Enum.reject(fn {_key, value} -> is_nil(value) end)
       |> Map.new()
-      |> DeliverInvitationWorker.new()
-      |> Oban.insert()
+      |> Platform.enqueue_invitation_delivery()
     end
   end
 
@@ -352,7 +349,7 @@ defmodule Storyarn.Projects.InvitationOperations do
          {:ok, current_invitation} <- lock_invitation(config, invitation),
          {:ok, current_user} <- lock_user(user),
          :ok <- validate_invitation_acceptance(config, current_invitation, current_user),
-         :ok <- normalize_limit_result(Billing.can_accept_member?(locked_parent, current_user.email)),
+         :ok <- normalize_limit_result(Platform.can_accept_member?(locked_parent, current_user.email)),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            config.memberships_module.create_membership(

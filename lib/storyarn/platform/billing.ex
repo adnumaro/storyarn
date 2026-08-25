@@ -8,7 +8,11 @@ defmodule Storyarn.Platform.Billing do
   alias Storyarn.Platform.Billing.Limits
   alias Storyarn.Platform.Billing.Plan
   alias Storyarn.Platform.Billing.StorageAccounting
+  alias Storyarn.Platform.Billing.StorageLeasePolicy
   alias Storyarn.Platform.Billing.SubscriptionCrud
+
+  @typedoc "Scalar lock context passed to the Project snapshot restore prelock callback."
+  @type snapshot_restore_prelock_context :: StorageAccounting.snapshot_restore_prelock_context()
 
   # Plan queries
   defdelegate get_plan(plan_key), to: Plan, as: :get
@@ -44,6 +48,30 @@ defmodule Storyarn.Platform.Billing do
   defdelegate project_storage_usage(project_id), to: StorageAccounting, as: :project_usage
   defdelegate project_snapshot_slot_usage(project_id), to: StorageAccounting
 
+  defdelegate snapshot_download_signed_url_ttl_seconds(),
+    to: StorageLeasePolicy,
+    as: :download_signed_url_ttl_seconds
+
+  defdelegate snapshot_download_max_transfer_seconds(),
+    to: StorageLeasePolicy,
+    as: :download_max_transfer_seconds
+
+  defdelegate snapshot_download_export_lease_ttl_seconds(),
+    to: StorageLeasePolicy,
+    as: :download_export_lease_ttl_seconds
+
+  defdelegate snapshot_build_heartbeat_interval_ms(),
+    to: StorageLeasePolicy,
+    as: :build_heartbeat_interval_ms
+
+  defdelegate snapshot_build_lease_ttl_seconds(),
+    to: StorageLeasePolicy,
+    as: :build_lease_ttl_seconds
+
+  defdelegate snapshot_export_lease_retention_seconds(),
+    to: StorageLeasePolicy,
+    as: :export_lease_retention_seconds
+
   defdelegate active_storage_reservations_by_snapshot(snapshot_ids),
     to: StorageAccounting,
     as: :active_reservations_by_snapshot
@@ -68,7 +96,21 @@ defmodule Storyarn.Platform.Billing do
     to: StorageAccounting,
     as: :commit
 
-  @doc false
+  @doc """
+  Commits a restore reservation while preserving Billing's workspace-first lock order.
+
+  The prelock callback receives only the stable scalar
+  `snapshot_restore_prelock_context/0`; Billing persistence structs never cross
+  this public boundary.
+  """
+  @spec commit_project_snapshot_restore_reservation(
+          pos_integer(),
+          Ecto.UUID.t(),
+          pos_integer(),
+          non_neg_integer(),
+          (snapshot_restore_prelock_context() -> {:ok, term()} | {:error, term()}),
+          (Storyarn.Platform.Billing.StorageReservation.t(), term() -> term())
+        ) :: {:ok, map()} | {:error, term()}
   defdelegate commit_project_snapshot_restore_reservation(
                 reservation_id,
                 lease_token,

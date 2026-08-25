@@ -16,6 +16,7 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
@@ -23,9 +24,9 @@ defmodule Storyarn.AssetsTest do
   alias Storyarn.Projects.Assets.Persistence.SequenceVisualLayerRecord
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
-  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   describe "assets" do
     setup do
@@ -1968,6 +1969,54 @@ defmodule Storyarn.AssetsTest do
       user = user_fixture()
       project = project_fixture(user)
       %{project: project, user: user}
+    end
+
+    test "the public upload capability reauthorizes while holding the write transaction", %{
+      project: project,
+      user: user
+    } do
+      scope = user_scope_fixture(user)
+      content = "transaction-fenced-authorized-upload"
+
+      {result, queries} =
+        capture_repo_queries(fn ->
+          Projects.upload_binary_asset(
+            scope,
+            project.id,
+            content,
+            %{filename: "authorized.pdf", content_type: "application/pdf"}
+          )
+        end)
+
+      assert {:ok, asset} = result
+      assert Enum.any?(queries, &String.contains?(&1, "FOR SHARE"))
+
+      on_exit(fn ->
+        Assets.storage_delete(asset.key)
+        delete_storage_blob(blob_key_for(project, content, "application/pdf"))
+      end)
+    end
+
+    test "the public upload capability refuses a revoked editor before storage is written", %{
+      project: project
+    } do
+      editor = user_fixture()
+      membership = membership_fixture(project, editor, "editor")
+      scope = user_scope_fixture(editor)
+      {:ok, _membership} = Projects.update_member_role(membership, "viewer")
+      content = "revoked-upload"
+      blob_key = blob_key_for(project, content, "application/pdf")
+
+      assert {:error, :unauthorized} =
+               Projects.upload_binary_asset(
+                 scope,
+                 project.id,
+                 content,
+                 %{filename: "revoked.pdf", content_type: "application/pdf"}
+               )
+
+      assert Assets.count_assets(project.id) == 0
+      assert {:error, _reason} = Assets.storage_download(blob_key)
     end
 
     test "rejects unsupported content type before writing blob storage", %{

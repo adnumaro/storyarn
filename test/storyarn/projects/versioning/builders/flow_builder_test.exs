@@ -25,11 +25,11 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.Builders.FlowBuilder
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
-  alias Storyarn.Projects.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.SheetAvatar
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
 
   setup do
     user = user_fixture(%{email: "flow-builder-#{Ecto.UUID.generate()}@example.com"})

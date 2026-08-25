@@ -30,10 +30,10 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   alias Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImports
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Projects.Workers.ImportProjectSnapshotWorker
   alias Storyarn.Repo
   alias Storyarn.Scenes
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.ImportProjectSnapshotWorker
 
   defmodule DirectUploadStorage do
     @moduledoc false
@@ -904,8 +904,12 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   defp corrupt_first_byte(<<first, rest::binary>>), do: <<Bitwise.bxor(first, 1), rest::binary>>
 
   defp import_job_count do
+    worker = inspect(ImportProjectSnapshotWorker)
+
     Repo.aggregate(
-      from(job in Oban.Job, where: job.worker == ^inspect(ImportProjectSnapshotWorker)),
+      from(job in Oban.Job,
+        where: job.worker == ^worker
+      ),
       :count
     )
   end

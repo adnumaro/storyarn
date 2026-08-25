@@ -9,12 +9,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   import Ecto.Query
 
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageKeyLock
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotLifecycle
@@ -23,14 +23,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
-  alias Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.RepairProjectSnapshotFindingWorker
 
   @contract_version 1
   @default_limit 50
   @max_limit 100
   @repair_terminal_statuses ~w(repaired resolved manual failed)
-  @repair_worker "Storyarn.Projects.Workers.RepairProjectSnapshotFindingWorker"
+  @repair_worker "Storyarn.Workers.RepairProjectSnapshotFindingWorker"
   @repair_queue "snapshots_maintenance"
   @active_repair_job_states ~w(available scheduled executing retryable)
   @recoverable_terminal_job_states ~w(discarded cancelled)
@@ -474,7 +474,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
          %ProjectSnapshot{} = observed_snapshot <- get_ready_snapshot(finding),
          {:ok, observed_integrity} <- current_integrity(observed_snapshot, finding) do
       finding.workspace_id_snapshot
-      |> Billing.transact_with_workspace_lock(fn _workspace ->
+      |> Platform.transact_with_workspace_lock(fn _workspace ->
         repair_integrity_locked(
           finding,
           observed_snapshot,
@@ -491,7 +491,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp resolve_missing_integrity_subject(finding) do
     finding.workspace_id_snapshot
-    |> Billing.transact_with_workspace_lock(fn _workspace ->
+    |> Platform.transact_with_workspace_lock(fn _workspace ->
       {:ok, {"resolved", "integrity_finding_stale", %{}}}
     end)
     |> flatten_repair_result()
@@ -626,7 +626,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp classify_changed_reservation(finding, provider_namespace_fingerprint) do
     finding.workspace_id_snapshot
-    |> Billing.transact_with_workspace_lock(fn _workspace ->
+    |> Platform.transact_with_workspace_lock(fn _workspace ->
       reservation = lock_reservation(finding.storage_reservation_id_snapshot)
 
       if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do

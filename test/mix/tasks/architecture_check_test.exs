@@ -32,7 +32,8 @@ defmodule Mix.Tasks.Architecture.CheckTest do
     args = ["--graph", graph_path, "--policy", policy_path, "--baseline-dir", baseline_dir]
 
     assert capture_io(fn -> ArchitectureCheck.run(args) end) =~
-             "Architecture check passed (1 temporary forbidden dependencies remain in the baseline)."
+             "Architecture check passed (baselined forbidden dependencies: 1; " <>
+               "durable cross-boundary contracts: 0; migration exceptions: 0)."
 
     new_edge = {"lib/storyarn/flows/query.ex", "lib/storyarn/sheets/sheet.ex", "runtime"}
     File.write!(graph_path, Jason.encode!(graph_with_edges([known_edge, new_edge])))
@@ -73,6 +74,60 @@ defmodule Mix.Tasks.Architecture.CheckTest do
                ArchitectureCheck.run(args)
              end
            end) =~ "flows: zero-debt baseline must remain empty"
+  end
+
+  @tag :tmp_dir
+  test "reports durable contracts and migration debt separately and rejects stale policy edges", %{tmp_dir: tmp_dir} do
+    durable_contract = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/sheets.ex",
+      kinds: ["runtime"],
+      reason: "Flows consumes the public Sheets facade"
+    }
+
+    migration_exception = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: "lib/storyarn/scenes/scene.ex",
+      kinds: ["runtime"],
+      reason: "Legacy internal schema access"
+    }
+
+    policy = %{
+      policy()
+      | durable_contracts: [durable_contract],
+        migration_exceptions: [migration_exception]
+    }
+
+    policy_path = Path.join(tmp_dir, "policy.exs")
+    graph_path = Path.join(tmp_dir, "graph.json")
+    baseline_dir = Path.join(tmp_dir, "baselines")
+    File.mkdir_p!(baseline_dir)
+    File.write!(policy_path, inspect(policy, pretty: true, limit: :infinity))
+
+    policy.forbidden_dependencies
+    |> Map.keys()
+    |> Enum.each(fn consumer ->
+      File.write!(
+        Path.join(baseline_dir, "#{consumer}.json"),
+        DependencyBaseline.encode(consumer, MapSet.new())
+      )
+    end)
+
+    graph = graph_with_edges([policy_edge(durable_contract), policy_edge(migration_exception)])
+    File.write!(graph_path, Jason.encode!(graph))
+    args = ["--graph", graph_path, "--policy", policy_path, "--baseline-dir", baseline_dir]
+
+    assert capture_io(fn -> ArchitectureCheck.run(args) end) =~
+             "baselined forbidden dependencies: 0; durable cross-boundary contracts: 1; " <>
+               "migration exceptions: 1"
+
+    File.write!(graph_path, Jason.encode!(graph_with_edges([policy_edge(durable_contract)])))
+
+    assert capture_io(:stderr, fn ->
+             assert_raise Mix.Error, "Architecture check failed", fn ->
+               ArchitectureCheck.run(args)
+             end
+           end) =~ "stale migration exceptions; remove repaid debt"
   end
 
   @tag :tmp_dir
@@ -142,7 +197,7 @@ defmodule Mix.Tasks.Architecture.CheckTest do
 
   defp policy do
     %{
-      version: 1,
+      version: 2,
       bounded_contexts: [:flows, :scenes, :sheets],
       classification_roots: classification_roots(),
       boundaries: %{
@@ -150,14 +205,16 @@ defmodule Mix.Tasks.Architecture.CheckTest do
         infrastructure: ["lib/storyarn/repo.ex"],
         presentation_adapters: ["lib/storyarn_web/live_vue_encoders.ex"],
         scenes: ["lib/storyarn/scenes/"],
-        sheets: ["lib/storyarn/sheets/"],
+        sheets: ["lib/storyarn/sheets.ex", "lib/storyarn/sheets/"],
         web_infrastructure: ["lib/storyarn_web/endpoint.ex"]
       },
       forbidden_dependencies: protected_dependencies([:flows, :scenes, :sheets]),
       zero_debt_consumers: [],
       isolated_contexts: [],
-      always_allowed_targets: ["lib/storyarn/repo.ex"],
-      exceptions: []
+      globally_allowed_technical_targets: ["lib/storyarn/repo.ex"],
+      additional_durable_contract_targets: [],
+      durable_contracts: [],
+      migration_exceptions: []
     }
   end
 
@@ -166,6 +223,8 @@ defmodule Mix.Tasks.Architecture.CheckTest do
       update_in(graph, [Access.key(source, %{})], &Map.put(&1, target, kind))
     end)
   end
+
+  defp policy_edge(contract), do: {contract.source, contract.target, hd(contract.kinds)}
 
   defp protected_dependencies(bounded_contexts) do
     context_dependencies =

@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
@@ -455,7 +455,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
     try do
       result =
-        Billing.with_storage_accounting_lock(
+        Platform.with_storage_accounting_lock(
           workspace_id,
           fn _workspace ->
             case do_recover(workspace_id, snapshot_data, user_id, name, opts) do

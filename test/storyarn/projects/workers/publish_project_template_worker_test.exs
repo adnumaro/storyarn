@@ -11,8 +11,8 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorkerTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Projects.Workers.PublishProjectTemplateWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.PublishProjectTemplateWorker
   alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "perform/1" do

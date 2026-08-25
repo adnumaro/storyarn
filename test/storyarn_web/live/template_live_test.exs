@@ -14,10 +14,10 @@ defmodule StoryarnWeb.TemplateLiveTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Projects.Workers.DeleteProjectTemplateArtifactsWorker
-  alias Storyarn.Projects.Workers.InstallProjectTemplateWorker
-  alias Storyarn.Projects.Workers.PublishProjectTemplateWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
+  alias Storyarn.Workers.InstallProjectTemplateWorker
+  alias Storyarn.Workers.PublishProjectTemplateWorker
 
   describe "index" do
     setup :register_and_log_in_user

@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.ProjectTrash do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -458,7 +458,7 @@ defmodule Storyarn.Projects.ProjectTrash do
       |> Enum.reject(&trash_retention_override?/1)
       |> Enum.map(& &1.workspace_id)
       |> Enum.uniq()
-      |> Billing.plans_for_workspace_ids()
+      |> Platform.plans_for_workspace_ids()
 
     Enum.map(items, fn item ->
       retention_hours =
@@ -469,7 +469,7 @@ defmodule Storyarn.Projects.ProjectTrash do
           _ ->
             plan_by_workspace
             |> Map.fetch!(item.workspace_id)
-            |> Billing.plan_retention_hours()
+            |> Platform.plan_retention_hours()
         end
 
       Map.put(item, :purge_at, DateTime.add(item.deleted_at, retention_hours * 60 * 60, :second))

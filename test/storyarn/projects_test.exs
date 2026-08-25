@@ -706,6 +706,31 @@ defmodule Storyarn.ProjectsTest do
       scope = user_scope_fixture(non_member)
       assert {:error, :not_found} = Projects.authorize(scope, project.id, :view)
     end
+
+    test "authorize/3 preserves inherited workspace access" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      member = user_fixture()
+      _workspace_membership = workspace_membership_fixture(workspace, member, "member")
+
+      assert {:ok, authorized_project, %{role: "editor", id: nil}} =
+               Projects.authorize(user_scope_fixture(member), project.id, :edit_content)
+
+      assert authorized_project.id == project.id
+    end
+
+    test "authorize/3 keeps direct project membership precedence over workspace access" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      member = user_fixture()
+      _workspace_membership = workspace_membership_fixture(workspace, member, "admin")
+      _project_membership = membership_fixture(project, member, "viewer")
+
+      assert {:error, :unauthorized} =
+               Projects.authorize(user_scope_fixture(member), project.id, :edit_content)
+    end
   end
 
   describe "ProjectMembership.roles/0" do

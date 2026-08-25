@@ -11,12 +11,12 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing.StorageCleanupInventory
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
+  alias Storyarn.Projects.StorageCleanupInventory
   alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Projects.Versioning.ProjectSnapshotZip
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
@@ -130,7 +130,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
   Therefore the sidecar is the last provider mutation that can make a v2
   snapshot publishable.
   """
-  @spec publish(staged_archive(), (staged_archive() -> {:ok, StorageReservation.t()} | {:error, term()}), keyword()) ::
+  @spec publish(staged_archive(), (staged_archive() -> {:ok, map()} | {:error, term()}), keyword()) ::
           {:ok, stored_archive()} | {:error, term()}
   def publish(staged, before_publish, opts \\ [])
 
@@ -1126,16 +1126,23 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   defp authorize_stage(staged, before_stage) do
     case invoke_callback(before_stage, [staged]) do
-      {:ok, %StorageReservation{} = reservation} -> validate_authorized_reservation(staged, reservation, ["staging"])
-      {:ok, _invalid} -> {:error, :invalid_snapshot_stage_authorization_result}
-      {:error, _reason} = error -> error
-      _invalid -> {:error, :invalid_snapshot_stage_authorization_result}
+      {:ok, reservation} when is_map(reservation) ->
+        validate_authorized_reservation(staged, reservation, ["staging"])
+
+      {:ok, _invalid} ->
+        {:error, :invalid_snapshot_stage_authorization_result}
+
+      {:error, _reason} = error ->
+        error
+
+      _invalid ->
+        {:error, :invalid_snapshot_stage_authorization_result}
     end
   end
 
   defp authorize_publication(staged, before_publish) do
     case invoke_callback(before_publish, [staged]) do
-      {:ok, %StorageReservation{} = reservation} ->
+      {:ok, reservation} when is_map(reservation) ->
         validate_authorized_reservation(staged, reservation, ["publishing", "published"])
 
       {:ok, _invalid} ->
@@ -1174,7 +1181,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
   end
 
   defp validate_initial_reservation(
-         %StorageReservation{
+         %{
            id: id,
            status: "active",
            kind: "snapshot_build",
@@ -1787,7 +1794,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
            storage_reservation_id_snapshot: reservation_id,
            storage_reservation_lease_token: lease_token
          },
-         %StorageReservation{id: reservation_id, lease_token: lease_token}
+         %{id: reservation_id, lease_token: lease_token}
        ), do: :ok
 
   defp validate_claim_reservation(_claim, _reservation), do: {:error, :snapshot_object_stage_reservation_binding_conflict}
@@ -1824,7 +1831,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorage do
 
   defp stage_reservation(opts) do
     case Keyword.fetch(opts, :storage_reservation) do
-      {:ok, %StorageReservation{id: id} = reservation} when is_integer(id) and id > 0 -> {:ok, reservation}
+      {:ok, %{id: id} = reservation} when is_integer(id) and id > 0 -> {:ok, reservation}
       {:ok, _invalid} -> {:error, :invalid_snapshot_stage_reservation}
       :error -> {:error, :snapshot_stage_reservation_required}
     end

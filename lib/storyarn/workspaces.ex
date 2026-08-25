@@ -17,6 +17,7 @@ defmodule Storyarn.Workspaces do
   alias Storyarn.Workspaces.Naming
   alias Storyarn.Workspaces.SourceLocaleCatalog
   alias Storyarn.Workspaces.Workspace
+  alias Storyarn.Workspaces.WorkspaceBanner
   alias Storyarn.Workspaces.WorkspaceCrud
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -52,6 +53,33 @@ defmodule Storyarn.Workspaces do
   @doc "Returns the source locales supported by workspace defaults."
   @spec source_locale_options() :: [%{code: String.t(), name: String.t()}]
   defdelegate source_locale_options(), to: SourceLocaleCatalog, as: :all
+
+  @doc "Uploads and persists a private Workspace banner after reauthorizing its owner."
+  @spec upload_workspace_banner(scope(), pos_integer(), map(), keyword()) ::
+          {:ok, workspace()} | {:error, term()}
+  defdelegate upload_workspace_banner(scope, workspace_id, attrs, opts \\ []),
+    to: WorkspaceBanner,
+    as: :upload
+
+  @doc "Removes a Workspace banner and cleans up its owned storage object."
+  @spec remove_workspace_banner(scope(), pos_integer(), keyword()) ::
+          {:ok, workspace()} | {:error, term()}
+  defdelegate remove_workspace_banner(scope, workspace_id, opts \\ []),
+    to: WorkspaceBanner,
+    as: :remove
+
+  @doc "Resolves an authorized private Workspace banner for delivery."
+  @spec get_workspace_banner(scope(), String.t(), keyword()) ::
+          {:ok, %{key: String.t(), content_type: String.t()}} | {:error, :not_found}
+  defdelegate get_workspace_banner(scope, workspace_slug, opts \\ []),
+    to: WorkspaceBanner,
+    as: :get
+
+  @doc false
+  @spec perform_workspace_banner_cleanup(String.t(), String.t()) :: :ok | {:error, term()}
+  defdelegate perform_workspace_banner_cleanup(workspace_slug, storage_key),
+    to: WorkspaceBanner,
+    as: :perform_cleanup
 
   # =============================================================================
   # Workspace CRUD

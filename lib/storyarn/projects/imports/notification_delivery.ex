@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.Imports.NotificationDelivery do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
   alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
@@ -39,13 +39,13 @@ defmodule Storyarn.Projects.Imports.NotificationDelivery do
 
   @doc false
   @spec deliver(ProjectImportAttempt.t(), locked_context(), String.t()) ::
-          {:ok, Notifications.delivery_outcome()} | {:error, Ecto.Changeset.t()}
+          {:ok, Platform.notification_delivery_outcome()} | {:error, Ecto.Changeset.t()}
   def deliver(%ProjectImportAttempt{} = attempt, %{project_id: project_id, requester_id: requester_id} = context, status)
       when status in ["success", "failure"] do
     project = if attempt.project_id == project_id, do: context.project
     requester = if attempt.user_id == requester_id, do: context.requester
 
-    Notifications.deliver_async_result(
+    Platform.deliver_scoped_async_result(
       %{user: requester},
       project,
       %{

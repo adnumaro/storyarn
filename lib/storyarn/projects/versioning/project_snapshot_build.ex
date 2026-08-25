@@ -11,16 +11,16 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Persistence.UserRecord, as: User
+  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
@@ -35,8 +35,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
   alias Storyarn.Projects.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   require Logger
 
@@ -75,7 +75,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   def request(%{user: %{id: user_id}} = scope, %Project{} = project, attrs) when is_integer(user_id) and is_map(attrs) do
     with {:ok, request} <- normalize_request(attrs),
          {:ok, %Project{} = authorized_project, _membership} <-
-           Projects.authorize(scope, project.id, :manage_project) do
+           Memberships.authorize(scope, project.id, :manage_project) do
       run_request_transaction(authorized_project, user_id, request)
     else
       {:error, reason} when reason in [:not_found, :unauthorized] -> {:error, :unauthorized}
@@ -263,7 +263,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     result =
       with workspace_id when is_integer(workspace_id) and workspace_id > 0 <- snapshot_workspace_id(snapshot_id),
            {:ok, :heartbeat_recorded} <-
-             Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+             Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
                heartbeat_locked(snapshot_id, job_id, workspace_id, allow_expired_claim_recovery)
              end) do
         :ok
@@ -323,7 +323,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
              allow_expired_claim_recovery
            ),
          {:ok, _renewed} <-
-           Billing.renew_live_storage_reservation(
+           PlatformStorageReservations.renew_live(
              reservation.id,
              reservation.lease_token,
              reservation.generation
@@ -548,7 +548,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
 
   defp reconcile_stale_build_candidate(candidate, counts, stale_build_heartbeat_seconds) do
     result =
-      Billing.transact_with_workspace_lock(candidate.workspace_id, fn _workspace ->
+      Platform.transact_with_workspace_lock(candidate.workspace_id, fn _workspace ->
         now = database_clock_now()
         stale_before = DateTime.add(now, -stale_build_heartbeat_seconds, :second)
         reconcile_stale_build_candidate_locked(candidate, now, stale_before)
@@ -560,7 +560,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
 
       {:ok, {:settled, %ProjectSnapshot{} = snapshot, notification_outcome}} ->
         broadcast(snapshot)
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         Map.update!(counts, :settled_count, &(&1 + 1))
 
       {:error, :snapshot_build_recovery_candidate_changed} ->
@@ -935,7 +935,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   @spec cancel(Scope.t(), Project.t(), pos_integer()) ::
           {:ok, ProjectSnapshot.t()} | {:error, term()}
   def cancel(%{user: _} = scope, %Project{} = project, snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0 do
-    case Projects.authorize(scope, project.id, :manage_project) do
+    case Memberships.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->
         cancel_authorized(authorized_project, snapshot_id)
 
@@ -960,7 +960,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
       not Repo.in_transaction?() ->
         {:error, :snapshot_cleanup_transaction_required}
 
-      not Billing.workspace_lock_held?(workspace_id) ->
+      not Platform.workspace_lock_held?(workspace_id) ->
         {:error, :snapshot_cleanup_workspace_lock_required}
 
       true ->
@@ -1030,7 +1030,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
 
   defp run_request_transaction(project, user_id, request) do
     result =
-      Billing.transact_with_workspace_lock(
+      Platform.transact_with_workspace_lock(
         project.workspace_id,
         fn _workspace -> request_locked(project, user_id, request) end
       )
@@ -1385,7 +1385,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp persist_materialized_capture(snapshot, job_id, project_snapshot, prepared) do
     case snapshot_workspace_id(snapshot.id) do
       workspace_id when is_integer(workspace_id) ->
-        Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
           persist_materialized_capture_locked(
             snapshot.id,
             snapshot.project_id,
@@ -1426,7 +1426,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
            persist_capture_metadata(snapshot, project_snapshot, prepared),
          {:ok, _capture} <- insert_capture(captured_snapshot, prepared),
          {:ok, _reservation} <-
-           Billing.extend_storage_reservation(
+           PlatformStorageReservations.extend(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -1500,7 +1500,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   end
 
   defp reserve_build(project, snapshot, bytes, operation_attempt) do
-    Billing.reserve_storage(%{
+    PlatformStorageReservations.reserve(%{
       workspace_id: project.workspace_id,
       project_id: project.id,
       project_snapshot_id: snapshot.id,
@@ -1628,7 +1628,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
            ),
          {:ok, {snapshot, notification_outcome}} <- commit_ready(build.snapshot.id, generation, stored) do
       broadcast(snapshot)
-      Notifications.publish_committed(notification_outcome)
+      Platform.publish_notification_delivery(notification_outcome)
       {:ok, snapshot}
     else
       nil ->
@@ -1648,7 +1648,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp authorize_stage(snapshot_id, expected_generation, staged) do
     with workspace_id when is_integer(workspace_id) <- snapshot_workspace_id(snapshot_id),
          {:ok, reservation} <-
-           Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+           Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
              authorize_stage_locked(snapshot_id, expected_generation, staged)
            end) do
       {:ok, reservation}
@@ -1677,7 +1677,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
            })
            |> Repo.update(),
          {:ok, started} <-
-           Billing.mark_storage_reservation_started(
+           PlatformStorageReservations.mark_started(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -1844,7 +1844,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp authorize_publication(snapshot_id, expected_generation, staged) do
     with workspace_id when is_integer(workspace_id) <- snapshot_workspace_id(snapshot_id),
          {:ok, reservation} <-
-           Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+           Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
              authorize_publication_locked(snapshot_id, expected_generation, staged)
            end) do
       {:ok, reservation}
@@ -1862,7 +1862,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
          %StorageReservation{status: "active"} <- reservation,
          :ok <- validate_executing_build_job(snapshot),
          {:ok, extended} <-
-           Billing.extend_storage_reservation(
+           PlatformStorageReservations.extend(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -1896,7 +1896,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     with %ProjectSnapshot{} <- snapshot,
          %StorageReservation{} <- reservation,
          {:ok, %{result: {%ProjectSnapshot{} = ready_snapshot, notification_outcome}}} <-
-           Billing.commit_storage_reservation(
+           PlatformStorageReservations.commit(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -2160,7 +2160,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp release_reservation(reservation, reason, cleanup_authority) do
     attrs = release_attrs(reservation, reason, cleanup_authority)
 
-    case Billing.release_storage_reservation(
+    case PlatformStorageReservations.release(
            reservation.id,
            reservation.lease_token,
            reservation.generation,
@@ -2174,7 +2174,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   defp allocate_retry(snapshot, operation_attempt) do
     case snapshot_workspace_id(snapshot.id) do
       workspace_id when is_integer(workspace_id) ->
-        Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
           allocate_retry_locked(
             snapshot.id,
             snapshot.lifecycle_generation,
@@ -2260,7 +2260,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   end
 
   defp reserve_retry_storage(snapshot, workspace_id, operation_attempt) do
-    Billing.reserve_storage(%{
+    PlatformStorageReservations.reserve(%{
       workspace_id: workspace_id,
       project_id: snapshot.project_id,
       project_snapshot_id: snapshot.id,
@@ -2296,7 +2296,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
          end) do
       {:ok, {failed, notification_outcome}} ->
         broadcast(failed)
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         {:discard, code}
 
       {:error, _reason} ->
@@ -2523,7 +2523,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
          end) do
       {:ok, {cancelled, notification_outcome}} ->
         broadcast(cancelled)
-        Notifications.publish_committed(notification_outcome)
+        Platform.publish_notification_delivery(notification_outcome)
         {:ok, cancelled}
 
       {:error, _reason} ->
@@ -2581,7 +2581,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     result =
       case snapshot_workspace_id(project.id, snapshot_id) do
         workspace_id when is_integer(workspace_id) ->
-          Billing.transact_with_workspace_lock(workspace_id, fn _workspace ->
+          Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
             cancel_locked(project.id, snapshot_id)
           end)
 
@@ -2838,7 +2838,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
        when state in ["ready", "failed"] do
     snapshot = Repo.preload(snapshot, [:created_by, :project], force: true)
 
-    Notifications.deliver_async_result(
+    Platform.deliver_scoped_async_result(
       %{user: snapshot.created_by},
       snapshot.project,
       %{

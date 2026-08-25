@@ -165,6 +165,10 @@ defmodule Storyarn.RateLimiterTest do
     end
   end
 
+  test "Redis retains the counter namespace used before the backend module moved under Platform" do
+    assert RedisBackend.namespace_prefix() == "Storyarn.RateLimiter.RedisBackend"
+  end
+
   describe "child_spec_for_backend/0" do
     test "returns ETS child spec by default" do
       {module, opts} = RateLimiter.child_spec_for_backend()

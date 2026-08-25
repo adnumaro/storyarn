@@ -13,7 +13,6 @@ defmodule Storyarn.Projects.Invitations do
     parent_key: :project_id,
     parent_assoc: :project,
     rate_limit_context: "project",
-    template: :project_invitation,
     invitation_path_prefix: "/projects/invitations",
     memberships_module: Memberships,
     preload_after_insert: [:project, :invited_by]

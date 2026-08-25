@@ -13,7 +13,7 @@ defmodule Storyarn.Projects.Versioning do
   - `Builders.*` - Entity-specific snapshot building and restoration
   """
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Projects.Versioning.ChangeDetector
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotBuild
@@ -311,12 +311,12 @@ defmodule Storyarn.Projects.Versioning do
 
   @doc false
   defdelegate recover_expired_project_snapshot_export_leases(now, opts \\ []),
-    to: Billing,
+    to: Platform,
     as: :recover_expired_snapshot_export_leases
 
   @doc false
   defdelegate purge_released_project_snapshot_export_leases(cutoff, opts \\ []),
-    to: Billing,
+    to: Platform,
     as: :purge_released_snapshot_export_leases
 
   @doc false
@@ -420,6 +420,11 @@ defmodule Storyarn.Projects.Versioning do
   defdelegate with_project_snapshot_archive(project, snapshot_id, callback),
     to: ProjectSnapshotDownload,
     as: :with_archive
+
+  @doc "Authorizes, leases and prepares one bounded Project snapshot download."
+  defdelegate with_authorized_project_snapshot_download(scope, project_id, snapshot_id, callback),
+    to: ProjectSnapshotDownload,
+    as: :with_authorized_download
 
   @doc """
   Updates a project snapshot's title and description.

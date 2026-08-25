@@ -26,24 +26,24 @@ msgstr ""
 msgid "We can't find the internet"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:54
-#: lib/storyarn_web/controllers/export_controller.ex:60
-#: lib/storyarn_web/controllers/export_controller.ex:105
+#: lib/storyarn_web/controllers/export_controller.ex:50
+#: lib/storyarn_web/controllers/export_controller.ex:56
+#: lib/storyarn_web/controllers/export_controller.ex:106
 #, elixir-autogen, elixir-format
 msgid "Export failed"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:36
+#: lib/storyarn_web/controllers/export_controller.ex:32
 #, elixir-autogen, elixir-format
 msgid "Invalid format"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:45
+#: lib/storyarn_web/controllers/export_controller.ex:41
 #, elixir-autogen, elixir-format
 msgid "Not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:33
+#: lib/storyarn_web/controllers/export_controller.ex:29
 #, elixir-autogen, elixir-format
 msgid "Unknown format"
 msgstr ""
@@ -98,24 +98,24 @@ msgstr ""
 msgid "You don't have permission to edit."
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:48
-#: lib/storyarn_web/controllers/export_controller.ex:78
-#: lib/storyarn_web/controllers/export_controller.ex:102
+#: lib/storyarn_web/controllers/export_controller.ex:44
+#: lib/storyarn_web/controllers/export_controller.ex:74
+#: lib/storyarn_web/controllers/export_controller.ex:103
 #, elixir-autogen, elixir-format
 msgid "Export is too large"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:39
+#: lib/storyarn_web/controllers/export_controller.ex:35
 #, elixir-autogen, elixir-format
 msgid "Invalid localization policy"
 msgstr ""
 
-#: lib/storyarn_web/controllers/private_media_controller.ex:87
+#: lib/storyarn_web/controllers/private_media_controller.ex:68
 #, elixir-autogen, elixir-format
 msgid "Media not found"
 msgstr ""
 
-#: lib/storyarn_web/controllers/export_controller.ex:42
+#: lib/storyarn_web/controllers/export_controller.ex:38
 #, elixir-autogen, elixir-format
 msgid "You do not have permission to export this project"
 msgstr ""

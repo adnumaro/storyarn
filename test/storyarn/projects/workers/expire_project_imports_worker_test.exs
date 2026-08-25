@@ -1,8 +1,8 @@
 defmodule Storyarn.Workers.ExpireProjectImportsWorkerTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Workers.ExpireProjectImportsWorker
-  alias Storyarn.Projects.Workers.ImportProjectWorker
+  alias Storyarn.Workers.ExpireProjectImportsWorker
+  alias Storyarn.Workers.ImportProjectWorker
   alias StoryarnWeb.Telemetry
 
   @event [:storyarn, :import, :expiration, :stop]

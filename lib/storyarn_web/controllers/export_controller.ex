@@ -4,9 +4,6 @@ defmodule StoryarnWeb.ExportController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Projects
-  alias Storyarn.Projects.Exports
-  alias Storyarn.Projects.Exports.SizeGuard
-  alias Storyarn.Projects.NameNormalizer
 
   require Logger
 
@@ -20,14 +17,13 @@ defmodule StoryarnWeb.ExportController do
   """
   def export(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "format" => format_str}) do
     with {:ok, format} <- parse_format(format_str),
-         {:ok, serializer} <- Exports.get_serializer(format),
-         {:ok, project, membership} <-
+         {:ok, project, _membership} <-
            Projects.get_project_by_slugs(conn.assigns.current_scope, workspace_slug, project_slug),
-         :ok <- authorize_export(membership),
          {:ok, opts} <- build_options(conn.params, format),
-         {:ok, output} <- Exports.export_project(project, opts) do
-      slug = NameNormalizer.slugify(project.name)
-      send_export(conn, output, slug, format, serializer)
+         {:ok, artifact} <-
+           Projects.prepare_project_export(conn.assigns.current_scope, project, opts) do
+      slug = Projects.slugify_project_name(project.name)
+      send_export(conn, artifact, slug)
     else
       {:error, {:unknown_format, _}} ->
         conn |> put_status(:bad_request) |> text(gettext("Unknown format"))
@@ -63,14 +59,14 @@ defmodule StoryarnWeb.ExportController do
 
   # sobelow_skip ["XSS.ContentType", "XSS.SendResp"]
   # Single-file output (binary string)
-  defp send_export(conn, output, slug, _format, serializer) when is_binary(output) do
-    ext = serializer.file_extension()
-    filename = "#{slug}.#{ext}"
+  defp send_export(conn, %{delivery: :single, body: output, extension: extension, content_type: content_type}, slug)
+       when is_binary(output) and is_binary(extension) and is_binary(content_type) do
+    filename = "#{slug}.#{extension}"
 
-    case validate_export_size(byte_size(output), SizeGuard.max_sync_export_bytes()) do
+    case validate_export_size(byte_size(output), Projects.max_sync_project_export_bytes()) do
       :ok ->
         conn
-        |> put_resp_content_type(serializer.content_type())
+        |> put_resp_content_type(content_type)
         |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
         |> send_resp(200, output)
 
@@ -83,14 +79,19 @@ defmodule StoryarnWeb.ExportController do
   # System.tmp_dir!/0 and a unique integer; it never contains request input.
   # sobelow_skip ["Traversal.FileModule", "XSS.ContentType", "XSS.SendResp"]
   # Multi-file output (list of {filename, content} tuples)
-  defp send_export(conn, files, slug, format, _serializer) when is_list(files) do
+  defp send_export(
+         conn,
+         %{delivery: :archive, entries: files, format: format, extension: "zip", content_type: content_type},
+         slug
+       )
+       when is_list(files) and is_atom(format) and is_binary(content_type) do
     filename = "#{slug}-#{format}.zip"
 
     case zip_files_to_disk(files) do
       {:ok, zip_path} ->
         try do
           conn
-          |> put_resp_content_type("application/zip", nil)
+          |> put_resp_content_type(content_type, nil)
           |> put_resp_header("content-disposition", ~s(attachment; filename="#{filename}"))
           |> send_chunked(200)
           |> stream_zip_file(zip_path)
@@ -107,7 +108,7 @@ defmodule StoryarnWeb.ExportController do
   end
 
   defp zip_files_to_disk(files) do
-    max_bytes = SizeGuard.max_sync_export_bytes()
+    max_bytes = Projects.max_sync_project_export_bytes()
 
     with {:ok, total_bytes} <- export_size(files),
          :ok <- validate_export_size(total_bytes, max_bytes) do
@@ -215,17 +216,8 @@ defmodule StoryarnWeb.ExportController do
   # only interned once `ExportOptions` loads — `:storyarn` happened to always
   # exist because it is also the OTP application name, which is what kept the
   # bug hidden. Comparing strings has no such dependency and cannot raise.
-  # Membership alone is not enough: an export hands the caller the whole
-  # project's narrative in one file, so it takes the same role that may edit it.
-  # A viewer can read the project in the app but cannot walk out with it.
-  defp authorize_export(%{role: role}) when is_binary(role) do
-    if Projects.can?(role, :edit_content), do: :ok, else: {:error, :unauthorized}
-  end
-
-  defp authorize_export(_membership), do: {:error, :unauthorized}
-
   defp parse_format(format_str) do
-    case Enum.find(Exports.valid_export_formats(), &(Atom.to_string(&1) == format_str)) do
+    case Enum.find(Projects.valid_project_export_formats(), &(Atom.to_string(&1) == format_str)) do
       nil -> :error
       format -> {:ok, format}
     end

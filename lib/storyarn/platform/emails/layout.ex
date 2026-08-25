@@ -60,11 +60,14 @@ defmodule Storyarn.Platform.Emails.Layout do
     end
   end
 
-  defp escape(text) do
+  @doc "Escapes dynamic text before interpolating it into MJML content."
+  def escape(text) when is_binary(text) do
     text
     |> String.replace("&", "&amp;")
     |> String.replace("<", "&lt;")
     |> String.replace(">", "&gt;")
     |> String.replace("\"", "&quot;")
   end
+
+  def escape(text), do: text |> to_string() |> escape()
 end

@@ -8,6 +8,8 @@ defmodule Storyarn.Sheets.Persistence.SceneZoneRecord do
   schema "scene_zones" do
     field :name, :string
     field :action_data, :map, default: %{}
+    field :action_type, :string
+    field :condition, :map
     field :target_type, :string
     field :target_id, :integer
     field :scene_id, :id

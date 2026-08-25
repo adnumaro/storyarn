@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Assets.BlobStore do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
@@ -506,7 +506,7 @@ defmodule Storyarn.Projects.Assets.BlobStore do
   end
 
   defp require_workspace_lock_for_transaction(workspace_id, true) do
-    if Billing.workspace_lock_held?(workspace_id),
+    if Platform.workspace_lock_held?(workspace_id),
       do: :ok,
       else: {:error, :asset_materialization_requires_workspace_lock}
   end
@@ -515,9 +515,9 @@ defmodule Storyarn.Projects.Assets.BlobStore do
 
   defp materialize_under_storage_lock(workspace_id, project_id, user_id, blob_hash, source_key, metadata, opts) do
     workspace_id
-    |> Billing.with_storage_accounting_lock(fn workspace ->
+    |> Platform.with_storage_accounting_lock(fn workspace ->
       with {:ok, _project} <- lock_active_project(project_id, workspace_id),
-           :ok <- Billing.can_upload_asset?(workspace, metadata["size"]) do
+           :ok <- Platform.can_upload_asset?(workspace, metadata["size"]) do
         do_create_asset_from_blob(project_id, user_id, blob_hash, source_key, metadata, opts)
       else
         {:error, :limit_reached, details} -> {:error, {:limit_reached, details}}

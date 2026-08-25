@@ -107,7 +107,7 @@ defmodule StoryarnWeb.LandingLive.Index do
 
   defp redirect_to_workspace(socket, user) do
     case Workspaces.get_default_workspace(user) do
-      %Workspaces.Workspace{slug: slug} ->
+      %{slug: slug} when is_binary(slug) ->
         push_navigate(socket, to: ~p"/workspaces/#{slug}")
 
       nil ->

@@ -318,7 +318,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   defp canonical_reference(_segments, _aliases), do: nil
 
   # The platform technical contracts remain allowed for every boundary
-  # (mirrors always_allowed_targets in the ratchet config).
+  # (mirrors globally_allowed_technical_targets in the ratchet config).
   defp foreign_context_module?("Storyarn.Platform.Shared" <> _rest), do: false
   defp foreign_context_module?("Storyarn.Platform.Collaboration" <> _rest), do: false
   defp foreign_context_module?("Storyarn.Platform.Dashboards.Cache" <> _rest), do: false

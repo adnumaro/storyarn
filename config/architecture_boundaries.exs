@@ -1,21 +1,25 @@
 # ENG-92 code boundaries. These rules intentionally protect code ownership only:
 # they do not assign database write ownership or change the shared schema.
 
+# These are the bounded contexts sealed by the current ENG-92 ratchet. AI is
+# also a product bounded context, but this pass deliberately leaves its existing
+# dependency classification unchanged instead of claiming that it is isolated.
 bounded_contexts = [:accounts, :workspaces, :platform, :projects, :sheets, :flows, :scenes, :localization]
 
 boundaries = %{
   accounts: [
     "lib/storyarn/accounts.ex",
     "lib/storyarn/accounts/",
+    "lib/storyarn/workers/accounts/",
     "lib/storyarn_web/controllers/user_session_controller.ex",
     "lib/storyarn_web/live/user_live/",
     "lib/storyarn_web/live/settings_live/profile.ex",
-    "lib/storyarn_web/live/settings_live/security.ex",
-    "lib/storyarn_web/live/settings_live/sudo.ex"
+    "lib/storyarn_web/live/settings_live/security.ex"
   ],
   workspaces: [
     "lib/storyarn/workspaces.ex",
     "lib/storyarn/workspaces/",
+    "lib/storyarn/workers/workspaces/",
     "lib/storyarn_web/live/workspace_live/",
     "lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex",
     "lib/storyarn_web/live/settings_live/workspace_general.ex",
@@ -25,6 +29,7 @@ boundaries = %{
   platform: [
     "lib/storyarn/platform.ex",
     "lib/storyarn/platform/",
+    "lib/storyarn/workers/platform/",
 
     # Transitional locations owned by the Platform control plane. Moving them
     # under `Storyarn.Platform` is a separate migration; listing them here does
@@ -56,6 +61,7 @@ boundaries = %{
   projects: [
     "lib/storyarn/projects.ex",
     "lib/storyarn/projects/",
+    "lib/storyarn/workers/projects/",
     "lib/storyarn/projects/assets.ex",
     "lib/storyarn/projects/assets/",
     "lib/storyarn/projects/references.ex",
@@ -72,26 +78,9 @@ boundaries = %{
     "lib/storyarn/projects/imports/",
     "lib/storyarn/projects/project_templates.ex",
     "lib/storyarn/projects/project_templates/",
-    "lib/storyarn/projects/workers/trash_retention_worker.ex",
     "lib/storyarn/projects/name_normalizer.ex",
     "lib/storyarn/projects/validations.ex",
     "lib/storyarn/projects/word_count.ex",
-    "lib/storyarn/projects/workers/build_project_snapshot_worker.ex",
-    "lib/storyarn/projects/workers/cleanup_project_snapshot_worker.ex",
-    "lib/storyarn/projects/workers/delete_project_template_artifacts_worker.ex",
-    "lib/storyarn/projects/workers/delete_storage_objects_worker.ex",
-    "lib/storyarn/projects/workers/expire_project_imports_worker.ex",
-    "lib/storyarn/projects/workers/import_project_snapshot_worker.ex",
-    "lib/storyarn/projects/workers/import_project_worker.ex",
-    "lib/storyarn/projects/workers/inspect_project_snapshots_worker.ex",
-    "lib/storyarn/projects/workers/install_project_template_worker.ex",
-    "lib/storyarn/projects/workers/project_snapshot_retention_worker.ex",
-    "lib/storyarn/projects/workers/publish_project_template_worker.ex",
-    "lib/storyarn/projects/workers/reconcile_project_snapshot_cleanup_worker.ex",
-    "lib/storyarn/projects/workers/reconcile_project_snapshot_repair_worker.ex",
-    "lib/storyarn/projects/workers/repair_project_snapshot_finding_worker.ex",
-    "lib/storyarn/projects/workers/restore_project_snapshot_worker.ex",
-    "lib/storyarn/projects/workers/retry_storage_cleanup_requests_worker.ex",
     "lib/storyarn_web/controllers/export_controller.ex",
     "lib/storyarn_web/controllers/private_media_controller.ex",
     "lib/storyarn_web/controllers/snapshot_download_controller.ex",
@@ -109,6 +98,7 @@ boundaries = %{
   localization: [
     "lib/storyarn/localization.ex",
     "lib/storyarn/localization/",
+    "lib/storyarn/workers/localization/",
     "lib/storyarn_web/controllers/localization_export_controller.ex",
     "lib/storyarn_web/live/localization_live/",
     "lib/storyarn_web/live/localization_sidebar_live.ex",
@@ -126,10 +116,11 @@ boundaries = %{
     "lib/storyarn_web/live_vue_encoder/"
   ],
 
-  # Explicit technical/application namespaces, not a bounded context. There is
-  # deliberately no `lib/storyarn/` catch-all: an unlisted namespace must fail
-  # the checker until its ownership is reviewed. AI and global search remain
-  # visible here as migration debt; they are not shared domain kernels.
+  # Explicit technical/application namespaces and namespaces whose boundary is
+  # not sealed by this ratchet yet. There is deliberately no `lib/storyarn/`
+  # catch-all: an unlisted namespace must fail until its ownership is reviewed.
+  # AI is a recognized product bounded context, but remains transitionally
+  # classified here for this pass; that does not make it a shared domain kernel.
   infrastructure: [
     "lib/storyarn.ex",
     "lib/storyarn/ai.ex",
@@ -141,9 +132,6 @@ boundaries = %{
     "lib/storyarn/ai/allowance_ledger_entry.ex",
     "lib/storyarn/ai/allowance_reservation.ex",
     "lib/storyarn/ai/audit.ex",
-    "lib/storyarn/ai/workers/ai_execution_worker.ex",
-    "lib/storyarn/ai/workers/expire_ai_results_worker.ex",
-    "lib/storyarn/ai/workers/reconcile_ai_reservations_worker.ex",
     "lib/storyarn/ai/audit_entry.ex",
     "lib/storyarn/ai/config_map.ex",
     "lib/storyarn/ai/context.ex",
@@ -279,6 +267,7 @@ boundaries = %{
     "lib/storyarn/platform/global_search/sheet_search.ex",
     "lib/storyarn/platform/global_search/variable_query.ex",
     "lib/storyarn/platform/global_search/variable_search.ex",
+    "lib/storyarn/platform/emails/layout.ex",
     "lib/storyarn/platform/mailer.ex",
     "lib/storyarn/platform/onboarding.ex",
     "lib/storyarn/platform/onboarding/persistence/user_record.ex",
@@ -310,6 +299,9 @@ boundaries = %{
     "lib/storyarn/shared/tree_operations.ex",
     "lib/storyarn/platform/urls.ex",
     "lib/storyarn/platform/vault.ex",
+    # Worker folders are assigned to their sealed owner above. AI remains
+    # transitional, so its worker slice and any future unclassified slice fall
+    # back to infrastructure instead of becoming a shared business boundary.
     "lib/storyarn/workers/"
   ],
 
@@ -337,6 +329,7 @@ boundaries = %{
     "lib/storyarn_web/live/settings_live/ai_team_overview.ex",
     "lib/storyarn_web/live/settings_live/integration_detail.ex",
     "lib/storyarn_web/live/settings_live/integrations.ex",
+    "lib/storyarn_web/live/settings_live/sudo.ex",
     "lib/storyarn_web/live/settings_live/tutorials.ex",
     "lib/storyarn_web/live/shared/",
     "lib/storyarn_web/live/tree_sidebar_actions.ex",
@@ -355,6 +348,24 @@ boundaries = %{
   ]
 }
 
+# A Web surface may belong to the same bounded context for ownership and route
+# classification, but that must not make the context internals public. Derive
+# one denial for every context-owned Web root so future files under those roots
+# can call only the root facade. `presentation_adapters` is deliberately absent:
+# the router and LiveVue encoders are technical adapters that must name modules
+# at compile time and are protected in the opposite direction instead.
+web_to_context_internal_denials =
+  for context <- bounded_contexts,
+      source_root <- Map.fetch!(boundaries, context),
+      String.starts_with?(source_root, "lib/storyarn_web/") do
+    %{
+      source_root: source_root,
+      target_root: "lib/storyarn/#{context}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "context-owned Web surfaces must enter through the #{context} root facade"
+    }
+  end
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -369,8 +380,8 @@ forbidden_dependencies =
     web_infrastructure: bounded_contexts
   })
 
-%{
-  version: 1,
+policy = %{
+  version: 2,
   bounded_contexts: bounded_contexts,
 
   # Every xref source or target beneath these application roots must match one
@@ -387,20 +398,21 @@ forbidden_dependencies =
   # Code below `Storyarn` is the domain/application side of the system. Even
   # when a StoryarnWeb adapter is classified with the same owning context, the
   # dependency direction must stay domain -> application boundary <- Web.
-  path_denials: [
-    %{
-      source_root: "lib/storyarn/",
-      target_root: "lib/storyarn_web.ex",
-      kinds: ["runtime", "export", "compile"],
-      reason: "domain and application code cannot depend on the Web entry point"
-    },
-    %{
-      source_root: "lib/storyarn/",
-      target_root: "lib/storyarn_web/",
-      kinds: ["runtime", "export", "compile"],
-      reason: "domain and application code cannot depend on Phoenix or LiveVue adapters"
-    }
-  ],
+  path_denials:
+    [
+      %{
+        source_root: "lib/storyarn/",
+        target_root: "lib/storyarn_web.ex",
+        kinds: ["runtime", "export", "compile"],
+        reason: "domain and application code cannot depend on the Web entry point"
+      },
+      %{
+        source_root: "lib/storyarn/",
+        target_root: "lib/storyarn_web/",
+        kinds: ["runtime", "export", "compile"],
+        reason: "domain and application code cannot depend on Phoenix or LiveVue adapters"
+      }
+    ] ++ web_to_context_internal_denials,
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -424,20 +436,23 @@ forbidden_dependencies =
   # accepted by adding an inbound edge to another consumer's debt baseline.
   isolated_contexts: [:accounts, :flows, :localization, :platform, :projects, :scenes, :sheets, :workspaces],
 
-  # Repo is deliberately shared during ENG-92. Ecto and other external
-  # dependencies do not appear as repository paths in the xref JSON graph.
-  always_allowed_targets: [
+  # These exact leaves are globally consumable technical infrastructure, not
+  # bounded-context APIs. They deliberately cover no directory: Repo remains
+  # shared during ENG-92; the other entries are stable primitives, adapters or
+  # execution plumbing with no consumer-specific business policy. Adding a
+  # target here is an architecture decision because it grants every boundary
+  # access without registering each source edge.
+  globally_allowed_technical_targets: [
     "lib/storyarn/repo.ex",
     "lib/storyarn/gettext.ex",
-    "lib/storyarn/ai/context/contract.ex",
-    "lib/storyarn/ai/context/policy.ex",
-    "lib/storyarn/ai/context/subject_ref.ex",
     "lib/storyarn/projects/assets/storage.ex",
     "lib/storyarn/projects/assets/storage_hash.ex",
     "lib/storyarn/projects/assets/storage_key_lock.ex",
     "lib/storyarn/platform/dashboards/cache.ex",
     "lib/storyarn/platform/collaboration.ex",
+    "lib/storyarn/platform/emails/layout.ex",
     "lib/storyarn/platform/feature_flags.ex",
+    "lib/storyarn/platform/mailer.ex",
     "lib/storyarn/platform/rate_limiter.ex",
     "lib/storyarn/platform/urls.ex",
     "lib/storyarn/platform/shared/color_utils.ex",
@@ -449,6 +464,55 @@ forbidden_dependencies =
     "lib/storyarn/platform/shared/string_utils.ex",
     "lib/storyarn/platform/shared/time_helpers.ex",
     "lib/storyarn/platform/shared/token_generator.ex"
+  ],
+
+  # Durable cross-boundary contracts normally terminate at one of the eight
+  # bounded-context root facades. These are the only additional exact targets
+  # that may terminate a reviewed durable edge. Unlike the global technical
+  # leaves above, listing a target here grants no access by itself. This also
+  # models AI's current public SPI honestly while AI remains an unsealed product
+  # context during this pass.
+  additional_durable_contract_targets: [
+    %{
+      target: "lib/storyarn/ai.ex",
+      reason: "AI remains an unsealed bounded context, but consumers still enter through its public root facade"
+    },
+    %{
+      target: "lib/storyarn/ai/context/contract.ex",
+      reason: "consumer-owned AI context builders implement the shared AI context contract"
+    },
+    %{
+      target: "lib/storyarn/ai/context/policy.ex",
+      reason: "consumer-owned AI context builders export the AI policy value"
+    },
+    %{
+      target: "lib/storyarn/ai/context/subject_ref.ex",
+      reason: "consumer-owned AI context builders export AI subject references"
+    },
+    %{
+      target: "lib/storyarn/platform/vault.ex",
+      reason: "Encrypted import payloads use the application-owned cryptographic adapter"
+    },
+    %{
+      target: "lib/storyarn/platform/analytics.ex",
+      reason: "Platform product metrics alone may enter the exact analytics transport contract"
+    },
+    %{
+      target: "lib/storyarn/platform/analytics/event_contract.ex",
+      reason: "Platform product metrics implements the exact fail-closed analytics transport contract"
+    },
+    %{
+      target: "lib/storyarn/public/publication/locales.ex",
+      reason: "Invitation presentation adapters consume the exact read-only public locale policy"
+    },
+    %{
+      target: "lib/storyarn_web/endpoint.ex",
+      reason: "The OTP composition root and URL adapter consume the configured Phoenix endpoint"
+    },
+    %{
+      target: "lib/storyarn_web/telemetry.ex",
+      reason: "The OTP composition root starts the Web telemetry supervisor"
+    }
   ],
 
   # Phoenix Web adapters need VerifiedRoutes, while domain modules must remain
@@ -463,121 +527,77 @@ forbidden_dependencies =
     }
   ],
 
-  # Exceptions must identify one exact edge and dependency kind, and explain
-  # why it is a durable architectural contract. Temporary debt belongs only in
-  # the baseline files, never here.
-  exceptions: [
+  # Each edge below is exact and reviewed. Policy v2 partitions the list after
+  # construction: a dependency terminating at a root facade or explicit
+  # technical contract is durable; every dependency terminating at an internal
+  # module remains visible as migration debt. The checker rejects stale entries
+  # in both groups, so deleting an edge must also repay its policy entry.
+  reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn/flows/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/contract.ex",
+      kinds: ["runtime"],
+      reason: "Flows implements the exact public AI context-builder contract"
+    },
+    %{
+      source: "lib/storyarn/flows/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/policy.ex",
+      kinds: ["export"],
+      reason: "Flows exports the public AI context policy value in its implementation"
+    },
+    %{
+      source: "lib/storyarn/flows/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/subject_ref.ex",
+      kinds: ["export"],
+      reason: "Flows exports the public AI subject reference in its implementation"
+    },
+    %{
+      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/contract.ex",
+      kinds: ["runtime"],
+      reason: "Sheets implements the exact public AI context-builder contract"
+    },
+    %{
+      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/policy.ex",
+      kinds: ["export"],
+      reason: "Sheets exports the public AI context policy value in its implementation"
+    },
+    %{
+      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      target: "lib/storyarn/ai/context/subject_ref.ex",
+      kinds: ["export"],
+      reason: "Sheets exports the public AI subject reference in its implementation"
+    },
     %{
       source: "lib/storyarn_web/live/hooks/notifications.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "The notifications hook subscribes and marks read state through the public Notifications facade"
+      reason: "The notifications hook subscribes and marks read state through the public Platform facade"
     },
     %{
       source: "lib/storyarn_web/live/hooks/palette.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Palette operations publish committed notification outcomes through the public Notifications facade"
+      reason: "Palette operations publish committed notification outcomes through the public Platform facade"
     },
     %{
       source: "lib/storyarn_web/live/shared/notification_helpers.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "The shared notification helpers list and count through the public Notifications facade"
+      reason: "The shared notification helpers list and count through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
+      source: "lib/storyarn/workers/platform/deliver_invitation_worker.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The durable invitation delivery worker calls back into the public Projects facade to render and send"
     },
     %{
       source: "lib/storyarn/application.ex",
-      target: "lib/storyarn/projects/imports/error_deduplicator.ex",
+      target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason: "OTP composition root starts the import error deduplicator process"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/assets/asset.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/assets/storage_cleanup_ownership_receipt.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/project.ex",
-      kinds: ["export"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/project_snapshot.ex",
-      kinds: ["export"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/project_snapshot_lease_policy.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/project_snapshot_restore.ex",
-      kinds: ["export"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/snapshot_object_format.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/snapshot_object_publication_claim.ex",
-      kinds: ["export"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_accounting.ex",
-      target: "lib/storyarn/projects/versioning/workspace_snapshot_import.ex",
-      kinds: ["runtime"],
-      reason:
-        "Storage accounting reconciles billed usage against the snapshot storage protocol owned by the Project boundary"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_reservation.ex",
-      target: "lib/storyarn/projects/project.ex",
-      kinds: ["runtime"],
-      reason: "Storage reservations validate their project and snapshot targets in the shared storage protocol"
-    },
-    %{
-      source: "lib/storyarn/platform/billing/storage_reservation.ex",
-      target: "lib/storyarn/projects/versioning/project_snapshot.ex",
-      kinds: ["runtime"],
-      reason: "Storage reservations validate their project and snapshot targets in the shared storage protocol"
+      reason: "OTP composition root obtains the import error deduplicator child spec through the public Projects facade"
     },
     %{
       source: "lib/storyarn/platform/global_search/destinations.ex",
@@ -587,15 +607,9 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/platform/global_search/variable_search.ex",
-      target: "lib/storyarn/projects/references.ex",
+      target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason: "Global variable search reads usage through the public References facade"
-    },
-    %{
-      source: "lib/storyarn/platform/release.ex",
-      target: "lib/storyarn/projects/project_templates.ex",
-      kinds: ["runtime"],
-      reason: "Release CLI tasks operate on templates through the public ProjectTemplates facade"
+      reason: "Global variable search reads Project-owned occurrences through the public Projects facade"
     },
     %{
       source: "lib/storyarn/platform/release.ex",
@@ -604,22 +618,10 @@ forbidden_dependencies =
       reason: "Release CLI tasks operate on projects through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/platform/release.ex",
-      target: "lib/storyarn/projects/versioning.ex",
-      kinds: ["runtime"],
-      reason: "Release CLI tasks operate on snapshots through the public Versioning facade"
-    },
-    %{
       source: "lib/storyarn_web/components/project_layout.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The project shell resolves navigation state through the public Projects facade"
-    },
-    %{
-      source: "lib/storyarn_web/endpoint.ex",
-      target: "lib/storyarn/projects/assets/upload_policy.ex",
-      kinds: ["compile"],
-      reason: "The endpoint compiles upload limits from the asset upload policy"
     },
     %{
       source: "lib/storyarn_web/helpers/authorize.ex",
@@ -635,58 +637,46 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/projects/assets.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Billing facade"
+      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/assets/asset_trash.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Billing facade"
+      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/assets/blob_store.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Billing facade"
+      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/assets/storage_compensation.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
+      source: "lib/storyarn/projects/imports/execution.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
       reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/imports/execution.ex",
-      target: "lib/storyarn/platform/billing.ex",
-      kinds: ["runtime"],
-      reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/imports/execution.ex",
-      target: "lib/storyarn/platform/notifications.ex",
-      kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+        "Project imports enforce storage policy and publish committed notifications through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/imports/expiration.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+      reason: "Project imports publish committed notification outcomes through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/imports/materializer.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
+      reason: "Project imports enforce storage policy through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/imports/notification_delivery.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+      reason: "Project imports prepare durable notification delivery through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/imports/plan_storage.ex",
@@ -696,51 +686,53 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/projects/imports/replacement.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project imports enforce plan and storage entitlements through the public Billing facade"
+      reason: "Project replacement imports coordinate storage locks through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/imports/resume.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+      reason: "Project imports publish committed notification outcomes through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/project_templates/installation.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Template installation and publication enforce plan entitlements through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/project_templates/installation.ex",
-      target: "lib/storyarn/platform/notifications.ex",
-      kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+      reason:
+        "Template installation enforces commercial policy and publishes notification outcomes through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/project_templates/publication_runner.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Template installation and publication enforce plan entitlements through the public Billing facade"
+      reason: "Template publication enforces commercial policy through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/project_crud.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project lifecycle enforces plan entitlements through the public Billing facade"
+      reason: "Project lifecycle enforces commercial policy through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/platform_storage_reservations.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason:
+        "The Projects anti-corruption layer exchanges transport-neutral storage receipts through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/project_trash.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project lifecycle enforces plan entitlements through the public Billing facade"
+      reason: "Project lifecycle enforces commercial policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/invitation_notifier.ex",
-      target: "lib/storyarn/platform/emails/templates.ex",
+      source: "lib/storyarn/projects/invitation_email.ex",
+      target: "lib/storyarn/platform/emails/layout.ex",
       kinds: ["runtime"],
-      reason: "Project invitation email rendering uses the shared transactional email templates"
+      reason: "Project-owned invitation content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/projects/invitation_notifier.ex",
@@ -750,192 +742,89 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/projects/invitation_operations.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project invitations enforce seat entitlements through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/invitation_operations.ex",
-      target: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
-      kinds: ["runtime"],
-      reason: "Project invitations enqueue the durable delivery worker shared with Workspace invitations"
+      reason: "Project invitations enforce seat policy and request durable delivery through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Snapshot storage lifecycle accounts usage and locks through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/materialization_helpers.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Snapshot materialization accounts storage through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_recovery.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Project recovery coordinates storage locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
+      source: "lib/storyarn/projects/versioning/project_snapshot_lease_policy.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
+      reason: "Project snapshot grants consume the lease policy through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_asset_materializer.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Snapshot asset materialization accounts storage through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
-      target: "lib/storyarn/platform/notifications.ex",
-      kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
+      reason: "Snapshot builds coordinate storage and publish notification outcomes through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_crud.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_download.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason: "Snapshot downloads acquire storage leases through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex",
-      target: "lib/storyarn/platform/billing.ex",
-      kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
+      reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
-      target: "lib/storyarn/platform/billing.ex",
-      kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
-      target: "lib/storyarn/platform/billing/storage_cleanup_inventory.ex",
-      kinds: ["runtime"],
-      reason: "Snapshot storage cleanup reconciles against the Billing storage cleanup inventory protocol"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore_executor.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
+      reason: "Snapshot reconciliation repairs storage accounting through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/snapshot_archive_smoke.ex",
-      target: "lib/storyarn/projects/assets/storage/r2.ex",
-      kinds: ["runtime"],
-      reason: "The archive smoke check branches on the configured storage adapter"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
-      target: "lib/storyarn/platform/billing/storage_cleanup_inventory.ex",
-      kinds: ["runtime"],
-      reason: "Snapshot storage cleanup reconciles against the Billing storage cleanup inventory protocol"
-    },
-    %{
-      source: "lib/storyarn/projects/versioning/snapshot_archive_storage.ex",
-      target: "lib/storyarn/platform/billing/storage_reservation.ex",
-      kinds: ["export"],
-      reason:
-        "The snapshot storage lifecycle holds and releases Billing storage reservations as the durable cross-boundary receipt"
+      reason: "Snapshot restore lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/workspace_snapshot_imports.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Billing facade"
+      reason:
+        "Workspace snapshot imports coordinate storage and publish notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/workspace_snapshot_imports.ex",
-      target: "lib/storyarn/platform/notifications.ex",
+      source: "lib/storyarn/projects/snapshot_accounting.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project coordination delivers durable user notifications through the public Notifications facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/project_live/components/settings_components.ex",
-      target: "lib/storyarn/platform/billing.ex",
-      kinds: ["runtime"],
-      reason: "Project settings pages show plan usage through the public Billing facade"
+      reason:
+        "Projects consumes neutral storage usage, reservation totals and entitlements through the public Platform facade"
     },
     %{
       source: "lib/storyarn_web/live/project_live/invitation.ex",
@@ -945,15 +834,15 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn_web/live/project_settings_live/usage_limits.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project settings pages show plan usage through the public Billing facade"
+      reason: "Project settings pages show plan usage through the public Platform facade"
     },
     %{
       source: "lib/storyarn_web/live/project_settings_live/version_control.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project settings pages show plan usage through the public Billing facade"
+      reason: "Project settings pages show plan usage through the public Platform facade"
     },
     %{
       source: "lib/storyarn/application.ex",
@@ -1052,29 +941,17 @@ forbidden_dependencies =
       reason: "Sheet mutations request durable notification delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/sheets/versioning/sheet_snapshot.ex",
-      target: "lib/storyarn/projects/references.ex",
+      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Sheet restore triggers the Project-owned project-wide variable reference rebuild through its public facade"
+      reason: "Workspace lifecycle applies commercial limits and subscriptions through the public Platform facade"
     },
     %{
       source: "lib/storyarn/workspaces/workspace_crud.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason:
-        "Workspace lifecycle applies Platform-owned commercial limits and subscriptions through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn/workspaces/workspace_crud.ex",
-      target: "lib/storyarn/projects/versioning.ex",
-      kinds: ["runtime"],
-      reason: "Workspace hard-delete coordinates snapshot cleanup through the public Versioning facade"
-    },
-    %{
-      source: "lib/storyarn/workspaces/workspace_crud.ex",
-      target: "lib/storyarn/projects/assets.ex",
-      kinds: ["runtime"],
-      reason: "Workspace hard-delete coordinates asset cleanup through the public Assets facade"
+        "Workspace hard-delete asks the public Projects facade to prepare all Project-owned dependent data under the caller-held workspace lock"
     },
     %{
       source: "lib/storyarn/accounts/events.ex",
@@ -1083,34 +960,10 @@ forbidden_dependencies =
       reason: "Accounts publishes owned business facts through the public Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/accounts/workers/deliver_reset_password_instructions_worker.ex",
-      target: "lib/storyarn/accounts.ex",
-      kinds: ["runtime"],
-      reason: "The durable reset-password delivery worker calls back into the public Accounts facade to render and send"
-    },
-    %{
-      source: "lib/storyarn/accounts/workers/request_reset_password_instructions_worker.ex",
-      target: "lib/storyarn/accounts.ex",
-      kinds: ["runtime"],
-      reason: "The durable reset-password request worker processes the request through the public Accounts facade"
-    },
-    %{
       source: "lib/storyarn_web/user_auth.ex",
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
       reason: "Session authentication resolves users and tokens through the public Accounts facade"
-    },
-    %{
-      source: "lib/storyarn_web/user_auth.ex",
-      target: "lib/storyarn/accounts/scope.ex",
-      kinds: ["export"],
-      reason: "The session plug constructs the Accounts scope that every LiveView receives as current_scope"
-    },
-    %{
-      source: "lib/storyarn_web/user_auth.ex",
-      target: "lib/storyarn/accounts/user.ex",
-      kinds: ["export"],
-      reason: "The session plug pattern-matches the authenticated user struct returned by the public Accounts facade"
     },
     %{
       source: "lib/storyarn_web/live/project_live/invitation.ex",
@@ -1119,34 +972,10 @@ forbidden_dependencies =
       reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
     },
     %{
-      source: "lib/storyarn_web/live/settings_live/ai_team.ex",
-      target: "lib/storyarn_web/live/settings_live/sudo.ex",
+      source: "lib/storyarn/accounts/user_email.ex",
+      target: "lib/storyarn/platform/emails/layout.ex",
       kinds: ["runtime"],
-      reason: "AI team settings gate sensitive actions behind the account sudo re-authentication flow"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/integration_detail.ex",
-      target: "lib/storyarn_web/live/settings_live/sudo.ex",
-      kinds: ["runtime"],
-      reason: "Integration credential actions gate behind the account sudo re-authentication flow"
-    },
-    %{
-      source: "lib/storyarn/accounts/passwords.ex",
-      target: "lib/storyarn/accounts/workers/deliver_reset_password_instructions_worker.ex",
-      kinds: ["runtime"],
-      reason: "Password reset enqueues its durable delivery worker"
-    },
-    %{
-      source: "lib/storyarn/accounts/passwords.ex",
-      target: "lib/storyarn/accounts/workers/request_reset_password_instructions_worker.ex",
-      kinds: ["runtime"],
-      reason: "Password reset requests enqueue their durable delivery worker"
-    },
-    %{
-      source: "lib/storyarn/accounts/user_notifier.ex",
-      target: "lib/storyarn/platform/emails/templates.ex",
-      kinds: ["runtime"],
-      reason: "Account email rendering uses the shared transactional email templates"
+      reason: "Account-owned transactional content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/accounts/user_notifier.ex",
@@ -1168,21 +997,16 @@ forbidden_dependencies =
     },
     %{
       source: "lib/storyarn/workspaces/invitations.ex",
-      target: "lib/storyarn/platform/billing.ex",
+      target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitations apply the Platform-owned member seat limits through the public Billing facade"
+      reason:
+        "Workspace invitations apply member seat policy and request durable delivery through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/workspaces/invitations.ex",
-      target: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
+      source: "lib/storyarn/workspaces/invitation_email.ex",
+      target: "lib/storyarn/platform/emails/layout.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitations enqueue the durable delivery worker shared with Project invitations"
-    },
-    %{
-      source: "lib/storyarn/workspaces/invitation_notifier.ex",
-      target: "lib/storyarn/platform/emails/templates.ex",
-      kinds: ["runtime"],
-      reason: "Workspace invitation email rendering uses the shared transactional email templates"
+      reason: "Workspace-owned invitation content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/workspaces/invitation_notifier.ex",
@@ -1203,41 +1027,10 @@ forbidden_dependencies =
       reason: "Workspace general settings surfaces the AI policy controls through the public AI facade"
     },
     %{
-      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/projects/assets.ex",
-      kinds: ["runtime"],
-      reason: "Workspace banner upload goes through the public Assets facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/projects/assets/image_processor.ex",
-      kinds: ["runtime"],
-      reason:
-        "Workspace banner upload validates image binaries with the Assets image primitives, like the upload controller"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
-      target: "lib/storyarn/projects/assets/upload_policy.ex",
-      kinds: ["runtime"],
-      reason: "Workspace banner upload enforces the Assets upload profile, like the upload controller"
-    },
-    %{
       source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/projects/versioning.ex",
+      target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason: "Workspace snapshot imports are requested and tracked through the public Versioning facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/projects/versioning/project_snapshot_archive_reader.ex",
-      kinds: ["runtime"],
-      reason: "The import page shows the archive size limit owned by the Versioning archive reader"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-      target: "lib/storyarn/projects/assets/storage/r2.ex",
-      kinds: ["runtime"],
-      reason: "The import page branches on the configured storage adapter to offer external uploads"
+      reason: "Workspace snapshot imports are requested and tracked through the public Projects facade"
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/invitation.ex",
@@ -1250,18 +1043,6 @@ forbidden_dependencies =
       target: "lib/storyarn/public/publication/locales.ex",
       kinds: ["runtime"],
       reason: "Invitation pages normalize the public locale like the other public-facing pages"
-    },
-    %{
-      source: "lib/storyarn_web/live/workspace_live/show.ex",
-      target: "lib/storyarn/platform/billing.ex",
-      kinds: ["runtime"],
-      reason: "The workspace home shows plan usage through the public Billing facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/workspace_live/show.ex",
-      target: "lib/storyarn/projects/project_templates.ex",
-      kinds: ["runtime"],
-      reason: "The workspace home offers template installation through the public ProjectTemplates facade"
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",
@@ -1288,7 +1069,7 @@ forbidden_dependencies =
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
     },
     %{
-      source: "lib/storyarn/platform/workers/deliver_invitation_worker.ex",
+      source: "lib/storyarn/workers/platform/deliver_invitation_worker.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "The durable invitation delivery worker calls back into the public Workspaces facade to render and send"
@@ -1330,22 +1111,10 @@ forbidden_dependencies =
       reason: "The landing page routes signed-in users to their default workspace through the public Workspaces facade"
     },
     %{
-      source: "lib/storyarn_web/live/landing_live/index.ex",
-      target: "lib/storyarn/workspaces/workspace.ex",
-      kinds: ["export"],
-      reason: "The landing page pattern-matches the Workspace struct returned by the public facade"
-    },
-    %{
       source: "lib/storyarn_web/user_auth.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Session plumbing resolves the user's workspaces through the public Workspaces facade"
-    },
-    %{
-      source: "lib/storyarn_web/user_auth.ex",
-      target: "lib/storyarn/workspaces/workspace.ex",
-      kinds: ["export"],
-      reason: "Session plumbing pattern-matches the Workspace struct returned by the public facade"
     },
     %{
       source: "lib/storyarn/platform/global_search/variable_search.ex",
@@ -1419,13 +1188,8 @@ forbidden_dependencies =
       source: "lib/storyarn_web/live/workspace_live/show.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Workspace project creation presents the Platform-owned product metric taxonomy through its public facade"
-    },
-    %{
-      source: "lib/storyarn/localization/workers/localization_batch_translation_worker.ex",
-      target: "lib/storyarn/localization.ex",
-      kinds: ["runtime"],
-      reason: "The Oban adapter delegates batch translation execution to the public Localization facade"
+      reason:
+        "The workspace home reads plan policy and presents product metric taxonomy through the public Platform facade"
     },
     %{
       source: "lib/storyarn/platform/urls.ex",
@@ -1435,3 +1199,16 @@ forbidden_dependencies =
     }
   ]
 }
+
+durable_targets =
+  Enum.map(bounded_contexts, &"lib/storyarn/#{&1}.ex") ++
+    policy.globally_allowed_technical_targets ++
+    Enum.map(policy.additional_durable_contract_targets, & &1.target)
+
+{durable_contracts, migration_exceptions} =
+  Enum.split_with(policy.reviewed_cross_boundary_edges, &(&1.target in durable_targets))
+
+policy
+|> Map.delete(:reviewed_cross_boundary_edges)
+|> Map.put(:durable_contracts, durable_contracts)
+|> Map.put(:migration_exceptions, migration_exceptions)

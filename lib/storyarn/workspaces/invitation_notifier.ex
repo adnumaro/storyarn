@@ -2,15 +2,15 @@ defmodule Storyarn.Workspaces.InvitationNotifier do
   @moduledoc """
   Workspace invitation email delivery.
 
-  Workspace-owned copy of the retired shared notifier, specialized to the
-  workspace invitation template.
+  Workspace owns the invitation intent and content; Platform provides only the
+  technical mail transport.
   """
 
   import Swoosh.Email
 
-  alias Storyarn.Platform.Emails.Templates
   alias Storyarn.Platform.Mailer
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Workspaces.InvitationEmail
 
   require Logger
 
@@ -33,14 +33,7 @@ defmodule Storyarn.Workspaces.InvitationNotifier do
     days = remaining_days(invitation.expires_at)
 
     {subject, html, text} =
-      Templates.workspace_invitation(
-        invitation.email,
-        entity_name,
-        inviter_name,
-        invitation.role,
-        url,
-        days
-      )
+      InvitationEmail.render(entity_name, inviter_name, invitation.role, url, days)
 
     deliver(invitation.email, subject, html, text)
   end

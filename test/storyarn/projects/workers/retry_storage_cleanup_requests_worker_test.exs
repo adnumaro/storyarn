@@ -4,7 +4,7 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
 
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
-  alias Storyarn.Projects.Workers.RetryStorageCleanupRequestsWorker
+  alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   test "deletes copied objects and their durable cleanup request" do
     storage_key =

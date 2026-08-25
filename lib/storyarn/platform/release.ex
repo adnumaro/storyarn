@@ -3,8 +3,7 @@ defmodule Storyarn.Platform.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
-  alias Storyarn.Projects.ProjectTemplates
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   @app :storyarn
   @snapshot_storage_accounting_migration 20_260_804_120_000
@@ -235,7 +234,7 @@ defmodule Storyarn.Platform.Release do
   def start_project_snapshot_reconciliation do
     load_app()
 
-    case Versioning.start_project_snapshot_reconciliation() do
+    case Projects.start_project_snapshot_reconciliation() do
       {:ok, run} ->
         IO.puts("Snapshot reconciliation dry-run ##{run.id}")
         IO.puts("Status: #{run.status}; phase: #{run.phase}; cursor generation: #{run.cursor_generation}")
@@ -261,13 +260,13 @@ defmodule Storyarn.Platform.Release do
              limit > 0 do
     load_app()
 
-    case Versioning.get_project_snapshot_reconciliation_run(run_id) do
+    case Projects.get_project_snapshot_reconciliation_run(run_id) do
       nil ->
         raise "Snapshot reconciliation run ##{run_id} was not found"
 
       run ->
         findings =
-          Versioning.list_project_snapshot_reconciliation_findings(run_id,
+          Projects.list_project_snapshot_reconciliation_findings(run_id,
             after_id: after_id,
             limit: min(limit, 500)
           )
@@ -298,9 +297,9 @@ defmodule Storyarn.Platform.Release do
       when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
              limit > 0 do
     load_app()
-    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+    limit = min(limit, Projects.project_snapshot_reconciliation_repair_page_limit())
 
-    case Versioning.plan_project_snapshot_reconciliation_repairs(run_id,
+    case Projects.plan_project_snapshot_reconciliation_repairs(run_id,
            after_id: after_id,
            limit: limit
          ) do
@@ -323,14 +322,14 @@ defmodule Storyarn.Platform.Release do
       when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
              limit > 0 do
     load_app()
-    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+    limit = min(limit, Projects.project_snapshot_reconciliation_repair_page_limit())
 
-    if is_nil(Versioning.get_project_snapshot_reconciliation_run(run_id)) do
+    if is_nil(Projects.get_project_snapshot_reconciliation_run(run_id)) do
       raise "Snapshot reconciliation run ##{run_id} was not found"
     end
 
     actions =
-      Versioning.list_project_snapshot_reconciliation_repairs(run_id,
+      Projects.list_project_snapshot_reconciliation_repairs(run_id,
         after_id: after_id,
         limit: limit
       )
@@ -426,7 +425,7 @@ defmodule Storyarn.Platform.Release do
   def preview_template_bundle(path) when is_binary(path) do
     load_app()
 
-    case ProjectTemplates.preview_portable_template(path) do
+    case Projects.preview_portable_project_template(path) do
       {:ok, manifest} ->
         print_template_bundle_preview(path, manifest, [])
         manifest
@@ -450,10 +449,10 @@ defmodule Storyarn.Platform.Release do
     load_app()
 
     with {:ok, keyword_opts} <- template_import_options(opts),
-         {:ok, manifest} <- ProjectTemplates.preview_portable_template(path, keyword_opts) do
+         {:ok, manifest} <- Projects.preview_portable_project_template(path, keyword_opts) do
       print_template_bundle_preview(path, manifest, keyword_opts)
 
-      case ProjectTemplates.import_portable_template(path, keyword_opts) do
+      case Projects.import_portable_project_template(path, keyword_opts) do
         {:ok, template} ->
           IO.puts("Imported template ##{template.id}: #{template.name}")
           IO.puts("Visibility: #{template.visibility}")
@@ -471,7 +470,7 @@ defmodule Storyarn.Platform.Release do
   end
 
   defp invitation_config("project", id) do
-    {Storyarn.Projects, Storyarn.Projects.get_project!(id)}
+    {Projects, Projects.get_project!(id)}
   end
 
   defp invitation_config("workspace", id) do

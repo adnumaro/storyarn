@@ -1,7 +1,9 @@
 defmodule StoryarnWeb.Endpoint do
   use Phoenix.Endpoint, otp_app: :storyarn
 
-  @asset_upload_request_length Storyarn.Projects.Assets.UploadPolicy.max_request_size()
+  @upload_limits Application.compile_env!(:storyarn, :project_asset_upload_limits)
+  @asset_upload_request_length Keyword.fetch!(@upload_limits, :max_image_size) +
+                                 Keyword.fetch!(@upload_limits, :multipart_request_overhead)
 
   # The session will be stored in the cookie, signed and encrypted.
   # The signing_salt and encryption_salt are configured in config.exs (dev/test) or runtime.exs (prod)

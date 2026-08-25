@@ -8,7 +8,7 @@ defmodule Storyarn.Projects.Assets do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.SearchHelpers
@@ -28,6 +28,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Projects.Assets.UploadPolicy
   alias Storyarn.Projects.Events
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.LocalizedTextRecord, as: LocalizedText
@@ -175,6 +176,27 @@ defmodule Storyarn.Projects.Assets do
     Repo.one(from(asset in Asset, where: asset.id == ^asset_id and is_nil(asset.deleted_at)))
   end
 
+  @doc false
+  @spec authorize_download(map(), integer()) ::
+          {:ok, %{project_id: integer(), key: String.t(), content_type: String.t()}}
+          | {:error, :not_found}
+  def authorize_download(%{user: _} = scope, asset_id) when is_integer(asset_id) and asset_id > 0 do
+    with %Asset{} = asset <- get_asset(asset_id),
+         true <- project_asset_key?(asset.key, asset.project_id),
+         {:ok, _project, _membership} <- Memberships.authorize(scope, asset.project_id, :view) do
+      {:ok,
+       %{
+         project_id: asset.project_id,
+         key: asset.key,
+         content_type: asset.content_type
+       }}
+    else
+      _missing_or_unauthorized -> {:error, :not_found}
+    end
+  end
+
+  def authorize_download(_scope, _asset_id), do: {:error, :not_found}
+
   @doc """
   Gets a single asset by ID within a project.
 
@@ -272,7 +294,7 @@ defmodule Storyarn.Projects.Assets do
 
     with_result =
       with {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.move_locked(
             project_id,
             workspace.id,
@@ -325,7 +347,7 @@ defmodule Storyarn.Projects.Assets do
       with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
            :ok <- validate_asset_trash_actor(actor_id),
            {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.restore_locked(
             project_id,
             workspace.id,
@@ -355,7 +377,7 @@ defmodule Storyarn.Projects.Assets do
       with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
            :ok <- validate_asset_trash_actor(actor_id),
            {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.purge_locked(
             project_id,
             workspace.id,
@@ -384,7 +406,7 @@ defmodule Storyarn.Projects.Assets do
              (is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)) do
     with_result =
       with {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Billing.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.purge_many_locked(
             project_id,
             workspace.id,
@@ -409,7 +431,7 @@ defmodule Storyarn.Projects.Assets do
   # transaction. ENG-85 owns durable retirement of rowless project blobs.
   def prepare_parent_hard_delete_locked(workspace_id, project_scope)
       when is_integer(workspace_id) and workspace_id > 0 and (project_scope == :all or is_list(project_scope)) do
-    with true <- Billing.workspace_lock_held?(workspace_id) || {:error, :storage_accounting_lock_required},
+    with true <- Platform.workspace_lock_held?(workspace_id) || {:error, :storage_accounting_lock_required},
          {:ok, project_ids} <- lock_parent_cleanup_projects(workspace_id, project_scope) do
       assets = lock_parent_cleanup_assets(project_ids)
       persist_parent_asset_cleanup(assets)
@@ -888,12 +910,15 @@ defmodule Storyarn.Projects.Assets do
   end
 
   defp project_asset_key?(storage_key, project_id) when is_binary(storage_key) and is_integer(project_id) do
-    case String.split(storage_key, "/") do
-      ["projects", encoded_project_id, "assets", _asset_uuid, _filename] ->
-        encoded_project_id == Integer.to_string(project_id)
-
-      _parts ->
-        false
+    with true <- Storage.canonical_key?(storage_key),
+         ["projects", encoded_project_id, "assets", asset_uuid, filename] <-
+           String.split(storage_key, "/", trim: false),
+         true <- encoded_project_id == Integer.to_string(project_id),
+         {:ok, _uuid} <- Ecto.UUID.cast(asset_uuid),
+         true <- filename not in ["", ".", ".."] do
+      true
+    else
+      _invalid_key -> false
     end
   end
 
@@ -1126,7 +1151,7 @@ defmodule Storyarn.Projects.Assets do
 
   defp create_asset_record(%Project{} = project, uploaded_by_id, attrs, upload_kind) do
     project.workspace_id
-    |> Billing.transact_with_workspace_lock(fn workspace ->
+    |> Platform.transact_with_workspace_lock(fn workspace ->
       create_asset_record_with_lock(workspace, project, uploaded_by_id, attrs, upload_kind)
     end)
     |> normalize_asset_record_result()
@@ -1152,7 +1177,7 @@ defmodule Storyarn.Projects.Assets do
   end
 
   defp check_asset_record_capacity(%Project{} = project, %{valid?: true} = changeset) do
-    Billing.can_upload_asset_for_project?(project, Ecto.Changeset.get_field(changeset, :size))
+    Platform.can_upload_asset_for_project?(project, Ecto.Changeset.get_field(changeset, :size))
   end
 
   defp check_asset_record_capacity(_project, _changeset), do: :ok
@@ -1580,6 +1605,16 @@ defmodule Storyarn.Projects.Assets do
     end
   end
 
+  @doc false
+  def inspect_authorized_upload(%{user: _} = scope, project_id, attrs)
+      when is_integer(project_id) and project_id > 0 and is_map(attrs) do
+    with {:ok, project, _membership} <- Memberships.authorize(scope, project_id, :edit_content) do
+      inspect_upload(project, attrs)
+    end
+  end
+
+  def inspect_authorized_upload(_scope, _project_id, _attrs), do: {:error, :unauthorized}
+
   @doc """
   Materializes a purpose-specific asset from an existing source image.
 
@@ -1593,6 +1628,25 @@ defmodule Storyarn.Projects.Assets do
     with_workspace_upload_lock(project, fn _workspace ->
       do_materialize_upload_variant(project, user, attrs)
     end)
+  end
+
+  @doc false
+  def materialize_authorized_upload_variant(%{user: user} = scope, project_id, attrs)
+      when is_integer(project_id) and project_id > 0 and is_map(attrs) do
+    with {:ok, project, _membership} <- Memberships.authorize(scope, project_id, :edit_content) do
+      with_workspace_upload_lock(project, fn _workspace ->
+        materialize_authorized_upload_variant_locked(scope, project_id, user, attrs)
+      end)
+    end
+  end
+
+  def materialize_authorized_upload_variant(_scope, _project_id, _attrs), do: {:error, :unauthorized}
+
+  defp materialize_authorized_upload_variant_locked(scope, project_id, user, attrs) do
+    with {:ok, current_project, _membership} <-
+           Memberships.authorize_locked(scope, project_id, :edit_content) do
+      do_materialize_upload_variant(current_project, user, attrs)
+    end
   end
 
   defp do_materialize_upload_variant(project, user, attrs) do
@@ -1629,6 +1683,37 @@ defmodule Storyarn.Projects.Assets do
       with_workspace_upload_lock(project, fn _workspace ->
         ensure_and_materialize_asset(binary_data, attrs, project, user, purpose, profile)
       end)
+    end
+  end
+
+  @doc false
+  def upload_authorized_binary_for_purpose(%{user: user} = scope, project_id, binary_data, attrs)
+      when is_integer(project_id) and project_id > 0 and is_binary(binary_data) and is_map(attrs) do
+    purpose = attrs |> Map.get(:purpose, Map.get(attrs, "purpose")) |> UploadPolicy.parse_purpose()
+
+    with {:ok, project, _membership} <- Memberships.authorize(scope, project_id, :edit_content),
+         {:ok, profile} <- UploadPolicy.profile_for(purpose),
+         :ok <- validate_binary_upload(binary_data, attrs, profile) do
+      with_workspace_upload_lock(project, fn _workspace ->
+        upload_authorized_binary_for_purpose_locked(
+          scope,
+          project_id,
+          binary_data,
+          attrs,
+          user,
+          purpose,
+          profile
+        )
+      end)
+    end
+  end
+
+  def upload_authorized_binary_for_purpose(_scope, _project_id, _binary_data, _attrs), do: {:error, :unauthorized}
+
+  defp upload_authorized_binary_for_purpose_locked(scope, project_id, binary_data, attrs, user, purpose, profile) do
+    with {:ok, current_project, _membership} <-
+           Memberships.authorize_locked(scope, project_id, :edit_content) do
+      ensure_and_materialize_asset(binary_data, attrs, current_project, user, purpose, profile)
     end
   end
 
@@ -1683,6 +1768,26 @@ defmodule Storyarn.Projects.Assets do
       Repo.get!(Project, project_id),
       if(user_id, do: Repo.get!(User, user_id))
     )
+  end
+
+  @doc false
+  def upload_authorized_binary(%{user: user} = scope, project_id, binary_data, attrs)
+      when is_integer(project_id) and project_id > 0 and is_binary(binary_data) and is_map(attrs) do
+    with {:ok, project, _membership} <- Memberships.authorize(scope, project_id, :edit_content) do
+      with_workspace_upload_lock(project, fn workspace ->
+        upload_authorized_binary_locked(scope, project_id, binary_data, attrs, user, workspace)
+      end)
+    end
+  end
+
+  def upload_authorized_binary(_scope, _project_id, _binary_data, _attrs), do: {:error, :unauthorized}
+
+  defp upload_authorized_binary_locked(scope, project_id, binary_data, attrs, user, workspace) do
+    with {:ok, current_project, _membership} <-
+           Memberships.authorize_locked(scope, project_id, :edit_content),
+         :ok <- Platform.can_upload_asset?(workspace, byte_size(binary_data)) do
+      do_upload_binary_and_create_asset(binary_data, attrs, current_project, user, :generic)
+    end
   end
 
   @doc """
@@ -1839,7 +1944,7 @@ defmodule Storyarn.Projects.Assets do
   end
 
   defp capacity_checked_upload(workspace, file_size, fun) do
-    case Billing.can_upload_asset?(workspace, file_size) do
+    case Platform.can_upload_asset?(workspace, file_size) do
       :ok -> fun.()
       {:error, _reason, _details} = error -> error
     end
@@ -1892,7 +1997,7 @@ defmodule Storyarn.Projects.Assets do
   end
 
   defp workspace_upload_transaction(project, fun) do
-    Billing.with_storage_accounting_lock(project.workspace_id, fn workspace ->
+    Platform.with_storage_accounting_lock(project.workspace_id, fn workspace ->
       case fun.(workspace) do
         {:error, _reason} = error -> Repo.rollback({:asset_upload_failed, error})
         {:error, _reason, _details} = error -> Repo.rollback({:asset_upload_failed, error})
@@ -2829,8 +2934,8 @@ defmodule Storyarn.Projects.Assets do
         when result: term()
   def with_import_capacity(%Project{} = project, total_bytes, fun)
       when is_integer(total_bytes) and total_bytes >= 0 and is_function(fun, 0) do
-    with true <- Billing.workspace_lock_held?(project.workspace_id),
-         :ok <- Billing.can_upload_asset_for_project?(project, total_bytes) do
+    with true <- Platform.workspace_lock_held?(project.workspace_id),
+         :ok <- Platform.can_upload_asset_for_project?(project, total_bytes) do
       with_import_capacity_marker(project, total_bytes, fun)
     else
       false -> {:error, :storage_accounting_lock_required}
@@ -3234,7 +3339,7 @@ defmodule Storyarn.Projects.Assets do
   end
 
   defp validate_import_asset_authorization(project) do
-    if Billing.workspace_lock_held?(project.workspace_id) do
+    if Platform.workspace_lock_held?(project.workspace_id) do
       case Process.get(@import_capacity_process_key) do
         %{workspace_id: workspace_id, project_id: project_id}
         when workspace_id == project.workspace_id and project_id == project.id ->

@@ -290,13 +290,16 @@ def handle_event("delete", params, socket) do
   end)
 end
 
-# In LiveComponent handle_event (checks @can_edit assign)
+# Compatibility spelling for canonical :edit_content authorization
 def handle_event("save", params, socket) do
   with_edit_authorization(socket, fn socket ->
     do_save(socket, params)
   end)
 end
 ```
+
+The compatibility helper reauthorizes through `Projects`; it does not trust a
+cached `@can_edit` value from mount time.
 
 Actions: `:edit_content`, `:use_ai`, `:manage_project`, `:manage_members`, `:manage_workspace`, `:manage_workspace_members`
 

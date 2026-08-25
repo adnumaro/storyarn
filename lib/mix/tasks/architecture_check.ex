@@ -11,17 +11,24 @@ defmodule Mix.Tasks.Architecture.Check do
   baseline must stay empty even if the xref graph contains matching edges. This
   is the strong closure applied after a consumer has been fully migrated.
   Contexts listed in `isolated_contexts` additionally reject baseline entries
-  from any other boundary into that context; stable coordinator access must be
-  expressed as an exact policy exception rather than hidden as temporary debt.
+  from any other boundary into that context. Stable coordinator access must be
+  expressed as an exact `durable_contract`; these contracts may target only a
+  bounded-context root facade, a globally consumable technical leaf, or an
+  explicitly declared additional durable contract target.
+  An exact `migration_exception` keeps a known internal dependency visible as
+  debt without making it part of the durable architecture.
 
   Every backend and Web path in the xref graph must also belong to one declared
   boundary. This keeps a newly introduced namespace from bypassing the ratchet
   merely because nobody added an ownership rule for it.
 
-  A non-empty baseline is temporary reviewed debt, not proof that every listed
-  edge is historically valid. Review must reject additions to those files; once
-  a partition reaches zero, adding it to `zero_debt_consumers` prevents an edge
-  from being accepted by editing the baseline alongside the code.
+  A non-empty baseline and every migration exception are temporary reviewed
+  debt, not proof that every listed edge is historically valid. Review must
+  reject additions to either. Once a partition reaches zero, adding it to
+  `zero_debt_consumers` prevents an edge from being accepted by editing the
+  baseline alongside the code. The success message reports baseline debt,
+  durable contracts, and migration exceptions separately; an empty baseline is
+  never reported as zero architecture debt while migration exceptions remain.
 
       mix architecture.check
 
@@ -51,16 +58,31 @@ defmodule Mix.Tasks.Architecture.Check do
     comparisons = DependencyBaseline.compare_all(actual, expected)
     zero_debt_violations = DependencyPolicy.zero_debt_baseline_violations(expected, policy)
     isolation_violations = DependencyPolicy.isolated_context_baseline_violations(expected, policy)
+    stale_reviewed_edges = DependencyPolicy.stale_reviewed_edges(graph, policy)
 
     if unclassified_paths == [] and map_size(zero_debt_violations) == 0 and map_size(isolation_violations) == 0 and
+         reviewed_edges_current?(stale_reviewed_edges) and
          Enum.all?(comparisons, fn {_consumer, comparison} ->
            DependencyPolicy.clean?(comparison)
          end) do
-      count = actual |> Map.values() |> Enum.reduce(0, &(MapSet.size(&1) + &2))
+      baseline_count = actual |> Map.values() |> Enum.reduce(0, &(MapSet.size(&1) + &2))
+      reviewed_counts = DependencyPolicy.reviewed_edge_counts(policy)
 
-      Mix.shell().info("Architecture check passed (#{count} temporary forbidden dependencies remain in the baseline).")
+      Mix.shell().info(
+        "Architecture check passed " <>
+          "(baselined forbidden dependencies: #{baseline_count}; " <>
+          "durable cross-boundary contracts: #{reviewed_counts.durable_contracts}; " <>
+          "migration exceptions: #{reviewed_counts.migration_exceptions})."
+      )
     else
-      print_failures(comparisons, zero_debt_violations, isolation_violations, unclassified_paths)
+      print_failures(
+        comparisons,
+        zero_debt_violations,
+        isolation_violations,
+        stale_reviewed_edges,
+        unclassified_paths
+      )
+
       Mix.raise("Architecture check failed")
     end
   end
@@ -112,7 +134,11 @@ defmodule Mix.Tasks.Architecture.Check do
     end
   end
 
-  defp print_failures(comparisons, zero_debt_violations, isolation_violations, unclassified_paths) do
+  defp reviewed_edges_current?(reviewed_edges) do
+    Enum.all?(reviewed_edges, fn {_kind, edges} -> edges == [] end)
+  end
+
+  defp print_failures(comparisons, zero_debt_violations, isolation_violations, stale_reviewed_edges, unclassified_paths) do
     print_unclassified_paths(unclassified_paths)
 
     Enum.each(Enum.sort(comparisons), fn {consumer, comparison} ->
@@ -129,6 +155,14 @@ defmodule Mix.Tasks.Architecture.Check do
     Enum.each(Enum.sort(isolation_violations), fn {context, edges} ->
       print_edges(context, "isolated context cannot accept inbound baseline dependencies", edges)
     end)
+
+    print_edges(:policy, "stale durable contracts; remove them", stale_reviewed_edges.durable_contracts)
+
+    print_edges(
+      :policy,
+      "stale migration exceptions; remove repaid debt",
+      stale_reviewed_edges.migration_exceptions
+    )
   end
 
   defp print_unclassified_paths([]), do: :ok

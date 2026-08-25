@@ -3,10 +3,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Projects.Exports
-  alias Storyarn.Projects.Exports.ExportOptions
-  alias Storyarn.Projects.Imports
-  alias Storyarn.Projects.Imports.ProjectImportAttempt
+  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
   @all_sections ~w(sheets flows scenes localization)a
@@ -49,7 +46,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         id="export-import-vue"
         can-edit={@can_edit}
         can-import={@can_import}
-        resume-storage-key={Imports.resume_storage_key(@current_scope, @project)}
+        resume-storage-key={Projects.project_import_resume_storage_key(@current_scope, @project)}
         import-state={serialize_import_state(@import_state)}
         upload-config={if(@can_import, do: @uploads.import_file, else: nil)}
         export-config={
@@ -193,8 +190,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       |> assign(:sections, MapSet.new(@all_sections))
       |> assign(:entity_counts, %{})
       |> assign_async(:entity_counts_async, fn ->
-        opts = %ExportOptions{format: default_format.format}
-        {:ok, %{entity_counts_async: Exports.count_entities(project.id, opts)}}
+        opts = Projects.project_export_options(%{format: default_format.format})
+        {:ok, %{entity_counts_async: Projects.count_project_export_entities(project.id, opts)}}
       end)
       |> assign(:asset_mode, :references)
       |> assign(:localization_policy, :release)
@@ -214,7 +211,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
     socket =
       if connected?(socket) do
-        :ok = Imports.subscribe_project_imports(project)
+        :ok = Projects.subscribe_project_imports(project)
         recover_latest_import(socket)
       else
         socket
@@ -309,7 +306,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("validate_export", _params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       opts = build_export_options(socket.assigns)
-      result = Exports.validate_project(socket.assigns.project.id, opts)
+      result = Projects.validate_project_export(socket.assigns.project.id, opts)
 
       {:noreply,
        socket
@@ -466,12 +463,12 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @impl true
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
-  def handle_info({:project_import_updated, %ProjectImportAttempt{} = attempt}, socket) do
+  def handle_info({:project_import_updated, %{id: _id} = attempt}, socket) do
     if socket.assigns.import_state.attempt_id == attempt.id do
       # PubSub delivery is not ordered across the enqueue caller and Oban
       # worker. Reload the durable attempt so a late queued/running message
       # cannot move a completed import back to an in-progress UI state.
-      case Imports.get_import_attempt(socket.assigns.current_scope, attempt.id) do
+      case Projects.get_project_import_attempt(socket.assigns.current_scope, attempt.id) do
         {:ok, current_attempt} ->
           socket = assign_import_attempt(socket, current_attempt)
           {:noreply, maybe_recover_active_after_terminal(socket, current_attempt)}
@@ -488,7 +485,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Export
   # ===========================================================================
 
-  defp visible_export_formats, do: Exports.list_formats_with_metadata()
+  defp visible_export_formats, do: Projects.list_project_export_formats()
 
   defp download_extension(%{format: format}) when format in @archive_export_formats, do: "zip"
   defp download_extension(%{extension: extension}), do: extension
@@ -496,7 +493,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp build_export_options(assigns) do
     sections = assigns.sections
 
-    %ExportOptions{
+    Projects.project_export_options(%{
       format: assigns.selected_format,
       validate_before_export: assigns.validate_before_export,
       pretty_print: assigns.pretty_print,
@@ -506,7 +503,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       include_localization: MapSet.member?(sections, :localization),
       localization_policy: assigns.localization_policy,
       include_assets: assigns.asset_mode
-    }
+    })
   end
 
   defp validation_stale?(assigns) do
@@ -611,7 +608,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp finish_loaded_non_cancellable_reset(socket, attempt_id, attempt) do
-    if attempt.status in ProjectImportAttempt.active_statuses() do
+    if attempt.status in Projects.project_import_active_statuses() do
       socket
       |> refresh_displayed_import_attempt(attempt_id, attempt)
       |> import_not_cancellable_reply()
@@ -643,7 +640,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp update_import_strategy(socket, attempt_id, strategy) do
-    case Imports.update_import_strategy(socket.assigns.current_scope, attempt_id, strategy) do
+    case Projects.update_project_import_strategy(socket.assigns.current_scope, attempt_id, strategy) do
       {:ok, attempt} ->
         {:noreply, assign_import_attempt(socket, attempt)}
 
@@ -656,7 +653,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp update_import_mode(socket, attempt_id, import_mode) do
-    case Imports.update_import_mode(socket.assigns.current_scope, attempt_id, import_mode) do
+    case Projects.update_project_import_mode(socket.assigns.current_scope, attempt_id, import_mode) do
       {:ok, attempt} ->
         {:noreply, assign_import_attempt(socket, attempt)}
 
@@ -676,7 +673,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # a missed PubSub message can leave Reset operating forever on stale state.
   defp reconcile_failed_import_mutation(socket, attempt_id, ready_fallback) do
     case load_project_import_attempt(socket, attempt_id) do
-      {:ok, %ProjectImportAttempt{status: "ready"}} ->
+      {:ok, %{status: "ready"}} ->
         ready_fallback.(socket)
 
       {:ok, attempt} ->
@@ -691,7 +688,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp reconcile_recoverable_import_preflight(socket, attempt_id, reason) do
     case load_project_import_attempt(socket, attempt_id) do
-      {:ok, %ProjectImportAttempt{status: "ready"} = attempt} ->
+      {:ok, %{status: "ready"} = attempt} ->
         socket
         |> assign_import_attempt(attempt)
         |> assign_import_preview_error(reason)
@@ -707,8 +704,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp load_project_import_attempt(socket, attempt_id) do
-    case Imports.get_import_attempt(socket.assigns.current_scope, attempt_id) do
-      {:ok, %ProjectImportAttempt{project_id: project_id} = attempt}
+    case Projects.get_project_import_attempt(socket.assigns.current_scope, attempt_id) do
+      {:ok, %{project_id: project_id} = attempt}
       when project_id == socket.assigns.project.id ->
         {:ok, attempt}
 
@@ -744,7 +741,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     case File.read(path) do
       {:ok, binary} ->
         {:ok,
-         Imports.prepare_import(
+         Projects.prepare_project_import(
            socket.assigns.current_scope,
            socket.assigns.project,
            client_name,
@@ -764,7 +761,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
          replace_acknowledged?
        )
        when is_integer(attempt_id) do
-    case Imports.enqueue_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy,
+    case Projects.enqueue_project_import(socket.assigns.current_scope, attempt_id, state.conflict_strategy,
            review_confirmation_fingerprint: confirmation_fingerprint,
            import_mode: import_mode,
            replace_acknowledged: replace_acknowledged?
@@ -802,7 +799,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp save_import_review_draft(socket, %{step: "preview", attempt_id: attempt_id}, decisions)
        when is_integer(attempt_id) do
-    case Imports.save_import_review(socket.assigns.current_scope, attempt_id, decisions) do
+    case Projects.save_project_import_review(socket.assigns.current_scope, attempt_id, decisions) do
       {:ok, attempt, preview} ->
         {:reply, %{ok: true}, assign_import_attempt(socket, attempt, preview)}
 
@@ -818,7 +815,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp validate_import_review(socket, %{step: "preview", attempt_id: attempt_id}, acknowledged?, decisions)
        when is_integer(attempt_id) do
-    case Imports.resolve_import_review(
+    case Projects.resolve_project_import_review(
            socket.assigns.current_scope,
            attempt_id,
            acknowledged?,
@@ -894,18 +891,18 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp serialize_issue_summary(_summary), do: nil
 
   defp recover_latest_import(%{assigns: %{can_import: true}} = socket) do
-    case Imports.resume_latest_active_import(
+    case Projects.resume_latest_active_project_import(
            socket.assigns.current_scope,
            socket.assigns.project,
            wake_queue: true
          ) do
-      {:ok, %ProjectImportAttempt{} = attempt, preview} ->
+      {:ok, %{id: _id} = attempt, preview} ->
         assign_import_attempt(socket, attempt, preview)
 
       {:ok, nil} ->
         socket
 
-      {:error, reason, %ProjectImportAttempt{} = attempt} ->
+      {:error, reason, %{id: _id} = attempt} ->
         # The durable attempt exists but its preview could not be rebuilt.
         # An in-panel error keeps the attempt id on screen, so Reset can
         # terminalize it — a flash over an empty uploader left the user with
@@ -965,7 +962,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     assign(socket, :import_state, state)
   end
 
-  defp recovery_snapshot_url(socket, %ProjectImportAttempt{
+  defp recovery_snapshot_url(socket, %{
          status: status,
          import_mode: "replace_project",
          pre_import_snapshot_id: snapshot_id,
@@ -981,7 +978,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     "#{base}#snapshot-#{snapshot_id}"
   end
 
-  defp recovery_snapshot_url(_socket, %ProjectImportAttempt{}), do: nil
+  defp recovery_snapshot_url(_socket, %{id: _id}), do: nil
 
   defp import_attempt_preview(_state, attempt, "done", _resumed_preview) do
     %{
@@ -1011,7 +1008,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
     with :ok <- Authorize.authorize(socket, :manage_project),
          {:ok, attempt, preview} <-
-           Imports.resume_import(
+           Projects.resume_project_import(
              socket.assigns.current_scope,
              socket.assigns.project,
              attempt_id,
@@ -1053,7 +1050,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp protect_active_import(socket, _requested_attempt, false), do: {:replace, socket}
 
   defp protect_active_import(socket, requested_attempt, true) do
-    active_statuses = ProjectImportAttempt.active_statuses()
+    active_statuses = Projects.project_import_active_statuses()
 
     if requested_attempt.status in active_statuses do
       {:replace, socket}
@@ -1097,7 +1094,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp maybe_recover_active_after_terminal(socket, attempt) do
-    if attempt.status in ProjectImportAttempt.active_statuses(), do: socket, else: recover_latest_import(socket)
+    if attempt.status in Projects.project_import_active_statuses(), do: socket, else: recover_latest_import(socket)
   end
 
   defp reconcile_import_failure(socket, attempt_id, reason) do
@@ -1152,7 +1149,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp cancel_import_attempt(socket, attempt_id) do
     case load_project_import_attempt(socket, attempt_id) do
       {:ok, _attempt} ->
-        cancellation_outcome(Imports.cancel_import(socket.assigns.current_scope, attempt_id))
+        cancellation_outcome(Projects.cancel_project_import(socket.assigns.current_scope, attempt_id))
 
       :unavailable ->
         # Missing, unauthorized and cross-project ids remain indistinguishable.
@@ -1175,23 +1172,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # row carries no message for any of them. Reporting all three as "the import
   # could not be completed" told a user whose preview simply aged out overnight
   # that their import had failed.
-  defp import_attempt_error(%ProjectImportAttempt{status: "expired"} = attempt) do
+  defp import_attempt_error(%{status: "expired"} = attempt) do
     expired_import_message(attempt.error_code)
   end
 
-  defp import_attempt_error(%ProjectImportAttempt{error_code: "project_already_has_main_flow"}) do
+  defp import_attempt_error(%{error_code: "project_already_has_main_flow"}) do
     dgettext(
       "projects",
       "This project already has a main flow, so the imported one could not be created. No project content was changed."
     )
   end
 
-  defp import_attempt_error(%ProjectImportAttempt{error_code: code})
-       when code in ["duplicate_yarn_node_title", "import_plan_has_errors"] do
+  defp import_attempt_error(%{error_code: code}) when code in ["duplicate_yarn_node_title", "import_plan_has_errors"] do
     import_error_message(:import_plan_has_errors)
   end
 
-  defp import_attempt_error(%ProjectImportAttempt{error_code: code})
+  defp import_attempt_error(%{error_code: code})
        when code in [
               "archive_entry_too_large",
               "archive_expansion_ratio_exceeded",

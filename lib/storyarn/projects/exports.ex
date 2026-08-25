@@ -1,11 +1,11 @@
 defmodule Storyarn.Projects.Exports do
   @moduledoc """
-  The Exports context.
+  Project-owned export capability.
 
   Handles project export in engine formats: Ink, Yarn Spinner, Unity, Godot,
   Unreal, and articy:draft XML. There is no native round-trip format.
 
-  This module serves as a facade, delegating to specialized submodules:
+  This internal facade delegates to specialized submodules:
   - `DataCollector` - Loads project data for export
   - `SerializerRegistry` - Resolves format atoms to serializer modules
   - `Validator` - Pre-export validation and health checks
@@ -18,6 +18,8 @@ defmodule Storyarn.Projects.Exports do
   alias Storyarn.Projects.Exports.SizeGuard
   alias Storyarn.Projects.Exports.Validator
   alias Storyarn.Projects.Exports.Validator.ValidationResult
+  alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Project
 
   require Logger
 
@@ -26,9 +28,14 @@ defmodule Storyarn.Projects.Exports do
 
   ## Authorization
 
-  Caller MUST verify the current user has at least viewer role on the project
-  before calling this function. The Exports context does not enforce
-  authorization — that responsibility belongs to the LiveView layer.
+  This is the lower-level Project serializer entrypoint and does not authorize
+  a user. Presentation and other external adapters MUST call
+  `Storyarn.Projects.prepare_project_export/3`; that public use case repeats
+  authorization and currently requires `:edit_content`.
+
+  Direct calls are reserved for trusted Project-owned workflows that already
+  hold the relevant authority, plus serializer tests. Authorization never
+  belongs to a LiveView alone.
 
   ## Returns
 
@@ -48,15 +55,56 @@ defmodule Storyarn.Projects.Exports do
       {:ok, [{"story.ink", "..."}, {"metadata.json", "..."}]}
 
   """
-  def export_project(project, opts \\ %{}) do
-    with {:ok, options} <- ExportOptions.new(opts),
-         :ok <- SizeGuard.ensure_within_limit(project.id, options),
+  def export_project(project, opts \\ %{})
+
+  def export_project(project, %ExportOptions{} = options) do
+    do_export_project(project, options)
+  end
+
+  def export_project(project, opts) when is_map(opts) do
+    with {:ok, options} <- ExportOptions.new(opts) do
+      do_export_project(project, options)
+    end
+  end
+
+  defp do_export_project(project, options) do
+    with :ok <- SizeGuard.ensure_within_limit(project.id, options),
          {:ok, options, preloaded} <- maybe_validate(project, options),
          {:ok, serializer} <- SerializerRegistry.get(options.format) do
       project_data = DataCollector.collect(project.id, options, preloaded)
       serialize_safely(serializer, project_data, options)
     end
   end
+
+  @doc """
+  Builds the transport-neutral download contract for an authorized project export.
+
+  The presentation layer receives data and metadata, never the serializer
+  module that implements the export format. Authorization is deliberately
+  repeated here so callers cannot turn the lower-level serializer API into an
+  unscoped project export.
+  """
+  @spec prepare_download(map(), Project.t(), map()) ::
+          {:ok,
+           %{
+             required(:delivery) => :single | :archive,
+             required(:content_type) => String.t(),
+             required(:extension) => String.t(),
+             required(:format) => atom(),
+             optional(:body) => binary(),
+             optional(:entries) => [{String.t(), iodata()}]
+           }}
+          | {:error, term()}
+  def prepare_download(%{user: _} = scope, %Project{} = project, opts) when is_map(opts) do
+    with {:ok, _project, _membership} <- Memberships.authorize(scope, project.id, :edit_content),
+         {:ok, options} <- ExportOptions.new(opts),
+         {:ok, serializer} <- SerializerRegistry.get(options.format),
+         {:ok, output} <- export_project(project, options) do
+      {:ok, download_contract(output, options.format, serializer)}
+    end
+  end
+
+  def prepare_download(_scope, _project, _opts), do: {:error, :unauthorized}
 
   @doc """
   Validate a project for export without actually exporting.
@@ -98,6 +146,26 @@ defmodule Storyarn.Projects.Exports do
   Return the list of valid export format atoms.
   """
   defdelegate valid_export_formats(), to: ExportOptions, as: :valid_formats
+
+  defp download_contract(output, format, serializer) when is_binary(output) do
+    %{
+      delivery: :single,
+      body: output,
+      content_type: serializer.content_type(),
+      extension: serializer.file_extension(),
+      format: format
+    }
+  end
+
+  defp download_contract(entries, format, _serializer) when is_list(entries) do
+    %{
+      delivery: :archive,
+      entries: entries,
+      content_type: "application/zip",
+      extension: "zip",
+      format: format
+    }
+  end
 
   defp maybe_validate(project, %ExportOptions{validate_before_export: true} = options) do
     {result, preloaded} = Validator.validate_with_data(project.id, options)

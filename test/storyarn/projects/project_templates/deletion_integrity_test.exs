@@ -10,8 +10,8 @@ defmodule Storyarn.Projects.ProjectTemplates.DeletionIntegrityTest do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Workers.DeleteProjectTemplateArtifactsWorker
   alias Storyarn.ProjectsFixtures
+  alias Storyarn.Workers.DeleteProjectTemplateArtifactsWorker
 
   describe "portable artifact lifecycle" do
     test "hard deletion enqueues and removes imported snapshot, manifest, and blobs" do

@@ -9,23 +9,20 @@ defmodule StoryarnWeb.UploadController do
   use StoryarnWeb, :controller
 
   alias Storyarn.Projects
-  alias Storyarn.Projects.Assets
-  alias Storyarn.Projects.Assets.UploadPolicy
   alias StoryarnWeb.PrivateMedia
 
   def inspect_upload(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, project, membership} <-
+    with {:ok, project, _membership} <-
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
-         true <- Projects.can?(membership.role, :edit_content),
-         {:ok, decision} <- Assets.inspect_upload(project, conn.params) do
+         {:ok, decision} <- Projects.inspect_asset_upload(scope, project.id, conn.params) do
       json(conn, encode_decision(decision))
     else
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> json(%{error: "not_found"})
 
-      false ->
+      {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
       {:error, :limit_reached, _} ->
@@ -39,16 +36,16 @@ defmodule StoryarnWeb.UploadController do
   def materialize(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug}) do
     scope = conn.assigns.current_scope
 
-    with {:ok, project, membership} <-
+    with {:ok, project, _membership} <-
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
-         true <- Projects.can?(membership.role, :edit_content),
-         {:ok, asset, meta} <- Assets.materialize_upload_variant(project, scope.user, conn.params) do
+         {:ok, asset, meta} <-
+           Projects.materialize_asset_upload_variant(scope, project.id, conn.params) do
       json(conn, upload_response(asset, meta))
     else
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> json(%{error: "not_found"})
 
-      false ->
+      {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
       {:error, :limit_reached, _} ->
@@ -66,18 +63,19 @@ defmodule StoryarnWeb.UploadController do
       }) do
     scope = conn.assigns.current_scope
 
-    with {:ok, project, membership} <-
+    with {:ok, project, _resolved_membership} <-
            Projects.get_project_by_slugs(scope, workspace_slug, project_slug),
-         true <- Projects.can?(membership.role, :edit_content),
+         {:ok, _authorized_project, _authorized_membership} <-
+           Projects.authorize(scope, project.id, :edit_content),
          {:ok, binary_data} <- read_upload(upload),
          {:ok, asset} <-
-           create_asset(binary_data, upload, conn.params["purpose"], project, scope.user) do
+           create_asset(binary_data, upload, conn.params["purpose"], scope, project.id) do
       json(conn, upload_response(asset))
     else
       {:error, :not_found} ->
         conn |> put_status(:not_found) |> json(%{error: "not_found"})
 
-      false ->
+      {:error, :unauthorized} ->
         conn |> put_status(:forbidden) |> json(%{error: "forbidden"})
 
       {:error, :limit_reached, _} ->
@@ -126,8 +124,8 @@ defmodule StoryarnWeb.UploadController do
     path == root or String.starts_with?(path, root <> "/")
   end
 
-  defp create_asset(binary_data, upload, purpose_param, project, user) do
-    purpose = UploadPolicy.parse_purpose(purpose_param)
+  defp create_asset(binary_data, upload, purpose_param, scope, project_id) do
+    purpose = Projects.parse_asset_upload_purpose(purpose_param)
 
     attrs = %{
       filename: upload.filename,
@@ -135,12 +133,13 @@ defmodule StoryarnWeb.UploadController do
       purpose: purpose
     }
 
-    if UploadPolicy.supported_purpose?(purpose) do
-      with {:ok, asset, _meta} <- Assets.upload_binary_for_purpose(binary_data, attrs, project, user) do
+    if Projects.asset_upload_purpose_supported?(purpose) do
+      with {:ok, asset, _meta} <-
+             Projects.upload_binary_asset_for_purpose(scope, project_id, binary_data, attrs) do
         {:ok, asset}
       end
     else
-      Assets.upload_binary_and_create_asset(binary_data, attrs, project, user)
+      Projects.upload_binary_asset(scope, project_id, binary_data, attrs)
     end
   end
 

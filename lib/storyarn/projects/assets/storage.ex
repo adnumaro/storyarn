@@ -5,6 +5,8 @@ defmodule Storyarn.Projects.Assets.Storage do
   Supports both local file storage (development) and S3-compatible storage (production).
   """
 
+  alias Storyarn.Projects.Assets.Storage.R2
+
   require Logger
 
   @type key :: String.t()
@@ -114,10 +116,14 @@ defmodule Storyarn.Projects.Assets.Storage do
 
     case Keyword.get(config, :adapter, :local) do
       :local -> Storyarn.Projects.Assets.Storage.Local
-      :r2 -> Storyarn.Projects.Assets.Storage.R2
+      :r2 -> R2
       adapter when is_atom(adapter) -> adapter
     end
   end
+
+  @doc "Returns whether the configured adapter supports direct external uploads."
+  @spec external_upload?() :: boolean()
+  def external_upload?, do: adapter() == R2
 
   @doc """
   Uploads a file to storage.

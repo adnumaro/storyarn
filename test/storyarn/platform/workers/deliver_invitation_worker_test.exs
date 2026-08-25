@@ -8,9 +8,9 @@ defmodule Storyarn.Workers.DeliverInvitationWorkerTest do
 
   alias Storyarn.Platform.Mailer
   alias Storyarn.Platform.Shared.EncryptedBinary
-  alias Storyarn.Platform.Workers.DeliverInvitationWorker
   alias Storyarn.Projects
   alias Storyarn.Repo
+  alias Storyarn.Workers.DeliverInvitationWorker
   alias Storyarn.Workspaces
 
   setup do

@@ -90,13 +90,13 @@ if config_env() != :test do
   config :storyarn, Storyarn.Flows.Versioning.RestorePolicy,
     flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED")
 
-  config :storyarn, Storyarn.Projects.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
-
   config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy,
     scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED")
 
   config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy,
     sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED")
+
+  config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
 
 managed_ai_enabled? = config_env() != :test and bool_env.("STORYARN_AI_MANAGED_ENABLED")
@@ -405,7 +405,7 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  config :storyarn, Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy,
+  config :storyarn, Storyarn.Platform.Billing.StorageLeasePolicy,
     download_signed_url_ttl_seconds:
       bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),
     download_max_transfer_seconds: positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS", 60 * 60)

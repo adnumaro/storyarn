@@ -20,10 +20,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRun
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotObjectPublicationClaim
-  alias Storyarn.Projects.Workers.BuildProjectSnapshotWorker
-  alias Storyarn.Projects.Workers.InspectProjectSnapshotsWorker
   alias Storyarn.Repo
   alias Storyarn.SnapshotReadSwitchStorage
+  alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.InspectProjectSnapshotsWorker
 
   setup do
     original_storage = Application.fetch_env!(:storyarn, :storage)
@@ -2120,10 +2120,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   end
 
   defp continuation_persisted?(run_id, generation) do
+    worker = inspect(InspectProjectSnapshotsWorker)
+
     Repo.exists?(
       from(job in Oban.Job,
         where:
-          job.worker == ^inspect(InspectProjectSnapshotsWorker) and
+          job.worker == ^worker and
             fragment("?->>'run_id'", job.args) == ^to_string(run_id) and
             fragment("?->>'cursor_generation'", job.args) == ^to_string(generation)
       )
@@ -2141,10 +2143,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   end
 
   defp reconciliation_job!(run_id, generation) do
+    worker = inspect(InspectProjectSnapshotsWorker)
+
     Repo.one!(
       from(job in Oban.Job,
         where:
-          job.worker == ^inspect(InspectProjectSnapshotsWorker) and
+          job.worker == ^worker and
             fragment("?->>'run_id'", job.args) == ^to_string(run_id) and
             fragment("?->>'cursor_generation'", job.args) == ^to_string(generation),
         order_by: [desc: job.id],

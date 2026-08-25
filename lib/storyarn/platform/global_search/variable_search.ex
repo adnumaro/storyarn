@@ -11,7 +11,7 @@ defmodule Storyarn.Platform.GlobalSearch.VariableSearch do
   """
 
   alias Storyarn.Platform.GlobalSearch.VariableQuery
-  alias Storyarn.Projects.References
+  alias Storyarn.Projects
   alias Storyarn.Sheets
 
   @default_limit 25
@@ -49,7 +49,7 @@ defmodule Storyarn.Platform.GlobalSearch.VariableSearch do
   defp build_page(project_id, %VariableQuery{operator: nil} = query, definitions_page, exact_definitions_page, limit) do
     case exact_definitions_page.items do
       [definition] ->
-        usage_page = References.list_variable_usages(project_id, definition, limit: limit)
+        usage_page = Projects.list_project_variable_usages(project_id, definition, limit: limit)
 
         items =
           ([definition_hit(definition, :owner)] ++ Enum.map(usage_page.items, &usage_hit/1))
@@ -105,7 +105,7 @@ defmodule Storyarn.Platform.GlobalSearch.VariableSearch do
 
   defp predicate_matches(project_id, %{items: [definition], truncated: false}, query, _limit) do
     usage_page =
-      References.list_variable_usages(
+      Projects.list_project_variable_usages(
         project_id,
         definition,
         limit: @usage_scan_limit

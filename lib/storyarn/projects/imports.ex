@@ -17,7 +17,6 @@ defmodule Storyarn.Projects.Imports do
   alias Ecto.Multi
   alias Storyarn.Accounts.Scope
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects
   alias Storyarn.Projects.Imports.Execution
   alias Storyarn.Projects.Imports.Expiration
   alias Storyarn.Projects.Imports.ImportPlan
@@ -35,10 +34,11 @@ defmodule Storyarn.Projects.Imports do
   alias Storyarn.Projects.Imports.Shared
   alias Storyarn.Projects.Imports.SourceBundle
   alias Storyarn.Projects.Imports.Telemetry
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
-  alias Storyarn.Projects.Workers.ImportProjectWorker
   alias Storyarn.Repo
+  alias Storyarn.Workers.ImportProjectWorker
 
   @plan_retention_seconds 86_400
   @plan_store_timeout 300_000
@@ -127,7 +127,7 @@ defmodule Storyarn.Projects.Imports do
     initial_metadata = Telemetry.source_metadata(filename)
 
     try do
-      with {:ok, _project, _membership} <- Projects.authorize(scope, project.id, @import_action),
+      with {:ok, _project, _membership} <- Memberships.authorize(scope, project.id, @import_action),
            {:ok, %ImportPlan{} = plan} <- parse_file(filename, binary),
            {:ok, preview} <- preview(project.id, plan),
            {:ok, attempt, persisted_preview} <-
@@ -216,7 +216,7 @@ defmodule Storyarn.Projects.Imports do
   def update_import_strategy(%{user: _} = scope, attempt_id, strategy) when is_integer(attempt_id) and attempt_id > 0 do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         {:ok, _project, _membership} <- Memberships.authorize(scope, attempt.project_id, @import_action),
          :ok <- authorize_attempt_owner(attempt, scope.user.id),
          {:ok, updated} <- persist_import_strategy(attempt, scope.user.id, strategy) do
       Queue.broadcast(updated)
@@ -235,7 +235,7 @@ defmodule Storyarn.Projects.Imports do
   def update_import_mode(%{user: _} = scope, attempt_id, mode) when is_integer(attempt_id) and attempt_id > 0 do
     with {:ok, mode} <- normalize_import_mode(mode),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         {:ok, _project, _membership} <- Memberships.authorize(scope, attempt.project_id, @import_action),
          :ok <- authorize_attempt_owner(attempt, scope.user.id),
          :ok <- ensure_import_mode_available(attempt, mode),
          {:ok, updated} <- persist_import_mode(attempt, scope.user.id, mode) do
@@ -277,7 +277,7 @@ defmodule Storyarn.Projects.Imports do
   def enqueue_import(%{user: _} = scope, attempt_id, strategy, opts) when is_list(opts) do
     with {:ok, strategy} <- normalize_strategy(strategy),
          %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         {:ok, project, _membership} <- Memberships.authorize(scope, attempt.project_id, @import_action),
          :ok <- authorize_attempt_owner(attempt, scope.user.id) do
       fn -> enqueue_locked_attempt(attempt.id, project.id, scope.user.id, strategy, opts) end
       |> Repo.transact()
@@ -305,7 +305,7 @@ defmodule Storyarn.Projects.Imports do
           {:ok, ProjectImportAttempt.t()} | {:error, :not_found | :unauthorized}
   def get_import_attempt(%{user: _} = scope, attempt_id) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, :view),
+         {:ok, _project, _membership} <- Memberships.authorize(scope, attempt.project_id, :view),
          :ok <- authorize_attempt_owner(attempt, scope.user.id) do
       {:ok, attempt}
     else
@@ -361,7 +361,7 @@ defmodule Storyarn.Projects.Imports do
   @doc false
   def cancel_import(%{user: _} = scope, attempt_id, opts) when is_list(opts) do
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
-         {:ok, _project, _membership} <- Projects.authorize(scope, attempt.project_id, @import_action),
+         {:ok, _project, _membership} <- Memberships.authorize(scope, attempt.project_id, @import_action),
          :ok <- authorize_attempt_owner(attempt, scope.user.id),
          :ok <- run_before_cancel_transaction(opts),
          {:ok, expired} <- cancel_attempt(attempt, scope.user.id, opts) do
@@ -467,7 +467,7 @@ defmodule Storyarn.Projects.Imports do
 
     with %ProjectImportAttempt{} = attempt <- Repo.get(ProjectImportAttempt, attempt_id),
          {:ok, project, _membership} <-
-           Projects.authorize(scope, attempt.project_id, @import_action),
+           Memberships.authorize(scope, attempt.project_id, @import_action),
          # Before the status is even distinguished, let alone a plan decrypted
          # or a revision object written: a non-owner must be refused here,
          # indistinguishably from a missing attempt — the review lock's user

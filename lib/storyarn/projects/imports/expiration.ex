@@ -15,7 +15,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Notifications
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Imports.Error
   alias Storyarn.Projects.Imports.NotificationDelivery
@@ -112,7 +112,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
   end
 
   defp finish_expired_attempt(expired, notification_outcome, opts, expired_count, failure_count) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
     snapshot_cleanup_failure_count = snapshot_cleanup_failure_count(expired)
     expired = Repo.get(ProjectImportAttempt, expired.id) || expired
     Queue.broadcast(expired)

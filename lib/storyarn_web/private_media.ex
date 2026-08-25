@@ -53,7 +53,8 @@ defmodule StoryarnWeb.PrivateMedia do
   @spec workspace_banner_url(map() | nil) :: String.t() | nil
   def workspace_banner_url(%{slug: slug, banner_url: banner_url})
       when is_binary(slug) and is_binary(banner_url) and banner_url != "" do
-    ~p"/media/workspaces/#{slug}/banner"
+    revision = private_media_revision(banner_url)
+    ~p"/media/workspaces/#{slug}/banner?revision=#{revision}"
   end
 
   def workspace_banner_url(_workspace), do: nil
@@ -108,4 +109,14 @@ defmodule StoryarnWeb.PrivateMedia do
 
   defp preferred_asset_id(%{metadata: %{"web_asset_id" => id}}) when is_integer(id), do: id
   defp preferred_asset_id(%{id: id}), do: id
+
+  # A replacement keeps the same authorization route, so the browser needs an
+  # opaque identity change to request the new bytes. Hashing the persisted
+  # storage URL avoids exposing the provider URL or object key to the client.
+  defp private_media_revision(storage_identity) do
+    storage_identity
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.url_encode64(padding: false)
+    |> binary_part(0, 16)
+  end
 end

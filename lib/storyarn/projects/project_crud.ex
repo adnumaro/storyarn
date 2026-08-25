@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.ProjectCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Events
@@ -65,6 +65,18 @@ defmodule Storyarn.Projects.ProjectCrud do
   end
 
   @doc """
+  Reloads an accessible project together with the Project-owned workspace read model.
+
+  This is the authorized refresh path for long-lived consumers that need fresh
+  project data without reaching into the repository from an adapter.
+  """
+  def reload_project(scope, id) do
+    with {:ok, project, membership} <- get_project(scope, id) do
+      {:ok, Repo.preload(project, :workspace), membership}
+    end
+  end
+
+  @doc """
   Gets a project without authorization check.
   """
   def get_project!(id), do: Repo.get!(Project, id)
@@ -113,7 +125,7 @@ defmodule Storyarn.Projects.ProjectCrud do
       |> Repo.one()
 
     case workspace do
-      %Workspace{} -> Billing.can_create_project?(workspace)
+      %Workspace{} -> Platform.can_create_project?(workspace)
       nil -> {:error, :not_found}
     end
   end
@@ -253,7 +265,7 @@ defmodule Storyarn.Projects.ProjectCrud do
 
       workspace_id ->
         workspace_id
-        |> Billing.transact_with_workspace_lock(fn _workspace ->
+        |> Platform.transact_with_workspace_lock(fn _workspace ->
           delete_locked_project(project_id, workspace_id, fun)
         end)
         |> normalize_project_deletion_result()
