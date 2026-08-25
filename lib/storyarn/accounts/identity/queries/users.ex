@@ -1,0 +1,22 @@
+defmodule Storyarn.Accounts.Identity.Queries.Users do
+  @moduledoc false
+
+  alias Storyarn.Accounts.User
+  alias Storyarn.Repo
+
+  @doc """
+  Gets a user by email.
+
+  Email lookup is case-insensitive (normalized to lowercase).
+  """
+  def get_user_by_email(email) when is_binary(email) do
+    Repo.get_by(User, email: String.downcase(email))
+  end
+
+  @doc """
+  Gets a single user.
+
+  Raises `Ecto.NoResultsError` if the User does not exist.
+  """
+  def get_user!(id), do: Repo.get!(User, id)
+end

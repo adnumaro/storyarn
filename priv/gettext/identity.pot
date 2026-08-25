@@ -11,7 +11,7 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn/accounts/registration.ex:178
+#: lib/storyarn/accounts/registration/rules/default_workspace.ex:8
 #, elixir-autogen, elixir-format
 msgid "%{name}'s workspace"
 msgstr ""

@@ -57,7 +57,7 @@ DOMAIN_RULES = [
     ("storyarn_web/controllers/user_session_controller.ex", "identity"),
     ("storyarn_web/controllers/oauth_controller.ex", "identity"),
     ("storyarn_web/user_auth.ex", "identity"),
-    ("storyarn/accounts/registration.ex", "identity"),
+    ("storyarn/accounts/registration/", "identity"),
 
     # settings (personal settings — profile/security/connections)
     ("storyarn_web/live/settings_live/profile.ex", "settings"),

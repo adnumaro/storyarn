@@ -366,6 +366,77 @@ web_to_context_internal_denials =
     }
   end
 
+# Accounts capabilities are implementation slices inside one bounded context,
+# not independent contexts. `User`, `UserToken`, and `Scope` deliberately keep
+# their stable module identities and may be shared inside Accounts; commands,
+# queries, rules, adapters, delivery, tokens, and events remain capability-local.
+account_capabilities = ~w(identity authentication registration)
+account_private_roles = ~w(adapters commands queries rules delivery tokens events)
+
+account_internal_path_denials =
+  for source_capability <- account_capabilities,
+      target_capability <- account_capabilities -- [source_capability],
+      private_role <- account_private_roles do
+    %{
+      source_root: "lib/storyarn/accounts/#{source_capability}/",
+      target_root: "lib/storyarn/accounts/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Account capabilities may consume another capability only through its facade or stable contracts"
+    }
+  end
+
+# These denials protect concrete responsibilities without pretending that every
+# module needs a port. Queries remain read-only, rules remain persistence-free,
+# tokens cannot trigger workflows, and technical adapters do not orchestrate
+# application behavior.
+account_role_dependency_denials =
+  for capability <- account_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "delivery"},
+        {"queries", "events"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "delivery"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "delivery"},
+        {"entities", "events"},
+        {"entities", "adapters"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "delivery"},
+        {"contracts", "events"},
+        {"contracts", "adapters"},
+        {"tokens", "commands"},
+        {"tokens", "delivery"},
+        {"tokens", "events"},
+        {"tokens", "adapters"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "delivery"},
+        {"adapters", "events"},
+        {"adapters", "rules"},
+        {"adapters", "tokens"}
+      ] do
+    %{
+      source_root: "lib/storyarn/accounts/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/accounts/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Account role folders must preserve read, policy, token, and effect direction"
+    }
+  end
+
+accounts_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/accounts/",
+  target_root: "lib/storyarn/accounts/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Account workers must orchestrate through the Storyarn.Accounts facade"
+}
+
 # Workspaces capabilities are implementation slices inside one bounded context,
 # not independent contexts. They may share owned entities and call one another's
 # capability facade, but they must not reach directly into another capability's
@@ -501,6 +572,9 @@ policy = %{
       }
     ] ++
       web_to_context_internal_denials ++
+      account_internal_path_denials ++
+      account_role_dependency_denials ++
+      [accounts_worker_facade_denial] ++
       workspace_internal_path_denials ++
       workspace_role_dependency_denials ++
       workspace_query_adapter_denials ++ [workspace_worker_facade_denial],
@@ -1051,10 +1125,16 @@ policy = %{
         "Workspace hard-delete asks the public Projects facade to prepare all Project-owned dependent data under the caller-held workspace lock"
     },
     %{
-      source: "lib/storyarn/accounts/events.ex",
+      source: "lib/storyarn/accounts/authentication/events/user_logged_in.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Accounts publishes owned business facts through the public Platform reaction contract"
+      reason: "Authentication publishes the Account-owned login fact through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/accounts/registration/events/user_signed_up.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Registration publishes the Account-owned sign-up fact through the public Platform reaction contract"
     },
     %{
       source: "lib/storyarn_web/user_auth.ex",
@@ -1069,16 +1149,22 @@ policy = %{
       reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
     },
     %{
-      source: "lib/storyarn/accounts/user_email.ex",
+      source: "lib/storyarn/accounts/authentication/delivery/email_change/content.ex",
       target: "lib/storyarn/platform/emails/layout.ex",
       kinds: ["runtime"],
-      reason: "Account-owned transactional content uses the shared technical email layout"
+      reason: "Account-owned email-change content uses the shared technical email layout"
     },
     %{
-      source: "lib/storyarn/accounts/user_notifier.ex",
+      source: "lib/storyarn/accounts/authentication/delivery/password_reset/content.ex",
+      target: "lib/storyarn/platform/emails/layout.ex",
+      kinds: ["runtime"],
+      reason: "Account-owned password-reset content uses the shared technical email layout"
+    },
+    %{
+      source: "lib/storyarn/accounts/authentication/adapters/email/mailer.ex",
       target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
-      reason: "Account email delivery goes through the application mailer"
+      reason: "The Account email adapter hands rendered messages to the application mailer"
     },
     %{
       source: "lib/storyarn_web/live/user_live/login.ex",
@@ -1159,7 +1245,7 @@ policy = %{
       reason: "The workspace home lists and creates projects through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/accounts/registration.ex",
+      source: "lib/storyarn/accounts/registration/commands/register.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Registration provisions each new account's default workspace through the public Workspaces facade"

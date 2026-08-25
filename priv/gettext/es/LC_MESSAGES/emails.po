@@ -63,20 +63,20 @@ msgstr "Acepta visitando:"
 msgid "Accept invitation"
 msgstr "Aceptar invitación"
 
-#: lib/storyarn/accounts/user_email.ex:25
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:22
 #, elixir-autogen, elixir-format
 msgid "Confirm email change"
 msgstr "Confirmar cambio de email"
 
-#: lib/storyarn/accounts/user_email.ex:45
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:42
 #, elixir-autogen, elixir-format
 msgid "Confirm your email change"
 msgstr "Confirma tu cambio de email"
 
-#: lib/storyarn/accounts/user_email.ex:19
-#: lib/storyarn/accounts/user_email.ex:36
-#: lib/storyarn/accounts/user_email.ex:54
-#: lib/storyarn/accounts/user_email.ex:71
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:16
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:33
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:16
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:33
 #, elixir-autogen, elixir-format
 msgid "Hi %{email},"
 msgstr "Hola %{email},"
@@ -89,14 +89,14 @@ msgstr "Hola %{email},"
 msgid "Hi,"
 msgstr "Hola,"
 
-#: lib/storyarn/accounts/user_email.ex:28
-#: lib/storyarn/accounts/user_email.ex:42
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:25
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:39
 #, elixir-autogen, elixir-format
 msgid "If you didn't request this change, please ignore this email."
 msgstr "Si no solicitaste este cambio, ignora este correo."
 
-#: lib/storyarn/accounts/user_email.ex:31
-#: lib/storyarn/accounts/user_email.ex:66
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:28
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:28
 #: lib/storyarn/projects/invitation_email.ex:35
 #: lib/storyarn/workspaces/invitations/delivery/content.ex:35
 #, elixir-autogen, elixir-format
@@ -111,17 +111,17 @@ msgid_plural "This invitation expires in %{count} days."
 msgstr[0] "Esta invitación caduca en %{count} día."
 msgstr[1] "Esta invitación caduca en %{count} días."
 
-#: lib/storyarn/accounts/user_email.ex:15
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:12
 #, elixir-autogen, elixir-format
 msgid "Update your email address"
 msgstr "Actualiza tu dirección de email"
 
-#: lib/storyarn/accounts/user_email.ex:22
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:19
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Click below to confirm the change."
 msgstr "Has solicitado cambiar tu dirección de email. Haz clic abajo para confirmar el cambio."
 
-#: lib/storyarn/accounts/user_email.ex:38
+#: lib/storyarn/accounts/authentication/delivery/email_change/content.ex:35
 #, elixir-autogen, elixir-format
 msgid "You requested to change your email address. Confirm by visiting:"
 msgstr "Has solicitado cambiar tu dirección de email. Confirma visitando:"
@@ -152,33 +152,33 @@ msgid_plural "This invitation expires in %{count} days. If you don't want to joi
 msgstr[0] "Esta invitación caduca en %{count} día. Si no quieres unirte, simplemente ignora este correo."
 msgstr[1] "Esta invitación caduca en %{count} días. Si no quieres unirte, simplemente ignora este correo."
 
-#: lib/storyarn/accounts/user_email.ex:80
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:42
 #, elixir-autogen, elixir-format
 msgid "Choose a new Storyarn password"
 msgstr "Elige una nueva contraseña de Storyarn"
 
-#: lib/storyarn/accounts/user_email.ex:60
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:22
 #, elixir-autogen, elixir-format
 msgid "Reset password"
 msgstr "Restablecer contraseña"
 
-#: lib/storyarn/accounts/user_email.ex:50
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:12
 #, elixir-autogen, elixir-format
 msgid "Reset your Storyarn password"
 msgstr "Restablece tu contraseña de Storyarn"
 
-#: lib/storyarn/accounts/user_email.ex:63
-#: lib/storyarn/accounts/user_email.ex:77
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:25
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:39
 #, elixir-autogen, elixir-format
 msgid "This link expires in 24 hours. If you didn't request this, you can ignore this email."
 msgstr "Este enlace caduca en 24 horas. Si no lo has solicitado, puedes ignorar este correo."
 
-#: lib/storyarn/accounts/user_email.ex:73
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:35
 #, elixir-autogen, elixir-format
 msgid "We received a request to reset your Storyarn password. Choose a new password by visiting:"
 msgstr "Hemos recibido una solicitud para restablecer tu contraseña de Storyarn. Elige una nueva contraseña visitando:"
 
-#: lib/storyarn/accounts/user_email.ex:57
+#: lib/storyarn/accounts/authentication/delivery/password_reset/content.ex:19
 #, elixir-autogen, elixir-format
 msgid "We received a request to reset your Storyarn password. Click below to choose a new one."
 msgstr "Hemos recibido una solicitud para restablecer tu contraseña de Storyarn. Haz clic abajo para elegir una nueva."

@@ -44,7 +44,10 @@ defmodule Storyarn.Architecture.AccountsWebFacadeBoundaryTest do
   test "Accounts Web cannot publish generic business facts" do
     violations =
       Enum.filter(@accounts_web_sources, fn path ->
-        File.read!(path) =~ "Accounts.Events"
+        Regex.match?(
+          ~r/\bAccounts(?:\.[A-Z][A-Za-z0-9_]*)*\.Events\b/,
+          File.read!(path)
+        )
       end)
 
     refute File.read!("lib/storyarn/accounts.ex") =~ "defdelegate emit_event"

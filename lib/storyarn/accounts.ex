@@ -3,26 +3,19 @@ defmodule Storyarn.Accounts do
   The Accounts context handles user management, authentication,
   and identity operations.
 
-  This module serves as a facade, delegating to specialized submodules:
-  - `Users` - User lookups and queries
-  - `Registration` - User registration with default workspace
-  - `Sessions` - Session token management
-  - `MagicLinks` - Magic link authentication
-  - `Emails` - Email change operations
-  - `Passwords` - Password management
-  - `Profiles` - User profile and sudo mode
+  This module is the bounded-context facade. Its implementation is organized
+  around three business capabilities:
+
+  - `Identity` - user identity and profiles
+  - `Authentication` - credentials, sessions, sudo, and recovery
+  - `Registration` - account creation and invitation completion
   """
 
-  alias Storyarn.Accounts.Emails
-  alias Storyarn.Accounts.Events
-  alias Storyarn.Accounts.Passwords
-  alias Storyarn.Accounts.Profiles
+  alias Storyarn.Accounts.Authentication
+  alias Storyarn.Accounts.Identity
   alias Storyarn.Accounts.Registration
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Accounts.Sessions
   alias Storyarn.Accounts.User
-  alias Storyarn.Accounts.UserNotifier
-  alias Storyarn.Accounts.Users
   alias Storyarn.Accounts.UserToken
 
   # =============================================================================
@@ -50,7 +43,7 @@ defmodule Storyarn.Accounts do
       nil
   """
   @spec get_user_by_email(String.t()) :: user() | nil
-  defdelegate get_user_by_email(email), to: Users
+  defdelegate get_user_by_email(email), to: Identity
 
   @doc """
   Gets a user by email and password.
@@ -64,7 +57,7 @@ defmodule Storyarn.Accounts do
       nil
   """
   @spec get_user_by_email_and_password(String.t(), String.t()) :: user() | nil
-  defdelegate get_user_by_email_and_password(email, password), to: Users
+  defdelegate get_user_by_email_and_password(email, password), to: Authentication
 
   @doc """
   Gets a single user.
@@ -72,7 +65,7 @@ defmodule Storyarn.Accounts do
   Raises `Ecto.NoResultsError` if the User does not exist.
   """
   @spec get_user!(integer()) :: user()
-  defdelegate get_user!(id), to: Users
+  defdelegate get_user!(id), to: Identity
 
   # =============================================================================
   # Registration
@@ -94,11 +87,11 @@ defmodule Storyarn.Accounts do
 
   @doc "Publishes the product fact for a completed login."
   @spec user_logged_in(user(), String.t()) :: :ok
-  defdelegate user_logged_in(user, auth_method), to: Events
+  defdelegate user_logged_in(user, auth_method), to: Authentication
 
   @doc "Validates the `:email` field with the account email format."
   @spec validate_email_format(changeset()) :: changeset()
-  defdelegate validate_email_format(changeset), to: User
+  defdelegate validate_email_format(changeset), to: Identity
 
   @doc """
   Returns an `%Ecto.Changeset{}` for public registration.
@@ -108,11 +101,11 @@ defmodule Storyarn.Accounts do
 
   @doc "Returns a bare user struct for registration forms."
   @spec new_user() :: user()
-  def new_user, do: %User{}
+  defdelegate new_user(), to: Identity
 
   @doc "Builds the session scope for an authenticated user."
-  @spec scope_for_user(user() | nil) :: Scope.t()
-  defdelegate scope_for_user(user), to: Scope, as: :for_user
+  @spec scope_for_user(user() | nil) :: Scope.t() | nil
+  defdelegate scope_for_user(user), to: Authentication
 
   # =============================================================================
   # Sessions
@@ -122,7 +115,7 @@ defmodule Storyarn.Accounts do
   Generates a session token.
   """
   @spec generate_user_session_token(user()) :: binary()
-  defdelegate generate_user_session_token(user), to: Sessions
+  defdelegate generate_user_session_token(user), to: Authentication
 
   @doc """
   Gets the user with the given signed token.
@@ -130,33 +123,33 @@ defmodule Storyarn.Accounts do
   If the token is valid `{user, token_inserted_at}` is returned, otherwise `nil` is returned.
   """
   @spec get_user_by_session_token(binary()) :: {user(), DateTime.t()} | nil
-  defdelegate get_user_by_session_token(token), to: Sessions
+  defdelegate get_user_by_session_token(token), to: Authentication
 
   @doc """
   Re-authenticates the scoped user's active session without elevating the session token.
   """
   @spec reauthenticate_user_session(Scope.t(), binary(), String.t()) ::
           {:ok, user()} | {:error, :invalid_credentials | :invalid_session}
-  defdelegate reauthenticate_user_session(current_scope, token, password), to: Sessions
+  defdelegate reauthenticate_user_session(current_scope, token, password), to: Authentication
 
   @doc "Returns whether the token is an active session owned by the scoped user."
   @spec session_token_active?(Scope.t(), binary()) :: boolean()
-  defdelegate session_token_active?(current_scope, token), to: Sessions
+  defdelegate session_token_active?(current_scope, token), to: Authentication
 
   @doc false
-  defdelegate generate_sudo_handoff_nonce(user), to: Sessions
+  defdelegate generate_sudo_handoff_nonce(user), to: Authentication
 
   @doc false
-  defdelegate sudo_handoff_nonce_active?(current_scope, nonce), to: Sessions
+  defdelegate sudo_handoff_nonce_active?(current_scope, nonce), to: Authentication
 
   @doc false
-  defdelegate consume_sudo_handoff_nonce(current_scope, nonce), to: Sessions
+  defdelegate consume_sudo_handoff_nonce(current_scope, nonce), to: Authentication
 
   @doc """
   Deletes the signed token with the given context.
   """
   @spec delete_user_session_token(binary()) :: :ok
-  defdelegate delete_user_session_token(token), to: Sessions
+  defdelegate delete_user_session_token(token), to: Authentication
 
   # =============================================================================
   # Emails
@@ -166,7 +159,7 @@ defmodule Storyarn.Accounts do
   Returns an `%Ecto.Changeset{}` for changing the user email.
   """
   @spec change_user_email(user(), attrs(), keyword()) :: changeset()
-  defdelegate change_user_email(user, attrs \\ %{}, opts \\ []), to: Emails
+  defdelegate change_user_email(user, attrs \\ %{}, opts \\ []), to: Authentication
 
   @doc """
   Updates the user email using the given token.
@@ -174,7 +167,7 @@ defmodule Storyarn.Accounts do
   If the token matches, the user email is updated and the token is deleted.
   """
   @spec update_user_email(user(), String.t()) :: {:ok, user()} | {:error, :transaction_aborted}
-  defdelegate update_user_email(user, token), to: Emails
+  defdelegate update_user_email(user, token), to: Authentication
 
   @doc ~S"""
   Delivers the update email instructions to the given user.
@@ -182,7 +175,7 @@ defmodule Storyarn.Accounts do
   @spec deliver_user_update_email_instructions(user(), String.t(), (String.t() -> String.t())) ::
           {:ok, map()}
   defdelegate deliver_user_update_email_instructions(user, current_email, update_email_url_fun),
-    to: Emails
+    to: Authentication
 
   # =============================================================================
   # Passwords
@@ -192,7 +185,7 @@ defmodule Storyarn.Accounts do
   Returns an `%Ecto.Changeset{}` for changing the user password.
   """
   @spec change_user_password(user(), attrs(), keyword()) :: changeset()
-  defdelegate change_user_password(user, attrs \\ %{}, opts \\ []), to: Passwords
+  defdelegate change_user_password(user, attrs \\ %{}, opts \\ []), to: Authentication
 
   @doc """
   Updates the user password.
@@ -201,47 +194,47 @@ defmodule Storyarn.Accounts do
   """
   @spec update_user_password(user(), attrs()) ::
           {:ok, {user(), [user_token()]}} | {:error, changeset()}
-  defdelegate update_user_password(user, attrs), to: Passwords
+  defdelegate update_user_password(user, attrs), to: Authentication
 
   @doc """
   Queues reset password instructions for the given user.
   """
   @spec deliver_user_reset_password_instructions(user(), (String.t() -> String.t())) ::
           {:ok, :queued} | {:error, term()}
-  defdelegate deliver_user_reset_password_instructions(user, reset_password_url_fun), to: Passwords
+  defdelegate deliver_user_reset_password_instructions(user, reset_password_url_fun), to: Authentication
 
   @doc """
   Queues a reset request without synchronously revealing whether the email exists.
   """
   @spec request_user_reset_password_instructions(String.t(), (String.t() -> String.t())) ::
           {:ok, :queued} | {:error, term()}
-  defdelegate request_user_reset_password_instructions(email, reset_password_url_fun), to: Passwords
+  defdelegate request_user_reset_password_instructions(email, reset_password_url_fun), to: Authentication
 
   @doc false
   @spec process_user_reset_password_request(String.t(), String.t()) ::
           :ok | {:ok, :queued} | {:error, term()}
-  defdelegate process_user_reset_password_request(email, reset_url_template), to: Passwords
+  defdelegate process_user_reset_password_request(email, reset_url_template), to: Authentication
 
   @doc false
   @spec decrypt_reset_password_url(String.t()) :: {:ok, String.t()} | {:error, :invalid_reset_password_url}
-  defdelegate decrypt_reset_password_url(encrypted_reset_url), to: Passwords
+  defdelegate decrypt_reset_password_url(encrypted_reset_url), to: Authentication
 
   @doc "Delivers reset password instructions to the given email."
   @spec deliver_reset_password_instructions(String.t() | map(), String.t()) :: {:ok, term()} | {:error, term()}
-  defdelegate deliver_reset_password_instructions(email, reset_url), to: UserNotifier
+  defdelegate deliver_reset_password_instructions(email, reset_url), to: Authentication
 
   @doc """
   Gets the user for a valid reset password token.
   """
   @spec get_user_by_reset_password_token(String.t()) :: user() | nil
-  defdelegate get_user_by_reset_password_token(token), to: Passwords
+  defdelegate get_user_by_reset_password_token(token), to: Authentication
 
   @doc """
   Resets the user password using reset-password semantics.
   """
   @spec reset_user_password(user(), attrs()) ::
           {:ok, {user(), [user_token()]}} | {:error, changeset()}
-  defdelegate reset_user_password(user, attrs), to: Passwords
+  defdelegate reset_user_password(user, attrs), to: Authentication
 
   # =============================================================================
   # Profiles
@@ -251,13 +244,13 @@ defmodule Storyarn.Accounts do
   Returns an `%Ecto.Changeset{}` for changing the user profile.
   """
   @spec change_user_profile(user(), attrs()) :: changeset()
-  defdelegate change_user_profile(user, attrs \\ %{}), to: Profiles
+  defdelegate change_user_profile(user, attrs \\ %{}), to: Identity
 
   @doc """
   Updates the user profile.
   """
   @spec update_user_profile(user(), attrs()) :: {:ok, user()} | {:error, changeset()}
-  defdelegate update_user_profile(user, attrs), to: Profiles
+  defdelegate update_user_profile(user, attrs), to: Identity
 
   @doc """
   Checks whether the user is in sudo mode.
@@ -266,7 +259,7 @@ defmodule Storyarn.Accounts do
   than 20 minutes ago. The limit can be given as second argument in minutes.
   """
   @spec sudo_mode?(user(), integer()) :: boolean()
-  defdelegate sudo_mode?(user, minutes \\ -20), to: Profiles
+  defdelegate sudo_mode?(user, minutes \\ -20), to: Authentication
 
   @doc """
   Gets the user with the given invite token and deletes the token if found.
