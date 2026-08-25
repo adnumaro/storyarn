@@ -1,0 +1,137 @@
+test/storyarn/accounts/authentication/commands/passwords_test.exs
+  s_e9e5a90425bc26::t_c1d9b599557b60 1,6,9,12,15,22,30,33,38,48
+lib/storyarn/accounts/authentication/adapters/email/mailer.ex
+  s_e9e5a90425bc26::t_0bb34c5609393b 1,3-5,7,10,14-16,27
+lib/storyarn/accounts/authentication/tokens/issuer.ex
+  s_e9e5a90425bc26::t_c222c9731a641f 1-40
+priv/gettext/es/LC_MESSAGES/emails.po
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 66,71,76-79,92-93,98-99,114,119,124,155,160,165,170-171,176,181
+priv/gettext/identity.pot
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 14
+lib/storyarn/accounts/authentication/commands/password_reset.ex
+  s_e9e5a90425bc26::t_122a681381a288 1,6-8,16-19,22,25,31,36-38,48-49,52,61,63-65
+  s_e9e5a90425bc26::t_abb1e8e34f6573 32
+lib/storyarn/accounts/authentication/delivery/email_change/content.ex
+  s_e9e5a90425bc26::t_37d1a0e7351331 1-44
+lib/storyarn/accounts/registration/commands/complete_invitation.ex
+  s_e9e5a90425bc26::t_f68729379133d9 1,6,14,35
+  s_e9e5a90425bc26::t_0c5617c5e20e45 2-5,7-13,15-34,36-56
+lib/storyarn/accounts/identity/queries/users.ex
+  s_e9e5a90425bc26::t_d30fe66b3ca409 1
+lib/storyarn/accounts/registration/events/user_signed_up.ex
+  s_e9e5a90425bc26::t_afa0a6b9161afb 1-14
+test/storyarn/accounts/authentication/delivery/handler_test.exs
+  s_e9e5a90425bc26::t_42d585fe22a23f 1-2,4-6,9,12-17,31
+lib/storyarn/accounts/authentication/authentication.ex
+  s_e9e5a90425bc26::t_988535bf0ec450 1-65
+lib/storyarn/accounts/identity/identity.ex
+  s_e9e5a90425bc26::t_d30fe66b3ca409 1-22
+test/storyarn/accounts/identity/commands/profile_test.exs
+  s_e9e5a90425bc26::t_c9e8b5d9261738 1,6,11,18,25,32,38,46,55,63,71,77-78
+lib/storyarn/accounts/authentication/queries/sessions.ex
+  s_e9e5a90425bc26::t_a9ca0ddab4b795 1-41
+lib/storyarn/accounts/authentication/adapters/jobs/password_reset_queue.ex
+  s_e9e5a90425bc26::t_0bb34c5609393b 1-25
+lib/storyarn/accounts/authentication/delivery/email_change/handler.ex
+  s_e9e5a90425bc26::t_37d1a0e7351331 1-12
+test/storyarn/architecture/accounts_internal_structure_test.exs
+  s_e9e5a90425bc26::t_7efc913ae2e2ed 1-149
+lib/storyarn/accounts/authentication/commands/sudo_handoff.ex
+  s_e9e5a90425bc26::t_a9ca0ddab4b795 1,6-7,13-14,22,27-29,35
+lib/storyarn/accounts/authentication/delivery/password_reset/content.ex
+  s_e9e5a90425bc26::t_37d1a0e7351331 1,3,10-11
+priv/gettext/en/LC_MESSAGES/emails.po
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 66,71,76-79,92-93,98-99,114,119,124,155,160,165,170-171,176,181
+test/storyarn/accounts/facade_test.exs
+  s_e9e5a90425bc26::t_4626e7da6bc04e 1-679
+test/storyarn/accounts/authentication/rules/sudo_window_test.exs
+  s_e9e5a90425bc26::t_c9e8b5d9261738 1-46
+lib/storyarn/accounts/registration/rules/default_workspace.ex
+  s_e9e5a90425bc26::t_7e88d7fada3dff 1-17
+lib/storyarn/accounts.ex
+  s_e9e5a90425bc26::t_37d3b1848209dc 107
+  s_e9e5a90425bc26::t_e237377354b495 6-11,14-15,46,60,68,90,94,104,108,118,126,133,137,140,143,146,152,162,170,178,188,197,204,211,216,220,224,230,237,247,253,262
+lib/storyarn/accounts/authentication/events/user_logged_in.ex
+  s_e9e5a90425bc26::t_122a681381a288 1-2,9-11,14
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 14
+lib/storyarn/accounts/authentication/rules/sudo_window.ex
+  s_e9e5a90425bc26::t_c222c9731a641f 1-15
+lib/storyarn/accounts/authentication/tokens/verifier.ex
+  s_e9e5a90425bc26::t_c222c9731a641f 1-2,13-14,16-19,24-26,31-32,36-37,46-47,51-54,64
+lib/storyarn/accounts/authentication/entities/user_token.ex
+  s_e9e5a90425bc26::t_c222c9731a641f 1-34
+lib/storyarn/accounts/README.md
+  s_e9e5a90425bc26::t_7efc913ae2e2ed 1-54
+priv/gettext/emails.pot
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 66,71,76-79,92-93,98-99,114,119,124,155,160,165,170-171,176,181
+lib/storyarn/accounts/authentication/contracts/scope.ex
+  s_e9e5a90425bc26::t_c222c9731a641f 3,5-7,18-20
+lib/storyarn/accounts/registration/tokens/invitation.ex
+  s_e9e5a90425bc26::t_7e88d7fada3dff 1-43
+lib/storyarn/accounts/authentication/adapters/encryption/reset_url.ex
+  s_e9e5a90425bc26::t_0bb34c5609393b 1-23
+lib/storyarn/accounts/authentication/commands/session_tokens.ex
+  s_e9e5a90425bc26::t_a9ca0ddab4b795 1-29
+lib/storyarn/accounts/authentication/queries/credentials.ex
+  s_e9e5a90425bc26::t_0bb34c5609393b 1-12
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_7efc913ae2e2ed 369-439,575,1128-1134,1137,1152-1158,1161,1164,1167,1248
+  s_e9e5a90425bc26::t_9f35540ce3adbe 576-577
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_e9e5a90425bc26::t_90b97cbc20f5d1 14
+lib/storyarn/accounts/authentication/delivery/password_reset/handler.ex
+  s_e9e5a90425bc26::t_37d1a0e7351331 1-14
+lib/storyarn/accounts/registration/queries/invitation_user.ex
+  s_e9e5a90425bc26::t_8316c206acb3ca 1-22
+scripts/gettext_split.py
+  s_e9e5a90425bc26::t_4af6aed3755d34 60
+test/storyarn/architecture/accounts_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_6ce10698dc9366 47-50
+lib/storyarn/accounts/authentication/queries/sudo_handoff.ex
+  s_e9e5a90425bc26::t_a9ca0ddab4b795 1-29
+lib/storyarn/accounts/identity/commands/profile.ex
+  s_e9e5a90425bc26::t_d30fe66b3ca409 1
+lib/storyarn/accounts/authentication/queries/password_reset.ex
+  s_e9e5a90425bc26::t_122a681381a288 1-15
+lib/storyarn/accounts/authentication/commands/email_change.ex
+  s_e9e5a90425bc26::t_122a681381a288 1,6-8,13-14,18-19,23,35-37,39,42
+lib/storyarn/accounts/authentication/commands/passwords.ex
+  s_e9e5a90425bc26::t_abb1e8e34f6573 6,15,28
+  s_e9e5a90425bc26::t_122a681381a288 1-5,7-14,16-27,29-30
+lib/storyarn/accounts/registration/commands/prepare_invitation.ex
+  s_2be8932539c647::t_d85fb5fa613e7a 1-69
+lib/storyarn/accounts/registration/commands/register.ex
+  s_2be8932539c647::t_71660d01ab1533 1,4-5,33,74
+lib/storyarn/accounts/registration/registration.ex
+  s_2be8932539c647::t_5f6193cd4fb436 1-18
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "87ee945d014b5558e74f0732c4ced6fcb5c4b092",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_2be8932539c647": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a50-1ec7-7840-b8c1-05e7faec6e8e",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
