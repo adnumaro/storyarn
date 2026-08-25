@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-08-25
 >
 > Source of truth: `lib/storyarn/platform/shared/`
 
@@ -12,7 +12,7 @@
 
 **File:** `lib/storyarn/projects/name_normalizer.ex` — **owned by the Project
 boundary** since ENG-92 (its only consumers). Tools carry their own copies
-(e.g. `Workspaces.Naming`, per-context `ShortcutGenerator`s); do not add
+(e.g. `Workspaces.Lifecycle.Rules.Slug`, per-context `ShortcutGenerator`s); do not add
 foreign consumers.
 
 Centralizes the Project boundary's name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
@@ -260,7 +260,7 @@ One line each. Open the file before writing anything that overlaps.
 | `ImportHelpers`        | `import_helpers.ex`        | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                     |
 | `InvitationSchema`     | `invitation_schema.ex`     | `use`-macro that generates the invitation schema/changesets for Projects; the workspace arm lives in `Workspaces.WorkspaceInvitation` |
 | `InvitationOperations` | `invitation_operations.ex` | Config-map-driven invitation CRUD for Projects (`create_invitation`, `accept_invitation`, `revoke_…`); the workspace arm lives in `Workspaces.Invitations` |
-| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above; Workspaces has its own `Workspaces.InvitationNotifier`                   |
+| `InvitationNotifier`   | `invitation_notifier.ex`   | `deliver_invitation/3-4` — email delivery for the above; Workspaces owns its workflow and copy in `Workspaces.Invitations.Delivery`, with transport isolated in `Workspaces.Invitations.Adapters.Email.Mailer` |
 | `MembershipOperations` | `membership_operations.ex` | Config-map-driven membership CRUD + `authorize/2` for Projects; the workspace arm lives in `Workspaces.Memberships`               |
 | `Trashable`            | `trashable.ex`             | `soft_delete/1`, `restore/1`, `inbound_refs/1`, `target_type!/1` — registry-driven soft-delete that also sweeps inbound refs      |
 | `WordCount`            | `word_count.ex`            | `for_node_data/2`, `for_block/2`, `for_block_value/1`, `for_name/1` — **Project-boundary-owned** (versioning builders); tools own copies |

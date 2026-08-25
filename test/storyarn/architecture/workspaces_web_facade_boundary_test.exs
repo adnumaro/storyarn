@@ -46,7 +46,7 @@ defmodule Storyarn.Architecture.WorkspacesWebFacadeBoundaryTest do
   test "Workspace Web cannot publish generic business facts" do
     violations =
       Enum.filter(@workspace_web_sources, fn path ->
-        File.read!(path) =~ "Workspaces.Events"
+        File.read!(path) =~ "Workspaces.Lifecycle.Events"
       end)
 
     refute File.read!("lib/storyarn/workspaces.ex") =~ "defdelegate emit_event"

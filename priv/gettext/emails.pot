@@ -16,7 +16,7 @@ msgstr ""
 msgid "You've been invited to %{project}"
 msgstr ""
 
-#: lib/storyarn/workspaces/invitation_email.ex:16
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:16
 #, elixir-autogen, elixir-format
 msgid "You've been invited to %{workspace}"
 msgstr ""
@@ -26,7 +26,7 @@ msgstr ""
 msgid "%{inviter} has invited you to join \"%{project}\" on Storyarn as %{role}."
 msgstr ""
 
-#: lib/storyarn/workspaces/invitation_email.ex:42
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:42
 #, elixir-autogen, elixir-format
 msgid "%{inviter} has invited you to join the \"%{workspace}\" workspace on Storyarn as %{role}."
 msgstr ""
@@ -36,7 +36,7 @@ msgstr ""
 msgid "%{inviter} invited you to %{project}"
 msgstr ""
 
-#: lib/storyarn/workspaces/invitation_email.ex:53
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:53
 #, elixir-autogen, elixir-format
 msgid "%{inviter} invited you to %{workspace}"
 msgstr ""
@@ -46,19 +46,19 @@ msgstr ""
 msgid "<strong>%{inviter}</strong> has invited you to join <strong>%{project}</strong> on Storyarn as <strong>%{role}</strong>."
 msgstr ""
 
-#: lib/storyarn/workspaces/invitation_email.ex:23
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:23
 #, elixir-autogen, elixir-format
 msgid "<strong>%{inviter}</strong> has invited you to join the <strong>%{workspace}</strong> workspace on Storyarn as <strong>%{role}</strong>."
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:46
-#: lib/storyarn/workspaces/invitation_email.ex:46
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:46
 #, elixir-autogen, elixir-format
 msgid "Accept by visiting:"
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:29
-#: lib/storyarn/workspaces/invitation_email.ex:29
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:29
 #, elixir-autogen, elixir-format
 msgid "Accept invitation"
 msgstr ""
@@ -83,8 +83,8 @@ msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:20
 #: lib/storyarn/projects/invitation_email.ex:40
-#: lib/storyarn/workspaces/invitation_email.ex:20
-#: lib/storyarn/workspaces/invitation_email.ex:40
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:20
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:40
 #, elixir-autogen, elixir-format
 msgid "Hi,"
 msgstr ""
@@ -98,13 +98,13 @@ msgstr ""
 #: lib/storyarn/accounts/user_email.ex:31
 #: lib/storyarn/accounts/user_email.ex:66
 #: lib/storyarn/projects/invitation_email.ex:35
-#: lib/storyarn/workspaces/invitation_email.ex:35
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:35
 #, elixir-autogen, elixir-format
 msgid "Or copy this link: %{url}"
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:72
-#: lib/storyarn/workspaces/invitation_email.ex:72
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:72
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{count} day."
 msgid_plural "This invitation expires in %{count} days."
@@ -127,25 +127,25 @@ msgid "You requested to change your email address. Confirm by visiting:"
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:26
-#: lib/storyarn/workspaces/invitation_email.ex:26
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:26
 #, elixir-autogen, elixir-format
 msgid "Click the button below to accept. You can then sign in or create a password for this email address."
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:44
-#: lib/storyarn/workspaces/invitation_email.ex:44
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:44
 #, elixir-autogen, elixir-format
 msgid "Click the link below to accept. You can then sign in or create a password for this email address."
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:49
-#: lib/storyarn/workspaces/invitation_email.ex:49
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:49
 #, elixir-autogen, elixir-format
 msgid "If you don't want to join, simply ignore this email."
 msgstr ""
 
 #: lib/storyarn/projects/invitation_email.ex:62
-#: lib/storyarn/workspaces/invitation_email.ex:62
+#: lib/storyarn/workspaces/invitations/delivery/content.ex:62
 #, elixir-autogen, elixir-format
 msgid "This invitation expires in %{count} day. If you don't want to join, simply ignore this email."
 msgid_plural "This invitation expires in %{count} days. If you don't want to join, simply ignore this email."

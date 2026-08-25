@@ -366,6 +366,93 @@ web_to_context_internal_denials =
     }
   end
 
+# Workspaces capabilities are implementation slices inside one bounded context,
+# not independent contexts. They may share owned entities and call one another's
+# capability facade, but they must not reach directly into another capability's
+# private commands, queries, rules, adapters, or data projections.
+workspace_capabilities = ~w(lifecycle memberships invitations banner)
+workspace_private_roles = ~w(adapters commands queries rules data delivery tokens events)
+
+workspace_internal_path_denials =
+  for source_capability <- workspace_capabilities,
+      target_capability <- workspace_capabilities -- [source_capability],
+      private_role <- workspace_private_roles do
+    %{
+      source_root: "lib/storyarn/workspaces/#{source_capability}/",
+      target_root: "lib/storyarn/workspaces/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Workspace capabilities may share owned entities and consume another capability only through its facade"
+    }
+  end
+
+# Folder names are directional responsibilities, not labels. Read models and
+# passive domain/data modules cannot reach the application operations that
+# mutate state or trigger effects inside their own capability.
+workspace_role_dependency_denials =
+  for capability <- workspace_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "delivery"},
+        {"queries", "events"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "delivery"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "delivery"},
+        {"data", "events"},
+        {"data", "adapters"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "delivery"},
+        {"entities", "events"},
+        {"entities", "adapters"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "data"},
+        {"adapters", "entities"},
+        {"adapters", "delivery"},
+        {"adapters", "events"},
+        {"adapters", "rules"},
+        {"adapters", "tokens"}
+      ] do
+    %{
+      source_root: "lib/storyarn/workspaces/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/workspaces/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Workspace role folders must preserve read, policy, data, and effect direction"
+    }
+  end
+
+# Banner has one read adapter: resolving a private storage key. Other queries
+# cannot depend on technical adapters, and Banner reads cannot enqueue cleanup.
+workspace_query_adapter_denials =
+  for capability <- workspace_capabilities -- ["banner"] do
+    %{
+      source_root: "lib/storyarn/workspaces/#{capability}/queries/",
+      target_root: "lib/storyarn/workspaces/#{capability}/adapters/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Workspace queries may not trigger technical adapters"
+    }
+  end ++
+    [
+      %{
+        source_root: "lib/storyarn/workspaces/banner/queries/",
+        target_root: "lib/storyarn/workspaces/banner/adapters/cleanup/",
+        kinds: ["runtime", "export", "compile"],
+        reason: "Workspace banner queries may resolve storage but cannot enqueue cleanup"
+      }
+    ]
+
+workspace_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/workspaces/",
+  target_root: "lib/storyarn/workspaces/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Workspace workers must orchestrate through the Storyarn.Workspaces facade"
+}
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -412,7 +499,11 @@ policy = %{
         kinds: ["runtime", "export", "compile"],
         reason: "domain and application code cannot depend on Phoenix or LiveVue adapters"
       }
-    ] ++ web_to_context_internal_denials,
+    ] ++
+      web_to_context_internal_denials ++
+      workspace_internal_path_denials ++
+      workspace_role_dependency_denials ++
+      workspace_query_adapter_denials ++ [workspace_worker_facade_denial],
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -941,13 +1032,19 @@ policy = %{
       reason: "Sheet mutations request durable notification delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      source: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Workspace lifecycle applies commercial limits and subscriptions through the public Platform facade"
+      reason: "Workspace creation applies commercial limits and subscriptions through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/workspaces/workspace_crud.ex",
+      source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Workspace hard-delete executes under the Platform-owned workspace lifecycle lock"
+    },
+    %{
+      source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason:
@@ -990,26 +1087,37 @@ policy = %{
       reason: "The login page offers the local dev mailbox link by inspecting the configured mailer adapter"
     },
     %{
-      source: "lib/storyarn/workspaces/events.ex",
+      source: "lib/storyarn/workspaces/lifecycle/events/workspace_created.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Workspaces publishes owned business facts through the public Platform reaction contract"
+      reason: "Workspaces publishes the typed workspace-created fact through the public Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/workspaces/invitations.ex",
+      source: "lib/storyarn/workspaces/invitations/commands/create.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "Workspace invitations apply member seat policy and request durable delivery through the public Platform facade"
+      reason: "Workspace invitation creation applies Platform-owned member seat policy"
     },
     %{
-      source: "lib/storyarn/workspaces/invitation_email.ex",
+      source: "lib/storyarn/workspaces/invitations/commands/accept.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitation acceptance applies Platform-owned member seat policy"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitations/adapters/delivery/request.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Workspace invitations request durable delivery through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/workspaces/invitations/delivery/content.ex",
       target: "lib/storyarn/platform/emails/layout.ex",
       kinds: ["runtime"],
       reason: "Workspace-owned invitation content uses the shared technical email layout"
     },
     %{
-      source: "lib/storyarn/workspaces/invitation_notifier.ex",
+      source: "lib/storyarn/workspaces/invitations/adapters/email/mailer.ex",
       target: "lib/storyarn/platform/mailer.ex",
       kinds: ["runtime"],
       reason: "Workspace invitation delivery goes through the application mailer"

@@ -3,10 +3,10 @@ defmodule Storyarn.Architecture.WorkspaceProjectLifecycleBoundaryTest do
 
   alias Storyarn.Architecture.DependencyPolicy
 
-  @workspace_crud "lib/storyarn/workspaces/workspace_crud.ex"
+  @workspace_delete "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex"
 
   test "Workspace hard-delete consumes one Projects root-facade contract" do
-    source = File.read!(@workspace_crud)
+    source = File.read!(@workspace_delete)
 
     assert source =~ "alias Storyarn.Projects"
     assert source =~ "Projects.prepare_workspace_data_hard_delete"
@@ -21,13 +21,13 @@ defmodule Storyarn.Architecture.WorkspaceProjectLifecycleBoundaryTest do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
 
     assert Enum.any?(policy.durable_contracts, fn contract ->
-             contract.source == @workspace_crud and
+             contract.source == @workspace_delete and
                contract.target == "lib/storyarn/projects.ex" and
                contract.kinds == ["runtime"]
            end)
 
     refute Enum.any?(policy.migration_exceptions, fn exception ->
-             exception.source == @workspace_crud and
+             exception.source == @workspace_delete and
                String.starts_with?(exception.target, "lib/storyarn/projects/")
            end)
   end

@@ -2,23 +2,19 @@ defmodule Storyarn.Workspaces do
   @moduledoc """
   The Workspaces context.
 
-  Handles workspace management including CRUD operations, memberships,
-  and invitations. Workspaces are containers for projects and support
-  team collaboration.
+  Handles workspace lifecycle, memberships, invitations, and banners.
+  Workspaces are containers for projects and support team collaboration.
 
-  This module serves as a facade, delegating to specialized submodules:
-  - `WorkspaceCrud` - Workspace CRUD operations
-  - `Memberships` - Member management and authorization
-  - `Invitations` - Invitation management
+  This module is the bounded-context facade. Internally, code is organized by
+  business capability (`Lifecycle`, `Memberships`, `Invitations`, and `Banner`)
+  and then by responsibility inside each capability.
   """
 
+  alias Storyarn.Workspaces.Banner
   alias Storyarn.Workspaces.Invitations
+  alias Storyarn.Workspaces.Lifecycle
   alias Storyarn.Workspaces.Memberships
-  alias Storyarn.Workspaces.Naming
-  alias Storyarn.Workspaces.SourceLocaleCatalog
   alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceBanner
-  alias Storyarn.Workspaces.WorkspaceCrud
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
 
@@ -47,42 +43,42 @@ defmodule Storyarn.Workspaces do
   @doc "Validates an `:email` change with the invitation email format."
   @spec validate_invitation_email_format(changeset()) :: changeset()
   defdelegate validate_invitation_email_format(changeset),
-    to: WorkspaceInvitation,
+    to: Invitations,
     as: :validate_email_format
 
   @doc "Returns the source locales supported by workspace defaults."
   @spec source_locale_options() :: [%{code: String.t(), name: String.t()}]
-  defdelegate source_locale_options(), to: SourceLocaleCatalog, as: :all
+  defdelegate source_locale_options(), to: Lifecycle
 
   @doc "Uploads and persists a private Workspace banner after reauthorizing its owner."
   @spec upload_workspace_banner(scope(), pos_integer(), map(), keyword()) ::
           {:ok, workspace()} | {:error, term()}
   defdelegate upload_workspace_banner(scope, workspace_id, attrs, opts \\ []),
-    to: WorkspaceBanner,
+    to: Banner,
     as: :upload
 
   @doc "Removes a Workspace banner and cleans up its owned storage object."
   @spec remove_workspace_banner(scope(), pos_integer(), keyword()) ::
           {:ok, workspace()} | {:error, term()}
   defdelegate remove_workspace_banner(scope, workspace_id, opts \\ []),
-    to: WorkspaceBanner,
+    to: Banner,
     as: :remove
 
   @doc "Resolves an authorized private Workspace banner for delivery."
   @spec get_workspace_banner(scope(), String.t(), keyword()) ::
           {:ok, %{key: String.t(), content_type: String.t()}} | {:error, :not_found}
   defdelegate get_workspace_banner(scope, workspace_slug, opts \\ []),
-    to: WorkspaceBanner,
+    to: Banner,
     as: :get
 
   @doc false
   @spec perform_workspace_banner_cleanup(String.t(), String.t()) :: :ok | {:error, term()}
   defdelegate perform_workspace_banner_cleanup(workspace_slug, storage_key),
-    to: WorkspaceBanner,
+    to: Banner,
     as: :perform_cleanup
 
   # =============================================================================
-  # Workspace CRUD
+  # Workspace Lifecycle and Access
   # =============================================================================
 
   @doc """
@@ -92,13 +88,13 @@ defmodule Storyarn.Workspaces do
   Role is `nil` for workspaces accessible only through ProjectMembership.
   """
   @spec list_workspaces(scope()) :: [%{workspace: workspace(), role: String.t()}]
-  defdelegate list_workspaces(scope), to: WorkspaceCrud
+  defdelegate list_workspaces(scope), to: Memberships
 
   @doc """
   Lists all workspaces for a user (simpler version for sidebar).
   """
   @spec list_workspaces_for_user(user()) :: [workspace()]
-  defdelegate list_workspaces_for_user(user), to: WorkspaceCrud
+  defdelegate list_workspaces_for_user(user), to: Memberships
 
   @doc """
   Gets the user's default workspace.
@@ -106,7 +102,7 @@ defmodule Storyarn.Workspaces do
   Priority: First owned workspace, then first workspace with membership.
   """
   @spec get_default_workspace(user()) :: workspace() | nil
-  defdelegate get_default_workspace(user), to: WorkspaceCrud
+  defdelegate get_default_workspace(user), to: Memberships
 
   @doc """
   Gets a workspace by ID with authorization check.
@@ -117,20 +113,20 @@ defmodule Storyarn.Workspaces do
   """
   @spec get_workspace(scope(), integer()) ::
           {:ok, workspace(), membership()} | {:error, :not_found | :unauthorized}
-  defdelegate get_workspace(scope, id), to: WorkspaceCrud
+  defdelegate get_workspace(scope, id), to: Memberships
 
   @doc """
   Gets a workspace by slug with authorization check.
   """
   @spec get_workspace_by_slug(scope(), String.t()) ::
           {:ok, workspace(), membership()} | {:error, :not_found | :unauthorized}
-  defdelegate get_workspace_by_slug(scope, slug), to: WorkspaceCrud
+  defdelegate get_workspace_by_slug(scope, slug), to: Memberships
 
   @doc """
   Gets a workspace by ID without authorization check.
   """
   @spec get_workspace!(integer()) :: workspace()
-  defdelegate get_workspace!(id), to: WorkspaceCrud
+  defdelegate get_workspace!(id), to: Lifecycle
 
   @doc """
   Creates a workspace and sets up the owner membership.
@@ -138,34 +134,34 @@ defmodule Storyarn.Workspaces do
   The creating user becomes the owner of the workspace.
   """
   @spec create_workspace(scope(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
-  defdelegate create_workspace(scope, attrs), to: WorkspaceCrud
+  defdelegate create_workspace(scope, attrs), to: Lifecycle
 
   @doc """
   Creates a workspace with owner membership (for internal use, e.g., registration).
   """
   @spec create_workspace_with_owner(user(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
-  defdelegate create_workspace_with_owner(user, attrs), to: WorkspaceCrud
+  defdelegate create_workspace_with_owner(user, attrs), to: Lifecycle
 
   @doc """
   Returns a changeset for tracking workspace changes.
   """
   @spec change_workspace(workspace(), attrs()) :: changeset()
-  defdelegate change_workspace(workspace, attrs \\ %{}), to: WorkspaceCrud
+  defdelegate change_workspace(workspace, attrs \\ %{}), to: Lifecycle
 
   @spec change_new_workspace() :: changeset()
-  defdelegate change_new_workspace(), to: WorkspaceCrud
+  defdelegate change_new_workspace(), to: Lifecycle
 
   @doc """
   Updates a workspace.
   """
   @spec update_workspace(workspace(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
-  defdelegate update_workspace(workspace, attrs), to: WorkspaceCrud
+  defdelegate update_workspace(workspace, attrs), to: Lifecycle
 
   @doc """
   Deletes a workspace.
   """
   @spec delete_workspace(%{id: integer()}) :: {:ok, map()} | {:error, term()}
-  defdelegate delete_workspace(workspace), to: WorkspaceCrud
+  defdelegate delete_workspace(workspace), to: Lifecycle
 
   # =============================================================================
   # Memberships
@@ -175,7 +171,7 @@ defmodule Storyarn.Workspaces do
   Checks if a role can perform a given action.
   """
   @spec can?(role(), action()) :: boolean()
-  defdelegate can?(role, action), to: WorkspaceMembership
+  defdelegate can?(role, action), to: Memberships
 
   @doc """
   Lists all members of a workspace.
@@ -240,9 +236,7 @@ defmodule Storyarn.Workspaces do
   Generates a unique slug for a workspace name.
   """
   @spec generate_slug(String.t()) :: String.t()
-  def generate_slug(name) do
-    Naming.generate_unique_slug(name)
-  end
+  defdelegate generate_slug(name), to: Lifecycle
 
   # =============================================================================
   # Invitations

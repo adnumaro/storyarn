@@ -1,7 +1,7 @@
 defmodule Storyarn.WorkspaceBannerStorageStub do
   @moduledoc false
 
-  @behaviour Storyarn.Workspaces.BannerStorage
+  @behaviour Storyarn.Workspaces.Banner.Adapters.Storage.Port
 
   @state_key {__MODULE__, :state}
   @url_prefix "workspace-banner-test:///"

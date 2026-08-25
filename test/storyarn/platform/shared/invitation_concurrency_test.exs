@@ -12,6 +12,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Invitations.Tokens.Issuer, as: WorkspaceInvitationIssuer
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
 
@@ -100,7 +101,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
       first_invitation = Repo.insert!(first_invitation)
 
       {_second_token, second_invitation} =
-        WorkspaceInvitation.build_invitation(
+        WorkspaceInvitationIssuer.issue(
           workspace,
           owner,
           second_invitee.email,

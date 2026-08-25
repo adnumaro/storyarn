@@ -235,16 +235,18 @@ config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restor
 # Exact full-project snapshot restore is part of the recovery contract and is
 # always available to authorized project managers.
 config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: false
-config :storyarn, Storyarn.Workspaces.BannerCleanupQueue, adapter: Storyarn.Workspaces.BannerCleanupQueue.Oban
+
+config :storyarn, Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue,
+  adapter: Storyarn.Workspaces.Banner.Adapters.Cleanup.Oban
 
 # Composition-root wiring: Workspaces owns the banner lifecycle and consumes
 # object storage only through its technical port. The current implementation is
 # reused while storage providers are still housed in the legacy Projects path.
-config :storyarn, Storyarn.Workspaces.BannerStorage, adapter: Storage
+config :storyarn, Storyarn.Workspaces.Banner.Adapters.Storage.Port, adapter: Storage
 
 # This is intentionally independent from Project asset limits: changing one
 # bounded context's upload policy must not silently change the other.
-config :storyarn, Storyarn.Workspaces.WorkspaceBanner, max_file_size: 52_428_800
+config :storyarn, Storyarn.Workspaces.Banner.Rules.UploadPolicy, max_file_size: 52_428_800
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,

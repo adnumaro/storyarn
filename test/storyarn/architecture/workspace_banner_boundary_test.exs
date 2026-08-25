@@ -1,13 +1,8 @@
 defmodule Storyarn.Architecture.WorkspaceBannerBoundaryTest do
   use ExUnit.Case, async: true
 
-  @workspace_banner_domain_sources [
-    "lib/storyarn/workspaces/banner_cleanup_queue.ex",
-    "lib/storyarn/workspaces/banner_cleanup_queue/oban.ex",
-    "lib/storyarn/workspaces/banner_storage.ex",
-    "lib/storyarn/workspaces/workspace_banner.ex",
-    "lib/storyarn/workers/workspaces/delete_workspace_banner_worker.ex"
-  ]
+  @workspace_banner_domain_sources Path.wildcard("lib/storyarn/workspaces/banner/**/*.ex") ++
+                                     ["lib/storyarn/workers/workspaces/delete_workspace_banner_worker.ex"]
 
   test "the Workspace banner use case has no Projects domain dependency" do
     violations =
@@ -16,7 +11,10 @@ defmodule Storyarn.Architecture.WorkspaceBannerBoundaryTest do
       end)
 
     assert violations == []
-    refute File.read!("lib/storyarn/workspaces/workspace_banner.ex") =~ "project_asset_upload_limits"
+
+    refute Enum.any?(@workspace_banner_domain_sources, fn path ->
+             File.read!(path) =~ "project_asset_upload_limits"
+           end)
   end
 
   test "Workspace settings invoke the Workspaces facade and need no Projects contract" do

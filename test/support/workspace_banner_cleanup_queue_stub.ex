@@ -1,7 +1,7 @@
 defmodule Storyarn.WorkspaceBannerCleanupQueueStub do
   @moduledoc false
 
-  @behaviour Storyarn.Workspaces.BannerCleanupQueue
+  @behaviour Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue
 
   @state_key {__MODULE__, :state}
 

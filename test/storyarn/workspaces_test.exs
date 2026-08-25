@@ -13,7 +13,6 @@ defmodule Storyarn.WorkspacesTest do
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Repo
   alias Storyarn.Workspaces
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   describe "workspaces" do
     test "list_workspaces/1 returns workspaces user has access to" do
@@ -357,10 +356,10 @@ defmodule Storyarn.WorkspacesTest do
       assert {:ok, _workspace, membership} =
                Workspaces.get_workspace(ctx.invitee_scope, ctx.workspace.id)
 
-      refute WorkspaceMembership.can?(membership.role, :manage_workspace)
-      refute WorkspaceMembership.can?(membership.role, :manage_members)
-      refute WorkspaceMembership.can?(membership.role, :create_project)
-      refute WorkspaceMembership.can?(membership.role, :view)
+      refute Workspaces.can?(membership.role, :manage_workspace)
+      refute Workspaces.can?(membership.role, :manage_members)
+      refute Workspaces.can?(membership.role, :create_project)
+      refute Workspaces.can?(membership.role, :view)
     end
   end
 
