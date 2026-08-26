@@ -1,0 +1,574 @@
+lib/storyarn/scenes/assets/data/workspace_record.ex
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1,3-14
+lib/storyarn/scenes/versioning/data/sheet_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-32
+lib/storyarn/scenes/editor/queries/scenes.ex
+  s_e9e5a90425bc26::t_983a4cde23af04 1-46,48-79,81-129,131-141,143-153,155-158,160-169,171-179,181-189,191-395
+  s_e9e5a90425bc26::t_141895c2eb3ae3 47,80,130,142,154,159,170,180,190
+lib/storyarn/scenes/health/data/table_row_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-17
+test/storyarn/scenes/editor/commands/child_writer_integrity_test.exs
+  s_e9e5a90425bc26::t_3ff6891da4233e 12
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,8-11
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-7,13-22,24-43,45-50,52-71,73-459
+  s_e9e5a90425bc26::t_d7fe5f1e0bed7a 23,44,51,72
+lib/storyarn/scenes/versioning/data/table_row_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-17
+lib/storyarn/scenes/versioning/commands/reference_projection.ex
+  s_e9e5a90425bc26::t_796c7986d46f1b 1
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-3,5-6,8,10,12,14,16-17,19,21,23,25,27-28,30
+  s_e9e5a90425bc26::t_d7fa95fae550dd 4,7,9,11,13,15,18,20,22,24,26,29
+lib/storyarn/scenes/editor/commands/pins.ex
+  s_e9e5a90425bc26::t_62ab0b91536aac 1-232
+lib/storyarn/scenes/exploration/data/sheet_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-28
+test/storyarn/scenes/editor/entities/scene_zone_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1-92
+lib/storyarn/scenes/assets/adapters/storage/compensation.ex
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 2-306
+lib/storyarn/scenes/references/data/project_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-20
+lib/storyarn/scenes/editor/commands/item_capacity.ex
+  s_e9e5a90425bc26::t_9d290329d4281b 1-21,24-65
+  s_e9e5a90425bc26::t_564b03b0d627ec 22-23
+lib/storyarn/scenes/versioning/contracts/asset_copy_error.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-8
+test/storyarn/scenes/editor/commands/scenes_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,11-12
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-10,13-795
+lib/storyarn/scenes/logic/data/table_column_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/logic/queries/variable_namespace_resolver.ex
+  s_e9e5a90425bc26::t_c3cc31fe57894f 7
+lib/storyarn/scenes.ex
+  s_e9e5a90425bc26::t_2edfdb2e72ea1f 9-19,52,59,66,70,77,84,91,97,104-105,108-109,116,123-124,132-133,136-137,144,150,156,161,166,172,176,179,182,185,188,191,194,197,208,211,222
+  s_e9e5a90425bc26::t_522098769415fb 536,539,542,545,548,551,557,560,563,566,569,572,575,626,629,632,639,642,645,648,651,659,664,669,674,683,688,691,694,698,788,794
+  s_e9e5a90425bc26::t_339f22f591557a 359,364,369,554,578,585,589,592,595,598,601,604,607,610,613,616,619,679
+  s_e9e5a90425bc26::t_a956ea7d9cae57 232,239,246,252,258,264,272,278,288,294,300,306,312,318,324,330,336,341,347,379,385,391,397,403,409,415,421,427,437,443,449,457,463,467,473,480,483,486,489,492,496,499,507,511,515,520,524,529
+lib/storyarn/scenes/assets/commands/assets.ex
+  s_e9e5a90425bc26::t_d7fa95fae550dd 16,28
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+  s_e9e5a90425bc26::t_e51e87698d6f70 17
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 18-20,1031
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 2-15,21-27,29-1030,1032-1394
+lib/storyarn/scenes/health/queries/stats.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-6,8-74,76-77,79-102
+  s_e9e5a90425bc26::t_a1702093b833e4 1,7
+  s_e9e5a90425bc26::t_d7fa95fae550dd 75,78
+lib/storyarn/scenes/editor/data/project_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-20
+lib/storyarn/scenes/access/data/project_record.ex
+  s_e9e5a90425bc26::t_869e60a51b6907 3-5,7-20
+  s_e9e5a90425bc26::t_432d3963112e02 1,6
+  s_e9e5a90425bc26::t_067a50127592ef 2
+lib/storyarn/scenes/exploration/data/sheet_avatar_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2,6
+test/storyarn/scenes/exploration/commands/sessions_test.exs
+  s_e9e5a90425bc26::t_25fa706b811131 1-59
+lib/storyarn/scenes/assets/assets.ex
+  s_e9e5a90425bc26::t_a6bcddd2679d09 1-38
+lib/storyarn/scenes/references/data/entity_reference_record.ex
+  s_e9e5a90425bc26::t_2d10c6e9c6cbd0 2
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1
+lib/storyarn/scenes/README.md
+  s_e9e5a90425bc26::t_bb75994273d22f 1-110
+test/storyarn/scenes/exploration/events/exploration_events_test.exs
+  s_e9e5a90425bc26::t_5770fe4195e296 1-51
+lib/storyarn/scenes/references/data/asset_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1
+  s_e9e5a90425bc26::t_463fe93809c9cb 2
+lib/storyarn/scenes/references/data/table_column_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-19
+lib/storyarn/scenes/editor/entities/scene_pin.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-164
+test/storyarn/scenes/logic/facade_test.exs
+  s_e9e5a90425bc26::t_25fa706b811131 1-25
+lib/storyarn/scenes/assets/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 1-17
+lib/storyarn/scenes/assets/data/project_snapshot_record.ex
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+lib/storyarn/scenes/editor/commands/layers.ex
+  s_e9e5a90425bc26::t_408be1a0ba08b6 8,103
+  s_e9e5a90425bc26::t_19f1f57564cc77 1-7,9-102,104-188
+lib/storyarn/scenes/exploration/data/asset_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-22
+test/storyarn/scenes/editor/commands/connections_test.exs
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-7,9-140
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,8
+lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-304
+lib/storyarn/scenes/health/health.ex
+  s_e9e5a90425bc26::t_339f22f591557a 7,22
+  s_e9e5a90425bc26::t_a6bcddd2679d09 1-6,8-21,23
+lib/storyarn/scenes/assets/events/assets.ex
+  s_e9e5a90425bc26::t_fd39ac5da28292 1-2,5,10,17,19-23,26,28-35
+lib/storyarn/scenes/health/contracts/severity.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-17
+lib/storyarn/scenes/versioning/execution/asset_materialization_scope.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-3,5,7-13,15-35
+  s_e9e5a90425bc26::t_796c7986d46f1b 6
+  s_e9e5a90425bc26::t_edd7190f64685c 1
+  s_e9e5a90425bc26::t_d7fa95fae550dd 4,14
+lib/storyarn/scenes/versioning/data/project_record.ex
+  s_e9e5a90425bc26::t_3bdddc9150b48a 2-5,7-20
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1,6
+test/storyarn/scenes/editor/commands/reference_integrity_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1-695
+lib/storyarn/scenes/versioning/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 1-8
+lib/storyarn/scenes/references/queries/variable_namespaces.ex
+  s_e9e5a90425bc26::t_b8a46bd8dc0840 31-40
+  s_e9e5a90425bc26::t_0b942aa8aaf9d4 1-30,41-101
+test/storyarn/projects/versioning/project_snapshot_restore_executor_test.exs
+  s_e9e5a90425bc26::t_b0ed8c16cfbb6a 8,1204,1211,1296-1297
+test/storyarn/scenes/editor/commands/positions_test.exs
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-8,11-184
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,9-10
+lib/storyarn/scenes/editor/data/sheet_avatar_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-18
+lib/storyarn/scenes/editor/entities/scene_connection.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-175
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_32072231706a1e 609-615,618-620,729-730
+  s_e9e5a90425bc26::t_ffbba99e6c0aa8 591-608,621-670,727-728,1223-1241,1244,1247,1250,1253,1256,1502
+  s_e9e5a90425bc26::t_bc8cc5ee904c64 616-617
+lib/storyarn/scenes/exploration/queries/flows.ex
+  s_e9e5a90425bc26::t_c3cc31fe57894f 13-15
+lib/storyarn/scenes/access/data/workspace_membership_record.ex
+  s_e9e5a90425bc26::t_067a50127592ef 2
+  s_e9e5a90425bc26::t_432d3963112e02 1
+test/storyarn_web/live/scene_live/helpers/health_helpers_test.exs
+  s_e9e5a90425bc26::t_50e469f37f357c 12
+lib/storyarn/scenes/editor/data/workspace_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-14
+lib/storyarn/scenes/editor/data/user_record.ex
+  s_e9e5a90425bc26::t_9d290329d4281b 1-13
+lib/storyarn/scenes/editor/commands/reference_integrity.ex
+  s_e9e5a90425bc26::t_14418b6b30bcfb 67-68
+  s_e9e5a90425bc26::t_f09212001eacf6 1-66,69-508
+lib/storyarn/scenes/assets/data/storage_cleanup_request_record.ex
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+lib/storyarn/scenes/health/data/block_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-29
+lib/storyarn/scenes/editor/queries/zones.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-76
+lib/storyarn/scenes/health/queries/snapshots.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2,4-19,21-23,27-71,73,75-134,136-167,169-283
+  s_e9e5a90425bc26::t_d7fa95fae550dd 20,72,74,135,168
+  s_e9e5a90425bc26::t_a1702093b833e4 1,3
+  s_e9e5a90425bc26::t_e51e87698d6f70 24-26
+lib/storyarn/scenes/health/data/table_column_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-19
+lib/storyarn/scenes/versioning/data/user_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-13
+lib/storyarn/scenes/access/data/workspace_record.ex
+  s_e9e5a90425bc26::t_3a68f45127e08a 3-14
+  s_e9e5a90425bc26::t_067a50127592ef 2
+  s_e9e5a90425bc26::t_432d3963112e02 1
+lib/storyarn/scenes/health/data/sheet_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-32
+test/storyarn/scenes/editor/commands/ambient_flows_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,10-12
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-9,13-392
+test/storyarn/scenes/versioning/data/projections_test.exs
+  s_e9e5a90425bc26::t_ffe8342d46ecbf 1-16
+lib/storyarn/scenes/editor/commands/shortcuts.ex
+  s_e9e5a90425bc26::t_1bcb8fbb685cb6 1-104
+lib/storyarn/scenes/exploration/queries/sessions.ex
+  s_e9e5a90425bc26::t_46fef85839fd51 1-19
+lib/storyarn/scenes/access/access.ex
+  s_e9e5a90425bc26::t_a6bcddd2679d09 1-8
+lib/storyarn/scenes/logic/contracts/instruction.ex
+  s_e9e5a90425bc26::t_628e47c8f53276 124
+lib/storyarn/scenes/versioning/events/versions.ex
+  s_e9e5a90425bc26::t_fd39ac5da28292 1-15
+test/storyarn/scenes/versioning/integration/concurrency_test.exs
+  s_e9e5a90425bc26::t_c86b4ff4f98f7e 1,15
+lib/storyarn/scenes/logic/data/block_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-20
+lib/storyarn/scenes/exploration/execution/variables.ex
+  s_e9e5a90425bc26::t_e71b7c6b65c964 5,13
+lib/storyarn/scenes/editor/queries/connections.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-36
+lib/storyarn/scenes/editor/data/table_row_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-17
+lib/storyarn/scenes/editor/entities/scene_annotation.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-80
+lib/storyarn/scenes/editor/data/entity_version_record.ex
+  s_e9e5a90425bc26::t_9d290329d4281b 1-33
+lib/storyarn/scenes/editor/queries/ambient_flows.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-24
+lib/storyarn/scenes/references/data/variable_reference_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1
+  s_e9e5a90425bc26::t_3a54ac3eb3fa5c 2
+test/fixtures/images/generate_snapshots.exs
+  s_e9e5a90425bc26::t_c86b4ff4f98f7e 15,50
+lib/storyarn/scenes/references/data/workspace_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-2
+lib/storyarn/scenes/editor/commands/tree.ex
+  s_e9e5a90425bc26::t_3bf5c417f0f256 1-6,8-35,37-180,182-196,198-202
+  s_e9e5a90425bc26::t_408be1a0ba08b6 7,36,181,197
+lib/storyarn/scenes/editor/commands/zones.ex
+  s_e9e5a90425bc26::t_09491cd9540f96 1-195
+lib/storyarn/scenes/versioning/commands/materialization_helpers.ex
+  s_e9e5a90425bc26::t_d7fa95fae550dd 8,29,58
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-7,9-28,30-57,59-141
+  s_e9e5a90425bc26::t_796c7986d46f1b 1
+lib/storyarn/scenes/references/data/sheet_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-32
+lib/storyarn/scenes/editor/commands/positions.ex
+  s_e9e5a90425bc26::t_1bcb8fbb685cb6 1-89
+test/storyarn/scenes/references/commands/entity_projection_test.exs
+  s_e9e5a90425bc26::t_a4bd87a9543260 1,11-12
+lib/storyarn/scenes/versioning/execution/conflicts.ex
+  s_e9e5a90425bc26::t_40b4e140bb1517 1-16,20-262
+  s_e9e5a90425bc26::t_e51e87698d6f70 17-19
+lib/storyarn/scenes/assets/data/project_record.ex
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1,3-20
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+lib/storyarn/scenes/editor/data/sheet_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-2,6-8
+lib/storyarn/scenes/versioning/contracts/asset_blob_keys.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-21
+lib/storyarn/scenes/editor/commands/connections.ex
+  s_e9e5a90425bc26::t_f5d38110eec9cd 1-107
+test/storyarn/scenes/logic/data/projections_test.exs
+  s_e9e5a90425bc26::t_25fa706b811131 1-22
+test/storyarn/scenes/editor/entities/scene_pin_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1-371
+test/storyarn/scenes/editor/queries/deep_search_test.exs
+  s_e9e5a90425bc26::t_00f5a6fdd17eb3 1
+test/storyarn/scenes/health/contracts/label_parity_test.exs
+  s_e9e5a90425bc26::t_7ac23e289e210a 11
+  s_1cc4067896c07c::t_132e7145ae0204 1,9
+test/storyarn/architecture/scenes_projection_associations_test.exs
+  s_e9e5a90425bc26::t_eca0a0294cd490 1-76
+lib/storyarn/scenes/exploration/data/user_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/versioning/data/table_column_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-19
+lib/storyarn/scenes/versioning/versioning.ex
+  s_e9e5a90425bc26::t_dcf39e0e06b383 37-39,54
+  s_e9e5a90425bc26::t_e51e87698d6f70 18-20,25
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-17,23-24,26-36,55-370,372-406,408-413,415-858
+  s_e9e5a90425bc26::t_d7fa95fae550dd 21,371,407,414
+  s_e9e5a90425bc26::t_585f7c8618a636 22,40-53
+lib/storyarn/scenes/assets/queries/catalog.ex
+  s_e9e5a90425bc26::t_8b000e0fdc3198 1
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 2-175
+lib/storyarn/scenes/versioning/data/workspace_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-14
+lib/storyarn/scenes/logic/data/sheet_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-16
+lib/storyarn/scenes/exploration/execution/instruction_exec.ex
+  s_e9e5a90425bc26::t_e71b7c6b65c964 24,60,87,95,144,229
+lib/storyarn/scenes/exploration/events/exploration_events.ex
+  s_e9e5a90425bc26::t_e18f020ded3c75 1-7,9-23
+  s_e9e5a90425bc26::t_c6abfbf9bc8a4f 8
+lib/storyarn/scenes/access/queries/projects.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1
+  s_e9e5a90425bc26::t_e6e11bf32d932e 2-80
+lib/storyarn/scenes/editor/rules/tree.ex
+  s_e9e5a90425bc26::t_3bf5c417f0f256 1-15
+lib/storyarn/scenes/health/data/flow_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-24
+test/storyarn/scenes/editor/data/projections_test.exs
+  s_e9e5a90425bc26::t_ffe8342d46ecbf 1,4-9,14
+lib/storyarn/scenes/editor/data/asset_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-82
+lib/storyarn/scenes/assets/data/storage_reservation_record.ex
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1
+lib/storyarn/scenes/assets/adapters/images/processor.ex
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 2-50
+lib/storyarn/scenes/editor/queries/annotations.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-33
+priv/gettext/default.pot
+  s_e9e5a90425bc26::t_1fc649efa4c150 71,78,124,131
+lib/storyarn/scenes/assets/adapters/storage/locks.ex
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 1-12
+lib/storyarn/scenes/editor/editor.ex
+  s_e9e5a90425bc26::t_53e77efeaad1f8 1-11,14-25,29-109
+  s_e9e5a90425bc26::t_f4a37133991609 12-13,26-28
+lib/storyarn/scenes/versioning/contracts/snapshot_metadata.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-38
+lib/storyarn/scenes/logic/queries/variable_catalog.ex
+  s_e9e5a90425bc26::t_c3cc31fe57894f 13-16
+test/storyarn/scenes/editor/integration/structural_notifications_test.exs
+  s_e9e5a90425bc26::t_00f5a6fdd17eb3 1
+lib/storyarn/scenes/health/data/asset_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-82
+lib/storyarn/scenes/references/data/flow_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-24
+lib/storyarn/scenes/references/references.ex
+  s_e9e5a90425bc26::t_a6bcddd2679d09 1-59
+test/storyarn/scenes/references/commands/variable_projection_test.exs
+  s_e9e5a90425bc26::t_c86b4ff4f98f7e 1,4
+test/storyarn/scenes/editor/commands/child_writer_concurrency_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,12-13
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-11,14-162
+lib/storyarn/scenes/exploration/data/project_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2,13
+lib/storyarn/scenes/assets/data/asset_record.ex
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1,3-82
+lib/storyarn/scenes/exploration/commands/sessions.ex
+  s_e9e5a90425bc26::t_46fef85839fd51 1,3-6,24,41,44-46,52,56
+lib/storyarn/scenes/exploration/data/flow_connection_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/versioning/commands/named_version_capacity.ex
+  s_e9e5a90425bc26::t_fd39ac5da28292 1,8,11-13,17,24-28,32-33,36-39,54,67,70,73,75
+lib/storyarn/scenes/exploration/data/flow_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/versioning/data/block_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-29
+lib/storyarn/scenes/references/commands/entity_projection.ex
+  s_e9e5a90425bc26::t_a1702093b833e4 13
+  s_e9e5a90425bc26::t_b8a46bd8dc0840 15,144,160
+  s_e9e5a90425bc26::t_d7fa95fae550dd 85
+  s_e9e5a90425bc26::t_63a12a14d45ba4 1
+  s_e9e5a90425bc26::t_e51e87698d6f70 14
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-12,16-84,86-143,145-159,161-202
+lib/storyarn/scenes/editor/entities/scene_ambient_flow.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-107
+test/storyarn/architecture/scenes_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_eca0a0294cd490 93-96,98,102-115,123-138
+  s_e9e5a90425bc26::t_4ee50fb645172b 97,116-118,120
+lib/storyarn/scenes/editor/commands/annotations.ex
+  s_e9e5a90425bc26::t_f391e83cd9cfef 1-97
+lib/storyarn/scenes/versioning/commands/diff_helpers.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-140
+lib/storyarn/scenes/references/commands/variable_projection.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-18,20,22-334,336-361,363-416,418-466,468-819
+  s_e9e5a90425bc26::t_0b942aa8aaf9d4 19,21,335,362,417,467
+  s_e9e5a90425bc26::t_edd7190f64685c 1
+lib/storyarn/scenes/exploration/entities/exploration_session.ex
+  s_e9e5a90425bc26::t_c3cc31fe57894f 14-15
+lib/storyarn/scenes/versioning/execution/scene_snapshot.ex
+  s_e9e5a90425bc26::t_e51e87698d6f70 28,32-36
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-26,37-3342
+  s_e9e5a90425bc26::t_796c7986d46f1b 27,29-31
+lib/storyarn/scenes/editor/entities/scene_zone.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-281
+lib/storyarn/scenes/logic/data/table_row_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/editor/queries/pins.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-45
+lib/storyarn/scenes/editor/commands/soft_delete.ex
+  s_e9e5a90425bc26::t_1bcb8fbb685cb6 1-25
+lib/storyarn/scenes/editor/commands/scenes.ex
+  s_e9e5a90425bc26::t_564b03b0d627ec 58,119,150,221,329
+  s_e9e5a90425bc26::t_fa9b63d4f586cf 1-33,35-56,59-118,120-124,126-144,146-149,151-154,156-220,222-228,230-231,233-269,271-328,330-355
+  s_e9e5a90425bc26::t_141895c2eb3ae3 34,57,125,145,155,229,232,270
+test/storyarn/scenes/editor/commands/pins_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,10-12
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-9,13-152
+lib/storyarn/scenes/editor/data/block_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1,6-8
+  s_e9e5a90425bc26::t_5e2667a85dd43a 2
+lib/storyarn/scenes/exploration/queries/sheets.ex
+  s_e9e5a90425bc26::t_c3cc31fe57894f 13
+test/storyarn/scenes/exploration/facade_test.exs
+  s_e9e5a90425bc26::t_25fa706b811131 1-10,14-24
+  s_e9e5a90425bc26::t_ece3a28f7d2849 11-13
+test/storyarn/scenes/editor/rules/changeset_helpers_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,6
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-5,7-145
+lib/storyarn/scenes/assets/commands/zone_image.ex
+  s_e9e5a90425bc26::t_d7fa95fae550dd 16
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 2-14,17-224
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 15
+lib/storyarn/scenes/exploration/execution/condition_eval.ex
+  s_e9e5a90425bc26::t_e71b7c6b65c964 20,64,71
+lib/storyarn/scenes/editor/adapters/postgres/positions.ex
+  s_e9e5a90425bc26::t_408be1a0ba08b6 1-76
+lib/storyarn/scenes/editor/commands/ambient_flows.ex
+  s_e9e5a90425bc26::t_3bad352cbe5657 1-253
+lib/storyarn/scenes/editor/data/table_column_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1
+  s_e9e5a90425bc26::t_c96630d939cf09 2-19
+lib/storyarn/scenes/versioning/data/sheet_avatar_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-18
+lib/storyarn/scenes/versioning/rules/asset_policy.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-27
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_e9e5a90425bc26::t_79620653c879ad 139
+lib/storyarn/scenes/versioning/commands/tracked.ex
+  s_e9e5a90425bc26::t_796c7986d46f1b 1
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-10,12-64
+  s_e9e5a90425bc26::t_d7fa95fae550dd 11
+lib/storyarn/scenes/editor/commands/restore_asset_references.ex
+  s_e9e5a90425bc26::t_1bcb8fbb685cb6 1-73
+test/storyarn/architecture/scenes_internal_structure_test.exs
+  s_e9e5a90425bc26::t_eca0a0294cd490 1-18,35-91,102-168,180-223
+  s_e9e5a90425bc26::t_32072231706a1e 19-34,92-101,169-179
+lib/storyarn/scenes/editor/rules/schema.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-36
+test/storyarn/architecture/scenes_facade_contract_test.exs
+  s_e9e5a90425bc26::t_ffae94991e1989 1-184
+lib/storyarn/scenes/access/data/project_membership_record.ex
+  s_e9e5a90425bc26::t_067a50127592ef 2
+  s_e9e5a90425bc26::t_432d3963112e02 1
+lib/storyarn/scenes/versioning/rules/restore_policy.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-25
+lib/storyarn/scenes/exploration/data/flow_node_record.ex
+  s_e9e5a90425bc26::t_3221f50e455de8 1-2
+lib/storyarn/scenes/versioning/commands/asset_hash_resolver.ex
+  s_e9e5a90425bc26::t_796c7986d46f1b 1,21
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-14,17-18,23-742,744-1102
+  s_e9e5a90425bc26::t_e51e87698d6f70 19-20
+  s_e9e5a90425bc26::t_d7fa95fae550dd 15,22,743
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 16
+lib/storyarn/scenes/references/data/block_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-29
+lib/storyarn/scenes/editor/rules/changeset_helpers.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-49
+lib/storyarn/scenes/versioning/data/flow_record.ex
+  s_e9e5a90425bc26::t_69d21df8be3361 2-24
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1
+test/storyarn/scenes/editor/commands/zones_test.exs
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-9,13-291
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,10-12
+test/storyarn/scenes/editor/integration/dashboard_invalidation_test.exs
+  s_e9e5a90425bc26::t_00f5a6fdd17eb3 1
+lib/storyarn/scenes/references/commands/project_integrity.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-238
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+lib/storyarn/scenes/references/data/table_row_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-17
+lib/storyarn/scenes/health/data/sheet_avatar_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-18
+lib/storyarn/scenes/references/data/sheet_avatar_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-18
+lib/storyarn/scenes/versioning/adapters/locks/postgres.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-28
+lib/storyarn_web/live_vue_encoders.ex
+  s_e9e5a90425bc26::t_e51e87698d6f70 67,69,82
+  s_e9e5a90425bc26::t_0ba92ebdd6f192 59-66,68,70-71,73-78,80-81,83-93
+  s_e9e5a90425bc26::t_222ec83d95ce93 72,79
+test/storyarn/scenes/versioning/versioning_test.exs
+  s_e9e5a90425bc26::t_e51e87698d6f70 14
+lib/storyarn/scenes/editor/data/flow_record.ex
+  s_e9e5a90425bc26::t_b5a9ddea6d0c0d 1-24
+lib/storyarn/scenes/health/rules/checker.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-791
+  s_e9e5a90425bc26::t_a1702093b833e4 1
+lib/storyarn/scenes/assets/data/user_record.ex
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1,3-13
+lib/storyarn/scenes/versioning/commands/entity_restore_safety.ex
+  s_e9e5a90425bc26::t_796c7986d46f1b 1
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-173
+lib/storyarn/scenes/versioning/entities/entity_version_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-105
+test/storyarn/scenes/exploration/data/projections_test.exs
+  s_e9e5a90425bc26::t_25fa706b811131 1-31
+lib/storyarn/scenes/editor/queries/preloads.ex
+  s_e9e5a90425bc26::t_f4a37133991609 1-17
+lib/storyarn/scenes/assets/adapters/storage/hashing.ex
+  s_e9e5a90425bc26::t_79de4fe8dd2bae 1-5
+lib/storyarn/scenes/assets/data/workspace_snapshot_import_record.ex
+  s_e9e5a90425bc26::t_3de26c6321385a 2
+  s_e9e5a90425bc26::t_98fa540aaf1cb3 1
+lib/storyarn/scenes/editor/entities/scene.ex
+  s_e9e5a90425bc26::t_6fc424c3f75982 1-188
+priv/gettext/scenes.pot
+  s_e9e5a90425bc26::t_1fc649efa4c150 499,505,511,517,523,529,535,541,547,553,559,565,571,577,583,589,595,601,607,613,619,625,631,637,643,715,721,727,738,759,838,889,895,901,907,913,919,924,929
+lib/storyarn/scenes/editor/queries/layers.ex
+  s_e9e5a90425bc26::t_234211682f1bfa 1-25
+test/storyarn/scenes/editor/commands/tree_test.exs
+  s_e9e5a90425bc26::t_ad2ec4a3e7e738 1,8
+  s_e9e5a90425bc26::t_18bbdc45b36785 2-7,9-136
+lib/storyarn/scenes/versioning/execution/asset_materialization_cache.ex
+  s_e9e5a90425bc26::t_796c7986d46f1b 1
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 2-223
+lib/storyarn/scenes/versioning/data/asset_record.ex
+  s_e9e5a90425bc26::t_44e8a737e1ec7c 1-82
+priv/gettext/versioning.pot
+  s_e9e5a90425bc26::t_1fc649efa4c150 14,23,79,128,143,151,159,168,219,225,235,240,245,251,257,263,269,274,283
+lib/storyarn/scenes/editor/data/flow_node_record.ex
+  s_e9e5a90425bc26::t_9d290329d4281b 1-15
+lib/storyarn/scenes/exploration/exploration.ex
+  s_e9e5a90425bc26::t_c882576625dd92 1-78
+lib/storyarn/scenes/logic/logic.ex
+  s_e9e5a90425bc26::t_5fa6c6e21b1548 1-33
+test/storyarn/scenes/assets/integration/zone_image_test.exs
+  s_e9e5a90425bc26::t_8087e67d01ec78 1,35
+test/storyarn/scenes/health/queries/stats_test.exs
+  s_e9e5a90425bc26::t_7c318eda7b3a97 1,10
+test/storyarn/scenes/access/queries/projects_test.exs
+  s_e9e5a90425bc26::t_d245e0553a6307 1,10-12
+test/storyarn/scenes/assets/commands/assets_test.exs
+  s_e9e5a90425bc26::t_91550f34da9524 1,12-13
+test/storyarn/scenes/assets/commands/zone_image_test.exs
+  s_e9e5a90425bc26::t_a847768d98e0c3 1,4
+test/storyarn/scenes/assets/integration/pipeline_invariants_test.exs
+  s_e9e5a90425bc26::t_6eee5a2c6cc93a 1,13-16
+test/storyarn/scenes/assets/queries/catalog_test.exs
+  s_e9e5a90425bc26::t_a386745be45474 1
+test/storyarn/scenes/health/contracts/severity_catalog_test.exs
+  s_6dda02e005155e::t_5c538279d33028 1,11
+test/storyarn/scenes/health/integration/dashboard_coverage_test.exs
+  s_6dda02e005155e::t_9daa0e977aea14 1,31
+test/storyarn/scenes/health/queries/snapshots_determinism_test.exs
+  s_6dda02e005155e::t_969693375fabc6 1,24
+test/storyarn/scenes/health/rules/checker_test.exs
+  s_6dda02e005155e::t_dcef7ac5b87101 1,4
+test/storyarn/scenes/versioning/adapters/storage/snapshot_storage_test.exs
+  s_1cc4067896c07c::t_69eb94fcf556ec 1,6
+test/storyarn/scenes/versioning/commands/asset_hash_resolver_test.exs
+  s_e9e5a90425bc26::t_ceb00d598ca169 1,4
+test/storyarn/scenes/versioning/execution/asset_materialization_scope_test.exs
+  s_e9e5a90425bc26::t_e8509cb9e95012 1,6-7
+test/storyarn/scenes/versioning/execution/scene_snapshot_contract_test.exs
+  s_1cc4067896c07c::t_7808236b851b5e 1
+test/storyarn/scenes/versioning/execution/scene_snapshot_restore_test.exs
+  s_1cc4067896c07c::t_7f00489c751af1 1
+test/storyarn/scenes/versioning/queries/conflicts_test.exs
+  s_e9e5a90425bc26::t_57b3fa08a954c9 1
+test/storyarn/scenes/versioning/rules/restore_policy_test.exs
+  s_1cc4067896c07c::t_1f7b34ef9a6040 1
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "adccf07e2083a88c5dff900fea158f425ca9cba1",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_1cc4067896c07c": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d63-b894-7fd0-a6cb-29d805ce17e3",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_6dda02e005155e": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d63-8f0c-7652-89b1-233da6e193af",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
