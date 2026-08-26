@@ -1,0 +1,379 @@
+priv/gettext/sheets.pot
+  s_e9e5a90425bc26::t_766fd782e94f2a 347,353,358,363,368,373,378,383,388,393,398,403,408,413,418,423
+lib/storyarn/ai/operations/commands/reconcile_reservations.ex
+  s_e9e5a90425bc26::t_d7d1f6778f3c33 19
+  s_e9e5a90425bc26::t_77f57882e673ff 1-18,20-24,26-106
+  s_e9e5a90425bc26::t_7ccc7671d33dc9 25
+lib/storyarn/ai/governance/queries/policies.ex
+  s_e9e5a90425bc26::t_6747eec418d76c 1-44
+test/storyarn/ai/governance/policy_test.exs
+  s_e9e5a90425bc26::t_6cf54aaaa2e973 5,8,10-12,16,94-136
+  s_e9e5a90425bc26::t_8621f0cda6d4d3 1,9,27,34-35,40,52,60,62,65,71,78,82-93,140,148,160
+test/storyarn/ai/integrations/execution/personal_providers_test.exs
+  s_e9e5a90425bc26::t_f4d5f18a50258f 1-113
+lib/storyarn/workers/ai/expire_ai_results_worker.ex
+  s_e9e5a90425bc26::t_84f37cfa799c53 8,16,40
+lib/storyarn/ai/governance/data/project_membership_record.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-2
+lib/storyarn/ai/operations/commands/results.ex
+  s_e9e5a90425bc26::t_d8eeabf888fd9b 1-313
+lib/storyarn/ai/managed_spend/adapters/compatibility/provider_budget.ex
+  s_e9e5a90425bc26::t_e72bdb3543ce9d 2
+  s_e9e5a90425bc26::t_116a94029ee02d 1,3-13
+test/storyarn/ai/operations/commands/reconcile_reservations_test.exs
+  s_e9e5a90425bc26::t_7ccc7671d33dc9 1-18
+lib/storyarn/ai/operations/operations.ex
+  s_e9e5a90425bc26::t_77f57882e673ff 14,72-76
+  s_e9e5a90425bc26::t_eb55c8c85fcc19 1-10,12-13,15-64,69-71,80
+  s_e9e5a90425bc26::t_d7dfcebf8c87b5 11
+  s_e9e5a90425bc26::t_84f37cfa799c53 68
+  s_e9e5a90425bc26::t_c877358778cb92 65-67
+  s_e9e5a90425bc26::t_0edf6ff9b1c28a 77-79
+lib/storyarn/ai/operations/execution/job_runner.ex
+  s_e9e5a90425bc26::t_625f2df33e6b67 1-68
+lib/storyarn/ai/routing/entities/route_option.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-6,8-132,134-169
+  s_e9e5a90425bc26::t_ba11597276256b 7,133
+lib/storyarn/ai/governance/commands/policies.ex
+  s_e9e5a90425bc26::t_6747eec418d76c 1-2,6-8,13,17,19-20,22,25-26,30,32-35,40-41,46,50-75
+lib/storyarn/ai/operations/commands/lifecycle.ex
+  s_e9e5a90425bc26::t_b6a3a82ca7ce70 2-9,13,15,17-70,72-81,83-102,104-455,457-465,467,469-475,477-484,486-574
+  s_e9e5a90425bc26::t_086136b10c58fa 1,10-12,14,16,71,82,103,456,466,468,476,485
+lib/storyarn/workers/ai/reconcile_ai_reservations_worker.ex
+  s_e9e5a90425bc26::t_f45fb29edbbfe0 4-7,9,11,20-25,28,74-76
+lib/storyarn/ai/managed_spend/commands/provider_budget.ex
+  s_e9e5a90425bc26::t_fcf02d5a623712 8,157
+  s_e9e5a90425bc26::t_1ff7426901f199 1
+lib/storyarn/ai/governance/queries/project_access.ex
+  s_e9e5a90425bc26::t_6747eec418d76c 1,3,5-6,11-14,17-20,23-24,31,33-34,36-37,39,45-47,49-59
+lib/storyarn/ai/context/adapters/telemetry.ex
+  s_e9e5a90425bc26::t_8f9977ec511cfd 15
+  s_e9e5a90425bc26::t_38cbfeddfa5143 1-14,16-19
+lib/storyarn/ai/managed_spend/data/workspace_record.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 1-16
+lib/storyarn/ai/managed_spend/data/user_record.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 1-15
+lib/storyarn/ai/integrations/integrations.ex
+  s_e9e5a90425bc26::t_ba11597276256b 1-92
+test/storyarn/ai/operations/adapters/compatibility/execution_test.exs
+  s_e9e5a90425bc26::t_1c28a9923f2c50 7
+  s_e9e5a90425bc26::t_7ccc7671d33dc9 1-3,6,10-11
+  s_e9e5a90425bc26::t_3d03a36f633f2c 4-5,8-9
+lib/storyarn/ai/governance/data/workspace_record.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-16
+test/storyarn/architecture/ai_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_eec7e40cc3f79f 90
+  s_e9e5a90425bc26::t_c830a84563eb4e 1-89,91-117
+lib/storyarn/ai/operations/adapters/inference/personal/anthropic.ex
+  s_e9e5a90425bc26::t_ba11597276256b 1-117
+lib/storyarn/ai/managed_spend/contracts/settlement_adapter.ex
+  s_e9e5a90425bc26::t_9f468d38d54be0 2
+lib/storyarn/ai/context/rules/persistence_contract.ex
+  s_e9e5a90425bc26::t_ba11597276256b 5,15
+lib/storyarn/ai/operations/adapters/inference/fake.ex
+  s_e9e5a90425bc26::t_ba11597276256b 1-134
+lib/mix/tasks/storyarn.ai.grant.ex
+  s_e9e5a90425bc26::t_7c4d478794db45 13,40
+lib/storyarn/architecture/dependency_policy.ex
+  s_e9e5a90425bc26::t_2c86bde1fcf179 536-537,550,552
+lib/storyarn/ai/governance/events/workspace_policy_audit.ex
+  s_e9e5a90425bc26::t_04c59ba424dac7 7-8
+lib/storyarn/ai/managed_spend/contracts/settlement.ex
+  s_e9e5a90425bc26::t_708e35db4047a3 4-5,12,15,18
+  s_e9e5a90425bc26::t_9f468d38d54be0 6,8-9,11,14,17
+lib/storyarn/ai/governance/rules/workspace_permissions.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-19
+lib/storyarn/ai/managed_spend/execution/allowance_summary.ex
+  s_e9e5a90425bc26::t_e4f6a61ad2a0f3 1-29
+lib/storyarn/ai/operations/rules/canonical_json.ex
+  s_e9e5a90425bc26::t_f991d04fa6e3b7 1-69
+lib/storyarn/workers/ai/ai_execution_worker.ex
+  s_e9e5a90425bc26::t_708e35db4047a3 11
+  s_e9e5a90425bc26::t_9e20e61c403510 13
+  s_e9e5a90425bc26::t_c877358778cb92 5,8,16-17
+lib/mix/tasks/storyarn.ai.diagnose.ex
+  s_e9e5a90425bc26::t_7c4d478794db45 30
+lib/storyarn/ai/managed_spend/adapters/compatibility/allowance.ex
+  s_e9e5a90425bc26::t_116a94029ee02d 1,3-44
+  s_e9e5a90425bc26::t_e72bdb3543ce9d 2
+lib/storyarn/ai/operations/data/project_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-14
+lib/storyarn/ai/routing/rules/config_map.ex
+  s_e9e5a90425bc26::t_42d950bb04fc8d 1-8
+lib/storyarn/ai/routing/execution/route_resolver.ex
+  s_e9e5a90425bc26::t_42d950bb04fc8d 1-10,13-14,16-65,67-93,95-97,99-102,104-127,129-182,184-222,224-243,245-260,262-332,334-496
+  s_e9e5a90425bc26::t_99032484e00b4d 11-12,66,94,98,103,128,183,223,244,261,333
+  s_e9e5a90425bc26::t_d7dfcebf8c87b5 15
+lib/storyarn/ai/managed_spend/entities/allowance_account.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 7
+lib/storyarn/ai/operations/data/workspace_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-16
+lib/storyarn/ai/managed_spend/commands/allowance.ex
+  s_e9e5a90425bc26::t_570c96a162b0d1 66-80,398
+  s_e9e5a90425bc26::t_5d4870d85966da 1,13-14,81
+test/storyarn/flows/ai/context_architecture_test.exs
+  s_e9e5a90425bc26::t_a2a9b0cd2f0de9 7-9,23-26,34
+test/storyarn/architecture/dependency_policy_test.exs
+  s_e9e5a90425bc26::t_4b02b4b156f5e6 88-116,125-126
+  s_e9e5a90425bc26::t_083ab1f0ed3a73 607-608,613-614
+  s_e9e5a90425bc26::t_68b715ee5770c6 117-124
+lib/storyarn/ai/governance/data/project_record.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-14
+lib/storyarn/ai/governance/rules/project_permissions.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-25
+lib/storyarn/ai/routing/data/user_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-15
+test/storyarn/ai/context/context_test.exs
+  s_e9e5a90425bc26::t_8621f0cda6d4d3 14
+  s_e9e5a90425bc26::t_ec7e32bba4eb45 514
+lib/storyarn/ai/integrations/adapters/provider_registry.ex
+  s_e9e5a90425bc26::t_069911489a8788 5-8
+  s_e9e5a90425bc26::t_699210ed7941b1 1-4,9-56
+lib/storyarn/ai/integrations/execution/personal_preferences.ex
+  s_e9e5a90425bc26::t_4961ba17800352 15,55,73,128,182,356,741,749-750
+  s_e9e5a90425bc26::t_3722d73865e201 26,187,289,291,467,469,511,513,532,537,651,709,725
+  s_e9e5a90425bc26::t_d47145601e93e3 18-19
+  s_e9e5a90425bc26::t_fec03446291d81 1-14,16-17,20-25,27-54,56-72,74-127,129-181,183-186,188-288,290,292-355,357-466,468,470-510,512,514-531,533-536,538-650,652-708,710-724,726-740,742-748,751-779
+lib/storyarn/ai/routing/contracts/model_entry.ex
+  s_e9e5a90425bc26::t_42d950bb04fc8d 1-191
+lib/storyarn/ai/managed_spend/entities/provider_budget_reservation.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 7
+lib/storyarn/ai/routing/rules/canonical_json.ex
+  s_e9e5a90425bc26::t_f991d04fa6e3b7 1-68
+lib/storyarn/ai/operations/execution/executor.ex
+  s_e9e5a90425bc26::t_d7dfcebf8c87b5 7
+  s_e9e5a90425bc26::t_b6a3a82ca7ce70 1-6,8-146
+lib/storyarn/ai/context/rules/canonical_json.ex
+  s_e9e5a90425bc26::t_863d090982093b 1-76
+lib/storyarn/ai/context/context.ex
+  s_e9e5a90425bc26::t_ba11597276256b 11,17-21
+  s_e9e5a90425bc26::t_38cbfeddfa5143 1-10,12-16,22
+test/storyarn/ai/integrations/rules/provider_ids_test.exs
+  s_e9e5a90425bc26::t_069911489a8788 1-16
+lib/storyarn/ai/integrations/rules/provider_ids.ex
+  s_e9e5a90425bc26::t_9e3fc95004a7c3 1-28
+lib/storyarn/ai/operations/entities/operation.ex
+  s_e9e5a90425bc26::t_ba11597276256b 7,187
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-6,8-186,188-205
+lib/storyarn/ai/integrations/execution/runtime.ex
+  s_e9e5a90425bc26::t_fec03446291d81 1-30,33-48,50-63,91-92,95-109
+  s_e9e5a90425bc26::t_ba11597276256b 31-32,64-90,93-94
+  s_e9e5a90425bc26::t_79bd2ecb5e6fa7 49
+lib/storyarn/ai/managed_spend/managed_spend.ex
+  s_e9e5a90425bc26::t_75856f4bf497bf 19,21
+  s_e9e5a90425bc26::t_e4f6a61ad2a0f3 13,22
+  s_e9e5a90425bc26::t_1ff7426901f199 1-12,14-15,18,20,23-43,45-46,48-49,51-52,54-55,57
+  s_e9e5a90425bc26::t_18e55a5d074c5a 16,44,47,50,53,56
+  s_e9e5a90425bc26::t_26ca9d975ce45e 17
+lib/storyarn/ai/operations/commands/execute.ex
+  s_e9e5a90425bc26::t_a33221fcab6a30 1-2,12-13,15-16,18,25-27,29-30,64,66,68,105,130,136,175
+lib/storyarn/ai/managed_spend/adapters/settlement/managed.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 1-4,6-8,10-15,17-18,20-21,23-24,26
+  s_e9e5a90425bc26::t_18e55a5d074c5a 5,9,16,19,22,25
+lib/storyarn/ai/managed_spend/entities/allowance_grant.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 8-9
+lib/storyarn/ai/governance/data/workspace_membership_record.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-2
+lib/storyarn/ai/governance/entities/workspace_policy.ex
+  s_e9e5a90425bc26::t_04c59ba424dac7 7-8,12
+  s_e9e5a90425bc26::t_5519b5ad25cd5a 13
+lib/storyarn/ai/context/rules/finalizer.ex
+  s_e9e5a90425bc26::t_863d090982093b 7
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_51c45aab11d6b0 681-684
+  s_e9e5a90425bc26::t_8379704eb841a3 959-963
+  s_e9e5a90425bc26::t_e4ca2db68bb13b 659
+  s_e9e5a90425bc26::t_0011247bb0756c 4-5,106-114,126-128,208
+  s_e9e5a90425bc26::t_4854e6b19917ab 803-805,813,828,863-864,867,871,875,924,930,936,942,948,954
+  s_e9e5a90425bc26::t_c43288b528ade1 706
+  s_e9e5a90425bc26::t_2626e4ad11ff85 650-658,660-680,685-705,707-738,958
+  s_e9e5a90425bc26::t_0f9a9d83b19580 801-802,860-861
+test/storyarn/architecture/ai_internal_structure_test.exs
+  s_e9e5a90425bc26::t_8a88a7a31e71f8 180-192
+  s_e9e5a90425bc26::t_c43288b528ade1 45
+  s_e9e5a90425bc26::t_ab9294c6cddb38 1-15,17-44,46-122,124-155,162-179,193-236
+  s_e9e5a90425bc26::t_e3a748de14c8f2 123
+  s_e9e5a90425bc26::t_e26fbf5c5ce2a2 16,156-161
+test/storyarn/architecture/ai_facade_contract_test.exs
+  s_e9e5a90425bc26::t_7930ab13c46aba 1-90
+lib/storyarn/ai/governance/queries/workspace_access.ex
+  s_e9e5a90425bc26::t_8f9977ec511cfd 11,19,37-38,61,95-96
+  s_e9e5a90425bc26::t_6747eec418d76c 1,3,5-6,12-16,20-21,23-26,28,30-36,39-44,47,50-54,59-60,62-63,66,69-77,82,86-92,94,97-99
+lib/storyarn/ai/context/execution/builder.ex
+  s_e9e5a90425bc26::t_8f9977ec511cfd 9
+  s_e9e5a90425bc26::t_38cbfeddfa5143 1,16,20,48,59,73,105
+lib/storyarn/ai/managed_spend/rules/spendable_grants.ex
+  s_e9e5a90425bc26::t_570c96a162b0d1 1-16
+lib/storyarn/ai/routing/contracts/task.ex
+  s_e9e5a90425bc26::t_75856f4bf497bf 1-302
+lib/storyarn/ai/integrations/entities/integration.ex
+  s_e9e5a90425bc26::t_9e3fc95004a7c3 17-141
+  s_e9e5a90425bc26::t_5e6ee99c325cb2 16
+lib/storyarn/ai/operations/adapters/inference/open_ai_compatible.ex
+  s_e9e5a90425bc26::t_ba11597276256b 6,17,32
+  s_e9e5a90425bc26::t_42d950bb04fc8d 1-5,7-16,18-31,33-217
+lib/storyarn/ai/operations/entities/result.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-91
+lib/storyarn/ai/context/contracts/entity.ex
+  s_e9e5a90425bc26::t_863d090982093b 4
+test/storyarn/architecture/worker_ownership_boundary_test.exs
+  s_e9e5a90425bc26::t_083ab1f0ed3a73 4,37
+test/storyarn/ai/managed_spend/allowance_test.exs
+  s_e9e5a90425bc26::t_640dcc99ae04a4 1,13,146-147,151,159,171,179,192,219,236,248,351,365,370,372-373,406
+lib/storyarn/ai/routing/data/workspace_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-2
+lib/storyarn/ai/integrations/commands/integration_assignments.ex
+  s_e9e5a90425bc26::t_d47145601e93e3 14
+  s_e9e5a90425bc26::t_4961ba17800352 11,62-339
+  s_e9e5a90425bc26::t_970bdeed3f0cfb 13,23-27,37,48,60
+lib/storyarn/ai/governance/rules/policy_lanes.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-30
+lib/storyarn/ai/managed_spend/entities/allowance_reservation.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 7
+lib/storyarn/ai/operations/data/user_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-15
+config/architecture_baselines/ai.json
+  s_e9e5a90425bc26::t_54c5655550e4fc 1-5
+lib/storyarn/ai/governance/data/user_record.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-2
+  s_e9e5a90425bc26::t_d370e50bbe836b 3-5
+  s_fe5f9639327417::t_6a06a700e6c06a 6-15
+lib/storyarn/ai/managed_spend/entities/allowance_ledger_entry.ex
+  s_e9e5a90425bc26::t_44361cca6ba0b7 9
+test/storyarn/architecture/ai_projection_associations_test.exs
+  s_e9e5a90425bc26::t_dbb6ad35e33280 1-71,74-79,96
+  s_e9e5a90425bc26::t_c8b28657635a0a 72-73,80-95
+lib/storyarn/ai/governance/governance.ex
+  s_e9e5a90425bc26::t_065cd79a8d1e7b 12,39-40
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-11,13-38,41-42
+lib/storyarn/ai/governance/adapters/feature_flags.ex
+  s_e9e5a90425bc26::t_8621f0cda6d4d3 1-8
+lib/storyarn/ai/routing/routing.ex
+  s_e9e5a90425bc26::t_ba11597276256b 9,37-42
+  s_e9e5a90425bc26::t_7c4d478794db45 16,70-72
+  s_e9e5a90425bc26::t_caf8b7b0aba440 1-8,10-15,17-36,43-69,73
+lib/storyarn/ai/operations/adapters/jobs/execution_queue.ex
+  s_e9e5a90425bc26::t_a33221fcab6a30 1-12
+lib/storyarn/ai/routing/data/project_record.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-2
+lib/storyarn/ai/governance/data/user_record_actor.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-5
+lib/storyarn/ai/routing/contracts/execution_intent.ex
+  s_e9e5a90425bc26::t_75856f4bf497bf 31,34,47
+  s_e9e5a90425bc26::t_b6a3a82ca7ce70 1-30,32-33,35-46,48-114
+lib/storyarn/ai/routing/rules/model_catalog.ex
+  s_e9e5a90425bc26::t_24b65f0da84aa2 1-148
+lib/storyarn/ai/routing/contracts/task_definition.ex
+  s_e9e5a90425bc26::t_75856f4bf497bf 1-31
+lib/storyarn/ai/routing/execution/preflight.ex
+  s_e9e5a90425bc26::t_d7dfcebf8c87b5 5
+  s_e9e5a90425bc26::t_13202bc1e1dd5e 1-4,6-32,34-154
+  s_e9e5a90425bc26::t_b2f9e67f539543 33
+test/storyarn/ai/managed_spend/public_contract_test.exs
+  s_e9e5a90425bc26::t_dba0632d069438 52,55-56,60-64,74-77
+  s_e9e5a90425bc26::t_ef7a6868d14be0 1-4,7-51,53-54,57-59,67-69,72-73,78-79
+  s_e9e5a90425bc26::t_07db529f4ce8cd 6,65-66
+  s_e9e5a90425bc26::t_dd43a72241e8a2 5,70-71
+lib/storyarn/ai/operations/entities/operator_alert.ex
+  s_e9e5a90425bc26::t_b4f2033a2d6fa5 1-51
+test/storyarn/ai/routing/rules/config_map_test.exs
+  s_e9e5a90425bc26::t_bc0d4110a313f1 1-15
+lib/storyarn/ai/operations/adapters/credentials/personal.ex
+  s_e9e5a90425bc26::t_ba11597276256b 1-31,33-37
+  s_e9e5a90425bc26::t_79bd2ecb5e6fa7 32
+lib/storyarn/ai.ex
+  s_e9e5a90425bc26::t_7e8287d47320e0 3,15-17,19-32,35-36,39-40,42-46,48,50,52,55-56,78,80-87,91,100,103,105-106,108-111,113,116-127
+  s_e9e5a90425bc26::t_79eb1f7278046a 8-12
+  s_e9e5a90425bc26::t_84f37cfa799c53 128-130
+  s_e9e5a90425bc26::t_77f57882e673ff 131-134
+  s_e9e5a90425bc26::t_7c4d478794db45 135-137,139-140
+lib/storyarn/ai/README.md
+  s_e9e5a90425bc26::t_7ccc7671d33dc9 104-106
+  s_e9e5a90425bc26::t_25b6631f02c7f6 132-133
+  s_e9e5a90425bc26::t_81cd9076450a18 1-103,107-131,134-137
+lib/storyarn/ai/governance/entities/policy_decision.ex
+  s_e9e5a90425bc26::t_065cd79a8d1e7b 1-51
+lib/storyarn/ai/managed_spend/queries/allowance.ex
+  s_e9e5a90425bc26::t_e4f6a61ad2a0f3 44-46,48
+  s_e9e5a90425bc26::t_570c96a162b0d1 1-43,47,49-60
+lib/storyarn/ai/managed_spend/commands/settlement.ex
+  s_e9e5a90425bc26::t_18e55a5d074c5a 1-2,5-7,10,14,16,26,34,41
+test/storyarn/architecture/ai_context_spi_boundary_test.exs
+  s_e9e5a90425bc26::t_1b3749e5b8e5a0 1-49
+lib/storyarn/ai/integrations/rules/config_map.ex
+  s_e9e5a90425bc26::t_028b192e41bd37 1-2
+lib/storyarn/ai/integrations/execution/personal_consents.ex
+  s_e9e5a90425bc26::t_3722d73865e201 15-38
+  s_e9e5a90425bc26::t_4961ba17800352 9,42
+  s_e9e5a90425bc26::t_ec71776f69c198 65
+lib/storyarn/ai/governance/adapters/postgres/policy_lock.ex
+  s_e9e5a90425bc26::t_d324d8f28ebc9f 1-12
+lib/storyarn/ai/operations/rules/config_map.ex
+  s_e9e5a90425bc26::t_42d950bb04fc8d 1-8
+lib/storyarn/ai/integrations/execution/personal_providers.ex
+  s_e9e5a90425bc26::t_f4d5f18a50258f 1-161
+lib/storyarn/ai/operations/adapters/compatibility/execution.ex
+  s_e9e5a90425bc26::t_7ccc7671d33dc9 1-12
+lib/storyarn/ai/governance/execution/authorization.ex
+  s_e9e5a90425bc26::t_065cd79a8d1e7b 1-2,7-17,19,24,37-38,41,60,66,99,136,143,145,257-258
+lib/storyarn/ai/integrations/README.md
+  s_de0c73f28a8f08::t_57b339309a38ed 1-37
+lib/storyarn/ai/integrations/commands/integration_crud.ex
+  s_de0c73f28a8f08::t_b04ff28098c06e 3,21,30-31,47-48,51,53,62,80,99,127
+lib/storyarn/ai/integrations/data/user_record.ex
+  s_f1599513d71e29::t_c5ab4c79caefcc 1-8
+lib/storyarn/ai/integrations/data/workspace_membership_record.ex
+  s_f1599513d71e29::t_c831ec3edaf01d 1-20
+lib/storyarn/ai/integrations/data/workspace_record.ex
+  s_f1599513d71e29::t_818ea784c8dfdf 1-20
+lib/storyarn/ai/integrations/entities/audit_entry.ex
+  s_de0c73f28a8f08::t_12eebd1dcae6ba 17
+lib/storyarn/ai/integrations/entities/integration_workspace_assignment.ex
+  s_f1599513d71e29::t_2f7c179ee864c7 9-10
+lib/storyarn/ai/integrations/entities/personal_consent.ex
+  s_f1599513d71e29::t_a34185754829b5 8-9
+lib/storyarn/ai/integrations/entities/personal_preference.ex
+  s_de0c73f28a8f08::t_0703097cb32add 15-16
+lib/storyarn/ai/integrations/queries/integrations.ex
+  s_f1599513d71e29::t_ee540e594ca89a 1-40
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "b718d301079b12bf1d2ffc6147fb370b209af222",
+  "prompts": {},
+  "sessions": {
+    "s_de0c73f28a8f08": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03dfd-ff83-7531-86da-39a7e1b5222b",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f1599513d71e29": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03dfd-e934-7ca3-a454-dc1752b3a5af",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_fe5f9639327417": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03dfd-cf33-70e2-bf61-b4cd59541c0a",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
