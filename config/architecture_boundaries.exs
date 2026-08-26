@@ -524,6 +524,70 @@ workspace_worker_facade_denial = %{
   reason: "Workspace workers must orchestrate through the Storyarn.Workspaces facade"
 }
 
+# Localization is one bounded context split into cohesive internal capabilities.
+# A capability may consume another capability's facade or a deliberately stable
+# entity/contract identity, but its data projections and operational roles stay
+# private to the capability that owns them.
+localization_capabilities = ~w(access languages texts providers glossary translation exchange reporting)
+localization_private_roles = ~w(adapters commands queries rules data execution)
+
+localization_internal_path_denials =
+  for source_capability <- localization_capabilities,
+      target_capability <- localization_capabilities -- [source_capability],
+      private_role <- localization_private_roles do
+    %{
+      source_root: "lib/storyarn/localization/#{source_capability}/",
+      target_root: "lib/storyarn/localization/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Localization capabilities may consume another capability only through its facade or stable contracts"
+    }
+  end
+
+# Role folders express direction without imposing ports on every module. Reads,
+# pure rules, passive data, entities, contracts, and technical adapters cannot
+# become hidden application orchestrators.
+localization_role_dependency_denials =
+  for capability <- localization_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "execution"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "execution"},
+        {"data", "adapters"},
+        {"data", "rules"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "execution"},
+        {"entities", "adapters"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "execution"},
+        {"contracts", "adapters"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "execution"}
+      ] do
+    %{
+      source_root: "lib/storyarn/localization/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/localization/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Localization role folders must preserve read, policy, data, and effect direction"
+    }
+  end
+
+localization_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/localization/",
+  target_root: "lib/storyarn/localization/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Localization workers must orchestrate through the Storyarn.Localization facade"
+}
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -577,7 +641,10 @@ policy = %{
       [accounts_worker_facade_denial] ++
       workspace_internal_path_denials ++
       workspace_role_dependency_denials ++
-      workspace_query_adapter_denials ++ [workspace_worker_facade_denial],
+      workspace_query_adapter_denials ++
+      [workspace_worker_facade_denial] ++
+      localization_internal_path_denials ++
+      localization_role_dependency_denials ++ [localization_worker_facade_denial],
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -1058,10 +1125,16 @@ policy = %{
       reason: "Flow snapshot materialization applies the Platform-owned storage entitlement"
     },
     %{
-      source: "lib/storyarn/localization/notification_delivery.ex",
+      source: "lib/storyarn/localization/languages/adapters/notifications/delivery.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Localization requests durable cross-cutting delivery through the public Platform contract"
+      reason: "Localization language changes request durable cross-cutting delivery through the public Platform contract"
+    },
+    %{
+      source: "lib/storyarn/localization/translation/adapters/notifications/delivery.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Localization translation runs request durable cross-cutting delivery through the public Platform contract"
     },
     %{
       source: "lib/storyarn/scenes/asset_commands.ex",

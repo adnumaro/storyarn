@@ -13,7 +13,7 @@ defmodule Storyarn.Platform.Shared.StringUtils do
 
     * the Sheets health checker
     * the Scenes health checker
-    * `Storyarn.Localization.GlossarySync` (which additionally raises on a
+    * `Storyarn.Localization.sync_deepl_glossary/4` (whose glossary handling additionally raises on a
       non-binary, non-nil term)
 
   Those are **deliberately not** folded in here: for them a whitespace-only sheet

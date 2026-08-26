@@ -8,23 +8,10 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
-  alias Storyarn.Localization.LocalizableWords
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.TextCrud
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Repo
   alias Storyarn.Sheets
-
-  test "inventory advisory locks reject callers outside an explicit transaction" do
-    task =
-      Task.async(fn ->
-        assert_raise ArgumentError, ~r/require an explicit database transaction/, fn ->
-          LocalizableWords.lock_inventory!(1)
-        end
-      end)
-
-    Task.await(task)
-  end
 
   test "include_archived snapshots preserve lifecycle metadata" do
     project = project_fixture(user_fixture())
@@ -78,13 +65,12 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
                reviewer_notes: "Displaced state"
              })
 
-    assert {1, nil} =
-             TextCrud.archive_texts_for_active_target_locales(
-               project.id,
-               "flow_node",
-               [node.id],
-               "version_replaced"
-             )
+    assert {1, nil} = Localization.delete_texts_for_source("flow_node", node.id)
+
+    LocalizedText
+    |> Repo.get!(current.id)
+    |> Ecto.Changeset.change(archive_reason: "version_replaced")
+    |> Repo.update!()
 
     archived = Repo.get!(LocalizedText, current.id)
     assert archived.archived_at

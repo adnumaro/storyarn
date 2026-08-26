@@ -12,7 +12,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecoveryTest do
   alias Storyarn.Accounts.User
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.TextCrud
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
@@ -312,12 +311,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecoveryTest do
     } do
       {_sheet, block} = localized_block_fixture(project)
 
-      assert {1, nil} =
-               TextCrud.archive_texts_for_source(
-                 "block",
-                 block.id,
-                 "source_deleted"
-               )
+      assert {1, nil} = Localization.delete_texts_for_source("block", block.id)
 
       snapshot_data = ProjectSnapshotBuilder.build_snapshot(project.id)
       key = {"block", block.id, "value.content", "es"}
@@ -2758,7 +2752,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecoveryTest do
         set: [deleted_at: DateTime.utc_now(:second)]
       )
 
-      TextCrud.archive_texts_for_sources("sheet", [foreign_speaker.id], "source_deleted")
+      Localization.delete_texts_for_source("sheet", foreign_speaker.id)
 
       snapshot_data = active_exact_capture_snapshot(source_project)
       target_project = project_fixture(user, %{name: "Cross-project speaker target"})

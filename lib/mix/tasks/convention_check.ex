@@ -52,7 +52,6 @@ defmodule Mix.Tasks.Convention.Check do
     SheetCrud SheetQueries BlockCrud TableCrud
     FlowCrud NodeCreate NodeUpdate NodeDelete ConnectionCrud
     SceneCrud LayerCrud ZoneCrud PinCrud AnnotationCrud
-    LanguageCrud TextCrud GlossaryCrud BatchTranslator
     ProjectCrud WorkspaceCrud
   )
 
