@@ -39,8 +39,8 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
                                  ["lib/storyarn_web/live_vue_encoders.ex"]
 
   @project_facade_coordinators [
-    "lib/storyarn/platform/global_search/variable_search.ex",
-    "lib/storyarn/platform/release.ex"
+    "lib/storyarn/platform/discovery/queries/global_search/variable_search.ex",
+    "lib/storyarn/platform/adapters/release/release.ex"
   ]
 
   @web_technical_project_contracts %{
@@ -56,7 +56,7 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     "lib/storyarn/sheets",
     "lib/storyarn/localization",
     "lib/storyarn/ai",
-    "lib/storyarn/platform/billing",
+    "lib/storyarn/platform/commercial",
     "lib/storyarn/platform/notifications",
     "lib/storyarn/platform"
   ]

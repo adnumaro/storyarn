@@ -4,7 +4,7 @@ The UI is **Vue 3 rendered through LiveVue**, not HEEx. Server-rendered HEEx is 
 
 ## Project-Specific Notes
 
-**UI stack:** shadcn-vue + reka-ui over Tailwind v4. daisyUI is **gone** — no `@plugin "daisyui"`, no `btn`/`card`/`modal` classes, no themes. Theme tokens are CSS variables in `assets/css/app.css` (`:root` / `.dark`). One stale mention survives in `lib/storyarn/platform/shared/color_utils.ex:4` (a docstring); the module itself is still used.
+**UI stack:** shadcn-vue + reka-ui over Tailwind v4. daisyUI is **gone** — no `@plugin "daisyui"`, no `btn`/`card`/`modal` classes, no themes. Theme tokens are CSS variables in `assets/css/app.css` (`:root` / `.dark`). One stale mention survives in `lib/storyarn/platform/adapters/presentation/color_utils.ex:4` (a docstring); the module itself is still used.
 
 **Dialogs:** `assets/app/components/ConfirmDialog.vue`. **Never** `window.confirm/alert/prompt` or `data-confirm` — `mix convention.check` fails the build on those. There are no `<dialog>` elements and no `phx:show-modal` dispatch sites; the listeners in `assets/js/app.js` are vestigial.
 
@@ -402,10 +402,14 @@ adapter and owns no domain model or business rule:
   read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
 - `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It
   must never become a catch-all for business behavior.
-- Legacy namespaces such as `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`, `Storyarn.Platform.Emails`,
-  `Storyarn.Platform.Notifications`, `Storyarn.Projects.References`, `Storyarn.Projects.Versioning`, `Storyarn.Projects.Imports`, `Storyarn.Projects.Exports` and
-  `Storyarn.Projects.ProjectTemplates` are not additional bounded contexts. Business code in them must move to its owner
-  above; only compatibility facades or technical adapters may remain during migration.
+- Historical or stable module identities such as `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`,
+  `Storyarn.Platform.Emails`, `Storyarn.Platform.Notifications`, `Storyarn.Projects.References`,
+  `Storyarn.Projects.Versioning`, `Storyarn.Projects.Imports`, `Storyarn.Projects.Exports` and
+  `Storyarn.Projects.ProjectTemplates` are not additional bounded contexts. Ownership follows the physical capability
+  boundary above, not the namespace name. `Billing` and `Notifications` remain stable identities inside their Platform
+  owners and may contain capability facades; `Emails` remains a technical adapter. Project identities remain owned by
+  Projects. Preserve a stable identity when compatibility requires it, while keeping its files and business decisions
+  inside the owning context.
 
 Background jobs live under `lib/storyarn/workers/{owner}/`. Each owner slice belongs to the corresponding bounded
 context in the architecture ratchet; `Storyarn.Workers.*` is only the stable technical identity persisted by Oban,

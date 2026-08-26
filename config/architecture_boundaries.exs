@@ -26,17 +26,16 @@ boundaries = %{
   ],
   platform: [
     "lib/storyarn/platform.ex",
-    "lib/storyarn/platform/",
-    "lib/storyarn/workers/platform/",
-
-    # Transitional locations owned by the Platform control plane. Moving them
-    # under `Storyarn.Platform` is a separate migration; listing them here does
-    # not turn their consumers into part of Platform.
-    "lib/storyarn/platform/billing.ex",
-    "lib/storyarn/platform/billing/",
-    "lib/storyarn/platform/emails/",
-    "lib/storyarn/platform/notifications.ex",
-    "lib/storyarn/platform/notifications/"
+    "lib/storyarn/platform/commercial/",
+    "lib/storyarn/platform/delivery/",
+    "lib/storyarn/platform/notifications/",
+    "lib/storyarn/platform/onboarding/",
+    "lib/storyarn/platform/reactions/reactions.ex",
+    "lib/storyarn/platform/reactions/contracts/event_reaction.ex",
+    "lib/storyarn/platform/reactions/data/",
+    "lib/storyarn/platform/reactions/events/",
+    "lib/storyarn/platform/reactions/execution/",
+    "lib/storyarn/workers/platform/"
   ],
   sheets: [
     "lib/storyarn/sheets.ex",
@@ -129,8 +128,6 @@ boundaries = %{
   # is reviewed.
   infrastructure: [
     "lib/storyarn.ex",
-    "lib/storyarn/platform/analytics.ex",
-    "lib/storyarn/platform/analytics/",
     "lib/storyarn/application.ex",
     "lib/storyarn/architecture/",
     "lib/storyarn/projects/assets/storage.ex",
@@ -140,73 +137,26 @@ boundaries = %{
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
     "lib/storyarn/public/blog/post_builder.ex",
-    "lib/storyarn/platform/collaboration.ex",
     "lib/storyarn/platform/collaboration/",
-    "lib/storyarn/platform/command_palette.ex",
-    "lib/storyarn/platform/command_palette/definition.ex",
-    "lib/storyarn/platform/command_palette/operation.ex",
-    "lib/storyarn/platform/command_palette/persistence/user_record.ex",
-    "lib/storyarn/platform/command_palette/registry.ex",
-    "lib/storyarn/platform/dashboards/cache.ex",
+    "lib/storyarn/platform/discovery/",
     "lib/storyarn/public/docs.ex",
     "lib/storyarn/public/docs/guide.ex",
     "lib/storyarn/public/docs/guide_builder.ex",
-    "lib/storyarn/platform/feature_flags.ex",
     "lib/storyarn/gettext.ex",
-    "lib/storyarn/platform/global_search.ex",
-    "lib/storyarn/platform/global_search/advanced_search.ex",
-    "lib/storyarn/platform/global_search/destinations.ex",
-    "lib/storyarn/platform/global_search/flow_search.ex",
-    "lib/storyarn/platform/global_search/persistence/block_gallery_image_record.ex",
-    "lib/storyarn/platform/global_search/persistence/block_record.ex",
-    "lib/storyarn/platform/global_search/persistence/flow_connection_record.ex",
-    "lib/storyarn/platform/global_search/persistence/flow_node_record.ex",
-    "lib/storyarn/platform/global_search/persistence/flow_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_annotation_record.ex",
-    "lib/storyarn/platform/global_search/persistence/sheet_record.ex",
-    "lib/storyarn/platform/global_search/persistence/table_column_record.ex",
-    "lib/storyarn/platform/global_search/persistence/table_row_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_connection_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_layer_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_pin_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_record.ex",
-    "lib/storyarn/platform/global_search/persistence/scene_zone_record.ex",
-    "lib/storyarn/platform/global_search/scene_search.ex",
-    "lib/storyarn/platform/global_search/sheet_search.ex",
-    "lib/storyarn/platform/global_search/variable_query.ex",
-    "lib/storyarn/platform/global_search/variable_search.ex",
-    "lib/storyarn/platform/emails/layout.ex",
-    "lib/storyarn/platform/mailer.ex",
-    "lib/storyarn/platform/onboarding.ex",
-    "lib/storyarn/platform/onboarding/persistence/user_record.ex",
-    "lib/storyarn/platform/onboarding/tutorial_progress.ex",
+    "lib/storyarn/platform/abuse_prevention/",
+    "lib/storyarn/platform/adapters/",
+    "lib/storyarn/platform/kernel/",
+    "lib/storyarn/platform/reactions/adapters/",
+    "lib/storyarn/platform/reactions/contracts/analytics_event_contract.ex",
     "lib/storyarn/public/publication/html_link_localizer.ex",
     "lib/storyarn/public/publication/locales.ex",
     "lib/storyarn/public/publication/path_localizer.ex",
-    "lib/storyarn/platform/rate_limiter.ex",
-    "lib/storyarn/platform/rate_limiter/",
-    "lib/storyarn/platform/release.ex",
     "lib/storyarn/repo.ex",
-    "lib/storyarn/platform/shared/canonical_json.ex",
-    "lib/storyarn/platform/shared/color_utils.ex",
-    "lib/storyarn/platform/shared/encrypted_binary.ex",
     "lib/storyarn/shared/formula_engine.ex",
     "lib/storyarn/shared/formula_runtime.ex",
     "lib/storyarn/shared/hierarchical_schema.ex",
-    "lib/storyarn/platform/shared/hierarchy_search.ex",
-    "lib/storyarn/platform/shared/html_sanitizer.ex",
-    "lib/storyarn/platform/shared/html_utils.ex",
-    "lib/storyarn/platform/shared/import_helpers.ex",
-    "lib/storyarn/platform/shared/map_utils.ex",
-    "lib/storyarn/platform/shared/search_helpers.ex",
-    "lib/storyarn/platform/shared/severity.ex",
     "lib/storyarn/shared/shortcut_helpers.ex",
-    "lib/storyarn/platform/shared/string_utils.ex",
-    "lib/storyarn/platform/shared/time_helpers.ex",
-    "lib/storyarn/platform/shared/token_generator.ex",
-    "lib/storyarn/shared/tree_operations.ex",
-    "lib/storyarn/platform/urls.ex",
-    "lib/storyarn/platform/vault.ex"
+    "lib/storyarn/shared/tree_operations.ex"
   ],
 
   # Explicit Web coordination outside concrete bounded-context surfaces. The
@@ -824,6 +774,134 @@ ai_worker_facade_denial = %{
   reason: "AI workers must orchestrate through the Storyarn.AI facade"
 }
 
+# Platform is one control-plane context split into cohesive capabilities. A
+# capability may consume another capability's facade, but its operational code,
+# data projections, entities, and rules remain private to their owner.
+# Reaction contracts and analytics adapters stay outside this private set: the
+# former are stable event contracts and the latter are technical infrastructure.
+platform_capability_private_targets = %{
+  "commercial" => [
+    "billing.ex",
+    "project_storage_reservations.ex",
+    "subscription_crud.ex",
+    "commands/",
+    "data/",
+    "entities/",
+    "execution/",
+    "queries/",
+    "rules/"
+  ],
+  "delivery" => ["adapters/"],
+  "notifications" => ["adapters/", "data/", "entities/", "execution/", "queries/"],
+  "onboarding" => ["commands/", "data/", "entities/", "queries/"],
+  "reactions" => ["data/", "events/", "execution/"]
+}
+
+platform_query_role_denials =
+  for capability <- Map.keys(platform_capability_private_targets),
+      target_role <- ["adapters", "commands", "events", "execution"] do
+    %{
+      source_root: "lib/storyarn/platform/#{capability}/queries/",
+      target_root: "lib/storyarn/platform/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Platform queries may read data and rules but cannot invoke effectful capability roles"
+    }
+  end
+
+platform_internal_path_denials =
+  for {source_capability, _private_targets} <- platform_capability_private_targets,
+      {target_capability, private_targets} <- platform_capability_private_targets,
+      source_capability != target_capability,
+      private_target <- private_targets do
+    %{
+      source_root: "lib/storyarn/platform/#{source_capability}/",
+      target_root: "lib/storyarn/platform/#{target_capability}/#{private_target}",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Platform capabilities may consume another capability only through its facade or stable contracts"
+    }
+  end
+
+# The root facade composes capability facades. Its sole private-facet
+# dependency is the exported receipt/error type contract still owned by the
+# stable ProjectStorageReservations compatibility facet; runtime and
+# compile-time use remain forbidden, as does every kind of dependency on other
+# private capability targets.
+platform_root_facade_path_denials =
+  for {capability, private_targets} <- platform_capability_private_targets,
+      private_target <- private_targets do
+    kinds =
+      if capability == "commercial" and
+           private_target == "project_storage_reservations.ex" do
+        ["runtime", "compile"]
+      else
+        ["runtime", "export", "compile"]
+      end
+
+    %{
+      source_root: "lib/storyarn/platform.ex",
+      target_root: "lib/storyarn/platform/#{capability}/#{private_target}",
+      kinds: kinds,
+      reason: "The Storyarn.Platform facade composes capability facades rather than private implementation roles"
+    }
+  end
+
+# Platform workers retain their durable Oban identities but may enter
+# Platform-owned business capabilities only through the root facade. Technical
+# adapters such as encrypted payload decoding remain governed as infrastructure.
+platform_worker_facade_denials =
+  for capability <- Map.keys(platform_capability_private_targets) do
+    %{
+      source_root: "lib/storyarn/workers/platform/",
+      target_root: "lib/storyarn/platform/#{capability}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Platform workers must orchestrate Platform capabilities through the Storyarn.Platform facade"
+    }
+  end
+
+# Collaboration and Discovery are application/technical areas rather than
+# independent bounded contexts. Web may use their stable public facets, but it
+# must not learn their adapters, commands, projections, entities, or queries.
+platform_web_application_private_targets = %{
+  "collaboration" => ["adapters/", "rules/"],
+  "discovery" => ["adapters/", "commands/", "data/", "entities/", "queries/"]
+}
+
+platform_web_application_private_denials =
+  for {area, private_targets} <- platform_web_application_private_targets,
+      private_target <- private_targets do
+    %{
+      source_root: "lib/storyarn_web/",
+      target_root: "lib/storyarn/platform/#{area}/#{private_target}",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Web adapters must enter Platform application areas through their stable public facets"
+    }
+  end
+
+analytics_transport_target = "lib/storyarn/platform/reactions/adapters/analytics.ex"
+
+analytics_transport_allowed_source_roots =
+  MapSet.new([
+    "lib/storyarn/platform/reactions/reactions.ex",
+    "lib/storyarn/platform/reactions/events/"
+  ])
+
+# Analytics keeps its stable technical module identity, but it is not a general
+# infrastructure entry point. Every classified source root is denied explicitly
+# except the Reactions facade and Platform-owned reaction event handlers.
+analytics_transport_caller_denials =
+  boundaries
+  |> Map.values()
+  |> List.flatten()
+  |> Enum.reject(&MapSet.member?(analytics_transport_allowed_source_roots, &1))
+  |> Enum.map(fn source_root ->
+    %{
+      source_root: source_root,
+      target_root: analytics_transport_target,
+      kinds: ["runtime", "export", "compile"],
+      reason: "Only Platform Reactions may enter the exact analytics transport facade"
+    }
+  end)
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -894,7 +972,14 @@ policy = %{
       [flows_worker_facade_denial] ++
       ai_internal_path_denials ++
       ai_root_facade_path_denials ++
-      ai_role_dependency_denials ++ [ai_worker_facade_denial],
+      ai_role_dependency_denials ++
+      [ai_worker_facade_denial] ++
+      platform_internal_path_denials ++
+      platform_query_role_denials ++
+      platform_root_facade_path_denials ++
+      platform_worker_facade_denials ++
+      platform_web_application_private_denials ++
+      analytics_transport_caller_denials,
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -924,29 +1009,31 @@ policy = %{
   # shared during ENG-92; the other entries are stable primitives, adapters or
   # execution plumbing with no consumer-specific business policy. Adding a
   # target here is an architecture decision because it grants every boundary
-  # access without registering each source edge.
+  # access without registering each source edge, unless an explicit path-denial
+  # matrix narrows that access as it does for the Analytics transport facade.
   globally_allowed_technical_targets: [
     "lib/storyarn/repo.ex",
     "lib/storyarn/gettext.ex",
     "lib/storyarn/projects/assets/storage.ex",
     "lib/storyarn/projects/assets/storage_hash.ex",
     "lib/storyarn/projects/assets/storage_key_lock.ex",
-    "lib/storyarn/platform/dashboards/cache.ex",
-    "lib/storyarn/platform/collaboration.ex",
-    "lib/storyarn/platform/emails/layout.ex",
-    "lib/storyarn/platform/feature_flags.ex",
-    "lib/storyarn/platform/mailer.ex",
-    "lib/storyarn/platform/rate_limiter.ex",
-    "lib/storyarn/platform/urls.ex",
-    "lib/storyarn/platform/shared/color_utils.ex",
-    "lib/storyarn/platform/shared/encrypted_binary.ex",
-    "lib/storyarn/platform/shared/html_sanitizer.ex",
-    "lib/storyarn/platform/shared/html_utils.ex",
-    "lib/storyarn/platform/shared/map_utils.ex",
-    "lib/storyarn/platform/shared/search_helpers.ex",
-    "lib/storyarn/platform/shared/string_utils.ex",
-    "lib/storyarn/platform/shared/time_helpers.ex",
-    "lib/storyarn/platform/shared/token_generator.ex"
+    "lib/storyarn/platform/discovery/dashboard_cache.ex",
+    "lib/storyarn/platform/collaboration/collaboration.ex",
+    "lib/storyarn/platform/adapters/email/layout.ex",
+    "lib/storyarn/platform/adapters/configuration/feature_flags.ex",
+    "lib/storyarn/platform/adapters/email/mailer.ex",
+    "lib/storyarn/platform/abuse_prevention/rate_limiter.ex",
+    "lib/storyarn/platform/adapters/configuration/urls.ex",
+    "lib/storyarn/platform/adapters/presentation/color_utils.ex",
+    "lib/storyarn/platform/adapters/security/encrypted_binary.ex",
+    "lib/storyarn/platform/adapters/presentation/html_sanitizer.ex",
+    analytics_transport_target,
+    "lib/storyarn/platform/kernel/rules/html_utils.ex",
+    "lib/storyarn/platform/kernel/rules/map_utils.ex",
+    "lib/storyarn/platform/kernel/rules/search_helpers.ex",
+    "lib/storyarn/platform/kernel/rules/string_utils.ex",
+    "lib/storyarn/platform/adapters/time/time_helpers.ex",
+    "lib/storyarn/platform/adapters/security/token_generator.ex"
   ],
 
   # Durable cross-boundary contracts normally terminate at bounded-context root
@@ -968,15 +1055,11 @@ policy = %{
       reason: "consumer-owned AI context builders export AI subject references"
     },
     %{
-      target: "lib/storyarn/platform/vault.ex",
+      target: "lib/storyarn/platform/adapters/security/vault.ex",
       reason: "Encrypted import payloads use the application-owned cryptographic adapter"
     },
     %{
-      target: "lib/storyarn/platform/analytics.ex",
-      reason: "Platform product metrics alone may enter the exact analytics transport contract"
-    },
-    %{
-      target: "lib/storyarn/platform/analytics/event_contract.ex",
+      target: "lib/storyarn/platform/reactions/contracts/analytics_event_contract.ex",
       reason: "Platform product metrics implements the exact fail-closed analytics transport contract"
     },
     %{
@@ -1063,7 +1146,32 @@ policy = %{
       source: "lib/storyarn_web/live/hooks/palette.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Palette operations publish committed notification outcomes through the public Platform facade"
+      reason:
+        "Palette operations publish committed notification outcomes and privacy-safe analytics through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn_web/components/layouts.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "The root presentation layout obtains frontend-safe analytics configuration through Platform"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/onboarding.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "The authenticated hook reads and mutates Platform-owned onboarding through its root facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/onboarding_helpers.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Presentation serialization consumes only Platform's onboarding summary contract"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/tutorials.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Tutorial settings restart Platform-owned onboarding through the public facade"
     },
     %{
       source: "lib/storyarn_web/live/shared/notification_helpers.ex",
@@ -1084,19 +1192,19 @@ policy = %{
       reason: "OTP composition root obtains the import error deduplicator child spec through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/platform/global_search/destinations.ex",
+      source: "lib/storyarn/platform/discovery/queries/global_search/destinations.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Global search resolves reachable projects through the public Projects access reads"
     },
     %{
-      source: "lib/storyarn/platform/global_search/variable_search.ex",
+      source: "lib/storyarn/platform/discovery/queries/global_search/variable_search.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Global variable search reads Project-owned occurrences through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/platform/release.ex",
+      source: "lib/storyarn/platform/adapters/release/release.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on projects through the public Projects facade"
@@ -1164,7 +1272,7 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/imports/plan_storage.ex",
-      target: "lib/storyarn/platform/vault.ex",
+      target: "lib/storyarn/platform/adapters/security/vault.ex",
       kinds: ["runtime"],
       reason: "Import plan storage encrypts payloads with the application vault"
     },
@@ -1214,13 +1322,13 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/invitation_email.ex",
-      target: "lib/storyarn/platform/emails/layout.ex",
+      target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
       reason: "Project-owned invitation content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/projects/invitation_notifier.ex",
-      target: "lib/storyarn/platform/mailer.ex",
+      target: "lib/storyarn/platform/adapters/email/mailer.ex",
       kinds: ["runtime"],
       reason: "Project invitation delivery goes through the application mailer"
     },
@@ -1529,25 +1637,25 @@ policy = %{
     },
     %{
       source: "lib/storyarn/accounts/authentication/delivery/email_change/content.ex",
-      target: "lib/storyarn/platform/emails/layout.ex",
+      target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
       reason: "Account-owned email-change content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/accounts/authentication/delivery/password_reset/content.ex",
-      target: "lib/storyarn/platform/emails/layout.ex",
+      target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
       reason: "Account-owned password-reset content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/accounts/authentication/adapters/email/mailer.ex",
-      target: "lib/storyarn/platform/mailer.ex",
+      target: "lib/storyarn/platform/adapters/email/mailer.ex",
       kinds: ["runtime"],
       reason: "The Account email adapter hands rendered messages to the application mailer"
     },
     %{
       source: "lib/storyarn_web/live/user_live/login.ex",
-      target: "lib/storyarn/platform/mailer.ex",
+      target: "lib/storyarn/platform/adapters/email/mailer.ex",
       kinds: ["runtime"],
       reason: "The login page offers the local dev mailbox link by inspecting the configured mailer adapter"
     },
@@ -1577,13 +1685,13 @@ policy = %{
     },
     %{
       source: "lib/storyarn/workspaces/invitations/delivery/content.ex",
-      target: "lib/storyarn/platform/emails/layout.ex",
+      target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
       reason: "Workspace-owned invitation content uses the shared technical email layout"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/adapters/email/mailer.ex",
-      target: "lib/storyarn/platform/mailer.ex",
+      target: "lib/storyarn/platform/adapters/email/mailer.ex",
       kinds: ["runtime"],
       reason: "Workspace invitation delivery goes through the application mailer"
     },
@@ -1630,13 +1738,13 @@ policy = %{
       reason: "Registration provisions each new account's default workspace through the public Workspaces facade"
     },
     %{
-      source: "lib/storyarn/platform/global_search/destinations.ex",
+      source: "lib/storyarn/platform/discovery/queries/global_search/destinations.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Global search resolves reachable workspaces through the public Workspaces access reads"
     },
     %{
-      source: "lib/storyarn/platform/release.ex",
+      source: "lib/storyarn/platform/adapters/release/release.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
@@ -1690,7 +1798,7 @@ policy = %{
       reason: "Session plumbing resolves the user's workspaces through the public Workspaces facade"
     },
     %{
-      source: "lib/storyarn/platform/global_search/variable_search.ex",
+      source: "lib/storyarn/platform/discovery/queries/global_search/variable_search.ex",
       target: "lib/storyarn/sheets.ex",
       kinds: ["runtime"],
       reason:
@@ -1722,14 +1830,20 @@ policy = %{
       reason: "Project-owned localization settings request durable delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/platform/product_metrics.ex",
-      target: "lib/storyarn/platform/analytics.ex",
+      source: "lib/storyarn/platform/reactions/events/product_metrics.ex",
+      target: "lib/storyarn/platform/reactions/adapters/analytics.ex",
       kinds: ["runtime"],
       reason: "Platform product metrics owns the only new product-context access to the analytics transport"
     },
     %{
-      source: "lib/storyarn/platform/product_metrics.ex",
-      target: "lib/storyarn/platform/analytics/event_contract.ex",
+      source: "lib/storyarn/platform/reactions/reactions.ex",
+      target: "lib/storyarn/platform/reactions/adapters/analytics.ex",
+      kinds: ["runtime"],
+      reason: "The Platform Reactions facade mediates allowlisted presentation analytics"
+    },
+    %{
+      source: "lib/storyarn/platform/reactions/events/product_metrics.ex",
+      target: "lib/storyarn/platform/reactions/contracts/analytics_event_contract.ex",
       kinds: ["runtime"],
       reason: "Platform product metrics implements the fail-closed analytics transport contract"
     },
@@ -1765,7 +1879,7 @@ policy = %{
         "The workspace home reads plan policy and presents product metric taxonomy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/platform/urls.ex",
+      source: "lib/storyarn/platform/adapters/configuration/urls.ex",
       target: "lib/storyarn_web/endpoint.ex",
       kinds: ["runtime"],
       reason: "Technical URL resolution reads the configured Phoenix endpoint without calling Web behavior"

@@ -7,7 +7,7 @@ defmodule StoryarnWeb.Layouts do
   use Gettext, backend: Storyarn.Gettext
 
   alias Phoenix.LiveView.JS
-  alias Storyarn.Platform.Analytics
+  alias Storyarn.Platform
   alias Storyarn.Platform.CommandPalette
   alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.FeatureFlagHelpers
@@ -118,7 +118,7 @@ defmodule StoryarnWeb.Layouts do
   def posthog_frontend_config(assigns) do
     assigns
     |> current_scope_from_assigns()
-    |> Analytics.frontend_config()
+    |> Platform.analytics_frontend_config()
   end
 
   def seo_title(assigns) do

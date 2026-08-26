@@ -26,7 +26,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Collaboration.Presence
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
@@ -1701,12 +1700,16 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
 
-  def handle_info({Presence, {:join, presence}}, socket) do
-    Collab.handle_presence_join(socket, presence)
+  def handle_info({source, {:join, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_join(socket, presence),
+      else: {:noreply, socket}
   end
 
-  def handle_info({Presence, {:leave, _} = event}, socket) do
-    Collab.handle_presence_leave(socket, elem(event, 1))
+  def handle_info({source, {:leave, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_leave(socket, presence),
+      else: {:noreply, socket}
   end
 
   def handle_info({:cursor_update, cursor_data}, socket) do

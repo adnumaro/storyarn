@@ -11,12 +11,12 @@ defmodule Storyarn.Architecture.ContextOwnedEmailContentTest do
              "#{path} must own its email intent instead of importing #{@retired_module}"
     end
 
-    refute File.exists?("lib/storyarn/platform/emails/templates.ex")
+    refute File.exists?("lib/storyarn/platform/adapters/email/templates.ex")
   end
 
   test "Platform email code contains only technical layout concerns" do
     platform_email_source =
-      "lib/storyarn/platform/emails/**/*.ex"
+      "lib/storyarn/platform/adapters/email/**/*.ex"
       |> Path.wildcard()
       |> Enum.map_join("\n", &File.read!/1)
 

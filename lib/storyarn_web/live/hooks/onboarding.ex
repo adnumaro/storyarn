@@ -6,9 +6,7 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Platform.Analytics
-  alias Storyarn.Platform.Onboarding
-  alias Storyarn.Platform.Onboarding.TutorialProgress
+  alias Storyarn.Platform
 
   @interaction_actions ~w(opened snoozed finished docs_opened)
   @interaction_sources ~w(auto manual settings)
@@ -16,7 +14,7 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
   def on_mount(:load_onboarding, _params, _session, socket) do
     socket =
       socket
-      |> assign(:onboarding, Onboarding.summary(socket.assigns.current_scope))
+      |> assign(:onboarding, Platform.onboarding_summary(socket.assigns.current_scope))
       |> Phoenix.LiveView.attach_hook(
         :onboarding_events,
         :handle_event,
@@ -29,9 +27,9 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
   defp handle_onboarding_event("complete_onboarding_tutorial", %{"tutorial" => tutorial} = params, socket) do
     source = normalize_source(params["source"])
 
-    case Onboarding.complete_tutorial(socket.assigns.current_scope, tutorial) do
+    case Platform.complete_onboarding_tutorial(socket.assigns.current_scope, tutorial) do
       {:ok, _progress} ->
-        Analytics.track(socket.assigns.current_scope, "onboarding tutorial interacted", %{
+        Platform.track_analytics(socket.assigns.current_scope, "onboarding tutorial interacted", %{
           action: "completed",
           guide: tutorial,
           source: source
@@ -41,7 +39,7 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
          assign(
            socket,
            :onboarding,
-           Onboarding.summary(socket.assigns.current_scope)
+           Platform.onboarding_summary(socket.assigns.current_scope)
          )}
 
       {:error, _reason} ->
@@ -55,8 +53,8 @@ defmodule StoryarnWeb.Live.Hooks.Onboarding do
          socket
        )
        when action in @interaction_actions do
-    with {:ok, tutorial} <- TutorialProgress.cast_tutorial(tutorial) do
-      Analytics.track(socket.assigns.current_scope, "onboarding tutorial interacted", %{
+    with {:ok, tutorial} <- Platform.cast_onboarding_tutorial(tutorial) do
+      Platform.track_analytics(socket.assigns.current_scope, "onboarding tutorial interacted", %{
         action: action,
         guide: Atom.to_string(tutorial),
         source: normalize_source(params["source"])

@@ -29,7 +29,6 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   alias Storyarn.AI
   alias Storyarn.Flows
   alias Storyarn.Platform
-  alias Storyarn.Platform.Analytics
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.CommandPalette
   alias Storyarn.Platform.GlobalSearch
@@ -300,14 +299,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_opened", %{"surface" => surface}, socket) when surface in @known_surfaces do
-    Analytics.track(socket.assigns.current_scope, "palette opened", %{surface: surface})
+    Platform.track_analytics(socket.assigns.current_scope, "palette opened", %{surface: surface})
     {:halt, socket}
   end
 
   defp handle_palette_event("palette_command_executed", %{"command_id" => command_id, "surface" => surface}, socket)
        when is_binary(command_id) and surface in @known_surfaces do
     if valid_command_id?(command_id) do
-      Analytics.track(socket.assigns.current_scope, "palette command executed", %{
+      Platform.track_analytics(socket.assigns.current_scope, "palette command executed", %{
         command_id: command_id,
         surface: surface
       })
@@ -318,7 +317,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
        when is_integer(query_length) and query_length >= 0 and query_length <= 100 and surface in @known_surfaces do
-    Analytics.track(socket.assigns.current_scope, "palette search no results", %{
+    Platform.track_analytics(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
       surface: surface
     })
@@ -330,7 +329,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
        when event in @operation_analytics_events and is_binary(operation_id) and byte_size(operation_id) <= 64 and
               surface in @known_surfaces do
     if CommandPalette.registered_operation_id?(operation_id) do
-      Analytics.track(socket.assigns.current_scope, Map.fetch!(@operation_analytics_names, event), %{
+      Platform.track_analytics(socket.assigns.current_scope, Map.fetch!(@operation_analytics_names, event), %{
         operation_id: operation_id,
         surface: surface
       })

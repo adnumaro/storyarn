@@ -109,7 +109,7 @@ msgstr ""
 msgid "Renamed sheet"
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:457
+#: lib/storyarn_web/live/sheet_live/show.ex:456
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr ""
@@ -124,7 +124,7 @@ msgstr ""
 msgid "Unsupported file type."
 msgstr ""
 
-#: lib/storyarn_web/live/hooks/palette.ex:585
+#: lib/storyarn_web/live/hooks/palette.ex:584
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Untitled"
@@ -309,7 +309,7 @@ msgstr ""
 msgid "Invalid layout."
 msgstr ""
 
-#: lib/storyarn_web/live/sheet_live/show.ex:963
+#: lib/storyarn_web/live/sheet_live/show.ex:966
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr ""

@@ -13,7 +13,6 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Collaboration.Presence
   alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
@@ -889,12 +888,16 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_info({:toolbar_event, _event, _params}, socket), do: {:noreply, socket}
   def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
 
-  def handle_info({Presence, {:join, presence}}, socket) do
-    Collab.handle_presence_join(socket, presence)
+  def handle_info({source, {:join, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_join(socket, presence),
+      else: {:noreply, socket}
   end
 
-  def handle_info({Presence, {:leave, _} = event}, socket) do
-    Collab.handle_presence_leave(socket, elem(event, 1))
+  def handle_info({source, {:leave, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_leave(socket, presence),
+      else: {:noreply, socket}
   end
 
   def handle_info({:lock_change, _action, _payload}, socket) do
