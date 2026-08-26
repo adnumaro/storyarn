@@ -19,7 +19,7 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
     refute "lib/storyarn/ai/context/" in policy.globally_allowed_technical_targets
 
     graph = %{
-      "lib/storyarn/flows/ai/context_contract.ex" => %{
+      "lib/storyarn/flows/ai/contracts/context_contract.ex" => %{
         "lib/storyarn/ai/context/contracts/contract.ex" => "runtime",
         "lib/storyarn/ai/context/contracts/policy.ex" => "export",
         "lib/storyarn/ai/context/contracts/subject_ref.ex" => "export",
@@ -30,7 +30,7 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
     assert DependencyPolicy.forbidden_edges(graph, policy).flows ==
              MapSet.new([
                {
-                 "lib/storyarn/flows/ai/context_contract.ex",
+                 "lib/storyarn/flows/ai/contracts/context_contract.ex",
                  "lib/storyarn/ai/context/rules/finalizer.ex",
                  "runtime"
                }

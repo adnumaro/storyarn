@@ -47,6 +47,7 @@ boundaries = %{
   flows: [
     "lib/storyarn/flows.ex",
     "lib/storyarn/flows/",
+    "lib/storyarn/workers/flows/",
     "lib/storyarn_web/live/flow_live/",
     "lib/storyarn_web/live/flow_sidebar_live.ex"
   ],
@@ -647,6 +648,93 @@ scene_role_dependency_denials =
     }
   end
 
+# Flows is one bounded context split by business capability. Flow, node,
+# connection, and sequence authoring remains one Editor aggregate; the other
+# capabilities own their consumer-specific runtime, projections, and policies.
+flow_capabilities = ~w(ai editor health localization logic references runtime versioning)
+flow_private_roles = ~w(adapters commands queries rules data execution events)
+
+flow_internal_path_denials =
+  for source_capability <- flow_capabilities,
+      target_capability <- flow_capabilities -- [source_capability],
+      private_role <- flow_private_roles do
+    %{
+      source_root: "lib/storyarn/flows/#{source_capability}/",
+      target_root: "lib/storyarn/flows/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Flow capabilities may consume another capability only through its facade or stable entities and contracts"
+    }
+  end
+
+flow_root_facade_path_denials =
+  for capability <- flow_capabilities,
+      private_role <- flow_private_roles do
+    %{
+      source_root: "lib/storyarn/flows.ex",
+      target_root: "lib/storyarn/flows/#{capability}/#{private_role}/",
+      kinds: ["runtime", "compile"],
+      reason:
+        "The Storyarn.Flows facade executes only through capability facades; established public types may still name stable value shapes"
+    }
+  end
+
+# Reads remain read-only, while passive models and pure rules cannot become
+# hidden effectful orchestrators. Commands and execution workflows may keep an
+# indivisible transaction together when a graph or restore invariant requires it.
+flow_role_dependency_denials =
+  for capability <- flow_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "execution"},
+        {"queries", "events"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "execution"},
+        {"data", "events"},
+        {"data", "adapters"},
+        {"data", "rules"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "execution"},
+        {"entities", "events"},
+        {"entities", "adapters"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "execution"},
+        {"contracts", "events"},
+        {"contracts", "adapters"},
+        {"events", "commands"},
+        {"events", "queries"},
+        {"events", "execution"},
+        {"events", "adapters"},
+        {"events", "rules"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "execution"},
+        {"adapters", "events"},
+        {"adapters", "rules"}
+      ] do
+    %{
+      source_root: "lib/storyarn/flows/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/flows/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Flow role folders must preserve read, policy, data, event, execution, and adapter direction"
+    }
+  end
+
+flows_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/flows/",
+  target_root: "lib/storyarn/flows/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Flow workers must orchestrate through the Storyarn.Flows facade"
+}
+
 # AI is one bounded context split into product capabilities, not six smaller
 # contexts. Capability facades and stable entities/contracts may be shared
 # internally; operational roles and consumer-owned projections stay private.
@@ -800,6 +888,10 @@ policy = %{
       scene_internal_path_denials ++
       scene_root_facade_path_denials ++
       scene_role_dependency_denials ++
+      flow_internal_path_denials ++
+      flow_root_facade_path_denials ++
+      flow_role_dependency_denials ++
+      [flows_worker_facade_denial] ++
       ai_internal_path_denials ++
       ai_root_facade_path_denials ++
       ai_role_dependency_denials ++ [ai_worker_facade_denial],
@@ -920,19 +1012,19 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
-      source: "lib/storyarn/flows/ai/context_contract.ex",
+      source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/contracts/contract.ex",
       kinds: ["runtime"],
       reason: "Flows implements the exact public AI context-builder contract"
     },
     %{
-      source: "lib/storyarn/flows/ai/context_contract.ex",
+      source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/contracts/policy.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI context policy value in its implementation"
     },
     %{
-      source: "lib/storyarn/flows/ai/context_contract.ex",
+      source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI subject reference in its implementation"
@@ -1261,25 +1353,43 @@ policy = %{
       reason: "The Project boundary publishes owned business facts through the public Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/flows/events.ex",
+      source: "lib/storyarn/flows/editor/events/editor_events.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Flows publishes owned business facts through the public Platform reaction contract"
+      reason: "Flow editor operations publish their owned facts through the public Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/flows/flow_crud.ex",
+      source: "lib/storyarn/flows/runtime/events/runtime_events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Flow runtime operations publish their owned facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/events/version_events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Flow versioning operations publish their owned facts through the public Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/flows/editor/commands/flow_crud.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Flow mutations request durable notification delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/flows/limits.ex",
+      source: "lib/storyarn/flows/editor/commands/item_capacity.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Flows applies Platform-owned commercial entitlements to Flow operations"
+      reason: "Flow authoring applies Platform-owned item entitlements"
     },
     %{
-      source: "lib/storyarn/flows/versioning/asset_catalog.ex",
+      source: "lib/storyarn/flows/versioning/commands/named_version_capacity.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Flow versioning applies Platform-owned named-version entitlements"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Flow snapshot materialization applies the Platform-owned storage entitlement"

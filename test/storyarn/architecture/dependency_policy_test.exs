@@ -635,7 +635,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
 
     graph = %{
-      "lib/storyarn/flows/versioning/snapshot_storage.ex" => %{
+      "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex" => %{
         "lib/storyarn/projects/assets/storage.ex" => "runtime",
         "lib/storyarn/projects/assets/storage/local.ex" => "runtime"
       }
@@ -646,7 +646,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert forbidden.flows ==
              MapSet.new([
                {
-                 "lib/storyarn/flows/versioning/snapshot_storage.ex",
+                 "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex",
                  "lib/storyarn/projects/assets/storage/local.ex",
                  "runtime"
                }
@@ -657,7 +657,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
 
     graph = %{
-      "lib/storyarn/flows/flow_crud.ex" => %{
+      "lib/storyarn/flows/editor/commands/flow_crud.ex" => %{
         "lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex" => "runtime"
       },
       "lib/storyarn_web/live/flow_live/show.ex" => %{
@@ -670,7 +670,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert forbidden.flows ==
              MapSet.new([
                {
-                 "lib/storyarn/flows/flow_crud.ex",
+                 "lib/storyarn/flows/editor/commands/flow_crud.ex",
                  "lib/storyarn_web/live/flow_live/helpers/socket_helpers.ex",
                  "runtime"
                }

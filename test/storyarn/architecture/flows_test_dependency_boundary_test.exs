@@ -30,71 +30,71 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # an integration contract. This exact inventory makes those seams visible
   # and prevents an innocent-looking test helper from reintroducing coupling.
   @flow_owned_integration_contracts %{
-    "test/storyarn/flows/avatar_integrity_test.exs" => [
+    "test/storyarn/flows/references/commands/avatar_integrity_test.exs" => [
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/cross_flow_write_isolation_test.exs" => [
+    "test/storyarn/flows/editor/commands/cross_flow_write_isolation_test.exs" => [
       "Storyarn.Accounts.User",
       "Storyarn.Projects.Project",
       "Storyarn.Workspaces.Workspace"
     ],
-    "test/storyarn/flows/editor_catalog_test.exs" => [
+    "test/storyarn/flows/editor/queries/editor_catalog_test.exs" => [
       "Storyarn.Projects.Assets",
       "Storyarn.Projects.Assets.Asset",
       "Storyarn.Scenes",
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/entity_trash_refs_concurrency_test.exs" => [
+    "test/storyarn/flows/references/commands/entity_trash_refs_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
       "Storyarn.Sheets",
       "Storyarn.Sheets.Sheet",
       "Storyarn.Sheets.SheetAvatar",
       "Storyarn.Workspaces.Workspace"
     ],
-    "test/storyarn/flows/entity_trash_refs_test.exs" => [
+    "test/storyarn/flows/references/commands/entity_trash_refs_test.exs" => [
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/exit_target_scenes_test.exs" => [
+    "test/storyarn/flows/editor/queries/exit_target_scenes_test.exs" => [
       "Storyarn.Scenes"
     ],
-    "test/storyarn/flows/flow_restore_integrity_test.exs" => [
+    "test/storyarn/flows/editor/commands/flow_restore_integrity_test.exs" => [
       "Storyarn.Scenes",
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/named_version_limit_concurrency_test.exs" => [
+    "test/storyarn/flows/versioning/commands/named_version_capacity_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
       "Storyarn.Projects.Project",
       "Storyarn.Workspaces.Workspace"
     ],
-    "test/storyarn/flows/node_crud_test.exs" => [
+    "test/storyarn/flows/editor/commands/node_crud_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.RuntimeKey",
       "Storyarn.Projects.References.EntityReference"
     ],
-    "test/storyarn/flows/node_delete_concurrency_test.exs" => [
+    "test/storyarn/flows/editor/commands/node_delete_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
       "Storyarn.Workspaces.Workspace"
     ],
-    "test/storyarn/flows/node_restore_integrity_test.exs" => [
+    "test/storyarn/flows/editor/commands/node_restore_integrity_test.exs" => [
       "Storyarn.Localization.RuntimeKey",
       "Storyarn.Projects.References",
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/node_update_batch_test.exs" => [
+    "test/storyarn/flows/editor/commands/node_update_batch_test.exs" => [
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/player_catalog_test.exs" => [
+    "test/storyarn/flows/runtime/queries/player_catalog_test.exs" => [
       "Storyarn.Projects.Assets.Asset",
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/runtime_variables_test.exs" => [
+    "test/storyarn/flows/runtime/execution/runtime_variables_test.exs" => [
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/versioning/conflict_detector_test.exs" => [
+    "test/storyarn/flows/versioning/execution/conflict_detector_test.exs" => [
       "Storyarn.Projects.Assets",
       "Storyarn.Sheets"
     ],
-    "test/storyarn/flows/versioning/flow_snapshot_restore_test.exs" => [
+    "test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
       "Storyarn.Projects.Assets",
@@ -103,11 +103,11 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Project",
       "Storyarn.Projects.References"
     ],
-    "test/storyarn/flows/versioning/snapshot_storage_test.exs" => [
+    "test/storyarn/flows/versioning/adapters/storage/snapshot_storage_test.exs" => [
       "Storyarn.Projects.Assets.Storage",
       "Storyarn.Projects.Assets.Storage.Local"
     ],
-    "test/storyarn/flows/versioning_flow_snapshot_test.exs" => [
+    "test/storyarn/flows/versioning/execution/flow_snapshot_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
       "Storyarn.Projects.Assets",
@@ -116,10 +116,10 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Persistence.FlowRecord",
       "Storyarn.Projects.Versioning.Builders.FlowBuilder"
     ],
-    "test/storyarn/flows/versioning_test.exs" => [
+    "test/storyarn/flows/versioning/integration/versioning_test.exs" => [
       "Storyarn.Projects.Versioning"
     ],
-    "test/storyarn/flows/writer_reference_integrity_test.exs" => [
+    "test/storyarn/flows/references/integration/writer_reference_integrity_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Projects",
       "Storyarn.Scenes"
@@ -132,6 +132,38 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # These are explicit composition seams, not permissions for feature tests to
   # reach into Flows. Keep every exception scoped to one file and one module.
   @integration_exceptions %{
+    "test/storyarn/architecture/flows_internal_structure_test.exs" => [
+      "Storyarn.Flows.Versioning"
+    ],
+    "test/storyarn/architecture/flows_projection_associations_test.exs" => [
+      "Storyarn.Flows.Editor.Data.AssetRecord",
+      "Storyarn.Flows.Editor.Data.BlockRecord",
+      "Storyarn.Flows.Editor.Data.GalleryImageRecord",
+      "Storyarn.Flows.Editor.Data.SheetAvatarRecord",
+      "Storyarn.Flows.Editor.Data.SheetRecord",
+      "Storyarn.Flows.Flow",
+      "Storyarn.Flows.FlowConnection",
+      "Storyarn.Flows.FlowNode",
+      "Storyarn.Flows.References.Data.AssetRecord",
+      "Storyarn.Flows.References.Data.BlockRecord",
+      "Storyarn.Flows.References.Data.SheetAvatarRecord",
+      "Storyarn.Flows.References.Data.SheetRecord",
+      "Storyarn.Flows.References.Data.TableColumnRecord",
+      "Storyarn.Flows.References.Data.TableRowRecord",
+      "Storyarn.Flows.Runtime.Data.AssetRecord",
+      "Storyarn.Flows.Runtime.Data.SheetAvatarRecord",
+      "Storyarn.Flows.Runtime.Data.SheetRecord",
+      "Storyarn.Flows.SequenceConfig",
+      "Storyarn.Flows.SequenceTrack",
+      "Storyarn.Flows.SequenceVisualLayer",
+      "Storyarn.Flows.VariableReference",
+      "Storyarn.Flows.Versioning.Data.AssetRecord",
+      "Storyarn.Flows.Versioning.Data.ProjectRecord",
+      "Storyarn.Flows.Versioning.Data.SheetAvatarRecord",
+      "Storyarn.Flows.Versioning.Data.SheetRecord",
+      "Storyarn.Flows.Versioning.Data.UserRecord",
+      "Storyarn.Flows.Versioning.EntityVersionRecord"
+    ],
     "test/storyarn/scenes/exploration/execution/formula_runtime_test.exs" => [
       "Storyarn.Flows.FormulaRuntime"
     ],

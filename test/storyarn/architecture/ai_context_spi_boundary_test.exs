@@ -9,7 +9,7 @@ defmodule Storyarn.Architecture.AIContextSPIBoundaryTest do
     "lib/storyarn/ai/context/contracts/subject_ref.ex" => "Storyarn.AI.Context.SubjectRef"
   }
   @consumer_implementations ~w(
-    lib/storyarn/flows/ai/context_contract.ex
+    lib/storyarn/flows/ai/contracts/context_contract.ex
     lib/storyarn/sheets/ai/contracts/context_contract.ex
   )
 
