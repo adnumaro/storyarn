@@ -13,12 +13,12 @@ defmodule Storyarn.Flows.FlowRestoreIntegrityTest do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowCrud
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.EntityReference
 
   setup do
     user = user_fixture()

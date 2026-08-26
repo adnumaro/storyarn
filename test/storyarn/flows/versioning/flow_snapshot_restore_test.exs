@@ -12,6 +12,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.Persistence.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
@@ -27,7 +28,6 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References
   alias Storyarn.Repo
-  alias Storyarn.Sheets.EntityReference
 
   setup do
     user = user_fixture(%{email: "flow-snapshot-restore-#{Ecto.UUID.generate()}@example.com"})

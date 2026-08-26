@@ -139,7 +139,7 @@ defmodule Storyarn.Flows.WriterReferenceIntegrityTest do
              })
 
     assert Repo.exists?(
-             from(reference in Storyarn.Sheets.EntityReference,
+             from(reference in Storyarn.Flows.Persistence.EntityReferenceRecord,
                where:
                  reference.source_type == "flow_node" and
                    reference.source_id == ^node.id and

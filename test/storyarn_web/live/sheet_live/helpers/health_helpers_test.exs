@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpersTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.HealthChecker
+  alias Storyarn.Sheets.Health
   alias StoryarnWeb.SheetLive.Helpers.HealthHelpers
 
   setup do
@@ -36,7 +36,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpersTest do
 
     test "down to the row and column of a table cell" do
       finding =
-        HealthChecker.finding(:required_table_cell_empty, %{
+        Health.finding(:required_table_cell_empty, %{
           sheet_id: 1,
           block_id: 7,
           block_type: "table",
@@ -54,7 +54,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpersTest do
     end
 
     test "and names a nameless sheet with the sheet word" do
-      payload = payload([HealthChecker.finding(:missing_sheet_shortcut, %{sheet_id: 1})], sheet: %{name: "   "})
+      payload = payload([Health.finding(:missing_sheet_shortcut, %{sheet_id: 1})], sheet: %{name: "   "})
 
       assert label(payload, :errorItems) == "Ficha"
     end
@@ -106,7 +106,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpersTest do
   # ===========================================================================
 
   defp finding(code, block_id, block_type) do
-    HealthChecker.finding(code, %{sheet_id: 1, block_id: block_id, block_type: block_type})
+    Health.finding(code, %{sheet_id: 1, block_id: block_id, block_type: block_type})
   end
 
   defp block(id, type, label), do: %{id: id, type: type, config: %{"label" => label}}

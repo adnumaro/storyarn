@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Persistence.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.AssetMaterializationCache
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
@@ -21,7 +22,6 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workers.DeleteStorageObjectsWorker

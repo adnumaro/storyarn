@@ -69,14 +69,14 @@ msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:663
 #: lib/storyarn/scenes/versioning/versioning.ex:677
-#: lib/storyarn/sheets/versioning.ex:658
+#: lib/storyarn/sheets/versioning/versioning.ex:688
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:647
 #: lib/storyarn/scenes/versioning/versioning.ex:661
-#: lib/storyarn/sheets/versioning.ex:642
+#: lib/storyarn/sheets/versioning/versioning.ex:672
 #, elixir-autogen, elixir-format
 msgid "Initial version"
 msgstr ""
@@ -122,14 +122,14 @@ msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:674
 #: lib/storyarn/scenes/versioning/versioning.ex:688
-#: lib/storyarn/sheets/versioning.ex:669
+#: lib/storyarn/sheets/versioning/versioning.ex:699
 #, elixir-autogen, elixir-format
 msgid "%{added} added, %{modified} modified, %{removed} removed"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:667
 #: lib/storyarn/scenes/versioning/versioning.ex:681
-#: lib/storyarn/sheets/versioning.ex:662
+#: lib/storyarn/sheets/versioning/versioning.ex:692
 #, elixir-autogen, elixir-format
 msgid "No changes"
 msgstr ""

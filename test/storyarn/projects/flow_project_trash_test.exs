@@ -11,13 +11,13 @@ defmodule Storyarn.Projects.FlowProjectTrashTest do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Projects.FlowProjectTrash
+  alias Storyarn.Projects.Persistence.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Projects.Persistence.FlowEntityTrashReferenceRecord
   alias Storyarn.Projects.Persistence.FlowNodeRecord
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.LocalizedTextRecord
   alias Storyarn.Projects.Persistence.VariableReferenceRecord
   alias Storyarn.Repo
-  alias Storyarn.Sheets.EntityReference
 
   test "exact replacement suspends root and descendant references and reports affected Flows" do
     project = project_fixture(user_fixture())

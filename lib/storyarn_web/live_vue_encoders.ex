@@ -100,11 +100,11 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.SheetAvatar)
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.TableColumn)
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.TableRow)
-  # Sheet schemas associate to Sheet-owned persistence records; derive them so
-  # a preloaded association cannot turn an encodable struct into a crash. The
-  # asset record filters deletion metadata exactly like Storyarn.Projects.Assets.Asset.
-  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Persistence.AssetRecord, except: [:deleted_at])
-  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Persistence.ProjectRecord)
+  # Sheet schemas associate to Editor-owned read projections; derive them so a
+  # preloaded association cannot turn an encodable struct into a crash. The
+  # asset projection filters deletion metadata exactly like the owning asset.
+  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Editor.Data.AssetRecord, except: [:deleted_at])
+  Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Editor.Data.ProjectRecord)
 
   # Versioning
   Protocol.derive(LiveVue.Encoder, Storyarn.Sheets.Versioning.EntityVersionRecord)

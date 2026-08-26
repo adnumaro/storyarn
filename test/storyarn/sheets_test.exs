@@ -435,7 +435,7 @@ defmodule Storyarn.SheetsTest do
       _sheet1 = sheet_fixture(project, %{name: "Character Jaime"})
       _sheet2 = sheet_fixture(project, %{name: "Location Tavern"})
 
-      results = Sheets.SheetQueries.search_sheets(project.id, "Jaime")
+      results = Sheets.search_sheets(project.id, "Jaime")
 
       assert length(results) == 1
       assert Enum.at(results, 0).name == "Character Jaime"
@@ -447,7 +447,7 @@ defmodule Storyarn.SheetsTest do
       {:ok, sheet1} = Sheets.create_sheet(project, %{name: "Jaime", shortcut: "mc.jaime"})
       _sheet2 = sheet_fixture(project, %{name: "Tavern"})
 
-      results = Sheets.SheetQueries.search_sheets(project.id, "mc")
+      results = Sheets.search_sheets(project.id, "mc")
 
       assert length(results) == 1
       assert Enum.at(results, 0).id == sheet1.id
@@ -459,7 +459,7 @@ defmodule Storyarn.SheetsTest do
       _sheet1 = sheet_fixture(project, %{name: "Sheet 1"})
       _sheet2 = sheet_fixture(project, %{name: "Sheet 2"})
 
-      results = Sheets.SheetQueries.search_sheets(project.id, "")
+      results = Sheets.search_sheets(project.id, "")
 
       assert length(results) == 2
     end
@@ -595,7 +595,7 @@ defmodule Storyarn.SheetsTest do
   end
 
   describe "reference tracking" do
-    alias Storyarn.Sheets.ReferenceTracker
+    alias Storyarn.Sheets.References
 
     test "update_block_references/1 creates reference for reference block" do
       user = user_fixture()
@@ -609,9 +609,9 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
         })
 
-      ReferenceTracker.update_block_references(block)
+      References.update_block_references(block)
 
-      backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
+      backlinks = References.get_backlinks("sheet", target_sheet.id)
       assert length(backlinks) == 1
       assert Enum.at(backlinks, 0).source_id == block.id
       assert Enum.at(backlinks, 0).target_id == target_sheet.id
@@ -633,9 +633,9 @@ defmodule Storyarn.SheetsTest do
           value: %{"content" => mention_html}
         })
 
-      ReferenceTracker.update_block_references(block)
+      References.update_block_references(block)
 
-      backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
+      backlinks = References.get_backlinks("sheet", target_sheet.id)
       assert length(backlinks) == 1
     end
 
@@ -652,18 +652,18 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target1.id}
         })
 
-      ReferenceTracker.update_block_references(block)
+      References.update_block_references(block)
 
       # Update to point to target2
       {:ok, updated_block} =
         Sheets.update_block_value(block, %{"target_type" => "sheet", "target_id" => target2.id})
 
-      ReferenceTracker.update_block_references(updated_block)
+      References.update_block_references(updated_block)
 
       # Old reference should be removed
-      assert ReferenceTracker.get_backlinks("sheet", target1.id) == []
+      assert References.get_backlinks("sheet", target1.id) == []
       # New reference should exist
-      assert length(ReferenceTracker.get_backlinks("sheet", target2.id)) == 1
+      assert length(References.get_backlinks("sheet", target2.id)) == 1
     end
 
     test "delete_block_references/1 removes all references from block" do
@@ -678,11 +678,11 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
         })
 
-      ReferenceTracker.update_block_references(block)
-      assert length(ReferenceTracker.get_backlinks("sheet", target_sheet.id)) == 1
+      References.update_block_references(block)
+      assert length(References.get_backlinks("sheet", target_sheet.id)) == 1
 
-      ReferenceTracker.delete_block_references(block.id)
-      assert ReferenceTracker.get_backlinks("sheet", target_sheet.id) == []
+      References.delete_block_references(block.id)
+      assert References.get_backlinks("sheet", target_sheet.id) == []
     end
 
     test "count_backlinks/2 returns correct count" do
@@ -704,8 +704,8 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
         })
 
-      ReferenceTracker.update_block_references(block1)
-      ReferenceTracker.update_block_references(block2)
+      References.update_block_references(block1)
+      References.update_block_references(block2)
 
       assert Sheets.count_backlinks("sheet", target_sheet.id) == 2
     end
@@ -723,7 +723,7 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
         })
 
-      ReferenceTracker.update_block_references(block)
+      References.update_block_references(block)
 
       backlinks = Sheets.get_backlinks_with_sources("sheet", target_sheet.id, project.id)
 
@@ -1093,7 +1093,7 @@ defmodule Storyarn.SheetsTest do
 
       {:ok, _} = Sheets.trash_sheet(sheet2)
 
-      results = Sheets.SheetQueries.search_sheets(project.id, "Character")
+      results = Sheets.search_sheets(project.id, "Character")
 
       assert length(results) == 1
       assert Enum.at(results, 0).name == "Active Character"
@@ -1410,7 +1410,7 @@ defmodule Storyarn.SheetsTest do
   end
 
   describe "delete_target_references/2" do
-    alias Storyarn.Sheets.ReferenceTracker
+    alias Storyarn.Sheets.References
 
     test "retains references from live blocks for stale-target health checks" do
       user = user_fixture()
@@ -1424,7 +1424,7 @@ defmodule Storyarn.SheetsTest do
           value: %{"target_type" => "sheet", "target_id" => target_sheet.id}
         })
 
-      ReferenceTracker.update_block_references(block)
+      References.update_block_references(block)
       assert Sheets.count_backlinks("sheet", target_sheet.id) == 1
 
       Sheets.delete_target_references("sheet", target_sheet.id)
@@ -1433,7 +1433,7 @@ defmodule Storyarn.SheetsTest do
   end
 
   describe "update_flow_node_references/1" do
-    alias Storyarn.Sheets.ReferenceTracker
+    alias Storyarn.Sheets.References
 
     test "creates references from flow node with speaker_sheet_id" do
       user = user_fixture()
@@ -1447,15 +1447,15 @@ defmodule Storyarn.SheetsTest do
           data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
         })
 
-      ReferenceTracker.update_flow_node_references(node)
+      References.update_flow_node_references(node)
 
-      backlinks = ReferenceTracker.get_backlinks("sheet", target_sheet.id)
+      backlinks = References.get_backlinks("sheet", target_sheet.id)
       assert backlinks != []
       assert Enum.any?(backlinks, &(&1.source_type == "flow_node"))
     end
 
     test "returns :ok for node without data map" do
-      assert ReferenceTracker.update_flow_node_references(%{id: 1, data: nil}) == :ok
+      assert References.update_flow_node_references(%{id: 1, data: nil}) == :ok
     end
   end
 

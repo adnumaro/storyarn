@@ -12,7 +12,7 @@ msgid ""
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:240
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:286
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:285
 #, elixir-autogen, elixir-format
 msgid "%{count} missing %{type}"
 msgid_plural "%{count} missing %{type}"
@@ -21,7 +21,7 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning.ex:742
 #: lib/storyarn/scenes/versioning/versioning.ex:756
-#: lib/storyarn/sheets/versioning.ex:737
+#: lib/storyarn/sheets/versioning/versioning.ex:767
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
 msgstr ""
@@ -77,7 +77,7 @@ msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:836
 #: lib/storyarn/scenes/versioning/versioning.ex:850
-#: lib/storyarn/sheets/versioning.ex:831
+#: lib/storyarn/sheets/versioning/versioning.ex:861
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr ""
@@ -126,14 +126,14 @@ msgid "Version not found."
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:254
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:302
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:301
 #, elixir-autogen, elixir-format
 msgid "asset"
 msgid_plural "assets"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:310
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:309
 #, elixir-autogen, elixir-format
 msgid "block"
 msgid_plural "blocks"
@@ -141,7 +141,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:256
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:306
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:305
 #, elixir-autogen, elixir-format
 msgid "flow"
 msgid_plural "flows"
@@ -149,7 +149,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:257
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:308
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:307
 #, elixir-autogen, elixir-format
 msgid "scene"
 msgid_plural "scenes"
@@ -157,7 +157,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:255
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:304
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:303
 #, elixir-autogen, elixir-format
 msgid "sheet"
 msgid_plural "sheets"
@@ -166,7 +166,7 @@ msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:235
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:248
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:294
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:293
 #, elixir-autogen, elixir-format
 msgid "shortcut collision"
 msgstr ""
@@ -201,14 +201,14 @@ msgstr ""
 msgid "Version unavailable"
 msgstr ""
 
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:314
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:313
 #, elixir-autogen, elixir-format
 msgid "avatar"
 msgid_plural "avatars"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:312
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:311
 #, elixir-autogen, elixir-format
 msgid "reference"
 msgid_plural "references"
@@ -272,7 +272,7 @@ msgid "referenced"
 msgstr ""
 
 #: lib/storyarn/scenes/versioning/execution/conflicts.ex:258
-#: lib/storyarn/sheets/versioning/conflict_detector.ex:316
+#: lib/storyarn/sheets/versioning/execution/conflicts.ex:315
 #, elixir-autogen, elixir-format
 msgid "variable"
 msgid_plural "variables"

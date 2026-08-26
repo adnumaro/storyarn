@@ -92,7 +92,7 @@ defmodule Storyarn.Projects.SheetInheritanceAudit do
   decoding the rows and their `cells` maps a second time.
 
   Accepts the `%{block_id => %{columns: columns, rows: rows}}` shape returned by
-  `Storyarn.Sheets.TableCrud.batch_load_table_data/1`. The returned lists share
+  `Storyarn.Sheets.batch_load_table_data/1`. The returned lists share
   the already-loaded structs; only the outer structure map is rebuilt.
   """
   @spec table_structures_from_data(%{

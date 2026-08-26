@@ -588,6 +588,86 @@ localization_worker_facade_denial = %{
   reason: "Localization workers must orchestrate through the Storyarn.Localization facade"
 }
 
+# Sheets is one bounded context split by business capability. Stable Sheet
+# entities and value contracts may cross capability lines; operational roles
+# and consumer-owned SQL projections remain private to their owner.
+sheet_capabilities = ~w(access ai assets editor health localization logic references versioning)
+sheet_private_roles = ~w(adapters commands queries rules data execution events)
+
+sheet_internal_path_denials =
+  for source_capability <- sheet_capabilities,
+      target_capability <- sheet_capabilities -- [source_capability],
+      private_role <- sheet_private_roles do
+    %{
+      source_root: "lib/storyarn/sheets/#{source_capability}/",
+      target_root: "lib/storyarn/sheets/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Sheet capabilities may consume another capability only through its facade or stable entities and contracts"
+    }
+  end
+
+sheet_root_facade_path_denials =
+  for capability <- sheet_capabilities,
+      private_role <- sheet_private_roles do
+    %{
+      source_root: "lib/storyarn/sheets.ex",
+      target_root: "lib/storyarn/sheets/#{capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason:
+        "The Storyarn.Sheets facade composes capability facades, stable entities, and contracts rather than private implementation roles"
+    }
+  end
+
+# Folder roles express useful dependency direction without imposing a port for
+# every function. Commands may coordinate local queries and adapters, while
+# passive models and reads cannot become hidden effectful orchestrators.
+sheet_role_dependency_denials =
+  for capability <- sheet_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "execution"},
+        {"queries", "events"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "execution"},
+        {"data", "events"},
+        {"data", "adapters"},
+        {"data", "rules"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "execution"},
+        {"entities", "events"},
+        {"entities", "adapters"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "execution"},
+        {"contracts", "events"},
+        {"contracts", "adapters"},
+        {"events", "commands"},
+        {"events", "queries"},
+        {"events", "execution"},
+        {"events", "adapters"},
+        {"events", "rules"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "execution"},
+        {"adapters", "events"},
+        {"adapters", "rules"}
+      ] do
+    %{
+      source_root: "lib/storyarn/sheets/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/sheets/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Sheet role folders must preserve read, policy, data, event, execution, and adapter direction"
+    }
+  end
+
 # Scenes is one bounded context split by business capability. Stable Scene
 # entities and value contracts may cross capability lines; operational roles
 # and consumer-owned SQL projections remain private to their owner.
@@ -726,6 +806,9 @@ policy = %{
       localization_internal_path_denials ++
       localization_role_dependency_denials ++
       [localization_worker_facade_denial] ++
+      sheet_internal_path_denials ++
+      sheet_root_facade_path_denials ++
+      sheet_role_dependency_denials ++
       scene_internal_path_denials ++
       scene_root_facade_path_denials ++ scene_role_dependency_denials,
 
@@ -867,19 +950,19 @@ policy = %{
       reason: "Flows exports the public AI subject reference in its implementation"
     },
     %{
-      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/contract.ex",
       kinds: ["runtime"],
       reason: "Sheets implements the exact public AI context-builder contract"
     },
     %{
-      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/policy.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI context policy value in its implementation"
     },
     %{
-      source: "lib/storyarn/sheets/ai/context_contract.ex",
+      source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
       target: "lib/storyarn/ai/context/subject_ref.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI subject reference in its implementation"
@@ -1256,28 +1339,46 @@ policy = %{
       reason: "Scene Versioning publishes its owned business facts through the Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/sheets/asset_commands.ex",
+      source: "lib/storyarn/sheets/assets/commands/assets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Sheets applies the Platform-owned storage entitlement to Sheet asset writes and restores"
+      reason: "Sheet asset writes apply the Platform-owned storage entitlement"
     },
     %{
-      source: "lib/storyarn/sheets/events.ex",
+      source: "lib/storyarn/sheets/assets/events/assets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Sheets publishes owned business facts through the public Platform reaction contract"
+      reason: "Sheet Assets publishes its owned business facts through the Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/sheets/limits.ex",
+      source: "lib/storyarn/sheets/editor/commands/item_capacity.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Sheets applies Platform-owned commercial entitlements to Sheet operations"
+      reason: "The Sheet editor applies the Platform-owned project item entitlement"
     },
     %{
-      source: "lib/storyarn/sheets/sheet_crud.ex",
+      source: "lib/storyarn/sheets/editor/commands/sheets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Sheet mutations request durable notification delivery through the public Platform contract"
+    },
+    %{
+      source: "lib/storyarn/sheets/editor/events/blocks.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "The Sheet editor publishes its owned block facts through the Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/commands/named_version_capacity.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheet Versioning applies the Platform-owned named-version entitlement"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/events/versions.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Sheet Versioning publishes its owned business facts through the Platform reaction contract"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",

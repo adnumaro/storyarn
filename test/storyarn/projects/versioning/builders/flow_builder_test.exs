@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Persistence.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: ProjectFlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -27,7 +28,6 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
-  alias Storyarn.Sheets.EntityReference
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Workers.DeleteStorageObjectsWorker
 

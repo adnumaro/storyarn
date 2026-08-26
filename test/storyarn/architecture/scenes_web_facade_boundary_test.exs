@@ -3,7 +3,6 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
 
   alias Storyarn.Projects.Versioning.Builders.SceneBuilder
   alias Storyarn.Scenes.Versioning.SceneSnapshot
-  alias Storyarn.Sheets.ReferenceTracker
 
   @scene_web_sources [
     "lib/storyarn_web/live/scene_sidebar_live.ex"
@@ -62,12 +61,6 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
       {Storyarn.Sheets, :delete_map_zone_references, 1},
       {Storyarn.Sheets, :update_scene_pin_references, 1},
       {Storyarn.Sheets, :delete_map_pin_references, 1},
-      {ReferenceTracker, :update_scene_zone_references, 1},
-      {ReferenceTracker, :update_scene_zone_references, 2},
-      {ReferenceTracker, :delete_map_zone_references, 1},
-      {ReferenceTracker, :update_scene_pin_references, 1},
-      {ReferenceTracker, :update_scene_pin_references, 2},
-      {ReferenceTracker, :delete_map_pin_references, 1},
       {SceneBuilder, :restore_snapshot, 2},
       {SceneBuilder, :restore_snapshot, 3},
       {SceneSnapshot, :build_capture_snapshot, 1},

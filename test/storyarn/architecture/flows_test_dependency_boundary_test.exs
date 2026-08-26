@@ -59,8 +59,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     ],
     "test/storyarn/flows/flow_restore_integrity_test.exs" => [
       "Storyarn.Scenes",
-      "Storyarn.Sheets",
-      "Storyarn.Sheets.EntityReference"
+      "Storyarn.Sheets"
     ],
     "test/storyarn/flows/named_version_limit_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
@@ -79,8 +78,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn/flows/node_restore_integrity_test.exs" => [
       "Storyarn.Localization.RuntimeKey",
       "Storyarn.Projects.References",
-      "Storyarn.Sheets",
-      "Storyarn.Sheets.EntityReference"
+      "Storyarn.Sheets"
     ],
     "test/storyarn/flows/node_update_batch_test.exs" => [
       "Storyarn.Sheets"
@@ -103,8 +101,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Assets.Asset",
       "Storyarn.Projects.Assets.BlobStore",
       "Storyarn.Projects.Project",
-      "Storyarn.Projects.References",
-      "Storyarn.Sheets.EntityReference"
+      "Storyarn.Projects.References"
     ],
     "test/storyarn/flows/versioning/snapshot_storage_test.exs" => [
       "Storyarn.Projects.Assets.Storage",
@@ -125,8 +122,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn/flows/writer_reference_integrity_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Projects",
-      "Storyarn.Scenes",
-      "Storyarn.Sheets.EntityReference"
+      "Storyarn.Scenes"
     ],
     "test/storyarn_web/live/flow_live/player/player_live_test.exs" => [
       "Storyarn.Sheets"
@@ -139,7 +135,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn/scenes/exploration/execution/formula_runtime_test.exs" => [
       "Storyarn.Flows.FormulaRuntime"
     ],
-    "test/storyarn/sheets/versioning/sheet_snapshot_contract_test.exs" => [
+    "test/storyarn/sheets/versioning/execution/sheet_snapshot_contract_test.exs" => [
       "Storyarn.Flows.EntityTrashRefs"
     ],
     "test/storyarn_web/live/restore_containment_test.exs" => [
