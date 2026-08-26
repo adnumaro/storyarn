@@ -1,0 +1,364 @@
+lib/storyarn/localization/languages/commands/add.ex
+  s_e9e5a90425bc26::t_cc30458ba69d06 9,60,110
+  s_e9e5a90425bc26::t_29c55a804ba122 45-48,129,131
+  s_e9e5a90425bc26::t_c785dfb0ab149a 1-8,10-44,49-59,61-109,111-128,130,132-152
+lib/storyarn/localization/README.md
+  s_e9e5a90425bc26::t_7f22e8272bb222 1-105
+lib/storyarn/localization/texts/rules/html_handler.ex
+  s_e9e5a90425bc26::t_3d0eedddf653bb 1
+  s_e9e5a90425bc26::t_73d61553482c5a 2
+lib/storyarn/localization/translation/data/user_record.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 1-15
+lib/storyarn/localization/glossary/glossary.ex
+  s_e9e5a90425bc26::t_dc6556d9740448 1-22
+test/storyarn/localization/exchange/exchange_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+lib/storyarn/localization/texts/data/flow_node_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1-3,5-7
+lib/storyarn/localization/texts/commands/extract.ex
+  s_e9e5a90425bc26::t_3b7926eebcc3c7 10,59,485-486
+  s_e9e5a90425bc26::t_d7277e2d268e07 601-605,607-609
+  s_e9e5a90425bc26::t_05fab5ce223399 606
+  s_e9e5a90425bc26::t_a5a804455161b0 1-2,6,11-18,50,78,197,217,227,240,245,249,324,336,344,359,371,447,492,510,515
+lib/storyarn/localization/texts/texts.ex
+  s_e9e5a90425bc26::t_3d0eedddf653bb 17,69-73
+  s_e9e5a90425bc26::t_0afb81664fa734 46
+  s_e9e5a90425bc26::t_6c3b26b6d93b2b 1-16,18-45,47-66,74-92
+  s_e9e5a90425bc26::t_e62a0c75243080 67-68
+lib/storyarn/localization/languages/data/project_record.ex
+  s_e9e5a90425bc26::t_d96d7bb158d68d 1-11,14-19,22-28
+  s_e9e5a90425bc26::t_789c3859df4e8a 12-13,20-21
+test/storyarn/localization/texts/queries/canonical_snapshot_inventory_test.exs
+  s_e9e5a90425bc26::t_44d308e9daba6c 11
+  s_95ce0f7eb3f7c4::t_f127492a07e928 1
+lib/storyarn/localization/glossary/execution/sync.ex
+  s_e9e5a90425bc26::t_dc6556d9740448 1,4-5,11,13-14,26-30,50,68-69,90,108,118,133
+lib/storyarn/localization/access/data/project_record.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-4,8
+test/storyarn/localization/languages/data/catalog_test.exs
+  s_e9e5a90425bc26::t_8977a279a6ccd7 6
+  s_e9e5a90425bc26::t_89bcfdd71db3b8 1
+lib/storyarn/localization/glossary/commands/entries.ex
+  s_e9e5a90425bc26::t_507696347e1bde 6,15,61
+  s_e9e5a90425bc26::t_dc6556d9740448 1,11,27,43,54-58
+lib/storyarn/localization/translation/queries/runs.ex
+  s_e9e5a90425bc26::t_96378d2859a15e 1-32
+lib/storyarn/localization/access/rules/effective_membership.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-15
+lib/storyarn/localization/texts/commands/update.ex
+  s_e9e5a90425bc26::t_29c55a804ba122 9
+  s_e9e5a90425bc26::t_34dcc4309e591e 48
+  s_e9e5a90425bc26::t_d00641a626eb90 1-7,10-47,49-150
+  s_e9e5a90425bc26::t_006df6f7ac31e7 8
+test/storyarn/localization/reporting/queries/reports_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+  s_e9e5a90425bc26::t_78f047f1565a58 9
+test/storyarn/projects/versioning/project_recovery_test.exs
+  s_e9e5a90425bc26::t_c097862898c9f5 314,2755
+test/storyarn/localization/texts/commands/extraction_boundary_test.exs
+  s_e9e5a90425bc26::t_6eb306ff713ecb 1
+lib/storyarn/localization/texts/data/user_record.ex
+  s_e9e5a90425bc26::t_b9a86d83e95e73 2-3,5-7
+  s_e9e5a90425bc26::t_56f5402c8776d8 1
+test/storyarn/localization/exchange/rules/export_policy_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+  s_e9e5a90425bc26::t_78f047f1565a58 4
+test/storyarn/localization/glossary/commands/synchronize_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+lib/storyarn/localization/reporting/data/project_language_record.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-19
+test/storyarn/architecture/localization_projection_associations_test.exs
+  s_e9e5a90425bc26::t_44d308e9daba6c 1,4,6,10-17,20-23,25-29,31-33
+lib/storyarn/localization/glossary/data/project_record.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 1-15
+lib/storyarn/localization/exchange/commands/import_csv.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1,4-5,7,9-11,13-17,25,38,40,47,54-56,60-62,64-65,74,86-88,90,92-94,103-105
+lib/storyarn/localization/translation/data/project_record.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 1-15
+lib/storyarn/localization/texts/adapters/locks/postgres.ex
+  s_e9e5a90425bc26::t_3b7926eebcc3c7 1-21
+test/storyarn/projects/versioning/localization_snapshot_codec_test.exs
+  s_e9e5a90425bc26::t_1abc452a714aad 70-71
+  s_e9e5a90425bc26::t_49ab824423a77c 68-69
+  s_e9e5a90425bc26::t_d3e72d24194e20 72-73
+lib/storyarn/localization/languages/contracts/locale_code.ex
+  s_e9e5a90425bc26::t_c3db7662a03ddb 9-11
+lib/storyarn/localization/texts/contracts/runtime_key.ex
+  s_e9e5a90425bc26::t_73d61553482c5a 3
+lib/storyarn/localization/languages/data/localized_text_record.ex
+  s_e9e5a90425bc26::t_ab53f66d425994 1-17
+lib/storyarn/localization/texts/commands/upsert.ex
+  s_e9e5a90425bc26::t_29c55a804ba122 7
+  s_e9e5a90425bc26::t_006df6f7ac31e7 6
+  s_e9e5a90425bc26::t_d00641a626eb90 1-5,8-20,22-105
+  s_e9e5a90425bc26::t_34dcc4309e591e 21
+test/storyarn/architecture/localization_internal_structure_test.exs
+  s_e9e5a90425bc26::t_4eed085be500ac 1-17,19-41,43-82,87-117,119-180
+  s_e9e5a90425bc26::t_3f218299ad7e0e 42
+  s_e9e5a90425bc26::t_30ba5603b3655c 18,83-86,118
+lib/storyarn/localization/reporting/data/localized_text_record.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-25
+lib/storyarn/localization/access/access.ex
+  s_e9e5a90425bc26::t_507696347e1bde 4
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-3,5-20
+lib/storyarn/localization/exchange/exchange.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-30
+lib/storyarn/localization/exchange/rules/csv.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-129
+lib/storyarn/localization/exchange/rules/export_policy.ex
+  s_e9e5a90425bc26::t_78f047f1565a58 1
+test/storyarn/localization/access/queries/projects_test.exs
+  s_e9e5a90425bc26::t_44d308e9daba6c 9-11
+  s_95ce0f7eb3f7c4::t_4210fdbf73593c 1
+lib/storyarn/localization/languages/commands/update.ex
+  s_e9e5a90425bc26::t_cc30458ba69d06 6,15
+  s_e9e5a90425bc26::t_ec14e9cbb575b8 1-5,7-14,16-27
+lib/storyarn/localization/languages/commands/import.ex
+  s_e9e5a90425bc26::t_49dc1f7ac992ae 1-12
+lib/storyarn/localization/texts/commands/translation_attributes.ex
+  s_e9e5a90425bc26::t_006df6f7ac31e7 1-85,87-121
+  s_e9e5a90425bc26::t_29c55a804ba122 86
+test/storyarn/localization/texts/commands/writer_concurrency_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+lib/storyarn/localization/exchange/queries/exports.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-13
+lib/storyarn/localization/texts/commands/reconcile.ex
+  s_e9e5a90425bc26::t_aaa34a27380a00 135
+  s_e9e5a90425bc26::t_d00641a626eb90 1-7,10-67,69-134,136-144
+  s_e9e5a90425bc26::t_85de20cbf576cf 8,68
+  s_e9e5a90425bc26::t_006df6f7ac31e7 9
+lib/storyarn/localization/translation/commands/runs.ex
+  s_e9e5a90425bc26::t_29c55a804ba122 9
+  s_e9e5a90425bc26::t_15d7184a398036 1,7-8,10-12,24,59,62,80,84,97
+  s_e9e5a90425bc26::t_76a52f51b36a37 37
+  s_e9e5a90425bc26::t_c49d8bd5c43a2e 81
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_7514cb1f57c890 1128-1134,1137
+  s_e9e5a90425bc26::t_fd337320b3a9f2 527-573,575-590,644-647
+  s_e9e5a90425bc26::t_3f218299ad7e0e 574
+lib/storyarn/localization/access/data/project_membership_record.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-4
+lib/storyarn/localization/texts/adapters/upserts/postgres.ex
+  s_e9e5a90425bc26::t_85de20cbf576cf 1-98
+lib/storyarn/localization/languages/languages.ex
+  s_e9e5a90425bc26::t_29c55a804ba122 31
+  s_e9e5a90425bc26::t_f0a4edfff6558f 1-30,32-46
+lib/storyarn/localization/providers/commands/glossary_state.ex
+  s_e9e5a90425bc26::t_507696347e1bde 6,76
+  s_e9e5a90425bc26::t_67ddf2b69fed85 1-5,7-75,77-103
+test/storyarn/localization/texts/commands/writer_reference_integrity_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+lib/storyarn/localization/translation/adapters/notifications/delivery.ex
+  s_e9e5a90425bc26::t_96378d2859a15e 1-14
+lib/storyarn/localization/translation/translation.ex
+  s_e9e5a90425bc26::t_3ffbdf6d6de73b 4,26-27
+  s_e9e5a90425bc26::t_9f327ce216e9f0 1,5-8,10,12-25,28-29
+lib/storyarn/localization/access/data/sheet_record.ex
+  s_e9e5a90425bc26::t_507696347e1bde 1-20
+lib/storyarn/localization/translation/execution/batch_translation_job.ex
+  s_e9e5a90425bc26::t_a7951948a5ad6a 1,4-6,9-10,20-23,30,46-52,55-59,72,79,97,99,113,115,162,170,194
+  s_e9e5a90425bc26::t_c49d8bd5c43a2e 7,44,73,87,120,124
+  s_e9e5a90425bc26::t_29c55a804ba122 8
+lib/storyarn/localization.ex
+  s_e9e5a90425bc26::t_bc9a8c50979ad5 392,396,401,416,435,438,445,449,451-453,456,459,462,465,468
+  s_e9e5a90425bc26::t_805cbbc1f9a1f1 278-279,283,287,292,297,301,304,307,315,319,323,331,335,341,347,352,356,360,364,372,376,380,384
+  s_e9e5a90425bc26::t_86796696596fc1 8-9,12-14,21-23,45,48
+  s_e9e5a90425bc26::t_a58452d8e8a8e9 56,60,64,68,72,76,81-82,88-89,94,99-100,105,110,117,124,130,134,139
+  s_e9e5a90425bc26::t_329bd85c92689c 147,151,155,159,163,167,170,174,177-178,182,186,190,194,198,201,204,212,216,220,223,226,231,235,239,243,247,250,254,258,262,266,270
+test/storyarn/localization/access/commands/reference_integrity_test.exs
+  s_e9e5a90425bc26::t_2528d72218844e 9-10,17,30,35,45,64
+  s_e9e5a90425bc26::t_a9d3cf001d61ee 1
+test/storyarn/localization/languages/commands/concurrency_test.exs
+  s_e9e5a90425bc26::t_29c55a804ba122 13
+  s_e9e5a90425bc26::t_631a683de9abf4 1,58,144
+test/storyarn/localization/texts/commands/extract_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+  s_8ebd33a8a50446::t_8f3961d5d891d0 15,646,857,865,890,904-905,926,943,960,985,1110,1121,1140,1158,1170
+test/storyarn/localization/translation/execution/batch_translator_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+  s_8ebd33a8a50446::t_c663812e3be9a9 10,86-87,113-114,166-167
+lib/storyarn/localization/languages/commands/ensure_source.ex
+  s_e9e5a90425bc26::t_49dc1f7ac992ae 1-28
+lib/storyarn/localization/texts/data/language_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1-18
+lib/storyarn/localization/texts/queries/batch_translation.ex
+  s_e9e5a90425bc26::t_bf4c931fc09abe 1-44
+lib/storyarn/localization/reporting/queries/reports.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 6-8,26,34,45,83,107,132
+  s_e9e5a90425bc26::t_78f047f1565a58 1
+lib/storyarn/localization/languages/adapters/notifications/delivery.ex
+  s_e9e5a90425bc26::t_8da4ccc1384800 1
+lib/storyarn/localization/providers/queries/configuration.ex
+  s_e9e5a90425bc26::t_67ddf2b69fed85 1-31
+lib/storyarn/localization/languages/commands/remove.ex
+  s_e9e5a90425bc26::t_dc28d4a9ee470c 1-6,9-31,33-77,79,81-83
+  s_e9e5a90425bc26::t_cc30458ba69d06 7-8,32,78,80
+lib/storyarn/localization/providers/adapters/deep_l.ex
+  s_e9e5a90425bc26::t_3d0eedddf653bb 7,197,200,263,281
+lib/storyarn/localization/texts/data/project_record.ex
+  s_e9e5a90425bc26::t_b9a86d83e95e73 2-7
+  s_e9e5a90425bc26::t_56f5402c8776d8 1,8-28
+lib/storyarn/localization/texts/queries/runtime_inventory.ex
+  s_e9e5a90425bc26::t_8784e968f7a7e3 1-88,98-103
+  s_e9e5a90425bc26::t_e10851f1591658 89-97
+test/storyarn/localization/translation/execution/worker_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+  s_e9e5a90425bc26::t_ac320c9be6962e 12,42,125,131,182,197
+lib/storyarn/localization/providers/data/project_record.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 1-16
+lib/storyarn/localization/access/queries/projects.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1,6-9,49-51,56
+test/storyarn/localization/facade_contract_test.exs
+  s_e9e5a90425bc26::t_22f435f0c19de6 1-124,127-132
+  s_e9e5a90425bc26::t_29c55a804ba122 125-126
+lib/storyarn/localization/providers/commands/configuration.ex
+  s_e9e5a90425bc26::t_507696347e1bde 6,17
+  s_e9e5a90425bc26::t_67ddf2b69fed85 1-5,7-16,18-57
+lib/storyarn/localization/texts/commands/create.ex
+  s_e9e5a90425bc26::t_d00641a626eb90 1-4,6-12,15-20
+  s_e9e5a90425bc26::t_006df6f7ac31e7 5
+  s_e9e5a90425bc26::t_34dcc4309e591e 13-14
+lib/storyarn/localization/translation/adapters/jobs/translation_job_queue.ex
+  s_e9e5a90425bc26::t_76a52f51b36a37 19-25
+  s_e9e5a90425bc26::t_96378d2859a15e 18,26-28
+lib/storyarn/localization/languages/adapters/positions/postgres.ex
+  s_e9e5a90425bc26::t_8da4ccc1384800 1
+lib/storyarn/localization/access/data/workspace_record.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-4
+lib/storyarn/localization/texts/data/block_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1-3,5-7,10
+lib/storyarn/localization/texts/data/sheet_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1-5
+lib/storyarn/localization/providers/entities/provider_config.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 20
+lib/storyarn/localization/exchange/adapters/xlsx/encoder.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-50
+lib/storyarn/localization/reporting/data/sheet_record.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-15
+lib/storyarn/localization/texts/contracts/source_contract.ex
+  s_e9e5a90425bc26::t_73d61553482c5a 3
+lib/storyarn/localization/texts/data/flow_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1
+  s_e9e5a90425bc26::t_b9a86d83e95e73 2-3,5-7
+lib/storyarn/localization/languages/commands/change_source.ex
+  s_e9e5a90425bc26::t_f5a7acdfdf1d25 1,6-11,19,22,25,27,30,32,35,38,40,46,48,50,58,61,66,70-71,88,104-108,127,142-146,150,155-180,185-188,200,202,205
+  s_e9e5a90425bc26::t_cc30458ba69d06 14,67,72
+  s_e9e5a90425bc26::t_1cd9f45572e767 201
+lib/storyarn/localization/access/commands/project_reference_integrity.ex
+  s_e9e5a90425bc26::t_507696347e1bde 1,6-8
+lib/storyarn/localization/translation/execution/batch_translator.ex
+  s_e9e5a90425bc26::t_7bdf627abecb68 201
+  s_e9e5a90425bc26::t_3c1dc2dc509eb1 62,64
+  s_e9e5a90425bc26::t_3c900cf60fd8e0 1,4-6,20,24,31,48,50,65-66,70,84,98,135,137,148,152,178-179,185-186,192,194
+lib/storyarn/localization/languages/commands/locks.ex
+  s_e9e5a90425bc26::t_2b1629f2a46846 1-31
+lib/storyarn/localization/languages/commands/reorder.ex
+  s_e9e5a90425bc26::t_49dc1f7ac992ae 1-36
+lib/storyarn/localization/texts/queries/texts.ex
+  s_e9e5a90425bc26::t_bf4c931fc09abe 1-130
+lib/storyarn/localization/languages/queries/languages.ex
+  s_e9e5a90425bc26::t_ab53f66d425994 6-97
+  s_e9e5a90425bc26::t_fa47f40a340f4b 3-5
+  s_e9e5a90425bc26::t_146d15d027d643 98-99
+  s_95ce0f7eb3f7c4::t_b9dd4324a22e47 1-2
+lib/storyarn/localization/reporting/reporting.ex
+  s_e9e5a90425bc26::t_e357c139bf256f 1-3,5-10
+  s_e9e5a90425bc26::t_78f047f1565a58 4
+lib/storyarn/localization/texts/commands/lifecycle.ex
+  s_e9e5a90425bc26::t_d00641a626eb90 1-107,113
+  s_e9e5a90425bc26::t_0afb81664fa734 108-112
+lib/storyarn/localization/translation/adapters/pub_sub/broadcaster.ex
+  s_e9e5a90425bc26::t_3ffbdf6d6de73b 1-17
+lib/storyarn/localization/translation/entities/translation_run.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 8-9
+test/storyarn/localization/glossary/commands/crud_test.exs
+  s_e9e5a90425bc26::t_514e3e4b3b17be 1
+lib/storyarn/localization/access/queries/memberships.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-34
+lib/storyarn/localization/languages/data/workspace_record.ex
+  s_e9e5a90425bc26::t_f32452282d0fa0 10,15
+  s_e9e5a90425bc26::t_d96d7bb158d68d 1-9,11-14,16-20
+lib/storyarn/localization/providers/providers.ex
+  s_e9e5a90425bc26::t_67ddf2b69fed85 1-36
+lib/storyarn/localization/texts/entities/localized_text.ex
+  s_e9e5a90425bc26::t_73d61553482c5a 25-28
+  s_e9e5a90425bc26::t_29c55a804ba122 29
+lib/storyarn/localization/glossary/queries/entries.ex
+  s_e9e5a90425bc26::t_dc6556d9740448 1-68
+lib/storyarn/localization/access/data/workspace_membership_record.ex
+  s_e9e5a90425bc26::t_6cfe9f5b55180e 1-4
+lib/storyarn/localization/texts/data/workspace_record.ex
+  s_e9e5a90425bc26::t_b9a86d83e95e73 2-7
+  s_e9e5a90425bc26::t_f1737b50564433 10-15,20
+  s_e9e5a90425bc26::t_56f5402c8776d8 1,8-9,16-19,21-23
+lib/storyarn/localization/glossary/entities/glossary_entry.ex
+  s_e9e5a90425bc26::t_6a583fa73b1644 20
+lib/storyarn/localization/languages/entities/project_language.ex
+  s_e9e5a90425bc26::t_d96d7bb158d68d 19
+test/storyarn/localization/texts/rules/html_handler_test.exs
+  s_e9e5a90425bc26::t_3d0eedddf653bb 4
+  s_e9e5a90425bc26::t_d487f4174c6e82 1
+lib/storyarn/localization/access/data/asset_record.ex
+  s_e9e5a90425bc26::t_507696347e1bde 1-4
+lib/storyarn/localization/languages/data/catalog.ex
+  s_e9e5a90425bc26::t_a4145c29187065 1
+lib/storyarn/localization/texts/queries/export_inventory.ex
+  s_e9e5a90425bc26::t_2074a10421c7a9 1-2,9-13,82
+lib/storyarn/localization/texts/data/asset_record.ex
+  s_e9e5a90425bc26::t_56f5402c8776d8 1-23
+lib/storyarn/platform/shared/string_utils.ex
+  s_95ce0f7eb3f7c4::t_466ee187bc9005 16
+test/storyarn/localization/facade_test.exs
+  s_e9e5a90425bc26::t_560e6389afb454 1-1236
+test/storyarn/localization/languages/adapters/notifications/delivery_test.exs
+  s_6a5de29d76f197::t_73bba31edf64e8 1
+test/storyarn/localization/languages/rules/locale_code_test.exs
+  s_6a5de29d76f197::t_6a9e6ebf91e087 1
+test/storyarn/localization/texts/commands/inventory_lock_test.exs
+  s_8ebd33a8a50446::t_2f1b2b0798ed6f 1-16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "8416f416be7777a6235e4755a958757dfc2d7b2f",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  },
+  "sessions": {
+    "s_6a5de29d76f197": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a99-848d-7d81-8e6d-7d8d35c342a8",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_8ebd33a8a50446": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03d10-d226-7e00-9b31-4bc2b1ff127b",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_95ce0f7eb3f7c4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a03a99-96d2-7293-9581-bcc665f97d2b",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
