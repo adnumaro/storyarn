@@ -11,7 +11,7 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorker do
   # sweep would occupy a slot a user import needs.
   use Oban.Worker, queue: :imports_maintenance, max_attempts: 3
 
-  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects
 
   @continuation_delay_seconds 1
   @retry_base_seconds 300
@@ -19,7 +19,7 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    perform_expiration(&Imports.expire_stale_imports_batch/0, &schedule_followup/0)
+    perform_expiration(&Projects.expire_stale_imports_batch/0, &schedule_followup/0)
   end
 
   @impl Oban.Worker

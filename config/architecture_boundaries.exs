@@ -60,25 +60,6 @@ boundaries = %{
     "lib/storyarn/projects.ex",
     "lib/storyarn/projects/",
     "lib/storyarn/workers/projects/",
-    "lib/storyarn/projects/assets.ex",
-    "lib/storyarn/projects/assets/",
-    "lib/storyarn/projects/references.ex",
-    "lib/storyarn/projects/references/",
-    "lib/storyarn/projects/invitation_notifier.ex",
-    "lib/storyarn/projects/invitation_operations.ex",
-    "lib/storyarn/projects/invitation_schema.ex",
-    "lib/storyarn/projects/membership_operations.ex",
-    "lib/storyarn/projects/versioning.ex",
-    "lib/storyarn/projects/versioning/",
-    "lib/storyarn/projects/exports.ex",
-    "lib/storyarn/projects/exports/",
-    "lib/storyarn/projects/imports.ex",
-    "lib/storyarn/projects/imports/",
-    "lib/storyarn/projects/project_templates.ex",
-    "lib/storyarn/projects/project_templates/",
-    "lib/storyarn/projects/name_normalizer.ex",
-    "lib/storyarn/projects/validations.ex",
-    "lib/storyarn/projects/word_count.ex",
     "lib/storyarn_web/controllers/export_controller.ex",
     "lib/storyarn_web/controllers/private_media_controller.ex",
     "lib/storyarn_web/controllers/snapshot_download_controller.ex",
@@ -130,10 +111,8 @@ boundaries = %{
     "lib/storyarn.ex",
     "lib/storyarn/application.ex",
     "lib/storyarn/architecture/",
-    "lib/storyarn/projects/assets/storage.ex",
-    "lib/storyarn/projects/assets/storage/",
-    "lib/storyarn/projects/assets/storage_hash.ex",
-    "lib/storyarn/projects/assets/storage_key_lock.ex",
+    "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+    "lib/storyarn/projects/assets/adapters/storage/",
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
     "lib/storyarn/public/blog/post_builder.ex",
@@ -372,6 +351,198 @@ workspace_worker_facade_denial = %{
   target_root: "lib/storyarn/workspaces/",
   kinds: ["runtime", "export", "compile"],
   reason: "Workspace workers must orchestrate through the Storyarn.Workspaces facade"
+}
+
+# Projects is one bounded context with nine business capabilities. `content/`
+# is deliberately not a tenth capability: it is a closed, Project-owned model
+# shared only by Projects internals for whole-project workflows. Stable
+# entities and contracts may cross capability lines;
+# operational role folders remain private unless an existing workflow requires
+# one of the explicit seams below.
+project_capabilities = ~w(lifecycle access assets overview trash references interchange templates versioning)
+
+project_private_role_roots = %{
+  "lifecycle" => ~w(commands data events rules),
+  "access" => ~w(commands delivery queries),
+  "assets" => ~w(adapters data execution queries rules),
+  "overview" => ~w(data execution queries rules),
+  "trash" => ~w(execution),
+  "references" => ~w(commands data execution queries rules),
+  "interchange" => ~w(
+    imports/adapters imports/commands imports/execution imports/queries imports/rules
+    exports/adapters exports/queries exports/rules
+  ),
+  "templates" => ~w(adapters commands execution queries rules),
+  "versioning" => ~w(adapters commands data execution queries rules)
+}
+
+# These are the inherited, currently exercised capability-to-role seams. The
+# checker still rejects every new private role dependency outside this matrix.
+# Removing a seam from code should be followed by removing its tuple here.
+project_private_role_compatibility =
+  MapSet.new([
+    {"access", "lifecycle", "data"},
+    {"access", "lifecycle", "rules"},
+    {"assets", "lifecycle", "data"},
+    {"assets", "lifecycle", "events"},
+    {"assets", "overview", "data"},
+    {"assets", "references", "commands"},
+    {"assets", "versioning", "data"},
+    {"assets", "versioning", "execution"},
+    {"interchange", "assets", "adapters"},
+    {"interchange", "lifecycle", "data"},
+    {"interchange", "lifecycle", "rules"},
+    {"interchange", "overview", "data"},
+    {"interchange", "overview", "queries"},
+    {"interchange", "references", "commands"},
+    {"interchange", "trash", "execution"},
+    {"interchange", "versioning", "adapters"},
+    {"interchange", "versioning", "execution"},
+    {"lifecycle", "access", "queries"},
+    {"lifecycle", "overview", "data"},
+    {"overview", "lifecycle", "rules"},
+    {"overview", "references", "data"},
+    {"overview", "references", "queries"},
+    {"references", "overview", "data"},
+    {"templates", "access", "queries"},
+    {"templates", "assets", "adapters"},
+    {"templates", "assets", "execution"},
+    {"templates", "lifecycle", "data"},
+    {"templates", "lifecycle", "events"},
+    {"templates", "lifecycle", "rules"},
+    {"templates", "overview", "data"},
+    {"templates", "versioning", "adapters"},
+    {"templates", "versioning", "execution"},
+    {"trash", "overview", "data"},
+    {"trash", "references", "commands"},
+    {"trash", "references", "data"},
+    {"trash", "references", "execution"},
+    {"trash", "versioning", "data"},
+    {"versioning", "access", "queries"},
+    {"versioning", "assets", "adapters"},
+    {"versioning", "assets", "execution"},
+    {"versioning", "assets", "queries"},
+    {"versioning", "lifecycle", "data"},
+    {"versioning", "lifecycle", "rules"},
+    {"versioning", "overview", "data"},
+    {"versioning", "overview", "queries"},
+    {"versioning", "references", "commands"},
+    {"versioning", "references", "queries"},
+    {"versioning", "references", "rules"},
+    {"versioning", "trash", "execution"}
+  ])
+
+project_internal_path_denials =
+  for source_capability <- project_capabilities,
+      target_capability <- project_capabilities -- [source_capability],
+      private_role_root <- Map.fetch!(project_private_role_roots, target_capability),
+      not MapSet.member?(
+        project_private_role_compatibility,
+        {source_capability, target_capability, private_role_root}
+      ) do
+    %{
+      source_root: "lib/storyarn/projects/#{source_capability}/",
+      target_root: "lib/storyarn/projects/#{target_capability}/#{private_role_root}/",
+      kinds: ["runtime", "export", "compile"],
+      reason:
+        "Project capabilities may consume another capability only through its facade, stable types, or an explicitly retained seam"
+    }
+  end
+
+# The root facade is declarative. ProjectTrash and SnapshotAccounting remain
+# exact public type identities in specs, so their containing role roots are
+# protected by the exact dependency test rather than a directory-wide denial.
+project_root_private_role_exceptions =
+  MapSet.new([{"trash", "execution"}, {"versioning", "queries"}])
+
+project_root_facade_path_denials =
+  for capability <- project_capabilities,
+      private_role_root <- Map.fetch!(project_private_role_roots, capability),
+      not MapSet.member?(project_root_private_role_exceptions, {capability, private_role_root}) do
+    %{
+      source_root: "lib/storyarn/projects.ex",
+      target_root: "lib/storyarn/projects/#{capability}/#{private_role_root}/",
+      kinds: ["runtime", "compile"],
+      reason:
+        "The Storyarn.Projects facade executes through capability facades; stable exported types retain their historical identities"
+    }
+  end
+
+project_content_root_facade_denial = %{
+  source_root: "lib/storyarn/projects.ex",
+  target_root: "lib/storyarn/projects/content/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Project-owned content models are internal and never part of the root facade contract"
+}
+
+# The roles here are directional responsibilities, not a hexagonal purity
+# exercise. The matrix protects only directions that are already true; legacy
+# snapshot entities and queries keep their observed orchestration until a
+# separate behavioral migration can remove it safely.
+project_role_scopes =
+  ~w(lifecycle access assets overview trash references templates versioning) ++
+    ~w(interchange/imports interchange/exports)
+
+# Consumer-local overview schemas use their capability's deterministic naming
+# and changeset rules. A few physically stable interchange identities also
+# dispatch to format or telemetry adapters. The role ratchet records only these
+# established scopes instead of asserting a direction the code does not satisfy.
+project_role_compatibility =
+  MapSet.new([
+    {"overview", "data", "rules"},
+    {"interchange/exports", "contracts", "adapters"},
+    {"interchange/exports", "rules", "adapters"},
+    {"interchange/imports", "rules", "adapters"}
+  ])
+
+project_role_dependency_denials =
+  for scope <- project_role_scopes,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "events"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "execution"},
+        {"data", "events"},
+        {"data", "adapters"},
+        {"data", "rules"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "events"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "events"},
+        {"contracts", "adapters"},
+        {"events", "commands"},
+        {"events", "queries"},
+        {"events", "execution"},
+        {"events", "adapters"},
+        {"events", "rules"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "events"}
+      ],
+      not MapSet.member?(project_role_compatibility, {scope, source_role, target_role}) do
+    %{
+      source_root: "lib/storyarn/projects/#{scope}/#{source_role}/",
+      target_root: "lib/storyarn/projects/#{scope}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason:
+        "Project role folders must preserve the already established read, policy, data, event, and adapter direction"
+    }
+  end
+
+projects_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/projects/",
+  target_root: "lib/storyarn/projects/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Project workers must orchestrate through the Storyarn.Projects facade"
 }
 
 # Localization is one bounded context split into cohesive internal capabilities.
@@ -957,6 +1128,11 @@ policy = %{
       workspace_role_dependency_denials ++
       workspace_query_adapter_denials ++
       [workspace_worker_facade_denial] ++
+      project_internal_path_denials ++
+      project_root_facade_path_denials ++
+      [project_content_root_facade_denial] ++
+      project_role_dependency_denials ++
+      [projects_worker_facade_denial] ++
       localization_internal_path_denials ++
       localization_role_dependency_denials ++
       [localization_worker_facade_denial] ++
@@ -1014,9 +1190,9 @@ policy = %{
   globally_allowed_technical_targets: [
     "lib/storyarn/repo.ex",
     "lib/storyarn/gettext.ex",
-    "lib/storyarn/projects/assets/storage.ex",
-    "lib/storyarn/projects/assets/storage_hash.ex",
-    "lib/storyarn/projects/assets/storage_key_lock.ex",
+    "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+    "lib/storyarn/projects/assets/adapters/storage/hash.ex",
+    "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
     "lib/storyarn/platform/discovery/dashboard_cache.ex",
     "lib/storyarn/platform/collaboration/collaboration.ex",
     "lib/storyarn/platform/adapters/email/layout.ex",
@@ -1228,191 +1404,191 @@ policy = %{
       reason: "The project scope hook loads the current project through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/projects/assets.ex",
+      source: "lib/storyarn/projects/assets/assets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/assets/asset_trash.ex",
+      source: "lib/storyarn/projects/assets/execution/asset_trash.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/assets/blob_store.ex",
+      source: "lib/storyarn/projects/assets/execution/blob_store.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/execution.ex",
+      source: "lib/storyarn/projects/interchange/imports/execution/execution.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason:
         "Project imports enforce storage policy and publish committed notifications through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/expiration.ex",
+      source: "lib/storyarn/projects/interchange/imports/commands/expiration.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project imports publish committed notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/materializer.ex",
+      source: "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project imports enforce storage policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/notification_delivery.ex",
+      source: "lib/storyarn/projects/interchange/imports/adapters/notifications/notification_delivery.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project imports prepare durable notification delivery through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/plan_storage.ex",
+      source: "lib/storyarn/projects/interchange/imports/adapters/storage/plan_storage.ex",
       target: "lib/storyarn/platform/adapters/security/vault.ex",
       kinds: ["runtime"],
       reason: "Import plan storage encrypts payloads with the application vault"
     },
     %{
-      source: "lib/storyarn/projects/imports/replacement.ex",
+      source: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project replacement imports coordinate storage locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/imports/resume.ex",
+      source: "lib/storyarn/projects/interchange/imports/commands/resume.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project imports publish committed notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/project_templates/installation.ex",
+      source: "lib/storyarn/projects/templates/execution/installation.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason:
         "Template installation enforces commercial policy and publishes notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/project_templates/publication_runner.ex",
+      source: "lib/storyarn/projects/templates/execution/publication_runner.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Template publication enforces commercial policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/project_crud.ex",
+      source: "lib/storyarn/projects/lifecycle/project_crud.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project lifecycle enforces commercial policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/platform_storage_reservations.ex",
+      source: "lib/storyarn/projects/versioning/adapters/platform/storage_reservations.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason:
         "The Projects anti-corruption layer exchanges transport-neutral storage receipts through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/project_trash.ex",
+      source: "lib/storyarn/projects/trash/execution/project_trash.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project lifecycle enforces commercial policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/invitation_email.ex",
+      source: "lib/storyarn/projects/access/delivery/invitation_email.ex",
       target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
       reason: "Project-owned invitation content uses the shared technical email layout"
     },
     %{
-      source: "lib/storyarn/projects/invitation_notifier.ex",
+      source: "lib/storyarn/projects/access/delivery/invitation_notifier.ex",
       target: "lib/storyarn/platform/adapters/email/mailer.ex",
       kinds: ["runtime"],
       reason: "Project invitation delivery goes through the application mailer"
     },
     %{
-      source: "lib/storyarn/projects/invitation_operations.ex",
+      source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project invitations enforce seat policy and request durable delivery through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning.ex",
+      source: "lib/storyarn/projects/versioning/versioning.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot storage lifecycle accounts usage and locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/materialization_helpers.ex",
+      source: "lib/storyarn/projects/versioning/execution/materialization_helpers.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot materialization accounts storage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_recovery.ex",
+      source: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project recovery coordinates storage locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_lease_policy.ex",
+      source: "lib/storyarn/projects/versioning/rules/project_snapshot_lease_policy.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project snapshot grants consume the lease policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_asset_materializer.ex",
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_asset_materializer.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot asset materialization accounts storage through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_build.ex",
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_build.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot builds coordinate storage and publish notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_crud.ex",
+      source: "lib/storyarn/projects/versioning/commands/project_snapshot_crud.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_download.ex",
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_download.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot downloads acquire storage leases through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex",
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot reconciliation repairs storage accounting through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/project_snapshot_restore_lifecycle.ex",
+      source: "lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Snapshot restore lifecycle accounts storage and locks through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/workspace_snapshot_imports.ex",
+      source: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason:
         "Workspace snapshot imports coordinate storage and publish notification outcomes through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/snapshot_accounting.ex",
+      source: "lib/storyarn/projects/versioning/queries/snapshot_accounting.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason:
@@ -1455,7 +1631,7 @@ policy = %{
       reason: "OTP composition root starts the public Flows supervisor"
     },
     %{
-      source: "lib/storyarn/projects/events.ex",
+      source: "lib/storyarn/projects/lifecycle/events/project_events.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "The Project boundary publishes owned business facts through the public Platform reaction contract"
@@ -1818,13 +1994,13 @@ policy = %{
       reason: "Scene mutations request durable notification delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/projects/project.ex",
+      source: "lib/storyarn/projects/lifecycle/entities/project.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Projects validates the Platform-owned product metric taxonomy through its public facade"
     },
     %{
-      source: "lib/storyarn/projects/localization_settings.ex",
+      source: "lib/storyarn/projects/lifecycle/commands/localization_settings.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project-owned localization settings request durable delivery through the public Platform contract"

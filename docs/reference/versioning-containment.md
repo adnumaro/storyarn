@@ -4,12 +4,12 @@
 >
 > Last reviewed: 2026-08-20
 >
-> Source of truth: `lib/storyarn/projects/versioning/project_snapshot_lifecycle.ex`,
-> `lib/storyarn/projects/versioning/snapshot_archive_storage.ex`,
-> `lib/storyarn/projects/versioning/snapshot_archive_smoke.ex`,
-> `lib/storyarn/projects/versioning/project_snapshot_reconciliation.ex`,
-> `lib/storyarn/projects/versioning/project_snapshot_reconciliation_repair.ex`,
-> `lib/storyarn/projects/assets/storage/`, `lib/storyarn/platform/adapters/release/release.ex`, and
+> Source of truth: `lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex`,
+> `lib/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage.ex`,
+> `lib/storyarn/projects/versioning/execution/snapshot_archive_smoke.ex`,
+> `lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex`,
+> `lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex`,
+> `lib/storyarn/projects/assets/adapters/storage/`, `lib/storyarn/platform/adapters/release/release.ex`, and
 > `lib/storyarn/workers/`, plus
 > `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs`,
 > `priv/repo/migrations/20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs`, and

@@ -36,7 +36,7 @@ msgstr "Perfil actualizado exitosamente."
 msgid "Security Settings"
 msgstr "Configuración de seguridad"
 
-#: lib/storyarn_web/live/settings_live/tutorials.ex:17
+#: lib/storyarn_web/live/settings_live/tutorials.ex:16
 #, elixir-autogen, elixir-format
 msgid "Tutorial Settings"
 msgstr "Configuración de tutoriales"

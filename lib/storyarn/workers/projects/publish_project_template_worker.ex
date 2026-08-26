@@ -2,14 +2,14 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorker do
   @moduledoc """
   Publishes project templates asynchronously.
 
-  The worker delegates business logic to `Storyarn.Projects.ProjectTemplates` so the
+  The worker delegates business logic to `Storyarn.Projects` so the
   context remains the source of truth for permissions, status transitions, and
   version creation.
   """
 
   use Oban.Worker, queue: :templates, max_attempts: 3
 
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
 
   require Logger
 
@@ -18,7 +18,7 @@ defmodule Storyarn.Workers.PublishProjectTemplateWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"publication_id" => publication_id}, attempt: attempt, max_attempts: max_attempts}) do
     result =
-      ProjectTemplates.perform_template_publication(publication_id,
+      Projects.perform_template_publication(publication_id,
         attempt: attempt,
         max_attempts: max_attempts
       )

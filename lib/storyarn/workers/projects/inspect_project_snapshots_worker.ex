@@ -17,7 +17,7 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   require Logger
 
@@ -31,7 +31,7 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
   ]
 
   @impl Oban.Worker
-  def perform(%Oban.Job{} = job), do: perform_page(job, &Versioning.advance_project_snapshot_reconciliation/2)
+  def perform(%Oban.Job{} = job), do: perform_page(job, &Projects.advance_project_snapshot_reconciliation/2)
 
   @doc false
   def perform_page(
@@ -92,7 +92,7 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
   def recovery_after_seconds, do: div(@timeout_ms + @recovery_margin_ms, 1_000)
 
   defp terminalize(run_id, cursor_generation, reason) do
-    case Versioning.fail_project_snapshot_reconciliation(run_id, cursor_generation, reason) do
+    case Projects.fail_project_snapshot_reconciliation(run_id, cursor_generation, reason) do
       {:ok, status} when status in [:failed, :stale, :completed] ->
         :ok
 

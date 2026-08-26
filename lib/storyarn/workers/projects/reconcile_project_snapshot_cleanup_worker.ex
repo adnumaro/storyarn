@@ -12,7 +12,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
     max_attempts: 5,
     unique: [fields: [:worker, :args], period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   require Logger
 
@@ -21,14 +21,14 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args, attempt: attempt, max_attempts: max_attempts}) do
-    Versioning.discard_stale_project_snapshot_maintenance_jobs()
-    Versioning.rescue_stale_project_snapshot_cleanup_jobs()
+    Projects.discard_stale_project_snapshot_maintenance_jobs()
+    Projects.rescue_stale_project_snapshot_cleanup_jobs()
 
     after_id = Map.get(args, "after_id", 0)
-    through_id = Map.get(args, "through_id") || Versioning.project_snapshot_cleanup_recovery_high_watermark()
+    through_id = Map.get(args, "through_id") || Projects.project_snapshot_cleanup_recovery_high_watermark()
 
     intent_ids =
-      Versioning.list_project_snapshot_cleanup_recovery_candidates(
+      Projects.list_project_snapshot_cleanup_recovery_candidates(
         after_id: after_id,
         through_id: through_id,
         limit: @batch_size
@@ -57,7 +57,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
 
   defp recover_intents(intent_ids) do
     Enum.reduce(intent_ids, {0, 0, 0}, fn intent_id, {recovered, skipped, failed} ->
-      case Versioning.recover_project_snapshot_cleanup_intent(intent_id) do
+      case Projects.recover_project_snapshot_cleanup_intent(intent_id) do
         {:ok, :recovered} ->
           {recovered + 1, skipped, failed}
 
@@ -103,7 +103,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
   end
 
   defp emit_backlog do
-    backlog = Versioning.project_snapshot_cleanup_backlog()
+    backlog = Projects.project_snapshot_cleanup_backlog()
 
     :telemetry.execute(
       [:storyarn, :snapshot, :cleanup, :backlog],

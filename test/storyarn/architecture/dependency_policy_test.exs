@@ -636,8 +636,8 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
     graph = %{
       "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex" => %{
-        "lib/storyarn/projects/assets/storage.ex" => "runtime",
-        "lib/storyarn/projects/assets/storage/local.ex" => "runtime"
+        "lib/storyarn/projects/assets/adapters/storage/storage.ex" => "runtime",
+        "lib/storyarn/projects/assets/adapters/storage/local.ex" => "runtime"
       }
     }
 
@@ -647,7 +647,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              MapSet.new([
                {
                  "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex",
-                 "lib/storyarn/projects/assets/storage/local.ex",
+                 "lib/storyarn/projects/assets/adapters/storage/local.ex",
                  "runtime"
                }
              ])

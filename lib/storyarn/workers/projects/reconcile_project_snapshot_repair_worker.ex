@@ -17,7 +17,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   @batch_size 50
   @timeout_ms 10 * 60 * 1_000
@@ -34,8 +34,8 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotRepairWorker do
   def perform(%Oban.Job{} = job) do
     perform_recovery(
       job,
-      &Versioning.project_snapshot_reconciliation_repair_recovery_high_watermark/0,
-      &Versioning.recover_project_snapshot_reconciliation_repair_delivery_page/1,
+      &Projects.project_snapshot_reconciliation_repair_recovery_high_watermark/0,
+      &Projects.recover_project_snapshot_reconciliation_repair_delivery_page/1,
       &Oban.insert/1
     )
   end

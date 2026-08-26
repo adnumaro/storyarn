@@ -11,13 +11,13 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorker do
 
   use Oban.Worker, queue: :storage_cleanup, max_attempts: 5
 
-  alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects
 
   require Logger
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"storage_keys" => storage_keys}, attempt: attempt, max_attempts: max_attempts}) do
-    case StorageCompensation.delete_storage_keys(storage_keys) do
+    case Projects.delete_storage_keys(storage_keys) do
       :ok ->
         :ok
 
@@ -31,7 +31,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorker do
   end
 
   defp persist_exhausted_cleanup(failed_keys) do
-    case StorageCompensation.persist_cleanup_request(failed_keys) do
+    case Projects.persist_cleanup_request(failed_keys) do
       {:ok, request} ->
         Logger.warning(
           "Copied asset cleanup moved to recurring reconciliation request_id=#{request.id} failed_count=#{length(failed_keys)}"

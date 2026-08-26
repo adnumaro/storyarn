@@ -1,0 +1,463 @@
+defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
+  use ExUnit.Case, async: true
+
+  alias Storyarn.Architecture.DependencyPolicy
+
+  @root "lib/storyarn/projects"
+  @capability_roles %{
+    "access" => ~w(commands delivery entities queries),
+    "assets" => ~w(adapters contracts data entities execution queries rules),
+    "interchange" => ~w(exports imports),
+    "lifecycle" => ~w(commands data entities events rules),
+    "overview" => ~w(contracts data execution queries rules),
+    "references" => ~w(commands data entities execution queries rules),
+    "templates" => ~w(adapters commands entities execution queries rules),
+    "trash" => ~w(execution),
+    "versioning" => ~w(adapters commands contracts data entities execution queries rules)
+  }
+  @capability_root_files %{
+    "access" => ~w(access.ex invitations.ex memberships.ex),
+    "assets" => ~w(assets.ex project_assets.ex),
+    "interchange" => ~w(interchange.ex),
+    "lifecycle" => ~w(lifecycle.ex project_crud.ex),
+    "overview" => ~w(overview.ex),
+    "references" => ~w(references.ex),
+    "templates" => ~w(project_templates.ex templates.ex),
+    "trash" => ~w(trash.ex),
+    "versioning" => ~w(versioning.ex)
+  }
+  @private_role_roots %{
+    "access" => ~w(commands delivery queries),
+    "assets" => ~w(adapters data execution queries rules),
+    "interchange" => ~w(
+      imports/adapters imports/commands imports/execution imports/queries imports/rules
+      exports/adapters exports/queries exports/rules
+    ),
+    "lifecycle" => ~w(commands data events rules),
+    "overview" => ~w(data execution queries rules),
+    "references" => ~w(commands data execution queries rules),
+    "templates" => ~w(adapters commands execution queries rules),
+    "trash" => ~w(execution),
+    "versioning" => ~w(adapters commands data execution queries rules)
+  }
+  @private_role_compatibility MapSet.new([
+                                {"access", "lifecycle", "data"},
+                                {"access", "lifecycle", "rules"},
+                                {"assets", "lifecycle", "data"},
+                                {"assets", "lifecycle", "events"},
+                                {"assets", "overview", "data"},
+                                {"assets", "references", "commands"},
+                                {"assets", "versioning", "data"},
+                                {"assets", "versioning", "execution"},
+                                {"interchange", "assets", "adapters"},
+                                {"interchange", "lifecycle", "data"},
+                                {"interchange", "lifecycle", "rules"},
+                                {"interchange", "overview", "data"},
+                                {"interchange", "overview", "queries"},
+                                {"interchange", "references", "commands"},
+                                {"interchange", "trash", "execution"},
+                                {"interchange", "versioning", "adapters"},
+                                {"interchange", "versioning", "execution"},
+                                {"lifecycle", "access", "queries"},
+                                {"lifecycle", "overview", "data"},
+                                {"overview", "lifecycle", "rules"},
+                                {"overview", "references", "data"},
+                                {"overview", "references", "queries"},
+                                {"references", "overview", "data"},
+                                {"templates", "access", "queries"},
+                                {"templates", "assets", "adapters"},
+                                {"templates", "assets", "execution"},
+                                {"templates", "lifecycle", "data"},
+                                {"templates", "lifecycle", "events"},
+                                {"templates", "lifecycle", "rules"},
+                                {"templates", "overview", "data"},
+                                {"templates", "versioning", "adapters"},
+                                {"templates", "versioning", "execution"},
+                                {"trash", "overview", "data"},
+                                {"trash", "references", "commands"},
+                                {"trash", "references", "data"},
+                                {"trash", "references", "execution"},
+                                {"trash", "versioning", "data"},
+                                {"versioning", "access", "queries"},
+                                {"versioning", "assets", "adapters"},
+                                {"versioning", "assets", "execution"},
+                                {"versioning", "assets", "queries"},
+                                {"versioning", "lifecycle", "data"},
+                                {"versioning", "lifecycle", "rules"},
+                                {"versioning", "overview", "data"},
+                                {"versioning", "overview", "queries"},
+                                {"versioning", "references", "commands"},
+                                {"versioning", "references", "queries"},
+                                {"versioning", "references", "rules"},
+                                {"versioning", "trash", "execution"}
+                              ])
+  @root_facade_dependencies ~w(
+    Storyarn.Projects.Access
+    Storyarn.Projects.Assets
+    Storyarn.Projects.Assets.Asset
+    Storyarn.Projects.Interchange
+    Storyarn.Projects.Lifecycle
+    Storyarn.Projects.Overview
+    Storyarn.Projects.Project
+    Storyarn.Projects.ProjectInvitation
+    Storyarn.Projects.ProjectMembership
+    Storyarn.Projects.ProjectTrash
+    Storyarn.Projects.References
+    Storyarn.Projects.SnapshotAccounting
+    Storyarn.Projects.Templates
+    Storyarn.Projects.Trash
+    Storyarn.Projects.Versioning
+  )
+  @role_scopes ~w(lifecycle access assets overview trash references templates versioning) ++
+                 ~w(interchange/imports interchange/exports)
+  @forbidden_role_edges [
+    {"queries", "commands"},
+    {"queries", "events"},
+    {"queries", "adapters"},
+    {"rules", "commands"},
+    {"rules", "queries"},
+    {"rules", "execution"},
+    {"rules", "events"},
+    {"rules", "adapters"},
+    {"data", "commands"},
+    {"data", "queries"},
+    {"data", "execution"},
+    {"data", "events"},
+    {"data", "adapters"},
+    {"data", "rules"},
+    {"entities", "commands"},
+    {"entities", "queries"},
+    {"entities", "events"},
+    {"contracts", "commands"},
+    {"contracts", "queries"},
+    {"contracts", "events"},
+    {"contracts", "adapters"},
+    {"events", "commands"},
+    {"events", "queries"},
+    {"events", "execution"},
+    {"events", "adapters"},
+    {"events", "rules"},
+    {"adapters", "commands"},
+    {"adapters", "queries"},
+    {"adapters", "events"}
+  ]
+  @role_compatibility MapSet.new([
+                        {"overview", "data", "rules"},
+                        {"interchange/exports", "contracts", "adapters"},
+                        {"interchange/exports", "rules", "adapters"},
+                        {"interchange/imports", "rules", "adapters"}
+                      ])
+
+  test "Projects exposes the nine agreed capabilities with their role layout" do
+    assert directories_in(@root) ==
+             @capability_roles
+             |> Map.keys()
+             |> Kernel.++(["content"])
+             |> Enum.sort()
+
+    Enum.each(@capability_roles, fn {capability, expected_roles} ->
+      capability_root = Path.join(@root, capability)
+
+      assert File.dir?(capability_root), "missing Projects capability: #{capability}"
+      assert directories_in(capability_root) == Enum.sort(expected_roles)
+
+      assert root_files_in(capability_root) ==
+               @capability_root_files |> Map.fetch!(capability) |> Enum.sort()
+    end)
+  end
+
+  test "content is a closed internal model, not a capability or public facade" do
+    content_root = Path.join(@root, "content")
+
+    assert File.dir?(content_root)
+    refute File.exists?(Path.join(@root, "content.ex"))
+    refute File.exists?(Path.join(content_root, "content.ex"))
+
+    violations =
+      content_root
+      |> Path.join("**/*.ex")
+      |> Path.wildcard()
+      |> Enum.filter(&(File.read!(&1) =~ ~r/^defmodule Storyarn\.Projects\.Content do/m))
+
+    assert violations == [], "content/ must not acquire a capability facade: #{inspect(violations)}"
+  end
+
+  test "the root facade is declarative and names only capability facades or stable public types" do
+    source = File.read!("lib/storyarn/projects.ex")
+
+    dependencies = project_module_references(source, "lib/storyarn/projects.ex")
+
+    assert dependencies == Enum.sort(@root_facade_dependencies)
+
+    refute source =~ ~r/^\s*defp?\s/m,
+           "Storyarn.Projects must remain a declarative facade made of delegates"
+  end
+
+  test "the root facade ratchet resolves nested targets through local aliases" do
+    source = """
+    alias Storyarn.Projects.Versioning
+    defdelegate hidden(arg), to: Versioning.ReferencedTombstones
+    """
+
+    assert "Storyarn.Projects.Versioning.ReferencedTombstones" in project_module_references(
+             source,
+             "synthetic_projects_facade.ex"
+           )
+  end
+
+  test "every closed content model serves at least two Project capabilities" do
+    content_modules =
+      @root
+      |> Path.join("content/**/*.ex")
+      |> Path.wildcard()
+      |> Map.new(fn path -> {defined_module(path), path} end)
+
+    consumers =
+      @root
+      |> Path.join("**/*.ex")
+      |> Path.wildcard()
+      |> Enum.reject(&String.starts_with?(&1, Path.join(@root, "content/")))
+      |> Enum.reduce(Map.new(content_modules, fn {module, _path} -> {module, MapSet.new()} end), fn path, acc ->
+        case project_capability(path) do
+          nil ->
+            acc
+
+          capability ->
+            path
+            |> File.read!()
+            |> project_module_references(path)
+            |> Enum.reduce(acc, fn module, references ->
+              if Map.has_key?(references, module) do
+                Map.update!(references, module, &MapSet.put(&1, capability))
+              else
+                references
+              end
+            end)
+        end
+      end)
+
+    violations =
+      consumers
+      |> Enum.filter(fn {_module, capabilities} -> MapSet.size(capabilities) < 2 end)
+      |> Enum.map(fn {module, capabilities} ->
+        {module, Map.fetch!(content_modules, module), capabilities |> MapSet.to_list() |> Enum.sort()}
+      end)
+      |> Enum.sort()
+
+    assert violations == [],
+           "content/ modules must serve at least two Project capabilities: #{inspect(violations)}"
+  end
+
+  test "historical module identities survive their physical relocation" do
+    refute File.dir?(Path.join(@root, "persistence"))
+    refute File.dir?(Path.join(@root, "imports"))
+    refute File.dir?(Path.join(@root, "exports"))
+    refute File.dir?(Path.join(@root, "project_templates"))
+
+    assert Code.ensure_loaded?(Storyarn.Projects.Persistence.BlockRecord)
+    assert Code.ensure_loaded?(Storyarn.Projects.Assets.Persistence.FlowRecord)
+    assert Code.ensure_loaded?(Storyarn.Projects.References.Persistence.BlockRecord)
+    assert Code.ensure_loaded?(Storyarn.Projects.Imports)
+    assert Code.ensure_loaded?(Storyarn.Projects.Exports)
+    assert Code.ensure_loaded?(Storyarn.Projects.ProjectTemplates)
+  end
+
+  test "the ratchet closes every unreviewed cross-capability private role" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+    capabilities = Map.keys(@capability_roles)
+
+    for source <- capabilities,
+        target <- capabilities -- [source],
+        private_role_root <- Map.fetch!(@private_role_roots, target) do
+      denied? =
+        denial?(
+          policy,
+          "#{@root}/#{source}/",
+          "#{@root}/#{target}/#{private_role_root}/",
+          ["runtime", "export", "compile"]
+        )
+
+      assert denied? != MapSet.member?(@private_role_compatibility, {source, target, private_role_root}),
+             "#{source} -> #{target}/#{private_role_root} must be either denied or explicitly retained, never both"
+    end
+  end
+
+  test "the ratchet preserves the established direction between role folders" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    for scope <- @role_scopes,
+        {source_role, target_role} <- @forbidden_role_edges do
+      denied? =
+        denial?(
+          policy,
+          "#{@root}/#{scope}/#{source_role}/",
+          "#{@root}/#{scope}/#{target_role}/",
+          ["runtime", "export", "compile"]
+        )
+
+      assert denied? != MapSet.member?(@role_compatibility, {scope, source_role, target_role}),
+             "#{scope}/#{source_role} -> #{target_role} must be either denied or explicitly retained, never both"
+    end
+  end
+
+  test "root, Web, and workers cannot bypass the closed content model" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    assert denial?(
+             policy,
+             "lib/storyarn/projects.ex",
+             "lib/storyarn/projects/content/",
+             ["runtime", "export", "compile"]
+           )
+
+    assert denial?(
+             policy,
+             "lib/storyarn/workers/projects/",
+             "lib/storyarn/projects/",
+             ["runtime", "export", "compile"]
+           )
+
+    assert Enum.any?(policy.path_denials, fn denial ->
+             String.starts_with?(denial.source_root, "lib/storyarn_web/") and
+               denial.target_root == "lib/storyarn/projects/"
+           end)
+  end
+
+  test "Project workers call only the bounded-context facade" do
+    violations =
+      "lib/storyarn/workers/projects/**/*.ex"
+      |> Path.wildcard()
+      |> Enum.flat_map(&internal_project_references/1)
+      |> Enum.sort()
+
+    assert violations == [], "Project workers must call only Storyarn.Projects: #{inspect(violations)}"
+  end
+
+  defp defined_module(path) do
+    [module] =
+      Regex.run(
+        ~r/^defmodule\s+(Storyarn\.Projects\.[A-Za-z0-9_.]+)\s+do/m,
+        File.read!(path),
+        capture: :all_but_first
+      )
+
+    module
+  end
+
+  defp project_capability(path) do
+    case path |> Path.relative_to(@root) |> Path.split() do
+      [capability | _rest] ->
+        if Map.has_key?(@capability_roles, capability), do: capability
+
+      _other ->
+        nil
+    end
+  end
+
+  defp project_module_references(source, file_path) do
+    ast = Code.string_to_quoted!(source, file: file_path, columns: true)
+    aliases = project_aliases(ast)
+
+    {_ast, references} =
+      Macro.prewalk(ast, MapSet.new(), fn
+        {:__aliases__, _metadata, segments} = node, references ->
+          case resolve_project_alias(segments, aliases) do
+            [:Storyarn, :Projects, _internal | _rest] = resolved ->
+              {node, MapSet.put(references, module_name(resolved))}
+
+            _other ->
+              {node, references}
+          end
+
+        node, references ->
+          {node, references}
+      end)
+
+    references |> MapSet.to_list() |> Enum.sort()
+  end
+
+  defp project_aliases(ast) do
+    {_ast, aliases} =
+      Macro.prewalk(ast, %{}, fn
+        {:alias, _metadata,
+         [
+           {{:., _, [{:__aliases__, _, base_segments}, :{}]}, _, grouped_aliases}
+         ]} = node,
+        aliases ->
+          aliases =
+            if project_module_segments?(base_segments) do
+              put_grouped_project_aliases(aliases, base_segments, grouped_aliases)
+            else
+              aliases
+            end
+
+          {node, aliases}
+
+        {:alias, _metadata, [{:__aliases__, _, segments} | options]} = node, aliases ->
+          aliases =
+            if project_module_segments?(segments) do
+              Map.put(aliases, alias_name(options, segments), segments)
+            else
+              aliases
+            end
+
+          {node, aliases}
+
+        node, aliases ->
+          {node, aliases}
+      end)
+
+    aliases
+  end
+
+  defp put_grouped_project_aliases(aliases, base_segments, grouped_aliases) do
+    Enum.reduce(grouped_aliases, aliases, fn {:__aliases__, _, segments}, acc ->
+      Map.put(acc, List.last(segments), base_segments ++ segments)
+    end)
+  end
+
+  defp resolve_project_alias([:Storyarn, :Projects | _rest] = segments, _aliases), do: segments
+  defp resolve_project_alias([:Projects | rest], _aliases), do: [:Storyarn, :Projects | rest]
+
+  defp resolve_project_alias([local_name | rest], aliases) do
+    case Map.fetch(aliases, local_name) do
+      {:ok, base_segments} -> base_segments ++ rest
+      :error -> nil
+    end
+  end
+
+  defp resolve_project_alias(_segments, _aliases), do: nil
+
+  defp project_module_segments?([:Storyarn, :Projects | _rest]), do: true
+  defp project_module_segments?(_segments), do: false
+
+  defp alias_name([[as: {:__aliases__, _, segments}]], _default_segments), do: List.last(segments)
+  defp alias_name(_options, default_segments), do: List.last(default_segments)
+
+  defp module_name(segments), do: Enum.join(segments, ".")
+
+  defp directories_in(path) do
+    path
+    |> File.ls!()
+    |> Enum.filter(&File.dir?(Path.join(path, &1)))
+    |> Enum.sort()
+  end
+
+  defp root_files_in(path) do
+    path
+    |> File.ls!()
+    |> Enum.filter(&File.regular?(Path.join(path, &1)))
+    |> Enum.sort()
+  end
+
+  defp denial?(policy, source_root, target_root, kinds) do
+    Enum.any?(policy.path_denials, fn denial ->
+      denial.source_root == source_root and denial.target_root == target_root and denial.kinds == kinds
+    end)
+  end
+
+  defp internal_project_references(path) do
+    source = File.read!(path)
+    project_module_references(source, path)
+  end
+end

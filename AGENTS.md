@@ -454,7 +454,7 @@ A dialogue response is `%{id, text, condition, instruction, instruction_assignme
 
 ### File Size
 
-Nothing enforces a line limit — Credo checks line _length_ (120), not file length, and the largest files in the codebase are far past any figure previously written here (`lib/storyarn/projects/assets.ex` 1921, `scene_live/show.ex` 2139, `flow_live/show.ex` 1699). Treat these as direction, not gates:
+Nothing enforces a line limit — Credo checks line _length_ (120), not file length, and files such as `lib/storyarn/projects/assets/assets.ex`, `scene_live/show.ex` and `flow_live/show.ex` are intentionally large while they retain cohesive workflows. Treat these as direction, not gates:
 
 - A LiveView `show.ex` should dispatch, not implement — push logic into `handlers/` (event handling, returns `{:noreply, socket}`) and `helpers/` (pure functions, no socket mutation)
 - A Vue component that owns more than one concern belongs in `composables/` plus a thin SFC

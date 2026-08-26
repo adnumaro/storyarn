@@ -15,7 +15,7 @@ defmodule Storyarn.Workers.CleanupProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   require Logger
 
@@ -23,7 +23,7 @@ defmodule Storyarn.Workers.CleanupProjectSnapshotWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"intent_id" => intent_id} = args, attempt: attempt, max_attempts: max_attempts}) do
-    case Versioning.process_project_snapshot_cleanup_intent(intent_id,
+    case Projects.process_project_snapshot_cleanup_intent(intent_id,
            final_attempt?: attempt >= max_attempts
          ) do
       {:ok, :more} ->
@@ -71,7 +71,7 @@ defmodule Storyarn.Workers.CleanupProjectSnapshotWorker do
   end
 
   defp log_terminal_failure(intent_id) do
-    case Versioning.project_snapshot_cleanup_operator_action(intent_id) do
+    case Projects.project_snapshot_cleanup_operator_action(intent_id) do
       {:ok, :replay} ->
         Logger.error(
           "Snapshot cleanup exhausted retries intent_id=#{intent_id} " <>

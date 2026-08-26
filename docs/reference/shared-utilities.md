@@ -13,7 +13,7 @@ context, a deliberate consumer-owned implementation is preferred even if it dupl
 
 ## `Storyarn.Projects.NameNormalizer`
 
-**File:** `lib/storyarn/projects/name_normalizer.ex` — **owned by the Project
+**File:** `lib/storyarn/projects/lifecycle/rules/name_normalizer.ex` — **owned by the Project
 boundary** since ENG-92 (its only consumers). Tools carry their own copies
 (e.g. `Workspaces.Lifecycle.Rules.Slug`, per-context `ShortcutGenerator`s); do not add
 foreign consumers.
@@ -75,7 +75,7 @@ copy the pattern into the owning context instead.
 
 ## `Storyarn.Projects.Validations`
 
-**File:** `lib/storyarn/projects/validations.ex` — **owned by the Project
+**File:** `lib/storyarn/projects/lifecycle/rules/validations.ex` — **owned by the Project
 boundary** since ENG-92. Workspaces and Accounts carry their formats inline
 (`Workspace.validate_slug`, `User.validate_email_format`,
 `WorkspaceInvitation.validate_email_format`); do not add foreign consumers.
@@ -261,11 +261,11 @@ One line each. Open the file and confirm its owner before writing anything that 
 | `Storyarn.Platform.Shared.ColorUtils` | `lib/storyarn/platform/adapters/presentation/color_utils.ex` | Platform technical adapter | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization |
 | `Storyarn.Platform.Shared.HtmlUtils` | `lib/storyarn/platform/kernel/rules/html_utils.ex` | Platform technical kernel | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer |
 | `Storyarn.Platform.Shared.ImportHelpers` | `lib/storyarn/platform/adapters/database/import_helpers.ex` | Platform technical adapter | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3` |
-| `Storyarn.Projects.InvitationSchema` | `lib/storyarn/projects/invitation_schema.ex` | Projects | `use`-macro that generates the invitation schema/changesets for Projects; the workspace arm lives in `Workspaces.WorkspaceInvitation` |
-| `Storyarn.Projects.InvitationOperations` | `lib/storyarn/projects/invitation_operations.ex` | Projects | Config-map-driven invitation CRUD for Projects (`create_invitation`, `accept_invitation`, `revoke_…`); the workspace arm lives in `Workspaces.Invitations` |
-| `Storyarn.Projects.InvitationNotifier` | `lib/storyarn/projects/invitation_notifier.ex` | Projects | `deliver_invitation/2-3` — email delivery for the above; Workspaces owns its workflow and copy in `Workspaces.Invitations.Delivery`, with transport isolated in `Workspaces.Invitations.Adapters.Email.Mailer` |
-| `Storyarn.Projects.MembershipOperations` | `lib/storyarn/projects/membership_operations.ex` | Projects | Config-map-driven membership CRUD + `authorize/4` for Projects; the workspace arm lives in `Workspaces.Memberships` |
-| `Storyarn.Projects.WordCount` | `lib/storyarn/projects/word_count.ex` | Projects | `for_block/2`, `for_block_value/1`, `for_name/1` — versioning builders own this copy; tools own their own semantics |
+| `Storyarn.Projects.InvitationSchema` | `lib/storyarn/projects/access/entities/invitation_schema.ex` | Projects | `use`-macro that generates the invitation schema/changesets for Projects; the workspace arm lives in `Workspaces.WorkspaceInvitation` |
+| `Storyarn.Projects.InvitationOperations` | `lib/storyarn/projects/access/commands/invitation_operations.ex` | Projects | Config-map-driven invitation CRUD for Projects (`create_invitation`, `accept_invitation`, `revoke_…`); the workspace arm lives in `Workspaces.Invitations` |
+| `Storyarn.Projects.InvitationNotifier` | `lib/storyarn/projects/access/delivery/invitation_notifier.ex` | Projects | `deliver_invitation/2-3` — email delivery for the above; Workspaces owns its workflow and copy in `Workspaces.Invitations.Delivery`, with transport isolated in `Workspaces.Invitations.Adapters.Email.Mailer` |
+| `Storyarn.Projects.MembershipOperations` | `lib/storyarn/projects/access/commands/membership_operations.ex` | Projects | Config-map-driven membership CRUD + `authorize/4` for Projects; the workspace arm lives in `Workspaces.Memberships` |
+| `Storyarn.Projects.WordCount` | `lib/storyarn/projects/versioning/rules/sheet_word_count.ex` | Projects | `for_block/2`, `for_block_value/1`, `for_name/1` — versioning builders own this copy; tools own their own semantics |
 
 `EncryptedBinary` is covered above; it is a type, not a helper.
 

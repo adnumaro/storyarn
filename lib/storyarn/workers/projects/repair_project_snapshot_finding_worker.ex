@@ -17,7 +17,7 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   require Logger
 
@@ -26,7 +26,7 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
   @recovery_margin_ms 5 * 60 * 1_000
 
   @impl Oban.Worker
-  def perform(%Oban.Job{} = job), do: perform_action(job, &Versioning.perform_project_snapshot_reconciliation_repair/1)
+  def perform(%Oban.Job{} = job), do: perform_action(job, &Projects.perform_project_snapshot_reconciliation_repair/1)
 
   @doc false
   def perform_action(
@@ -77,7 +77,7 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
   defp handle_result({:raised, exception, stacktrace}, _action_id, false), do: reraise(exception, stacktrace)
 
   defp terminalize(action_id, reason) do
-    case Versioning.fail_project_snapshot_reconciliation_repair(action_id, reason) do
+    case Projects.fail_project_snapshot_reconciliation_repair(action_id, reason) do
       {:ok, status} when status in [:repaired, :resolved, :manual, :failed] ->
         :ok
 

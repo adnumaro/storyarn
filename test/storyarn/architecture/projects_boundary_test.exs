@@ -1,22 +1,7 @@
 defmodule Storyarn.Architecture.ProjectsBoundaryTest do
   use ExUnit.Case, async: true
 
-  @projects_domain_sources ["lib/storyarn/projects.ex" | Path.wildcard("lib/storyarn/projects/**/*.ex")] ++
-                             [
-                               "lib/storyarn/projects/references.ex"
-                               | Path.wildcard("lib/storyarn/projects/references/**/*.ex")
-                             ] ++
-                             [
-                               "lib/storyarn/projects/versioning.ex"
-                               | Path.wildcard("lib/storyarn/projects/versioning/**/*.ex")
-                             ] ++
-                             ["lib/storyarn/projects/exports.ex" | Path.wildcard("lib/storyarn/projects/exports/**/*.ex")] ++
-                             ["lib/storyarn/projects/imports.ex" | Path.wildcard("lib/storyarn/projects/imports/**/*.ex")] ++
-                             [
-                               "lib/storyarn/projects/project_templates.ex"
-                               | Path.wildcard("lib/storyarn/projects/project_templates/**/*.ex")
-                             ] ++
-                             ["lib/storyarn/projects/assets.ex" | Path.wildcard("lib/storyarn/projects/assets/**/*.ex")]
+  @projects_domain_sources ["lib/storyarn/projects.ex" | Path.wildcard("lib/storyarn/projects/**/*.ex")]
 
   @projects_business_sources "lib/storyarn/projects/**/*.ex"
                              |> Path.wildcard()

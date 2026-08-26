@@ -350,7 +350,7 @@ only the `put_flash` case (`put_flash_without_gettext`, web files only).
 `priv/gettext/errors.pot` still exists but **nothing calls `dgettext("errors", …)`**.
 `translate_error/1` was deleted from `core_components.ex`; changeset errors are now
 interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error/1` in
-`lib/storyarn/projects/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
+`lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1135`) and ship untranslated.
 Do not route new error text through that domain expecting translation.
 
 ### After adding, moving or deleting a `dgettext` call

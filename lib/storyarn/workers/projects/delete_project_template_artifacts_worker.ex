@@ -5,13 +5,13 @@ defmodule Storyarn.Workers.DeleteProjectTemplateArtifactsWorker do
 
   use Oban.Worker, queue: :templates, max_attempts: 5
 
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
 
   require Logger
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"storage_keys" => storage_keys}}) do
-    case ProjectTemplates.perform_template_artifact_gc(storage_keys) do
+    case Projects.perform_template_artifact_gc(storage_keys) do
       :ok ->
         :ok
 

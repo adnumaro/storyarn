@@ -10,10 +10,10 @@ defmodule Storyarn.Architecture.WorkspacesWebFacadeBoundaryTest do
   ]
 
   @retired_shared_consumers [
-    "lib/storyarn/projects/invitation_operations.ex",
-    "lib/storyarn/projects/invitation_schema.ex",
-    "lib/storyarn/projects/invitation_notifier.ex",
-    "lib/storyarn/projects/membership_operations.ex"
+    "lib/storyarn/projects/access/commands/invitation_operations.ex",
+    "lib/storyarn/projects/access/commands/membership_operations.ex",
+    "lib/storyarn/projects/access/delivery/invitation_notifier.ex",
+    "lib/storyarn/projects/access/entities/invitation_schema.ex"
   ]
 
   test "Workspace Web enters the bounded context only through Storyarn.Workspaces" do

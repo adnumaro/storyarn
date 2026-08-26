@@ -5,7 +5,7 @@ defmodule Storyarn.Workers.InstallProjectTemplateWorker do
 
   use Oban.Worker, queue: :template_installs, max_attempts: 3
 
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
 
   require Logger
 
@@ -14,7 +14,7 @@ defmodule Storyarn.Workers.InstallProjectTemplateWorker do
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"installation_id" => installation_id}, attempt: attempt, max_attempts: max_attempts}) do
     result =
-      ProjectTemplates.perform_template_installation(installation_id,
+      Projects.perform_template_installation(installation_id,
         attempt: attempt,
         max_attempts: max_attempts
       )

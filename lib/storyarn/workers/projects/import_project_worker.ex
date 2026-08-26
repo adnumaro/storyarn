@@ -6,7 +6,7 @@ defmodule Storyarn.Workers.ImportProjectWorker do
   @max_attempts 3
   use Oban.Worker, queue: :imports, max_attempts: @max_attempts
 
-  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects
 
   @impl Oban.Worker
   def backoff(%Oban.Job{} = job) do
@@ -24,7 +24,7 @@ defmodule Storyarn.Workers.ImportProjectWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: %{"attempt_id" => attempt_id}} = job) do
-    case Imports.perform_import(attempt_id,
+    case Projects.perform_import(attempt_id,
            attempt: canonical_attempt(job),
            max_attempts: @max_attempts
          ) do

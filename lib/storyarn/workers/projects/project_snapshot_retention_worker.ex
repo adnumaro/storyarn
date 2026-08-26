@@ -15,63 +15,63 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     unique: [fields: [:worker, :args], period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   @batch_size 50
   @timeout_ms 10 * 60 * 1_000
 
   @impl Oban.Worker
   def perform(%Oban.Job{args: args}) do
-    Versioning.discard_stale_project_snapshot_maintenance_jobs()
+    Projects.discard_stale_project_snapshot_maintenance_jobs()
 
     now = TimeHelpers.now()
-    build_recovery = Versioning.reconcile_stale_project_snapshot_builds()
+    build_recovery = Projects.reconcile_stale_project_snapshot_builds()
 
     snapshot_import_recovery =
-      Versioning.reconcile_abandoned_workspace_snapshot_import_deliveries(limit: @batch_size)
+      Projects.reconcile_abandoned_workspace_snapshot_import_deliveries(limit: @batch_size)
 
     {export_lease_after_id, export_lease_cutoff} = export_lease_cursor(args, now)
     {export_lease_purge_after_id, export_lease_purge_cutoff} = export_lease_purge_cursor(args, now)
 
     export_lease_recovery =
-      Versioning.recover_expired_project_snapshot_export_leases(export_lease_cutoff,
+      Projects.recover_expired_project_snapshot_export_leases(export_lease_cutoff,
         after_id: export_lease_after_id,
         limit: @batch_size
       )
 
     export_lease_purge =
-      Versioning.purge_released_project_snapshot_export_leases(export_lease_purge_cutoff,
+      Projects.purge_released_project_snapshot_export_leases(export_lease_purge_cutoff,
         after_id: export_lease_purge_after_id,
         limit: @batch_size
       )
 
     retention_after_id = Map.get(args, "retention_after_id", 0)
     expired_build_after_id = Map.get(args, "expired_build_after_id", 0)
-    through_id = Map.get(args, "through_id") || Versioning.project_snapshot_lifecycle_high_watermark()
+    through_id = Map.get(args, "through_id") || Projects.project_snapshot_lifecycle_high_watermark()
 
     restore_recovery_after_id =
       normalize_after_id(Map.get(args, "restore_recovery_after_id", 0))
 
     restore_recovery_through_id =
       Map.get(args, "restore_recovery_through_id") ||
-        Versioning.project_snapshot_restore_delivery_recovery_high_watermark()
+        Projects.project_snapshot_restore_delivery_recovery_high_watermark()
 
     abandoned_restores =
-      Versioning.list_abandoned_project_snapshot_restore_deliveries(
+      Projects.list_abandoned_project_snapshot_restore_deliveries(
         after_id: restore_recovery_after_id,
         through_id: restore_recovery_through_id,
         limit: @batch_size
       )
 
     expired_builds =
-      Versioning.list_expired_project_snapshot_build_candidates(now,
+      Projects.list_expired_project_snapshot_build_candidates(now,
         after_id: expired_build_after_id,
         through_id: through_id,
         limit: @batch_size
       )
 
     candidates =
-      Versioning.list_project_snapshot_retention_candidates(now,
+      Projects.list_project_snapshot_retention_candidates(now,
         after_id: retention_after_id,
         through_id: through_id,
         limit: @batch_size
@@ -80,14 +80,14 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     {expired_build_count, expired_build_failure_count} =
       process_candidates(
         expired_builds,
-        &Versioning.delete_expired_project_snapshot_build_candidate/1,
+        &Projects.delete_expired_project_snapshot_build_candidate/1,
         :expired_build_candidate_changed
       )
 
     {deleted_count, failure_count} =
       process_candidates(
         candidates,
-        &Versioning.delete_project_snapshot_retention_candidate/1,
+        &Projects.delete_project_snapshot_retention_candidate/1,
         :retention_candidate_changed
       )
 
@@ -165,7 +165,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
   defp process_abandoned_restore_candidates(candidates) do
     Enum.reduce(candidates, {0, 0}, fn candidate, {recovered, failed} ->
-      case Versioning.recover_abandoned_project_snapshot_restore_delivery(candidate) do
+      case Projects.recover_abandoned_project_snapshot_restore_delivery(candidate) do
         {:ok, :recovered} -> {recovered + 1, failed}
         {:ok, :stale} -> {recovered, failed}
         {:error, :project_snapshot_restore_delivery_busy} -> {recovered, failed}
@@ -188,7 +188,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
 
   defp build_recovery_followup_result(_orphaned_count, now, failure_count) do
     scheduled_at =
-      DateTime.add(now, Versioning.project_snapshot_build_recovery_quarantine_seconds(), :second)
+      DateTime.add(now, Projects.project_snapshot_build_recovery_quarantine_seconds(), :second)
 
     %{build_recovery_followup: true}
     |> new(scheduled_at: scheduled_at)
@@ -338,7 +338,7 @@ defmodule Storyarn.Workers.ProjectSnapshotRetentionWorker do
     default_cutoff =
       DateTime.add(
         now,
-        -Versioning.project_snapshot_export_lease_retention_seconds(),
+        -Projects.project_snapshot_export_lease_retention_seconds(),
         :second
       )
 

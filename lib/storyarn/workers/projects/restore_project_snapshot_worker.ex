@@ -12,7 +12,7 @@ defmodule Storyarn.Workers.RestoreProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   @impl Oban.Worker
   def perform(%Oban.Job{
@@ -22,7 +22,7 @@ defmodule Storyarn.Workers.RestoreProjectSnapshotWorker do
         max_attempts: max_attempts
       }) do
     restore_id
-    |> Versioning.perform_project_snapshot_restore(generation,
+    |> Projects.perform_project_snapshot_restore(generation,
       job_id: job_id,
       attempt: attempt,
       max_attempts: max_attempts

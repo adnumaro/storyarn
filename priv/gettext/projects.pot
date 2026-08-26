@@ -290,52 +290,52 @@ msgstr ""
 msgid "Usage Limits"
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:449
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:449
 #, elixir-autogen, elixir-format
 msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:480
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:480
 #, elixir-autogen, elixir-format
 msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:506
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:506
 #, elixir-autogen, elixir-format
 msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:256
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:256
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no Entry node"
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:390
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:390
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
 msgstr ""
 
-#: lib/storyarn/projects/exports/expression_transpiler/helpers.ex:226
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/helpers.ex:226
 #, elixir-autogen, elixir-format
 msgid "Operator '%{operator}' is not supported by %{engine}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/expression_transpiler/helpers.ex:251
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/helpers.ex:251
 #, elixir-autogen, elixir-format
 msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:558
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:558
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr ""
 
-#: lib/storyarn/projects/exports/expression_transpiler/dialogic.ex:77
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/dialogic.ex:77
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Dialogic (no conditional set syntax)"
 msgstr ""
 
-#: lib/storyarn/projects/exports/expression_transpiler/yarn.ex:111
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/yarn.ex:111
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits unconditional set in Yarn (no null type)"
 msgstr ""
@@ -925,230 +925,230 @@ msgstr ""
 msgid "Dismiss installation failure"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1490
-#: lib/storyarn/projects/exports/artifact_validator.ex:2048
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1490
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2048
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" contains an expression that cannot be exported to %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:2068
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:2068
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\": %{warning}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:786
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:786
 #, elixir-autogen, elixir-format
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" has one response without a valid ID"
 msgid_plural "Dialogue \"%{node}\" in flow \"%{flow}\" has %{count} responses without valid IDs"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:717
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:717
 #, elixir-autogen, elixir-format
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" needs a valid localization ID"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:797
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:797
 #, elixir-autogen, elixir-format
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" repeats one response ID"
 msgid_plural "Dialogue \"%{node}\" in flow \"%{flow}\" repeats %{count} response IDs"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:221
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:221
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" needs a valid shortcut for the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:843
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:843
 #, elixir-autogen, elixir-format
 msgid "Localization ID \"%{id}\" is used by one dialogue more than once"
 msgid_plural "Localization ID \"%{id}\" is used by %{count} dialogues"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/validator.ex:347
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:347
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no speaker assigned"
 msgid_plural "%{count} dialogues have no speaker assigned"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/validator.ex:328
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:328
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no text"
 msgid_plural "%{count} dialogues have no text"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:250
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:250
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" needs a valid shortcut for the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1276
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1276
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has no configured target; %{format} cannot preserve the transition"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1301
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1301
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets content that no longer exists; %{format} cannot preserve the transition"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:386
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:386
 #, elixir-autogen, elixir-format
 msgid "Multiple flows collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:418
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:418
 #, elixir-autogen, elixir-format
 msgid "Multiple sheets collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:608
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:608
 #, elixir-autogen, elixir-format
 msgid "Multiple variables collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:296
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:296
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has connections from outputs the exporter cannot preserve"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1293
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1293
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has target data that cannot be exported"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1858
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1858
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" loses behavior in %{format}: %{detail}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1285
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1285
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets a flow outside this partial export"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1100
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1100
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" targets flow \"%{target}\", which needs a valid shortcut for the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1190
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1190
 #, elixir-autogen, elixir-format
 msgid "A selected flow and an external target collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:698
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:698
 #, elixir-autogen, elixir-format
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" has a localization ID that cannot be exported"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:812
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:812
 #, elixir-autogen, elixir-format
 msgid "Dialogue \"%{node}\" in flow \"%{flow}\" has response data that cannot be exported"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1706
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1706
 #, elixir-autogen, elixir-format
 msgid "Dialogue conditions are not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1718
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1718
 #, elixir-autogen, elixir-format
 msgid "Dialogue conditions are not represented in articy:draft XML"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1807
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1807
 #, elixir-autogen, elixir-format
 msgid "Exit flow references are not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/validator.ex:271
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:271
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1607
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1607
 #, elixir-autogen, elixir-format
 msgid "Grouped switch cases cannot be represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:449
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:449
 #, elixir-autogen, elixir-format
 msgid "Hub \"%{node}\" in flow \"%{flow}\" has no valid target identifier for %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:575
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:575
 #, elixir-autogen, elixir-format
 msgid "Multiple flows or hubs collapse to the Yarn node title \"%{identifier}\""
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:484
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:484
 #, elixir-autogen, elixir-format
 msgid "Multiple hubs collapse to the target identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1784
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1784
 #, elixir-autogen, elixir-format
 msgid "Multiple subflow return branches cannot be represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:870
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:870
 #, elixir-autogen, elixir-format
 msgid "One Yarn line ID collides after serialization"
 msgid_plural "%{count} Yarn line IDs collide after serialization"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1668
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1668
 #, elixir-autogen, elixir-format
 msgid "Response assignments are not represented in articy:draft XML"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1733
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1733
 #, elixir-autogen, elixir-format
 msgid "Response-specific routing is not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1748
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1748
 #, elixir-autogen, elixir-format
 msgid "Subflow transitions are not represented in Unreal CSV"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1628
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1628
 #, elixir-autogen, elixir-format
 msgid "Switch branches are merged by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:315
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:315
 #, elixir-autogen, elixir-format
 msgid "Variable \"%{identifier}\" is not a valid runtime identifier in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/exports/expression_transpiler/ink.ex:94
+#: lib/storyarn/projects/interchange/exports/adapters/formats/expression_transpiler/ink.ex:94
 #, elixir-autogen, elixir-format
 msgid "set_if_unset emits an unconditional assignment in Ink"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1644
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1644
 #, elixir-autogen, elixir-format
 msgid "Condition branch routing is not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1761
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1761
 #, elixir-autogen, elixir-format
 msgid "Subflow return routing is not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:193
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:193
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" is not reachable from Entry and will not be included in the %{format} export"
 msgstr ""
 
-#: lib/storyarn/projects/exports/artifact_validator.ex:1374
+#: lib/storyarn/projects/interchange/exports/rules/artifact_validator.ex:1374
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr ""

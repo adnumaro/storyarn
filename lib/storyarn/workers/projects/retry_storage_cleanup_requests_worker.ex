@@ -12,13 +12,13 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorker do
     max_attempts: 5,
     unique: [period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
-  alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects
 
   require Logger
 
   @impl Oban.Worker
   def perform(%Oban.Job{attempt: attempt, max_attempts: max_attempts}) do
-    case StorageCompensation.retry_persisted_cleanup_requests() do
+    case Projects.retry_persisted_cleanup_requests() do
       :ok ->
         :ok
 

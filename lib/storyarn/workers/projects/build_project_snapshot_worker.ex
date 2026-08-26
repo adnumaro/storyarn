@@ -13,7 +13,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
       states: [:available, :scheduled, :executing, :retryable]
     ]
 
-  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects
 
   @impl Oban.Worker
   def backoff(%Oban.Job{} = job) do
@@ -49,7 +49,7 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
        ) do
     attempt = canonical_attempt(job)
 
-    case Versioning.perform_project_snapshot_build(snapshot_id,
+    case Projects.perform_project_snapshot_build(snapshot_id,
            job_id: job_id,
            attempt: attempt,
            max_attempts: @max_attempts
@@ -65,8 +65,8 @@ defmodule Storyarn.Workers.BuildProjectSnapshotWorker do
     receive do
       :stop -> :ok
     after
-      Versioning.project_snapshot_build_heartbeat_interval_ms() ->
-        case Versioning.heartbeat_project_snapshot_build(snapshot_id, job_id) do
+      Projects.project_snapshot_build_heartbeat_interval_ms() ->
+        case Projects.heartbeat_project_snapshot_build(snapshot_id, job_id) do
           :ok -> heartbeat_loop(snapshot_id, job_id)
           {:error, reason} -> exit({:snapshot_build_heartbeat_failed, reason})
         end

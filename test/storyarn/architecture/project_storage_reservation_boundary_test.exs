@@ -113,7 +113,7 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
   end
 
   test "the Project read model exposes no ordinary write changesets" do
-    source = File.read!("lib/storyarn/projects/persistence/storage_reservation_record.ex")
+    source = File.read!("lib/storyarn/projects/versioning/data/storage_reservation_record.ex")
 
     refute source =~ "import Ecto.Changeset"
     refute source =~ ~r/\bdef\s+\w+_changeset\b/
