@@ -5,8 +5,7 @@ defmodule Storyarn.Workers.ExpireAIResultsWorker do
   # user-facing execution. `new/2` inherits this queue, so follow-ups move too.
   use Oban.Worker, queue: :ai_maintenance, max_attempts: 3
 
-  alias Storyarn.AI.Results
-  alias Storyarn.AI.RouteOptions
+  alias Storyarn.AI
 
   require Logger
 
@@ -14,7 +13,7 @@ defmodule Storyarn.Workers.ExpireAIResultsWorker do
 
   @impl Oban.Worker
   def perform(%Oban.Job{}) do
-    perform_expiration(&Results.expire/0, &schedule_followup/0)
+    perform_expiration(&AI.expire_results/0, &schedule_followup/0)
   end
 
   @doc false
@@ -38,7 +37,7 @@ defmodule Storyarn.Workers.ExpireAIResultsWorker do
        )
        when is_integer(expired_count) and expired_count >= 0 and is_integer(failure_count) and failure_count >= 0 and
               is_boolean(more?) do
-    RouteOptions.delete_expired()
+    AI.purge_expired_route_options()
 
     case maybe_schedule_followup(more?, schedule_followup) do
       :ok -> finish_batch(started_at, expired_count, failure_count)

@@ -12,7 +12,6 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
 
   alias Storyarn.Accounts
   alias Storyarn.AI
-  alias Storyarn.AI.Tasks.ManagedDiagnostic
   alias Storyarn.Repo
 
   @requirements ["app.start"]
@@ -28,7 +27,7 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
     actor_id = required!(opts, :actor_id)
     user = Repo.get(Storyarn.Accounts.User, actor_id) || Mix.raise("Actor not found")
     scope = Accounts.Scope.for_user(user)
-    input = %{"probe" => ManagedDiagnostic.probe()}
+    input = %{"probe" => AI.managed_diagnostic_probe()}
 
     {:ok, intent} =
       AI.new_intent(scope, %{

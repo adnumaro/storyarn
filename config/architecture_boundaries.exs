@@ -1,10 +1,8 @@
 # ENG-92 code boundaries. These rules intentionally protect code ownership only:
 # they do not assign database write ownership or change the shared schema.
 
-# These are the bounded contexts sealed by the current ENG-92 ratchet. AI is
-# also a product bounded context, but this pass deliberately leaves its existing
-# dependency classification unchanged instead of claiming that it is isolated.
-bounded_contexts = [:accounts, :workspaces, :platform, :projects, :sheets, :flows, :scenes, :localization]
+# These are the bounded contexts sealed by the current ENG-92 ratchet.
+bounded_contexts = [:accounts, :workspaces, :platform, :projects, :sheets, :flows, :scenes, :localization, :ai]
 
 boundaries = %{
   accounts: [
@@ -105,6 +103,15 @@ boundaries = %{
     "lib/storyarn_web/live/localization_toolbar_live.ex",
     "lib/storyarn_web/live/project_settings_live/localization.ex"
   ],
+  ai: [
+    "lib/storyarn/ai.ex",
+    "lib/storyarn/ai/",
+    "lib/storyarn/workers/ai/",
+    "lib/storyarn_web/live/settings_live/ai_team.ex",
+    "lib/storyarn_web/live/settings_live/ai_team_overview.ex",
+    "lib/storyarn_web/live/settings_live/integration_detail.ex",
+    "lib/storyarn_web/live/settings_live/integrations.ex"
+  ],
 
   # Outermost Web adapters, not bounded contexts. The router and protocol
   # implementations may name context-owned modules because dependencies point
@@ -116,111 +123,11 @@ boundaries = %{
     "lib/storyarn_web/live_vue_encoder/"
   ],
 
-  # Explicit technical/application namespaces and namespaces whose boundary is
-  # not sealed by this ratchet yet. There is deliberately no `lib/storyarn/`
-  # catch-all: an unlisted namespace must fail until its ownership is reviewed.
-  # AI is a recognized product bounded context, but remains transitionally
-  # classified here for this pass; that does not make it a shared domain kernel.
+  # Explicit technical/application namespaces. There is deliberately no
+  # `lib/storyarn/` catch-all: an unlisted namespace must fail until its ownership
+  # is reviewed.
   infrastructure: [
     "lib/storyarn.ex",
-    "lib/storyarn/ai.ex",
-    "lib/storyarn/ai/alerts.ex",
-    "lib/storyarn/ai/allowance.ex",
-    "lib/storyarn/ai/allowance_account.ex",
-    "lib/storyarn/ai/allowance_allocation.ex",
-    "lib/storyarn/ai/allowance_grant.ex",
-    "lib/storyarn/ai/allowance_ledger_entry.ex",
-    "lib/storyarn/ai/allowance_reservation.ex",
-    "lib/storyarn/ai/audit.ex",
-    "lib/storyarn/ai/audit_entry.ex",
-    "lib/storyarn/ai/config_map.ex",
-    "lib/storyarn/ai/context.ex",
-    "lib/storyarn/ai/context/contract.ex",
-    "lib/storyarn/ai/context/entity.ex",
-    "lib/storyarn/ai/context/finalizer.ex",
-    "lib/storyarn/ai/context/model_limits.ex",
-    "lib/storyarn/ai/context/package.ex",
-    "lib/storyarn/ai/context/persistence_contract.ex",
-    "lib/storyarn/ai/context/policy.ex",
-    "lib/storyarn/ai/context/subject_ref.ex",
-    "lib/storyarn/ai/credential_ref.ex",
-    "lib/storyarn/ai/credential_resolver.ex",
-    "lib/storyarn/ai/credential_resolver/composite.ex",
-    "lib/storyarn/ai/credential_resolver/managed.ex",
-    "lib/storyarn/ai/credential_resolver/personal.ex",
-    "lib/storyarn/ai/credential_resolver/unavailable.ex",
-    "lib/storyarn/ai/execution.ex",
-    "lib/storyarn/ai/execution_intent.ex",
-    "lib/storyarn/ai/execution_route.ex",
-    "lib/storyarn/ai/executor.ex",
-    "lib/storyarn/ai/inference_provider.ex",
-    "lib/storyarn/ai/inference_providers.ex",
-    "lib/storyarn/ai/inference_providers/fake.ex",
-    "lib/storyarn/ai/inference_providers/fireworks.ex",
-    "lib/storyarn/ai/inference_providers/open_ai_compatible.ex",
-    "lib/storyarn/ai/inference_providers/personal/anthropic.ex",
-    "lib/storyarn/ai/inference_providers/personal/deep_seek.ex",
-    "lib/storyarn/ai/inference_providers/personal/google.ex",
-    "lib/storyarn/ai/inference_providers/personal/mistral.ex",
-    "lib/storyarn/ai/inference_providers/personal/moonshot.ex",
-    "lib/storyarn/ai/inference_providers/personal/open_ai.ex",
-    "lib/storyarn/ai/inference_providers/together.ex",
-    "lib/storyarn/ai/integration.ex",
-    "lib/storyarn/ai/integration_assignments.ex",
-    "lib/storyarn/ai/integration_crud.ex",
-    "lib/storyarn/ai/integration_workspace_assignment.ex",
-    "lib/storyarn/ai/model_catalog.ex",
-    "lib/storyarn/ai/model_catalog/defaults.ex",
-    "lib/storyarn/ai/model_catalog/entry.ex",
-    "lib/storyarn/ai/operation.ex",
-    "lib/storyarn/ai/operations.ex",
-    "lib/storyarn/ai/operator_alert.ex",
-    "lib/storyarn/ai/persistence/project_membership_record.ex",
-    "lib/storyarn/ai/persistence/project_record.ex",
-    "lib/storyarn/ai/persistence/user_record.ex",
-    "lib/storyarn/ai/persistence/workspace_membership_record.ex",
-    "lib/storyarn/ai/persistence/workspace_record.ex",
-    "lib/storyarn/ai/personal_consent.ex",
-    "lib/storyarn/ai/personal_consents.ex",
-    "lib/storyarn/ai/personal_preference.ex",
-    "lib/storyarn/ai/personal_preferences.ex",
-    "lib/storyarn/ai/personal_providers.ex",
-    "lib/storyarn/ai/personal_roles.ex",
-    "lib/storyarn/ai/policy.ex",
-    "lib/storyarn/ai/policy_decision.ex",
-    "lib/storyarn/ai/project_access.ex",
-    "lib/storyarn/ai/provider.ex",
-    "lib/storyarn/ai/provider_budget.ex",
-    "lib/storyarn/ai/provider_budget_reservation.ex",
-    "lib/storyarn/ai/providers.ex",
-    "lib/storyarn/ai/providers/anthropic.ex",
-    "lib/storyarn/ai/providers/deep_l.ex",
-    "lib/storyarn/ai/providers/deep_seek.ex",
-    "lib/storyarn/ai/providers/google.ex",
-    "lib/storyarn/ai/providers/key_validation.ex",
-    "lib/storyarn/ai/providers/mistral.ex",
-    "lib/storyarn/ai/providers/moonshot.ex",
-    "lib/storyarn/ai/providers/open_ai.ex",
-    "lib/storyarn/ai/resolved_credential.ex",
-    "lib/storyarn/ai/result.ex",
-    "lib/storyarn/ai/results.ex",
-    "lib/storyarn/ai/route_option.ex",
-    "lib/storyarn/ai/route_options.ex",
-    "lib/storyarn/ai/route_resolver.ex",
-    "lib/storyarn/ai/runtime.ex",
-    "lib/storyarn/ai/settlement.ex",
-    "lib/storyarn/ai/settlement/managed.ex",
-    "lib/storyarn/ai/settlement/unavailable.ex",
-    "lib/storyarn/ai/settlement_adapter.ex",
-    "lib/storyarn/ai/task.ex",
-    "lib/storyarn/ai/task_definition.ex",
-    "lib/storyarn/ai/task_registry.ex",
-    "lib/storyarn/ai/tasks/managed_diagnostic.ex",
-    "lib/storyarn/ai/telemetry.ex",
-    "lib/storyarn/ai/usage_event.ex",
-    "lib/storyarn/ai/workspace_access.ex",
-    "lib/storyarn/ai/workspace_policy.ex",
-    "lib/storyarn/ai/workspace_policy_audit.ex",
     "lib/storyarn/platform/analytics.ex",
     "lib/storyarn/platform/analytics/",
     "lib/storyarn/application.ex",
@@ -298,11 +205,7 @@ boundaries = %{
     "lib/storyarn/platform/shared/token_generator.ex",
     "lib/storyarn/shared/tree_operations.ex",
     "lib/storyarn/platform/urls.ex",
-    "lib/storyarn/platform/vault.ex",
-    # Worker folders are assigned to their sealed owner above. AI remains
-    # transitional, so its worker slice and any future unclassified slice fall
-    # back to infrastructure instead of becoming a shared business boundary.
-    "lib/storyarn/workers/"
+    "lib/storyarn/platform/vault.ex"
   ],
 
   # Explicit Web coordination outside concrete bounded-context surfaces. The
@@ -325,10 +228,6 @@ boundaries = %{
     "lib/storyarn_web/live/landing_live/",
     "lib/storyarn_web/live/legal_live/",
     "lib/storyarn_web/live/presence_live.ex",
-    "lib/storyarn_web/live/settings_live/ai_team.ex",
-    "lib/storyarn_web/live/settings_live/ai_team_overview.ex",
-    "lib/storyarn_web/live/settings_live/integration_detail.ex",
-    "lib/storyarn_web/live/settings_live/integrations.ex",
     "lib/storyarn_web/live/settings_live/sudo.ex",
     "lib/storyarn_web/live/settings_live/tutorials.ex",
     "lib/storyarn_web/live/shared/",
@@ -748,6 +647,95 @@ scene_role_dependency_denials =
     }
   end
 
+# AI is one bounded context split into product capabilities, not six smaller
+# contexts. Capability facades and stable entities/contracts may be shared
+# internally; operational roles and consumer-owned projections stay private.
+ai_capabilities = ~w(context governance integrations managed_spend operations routing)
+ai_private_roles = ~w(adapters commands queries rules data execution events)
+
+ai_internal_path_denials =
+  for source_capability <- ai_capabilities,
+      target_capability <- ai_capabilities -- [source_capability],
+      private_role <- ai_private_roles do
+    %{
+      source_root: "lib/storyarn/ai/#{source_capability}/",
+      target_root: "lib/storyarn/ai/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "AI capabilities may consume another capability only through its facade or stable entities and contracts"
+    }
+  end
+
+ai_root_facade_path_denials =
+  for capability <- ai_capabilities,
+      private_role <- ai_private_roles do
+    %{
+      source_root: "lib/storyarn/ai.ex",
+      target_root: "lib/storyarn/ai/#{capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason:
+        "The Storyarn.AI facade composes capability facades, stable entities, and contracts rather than private implementation roles"
+    }
+  end
+
+# These directions capture meaningful responsibilities without requiring ports
+# for every pure function. Reads remain read-only; rules, data, and entities
+# cannot become hidden effectful orchestrators. Event modules may persist their
+# owned facts, and adapters may execute commands only as configured contract
+# implementations.
+ai_forbidden_role_edges = [
+  {"queries", "commands"},
+  {"queries", "execution"},
+  {"queries", "events"},
+  {"queries", "adapters"},
+  {"rules", "commands"},
+  {"rules", "queries"},
+  {"rules", "execution"},
+  {"rules", "events"},
+  {"rules", "adapters"},
+  {"data", "commands"},
+  {"data", "queries"},
+  {"data", "execution"},
+  {"data", "events"},
+  {"data", "adapters"},
+  {"data", "rules"},
+  {"entities", "commands"},
+  {"entities", "queries"},
+  {"entities", "execution"},
+  {"entities", "events"},
+  {"entities", "adapters"},
+  {"contracts", "commands"},
+  {"contracts", "queries"},
+  {"contracts", "execution"},
+  {"contracts", "events"},
+  {"contracts", "data"},
+  {"events", "commands"},
+  {"events", "queries"},
+  {"events", "execution"},
+  {"events", "adapters"},
+  {"events", "rules"},
+  {"adapters", "queries"},
+  {"adapters", "execution"},
+  {"adapters", "events"}
+]
+
+ai_role_dependency_denials =
+  for capability <- ai_capabilities,
+      {source_role, target_role} <- ai_forbidden_role_edges do
+    %{
+      source_root: "lib/storyarn/ai/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/ai/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "AI role folders must preserve read, policy, data, event, execution, and adapter direction"
+    }
+  end
+
+ai_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/ai/",
+  target_root: "lib/storyarn/ai/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "AI workers must orchestrate through the Storyarn.AI facade"
+}
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -810,7 +798,11 @@ policy = %{
       sheet_root_facade_path_denials ++
       sheet_role_dependency_denials ++
       scene_internal_path_denials ++
-      scene_root_facade_path_denials ++ scene_role_dependency_denials,
+      scene_root_facade_path_denials ++
+      scene_role_dependency_denials ++
+      ai_internal_path_denials ++
+      ai_root_facade_path_denials ++
+      ai_role_dependency_denials ++ [ai_worker_facade_denial],
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -818,6 +810,7 @@ policy = %{
   # is sealed: the ENG-92 debt baseline is empty and can only stay empty.
   zero_debt_consumers: [
     :accounts,
+    :ai,
     :flows,
     :infrastructure,
     :localization,
@@ -832,7 +825,7 @@ policy = %{
   # Every bounded context is sealed in both directions. Durable cross-boundary
   # access to a public facade must use an exact exception; it cannot be
   # accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:accounts, :flows, :localization, :platform, :projects, :scenes, :sheets, :workspaces],
+  isolated_contexts: [:accounts, :ai, :flows, :localization, :platform, :projects, :scenes, :sheets, :workspaces],
 
   # These exact leaves are globally consumable technical infrastructure, not
   # bounded-context APIs. They deliberately cover no directory: Repo remains
@@ -864,27 +857,22 @@ policy = %{
     "lib/storyarn/platform/shared/token_generator.ex"
   ],
 
-  # Durable cross-boundary contracts normally terminate at one of the eight
-  # bounded-context root facades. These are the only additional exact targets
+  # Durable cross-boundary contracts normally terminate at bounded-context root
+  # facades. These are the only additional exact targets
   # that may terminate a reviewed durable edge. Unlike the global technical
-  # leaves above, listing a target here grants no access by itself. This also
-  # models AI's current public SPI honestly while AI remains an unsealed product
-  # context during this pass.
+  # leaves above, listing a target here grants no access by itself. AI's Context
+  # SPI is deliberately public because consumer contexts own their builders.
   additional_durable_contract_targets: [
     %{
-      target: "lib/storyarn/ai.ex",
-      reason: "AI remains an unsealed bounded context, but consumers still enter through its public root facade"
-    },
-    %{
-      target: "lib/storyarn/ai/context/contract.ex",
+      target: "lib/storyarn/ai/context/contracts/contract.ex",
       reason: "consumer-owned AI context builders implement the shared AI context contract"
     },
     %{
-      target: "lib/storyarn/ai/context/policy.ex",
+      target: "lib/storyarn/ai/context/contracts/policy.ex",
       reason: "consumer-owned AI context builders export the AI policy value"
     },
     %{
-      target: "lib/storyarn/ai/context/subject_ref.ex",
+      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
       reason: "consumer-owned AI context builders export AI subject references"
     },
     %{
@@ -933,39 +921,45 @@ policy = %{
   reviewed_cross_boundary_edges: [
     %{
       source: "lib/storyarn/flows/ai/context_contract.ex",
-      target: "lib/storyarn/ai/context/contract.ex",
+      target: "lib/storyarn/ai/context/contracts/contract.ex",
       kinds: ["runtime"],
       reason: "Flows implements the exact public AI context-builder contract"
     },
     %{
       source: "lib/storyarn/flows/ai/context_contract.ex",
-      target: "lib/storyarn/ai/context/policy.ex",
+      target: "lib/storyarn/ai/context/contracts/policy.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI context policy value in its implementation"
     },
     %{
       source: "lib/storyarn/flows/ai/context_contract.ex",
-      target: "lib/storyarn/ai/context/subject_ref.ex",
+      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI subject reference in its implementation"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contract.ex",
+      target: "lib/storyarn/ai/context/contracts/contract.ex",
       kinds: ["runtime"],
       reason: "Sheets implements the exact public AI context-builder contract"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/policy.ex",
+      target: "lib/storyarn/ai/context/contracts/policy.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI context policy value in its implementation"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/subject_ref.ex",
+      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI subject reference in its implementation"
+    },
+    %{
+      source: "lib/storyarn_web/live/hooks/palette.ex",
+      target: "lib/storyarn/ai.ex",
+      kinds: ["runtime"],
+      reason: "The shared command palette recognizes AI-owned commands through the public AI facade"
     },
     %{
       source: "lib/storyarn_web/live/hooks/notifications.ex",

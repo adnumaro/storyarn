@@ -4,9 +4,9 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
   alias Storyarn.Architecture.DependencyPolicy
 
   @spi_targets [
-    "lib/storyarn/ai/context/contract.ex",
-    "lib/storyarn/ai/context/policy.ex",
-    "lib/storyarn/ai/context/subject_ref.ex"
+    "lib/storyarn/ai/context/contracts/contract.ex",
+    "lib/storyarn/ai/context/contracts/policy.ex",
+    "lib/storyarn/ai/context/contracts/subject_ref.ex"
   ]
 
   test "the AI context SPI is exact and does not open the AI internals to Flows" do
@@ -20,10 +20,10 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
 
     graph = %{
       "lib/storyarn/flows/ai/context_contract.ex" => %{
-        "lib/storyarn/ai/context/contract.ex" => "runtime",
-        "lib/storyarn/ai/context/policy.ex" => "export",
-        "lib/storyarn/ai/context/subject_ref.ex" => "export",
-        "lib/storyarn/ai/context/finalizer.ex" => "runtime"
+        "lib/storyarn/ai/context/contracts/contract.ex" => "runtime",
+        "lib/storyarn/ai/context/contracts/policy.ex" => "export",
+        "lib/storyarn/ai/context/contracts/subject_ref.ex" => "export",
+        "lib/storyarn/ai/context/rules/finalizer.ex" => "runtime"
       }
     }
 
@@ -31,7 +31,7 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
              MapSet.new([
                {
                  "lib/storyarn/flows/ai/context_contract.ex",
-                 "lib/storyarn/ai/context/finalizer.ex",
+                 "lib/storyarn/ai/context/rules/finalizer.ex",
                  "runtime"
                }
              ])

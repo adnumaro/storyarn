@@ -10,7 +10,7 @@ defmodule Mix.Tasks.Storyarn.Ai.Grant do
 
   use Mix.Task
 
-  alias Storyarn.AI.Allowance
+  alias Storyarn.AI
 
   @requirements ["app.start"]
 
@@ -37,7 +37,7 @@ defmodule Mix.Tasks.Storyarn.Ai.Grant do
     kind = Keyword.get(opts, :kind, "one_time")
     expires_at = parse_datetime(Keyword.get(opts, :expires_at))
 
-    case Allowance.grant(workspace_id, actor_id, %{
+    case AI.grant_allowance(workspace_id, actor_id, %{
            grant_key: grant_key,
            kind: kind,
            units: units,

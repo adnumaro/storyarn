@@ -533,6 +533,8 @@ defmodule Storyarn.Architecture.DependencyPolicy do
   end
 
   defp validate_additional_durable_contract_targets!(contracts, boundaries, bounded_contexts) do
+    root_facades = Enum.map(bounded_contexts, &"lib/storyarn/#{&1}.ex")
+
     Enum.each(contracts, fn
       %{target: target, reason: reason} when is_binary(target) and is_binary(reason) and reason != "" ->
         validate_root!(target)
@@ -545,10 +547,9 @@ defmodule Storyarn.Architecture.DependencyPolicy do
           is_nil(target_boundary) ->
             raise ArgumentError, "additional durable contract target is not classified: #{target}"
 
-          target_boundary in bounded_contexts ->
+          target in root_facades ->
             raise ArgumentError,
-                  "additional durable contract target belongs to bounded context " <>
-                    "#{inspect(target_boundary)}: #{target}"
+                  "additional durable contract target is already a bounded-context root facade: #{target}"
 
           true ->
             :ok

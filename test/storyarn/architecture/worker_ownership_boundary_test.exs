@@ -1,7 +1,7 @@
 defmodule Storyarn.Architecture.WorkerOwnershipBoundaryTest do
   use ExUnit.Case, async: true
 
-  @sealed_worker_owners ~w(accounts localization platform projects workspaces)
+  @sealed_worker_owners ~w(accounts ai localization platform projects workspaces)
   @recognized_worker_owners ~w(accounts ai flows localization platform projects scenes sheets workspaces)
 
   test "workers are grouped by owner while retaining the stable flat Oban identity" do
@@ -34,7 +34,7 @@ defmodule Storyarn.Architecture.WorkerOwnershipBoundaryTest do
       assert "lib/storyarn/workers/#{owner}/" in Map.fetch!(policy.boundaries, boundary)
     end
 
-    assert "lib/storyarn/workers/" in policy.boundaries.infrastructure
+    refute "lib/storyarn/workers/" in policy.boundaries.infrastructure
   end
 
   test "the abandoned worker rename compatibility does not return" do

@@ -85,6 +85,45 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
            |> DependencyPolicy.validate_policy!()
   end
 
+  test "an exact bounded-context SPI can be durable without opening sibling internals" do
+    spi_target = "lib/storyarn/scenes/contracts/context_builder.ex"
+
+    durable_contract = %{
+      source: "lib/storyarn/flows/query.ex",
+      target: spi_target,
+      kinds: ["runtime"],
+      reason: "Flows implements the exact consumer-owned context-builder SPI"
+    }
+
+    policy =
+      policy()
+      |> Map.put(:additional_durable_contract_targets, [
+        %{target: spi_target, reason: "Exact stable SPI implemented by another bounded context"}
+      ])
+      |> Map.put(:durable_contracts, [durable_contract])
+      |> DependencyPolicy.validate_policy!()
+
+    graph = %{
+      "lib/storyarn/flows/query.ex" => %{
+        spi_target => "runtime",
+        "lib/storyarn/scenes/private_builder.ex" => "runtime"
+      }
+    }
+
+    assert DependencyPolicy.forbidden_edges(graph, policy).flows ==
+             MapSet.new([
+               {"lib/storyarn/flows/query.ex", "lib/storyarn/scenes/private_builder.ex", "runtime"}
+             ])
+
+    assert_raise ArgumentError, ~r/must name one exact file/, fn ->
+      policy()
+      |> Map.put(:additional_durable_contract_targets, [
+        %{target: "lib/storyarn/scenes/contracts/", reason: "An unsafe directory-wide contract"}
+      ])
+      |> DependencyPolicy.validate_policy!()
+    end
+  end
+
   test "root-facade access cannot be disguised as migration debt" do
     migration_exception = %{
       source: "lib/storyarn/flows/query.ex",
@@ -565,11 +604,14 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              :sheets,
              :flows,
              :scenes,
-             :localization
+             :localization,
+             :ai
            ]
 
     assert "lib/storyarn.ex" in policy.boundaries.infrastructure
     assert "lib/storyarn_web.ex" in policy.boundaries.web_infrastructure
+    refute "lib/storyarn/ai.ex" in policy.boundaries.infrastructure
+    refute "lib/storyarn/ai/" in policy.boundaries.infrastructure
   end
 
   test "top-level application modules are covered by explicit technical roots" do

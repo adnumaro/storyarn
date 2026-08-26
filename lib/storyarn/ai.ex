@@ -1,71 +1,59 @@
 defmodule Storyarn.AI do
   @moduledoc """
-  Facade for provider connections and the provider-neutral AI execution kernel.
+  Public facade of the AI bounded context.
 
   External callers (LiveViews, controllers, other contexts) must go through
   this module and never call `Storyarn.AI.*` submodules directly.
 
-  Slice 0 owns personal provider connections. Slices 2–4 add registered tasks,
-  workspace policy, opaque route preflight, durable operations, managed
-  execution and personal BYOK. Slice 5.1 adds the central route-resolution,
-  model-catalog and workspace-assignment boundaries. Slice 7.2a adds the
-  flow-finding explanation seam — intent building, its replay key, and the reads
-  a panel needs to recover or attach to an operation it already paid for.
+  AI is organized into six internal capabilities: governance, integrations,
+  context, routing, operations and managed spend. This facade exposes the
+  bounded-context operations; Context's exact builder SPI remains an explicit
+  contract for consumer-owned implementations. Private implementation roles
+  stay behind their owning capability.
   """
 
-  alias Storyarn.AI.Allowance
-  alias Storyarn.AI.Execution
-  alias Storyarn.AI.ExecutionIntent
-  alias Storyarn.AI.IntegrationAssignments
-  alias Storyarn.AI.IntegrationCrud
-  alias Storyarn.AI.ModelCatalog
+  alias Storyarn.AI.Governance
+  alias Storyarn.AI.Integrations
+  alias Storyarn.AI.ManagedSpend
   alias Storyarn.AI.Operations
-  alias Storyarn.AI.PersonalConsents
-  alias Storyarn.AI.PersonalPreferences
-  alias Storyarn.AI.Policy
-  alias Storyarn.AI.Providers
-  alias Storyarn.AI.Results
-  alias Storyarn.AI.RouteOptions
-  alias Storyarn.AI.RouteResolver
-  alias Storyarn.AI.Runtime
-  alias Storyarn.AI.TaskRegistry
+  alias Storyarn.AI.Routing
 
-  defdelegate list_active(user), to: IntegrationCrud
-  defdelegate get_active(user, provider), to: IntegrationCrud
-  defdelegate connect(user, provider, api_key), to: IntegrationCrud
-  defdelegate replace_integration_key(user, integration, api_key), to: IntegrationCrud, as: :replace_key
-  defdelegate revalidate_integration(user, integration), to: IntegrationCrud, as: :revalidate
-  defdelegate revoke(user, integration), to: IntegrationCrud
-  defdelegate assign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :assign
-  defdelegate unassign_integration(scope, integration_id, workspace_id), to: IntegrationAssignments, as: :unassign
-  defdelegate list_assignment_states(scope, integration), to: IntegrationAssignments, as: :list_states
-  defdelegate personal_preferences_overview(scope), to: PersonalPreferences, as: :overview
-  defdelegate personal_preferences(scope, workspace_id), to: PersonalPreferences, as: :summary
-  defdelegate personal_preference_impacts(scope, integration_id), to: PersonalPreferences, as: :impacts
+  defdelegate list_active(user), to: Integrations
+  defdelegate get_active(user, provider), to: Integrations
+  defdelegate connect(user, provider, api_key), to: Integrations
+  defdelegate replace_integration_key(user, integration, api_key), to: Integrations, as: :replace_key
+  defdelegate revalidate_integration(user, integration), to: Integrations, as: :revalidate
+  defdelegate revoke(user, integration), to: Integrations
+  defdelegate assign_integration(scope, integration_id, workspace_id), to: Integrations, as: :assign
+  defdelegate unassign_integration(scope, integration_id, workspace_id), to: Integrations, as: :unassign
+  defdelegate list_assignment_states(scope, integration), to: Integrations
+  defdelegate personal_preferences_overview(scope), to: Integrations, as: :preferences_overview
+  defdelegate personal_preferences(scope, workspace_id), to: Integrations, as: :preferences
+  defdelegate personal_preference_impacts(scope, integration_id), to: Integrations, as: :preference_impacts
 
   defdelegate put_personal_preference(scope, workspace_id, slot, integration_id, model),
-    to: PersonalPreferences,
-    as: :put
+    to: Integrations,
+    as: :put_preference
 
   defdelegate delete_personal_preference(scope, workspace_id, slot),
-    to: PersonalPreferences,
-    as: :delete
+    to: Integrations,
+    as: :delete_preference
 
-  defdelegate provider_metadata(), to: Providers, as: :metadata_list
-  defdelegate adapter_for(provider), to: Providers
-  defdelegate model_catalog(), to: ModelCatalog, as: :all
-  defdelegate models_for_provider(provider), to: ModelCatalog, as: :public_for_provider
-  defdelegate integration_model_status(integration), to: ModelCatalog, as: :provider_status
+  defdelegate provider_metadata(), to: Integrations
+  defdelegate adapter_for(provider), to: Integrations
+  defdelegate model_catalog(), to: Routing
+  defdelegate models_for_provider(provider), to: Routing
+  defdelegate integration_model_status(integration), to: Routing
 
-  defdelegate with_personal_integration(user, provider, fun), to: Runtime
+  defdelegate with_personal_integration(user, provider, fun), to: Integrations
 
-  defdelegate new_intent(scope, attrs), to: ExecutionIntent, as: :new
+  defdelegate new_intent(scope, attrs), to: Routing
 
-  defdelegate resolve_route(intent), to: Execution, as: :preflight
+  defdelegate resolve_route(intent), to: Routing, as: :preflight
 
   @doc "Resolves routes and builds the Slice-6 disclosure without creating an operation."
-  defdelegate preflight(intent), to: Execution
-  defdelegate execute(intent), to: Execution
+  defdelegate preflight(intent), to: Routing
+  defdelegate execute(intent), to: Operations
   defdelegate cancel(scope, operation_id), to: Operations, as: :request_cancellation
 
   @doc """
@@ -87,17 +75,20 @@ defmodule Storyarn.AI do
   because two panels can resolve preflight for the same unspent key and both
   call `execute/1`.
   """
-  defdelegate created_operation?(scope, route_ref, operation_id), to: RouteOptions
-  defdelegate grant_personal_consent(intent, integration_id, policy_text_version), to: PersonalConsents, as: :grant
-  defdelegate revoke_personal_consent(scope, consent_id), to: PersonalConsents, as: :revoke
+  defdelegate created_operation?(scope, route_ref, operation_id), to: Routing
 
-  defdelegate get_operation(scope, operation_id), to: Results
-  defdelegate get_result(scope, operation_id), to: Results, as: :get
+  defdelegate grant_personal_consent(intent, integration_id, policy_text_version),
+    to: Integrations,
+    as: :grant_consent
+
+  defdelegate revoke_personal_consent(scope, consent_id), to: Integrations, as: :revoke_consent
+
+  defdelegate get_operation(scope, operation_id), to: Operations
+  defdelegate get_result(scope, operation_id), to: Operations
 
   @doc "Recovers a still-readable result by the idempotency key that produced it."
   defdelegate get_replayable_result(scope, task_id, idempotency_key),
-    to: Results,
-    as: :get_by_idempotency_key
+    to: Operations
 
   @doc """
   The operations that spent any of these idempotency keys, keyed by key.
@@ -106,24 +97,45 @@ defmodule Storyarn.AI do
   still coming from a dead end, and an absent key from a spent one.
   """
   defdelegate get_operations_by_keys(scope, task_id, idempotency_keys),
-    to: Results,
-    as: :operations_by_idempotency_keys
+    to: Operations
 
   @doc "Records that the actor saw a result. Never a disposition — see Results.record_view/2."
-  defdelegate record_result_view(scope, operation_id), to: Results, as: :record_view
+  defdelegate record_result_view(scope, operation_id), to: Operations
 
-  defdelegate dismiss_result(scope, operation_id), to: Results, as: :dismiss
-  defdelegate apply_result(scope, operation_id, current_revision, apply_fun), to: Results, as: :apply
+  defdelegate dismiss_result(scope, operation_id), to: Operations
+  defdelegate apply_result(scope, operation_id, current_revision, apply_fun), to: Operations
 
-  defdelegate get_workspace_policy(scope, workspace_id), to: Policy, as: :get
-  defdelegate update_workspace_policy(scope, workspace_id, lanes), to: Policy, as: :update
-  defdelegate allowance_summary(scope, workspace_id), to: Allowance, as: :summary
-  defdelegate managed_provenance(), to: RouteResolver
+  defdelegate get_workspace_policy(scope, workspace_id), to: Governance
+  defdelegate update_workspace_policy(scope, workspace_id, lanes), to: Governance
+  defdelegate allowance_summary(scope, workspace_id), to: ManagedSpend, as: :summary
+  defdelegate managed_provenance(), to: Routing
 
-  defdelegate registered_tasks(), to: TaskRegistry, as: :all
+  defdelegate registered_tasks(), to: Routing
 
   @doc "Fetches a registered task regardless of its operational switch."
-  defdelegate get_task(task_id), to: TaskRegistry, as: :get
+  defdelegate get_task(task_id), to: Routing
 
-  defdelegate ai_command_id?(command_id), to: TaskRegistry, as: :command_id?
+  defdelegate ai_command_id?(command_id), to: Routing
+
+  @doc false
+  defdelegate run_execution_job(job), to: Operations
+
+  @doc false
+  defdelegate run_execution_job_with(job, recover, execute, terminalize), to: Operations
+
+  @doc false
+  defdelegate expire_results(), to: Operations
+
+  @doc false
+  defdelegate purge_expired_route_options(), to: Routing, as: :delete_expired_route_options
+
+  @doc false
+  defdelegate reconcile_reservations(args, sweep_started_at, batch_size, stale_after_seconds),
+    to: Operations
+
+  @doc false
+  defdelegate grant_allowance(workspace_id, actor_id, attrs), to: ManagedSpend, as: :grant
+
+  @doc false
+  defdelegate managed_diagnostic_probe(), to: Routing
 end
