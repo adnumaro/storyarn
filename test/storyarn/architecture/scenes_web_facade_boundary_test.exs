@@ -90,28 +90,52 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
     refute File.exists?("lib/storyarn/shared/soft_delete.ex")
   end
 
-  test "Scene asset commands remain owned by Scenes" do
-    source = File.read!("lib/storyarn/scenes/asset_commands.ex")
+  test "Scene storage integrations remain behind Scene-owned adapters" do
+    adapter_sources =
+      Path.wildcard("lib/storyarn/scenes/{assets,versioning}/adapters/storage/**/*.ex")
+
+    non_adapter_sources = Enum.reject(@scene_domain_sources, &String.contains?(&1, "/adapters/"))
+
     policy = File.read!("config/architecture_boundaries.exs")
 
     refute File.exists?("lib/storyarn/scenes/project_assets.ex")
+    refute File.exists?("lib/storyarn/scenes/asset_commands.ex")
 
-    foreign_projects_refs =
-      ~r/Storyarn\.Projects\.[A-Za-z.]+/
-      |> Regex.scan(source)
-      |> List.flatten()
-      |> Enum.uniq()
-      |> Kernel.--([
+    direct_storage_references =
+      Enum.filter(non_adapter_sources, fn path ->
+        Regex.match?(
+          ~r/\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b/,
+          File.read!(path)
+        )
+      end)
+
+    assert direct_storage_references == [],
+           "Scene workflows must reach shared storage only through Scene-owned adapters: " <>
+             inspect(direct_storage_references)
+
+    allowed_storage_contracts =
+      MapSet.new([
+        "Storyarn.Projects.Assets.Storage",
         "Storyarn.Projects.Assets.StorageHash",
-        "Storyarn.Projects.Assets.StorageKeyLock",
-        "Storyarn.Projects.Assets.Storage"
+        "Storyarn.Projects.Assets.StorageKeyLock"
       ])
 
-    assert foreign_projects_refs == [],
-           "Scene asset commands may use only the allowed storage technical contracts, got: " <>
-             inspect(foreign_projects_refs)
+    adapter_references =
+      adapter_sources
+      |> Enum.flat_map(fn path ->
+        ~r/Storyarn\.Projects\.Assets\.[A-Za-z.]+/
+        |> Regex.scan(File.read!(path))
+        |> List.flatten()
+      end)
+      |> MapSet.new()
 
-    refute source =~ "Storyarn.Projects.Assets.BlobStore"
+    assert MapSet.subset?(adapter_references, allowed_storage_contracts),
+           "Scene storage adapters may use only the reviewed technical contracts, got: " <>
+             inspect(MapSet.difference(adapter_references, allowed_storage_contracts))
+
+    assert File.exists?("lib/storyarn/scenes/assets/adapters/storage/objects.ex")
+    assert File.exists?("lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex")
+    refute Enum.any?(adapter_sources, &(File.read!(&1) =~ "Storyarn.Projects.Assets.BlobStore"))
     refute policy =~ "lib/storyarn/scenes/project_assets.ex"
   end
 

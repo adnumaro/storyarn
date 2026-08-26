@@ -68,14 +68,14 @@ msgid "Auto-snapshot"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:663
-#: lib/storyarn/scenes/versioning.ex:658
+#: lib/storyarn/scenes/versioning/versioning.ex:677
 #: lib/storyarn/sheets/versioning.ex:658
 #, elixir-autogen, elixir-format
 msgid "Changes from previous version"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:647
-#: lib/storyarn/scenes/versioning.ex:642
+#: lib/storyarn/scenes/versioning/versioning.ex:661
 #: lib/storyarn/sheets/versioning.ex:642
 #, elixir-autogen, elixir-format
 msgid "Initial version"
@@ -121,14 +121,14 @@ msgid "You do not have permission to export this project"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:674
-#: lib/storyarn/scenes/versioning.ex:669
+#: lib/storyarn/scenes/versioning/versioning.ex:688
 #: lib/storyarn/sheets/versioning.ex:669
 #, elixir-autogen, elixir-format
 msgid "%{added} added, %{modified} modified, %{removed} removed"
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:667
-#: lib/storyarn/scenes/versioning.ex:662
+#: lib/storyarn/scenes/versioning/versioning.ex:681
 #: lib/storyarn/sheets/versioning.ex:662
 #, elixir-autogen, elixir-format
 msgid "No changes"

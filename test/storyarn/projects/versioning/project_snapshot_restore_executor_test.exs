@@ -5,9 +5,8 @@ alias Storyarn.Projects.Assets.BlobStore
 alias Storyarn.Projects.Assets.Storage
 alias Storyarn.Projects.Assets.Storage.Local
 alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
-alias Storyarn.Scenes.PinCrud
+alias Storyarn.Scenes
 alias Storyarn.Scenes.Scene
-alias Storyarn.Scenes.ZoneCrud
 
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
   use Storyarn.DataCase, async: false
@@ -1202,14 +1201,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     pin = pin_fixture(scene, %{"label" => "Variable condition"})
 
     assert {:ok, _pin} =
-             PinCrud.update_pin(pin, %{
+             Scenes.update_pin(pin, %{
                "condition" => variable_condition(source_namespace, variable.variable_name)
              })
 
     zone = zone_fixture(scene, %{"name" => "Variable assignment"})
 
     assert {:ok, _zone} =
-             ZoneCrud.update_zone(zone, %{
+             Scenes.update_zone(zone, %{
                "action_type" => "action",
                "action_data" => %{
                  "assignments" => [variable_assignment(source_namespace, variable.variable_name)]
@@ -1294,8 +1293,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
         )
       )
 
-    [restored_pin] = PinCrud.list_pins(restored_scene.id)
-    [restored_zone] = ZoneCrud.list_zones(restored_scene.id)
+    [restored_pin] = Scenes.list_pins(restored_scene.id)
+    [restored_zone] = Scenes.list_zones(restored_scene.id)
 
     assert get_in(restored_pin.condition, ["blocks", Access.at(0), "rules", Access.at(0), "sheet"]) ==
              destination_namespace

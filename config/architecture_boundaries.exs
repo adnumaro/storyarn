@@ -588,6 +588,86 @@ localization_worker_facade_denial = %{
   reason: "Localization workers must orchestrate through the Storyarn.Localization facade"
 }
 
+# Scenes is one bounded context split by business capability. Stable Scene
+# entities and value contracts may cross capability lines; operational roles
+# and consumer-owned SQL projections remain private to their owner.
+scene_capabilities = ~w(access assets editor exploration health logic references versioning)
+scene_private_roles = ~w(adapters commands queries rules data execution events)
+
+scene_internal_path_denials =
+  for source_capability <- scene_capabilities,
+      target_capability <- scene_capabilities -- [source_capability],
+      private_role <- scene_private_roles do
+    %{
+      source_root: "lib/storyarn/scenes/#{source_capability}/",
+      target_root: "lib/storyarn/scenes/#{target_capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Scene capabilities may consume another capability only through its facade or stable entities and contracts"
+    }
+  end
+
+scene_root_facade_path_denials =
+  for capability <- scene_capabilities,
+      private_role <- scene_private_roles do
+    %{
+      source_root: "lib/storyarn/scenes.ex",
+      target_root: "lib/storyarn/scenes/#{capability}/#{private_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason:
+        "The Storyarn.Scenes facade composes capability facades, stable entities, and contracts rather than private implementation roles"
+    }
+  end
+
+# Folder roles express useful dependency direction without imposing a port for
+# every function. Commands may coordinate local queries and adapters, while
+# passive models and reads cannot become hidden effectful orchestrators.
+scene_role_dependency_denials =
+  for capability <- scene_capabilities,
+      {source_role, target_role} <- [
+        {"queries", "commands"},
+        {"queries", "execution"},
+        {"queries", "events"},
+        {"queries", "adapters"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "events"},
+        {"rules", "adapters"},
+        {"data", "commands"},
+        {"data", "queries"},
+        {"data", "execution"},
+        {"data", "events"},
+        {"data", "adapters"},
+        {"data", "rules"},
+        {"entities", "commands"},
+        {"entities", "queries"},
+        {"entities", "execution"},
+        {"entities", "events"},
+        {"entities", "adapters"},
+        {"contracts", "commands"},
+        {"contracts", "queries"},
+        {"contracts", "execution"},
+        {"contracts", "events"},
+        {"contracts", "adapters"},
+        {"events", "commands"},
+        {"events", "queries"},
+        {"events", "execution"},
+        {"events", "adapters"},
+        {"events", "rules"},
+        {"adapters", "commands"},
+        {"adapters", "queries"},
+        {"adapters", "execution"},
+        {"adapters", "events"},
+        {"adapters", "rules"}
+      ] do
+    %{
+      source_root: "lib/storyarn/scenes/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/scenes/#{capability}/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Scene role folders must preserve read, policy, data, event, execution, and adapter direction"
+    }
+  end
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -644,7 +724,10 @@ policy = %{
       workspace_query_adapter_denials ++
       [workspace_worker_facade_denial] ++
       localization_internal_path_denials ++
-      localization_role_dependency_denials ++ [localization_worker_facade_denial],
+      localization_role_dependency_denials ++
+      [localization_worker_facade_denial] ++
+      scene_internal_path_denials ++
+      scene_root_facade_path_denials ++ scene_role_dependency_denials,
 
   # Once a consumer reaches zero forbidden dependencies, its baseline is
   # sealed permanently. The checker rejects any edge in that partition even
@@ -1137,22 +1220,40 @@ policy = %{
       reason: "Localization translation runs request durable cross-cutting delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/scenes/asset_commands.ex",
+      source: "lib/storyarn/scenes/assets/commands/assets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Scenes applies the Platform-owned storage entitlement to Scene asset writes and restores"
+      reason: "Scene asset writes apply the Platform-owned storage entitlement"
     },
     %{
-      source: "lib/storyarn/scenes/events.ex",
+      source: "lib/storyarn/scenes/assets/events/assets.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Scenes publishes owned business facts through the public Platform reaction contract"
+      reason: "Scene Assets publishes its owned business facts through the Platform reaction contract"
     },
     %{
-      source: "lib/storyarn/scenes/limits.ex",
+      source: "lib/storyarn/scenes/editor/commands/item_capacity.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Scenes applies Platform-owned commercial entitlements to Scene operations"
+      reason: "The Scene editor applies the Platform-owned project item entitlement"
+    },
+    %{
+      source: "lib/storyarn/scenes/exploration/events/exploration_events.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scene Exploration publishes its owned business facts through the Platform reaction contract"
+    },
+    %{
+      source: "lib/storyarn/scenes/versioning/commands/named_version_capacity.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scene Versioning applies the Platform-owned named-version entitlement"
+    },
+    %{
+      source: "lib/storyarn/scenes/versioning/events/versions.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Scene Versioning publishes its owned business facts through the Platform reaction contract"
     },
     %{
       source: "lib/storyarn/sheets/asset_commands.ex",
@@ -1398,7 +1499,7 @@ policy = %{
         "The global command palette creates, deletes, and localizes entities of every tool through each tool's public facade"
     },
     %{
-      source: "lib/storyarn/scenes/scene_crud.ex",
+      source: "lib/storyarn/scenes/editor/commands/scenes.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Scene mutations request durable notification delivery through the public Platform contract"

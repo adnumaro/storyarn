@@ -56,13 +56,41 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ScenePin)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.SceneZone)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.ExplorationSession)
-  # Scene schemas associate to Scene-owned persistence records; derive them so
-  # a preloaded association cannot turn an encodable struct into a crash.
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.AssetRecord, except: [:deleted_at, :deleted_by_id])
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.FlowRecord)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.ProjectRecord)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.SheetRecord)
-  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Persistence.UserRecord)
+
+  # Scenes duplicates consumer-owned read models by capability. Derive every
+  # projection that can cross the presentation boundary, including preloaded
+  # associations, without coupling StoryarnWeb to a generic persistence layer.
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Access.Data.ProjectMembershipRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Access.Data.ProjectRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Access.Data.WorkspaceRecord)
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Assets.Data.AssetRecord, except: [:deleted_at, :deleted_by_id])
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.AssetRecord, except: [:deleted_at, :deleted_by_id])
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.BlockRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.EntityVersionRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.FlowRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.ProjectRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.SheetAvatarRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.SheetRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.TableColumnRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.TableRowRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.UserRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Editor.Data.WorkspaceRecord)
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.AssetRecord, except: [:deleted_at])
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.FlowConnectionRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.FlowNodeRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.FlowRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.ProjectRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.SheetAvatarRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.SheetRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Exploration.Data.UserRecord)
+
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Versioning.Data.ProjectRecord)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Versioning.Data.UserRecord)
   Protocol.derive(LiveVue.Encoder, Storyarn.Scenes.Versioning.EntityVersionRecord)
 
   # Sheets

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpersTest do
 
   use ExUnit.Case, async: true
 
-  alias Storyarn.Scenes.HealthChecker
+  alias Storyarn.Scenes.Health.Rules.Checker, as: HealthChecker
   alias StoryarnWeb.SceneLive.Helpers.HealthHelpers
   alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
 

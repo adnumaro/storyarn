@@ -11,7 +11,7 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:240
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:240
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:286
 #, elixir-autogen, elixir-format
 msgid "%{count} missing %{type}"
@@ -20,7 +20,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/flows/versioning.ex:742
-#: lib/storyarn/scenes/versioning.ex:737
+#: lib/storyarn/scenes/versioning/versioning.ex:756
 #: lib/storyarn/sheets/versioning.ex:737
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
@@ -76,7 +76,7 @@ msgid "Could not restore version."
 msgstr ""
 
 #: lib/storyarn/flows/versioning.ex:836
-#: lib/storyarn/scenes/versioning.ex:831
+#: lib/storyarn/scenes/versioning/versioning.ex:850
 #: lib/storyarn/sheets/versioning.ex:831
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
@@ -125,7 +125,7 @@ msgstr ""
 msgid "Version not found."
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:254
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:254
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:302
 #, elixir-autogen, elixir-format
 msgid "asset"
@@ -140,7 +140,7 @@ msgid_plural "blocks"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:256
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:256
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:306
 #, elixir-autogen, elixir-format
 msgid "flow"
@@ -148,7 +148,7 @@ msgid_plural "flows"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:257
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:257
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:308
 #, elixir-autogen, elixir-format
 msgid "scene"
@@ -156,7 +156,7 @@ msgid_plural "scenes"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:255
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:255
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:304
 #, elixir-autogen, elixir-format
 msgid "sheet"
@@ -165,7 +165,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:235
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:248
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:248
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:294
 #, elixir-autogen, elixir-format
 msgid "shortcut collision"
@@ -216,13 +216,13 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:177
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:163
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:163
 #, elixir-autogen, elixir-format
 msgid "%{source} #%{id} — malformed variable reference"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:162
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:148
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:148
 #, elixir-autogen, elixir-format
 msgid "%{source} #%{id} — unresolved %{kind} variable"
 msgstr ""
@@ -232,46 +232,46 @@ msgstr ""
 msgid "Flow node"
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:183
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:183
 #, elixir-autogen, elixir-format
 msgid "Scene ambient flow"
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:180
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:180
 #, elixir-autogen, elixir-format
 msgid "Scene pin"
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:181
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:181
 #, elixir-autogen, elixir-format
 msgid "Scene zone"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:195
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:185
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:185
 #, elixir-autogen, elixir-format
 msgid "Snapshot source"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:190
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:176
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:176
 #, elixir-autogen, elixir-format
 msgid "Snapshot variable references could not be validated"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:197
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:187
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:187
 #, elixir-autogen, elixir-format
 msgid "read"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:199
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:189
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:189
 #, elixir-autogen, elixir-format
 msgid "referenced"
 msgstr ""
 
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:258
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:258
 #: lib/storyarn/sheets/versioning/conflict_detector.ex:316
 #, elixir-autogen, elixir-format
 msgid "variable"
@@ -280,7 +280,7 @@ msgstr[0] ""
 msgstr[1] ""
 
 #: lib/storyarn/flows/versioning/conflict_detector.ex:198
-#: lib/storyarn/scenes/versioning/conflict_detector.ex:188
+#: lib/storyarn/scenes/versioning/execution/conflicts.ex:188
 #, elixir-autogen, elixir-format
 msgid "write"
 msgstr ""
