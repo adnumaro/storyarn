@@ -4,17 +4,17 @@
 organized by cohesive product capabilities plus explicit application and
 technical areas. None of these folders is an additional bounded context.
 
-| Area | Responsibility |
-| --- | --- |
-| `commercial/` | Plans, subscriptions, entitlements, limits, storage accounting, reservations, leases, and workspace-scoped commercial policy. |
-| `reactions/` | Platform reaction routing, product metrics, privacy-safe taxonomy, and analytics transport contracts. |
-| `notifications/` | Durable inbox state, recipient resolution, deduplication, visibility, read state, and post-commit invalidation. |
-| `collaboration/` | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context. |
-| `discovery/` | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
-| `onboarding/` | Product-wide tutorial progress and onboarding summaries. |
-| `delivery/` | Durable handoff to delivery workers after the producing context has decided intent and content. |
-| `adapters/` | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration. |
-| `kernel/` | A closed set of small, deterministic, business-neutral primitives used by several contexts. |
+| Area             | Responsibility                                                                                                                                                |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commercial/`    | Plans, subscriptions, entitlements, limits, storage accounting, reservations, leases, and workspace-scoped commercial policy.                                 |
+| `reactions/`     | Platform reaction routing, product metrics, privacy-safe taxonomy, and analytics transport contracts.                                                         |
+| `notifications/` | Durable inbox state, recipient resolution, deduplication, visibility, read state, and post-commit invalidation.                                               |
+| `collaboration/` | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context.                                |
+| `discovery/`     | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
+| `onboarding/`    | Product-wide tutorial progress and onboarding summaries.                                                                                                      |
+| `delivery/`      | Durable handoff to delivery workers after the producing context has decided intent and content.                                                               |
+| `adapters/`      | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration.                                                     |
+| `kernel/`        | A closed set of small, deterministic, business-neutral primitives used by several contexts.                                                                   |
 
 Platform is not an umbrella for code that merely happens to be shared. A new
 module enters Platform only when its policy is genuinely product-wide or when
@@ -29,18 +29,18 @@ limits and windows. Platform owns only the ETS/Redis counter mechanism.
 
 Each capability uses only the folders it needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transaction boundaries, locks, and effect coordination. |
-| `queries/` | Read-only persistence operations and bounded read models. |
-| `entities/` | Mutable Platform-owned business state, including Ecto schemas and changesets. |
-| `contracts/` | Stable value and behaviour contracts owned by the capability. |
-| `rules/` | Deterministic policy, validation, normalization, and reference data decisions. |
-| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
-| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O. |
-| `execution/` | Stateful or multi-step orchestration whose transaction or lock ordering must remain indivisible. |
-| `events/` | Product facts and reaction handlers owned by the capability. |
-| `adapters/` | Translation to PostgreSQL-specific operations, PubSub, OTP state, Oban, caches, or external providers. |
+| Folder            | Responsibility                                                                                         |
+| ----------------- | ------------------------------------------------------------------------------------------------------ |
+| `commands/`       | State-changing use cases, transaction boundaries, locks, and effect coordination.                      |
+| `queries/`        | Read-only persistence operations and bounded read models.                                              |
+| `entities/`       | Mutable Platform-owned business state, including Ecto schemas and changesets.                          |
+| `contracts/`      | Stable value and behaviour contracts owned by the capability.                                          |
+| `rules/`          | Deterministic policy, validation, normalization, and reference data decisions.                         |
+| `projections/`    | Passive, consumer-owned, read-only SQL mappings over shared tables.                                    |
+| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O.                               |
+| `execution/`      | Stateful or multi-step orchestration whose transaction or lock ordering must remain indivisible.       |
+| `events/`         | Product facts and reaction handlers owned by the capability.                                           |
+| `adapters/`       | Translation to PostgreSQL-specific operations, PubSub, OTP state, Oban, caches, or external providers. |
 
 The roles describe responsibility, not an object-oriented layering exercise. A
 large workflow is not split merely to make every function fit a diagram. In

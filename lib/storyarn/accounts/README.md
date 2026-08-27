@@ -7,18 +7,18 @@ bounded contexts.
 
 Each capability uses only the responsibility folders it needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | Use cases that change state or coordinate transactions and effects. |
-| `queries/` | Read-only persistence operations. |
-| `entities/` | Account-owned mutable state, schemas, and changesets. |
-| `contracts/` | Stable application value contracts whose module identity is consumed outside the capability. |
-| `rules/` | Pure business decisions and time-window policies. |
-| `tokens/` | Token issuance and verification policy; persistence remains in commands or queries. |
+| Folder                    | Responsibility                                                                                                                                                             |
+| ------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commands/`               | Use cases that change state or coordinate transactions and effects.                                                                                                        |
+| `queries/`                | Read-only persistence operations.                                                                                                                                          |
+| `entities/`               | Account-owned mutable state, schemas, and changesets.                                                                                                                      |
+| `contracts/`              | Stable application value contracts whose module identity is consumed outside the capability.                                                                               |
+| `rules/`                  | Pure business decisions and time-window policies.                                                                                                                          |
+| `tokens/`                 | Token issuance and verification policy; persistence remains in commands or queries.                                                                                        |
 | `commands/rate_limits.ex` | Account-owned bucket names, windows, and limits backed by Platform's technical counter mechanism. It is effectful application policy, not a second capability entry point. |
-| `delivery/` | Account-owned delivery intent, copy, rendering, and delivery workflow. |
-| `events/` | Account-owned business facts published after successful operations. |
-| `adapters/` | Technical translations to Oban, encryption, email transport, or a library protocol. |
+| `delivery/`               | Account-owned delivery intent, copy, rendering, and delivery workflow.                                                                                                     |
+| `events/`                 | Account-owned business facts published after successful operations.                                                                                                        |
+| `adapters/`               | Technical translations to Oban, encryption, email transport, or a library protocol.                                                                                        |
 
 For example, Password Reset owns the decision to queue and the content to send.
 `Authentication.Adapters.Jobs.PasswordResetQueue` translates that request into

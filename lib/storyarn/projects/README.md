@@ -4,17 +4,17 @@
 by Project-owned business capabilities. These folders are implementation slices
 inside one bounded context; none is an independently named bounded context.
 
-| Capability | Responsibility |
-| --- | --- |
-| `lifecycle/` | Project identity, creation, configuration, source language, update, soft deletion and Workspace-owned hard-delete coordination. |
-| `access/` | Project memberships, roles, authorization and invitations, including Project-owned invitation intent and copy. |
-| `assets/` | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and storage adapters. |
-| `overview/` | Project-wide dashboards, activity, statistics, health findings and structural analysis. It does not own the shared Project content records. |
-| `trash/` | Cross-tool Project trash, restore, hard deletion and retention workflows. |
-| `references/` | Project-wide entity and variable reference indexes, integrity, repair and usage queries. |
-| `interchange/` | Project import and export workflows, formats, parsers, serializers, validation and exact reconstitution writers. |
-| `templates/` | Project template publication, portable bundles, installation, audit and lifecycle. |
-| `versioning/` | Full-project snapshot capture, storage, restore, recovery, reconstitution, reconciliation and accounting. |
+| Capability     | Responsibility                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| `lifecycle/`   | Project identity, creation, configuration, source language, update, soft deletion and Workspace-owned hard-delete coordination.             |
+| `access/`      | Project memberships, roles, authorization and invitations, including Project-owned invitation intent and copy.                              |
+| `assets/`      | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and storage adapters.                     |
+| `overview/`    | Project-wide dashboards, activity, statistics, health findings and structural analysis. It does not own the shared Project content records. |
+| `trash/`       | Cross-tool Project trash, restore, hard deletion and retention workflows.                                                                   |
+| `references/`  | Project-wide entity and variable reference indexes, integrity, repair and usage queries.                                                    |
+| `interchange/` | Project import and export workflows, formats, parsers, serializers, validation and exact reconstitution writers.                            |
+| `templates/`   | Project template publication, portable bundles, installation, audit and lifecycle.                                                          |
+| `versioning/`  | Full-project snapshot capture, storage, restore, recovery, reconstitution, reconciliation and accounting.                                   |
 
 Imports and exports are two directions of the same Project interchange
 capability. Snapshot restore and project import remain separate workflows:
@@ -60,20 +60,20 @@ defined by this folder, not by that compatibility namespace.
 
 Each capability uses only the roles it needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transactions, locks and effect coordination. |
-| `queries/` | Read-only persistence operations and purpose-built projections. |
-| `entities/` | Mutable Project-owned business state, including Ecto schemas and changesets. |
-| `contracts/` | Stable values and error/receipt contracts owned by the capability. |
-| `rules/` | Pure validation, normalization, policy and content interpretation. Persistence reads belong in `queries/`; randomness and allocation belong in `commands/`. |
-| `projections/` | Passive consumer-local SQL read models; never persistence I/O. |
-| `reference_data/` | Immutable application catalogs with no database identity or lifecycle. |
-| `records/` | SQL records intentionally used by an owner for controlled writes or exact reconstitution as well as reads. |
-| `execution/` | Stateful or multi-step workflows whose transaction, lock or recovery order must remain intact. |
-| `events/` | Product facts owned by Projects. |
-| `delivery/` | Project-owned delivery decisions and content, before technical handoff. |
-| `adapters/` | Translation to storage, archives, images, PostgreSQL locks, Oban, email or another provider. |
+| Folder            | Responsibility                                                                                                                                              |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commands/`       | State-changing use cases, transactions, locks and effect coordination.                                                                                      |
+| `queries/`        | Read-only persistence operations and purpose-built projections.                                                                                             |
+| `entities/`       | Mutable Project-owned business state, including Ecto schemas and changesets.                                                                                |
+| `contracts/`      | Stable values and error/receipt contracts owned by the capability.                                                                                          |
+| `rules/`          | Pure validation, normalization, policy and content interpretation. Persistence reads belong in `queries/`; randomness and allocation belong in `commands/`. |
+| `projections/`    | Passive consumer-local SQL read models; never persistence I/O.                                                                                              |
+| `reference_data/` | Immutable application catalogs with no database identity or lifecycle.                                                                                      |
+| `records/`        | SQL records intentionally used by an owner for controlled writes or exact reconstitution as well as reads.                                                  |
+| `execution/`      | Stateful or multi-step workflows whose transaction, lock or recovery order must remain intact.                                                              |
+| `events/`         | Product facts owned by Projects.                                                                                                                            |
+| `delivery/`       | Project-owned delivery decisions and content, before technical handoff.                                                                                     |
+| `adapters/`       | Translation to storage, archives, images, PostgreSQL locks, Oban, email or another provider.                                                                |
 
 This is a pragmatic functional architecture. A transaction is not split merely
 to make a file fit a diagram, and a pure function does not need a behaviour or

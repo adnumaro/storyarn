@@ -7,14 +7,14 @@ Storyarn bounded contexts.
 
 Each capability also has a smaller facade for collaboration inside AI:
 
-| Capability | Facade | Responsibility |
-| --- | --- | --- |
-| Context Building | `Storyarn.AI.Context` | Deterministic, bounded context-package construction and freshness checks. The folder is `context_building/` so it cannot be confused with a DDD bounded context. |
-| Governance | `Storyarn.AI.Governance` | Workspace and project access, egress policy, permitted lanes and execution/apply authorization. |
-| Integrations | `Storyarn.AI.Integrations` | Personal provider connections, workspace assignments, consent, model preferences, key validation and the integration audit trail. |
-| Routing | `Storyarn.AI.Routing` | Task contracts, model catalog, intents, opaque route options, preflight and provider-neutral route selection. |
-| Operations | `Storyarn.AI.Operations` | Durable operations and results, provider-attempt lifecycle, inference execution, alerts, recovery and reconciliation. |
-| Managed Spend | `Storyarn.AI.ManagedSpend` | Promotional allowance, grants, reservations, provider budgets, content-free usage accounting and exactly-once settlement. |
+| Capability       | Facade                     | Responsibility                                                                                                                                                   |
+| ---------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Context Building | `Storyarn.AI.Context`      | Deterministic, bounded context-package construction and freshness checks. The folder is `context_building/` so it cannot be confused with a DDD bounded context. |
+| Governance       | `Storyarn.AI.Governance`   | Workspace and project access, egress policy, permitted lanes and execution/apply authorization.                                                                  |
+| Integrations     | `Storyarn.AI.Integrations` | Personal provider connections, workspace assignments, consent, model preferences, key validation and the integration audit trail.                                |
+| Routing          | `Storyarn.AI.Routing`      | Task contracts, model catalog, intents, opaque route options, preflight and provider-neutral route selection.                                                    |
+| Operations       | `Storyarn.AI.Operations`   | Durable operations and results, provider-attempt lifecycle, inference execution, alerts, recovery and reconciliation.                                            |
+| Managed Spend    | `Storyarn.AI.ManagedSpend` | Promotional allowance, grants, reservations, provider budgets, content-free usage accounting and exactly-once settlement.                                        |
 
 Capabilities are implementation slices of AI. They can be reorganized without
 changing the business boundary or requiring separate OTP applications.
@@ -24,20 +24,20 @@ changing the business boundary or requiring separate OTP applications.
 A capability uses only the folders that describe responsibilities it actually
 has. Empty architectural layers are not required.
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transactions, locks and effect coordination. |
-| `queries/` | Read-only persistence operations and bounded projections. |
-| `entities/` | AI-owned mutable state, Ecto schemas and their changesets. |
-| `contracts/` | Stable value contracts and configurable SPIs consumed across a capability boundary. |
-| `rules/` | Deterministic validation, normalization, hashing and policy decisions. |
-| `execution/` | Stateful or multi-step workflows whose security, transaction or exactly-once boundary must remain whole. |
-| `events/` | Business facts and append-only audit records owned by the producing capability. |
-| `adapters/` | Translation to providers, credentials, jobs, telemetry, feature flags, PostgreSQL locks or another technical mechanism. |
-| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
-| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O. |
-| `tasks/` | Registered AI task definitions; executable product contracts rather than passive data. |
-| `compatibility/` | Temporary public compatibility facades; never provider adapters or new entry points. |
+| Folder            | Responsibility                                                                                                          |
+| ----------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| `commands/`       | State-changing use cases, transactions, locks and effect coordination.                                                  |
+| `queries/`        | Read-only persistence operations and bounded projections.                                                               |
+| `entities/`       | AI-owned mutable state, Ecto schemas and their changesets.                                                              |
+| `contracts/`      | Stable value contracts and configurable SPIs consumed across a capability boundary.                                     |
+| `rules/`          | Deterministic validation, normalization, hashing and policy decisions.                                                  |
+| `execution/`      | Stateful or multi-step workflows whose security, transaction or exactly-once boundary must remain whole.                |
+| `events/`         | Business facts and append-only audit records owned by the producing capability.                                         |
+| `adapters/`       | Translation to providers, credentials, jobs, telemetry, feature flags, PostgreSQL locks or another technical mechanism. |
+| `projections/`    | Passive, consumer-owned, read-only SQL mappings over shared tables.                                                     |
+| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O.                                                |
+| `tasks/`          | Registered AI task definitions; executable product contracts rather than passive data.                                  |
+| `compatibility/`  | Temporary public compatibility facades; never provider adapters or new entry points.                                    |
 
 The capability facade sits directly inside its capability folder. Private
 commands, queries, rules, execution modules, events, adapters and projections

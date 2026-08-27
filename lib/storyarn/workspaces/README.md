@@ -6,13 +6,13 @@ by a global technical layer. Each capability then uses only the responsibility
 folders it actually needs.
 
 | Folder               | Responsibility                                                                                                                             |
-|----------------------|--------------------------------------------------------------------------------------------------------------------------------------------|
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
 | `commands/`          | Use cases that change state or coordinate effects and transactions.                                                                        |
 | `queries/`           | Read-only use cases. They may query through `Repo`, but cannot mutate or coordinate effects.                                               |
 | `entities/`          | Mutable business state owned by Workspaces, including its Ecto schemas and changesets.                                                     |
 | `rules/`             | Pure business decisions, validation, policies, and normalization.                                                                          |
-| `projections/`       | Passive, consumer-owned, read-only SQL mappings over shared tables.                                                                         |
-| `reference_data/`    | Immutable catalogs without database identity, lifecycle, or I/O.                                                                            |
+| `projections/`       | Passive, consumer-owned, read-only SQL mappings over shared tables.                                                                        |
+| `reference_data/`    | Immutable catalogs without database identity, lifecycle, or I/O.                                                                           |
 | `delivery/`          | Invitation-owned application workflow for processing and rendering delivery. It is not a technical adapter.                                |
 | `adapters/`          | Technical seams and translations to storage, Oban, Swoosh, or another provider. A seam may colocate its behaviour/port and implementation. |
 | `events/`, `tokens/` | Narrow, named responsibilities used only where the capability needs them.                                                                  |

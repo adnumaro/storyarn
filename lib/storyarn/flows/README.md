@@ -4,16 +4,16 @@
 business capabilities; these folders are implementation slices of Flows, not
 additional bounded contexts:
 
-| Capability | Responsibility |
-| --- | --- |
-| `editor/` | The authored Flow aggregate: flows, nodes, connections, sequences, hierarchy, editor catalogs, and atomic graph mutations. |
-| `expressions/` | Conditions, instructions, formulas, variable vocabulary, constraints, search, and namespace resolution. |
-| `references/` | Entity and variable projections, target validation, trash/restore integrity, avatars, assets, and rich-text mentions. |
-| `runtime/` | Evaluation, player sessions, dialogue preview, debugging, runtime graphs, navigation history, and ephemeral process state. |
-| `health/` | Canonical structural analysis, health flags, statistics, findings, severity, and dashboard/export parity. |
-| `localization/` | Flow-localizable content vocabulary, extraction projection, and player-facing word counts. |
-| `ai/` | Flow context construction, neighborhood reads, source locking, and Flow-owned AI contracts. |
-| `versioning/` | Flow version history, snapshot capture, validation, comparison, asset materialization, and restore. |
+| Capability      | Responsibility                                                                                                             |
+| --------------- | -------------------------------------------------------------------------------------------------------------------------- |
+| `editor/`       | The authored Flow aggregate: flows, nodes, connections, sequences, hierarchy, editor catalogs, and atomic graph mutations. |
+| `expressions/`  | Conditions, instructions, formulas, variable vocabulary, constraints, search, and namespace resolution.                    |
+| `references/`   | Entity and variable projections, target validation, trash/restore integrity, avatars, assets, and rich-text mentions.      |
+| `runtime/`      | Evaluation, player sessions, dialogue preview, debugging, runtime graphs, navigation history, and ephemeral process state. |
+| `health/`       | Canonical structural analysis, health flags, statistics, findings, severity, and dashboard/export parity.                  |
+| `localization/` | Flow-localizable content vocabulary, extraction projection, and player-facing word counts.                                 |
+| `ai/`           | Flow context construction, neighborhood reads, source locking, and Flow-owned AI contracts.                                |
+| `versioning/`   | Flow version history, snapshot capture, validation, comparison, asset materialization, and restore.                        |
 
 Flow, node, connection, and sequence authoring deliberately remain in the same
 `editor/` capability. They form one transactional graph aggregate: splitting
@@ -30,19 +30,19 @@ remain behind their owning capability.
 
 Each capability uses only the roles it actually needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transactions, locks, and effect coordination. A command may also read when the read is inseparable from its invariant. |
-| `queries/` | Read-only persistence operations and bounded projections. |
-| `entities/` | Mutable business state owned by Flows, including Ecto schemas and changesets. |
-| `contracts/` | Stable Flow value contracts owned by the capability and exposed through its facade or required by configuration. |
-| `compatibility/` | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
-| `rules/` | Deterministic validation, normalization, formula, graph, and health decisions. |
-| `projections/` | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O. |
-| `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle. |
-| `execution/` | Stateful or multi-step runtime orchestration such as evaluation, debugging, and snapshot materialization. |
-| `events/` | Business facts owned by the capability that produced them. |
-| `adapters/` | Technical translation to memory/OTP state, object storage, PostgreSQL locks, optimized raw SQL, or another provider. |
+| Folder            | Responsibility                                                                                                                                   |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `commands/`       | State-changing use cases, transactions, locks, and effect coordination. A command may also read when the read is inseparable from its invariant. |
+| `queries/`        | Read-only persistence operations and bounded projections.                                                                                        |
+| `entities/`       | Mutable business state owned by Flows, including Ecto schemas and changesets.                                                                    |
+| `contracts/`      | Stable Flow value contracts owned by the capability and exposed through its facade or required by configuration.                                 |
+| `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful.                                       |
+| `rules/`          | Deterministic validation, normalization, formula, graph, and health decisions.                                                                   |
+| `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                                                            |
+| `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                                                              |
+| `execution/`      | Stateful or multi-step runtime orchestration such as evaluation, debugging, and snapshot materialization.                                        |
+| `events/`         | Business facts owned by the capability that produced them.                                                                                       |
+| `adapters/`       | Technical translation to memory/OTP state, object storage, PostgreSQL locks, optimized raw SQL, or another provider.                             |
 
 Commands and execution workflows still decide transaction boundaries, lock
 namespaces and acquisition order. An adapter executes the provider-specific

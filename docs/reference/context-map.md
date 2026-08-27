@@ -13,18 +13,18 @@ names semantic ownership, write authority and transitional relationships.
 
 ## Context relationships
 
-| Upstream / owner | Downstream / consumer | Contract today | Status |
-| --- | --- | --- | --- |
-| Accounts | Workspaces | Registration provisions the initial workspace through `Storyarn.Workspaces` | Application workflow; atomic in the monolith |
-| Workspaces | Projects | Workspace lifecycle coordinates Project-owned hard deletion through `Storyarn.Projects` | Application workflow; extraction needs an idempotent coordinator |
-| Projects | Platform | Commercial capacity, notifications and product reactions through `Storyarn.Platform` | Reviewed public contracts |
-| Flows, Sheets, Scenes | Platform | Commercial policy, notifications and product reactions through `Storyarn.Platform` | Reviewed public contracts |
-| Flows, Sheets | AI | Consumer-owned context builders implement explicit AI contracts; execution enters `Storyarn.AI` | Reviewed public contracts |
-| Workspaces | AI | AI team/settings presentation composes the public AI facade | Reviewed Web composition |
-| Tools and project-wide consumers | Shared PostgreSQL | Consumer-owned projections or records map the same tables independently | Accepted schema coupling; ENG-106 is later |
-| Flows, Sheets, Scenes, Web, OTP root | Projects storage internals | Exact storage/hash/lock edges | Transitional debt; ENG-107 |
-| Platform delivery worker | Projects and Workspaces | Invitation delivery dispatches back into producer contexts | Transitional runtime cycle; ENG-109 |
-| Project settings | Localization | Two ordinary source-language writers currently exist | Deferred ownership correction; ENG-110 under ENG-103 |
+| Upstream / owner                     | Downstream / consumer      | Contract today                                                                                  | Status                                                           |
+| ------------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accounts                             | Workspaces                 | Registration provisions the initial workspace through `Storyarn.Workspaces`                     | Application workflow; atomic in the monolith                     |
+| Workspaces                           | Projects                   | Workspace lifecycle coordinates Project-owned hard deletion through `Storyarn.Projects`         | Application workflow; extraction needs an idempotent coordinator |
+| Projects                             | Platform                   | Commercial capacity, notifications and product reactions through `Storyarn.Platform`            | Reviewed public contracts                                        |
+| Flows, Sheets, Scenes                | Platform                   | Commercial policy, notifications and product reactions through `Storyarn.Platform`              | Reviewed public contracts                                        |
+| Flows, Sheets                        | AI                         | Consumer-owned context builders implement explicit AI contracts; execution enters `Storyarn.AI` | Reviewed public contracts                                        |
+| Workspaces                           | AI                         | AI team/settings presentation composes the public AI facade                                     | Reviewed Web composition                                         |
+| Tools and project-wide consumers     | Shared PostgreSQL          | Consumer-owned projections or records map the same tables independently                         | Accepted schema coupling; ENG-106 is later                       |
+| Flows, Sheets, Scenes, Web, OTP root | Projects storage internals | Exact storage/hash/lock edges                                                                   | Transitional debt; ENG-107                                       |
+| Platform delivery worker             | Projects and Workspaces    | Invitation delivery dispatches back into producer contexts                                      | Transitional runtime cycle; ENG-109                              |
+| Project settings                     | Localization               | Two ordinary source-language writers currently exist                                            | Deferred ownership correction; ENG-110 under ENG-103             |
 
 No direct code relationship is allowed among Flows, Sheets and Scenes. Shared
 facts are read through consumer-local mappings. A matching table name or payload
@@ -35,17 +35,17 @@ shape does not grant permission to import another tool's schema, parser or rule.
 The following is the intended ordinary product ownership. It is not yet fully
 enforced at SQL-operation level; ENG-103 owns that enforcement.
 
-| Context | Ordinary writes it owns | Explicit non-ordinary exceptions |
-| --- | --- | --- |
-| Accounts | Users, authentication credentials/tokens, account profile and lifecycle | Administrative or recovery operations must enter Accounts |
-| Workspaces | Workspaces, memberships, invitations and workspace lifecycle | Initial provisioning may be coordinated from registration |
-| Projects | Project identity, access, assets, templates, project import/export, snapshots and project-wide lifecycle | Exact reconstitution, repair and trash may write closed Project content records |
-| Sheets | Sheets, blocks, tables, galleries, formulas and variable definitions | Current Flow-related writers/rebuilds remain tracked by ENG-103 and are not expanded |
-| Flows | Flows, nodes, connections, sequences, runtime state and Flow versions | Current Sheet/Localization side effects remain tracked by ENG-103 |
-| Scenes | Scenes, layers, zones, pins, connections and Scene versions | Project restore/reconstitution may materialize exact Scene records |
-| Localization | Languages, localized texts, glossary, translation runs and reviews | Project import/reconstitution and classified inventory repair only |
-| AI | AI policy, integrations, routing, operations, audit and managed-spend state | Projects remains the current writer of selected AI configuration records until deliberately changed |
-| Platform | Catalog, subscriptions, entitlements, product reactions and notification inbox/delivery state | Producers retain semantic event, notification and email intent |
+| Context      | Ordinary writes it owns                                                                                  | Explicit non-ordinary exceptions                                                                    |
+| ------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Accounts     | Users, authentication credentials/tokens, account profile and lifecycle                                  | Administrative or recovery operations must enter Accounts                                           |
+| Workspaces   | Workspaces, memberships, invitations and workspace lifecycle                                             | Initial provisioning may be coordinated from registration                                           |
+| Projects     | Project identity, access, assets, templates, project import/export, snapshots and project-wide lifecycle | Exact reconstitution, repair and trash may write closed Project content records                     |
+| Sheets       | Sheets, blocks, tables, galleries, formulas and variable definitions                                     | Current Flow-related writers/rebuilds remain tracked by ENG-103 and are not expanded                |
+| Flows        | Flows, nodes, connections, sequences, runtime state and Flow versions                                    | Current Sheet/Localization side effects remain tracked by ENG-103                                   |
+| Scenes       | Scenes, layers, zones, pins, connections and Scene versions                                              | Project restore/reconstitution may materialize exact Scene records                                  |
+| Localization | Languages, localized texts, glossary, translation runs and reviews                                       | Project import/reconstitution and classified inventory repair only                                  |
+| AI           | AI policy, integrations, routing, operations, audit and managed-spend state                              | Projects remains the current writer of selected AI configuration records until deliberately changed |
+| Platform     | Catalog, subscriptions, entitlements, product reactions and notification inbox/delivery state            | Producers retain semantic event, notification and email intent                                      |
 
 An exception must name the operation, tables, locks and reason. A generic
 `records/` folder or a local Ecto schema does not itself authorize writes.

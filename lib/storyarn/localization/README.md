@@ -4,16 +4,16 @@
 organized by eight business capabilities. They are implementation slices of
 Localization, not additional bounded contexts:
 
-| Capability | Responsibility |
-| --- | --- |
-| `project_access/` | Localization's project visibility model and transactional validation of project-owned references. |
-| `languages/` | Project languages, source-language changes, ordering, and the immutable language catalog. |
-| `texts/` | Localized-text lifecycle, runtime inventory, extraction, source reconciliation, and export-facing text reads. |
-| `providers/` | Translation-provider configuration and provider technical adapters. |
-| `glossary/` | Glossary entries and synchronization of a language pair with the configured provider. |
-| `translation/` | Synchronous translation and durable asynchronous translation runs. |
-| `exchange/` | Translator-facing CSV/XLSX import and export formats. |
-| `reporting/` | Read-only progress, word-count, voice-over, and source-type reports. |
+| Capability        | Responsibility                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------- |
+| `project_access/` | Localization's project visibility model and transactional validation of project-owned references.             |
+| `languages/`      | Project languages, source-language changes, ordering, and the immutable language catalog.                     |
+| `texts/`          | Localized-text lifecycle, runtime inventory, extraction, source reconciliation, and export-facing text reads. |
+| `providers/`      | Translation-provider configuration and provider technical adapters.                                           |
+| `glossary/`       | Glossary entries and synchronization of a language pair with the configured provider.                         |
+| `translation/`    | Synchronous translation and durable asynchronous translation runs.                                            |
+| `exchange/`       | Translator-facing CSV/XLSX import and export formats.                                                         |
+| `reporting/`      | Read-only progress, word-count, voice-over, and source-type reports.                                          |
 
 Cross-capability workflows consume another capability through its facade. For
 example, Languages asks `Texts` to reset or reconcile inventory; Glossary asks
@@ -24,17 +24,17 @@ Private command, query, data, execution, and adapter modules are not shared.
 
 Each capability uses only the folders it needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transactions, locks, and effect coordination. |
-| `queries/` | Read-only persistence operations. |
-| `entities/` | Localization-owned mutable schemas and changesets. |
-| `contracts/` | Stable Localization value/protocol contracts consumed by more than one capability or context. |
-| `rules/` | Pure validation, normalization, eligibility, and transformation rules. |
-| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
-| `reference_data/` | Immutable catalogs without database identity, lifecycle, or I/O. |
-| `execution/` | Long-running application orchestration such as batch translation or glossary synchronization. |
-| `adapters/` | Technical translations to PostgreSQL-specific operations, HTTP providers, Oban, PubSub, notifications, or XLSX encoding. |
+| Folder            | Responsibility                                                                                                           |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `commands/`       | State-changing use cases, transactions, locks, and effect coordination.                                                  |
+| `queries/`        | Read-only persistence operations.                                                                                        |
+| `entities/`       | Localization-owned mutable schemas and changesets.                                                                       |
+| `contracts/`      | Stable Localization value/protocol contracts consumed by more than one capability or context.                            |
+| `rules/`          | Pure validation, normalization, eligibility, and transformation rules.                                                   |
+| `projections/`    | Passive, consumer-owned, read-only SQL mappings over shared tables.                                                      |
+| `reference_data/` | Immutable catalogs without database identity, lifecycle, or I/O.                                                         |
+| `execution/`      | Long-running application orchestration such as batch translation or glossary synchronization.                            |
+| `adapters/`       | Technical translations to PostgreSQL-specific operations, HTTP providers, Oban, PubSub, notifications, or XLSX encoding. |
 
 This is a pragmatic functional architecture. A capability does not need every
 role folder, and technical behavior is not wrapped in a port merely to satisfy

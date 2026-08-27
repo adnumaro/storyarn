@@ -4,16 +4,16 @@
 by eight business capabilities. These are cohesive implementation slices of
 Scenes, not additional bounded contexts:
 
-| Capability | Responsibility |
-| --- | --- |
-| `access/` | Scene-specific project visibility and membership reads. |
-| `editor/` | Scene hierarchy and the authored layers, zones, pins, connections, annotations, and ambient flows. |
-| `assets/` | Scene-owned asset catalog, uploads, background variants, zone images, and asset materialization. |
-| `expressions/` | Conditions, instructions, variable vocabulary, constraints, and namespace resolution. |
-| `references/` | Validation and projection of entity and variable references authored by Scenes. |
-| `exploration/` | Saved exploration sessions, consumer-local Flow and Sheet reads, and the in-memory play runtime. |
-| `health/` | Canonical Scene health rules, snapshots, and project dashboard findings. |
-| `versioning/` | Scene version history, snapshot capture, conflict preview, materialization, and restore. |
+| Capability     | Responsibility                                                                                     |
+| -------------- | -------------------------------------------------------------------------------------------------- |
+| `access/`      | Scene-specific project visibility and membership reads.                                            |
+| `editor/`      | Scene hierarchy and the authored layers, zones, pins, connections, annotations, and ambient flows. |
+| `assets/`      | Scene-owned asset catalog, uploads, background variants, zone images, and asset materialization.   |
+| `expressions/` | Conditions, instructions, variable vocabulary, constraints, and namespace resolution.              |
+| `references/`  | Validation and projection of entity and variable references authored by Scenes.                    |
+| `exploration/` | Saved exploration sessions, consumer-local Flow and Sheet reads, and the in-memory play runtime.   |
+| `health/`      | Canonical Scene health rules, snapshots, and project dashboard findings.                           |
+| `versioning/`  | Scene version history, snapshot capture, conflict preview, materialization, and restore.           |
 
 Cross-capability workflows enter another capability through its facade. Stable
 Scene entities and value contracts may retain their established module identity,
@@ -24,19 +24,19 @@ adapters do not cross capability boundaries.
 
 Each capability uses only the roles it actually needs:
 
-| Folder | Responsibility |
-| --- | --- |
-| `commands/` | State-changing use cases, transactions, locks, and effect coordination. |
-| `queries/` | Read-only persistence operations and bounded projections. |
-| `entities/` | Mutable business state owned by Scenes, including Ecto schemas and changesets. |
-| `contracts/` | Stable Scene value contracts shared across capabilities or required by framework configuration. |
-| `compatibility/` | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
-| `rules/` | Pure validation, normalization, policy, and health decisions. |
-| `projections/` | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O. |
-| `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle. |
-| `execution/` | Stateful or multi-step runtime orchestration such as exploration and snapshot materialization. |
-| `events/` | Business facts owned by the capability that produced them. |
-| `adapters/` | Technical translation to object storage, image processing, PostgreSQL locks, or another provider. |
+| Folder            | Responsibility                                                                                             |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `commands/`       | State-changing use cases, transactions, locks, and effect coordination.                                    |
+| `queries/`        | Read-only persistence operations and bounded projections.                                                  |
+| `entities/`       | Mutable business state owned by Scenes, including Ecto schemas and changesets.                             |
+| `contracts/`      | Stable Scene value contracts shared across capabilities or required by framework configuration.            |
+| `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
+| `rules/`          | Pure validation, normalization, policy, and health decisions.                                              |
+| `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                      |
+| `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                        |
+| `execution/`      | Stateful or multi-step runtime orchestration such as exploration and snapshot materialization.             |
+| `events/`         | Business facts owned by the capability that produced them.                                                 |
+| `adapters/`       | Technical translation to object storage, image processing, PostgreSQL locks, or another provider.          |
 
 This is a pragmatic functional architecture. A function does not need a port
 merely to satisfy a diagram, and a capability does not need every role folder.
