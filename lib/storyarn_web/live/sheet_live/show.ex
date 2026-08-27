@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   import StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers
 
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Helpers.UndoRedoStack
@@ -1104,7 +1104,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       reload_blocks: &reload_blocks/1,
       broadcast: &broadcast_sheet_change/2,
       broadcast_with_payload: &broadcast_sheet_change/3,
-      parse_id: &MapUtils.parse_int/1,
+      parse_id: &IntegerParser.parse/1,
       push_undo: fn socket, action -> UndoRedoStack.push_undo(socket, action) end,
       block_to_snapshot: &UndoRedoHandlers.block_to_snapshot/1,
       push_block_value_coalesced: &UndoRedoHandlers.push_block_value_coalesced/4,
@@ -1118,7 +1118,7 @@ defmodule StoryarnWeb.SheetLive.Show do
       reload_sheet: &reload_sheet/1,
       broadcast: &broadcast_sheet_change/2,
       broadcast_tree_changed: &broadcast_sheet_tree_changed/1,
-      parse_id: &MapUtils.parse_int/1
+      parse_id: &IntegerParser.parse/1
     }
   end
 

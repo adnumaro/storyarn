@@ -15,8 +15,8 @@ defmodule Storyarn.AI.PersonalPreferences do
   alias Storyarn.AI.Governance
   alias Storyarn.AI.Integration
   alias Storyarn.AI.IntegrationAssignments
-  alias Storyarn.AI.Integrations.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
-  alias Storyarn.AI.Integrations.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Integrations.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Integrations.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.ModelCatalog.Entry
   alias Storyarn.AI.PersonalPreference

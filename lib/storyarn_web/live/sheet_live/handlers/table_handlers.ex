@@ -16,7 +16,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
   import Phoenix.LiveView, only: [put_flash: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers, only: [parse_binding_value: 1]
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Sheets
   alias StoryarnWeb.SheetLive.Handlers.UndoRedoHandlers
 
@@ -26,7 +26,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Persists a column width after drag-resize. No reload, no save indicator."
   def handle_resize_column(params, socket) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
 
     with {:ok, block_id} <- find_block_id_for_column(socket, column_id),
          column = Sheets.get_table_column!(block_id, column_id),
@@ -56,7 +56,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Updates a single cell value in a table row."
   def handle_update_cell(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
 
     value =
@@ -79,7 +79,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the collapsed state of a table block."
   def handle_toggle_collapse(params, socket, helpers) do
-    block_id = MapUtils.parse_int(params["block-id"])
+    block_id = IntegerParser.parse(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
     collapsed = block.config["collapsed"] || false
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles a boolean cell value in a table."
   def handle_toggle_cell_boolean(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
     row = Sheets.get_table_row!(row_id)
 
@@ -122,7 +122,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new column to a table block."
   def handle_add_column(params, socket, helpers) do
-    block_id = MapUtils.parse_int(params["block-id"])
+    block_id = IntegerParser.parse(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
 
@@ -142,7 +142,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new row to a table block."
   def handle_add_row(params, socket, helpers) do
-    block_id = MapUtils.parse_int(params["block-id"])
+    block_id = IntegerParser.parse(params["block-id"])
     project_id = socket.assigns.project.id
     block = Sheets.get_block_in_project!(block_id, project_id)
 
@@ -166,7 +166,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Renames a table column."
   def handle_rename_column(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
     new_name = String.trim(params["value"] || "")
 
     case find_block_id_for_column(socket, column_id) do
@@ -186,7 +186,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Changes a column type directly (no confirmation)."
   def handle_change_column_type(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
     new_type = params["new-type"]
 
     case find_block_id_for_column(socket, column_id) do
@@ -201,7 +201,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the is_constant flag on a column."
   def handle_toggle_column_constant(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -226,7 +226,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the required flag on a column."
   def handle_toggle_column_required(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -251,7 +251,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Deletes a table column directly."
   def handle_delete_column(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -269,7 +269,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Renames a table row."
   def handle_rename_row(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     new_name = String.trim(params["value"] || "")
     row = Sheets.get_table_row!(row_id)
 
@@ -293,7 +293,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Deletes a table row directly."
   def handle_delete_row(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     row = Sheets.get_table_row!(row_id)
 
     with :ok <- verify_row_ownership(socket, row) do
@@ -303,8 +303,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Reorders table rows by their IDs."
   def handle_reorder_rows(params, socket, helpers) do
-    block_id = MapUtils.parse_int(params["block_id"])
-    row_ids = Enum.map(params["row_ids"] || [], &MapUtils.parse_int/1)
+    block_id = IntegerParser.parse(params["block_id"])
+    row_ids = Enum.map(params["row_ids"] || [], &IntegerParser.parse/1)
 
     with :ok <- verify_block_ownership(socket, block_id) do
       prev_order = block_id |> Sheets.list_table_rows() |> Enum.map(& &1.id)
@@ -326,7 +326,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles the multiple flag on a reference column."
   def handle_toggle_reference_multiple(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
 
     case find_block_id_for_column(socket, column_id) do
       {:ok, block_id} ->
@@ -344,7 +344,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Updates a number constraint (min, max, or step) on a column."
   def handle_update_number_constraint(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
+    column_id = IntegerParser.parse(params["column-id"])
     field = params["field"]
     value = params["value"]
 
@@ -376,7 +376,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Saves a formula (expression + bindings) to a specific cell."
   def handle_update_formula_cell(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
     expression = params["expression"] || ""
     raw_bindings = params["bindings"] || %{}
@@ -453,7 +453,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Sets a select cell value to the given key (or clears it)."
   def handle_select_table_cell(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
     key = params["key"]
     row = Sheets.get_table_row!(row_id)
@@ -467,7 +467,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Toggles a key in a multi-select cell (add if absent, remove if present)."
   def handle_toggle_table_cell_multi_select(params, socket, helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
     key = params["key"]
     row = Sheets.get_table_row!(row_id)
@@ -487,8 +487,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.TableHandlers do
 
   @doc "Adds a new option to a column and selects/toggles it in the cell."
   def handle_add_table_cell_option(params, socket, helpers) do
-    column_id = MapUtils.parse_int(params["column-id"])
-    row_id = MapUtils.parse_int(params["row-id"])
+    column_id = IntegerParser.parse(params["column-id"])
+    row_id = IntegerParser.parse(params["row-id"])
     column_slug = params["column-slug"]
     label = String.trim(params["value"] || "")
 

@@ -32,7 +32,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
   alias Storyarn.Flows.Evaluator.NodeEvaluators.ExitEvaluator
   alias Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator
   alias Storyarn.Flows.Evaluator.State
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   # =============================================================================
   # Public API
@@ -239,7 +239,7 @@ defmodule Storyarn.Flows.Evaluator.Engine do
         variables =
           if updated_var[:formula],
             do: variables,
-            else: Logic.recompute_formulas(variables)
+            else: Expressions.recompute_formulas(variables)
 
         state = %{state | variables: variables}
 

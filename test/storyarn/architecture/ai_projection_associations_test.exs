@@ -6,27 +6,27 @@ defmodule Storyarn.Architecture.AIProjectionAssociationsTest do
   alias Storyarn.AI.AllowanceLedgerEntry
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.AuditEntry
-  alias Storyarn.AI.Governance.Data.UserRecord, as: GovernanceUserRecord
-  alias Storyarn.AI.Governance.Data.WorkspaceRecord, as: GovernanceWorkspaceRecord
+  alias Storyarn.AI.Governance.Projections.UserRecord, as: GovernanceUserRecord
+  alias Storyarn.AI.Governance.Projections.WorkspaceRecord, as: GovernanceWorkspaceRecord
   alias Storyarn.AI.Integration
-  alias Storyarn.AI.Integrations.Data.UserRecord, as: IntegrationsUserRecord
-  alias Storyarn.AI.Integrations.Data.WorkspaceRecord, as: IntegrationsWorkspaceRecord
+  alias Storyarn.AI.Integrations.Projections.UserRecord, as: IntegrationsUserRecord
+  alias Storyarn.AI.Integrations.Projections.WorkspaceRecord, as: IntegrationsWorkspaceRecord
   alias Storyarn.AI.IntegrationWorkspaceAssignment
-  alias Storyarn.AI.ManagedSpend.Data.UserRecord, as: ManagedSpendUserRecord
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: ManagedSpendWorkspaceRecord
+  alias Storyarn.AI.ManagedSpend.Projections.UserRecord, as: ManagedSpendUserRecord
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: ManagedSpendWorkspaceRecord
   alias Storyarn.AI.Operation
-  alias Storyarn.AI.Operations.Data.ProjectRecord, as: OperationsProjectRecord
-  alias Storyarn.AI.Operations.Data.UserRecord, as: OperationsUserRecord
-  alias Storyarn.AI.Operations.Data.WorkspaceRecord, as: OperationsWorkspaceRecord
+  alias Storyarn.AI.Operations.Projections.ProjectRecord, as: OperationsProjectRecord
+  alias Storyarn.AI.Operations.Projections.UserRecord, as: OperationsUserRecord
+  alias Storyarn.AI.Operations.Projections.WorkspaceRecord, as: OperationsWorkspaceRecord
   alias Storyarn.AI.OperatorAlert
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.PersonalPreference
   alias Storyarn.AI.ProviderBudgetReservation
   alias Storyarn.AI.Result
   alias Storyarn.AI.RouteOption
-  alias Storyarn.AI.Routing.Data.ProjectRecord, as: RoutingProjectRecord
-  alias Storyarn.AI.Routing.Data.UserRecord, as: RoutingUserRecord
-  alias Storyarn.AI.Routing.Data.WorkspaceRecord, as: RoutingWorkspaceRecord
+  alias Storyarn.AI.Routing.Projections.ProjectRecord, as: RoutingProjectRecord
+  alias Storyarn.AI.Routing.Projections.UserRecord, as: RoutingUserRecord
+  alias Storyarn.AI.Routing.Projections.WorkspaceRecord, as: RoutingWorkspaceRecord
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.AI.WorkspacePolicyAudit
 

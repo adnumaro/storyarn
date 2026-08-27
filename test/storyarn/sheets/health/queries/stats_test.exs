@@ -12,7 +12,7 @@ defmodule Storyarn.Sheets.Health.Queries.StatsTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.Health.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.Health.Projections.VariableReferenceRecord
   alias Storyarn.Sheets.Health.Queries.Stats, as: SheetStats
   alias Storyarn.Sheets.Health.Rules.Checker, as: HealthChecker
   alias Storyarn.Sheets.Sheet

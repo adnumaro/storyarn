@@ -21,7 +21,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
       # changes == [%{variable_ref: "mc.jaime.health", old_value: 100, new_value: 80, operator: "subtract"}]
   """
 
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @type change :: %{
           variable_ref: String.t(),
@@ -57,7 +57,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   @spec execute(list(), map()) :: {:ok, map(), [change()], [error()], [warning()]}
   def execute(assignments, variables) when is_list(assignments) do
     assignments
-    |> Enum.filter(&Logic.instruction_complete_assignment?/1)
+    |> Enum.filter(&Expressions.instruction_complete_assignment?/1)
     |> Enum.reduce({variables, [], [], []}, fn assignment, acc ->
       execute_single_assignment(assignment, acc)
     end)
@@ -84,7 +84,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
 
     # Check operator-type compatibility — warn but still execute
     warnings =
-      if operator in Logic.instruction_operators_for_type(var_entry.block_type) do
+      if operator in Expressions.instruction_operators_for_type(var_entry.block_type) do
         warnings
       else
         w = %{
@@ -92,7 +92,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
           operator: operator,
           block_type: var_entry.block_type,
           message:
-            "#{variable_ref}: operator \"#{Logic.instruction_operator_label(operator)}\" " <>
+            "#{variable_ref}: operator \"#{Expressions.instruction_operator_label(operator)}\" " <>
               "is not valid for #{var_entry.block_type} variables"
         }
 
@@ -141,7 +141,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   def execute_string(json_string, variables) when is_binary(json_string) do
     case Jason.decode(json_string) do
       {:ok, assignments} when is_list(assignments) ->
-        execute(Logic.instruction_sanitize(assignments), variables)
+        execute(Expressions.instruction_sanitize(assignments), variables)
 
       _ ->
         {:ok, variables, [], [], []}
@@ -226,7 +226,7 @@ defmodule Storyarn.Flows.Evaluator.InstructionExec do
   # -- Constraint clamping through the Flow-owned variable contract --
 
   defp clamp_to_constraints(value, %{block_type: block_type, constraints: constraints}),
-    do: Logic.clamp_variable(value, constraints, block_type)
+    do: Expressions.clamp_variable(value, constraints, block_type)
 
   defp clamp_to_constraints(value, _), do: value
 end

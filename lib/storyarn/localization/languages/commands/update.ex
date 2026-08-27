@@ -4,11 +4,11 @@ defmodule Storyarn.Localization.Languages.Commands.Update do
   alias Storyarn.Localization.Languages.Commands.Locks
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.Texts
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   def run(%ProjectLanguage{} = language, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       Locks.lock_project!(language.project_id)

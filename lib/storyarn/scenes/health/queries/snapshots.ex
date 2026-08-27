@@ -18,12 +18,12 @@ defmodule Storyarn.Scenes.Health.Queries.Snapshots do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor
-  alias Storyarn.Scenes.Health.Data.AssetRecord
-  alias Storyarn.Scenes.Health.Data.FlowRecord
-  alias Storyarn.Scenes.Health.Data.SheetRecord
+  alias Storyarn.Scenes.Expressions
+  alias Storyarn.Scenes.Health.Projections.AssetRecord
+  alias Storyarn.Scenes.Health.Projections.FlowRecord
+  alias Storyarn.Scenes.Health.Projections.SheetRecord
   alias Storyarn.Scenes.Health.Rules.Checker
   alias Storyarn.Scenes.Instruction
-  alias Storyarn.Scenes.Logic
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
@@ -165,7 +165,7 @@ defmodule Storyarn.Scenes.Health.Queries.Snapshots do
       # reaches it through `VariableHelpers.list_all_variables/1`, which
       # delegates to the same function; a surface that only read sheet variables
       # would report every pin/zone property reference as stale.
-      variables: Logic.list_referenceable(project_id)
+      variables: Expressions.list_referenceable(project_id)
     })
   end
 

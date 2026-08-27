@@ -1,5 +1,10 @@
 defmodule Storyarn.Scenes.Assets do
-  @moduledoc false
+  @moduledoc """
+  Scene asset boundary for catalog reads, materialization and zone imagery.
+
+  Storage and image processing remain private adapters; callers depend on this
+  capability rather than their technical implementations.
+  """
 
   alias Storyarn.Scenes.Assets.Commands.Assets, as: AssetCommands
   alias Storyarn.Scenes.Assets.Commands.ZoneImage

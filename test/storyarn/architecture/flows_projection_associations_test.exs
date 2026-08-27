@@ -1,36 +1,36 @@
 defmodule Storyarn.Architecture.FlowsProjectionAssociationsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Flows.Editor.Data.AssetRecord, as: EditorAssetRecord
-  alias Storyarn.Flows.Editor.Data.BlockRecord, as: EditorBlockRecord
-  alias Storyarn.Flows.Editor.Data.GalleryImageRecord, as: EditorGalleryImageRecord
-  alias Storyarn.Flows.Editor.Data.SheetAvatarRecord, as: EditorAvatarRecord
-  alias Storyarn.Flows.Editor.Data.SheetRecord, as: EditorSheetRecord
+  alias Storyarn.Flows.Editor.Projections.AssetRecord, as: EditorAssetRecord
+  alias Storyarn.Flows.Editor.Projections.BlockRecord, as: EditorBlockRecord
+  alias Storyarn.Flows.Editor.Projections.GalleryImageRecord, as: EditorGalleryImageRecord
+  alias Storyarn.Flows.Editor.Projections.SheetAvatarRecord, as: EditorAvatarRecord
+  alias Storyarn.Flows.Editor.Projections.SheetRecord, as: EditorSheetRecord
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.References.Data.AssetRecord, as: ReferencesAssetRecord
-  alias Storyarn.Flows.References.Data.BlockRecord, as: ReferencesBlockRecord
-  alias Storyarn.Flows.References.Data.SheetAvatarRecord, as: ReferencesAvatarRecord
-  alias Storyarn.Flows.References.Data.SheetRecord, as: ReferencesSheetRecord
-  alias Storyarn.Flows.References.Data.TableColumnRecord, as: ReferencesColumnRecord
-  alias Storyarn.Flows.References.Data.TableRowRecord, as: ReferencesRowRecord
-  alias Storyarn.Flows.Runtime.Data.AssetRecord, as: RuntimeAssetRecord
-  alias Storyarn.Flows.Runtime.Data.SheetAvatarRecord, as: RuntimeAvatarRecord
-  alias Storyarn.Flows.Runtime.Data.SheetRecord, as: RuntimeSheetRecord
+  alias Storyarn.Flows.References.Projections.AssetRecord, as: ReferencesAssetRecord
+  alias Storyarn.Flows.References.Projections.BlockRecord, as: ReferencesBlockRecord
+  alias Storyarn.Flows.References.Projections.SheetAvatarRecord, as: ReferencesAvatarRecord
+  alias Storyarn.Flows.References.Projections.SheetRecord, as: ReferencesSheetRecord
+  alias Storyarn.Flows.References.Projections.TableColumnRecord, as: ReferencesColumnRecord
+  alias Storyarn.Flows.References.Projections.TableRowRecord, as: ReferencesRowRecord
+  alias Storyarn.Flows.Runtime.Projections.AssetRecord, as: RuntimeAssetRecord
+  alias Storyarn.Flows.Runtime.Projections.SheetAvatarRecord, as: RuntimeAvatarRecord
+  alias Storyarn.Flows.Runtime.Projections.SheetRecord, as: RuntimeSheetRecord
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Flows.VariableReference
-  alias Storyarn.Flows.Versioning.Data.AssetRecord, as: VersioningAssetRecord
-  alias Storyarn.Flows.Versioning.Data.ProjectRecord, as: VersioningProjectRecord
-  alias Storyarn.Flows.Versioning.Data.SheetAvatarRecord, as: VersioningAvatarRecord
-  alias Storyarn.Flows.Versioning.Data.SheetRecord, as: VersioningSheetRecord
-  alias Storyarn.Flows.Versioning.Data.UserRecord, as: VersioningUserRecord
+  alias Storyarn.Flows.Versioning.Entities.AssetRecord, as: VersioningAssetRecord
   alias Storyarn.Flows.Versioning.EntityVersionRecord
+  alias Storyarn.Flows.Versioning.Projections.ProjectRecord, as: VersioningProjectRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetAvatarRecord, as: VersioningAvatarRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetRecord, as: VersioningSheetRecord
+  alias Storyarn.Flows.Versioning.Projections.UserRecord, as: VersioningUserRecord
 
   @root "lib/storyarn/flows"
-  @capabilities ~w(ai editor health localization logic references runtime versioning)
+  @capabilities ~w(ai editor expressions health localization references runtime versioning)
 
   test "owned schemas associate to entities and projections selected by their capability" do
     assert association(Flow, :parent) == Flow

@@ -1,5 +1,10 @@
 defmodule Storyarn.Scenes.Access do
-  @moduledoc false
+  @moduledoc """
+  Scene-owned project access boundary.
+
+  It exposes only the project identity and authorization facts required by
+  Scene workflows, backed by consumer-local projections.
+  """
 
   alias Storyarn.Scenes.Access.Queries.Projects
 

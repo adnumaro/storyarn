@@ -32,7 +32,7 @@ boundaries = %{
     "lib/storyarn/platform/onboarding/",
     "lib/storyarn/platform/reactions/reactions.ex",
     "lib/storyarn/platform/reactions/contracts/event_reaction.ex",
-    "lib/storyarn/platform/reactions/data/",
+    "lib/storyarn/platform/reactions/reference_data/",
     "lib/storyarn/platform/reactions/events/",
     "lib/storyarn/platform/reactions/execution/",
     "lib/storyarn/workers/platform/"
@@ -46,7 +46,6 @@ boundaries = %{
   flows: [
     "lib/storyarn/flows.ex",
     "lib/storyarn/flows/",
-    "lib/storyarn/workers/flows/",
     "lib/storyarn_web/live/flow_live/",
     "lib/storyarn_web/live/flow_sidebar_live.ex"
   ],
@@ -69,8 +68,6 @@ boundaries = %{
     "lib/storyarn_web/live/project_live/",
     "lib/storyarn_web/live/project_settings_live/",
     "lib/storyarn_web/live/project_sidebar_live.ex",
-    "lib/storyarn_web/live/compare_live/",
-    "lib/storyarn_web/live/version_viewer_live.ex",
     "lib/storyarn_web/live/export_import_live/",
     "lib/storyarn_web/live/template_live/"
   ],
@@ -108,11 +105,16 @@ boundaries = %{
   # `lib/storyarn/` catch-all: an unlisted namespace must fail until its ownership
   # is reviewed.
   infrastructure: [
+    "lib/mix/tasks/architecture_check.ex",
+    "lib/mix/tasks/convention_check.ex",
+    "lib/mix/tasks/storyarn.ai.diagnose.ex",
+    "lib/mix/tasks/storyarn.ai.grant.ex",
+    "lib/mix/tasks/storyarn.snapshot_archive_smoke.ex",
+    "lib/mix/tasks/storyarn.templates.export.ex",
+    "lib/mix/tasks/storyarn.templates.import.ex",
     "lib/storyarn.ex",
     "lib/storyarn/application.ex",
     "lib/storyarn/architecture/",
-    "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-    "lib/storyarn/projects/assets/adapters/storage/",
     "lib/storyarn/public/blog.ex",
     "lib/storyarn/public/blog/post.ex",
     "lib/storyarn/public/blog/post_builder.ex",
@@ -122,7 +124,6 @@ boundaries = %{
     "lib/storyarn/public/docs/guide.ex",
     "lib/storyarn/public/docs/guide_builder.ex",
     "lib/storyarn/gettext.ex",
-    "lib/storyarn/platform/abuse_prevention/",
     "lib/storyarn/platform/adapters/",
     "lib/storyarn/platform/kernel/",
     "lib/storyarn/platform/reactions/adapters/",
@@ -131,11 +132,7 @@ boundaries = %{
     "lib/storyarn/public/publication/locales.ex",
     "lib/storyarn/public/publication/path_localizer.ex",
     "lib/storyarn/repo.ex",
-    "lib/storyarn/shared/formula_engine.ex",
-    "lib/storyarn/shared/formula_runtime.ex",
-    "lib/storyarn/shared/hierarchical_schema.ex",
-    "lib/storyarn/shared/shortcut_helpers.ex",
-    "lib/storyarn/shared/tree_operations.ex"
+    "lib/storyarn/release.ex"
   ],
 
   # Explicit Web coordination outside concrete bounded-context surfaces. The
@@ -271,7 +268,9 @@ accounts_worker_facade_denial = %{
 # capability facade, but they must not reach directly into another capability's
 # private commands, queries, rules, adapters, or data projections.
 workspace_capabilities = ~w(lifecycle memberships invitations banner)
-workspace_private_roles = ~w(adapters commands queries rules data delivery tokens events)
+
+workspace_private_roles =
+  ~w(adapters commands queries rules projections reference_data delivery tokens events)
 
 workspace_internal_path_denials =
   for source_capability <- workspace_capabilities,
@@ -299,11 +298,16 @@ workspace_role_dependency_denials =
         {"rules", "delivery"},
         {"rules", "events"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "delivery"},
-        {"data", "events"},
-        {"data", "adapters"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "delivery"},
+        {"projections", "events"},
+        {"projections", "adapters"},
+        {"reference_data", "commands"},
+        {"reference_data", "queries"},
+        {"reference_data", "delivery"},
+        {"reference_data", "events"},
+        {"reference_data", "adapters"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "delivery"},
@@ -311,7 +315,8 @@ workspace_role_dependency_denials =
         {"entities", "adapters"},
         {"adapters", "commands"},
         {"adapters", "queries"},
-        {"adapters", "data"},
+        {"adapters", "projections"},
+        {"adapters", "reference_data"},
         {"adapters", "entities"},
         {"adapters", "delivery"},
         {"adapters", "events"},
@@ -362,18 +367,18 @@ workspace_worker_facade_denial = %{
 project_capabilities = ~w(lifecycle access assets overview trash references interchange templates versioning)
 
 project_private_role_roots = %{
-  "lifecycle" => ~w(commands data events rules),
+  "lifecycle" => ~w(commands events projections queries reference_data rules),
   "access" => ~w(commands delivery queries),
-  "assets" => ~w(adapters data execution queries rules),
-  "overview" => ~w(data execution queries rules),
+  "assets" => ~w(adapters commands execution projections queries rules),
+  "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
-  "references" => ~w(commands data execution queries rules),
+  "references" => ~w(commands execution projections queries records reference_data rules),
   "interchange" => ~w(
     imports/adapters imports/commands imports/execution imports/queries imports/rules
     exports/adapters exports/queries exports/rules
   ),
   "templates" => ~w(adapters commands execution queries rules),
-  "versioning" => ~w(adapters commands data execution queries rules)
+  "versioning" => ~w(adapters commands execution projections queries rules)
 }
 
 # These are the inherited, currently exercised capability-to-role seams. The
@@ -381,50 +386,42 @@ project_private_role_roots = %{
 # Removing a seam from code should be followed by removing its tuple here.
 project_private_role_compatibility =
   MapSet.new([
-    {"access", "lifecycle", "data"},
+    {"access", "lifecycle", "projections"},
     {"access", "lifecycle", "rules"},
-    {"assets", "lifecycle", "data"},
+    {"assets", "lifecycle", "projections"},
     {"assets", "lifecycle", "events"},
-    {"assets", "overview", "data"},
     {"assets", "references", "commands"},
-    {"assets", "versioning", "data"},
+    {"assets", "versioning", "projections"},
     {"assets", "versioning", "execution"},
     {"interchange", "assets", "adapters"},
-    {"interchange", "lifecycle", "data"},
+    {"interchange", "lifecycle", "projections"},
     {"interchange", "lifecycle", "rules"},
-    {"interchange", "overview", "data"},
     {"interchange", "overview", "queries"},
     {"interchange", "references", "commands"},
     {"interchange", "trash", "execution"},
     {"interchange", "versioning", "adapters"},
     {"interchange", "versioning", "execution"},
     {"lifecycle", "access", "queries"},
-    {"lifecycle", "overview", "data"},
-    {"overview", "lifecycle", "rules"},
-    {"overview", "references", "data"},
+    {"overview", "references", "records"},
     {"overview", "references", "queries"},
-    {"references", "overview", "data"},
     {"templates", "access", "queries"},
     {"templates", "assets", "adapters"},
     {"templates", "assets", "execution"},
-    {"templates", "lifecycle", "data"},
+    {"templates", "lifecycle", "projections"},
     {"templates", "lifecycle", "events"},
     {"templates", "lifecycle", "rules"},
-    {"templates", "overview", "data"},
     {"templates", "versioning", "adapters"},
     {"templates", "versioning", "execution"},
-    {"trash", "overview", "data"},
     {"trash", "references", "commands"},
-    {"trash", "references", "data"},
+    {"trash", "references", "records"},
     {"trash", "references", "execution"},
-    {"trash", "versioning", "data"},
+    {"trash", "versioning", "projections"},
     {"versioning", "access", "queries"},
     {"versioning", "assets", "adapters"},
     {"versioning", "assets", "execution"},
     {"versioning", "assets", "queries"},
-    {"versioning", "lifecycle", "data"},
+    {"versioning", "lifecycle", "projections"},
     {"versioning", "lifecycle", "rules"},
-    {"versioning", "overview", "data"},
     {"versioning", "overview", "queries"},
     {"versioning", "references", "commands"},
     {"versioning", "references", "queries"},
@@ -489,7 +486,6 @@ project_role_scopes =
 # established scopes instead of asserting a direction the code does not satisfy.
 project_role_compatibility =
   MapSet.new([
-    {"overview", "data", "rules"},
     {"interchange/exports", "contracts", "adapters"},
     {"interchange/exports", "rules", "adapters"},
     {"interchange/imports", "rules", "adapters"}
@@ -506,12 +502,24 @@ project_role_dependency_denials =
         {"rules", "execution"},
         {"rules", "events"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "execution"},
-        {"data", "events"},
-        {"data", "adapters"},
-        {"data", "rules"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "execution"},
+        {"projections", "events"},
+        {"projections", "adapters"},
+        {"projections", "rules"},
+        {"reference_data", "commands"},
+        {"reference_data", "queries"},
+        {"reference_data", "execution"},
+        {"reference_data", "events"},
+        {"reference_data", "adapters"},
+        {"reference_data", "rules"},
+        {"records", "commands"},
+        {"records", "queries"},
+        {"records", "execution"},
+        {"records", "events"},
+        {"records", "adapters"},
+        {"records", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "events"},
@@ -549,8 +557,11 @@ projects_worker_facade_denial = %{
 # A capability may consume another capability's facade or a deliberately stable
 # entity/contract identity, but its data projections and operational roles stay
 # private to the capability that owns them.
-localization_capabilities = ~w(access languages texts providers glossary translation exchange reporting)
-localization_private_roles = ~w(adapters commands queries rules data execution)
+localization_capabilities =
+  ~w(project_access languages texts providers glossary translation exchange reporting)
+
+localization_private_roles =
+  ~w(adapters commands queries rules projections reference_data execution)
 
 localization_internal_path_denials =
   for source_capability <- localization_capabilities,
@@ -577,11 +588,16 @@ localization_role_dependency_denials =
         {"rules", "queries"},
         {"rules", "execution"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "execution"},
-        {"data", "adapters"},
-        {"data", "rules"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "execution"},
+        {"projections", "adapters"},
+        {"projections", "rules"},
+        {"reference_data", "commands"},
+        {"reference_data", "queries"},
+        {"reference_data", "execution"},
+        {"reference_data", "adapters"},
+        {"reference_data", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -612,8 +628,8 @@ localization_worker_facade_denial = %{
 # Sheets is one bounded context split by business capability. Stable Sheet
 # entities and value contracts may cross capability lines; operational roles
 # and consumer-owned SQL projections remain private to their owner.
-sheet_capabilities = ~w(access ai assets editor health localization logic references versioning)
-sheet_private_roles = ~w(adapters commands queries rules data execution events)
+sheet_capabilities = ~w(access ai assets editor health localization expressions references versioning)
+sheet_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
 
 sheet_internal_path_denials =
   for source_capability <- sheet_capabilities,
@@ -654,12 +670,12 @@ sheet_role_dependency_denials =
         {"rules", "execution"},
         {"rules", "events"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "execution"},
-        {"data", "events"},
-        {"data", "adapters"},
-        {"data", "rules"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "execution"},
+        {"projections", "events"},
+        {"projections", "adapters"},
+        {"projections", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -692,8 +708,8 @@ sheet_role_dependency_denials =
 # Scenes is one bounded context split by business capability. Stable Scene
 # entities and value contracts may cross capability lines; operational roles
 # and consumer-owned SQL projections remain private to their owner.
-scene_capabilities = ~w(access assets editor exploration health logic references versioning)
-scene_private_roles = ~w(adapters commands queries rules data execution events)
+scene_capabilities = ~w(access assets editor exploration health expressions references versioning)
+scene_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
 
 scene_internal_path_denials =
   for source_capability <- scene_capabilities,
@@ -734,12 +750,12 @@ scene_role_dependency_denials =
         {"rules", "execution"},
         {"rules", "events"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "execution"},
-        {"data", "events"},
-        {"data", "adapters"},
-        {"data", "rules"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "execution"},
+        {"projections", "events"},
+        {"projections", "adapters"},
+        {"projections", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -772,8 +788,8 @@ scene_role_dependency_denials =
 # Flows is one bounded context split by business capability. Flow, node,
 # connection, and sequence authoring remains one Editor aggregate; the other
 # capabilities own their consumer-specific runtime, projections, and policies.
-flow_capabilities = ~w(ai editor health localization logic references runtime versioning)
-flow_private_roles = ~w(adapters commands queries rules data execution events)
+flow_capabilities = ~w(ai editor health localization expressions references runtime versioning)
+flow_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
 
 flow_internal_path_denials =
   for source_capability <- flow_capabilities,
@@ -814,12 +830,12 @@ flow_role_dependency_denials =
         {"rules", "execution"},
         {"rules", "events"},
         {"rules", "adapters"},
-        {"data", "commands"},
-        {"data", "queries"},
-        {"data", "execution"},
-        {"data", "events"},
-        {"data", "adapters"},
-        {"data", "rules"},
+        {"projections", "commands"},
+        {"projections", "queries"},
+        {"projections", "execution"},
+        {"projections", "events"},
+        {"projections", "adapters"},
+        {"projections", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -849,18 +865,14 @@ flow_role_dependency_denials =
     }
   end
 
-flows_worker_facade_denial = %{
-  source_root: "lib/storyarn/workers/flows/",
-  target_root: "lib/storyarn/flows/",
-  kinds: ["runtime", "export", "compile"],
-  reason: "Flow workers must orchestrate through the Storyarn.Flows facade"
-}
-
 # AI is one bounded context split into product capabilities, not six smaller
 # contexts. Capability facades and stable entities/contracts may be shared
 # internally; operational roles and consumer-owned projections stay private.
-ai_capabilities = ~w(context governance integrations managed_spend operations routing)
-ai_private_roles = ~w(adapters commands queries rules data execution events)
+ai_capabilities =
+  ~w(context_building governance integrations managed_spend operations routing)
+
+ai_private_roles =
+  ~w(adapters commands queries rules projections reference_data compatibility tasks execution events)
 
 ai_internal_path_denials =
   for source_capability <- ai_capabilities,
@@ -901,12 +913,18 @@ ai_forbidden_role_edges = [
   {"rules", "execution"},
   {"rules", "events"},
   {"rules", "adapters"},
-  {"data", "commands"},
-  {"data", "queries"},
-  {"data", "execution"},
-  {"data", "events"},
-  {"data", "adapters"},
-  {"data", "rules"},
+  {"projections", "commands"},
+  {"projections", "queries"},
+  {"projections", "execution"},
+  {"projections", "events"},
+  {"projections", "adapters"},
+  {"projections", "rules"},
+  {"reference_data", "commands"},
+  {"reference_data", "queries"},
+  {"reference_data", "execution"},
+  {"reference_data", "events"},
+  {"reference_data", "adapters"},
+  {"reference_data", "rules"},
   {"entities", "commands"},
   {"entities", "queries"},
   {"entities", "execution"},
@@ -916,7 +934,8 @@ ai_forbidden_role_edges = [
   {"contracts", "queries"},
   {"contracts", "execution"},
   {"contracts", "events"},
-  {"contracts", "data"},
+  {"contracts", "projections"},
+  {"contracts", "reference_data"},
   {"events", "commands"},
   {"events", "queries"},
   {"events", "execution"},
@@ -956,16 +975,17 @@ platform_capability_private_targets = %{
     "project_storage_reservations.ex",
     "subscription_crud.ex",
     "commands/",
-    "data/",
     "entities/",
     "execution/",
+    "projections/",
     "queries/",
+    "reference_data/",
     "rules/"
   ],
   "delivery" => ["adapters/"],
-  "notifications" => ["adapters/", "data/", "entities/", "execution/", "queries/"],
-  "onboarding" => ["commands/", "data/", "entities/", "queries/"],
-  "reactions" => ["data/", "events/", "execution/"]
+  "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
+  "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
+  "reactions" => ["events/", "execution/", "reference_data/"]
 }
 
 platform_query_role_denials =
@@ -1034,7 +1054,7 @@ platform_worker_facade_denials =
 # must not learn their adapters, commands, projections, entities, or queries.
 platform_web_application_private_targets = %{
   "collaboration" => ["adapters/", "rules/"],
-  "discovery" => ["adapters/", "commands/", "data/", "entities/", "queries/"]
+  "discovery" => ["adapters/", "commands/", "entities/", "projections/", "queries/", "reference_data/"]
 }
 
 platform_web_application_private_denials =
@@ -1094,6 +1114,7 @@ policy = %{
   # Every xref source or target beneath these application roots must match one
   # boundary above. These roots define enforcement scope, not ownership.
   classification_roots: [
+    "lib/mix/tasks/",
     "lib/storyarn.ex",
     "lib/storyarn/",
     "lib/storyarn_web.ex",
@@ -1107,6 +1128,18 @@ policy = %{
   # dependency direction must stay domain -> application boundary <- Web.
   path_denials:
     [
+      %{
+        source_root: "lib/storyarn.ex",
+        target_root: "lib/storyarn_web.ex",
+        kinds: ["runtime", "export", "compile"],
+        reason: "the Storyarn entry point cannot depend on the Web entry point"
+      },
+      %{
+        source_root: "lib/storyarn.ex",
+        target_root: "lib/storyarn_web/",
+        kinds: ["runtime", "export", "compile"],
+        reason: "the Storyarn entry point cannot depend on Phoenix or LiveVue adapters"
+      },
       %{
         source_root: "lib/storyarn/",
         target_root: "lib/storyarn_web.ex",
@@ -1145,7 +1178,6 @@ policy = %{
       flow_internal_path_denials ++
       flow_root_facade_path_denials ++
       flow_role_dependency_denials ++
-      [flows_worker_facade_denial] ++
       ai_internal_path_denials ++
       ai_root_facade_path_denials ++
       ai_role_dependency_denials ++
@@ -1190,25 +1222,22 @@ policy = %{
   globally_allowed_technical_targets: [
     "lib/storyarn/repo.ex",
     "lib/storyarn/gettext.ex",
-    "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-    "lib/storyarn/projects/assets/adapters/storage/hash.ex",
-    "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
     "lib/storyarn/platform/discovery/dashboard_cache.ex",
     "lib/storyarn/platform/collaboration/collaboration.ex",
     "lib/storyarn/platform/adapters/email/layout.ex",
     "lib/storyarn/platform/adapters/configuration/feature_flags.ex",
     "lib/storyarn/platform/adapters/email/mailer.ex",
-    "lib/storyarn/platform/abuse_prevention/rate_limiter.ex",
+    "lib/storyarn/platform/adapters/rate_limiter.ex",
     "lib/storyarn/platform/adapters/configuration/urls.ex",
-    "lib/storyarn/platform/adapters/presentation/color_utils.ex",
     "lib/storyarn/platform/adapters/security/encrypted_binary.ex",
-    "lib/storyarn/platform/adapters/presentation/html_sanitizer.ex",
+    "lib/storyarn/platform/adapters/security/html_sanitizer.ex",
     analytics_transport_target,
-    "lib/storyarn/platform/kernel/rules/html_utils.ex",
-    "lib/storyarn/platform/kernel/rules/map_utils.ex",
-    "lib/storyarn/platform/kernel/rules/search_helpers.ex",
-    "lib/storyarn/platform/kernel/rules/string_utils.ex",
-    "lib/storyarn/platform/adapters/time/time_helpers.ex",
+    "lib/storyarn/platform/kernel/html_utils.ex",
+    "lib/storyarn/platform/kernel/integer_parser.ex",
+    "lib/storyarn/platform/kernel/map_access.ex",
+    "lib/storyarn/platform/kernel/search_helpers.ex",
+    "lib/storyarn/platform/kernel/string_utils.ex",
+    "lib/storyarn/platform/adapters/clock.ex",
     "lib/storyarn/platform/adapters/security/token_generator.ex"
   ],
 
@@ -1219,15 +1248,15 @@ policy = %{
   # SPI is deliberately public because consumer contexts own their builders.
   additional_durable_contract_targets: [
     %{
-      target: "lib/storyarn/ai/context/contracts/contract.ex",
+      target: "lib/storyarn/ai/context_building/contracts/contract.ex",
       reason: "consumer-owned AI context builders implement the shared AI context contract"
     },
     %{
-      target: "lib/storyarn/ai/context/contracts/policy.ex",
+      target: "lib/storyarn/ai/context_building/contracts/policy.ex",
       reason: "consumer-owned AI context builders export the AI policy value"
     },
     %{
-      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
+      target: "lib/storyarn/ai/context_building/contracts/subject_ref.ex",
       reason: "consumer-owned AI context builders export AI subject references"
     },
     %{
@@ -1271,38 +1300,218 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/mix/tasks/storyarn.ai.diagnose.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "The operator AI diagnostic resolves its actor through the public Accounts facade"
+    },
+    %{
+      source: "lib/mix/tasks/storyarn.ai.diagnose.ex",
+      target: "lib/storyarn/ai.ex",
+      kinds: ["runtime"],
+      reason: "The operator AI diagnostic exercises the public AI facade"
+    },
+    %{
+      source: "lib/mix/tasks/storyarn.ai.grant.ex",
+      target: "lib/storyarn/ai.ex",
+      kinds: ["runtime"],
+      reason: "The operator allowance task enters AI through its public facade"
+    },
+    %{
+      source: "lib/mix/tasks/storyarn.snapshot_archive_smoke.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The operator snapshot smoke enters Projects through its public facade"
+    },
+    %{
+      source: "lib/mix/tasks/storyarn.templates.export.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The operator template export enters Projects through its public facade"
+    },
+    %{
+      source: "lib/mix/tasks/storyarn.templates.import.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The operator template import enters Projects through its public facade"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/hashing.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/locks.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/objects.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/versioning/adapters/storage/objects.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/compensation.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/hashing.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/locks.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/objects.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/adapters/storage/objects.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/adapters/storage/snapshot_storage.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn_web/private_download.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn_web/private_media.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/application.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/local/conditional_copy_registry.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
+      source: "lib/storyarn/application.ex",
+      target: "lib/storyarn/projects/assets/adapters/storage/local/conditional_copy_sweeper.ex",
+      kinds: ["runtime"],
+      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
+    },
+    %{
       source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/contract.ex",
+      target: "lib/storyarn/ai/context_building/contracts/contract.ex",
       kinds: ["runtime"],
       reason: "Flows implements the exact public AI context-builder contract"
     },
     %{
       source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/policy.ex",
+      target: "lib/storyarn/ai/context_building/contracts/policy.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI context policy value in its implementation"
     },
     %{
       source: "lib/storyarn/flows/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
+      target: "lib/storyarn/ai/context_building/contracts/subject_ref.ex",
       kinds: ["export"],
       reason: "Flows exports the public AI subject reference in its implementation"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/contract.ex",
+      target: "lib/storyarn/ai/context_building/contracts/contract.ex",
       kinds: ["runtime"],
       reason: "Sheets implements the exact public AI context-builder contract"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/policy.ex",
+      target: "lib/storyarn/ai/context_building/contracts/policy.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI context policy value in its implementation"
     },
     %{
       source: "lib/storyarn/sheets/ai/contracts/context_contract.ex",
-      target: "lib/storyarn/ai/context/contracts/subject_ref.ex",
+      target: "lib/storyarn/ai/context_building/contracts/subject_ref.ex",
       kinds: ["export"],
       reason: "Sheets exports the public AI subject reference in its implementation"
     },
@@ -1380,7 +1589,7 @@ policy = %{
       reason: "Global variable search reads Project-owned occurrences through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/platform/adapters/release/release.ex",
+      source: "lib/storyarn/release.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on projects through the public Projects facade"
@@ -1404,7 +1613,7 @@ policy = %{
       reason: "The project scope hook loads the current project through the public Projects facade"
     },
     %{
-      source: "lib/storyarn/projects/assets/assets.ex",
+      source: "lib/storyarn/projects/assets/execution/asset_operations.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Asset lifecycle accounts storage usage through the public Platform facade"
@@ -1478,7 +1687,7 @@ policy = %{
       reason: "Template publication enforces commercial policy through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/projects/lifecycle/project_crud.ex",
+      source: "lib/storyarn/projects/lifecycle/commands/project_commands.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Project lifecycle enforces commercial policy through the public Platform facade"
@@ -1854,7 +2063,7 @@ policy = %{
       reason: "Workspace invitation acceptance applies Platform-owned member seat policy"
     },
     %{
-      source: "lib/storyarn/workspaces/invitations/adapters/delivery/request.ex",
+      source: "lib/storyarn/workspaces/invitations/adapters/notifications/platform_request.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Workspace invitations request durable delivery through the public Platform facade"
@@ -1920,7 +2129,7 @@ policy = %{
       reason: "Global search resolves reachable workspaces through the public Workspaces access reads"
     },
     %{
-      source: "lib/storyarn/platform/adapters/release/release.ex",
+      source: "lib/storyarn/release.ex",
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
@@ -1994,12 +2203,6 @@ policy = %{
       reason: "Scene mutations request durable notification delivery through the public Platform contract"
     },
     %{
-      source: "lib/storyarn/projects/lifecycle/entities/project.ex",
-      target: "lib/storyarn/platform.ex",
-      kinds: ["runtime"],
-      reason: "Projects validates the Platform-owned product metric taxonomy through its public facade"
-    },
-    %{
       source: "lib/storyarn/projects/lifecycle/commands/localization_settings.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
@@ -2036,23 +2239,10 @@ policy = %{
       reason: "Authenticated command palette coordinates Scene creation and deletion through the public facade"
     },
     %{
-      source: "lib/storyarn_web/live/project_live/form.ex",
-      target: "lib/storyarn/platform.ex",
-      kinds: ["runtime"],
-      reason: "Project creation presents the Platform-owned product metric taxonomy through its public facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/project_settings_live/general.ex",
-      target: "lib/storyarn/platform.ex",
-      kinds: ["runtime"],
-      reason: "Project settings presents the Platform-owned product metric taxonomy through its public facade"
-    },
-    %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "The workspace home reads plan policy and presents product metric taxonomy through the public Platform facade"
+      reason: "The workspace home reads plan policy through the public Platform facade"
     },
     %{
       source: "lib/storyarn/platform/adapters/configuration/urls.ex",

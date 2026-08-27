@@ -5,7 +5,7 @@ defmodule Storyarn.Sheets.AI.SheetContext do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets.AI.ContextContract
-  alias Storyarn.Sheets.AI.Data.FlowRecord
+  alias Storyarn.Sheets.AI.Projections.FlowRecord
   alias Storyarn.Sheets.AI.Queries.Context
 
   @default_block_fields ~w(type label value variable_name)

@@ -12,8 +12,8 @@ defmodule Storyarn.Flows.Versioning.EntityVersionRecord do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Flows.Versioning.Data.ProjectRecord
-  alias Storyarn.Flows.Versioning.Data.UserRecord
+  alias Storyarn.Flows.Versioning.Projections.ProjectRecord
+  alias Storyarn.Flows.Versioning.Projections.UserRecord
 
   @type t :: %__MODULE__{
           id: integer() | nil,

@@ -4,7 +4,7 @@ defmodule Storyarn.Localization.Texts.Commands.Lifecycle do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Localization.Texts.Data.LanguageRecord
+  alias Storyarn.Localization.Texts.Projections.LanguageRecord
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 

@@ -3,7 +3,7 @@ defmodule Storyarn.Localization.Providers.Commands.Configuration do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
 
@@ -14,7 +14,7 @@ defmodule Storyarn.Localization.Providers.Commands.Configuration do
   end
 
   defp upsert_transaction(project_id, attrs) do
-    case Access.lock_active_project(project_id, :update) do
+    case ProjectAccess.lock_active_project(project_id, :update) do
       {:ok, locked_project} ->
         locked_project.id
         |> get_locked_config()

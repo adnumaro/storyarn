@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.FlowImportPersistence do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowHubColors
   alias Storyarn.Projects.FlowWordCount, as: WordCount
@@ -53,9 +53,9 @@ defmodule Storyarn.Projects.FlowImportPersistence do
   end
 
   def import_node(flow_id, attrs) do
-    type = MapUtils.get_flexible(attrs, :type)
-    data = MapUtils.get_flexible(attrs, :data)
-    sequence_config = MapUtils.get_flexible(attrs, :sequence_config)
+    type = MapAccess.get_flexible(attrs, :type)
+    data = MapAccess.get_flexible(attrs, :data)
+    sequence_config = MapAccess.get_flexible(attrs, :sequence_config)
 
     Repo.transaction(fn ->
       validate_import_node_invariants!(flow_id, type, data)
@@ -111,7 +111,7 @@ defmodule Storyarn.Projects.FlowImportPersistence do
 
   defp validate_import_node_invariants!(flow_id, "hub", data) do
     lock_flow!(flow_id)
-    hub_id = if is_map(data), do: MapUtils.get_flexible(data, :hub_id)
+    hub_id = if is_map(data), do: MapAccess.get_flexible(data, :hub_id)
 
     cond do
       not is_binary(hub_id) or String.trim(hub_id) == "" ->
@@ -153,7 +153,7 @@ defmodule Storyarn.Projects.FlowImportPersistence do
     attrs =
       attrs
       |> then(fn value -> if is_map(value), do: value, else: %{} end)
-      |> MapUtils.stringify_keys()
+      |> MapAccess.stringify_keys()
       |> Map.put("flow_node_id", node.id)
 
     %SequenceConfigRecord{}

@@ -18,14 +18,14 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   alias Storyarn.Scenes.Assets.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Scenes.Assets.Adapters.Storage.Locks, as: StorageKeyLock
   alias Storyarn.Scenes.Assets.Adapters.Storage.Objects, as: Storage
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
-  alias Storyarn.Scenes.Assets.Data.ProjectRecord
-  alias Storyarn.Scenes.Assets.Data.ProjectSnapshotRecord
-  alias Storyarn.Scenes.Assets.Data.StorageReservationRecord
-  alias Storyarn.Scenes.Assets.Data.UserRecord
-  alias Storyarn.Scenes.Assets.Data.WorkspaceRecord
-  alias Storyarn.Scenes.Assets.Data.WorkspaceSnapshotImportRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
   alias Storyarn.Scenes.Assets.Events
+  alias Storyarn.Scenes.Assets.Projections.ProjectRecord
+  alias Storyarn.Scenes.Assets.Projections.ProjectSnapshotRecord
+  alias Storyarn.Scenes.Assets.Projections.StorageReservationRecord
+  alias Storyarn.Scenes.Assets.Projections.UserRecord
+  alias Storyarn.Scenes.Assets.Projections.WorkspaceRecord
+  alias Storyarn.Scenes.Assets.Projections.WorkspaceSnapshotImportRecord
 
   require Logger
 

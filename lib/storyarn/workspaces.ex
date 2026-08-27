@@ -40,6 +40,10 @@ defmodule Storyarn.Workspaces do
           | :run_bulk_ai
           | :view
 
+  defdelegate check_invitation_rate(workspace_id, user_id, limit \\ 10),
+    to: Invitations,
+    as: :check_rate
+
   @doc "Validates an `:email` change with the invitation email format."
   @spec validate_invitation_email_format(changeset()) :: changeset()
   defdelegate validate_invitation_email_format(changeset),
@@ -189,18 +193,23 @@ defmodule Storyarn.Workspaces do
 
   @doc """
   Creates a membership.
+
+  The owner membership is created only by the Workspace lifecycle. Ordinary
+  membership operations cannot assign the `owner` role.
   """
   @spec create_membership(integer(), integer(), role()) ::
-          {:ok, membership()} | {:error, changeset()}
+          {:ok, membership()} | {:error, changeset() | :cannot_assign_owner_role}
   defdelegate create_membership(workspace_id, user_id, role), to: Memberships
 
   @doc """
   Updates a member's role.
 
   Cannot change the owner's role.
+  Cannot promote an ordinary membership to owner.
   """
   @spec update_member_role(membership(), role()) ::
-          {:ok, membership()} | {:error, changeset() | :cannot_change_owner_role}
+          {:ok, membership()}
+          | {:error, changeset() | :cannot_assign_owner_role | :cannot_change_owner_role}
   defdelegate update_member_role(membership, role), to: Memberships
 
   @doc """

@@ -7,11 +7,11 @@ defmodule Storyarn.Flows.NodeEditor do
   """
 
   alias Storyarn.Flows.EditorCatalog
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowCrud
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.HubColors
-  alias Storyarn.Flows.Logic
   alias Storyarn.Flows.NodeCreate
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.NodeTypes
@@ -219,13 +219,13 @@ defmodule Storyarn.Flows.NodeEditor do
 
   @spec put_condition(map(), map()) :: map()
   def put_condition(data, condition) when is_map(data) do
-    Map.put(data, "condition", Logic.condition_sanitize(condition))
+    Map.put(data, "condition", Expressions.condition_sanitize(condition))
   end
 
   @spec put_response_condition(map(), term(), map()) :: map()
   def put_response_condition(data, response_id, condition) when is_map(data) do
     update_response(data, response_id, fn response ->
-      Map.put(response, "condition", Logic.condition_sanitize(condition))
+      Map.put(response, "condition", Expressions.condition_sanitize(condition))
     end)
   end
 
@@ -298,7 +298,7 @@ defmodule Storyarn.Flows.NodeEditor do
       data,
       response_id,
       "instruction_assignments",
-      Logic.instruction_sanitize(assignments)
+      Expressions.instruction_sanitize(assignments)
     )
   end
 
@@ -438,7 +438,7 @@ defmodule Storyarn.Flows.NodeEditor do
 
   @spec put_instruction_assignments(map(), list()) :: map()
   def put_instruction_assignments(data, assignments) when is_map(data) do
-    Map.put(data, "assignments", Logic.instruction_sanitize(assignments))
+    Map.put(data, "assignments", Expressions.instruction_sanitize(assignments))
   end
 
   @spec put_annotation_color(map(), term()) :: map()
@@ -523,7 +523,7 @@ defmodule Storyarn.Flows.NodeEditor do
   defp maybe_add_switch_labels(condition, false), do: condition
 
   defp maybe_add_switch_labels(condition, true) do
-    condition = condition || Logic.condition_new()
+    condition = condition || Expressions.condition_new()
 
     if condition["blocks"] do
       Map.update(condition, "blocks", [], fn blocks ->

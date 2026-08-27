@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.ReferenceIntegrity do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.ProjectReferenceIntegrity
-  alias Storyarn.Flows.References.Data.AssetRecord
+  alias Storyarn.Flows.References.Projections.AssetRecord
   alias Storyarn.Flows.RichTextMentions
   alias Storyarn.Repo
 

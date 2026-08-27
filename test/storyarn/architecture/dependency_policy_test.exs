@@ -457,6 +457,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
   test "reports every unclassified backend and Web source or target" do
     graph = %{
+      "lib/mix/tasks/new_operator_task.ex" => %{},
       "lib/storyarn.ex" => %{},
       "lib/storyarn/ai/new_business_rule.ex" => %{},
       "lib/storyarn/shared/new_helper.ex" => %{},
@@ -468,6 +469,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     }
 
     assert DependencyPolicy.unclassified_paths(graph, policy()) == [
+             "lib/mix/tasks/new_operator_task.ex",
              "lib/storyarn.ex",
              "lib/storyarn/ai/new_business_rule.ex",
              "lib/storyarn/shared/new_helper.ex",
@@ -608,6 +610,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              :ai
            ]
 
+    assert "lib/mix/tasks/storyarn.ai.diagnose.ex" in policy.boundaries.infrastructure
     assert "lib/storyarn.ex" in policy.boundaries.infrastructure
     assert "lib/storyarn_web.ex" in policy.boundaries.web_infrastructure
     refute "lib/storyarn/ai.ex" in policy.boundaries.infrastructure
@@ -629,6 +632,41 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
 
     assert forbidden.web_infrastructure ==
              MapSet.new([{"lib/storyarn_web.ex", "lib/storyarn/sheets.ex", "runtime"}])
+  end
+
+  test "operator tasks may enter facades but cannot bypass bounded-context internals" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    graph = %{
+      "lib/mix/tasks/storyarn.ai.diagnose.ex" => %{
+        "lib/storyarn/accounts.ex" => "runtime",
+        "lib/storyarn/accounts/identity/entities/user.ex" => "runtime"
+      }
+    }
+
+    forbidden = DependencyPolicy.forbidden_edges(graph, policy)
+
+    assert forbidden.infrastructure ==
+             MapSet.new([
+               {
+                 "lib/mix/tasks/storyarn.ai.diagnose.ex",
+                 "lib/storyarn/accounts/identity/entities/user.ex",
+                 "runtime"
+               }
+             ])
+  end
+
+  test "the top-level Storyarn module cannot import Web adapters" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    graph = %{
+      "lib/storyarn.ex" => %{
+        "lib/storyarn_web/endpoint.ex" => "runtime"
+      }
+    }
+
+    assert DependencyPolicy.forbidden_edges(graph, policy).infrastructure ==
+             MapSet.new([{"lib/storyarn.ex", "lib/storyarn_web/endpoint.ex", "runtime"}])
   end
 
   test "Flows may use the storage contract but cannot bind to a concrete storage adapter" do
@@ -744,7 +782,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
       classification_roots: classification_roots(),
       boundaries: %{
         flows: ["lib/storyarn/flows.ex", "lib/storyarn/flows/", "lib/storyarn_web/live/flow_live/"],
-        infrastructure: ["lib/storyarn/repo.ex"],
+        infrastructure: ["lib/mix/tasks/operator.ex", "lib/storyarn/repo.ex"],
         presentation_adapters: ["lib/storyarn_web/live_vue_encoders.ex"],
         scenes: ["lib/storyarn/scenes/"],
         sheets: ["lib/storyarn/sheets.ex", "lib/storyarn/sheets/"],
@@ -773,6 +811,6 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
   end
 
   defp classification_roots do
-    ["lib/storyarn.ex", "lib/storyarn/", "lib/storyarn_web.ex", "lib/storyarn_web/"]
+    ["lib/mix/tasks/", "lib/storyarn.ex", "lib/storyarn/", "lib/storyarn_web.ex", "lib/storyarn_web/"]
   end
 end

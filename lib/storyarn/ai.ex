@@ -19,6 +19,7 @@ defmodule Storyarn.AI do
   alias Storyarn.AI.Routing
 
   defdelegate list_active(user), to: Integrations
+  defdelegate check_integration_connect_rate(user_id), to: Integrations, as: :check_connect_rate
   defdelegate get_active(user, provider), to: Integrations
   defdelegate connect(user, provider, api_key), to: Integrations
   defdelegate replace_integration_key(user, integration, api_key), to: Integrations, as: :replace_key

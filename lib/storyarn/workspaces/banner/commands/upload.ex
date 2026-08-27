@@ -2,7 +2,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
   @moduledoc false
 
   alias Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue
-  alias Storyarn.Workspaces.Banner.Adapters.Storage.Safe
+  alias Storyarn.Workspaces.Banner.Adapters.Storage.ResilientStorage
   alias Storyarn.Workspaces.Banner.Commands.Change
   alias Storyarn.Workspaces.Banner.Rules.StorageKey
   alias Storyarn.Workspaces.Banner.Rules.UploadPolicy
@@ -26,7 +26,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
   def execute(_scope, _workspace_id, _attrs, _opts), do: {:error, :unauthorized}
 
   defp upload_to_owned_key(key, binary, content_type, opts) do
-    case Safe.upload(key, binary, content_type, opts) do
+    case ResilientStorage.upload(key, binary, content_type, opts) do
       {:ok, url} when is_binary(url) and url != "" ->
         validate_uploaded_url(url, key, opts)
 
@@ -39,7 +39,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
   end
 
   defp validate_uploaded_url(url, key, opts) do
-    case Safe.key_from_url(url, opts) do
+    case ResilientStorage.key_from_url(url, opts) do
       {:ok, ^key} ->
         {:ok, url}
 
@@ -59,7 +59,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
   end
 
   defp compensate_failed_update(key, reason, opts) do
-    case Safe.delete(key, opts) do
+    case ResilientStorage.delete(key, opts) do
       :ok ->
         {:error, reason}
 
@@ -72,7 +72,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Upload do
   end
 
   defp cleanup_uploaded_key(key, reason, opts) do
-    case Safe.delete(key, opts) do
+    case ResilientStorage.delete(key, opts) do
       :ok ->
         {:error, {:workspace_banner_storage_failed, reason}}
 

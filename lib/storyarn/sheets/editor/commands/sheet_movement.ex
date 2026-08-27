@@ -12,7 +12,7 @@ defmodule Storyarn.Sheets.Editor.Commands.SheetMovement do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Editor.Commands.Inheritance
   alias Storyarn.Sheets.Editor.Commands.Tree
-  alias Storyarn.Sheets.Editor.Data.ProjectRecord
+  alias Storyarn.Sheets.Editor.Projections.ProjectRecord
   alias Storyarn.Sheets.Localization
   alias Storyarn.Sheets.Sheet
 

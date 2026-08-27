@@ -1,5 +1,10 @@
 defmodule Storyarn.Scenes.References do
-  @moduledoc false
+  @moduledoc """
+  Scene reference-integrity boundary.
+
+  It validates project-scoped targets and maintains the entity and variable
+  reference projections produced by pins, zones and ambient flows.
+  """
 
   alias Storyarn.Scenes.References.Commands.EntityProjection
   alias Storyarn.Scenes.References.Commands.ProjectIntegrity

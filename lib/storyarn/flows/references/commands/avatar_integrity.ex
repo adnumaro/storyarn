@@ -6,8 +6,8 @@ defmodule Storyarn.Flows.AvatarIntegrity do
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.References.Data.SheetAvatarRecord
-  alias Storyarn.Flows.References.Data.SheetRecord
+  alias Storyarn.Flows.References.Projections.SheetAvatarRecord
+  alias Storyarn.Flows.References.Projections.SheetRecord
   alias Storyarn.Repo
 
   @type validation_error ::

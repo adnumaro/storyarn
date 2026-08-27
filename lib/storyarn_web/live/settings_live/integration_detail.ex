@@ -9,7 +9,6 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
-  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.SettingsLive.Sudo
   alias StoryarnWeb.UserAuth
 
@@ -98,7 +97,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   defp connect(socket, api_key) do
     user = socket.assigns.current_scope.user
 
-    with :ok <- RateLimiter.check_ai_integration_connect(user.id),
+    with :ok <- AI.check_integration_connect_rate(user.id),
          nil <- AI.get_active(user, socket.assigns.provider),
          {:ok, _integration} <- AI.connect(user, socket.assigns.provider, trim(api_key)) do
       {:reply, %{status: "ok"}, assign_detail(socket)}
@@ -111,7 +110,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   defp replace_key(socket, api_key) do
     user = socket.assigns.current_scope.user
 
-    with :ok <- RateLimiter.check_ai_integration_connect(user.id),
+    with :ok <- AI.check_integration_connect_rate(user.id),
          %{} = integration <- AI.get_active(user, socket.assigns.provider),
          {:ok, _integration} <-
            AI.replace_integration_key(user, integration, trim(api_key)) do
@@ -125,7 +124,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   defp revalidate(socket) do
     user = socket.assigns.current_scope.user
 
-    with :ok <- RateLimiter.check_ai_integration_connect(user.id),
+    with :ok <- AI.check_integration_connect_rate(user.id),
          %{} = integration <- AI.get_active(user, socket.assigns.provider) do
       revalidation_reply(socket, AI.revalidate_integration(user, integration))
     else

@@ -13,206 +13,21 @@ defmodule Storyarn.Sheets.Editor.Commands.Inheritance do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Editor.Commands.Blocks, as: BlockCrud
+  alias Storyarn.Sheets.Editor.Queries.Inheritance
   alias Storyarn.Sheets.Editor.Queries.InheritanceAudit
   alias Storyarn.Sheets.Editor.Queries.Sheets, as: SheetQueries
   alias Storyarn.Sheets.Editor.Rules.Naming
-  alias Storyarn.Sheets.Logic, as: FormulaBindingRewriter
+  alias Storyarn.Sheets.Expressions, as: FormulaBindingRewriter
   alias Storyarn.Sheets.References, as: ReferenceTracker
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
-  # =============================================================================
-  # Resolution
-  # =============================================================================
+  defdelegate resolve_inherited_blocks(sheet_id), to: Inheritance, as: :resolve
+  defdelegate list_health_issues(sheet_id), to: Inheritance
 
-  @doc """
-  Returns inherited blocks for a sheet, grouped by source sheet.
-
-  Walks the ancestor chain and collects all blocks with `scope: "children"`,
-  filtering out blocks hidden by intermediate ancestors.
-
-  Returns `[%{source_sheet: sheet, blocks: [block, ...]}]` ordered from
-  nearest ancestor to farthest.
-  """
-  @spec resolve_inherited_blocks(integer()) :: [%{source_sheet: Sheet.t(), blocks: [Block.t()]}]
-  def resolve_inherited_blocks(sheet_id) do
-    {groups, _hidden_source_ids} = inheritance_resolution(sheet_id)
-    groups
-  end
-
-  defp inheritance_resolution(sheet_id) do
-    sheet = Repo.get!(Sheet, sheet_id)
-    ancestors = build_ancestor_list(sheet)
-
-    if ancestors == [] do
-      # No ancestors means no eligible sources, but NOT an empty hidden set: the
-      # sheet's own `hidden_inherited_block_ids` still suppress instances left
-      # behind by an ancestor it no longer has. `list_project_health_issues/1`
-      # always collects `[sheet | ancestors]`, and the two must return the same
-      # verdicts — the editor runs this one, the dashboard the other.
-      {[], MapSet.new(collect_hidden_block_ids([sheet]))}
-    else
-      # Collect hidden block IDs from intermediate sheets (the current sheet and all ancestors except root)
-      all_sheets = [sheet | ancestors]
-      hidden_source_ids = all_sheets |> collect_hidden_block_ids() |> MapSet.new()
-
-      blocks_by_sheet =
-        ancestors
-        |> Enum.map(& &1.id)
-        |> load_children_scope_blocks_for_sheets()
-        |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.id))
-        |> Enum.group_by(& &1.sheet_id)
-
-      groups =
-        ancestors
-        |> Enum.map(fn ancestor ->
-          %{source_sheet: ancestor, blocks: Map.get(blocks_by_sheet, ancestor.id, [])}
-        end)
-        |> Enum.reject(fn group -> group.blocks == [] end)
-
-      {groups, hidden_source_ids}
-    end
-  end
-
-  @doc """
-  Lists inheritance integrity issues for a sheet without mutating its blocks.
-
-  The audit compares the currently eligible ancestor definitions with every
-  active, non-detached instance on the sheet. It reports missing, duplicate,
-  orphaned, stale-definition, and stale-table-structure states.
-  """
-  @spec list_health_issues(integer()) :: [map()]
-  def list_health_issues(sheet_id) do
-    {groups, hidden_source_ids} = inheritance_resolution(sheet_id)
-    eligible_sources = Enum.flat_map(groups, & &1.blocks)
-
-    instances =
-      sheet_id
-      |> active_inherited_instances()
-      |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
-
-    InheritanceAudit.issues(
-      eligible_sources,
-      instances,
-      InheritanceAudit.table_structures(eligible_sources ++ instances)
-    )
-  end
-
-  @doc """
-  Runs `list_health_issues/1` for every sheet of a project in a fixed number of
-  queries, resolving the ancestor chains in memory.
-
-  Sheet-at-a-time auditing costs six queries per sheet, which is what made the
-  project-wide health sweep unaffordable before. Same audit, same verdicts:
-  `dashboard_health_coverage_test.exs` pins that against the per-sheet path.
-
-  Returns `%{sheet_id => issues}`, with an entry for every sheet in `sheets`.
-
-  A project snapshot builder should pass its already-loaded `table_data` as the
-  second argument. The one-argument form remains for callers that do not already
-  own that data and loads the required table structures itself.
-  """
-  @spec list_project_health_issues([Sheet.t()], map() | nil) :: %{integer() => [map()]}
-  def list_project_health_issues(sheets, table_data \\ nil)
-
-  def list_project_health_issues([], _table_data), do: %{}
-
-  def list_project_health_issues(sheets, table_data) do
-    sheets_by_id = Map.new(sheets, &{&1.id, &1})
-    ancestors_by_sheet = Map.new(sheets, &{&1.id, ancestor_chain(&1, sheets_by_id)})
-
-    sources_by_sheet =
-      sheets
-      |> Enum.map(& &1.id)
-      |> load_children_scope_blocks_for_sheets()
-      |> Enum.group_by(& &1.sheet_id)
-
-    instances_by_sheet =
-      sheets
-      |> Enum.map(& &1.id)
-      |> active_inherited_instances_for_sheets()
-      |> Enum.group_by(& &1.sheet_id)
-
-    resolved =
-      Map.new(sheets, fn sheet ->
-        ancestors = Map.get(ancestors_by_sheet, sheet.id, [])
-        hidden_source_ids = MapSet.new(collect_hidden_block_ids([sheet | ancestors]))
-
-        sources =
-          ancestors
-          |> Enum.flat_map(&Map.get(sources_by_sheet, &1.id, []))
-          |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.id))
-
-        instances =
-          instances_by_sheet
-          |> Map.get(sheet.id, [])
-          |> Enum.reject(&MapSet.member?(hidden_source_ids, &1.inherited_from_block_id))
-
-        {sheet.id, {sources, instances}}
-      end)
-
-    structures = project_table_structures(resolved, table_data)
-
-    Map.new(resolved, fn {sheet_id, {sources, instances}} ->
-      {sheet_id, InheritanceAudit.issues(sources, instances, structures)}
-    end)
-  end
-
-  defp project_table_structures(resolved, nil) do
-    resolved
-    |> Enum.flat_map(fn {_sheet_id, {sources, instances}} -> sources ++ instances end)
-    |> Enum.uniq_by(& &1.id)
-    |> InheritanceAudit.table_structures()
-  end
-
-  defp project_table_structures(_resolved, table_data) when is_map(table_data) do
-    InheritanceAudit.table_structures_from_data(table_data)
-  end
-
-  # Nearest ancestor first, mirroring `SheetQueries.list_ancestors/1`, so eligible
-  # source order — and therefore issue order — is identical on both paths.
-  defp ancestor_chain(sheet, sheets_by_id, seen \\ [])
-
-  defp ancestor_chain(%Sheet{parent_id: nil}, _sheets_by_id, _seen), do: []
-
-  defp ancestor_chain(%Sheet{} = sheet, sheets_by_id, seen) do
-    case Map.get(sheets_by_id, sheet.parent_id) do
-      nil ->
-        []
-
-      parent ->
-        if parent.id in seen do
-          []
-        else
-          [parent | ancestor_chain(parent, sheets_by_id, [parent.id | seen])]
-        end
-    end
-  end
-
-  defp active_inherited_instances(sheet_id) do
-    Repo.all(
-      from(block in Block,
-        where:
-          block.sheet_id == ^sheet_id and
-            not is_nil(block.inherited_from_block_id) and
-            block.detached == false and is_nil(block.deleted_at),
-        order_by: [asc: block.id]
-      )
-    )
-  end
-
-  defp active_inherited_instances_for_sheets(sheet_ids) do
-    Repo.all(
-      from(block in Block,
-        where:
-          block.sheet_id in ^sheet_ids and
-            not is_nil(block.inherited_from_block_id) and
-            block.detached == false and is_nil(block.deleted_at),
-        order_by: [asc: block.id]
-      )
-    )
-  end
+  defdelegate list_project_health_issues(sheets, table_data \\ nil),
+    to: Inheritance
 
   @doc """
   Creates inherited block instances on child sheets for a parent block.
@@ -567,57 +382,8 @@ defmodule Storyarn.Sheets.Editor.Commands.Inheritance do
     end)
   end
 
-  @doc """
-  Returns the sheet that owns the source block for an inherited block.
-  """
-  @spec get_source_sheet(Block.t()) :: Sheet.t() | nil
-  def get_source_sheet(%Block{inherited_from_block_id: nil}), do: nil
-
-  def get_source_sheet(%Block{inherited_from_block_id: source_id}) do
-    case Repo.get(Block, source_id) do
-      nil -> nil
-      source_block -> Repo.get(Sheet, source_block.sheet_id)
-    end
-  end
-
-  @doc """
-  Returns all descendant sheet IDs for a given sheet (non-deleted).
-  """
-  @spec get_descendant_sheet_ids(integer()) :: [integer()]
-  def get_descendant_sheet_ids(sheet_id) do
-    case active_sheet_project_id(sheet_id) do
-      nil ->
-        []
-
-      project_id ->
-        anchor =
-          from(s in "sheets",
-            where:
-              s.parent_id == ^sheet_id and
-                s.project_id == ^project_id and
-                is_nil(s.deleted_at),
-            select: %{id: s.id}
-          )
-
-        recursion =
-          from(s in "sheets",
-            join: d in "descendants",
-            on: s.parent_id == d.id,
-            where:
-              s.project_id == ^project_id and
-                is_nil(s.deleted_at),
-            select: %{id: s.id}
-          )
-
-        cte_query = union_all(anchor, ^recursion)
-
-        from("descendants")
-        |> recursive_ctes(true)
-        |> with_cte("descendants", as: ^cte_query)
-        |> select([d], d.id)
-        |> Repo.all()
-    end
-  end
+  defdelegate get_source_sheet(block), to: Inheritance
+  defdelegate get_descendant_sheet_ids(sheet_id), to: Inheritance, as: :descendant_sheet_ids
 
   defp all_descendant_sheet_ids(project_id, sheet_id) do
     anchor =
@@ -1623,17 +1389,6 @@ defmodule Storyarn.Sheets.Editor.Commands.Inheritance do
       from(b in Block,
         where: b.sheet_id == ^ancestor.id and b.scope == "children" and is_nil(b.deleted_at),
         order_by: [asc: b.position]
-      )
-    )
-  end
-
-  defp load_children_scope_blocks_for_sheets([]), do: []
-
-  defp load_children_scope_blocks_for_sheets(sheet_ids) do
-    Repo.all(
-      from(b in Block,
-        where: b.sheet_id in ^sheet_ids and b.scope == "children" and is_nil(b.deleted_at),
-        order_by: [asc: b.sheet_id, asc: b.position, asc: b.id]
       )
     )
   end

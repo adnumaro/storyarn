@@ -3,8 +3,9 @@ defmodule Storyarn.Flows.TreeOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Editor.Adapters.TreePositionStore
-  alias Storyarn.Flows.Editor.Data.ProjectRecord
+  alias Storyarn.Flows.Editor.Adapters.Postgres.TreePositionStore
+  alias Storyarn.Flows.Editor.Projections.ProjectRecord
+  alias Storyarn.Flows.Editor.Queries.Flows, as: FlowQueries
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.References
   alias Storyarn.Repo
@@ -141,16 +142,7 @@ defmodule Storyarn.Flows.TreeOperations do
   end
 
   @doc false
-  def build_tree_from_flat_list(flows) do
-    grouped = Enum.group_by(flows, & &1.parent_id)
-    build_subtree(grouped, nil)
-  end
-
-  defp build_subtree(grouped, parent_id) do
-    Enum.map(Map.get(grouped, parent_id, []), fn flow ->
-      Map.put(flow, :children, build_subtree(grouped, flow.id))
-    end)
-  end
+  defdelegate build_tree_from_flat_list(flows), to: FlowQueries
 
   defp add_parent_filter(query, nil), do: where(query, [flow], is_nil(flow.parent_id))
   defp add_parent_filter(query, parent_id), do: where(query, [flow], flow.parent_id == ^parent_id)

@@ -4,7 +4,7 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
 
   def with_edit(socket, error_message, fun) do
     if socket.assigns.can_edit do
@@ -22,7 +22,7 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   end
 
   def move_to_parent(socket, %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position}, opts) do
-    entity = opts.get_entity.(socket.assigns.project.id, MapUtils.parse_int(id))
+    entity = opts.get_entity.(socket.assigns.project.id, IntegerParser.parse(id))
 
     move_existing(entity, socket, new_parent_id, position, opts)
   end
@@ -53,7 +53,7 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
 
   defp move_existing(entity, socket, new_parent_id, position, opts) do
     parsed_parent = parse_parent_id(new_parent_id)
-    parsed_pos = MapUtils.parse_int(position) || 0
+    parsed_pos = IntegerParser.parse(position) || 0
 
     case opts.move_entity.(entity, parsed_parent, parsed_pos) do
       {:ok, _} ->
@@ -65,5 +65,5 @@ defmodule StoryarnWeb.Live.TreeSidebarActions do
   end
 
   defp parse_parent_id(parent_id) when parent_id in [nil, ""], do: nil
-  defp parse_parent_id(parent_id), do: MapUtils.parse_int(parent_id)
+  defp parse_parent_id(parent_id), do: IntegerParser.parse(parent_id)
 end

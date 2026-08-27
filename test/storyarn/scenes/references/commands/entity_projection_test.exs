@@ -9,7 +9,7 @@ defmodule Storyarn.Scenes.References.Commands.EntityProjectionTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.References.Commands.EntityProjection, as: EntityReferenceTracker
-  alias Storyarn.Scenes.References.Data.EntityReferenceRecord
+  alias Storyarn.Scenes.References.Projections.EntityReferenceRecord
   alias Storyarn.Sheets.Sheet
 
   test "owns shortcutless Sheet references extracted from Scene zones" do

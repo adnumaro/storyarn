@@ -8,8 +8,8 @@ defmodule Storyarn.Sheets.References.Queries.ScenesTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord
-  alias Storyarn.Sheets.References.Data.SceneRecord
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
+  alias Storyarn.Sheets.References.Projections.SceneRecord
   alias Storyarn.Sheets.References.Queries.Scenes, as: SceneQueries
 
   setup do

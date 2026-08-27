@@ -10,9 +10,9 @@ defmodule Storyarn.Scenes.FlowCatalog do
 
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Exploration.Data.FlowConnectionRecord
-  alias Storyarn.Scenes.Exploration.Data.FlowNodeRecord
-  alias Storyarn.Scenes.Exploration.Data.FlowRecord
+  alias Storyarn.Scenes.Exploration.Projections.FlowConnectionRecord
+  alias Storyarn.Scenes.Exploration.Projections.FlowNodeRecord
+  alias Storyarn.Scenes.Exploration.Projections.FlowRecord
 
   @default_search_limit 25
 

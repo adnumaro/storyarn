@@ -1,13 +1,13 @@
 defmodule Storyarn.Localization.Languages.Commands.Add do
   @moduledoc false
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.Languages.Adapters.Notifications.Delivery
   alias Storyarn.Localization.Languages.Commands.Locks
   alias Storyarn.Localization.Languages.Queries.Languages, as: LanguageQueries
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.Texts
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   def run(%{user: %{id: actor_id}} = actor_scope, %{id: project_id} = project, attrs)
@@ -53,7 +53,7 @@ defmodule Storyarn.Localization.Languages.Commands.Add do
   end
 
   defp run_with_count_for_actor(actor_scope, project, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       Locks.lock_project!(project.id)
@@ -118,7 +118,7 @@ defmodule Storyarn.Localization.Languages.Commands.Add do
 
   defp authorize_actor_project(%{user: %{id: actor_id}} = actor_scope, project)
        when is_integer(actor_id) and actor_id > 0 do
-    case Access.get_project(actor_scope, project.id) do
+    case ProjectAccess.get_project(actor_scope, project.id) do
       {:ok, authorized_project, _membership} -> {:ok, authorized_project}
       {:error, _reason} -> {:error, :not_found}
     end

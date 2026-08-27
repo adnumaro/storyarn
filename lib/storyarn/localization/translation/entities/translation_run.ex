@@ -5,8 +5,8 @@ defmodule Storyarn.Localization.TranslationRun do
 
   import Ecto.Changeset
 
-  alias Storyarn.Localization.Translation.Data.ProjectRecord
-  alias Storyarn.Localization.Translation.Data.UserRecord
+  alias Storyarn.Localization.Translation.Projections.ProjectRecord
+  alias Storyarn.Localization.Translation.Projections.UserRecord
 
   @statuses ~w(queued running completed failed cancelled)
   @text_statuses ~w(pending draft in_progress review final)

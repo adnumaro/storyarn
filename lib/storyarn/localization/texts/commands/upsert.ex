@@ -5,7 +5,7 @@ defmodule Storyarn.Localization.Texts.Commands.Upsert do
   alias Storyarn.Localization.Texts.Commands.Create
   alias Storyarn.Localization.Texts.Commands.TranslationAttributes
   alias Storyarn.Localization.Texts.Queries.Texts, as: TextsQuery
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   @doc """
@@ -18,7 +18,7 @@ defmodule Storyarn.Localization.Texts.Commands.Upsert do
   end
 
   defp do_upsert_text(project_id, attrs, retries_left) do
-    attrs = attrs |> MapUtils.stringify_keys() |> TranslationAttributes.apply_source_metadata()
+    attrs = attrs |> MapAccess.stringify_keys() |> TranslationAttributes.apply_source_metadata()
 
     source_type = attrs["source_type"]
     source_id = attrs["source_id"]

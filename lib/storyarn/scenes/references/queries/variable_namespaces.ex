@@ -4,7 +4,7 @@ defmodule Storyarn.Scenes.References.Queries.VariableNamespaces do
   import Ecto.Query
 
   alias Storyarn.Repo
-  alias Storyarn.Scenes.References.Data.SheetRecord
+  alias Storyarn.Scenes.References.Projections.SheetRecord
 
   @max_bigint 9_223_372_036_854_775_807
 

@@ -14,7 +14,6 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
 
@@ -74,7 +73,7 @@ defmodule StoryarnWeb.UserLive.ConfirmAccess do
   def handle_event("confirm_access", %{"password" => password}, socket) when is_binary(password) do
     user_id = socket.assigns.current_scope.user.id
 
-    case RateLimiter.check_sudo(user_id, socket.assigns.client_ip) do
+    case Accounts.check_sudo_rate(user_id, socket.assigns.client_ip) do
       :ok -> reauthenticate(socket, password)
       {:error, :rate_limited} -> reply_error(socket, "rate_limited")
     end

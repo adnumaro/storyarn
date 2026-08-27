@@ -10,7 +10,7 @@ defmodule Storyarn.Sheets.Assets.Queries.Catalog do
 
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Assets.Data.AssetRecord
+  alias Storyarn.Sheets.Assets.Entities.AssetRecord
 
   @doc "Lists a project's active assets. Opts: :content_type prefix, :search, :limit, :offset."
   def list_assets(project_id, opts \\ []) do

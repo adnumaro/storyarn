@@ -20,8 +20,8 @@ msgstr[0] "%{count} %{type} ausente"
 msgstr[1] "%{count} %{type} ausentes"
 
 #: lib/storyarn/flows/versioning/execution/restore.ex:166
-#: lib/storyarn/scenes/versioning/versioning.ex:756
-#: lib/storyarn/sheets/versioning/versioning.ex:767
+#: lib/storyarn/scenes/versioning/execution/restore.ex:166
+#: lib/storyarn/sheets/versioning/execution/restore.ex:166
 #, elixir-autogen, elixir-format
 msgid "Before restore to v%{number}"
 msgstr "Antes de restaurar a v%{number}"
@@ -76,8 +76,8 @@ msgid "Could not restore version."
 msgstr "No se pudo restaurar la versión."
 
 #: lib/storyarn/flows/versioning/execution/restore.ex:259
-#: lib/storyarn/scenes/versioning/versioning.ex:850
-#: lib/storyarn/sheets/versioning/versioning.ex:861
+#: lib/storyarn/scenes/versioning/execution/restore.ex:259
+#: lib/storyarn/sheets/versioning/execution/restore.ex:259
 #, elixir-autogen, elixir-format
 msgid "Restored from v%{number}"
 msgstr "Restaurado desde v%{number}"

@@ -6,10 +6,6 @@ defmodule Storyarn.Projects.Versioning.DiffHelpers do
   used by FlowBuilder, SheetBuilder, and SceneBuilder.
   """
 
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Repo
-
   @type change :: %{category: atom(), action: :added | :removed | :modified, detail: String.t()}
 
   @doc """
@@ -125,16 +121,5 @@ defmodule Storyarn.Projects.Versioning.DiffHelpers do
   @spec fields_differ?(map(), map(), [String.t()]) :: boolean()
   def fields_differ?(old, new, fields) do
     Enum.any?(fields, fn field -> old[field] != new[field] end)
-  end
-
-  @doc """
-  Returns the FK value only if the referenced record still exists, nil otherwise.
-  Used by builders during snapshot restoration to gracefully handle deleted references.
-  """
-  @spec resolve_fk(integer() | nil, module()) :: integer() | nil
-  def resolve_fk(nil, _schema), do: nil
-
-  def resolve_fk(id, schema) do
-    if Repo.exists?(from(e in schema, where: e.id == ^id)), do: id
   end
 end

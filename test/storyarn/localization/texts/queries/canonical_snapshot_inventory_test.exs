@@ -8,7 +8,7 @@ defmodule Storyarn.Localization.Texts.Queries.CanonicalSnapshotInventoryTest do
 
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Localization.Texts.Data.FlowNodeRecord
+  alias Storyarn.Localization.Texts.Projections.FlowNodeRecord
   alias Storyarn.Repo
 
   test "lists every active row deterministically without engine source or locale filtering" do

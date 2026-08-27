@@ -4,9 +4,9 @@ defmodule Storyarn.Architecture.AIContextSPIBoundaryTest do
   alias Storyarn.Architecture.DependencyPolicy
 
   @spis %{
-    "lib/storyarn/ai/context/contracts/contract.ex" => "Storyarn.AI.Context.Contract",
-    "lib/storyarn/ai/context/contracts/policy.ex" => "Storyarn.AI.Context.Policy",
-    "lib/storyarn/ai/context/contracts/subject_ref.ex" => "Storyarn.AI.Context.SubjectRef"
+    "lib/storyarn/ai/context_building/contracts/contract.ex" => "Storyarn.AI.Context.Contract",
+    "lib/storyarn/ai/context_building/contracts/policy.ex" => "Storyarn.AI.Context.Policy",
+    "lib/storyarn/ai/context_building/contracts/subject_ref.ex" => "Storyarn.AI.Context.SubjectRef"
   }
   @consumer_implementations ~w(
     lib/storyarn/flows/ai/contracts/context_contract.ex

@@ -7,8 +7,8 @@ defmodule Storyarn.Localization.Translation.Commands.Runs do
   alias Storyarn.Localization.Texts
   alias Storyarn.Localization.Translation.Adapters.Notifications.Delivery, as: NotificationDelivery
   alias Storyarn.Localization.Translation.Adapters.PubSub.Broadcaster
-  alias Storyarn.Localization.Translation.Data.ProjectRecord
-  alias Storyarn.Localization.Translation.Data.UserRecord
+  alias Storyarn.Localization.Translation.Projections.ProjectRecord
+  alias Storyarn.Localization.Translation.Projections.UserRecord
   alias Storyarn.Localization.Translation.Queries.Runs, as: RunQueries
   alias Storyarn.Localization.TranslationJobQueue
   alias Storyarn.Localization.TranslationRun

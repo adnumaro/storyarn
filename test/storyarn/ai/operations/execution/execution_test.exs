@@ -10,6 +10,7 @@ defmodule Storyarn.AI.ExecutionTest do
   alias Storyarn.AI.Executor
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Operations
+  alias Storyarn.AI.Operations.RateLimits, as: OperationRateLimits
   alias Storyarn.AI.Result
   alias Storyarn.AI.Results
   alias Storyarn.AI.RouteOption
@@ -422,7 +423,7 @@ defmodule Storyarn.AI.ExecutionTest do
     Application.put_env(:storyarn, RateLimiter, enabled: true)
 
     for _index <- 1..20 do
-      assert :ok = RateLimiter.check_ai_execution(ctx.user.id, "contract.echo")
+      assert :ok = OperationRateLimits.check_execution(ctx.user.id, "contract.echo")
     end
 
     assert {:ok, replayed} = AI.execute(execute_intent)

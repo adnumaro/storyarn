@@ -10,15 +10,16 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Logic
-  alias Storyarn.Sheets.References.Data.FlowNodeRecord
-  alias Storyarn.Sheets.References.Data.FlowRecord
-  alias Storyarn.Sheets.References.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.Expressions
+  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
+  alias Storyarn.Sheets.References.Projections.VariableReferenceRecord
+  alias Storyarn.Sheets.References.Queries.VariableNamespaces
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
-  require Logic
+  require VariableNamespaces
 
   @doc "Returns variable references with current block data for stale repair."
   def list_with_block_info(project_id) do
@@ -36,7 +37,7 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
         where: is_nil(flow.deleted_at),
         where: is_nil(sheet.deleted_at),
         where: is_nil(block.deleted_at),
-        where: Logic.authoritative_namespace_owner?(sheet),
+        where: VariableNamespaces.authoritative_owner?(sheet),
         select: %{
           node_id: node.id,
           node_type: node.type,
@@ -78,7 +79,7 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
         where: is_nil(block.deleted_at),
         where: block.type != "table",
         where:
-          not Logic.authoritative_namespace_owner?(sheet) or
+          not VariableNamespaces.authoritative_owner?(sheet) or
             reference.source_sheet != coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)) or
             reference.source_variable != block.variable_name,
         distinct: true,
@@ -118,7 +119,7 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
         where: is_nil(block.deleted_at),
         where: block.type == "table",
         where:
-          not Logic.authoritative_namespace_owner?(sheet) or
+          not VariableNamespaces.authoritative_owner?(sheet) or
             reference.source_sheet != coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)) or
             not exists(table_cell_exists),
         distinct: true,
@@ -135,9 +136,9 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
 
   @doc "Resolves a regular variable to its active block ID."
   def resolve_block_id(project_id, sheet_shortcut, variable_name) do
-    variable_types = Logic.regular_variable_types()
+    variable_types = Expressions.regular_variable_types()
 
-    case Logic.resolve_sheet_id(project_id, sheet_shortcut) do
+    case Expressions.resolve_sheet_id(project_id, sheet_shortcut) do
       nil ->
         nil
 
@@ -161,10 +162,10 @@ defmodule Storyarn.Sheets.References.Queries.Repair do
 
   @doc "Resolves a table-cell variable path to its active table block ID."
   def resolve_table_block_id(project_id, sheet_shortcut, table_name, row_slug, column_slug) do
-    variable_types = Logic.table_variable_types()
-    constant_variable_types = Logic.constant_table_variable_types()
+    variable_types = Expressions.table_variable_types()
+    constant_variable_types = Expressions.constant_table_variable_types()
 
-    case Logic.resolve_sheet_id(project_id, sheet_shortcut) do
+    case Expressions.resolve_sheet_id(project_id, sheet_shortcut) do
       nil ->
         nil
 

@@ -27,6 +27,15 @@ defmodule Storyarn.Accounts do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
 
+  # Authentication and registration own their abuse-prevention policy; the
+  # presentation adapter enters through this bounded-context facade.
+  defdelegate check_login_rate(ip_address), to: Authentication
+  defdelegate check_sudo_rate(user_id, ip_address), to: Authentication
+  defdelegate check_registration_rate(ip_address), to: Authentication
+
+  defdelegate check_password_reset_rate(ip_address, email),
+    to: Authentication
+
   # =============================================================================
   # Users
   # =============================================================================

@@ -3,13 +3,13 @@ defmodule Storyarn.Localization.Texts.Commands.Create do
 
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.Texts.Commands.TranslationAttributes
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   def create_text(project_id, attrs) do
     attrs =
       attrs
-      |> MapUtils.stringify_keys()
+      |> MapAccess.stringify_keys()
       |> TranslationAttributes.apply_source_metadata()
       |> TranslationAttributes.prepare_create_translation_attrs()
 

@@ -13,7 +13,7 @@ defmodule Storyarn.Flows.HealthChecker do
   node's type for node-level ones.
   """
 
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Platform.Shared.StringUtils
 
@@ -232,13 +232,13 @@ defmodule Storyarn.Flows.HealthChecker do
     present?(rule["sheet"]) and
       present?(rule["variable"]) and
       present?(operator) and
-      (!Logic.condition_operator_requires_value?(operator) or present?(rule["value"]))
+      (!Expressions.condition_operator_requires_value?(operator) or present?(rule["value"]))
   end
 
   defp condition_rule_complete?(_rule), do: false
 
   defp assignments_incomplete?(assignments) when is_list(assignments) and assignments != [] do
-    Enum.any?(assignments, &(not Logic.instruction_complete_assignment?(&1)))
+    Enum.any?(assignments, &(not Expressions.instruction_complete_assignment?(&1)))
   end
 
   defp assignments_incomplete?(_assignments), do: false

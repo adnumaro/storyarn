@@ -46,7 +46,9 @@ defmodule Storyarn.Architecture.ProjectsInterchangeTemplatesStructureTest do
           assert facade in capability_facades
 
         [role | _rest] ->
-          assert role in ~w(commands queries entities contracts data rules execution adapters)
+          assert role in ~w(
+                   commands queries entities contracts projections reference_data records rules execution adapters
+                 )
       end
     end)
   end

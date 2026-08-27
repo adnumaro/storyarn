@@ -2,7 +2,7 @@ defmodule Storyarn.Scenes.Assets.Events do
   @moduledoc false
 
   alias Storyarn.Platform
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
 
   @doc "Publishes the coarse product fact for a Scene-owned asset write."
   @spec asset_uploaded(term(), AssetRecord.t(), map()) :: :ok

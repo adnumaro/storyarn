@@ -24,10 +24,10 @@ defmodule Storyarn.Sheets.References.Commands.EntityProjection do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.References.Commands.ProjectIntegrity
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord
-  alias Storyarn.Sheets.References.Data.FlowNodeRecord
-  alias Storyarn.Sheets.References.Data.FlowRecord
-  alias Storyarn.Sheets.References.Data.SceneRecord
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
+  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
+  alias Storyarn.Sheets.References.Projections.SceneRecord
   alias Storyarn.Sheets.References.Rules.RichTextMentions
   alias Storyarn.Sheets.Sheet
 

@@ -17,7 +17,7 @@ defmodule Storyarn.Localization.GlossaryEntry do
 
   import Ecto.Changeset
 
-  alias Storyarn.Localization.Glossary.Data.ProjectRecord
+  alias Storyarn.Localization.Glossary.Projections.ProjectRecord
 
   @term_format ~r/^[^\t\r\n]*$/u
   @term_format_error "cannot contain tabs or line breaks"

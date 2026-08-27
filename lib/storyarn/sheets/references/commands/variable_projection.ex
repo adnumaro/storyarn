@@ -13,19 +13,20 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Logic
-  alias Storyarn.Sheets.References.Data.FlowNodeRecord
-  alias Storyarn.Sheets.References.Data.FlowRecord
-  alias Storyarn.Sheets.References.Data.SceneAmbientFlowRecord
-  alias Storyarn.Sheets.References.Data.ScenePinRecord
-  alias Storyarn.Sheets.References.Data.SceneRecord
-  alias Storyarn.Sheets.References.Data.SceneZoneRecord
-  alias Storyarn.Sheets.References.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.Expressions
+  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
+  alias Storyarn.Sheets.References.Projections.SceneAmbientFlowRecord
+  alias Storyarn.Sheets.References.Projections.ScenePinRecord
+  alias Storyarn.Sheets.References.Projections.SceneRecord
+  alias Storyarn.Sheets.References.Projections.SceneZoneRecord
+  alias Storyarn.Sheets.References.Projections.VariableReferenceRecord
+  alias Storyarn.Sheets.References.Queries.VariableNamespaces
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
 
-  require Logic
+  require VariableNamespaces
 
   @batch_size 100
   @condition_logic_types ~w(all any)
@@ -387,9 +388,9 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   defp resolve_regular(_project_id, []), do: %{}
 
   defp resolve_regular(project_id, keys) do
-    regular_variable_types = Logic.regular_variable_types()
+    regular_variable_types = Expressions.regular_variable_types()
     namespaces = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
-    namespace_ids = Logic.resolve_sheet_ids(project_id, namespaces)
+    namespace_ids = Expressions.resolve_sheet_ids(project_id, namespaces)
     namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     sheet_ids = Map.keys(namespace_by_id)
     variables = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
@@ -412,10 +413,10 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   defp resolve_tables(_project_id, []), do: %{}
 
   defp resolve_tables(project_id, keys) do
-    table_variable_types = Logic.table_variable_types()
-    constant_table_variable_types = Logic.constant_table_variable_types()
+    table_variable_types = Expressions.table_variable_types()
+    constant_table_variable_types = Expressions.constant_table_variable_types()
     namespaces = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
-    namespace_ids = Logic.resolve_sheet_ids(project_id, namespaces)
+    namespace_ids = Expressions.resolve_sheet_ids(project_id, namespaces)
     namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     sheet_ids = Map.keys(namespace_by_id)
     table_names = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
@@ -488,7 +489,7 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   end
 
   defp qualified_regular_rows(project_id, qualified_refs) do
-    regular_variable_types = Logic.regular_variable_types()
+    regular_variable_types = Expressions.regular_variable_types()
 
     Repo.all(
       from(block in Block,
@@ -499,7 +500,7 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
             is_nil(block.deleted_at) and block.type in ^regular_variable_types and
             block.is_constant == false and not is_nil(block.variable_name) and
             block.variable_name != "" and
-            Logic.authoritative_namespace_owner?(sheet) and
+            VariableNamespaces.authoritative_owner?(sheet) and
             fragment(
               "COALESCE(?, CAST(? AS TEXT)) || '.' || ?",
               sheet.shortcut,
@@ -522,8 +523,8 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   end
 
   defp qualified_table_rows(project_id, qualified_refs) do
-    table_variable_types = Logic.table_variable_types()
-    constant_table_variable_types = Logic.constant_table_variable_types()
+    table_variable_types = Expressions.table_variable_types()
+    constant_table_variable_types = Expressions.constant_table_variable_types()
 
     from(column in TableColumn, as: :column)
     |> join(:inner, [column: column], block in Block,
@@ -571,7 +572,7 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
     where(
       query,
       [column: column, block: block, sheet: sheet, row: row],
-      Logic.authoritative_namespace_owner?(sheet) and
+      VariableNamespaces.authoritative_owner?(sheet) and
         fragment(
           "COALESCE(?, CAST(? AS TEXT)) || '.' || ? || '.' || ? || '.' || ?",
           sheet.shortcut,

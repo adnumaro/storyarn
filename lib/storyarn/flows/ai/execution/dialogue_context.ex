@@ -4,8 +4,8 @@ defmodule Storyarn.Flows.AI.DialogueContext do
   import Ecto.Query
 
   alias Storyarn.Flows.AI.ContextContract
-  alias Storyarn.Flows.AI.Data.BlockRecord
-  alias Storyarn.Flows.AI.Data.SheetRecord
+  alias Storyarn.Flows.AI.Projections.BlockRecord
+  alias Storyarn.Flows.AI.Projections.SheetRecord
   alias Storyarn.Flows.ContextQueries
   alias Storyarn.Repo
 

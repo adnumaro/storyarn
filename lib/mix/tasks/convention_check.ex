@@ -222,7 +222,7 @@ defmodule Mix.Tasks.Convention.Check do
     if String.contains?(line, "DateTime.utc_now") and
          not String.contains?(line, "TimeHelpers") and
          not String.contains?(line, "time_helpers") and
-         not String.contains?(file, "time_helpers.ex") and
+         not String.ends_with?(file, "lib/storyarn/platform/adapters/clock.ex") and
          not String.match?(line, ~r/DateTime\.(diff|compare|after\?|before\?)/) and
          not String.match?(line, ~r/\^DateTime\.utc_now/) do
       [{:datetime_utc_now, file, line_num, "Use TimeHelpers.now/0 instead of DateTime.utc_now()"}]

@@ -4,10 +4,10 @@ defmodule Storyarn.Localization.Texts.Queries.RuntimeInventory do
   import Ecto.Query, warn: false
 
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Localization.Texts.Data.BlockRecord
-  alias Storyarn.Localization.Texts.Data.FlowNodeRecord
-  alias Storyarn.Localization.Texts.Data.FlowRecord
-  alias Storyarn.Localization.Texts.Data.SheetRecord
+  alias Storyarn.Localization.Texts.Projections.BlockRecord
+  alias Storyarn.Localization.Texts.Projections.FlowNodeRecord
+  alias Storyarn.Localization.Texts.Projections.FlowRecord
+  alias Storyarn.Localization.Texts.Projections.SheetRecord
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Repo
 

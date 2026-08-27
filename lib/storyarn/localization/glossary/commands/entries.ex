@@ -3,16 +3,16 @@ defmodule Storyarn.Localization.Glossary.Commands.Entries do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Localization.ProjectAccess
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   def create(%{id: project_id}, attrs) when is_integer(project_id) and project_id > 0 do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     Repo.transaction(fn ->
-      with {:ok, locked_project} <- Access.lock_active_project(project_id, :update),
+      with {:ok, locked_project} <- ProjectAccess.lock_active_project(project_id, :update),
            {:ok, entry} <-
              %GlossaryEntry{project_id: locked_project.id}
              |> GlossaryEntry.create_changeset(attrs)
@@ -25,7 +25,7 @@ defmodule Storyarn.Localization.Glossary.Commands.Entries do
   end
 
   def update(%GlossaryEntry{} = entry, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     Repo.transaction(fn ->
       with {:ok, locked_entry} <- lock_active_entry(entry.id, entry.project_id),
@@ -58,7 +58,7 @@ defmodule Storyarn.Localization.Glossary.Commands.Entries do
   end
 
   defp lock_active_entry(entry_id, project_id) when is_integer(entry_id) and is_integer(project_id) do
-    with {:ok, _project} <- Access.lock_active_project(project_id, :update),
+    with {:ok, _project} <- ProjectAccess.lock_active_project(project_id, :update),
          %GlossaryEntry{} = entry <-
            Repo.one(
              from(entry in GlossaryEntry,

@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.Exports.ExportOptions do
   and filtering options for selective export.
   """
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
 
   @type t :: %__MODULE__{
           format: atom(),
@@ -173,7 +173,7 @@ defmodule Storyarn.Projects.Exports.ExportOptions do
       :all -> :all
       "all" -> :all
       nil -> :all
-      list when is_list(list) -> Enum.map(list, &MapUtils.parse_int/1)
+      list when is_list(list) -> Enum.map(list, &IntegerParser.parse/1)
       _ -> :all
     end
   end

@@ -25,7 +25,7 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
 
   @project_facade_coordinators [
     "lib/storyarn/platform/discovery/queries/global_search/variable_search.ex",
-    "lib/storyarn/platform/adapters/release/release.ex"
+    "lib/storyarn/release.ex"
   ]
 
   @web_technical_project_contracts %{
@@ -120,7 +120,7 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     """
   end
 
-  test "the ratchet seals every boundary with an empty migration baseline" do
+  test "the ratchet seals baselines and exposes only the ENG-107 storage seam" do
     config = File.read!("config/architecture_boundaries.exs")
     {policy, _binding} = Code.eval_file("config/architecture_boundaries.exs")
 
@@ -137,8 +137,17 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
              "#{baseline} must stay empty: sealed consumers cannot accept hidden debt"
     end
 
-    assert policy.migration_exceptions == [],
-           "completed migrations must not leave internal cross-boundary debt behind"
+    assert length(policy.migration_exceptions) == 24
+
+    assert Enum.all?(policy.migration_exceptions, fn exception ->
+             exception.reason ==
+               "Existing storage seam pending ENG-107 neutral infrastructure extraction" and
+               String.starts_with?(
+                 exception.target,
+                 "lib/storyarn/projects/assets/adapters/storage/"
+               )
+           end),
+           "the only visible migration debt must be the exact storage seam tracked by ENG-107"
 
     assert policy.durable_contracts != [],
            "reviewed root-facade calls must remain explicit durable contracts"

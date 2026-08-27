@@ -7,7 +7,7 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntime do
   exploration semantics.
   """
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Scenes.Exploration.Execution.NumericValues
   alias Storyarn.Scenes.FlowRuntime.FormulaEngine
 
   @spec recompute_formulas(map()) :: map()
@@ -130,7 +130,7 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntime do
       end)
 
     case FormulaEngine.compute(expression, values) do
-      {:ok, result} -> MapUtils.format_number_result(result)
+      {:ok, result} -> NumericValues.format(result)
       {:error, _reason} -> nil
     end
   end
@@ -139,7 +139,7 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntime do
 
   defp resolve_number(variables, reference) when is_binary(reference) do
     case Map.get(variables, reference) do
-      %{value: value} -> MapUtils.parse_to_number(value)
+      %{value: value} -> NumericValues.parse(value)
       _missing -> 0.0
     end
   end

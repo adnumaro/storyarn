@@ -6,7 +6,7 @@ defmodule Storyarn.AI.AllowanceLedgerEntry do
 
   alias Storyarn.AI.AllowanceGrant
   alias Storyarn.AI.AllowanceReservation
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Operation
 
   schema "ai_allowance_ledger_entries" do

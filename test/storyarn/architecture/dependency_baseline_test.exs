@@ -109,4 +109,29 @@ defmodule Storyarn.Architecture.DependencyBaselineTest do
     assert baselines |> Map.keys() |> Enum.sort() == consumers
     assert Enum.all?(baselines, fn {_consumer, edges} -> match?(%MapSet{}, edges) end)
   end
+
+  test "every configured ownership root and exact contract path exists" do
+    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
+
+    boundary_roots = policy.boundaries |> Map.values() |> List.flatten()
+    technical_targets = policy.globally_allowed_technical_targets
+    contract_targets = Enum.map(policy.additional_durable_contract_targets, & &1.target)
+
+    reviewed_paths =
+      policy.durable_contracts
+      |> Kernel.++(policy.migration_exceptions)
+      |> Enum.flat_map(&[&1.source, &1.target])
+
+    missing_paths =
+      boundary_roots
+      |> Kernel.++(technical_targets)
+      |> Kernel.++(contract_targets)
+      |> Kernel.++(reviewed_paths)
+      |> Enum.uniq()
+      |> Enum.reject(&File.exists?/1)
+      |> Enum.sort()
+
+    assert missing_paths == [],
+           "architecture policy contains stale filesystem paths: #{inspect(missing_paths)}"
+  end
 end

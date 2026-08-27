@@ -10,18 +10,19 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.Logic
-  alias Storyarn.Flows.References.Data.BlockRecord
-  alias Storyarn.Flows.References.Data.SheetRecord
-  alias Storyarn.Flows.References.Data.TableColumnRecord
-  alias Storyarn.Flows.References.Data.TableRowRecord
+  alias Storyarn.Flows.References.Projections.BlockRecord
+  alias Storyarn.Flows.References.Projections.SheetRecord
+  alias Storyarn.Flows.References.Projections.TableColumnRecord
+  alias Storyarn.Flows.References.Projections.TableRowRecord
+  alias Storyarn.Flows.References.Queries.VariableNamespaces
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
-  require Logic
+  require VariableNamespaces
 
   @regular_variable_types ~w(text rich_text number select multi_select boolean date)
   @table_variable_types ~w(number text boolean select multi_select date reference formula)
@@ -159,7 +160,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp reference_specs(%FlowNode{id: node_id, type: "condition", data: data}) do
     data
     |> Map.get("condition")
-    |> Logic.condition_extract_all_rules()
+    |> Expressions.condition_extract_all_rules()
     |> Enum.flat_map(&condition_rule_specs(node_id, &1))
   end
 
@@ -191,7 +192,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp condition_specs(node_id, condition) do
     condition
-    |> Logic.condition_extract_all_rules()
+    |> Expressions.condition_extract_all_rules()
     |> Enum.flat_map(&condition_rule_specs(node_id, &1))
   end
 
@@ -343,10 +344,10 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp strict_condition(_source_id, condition) when condition == %{}, do: {:ok, []}
 
   defp strict_condition(source_id, %{} = condition) do
-    case Logic.condition_validate(condition) do
+    case Expressions.condition_validate(condition) do
       {:ok, valid_condition} ->
         valid_condition
-        |> Logic.condition_extract_all_rules()
+        |> Expressions.condition_extract_all_rules()
         |> strict_condition_rules(source_id)
 
       {:error, _reason} ->
@@ -498,7 +499,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp resolve_regular_block_ids(project_id, keys) do
     namespaces = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
-    namespace_ids = Logic.resolve_variable_namespace_sheet_ids(project_id, namespaces)
+    namespace_ids = Expressions.resolve_variable_namespace_sheet_ids(project_id, namespaces)
     namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     sheet_ids = Map.keys(namespace_by_id)
     variable_names = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
@@ -524,7 +525,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   defp resolve_table_block_ids(project_id, keys) do
     namespaces = keys |> Enum.map(&elem(&1, 1)) |> Enum.uniq()
-    namespace_ids = Logic.resolve_variable_namespace_sheet_ids(project_id, namespaces)
+    namespace_ids = Expressions.resolve_variable_namespace_sheet_ids(project_id, namespaces)
     namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     sheet_ids = Map.keys(namespace_by_id)
     table_names = keys |> Enum.map(&elem(&1, 2)) |> Enum.uniq()
@@ -722,7 +723,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
             is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
             block.type != "table",
         where:
-          not Logic.authoritative_variable_namespace_owner?(sheet) or
+          not VariableNamespaces.authoritative_owner?(sheet) or
             reference.source_sheet !=
               coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)) or
             reference.source_variable != block.variable_name,
@@ -763,7 +764,7 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
             is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
             block.type == "table",
         where:
-          not Logic.authoritative_variable_namespace_owner?(sheet) or
+          not VariableNamespaces.authoritative_owner?(sheet) or
             reference.source_sheet !=
               coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)) or
             not exists(table_cell_exists),

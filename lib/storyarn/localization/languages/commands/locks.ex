@@ -3,7 +3,7 @@ defmodule Storyarn.Localization.Languages.Commands.Locks do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Languages.Data.ProjectRecord
+  alias Storyarn.Localization.Languages.Projections.ProjectRecord
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
 

@@ -9,8 +9,8 @@ defmodule Storyarn.Flows.Versioning.Commands.NamedVersionCapacity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Versioning.Data.ProjectRecord
   alias Storyarn.Flows.Versioning.EntityVersionRecord
+  alias Storyarn.Flows.Versioning.Projections.ProjectRecord
   alias Storyarn.Platform
   alias Storyarn.Repo
 

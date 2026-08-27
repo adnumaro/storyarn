@@ -17,7 +17,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
         ConditionEval.evaluate(condition, variables)
   """
 
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @type rule_result :: %{
           rule_id: String.t() | nil,
@@ -68,7 +68,7 @@ defmodule Storyarn.Flows.Evaluator.ConditionEval do
   def evaluate_string("", _variables), do: {true, []}
 
   def evaluate_string(condition_string, variables) when is_binary(condition_string) do
-    case Logic.condition_parse(condition_string) do
+    case Expressions.condition_parse(condition_string) do
       nil -> {true, []}
       condition_map -> evaluate(condition_map, variables)
     end

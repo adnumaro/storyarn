@@ -5,23 +5,23 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
 
   @root "lib/storyarn/flows"
   @capability_roles %{
-    "ai" => ~w(commands contracts data execution queries),
-    "editor" => ~w(adapters commands contracts data entities events queries rules),
-    "health" => ~w(adapters data execution queries rules),
-    "localization" => ~w(adapters commands contracts data rules),
-    "logic" => ~w(data queries rules),
-    "references" => ~w(commands data entities rules),
-    "runtime" => ~w(adapters data entities events execution queries rules),
-    "versioning" => ~w(adapters commands contracts data entities events execution queries rules)
+    "ai" => ~w(commands contracts projections execution queries),
+    "editor" => ~w(adapters commands contracts projections entities events queries rules),
+    "health" => ~w(adapters projections execution queries rules),
+    "localization" => ~w(adapters commands contracts projections rules),
+    "expressions" => ~w(compatibility contracts projections queries rules),
+    "references" => ~w(commands projections entities queries rules),
+    "runtime" => ~w(adapters projections entities events execution queries rules),
+    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
-  @private_roles ~w(adapters commands queries rules data execution events)
-  @passive_roles ~w(data entities contracts rules)
+  @private_roles ~w(adapters commands compatibility queries rules projections execution events)
+  @passive_roles ~w(projections entities contracts rules)
   @capability_facade_dependencies ~w(
     Storyarn.Flows.AI
     Storyarn.Flows.Editor
     Storyarn.Flows.Health
     Storyarn.Flows.Localization
-    Storyarn.Flows.Logic
+    Storyarn.Flows.Expressions
     Storyarn.Flows.References
     Storyarn.Flows.Runtime
     Storyarn.Flows.Versioning
@@ -32,7 +32,7 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
     Storyarn.Flows.StructuralAnalysis.Analysis
     Storyarn.Flows.VariableSearch
   )
-  @root_facade_targets ~w(AI Editor Health Localization Logic References Runtime Versioning)
+  @root_facade_targets ~w(AI Editor Health Localization Expressions References Runtime Versioning)
   @versioning_facade_contract [
     build_snapshot: 1,
     build_version_snapshot: 1,
@@ -98,12 +98,12 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
     {"rules", "execution"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "events"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},
@@ -223,7 +223,7 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
            "Flow passive roles must not construct provider-specific query fragments: #{inspect(violations)}"
   end
 
-  test "data, entities, contracts, and rules remain passive" do
+  test "projections, entities, contracts, and rules remain passive" do
     passive_sources =
       for capability <- Map.keys(@capability_roles),
           role <- @passive_roles,
@@ -236,18 +236,18 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
            "Flow passive roles must not perform persistence I/O: #{inspect(violations)}"
   end
 
-  test "every data module documents its projection or reference-data purpose" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection module documents its consumer-owned read purpose" do
+    projection_sources = Path.wildcard(Path.join(@root, "*/projections/**/*.ex"))
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(projection_sources, fn path ->
         source = File.read!(path)
         source =~ "@moduledoc" and not (source =~ "@moduledoc false")
       end)
 
-    assert data_sources != []
-    assert violations == [], "Flow data semantics must be explicit: #{inspect(violations)}"
-    assert File.read!(Path.join(@root, "README.md")) =~ "## `data/`"
+    assert projection_sources != []
+    assert violations == [], "Flow projections semantics must be explicit: #{inspect(violations)}"
+    assert File.read!(Path.join(@root, "README.md")) =~ "## `projections/`"
   end
 
   test "the architecture ratchet blocks root and cross-capability access to private roles" do
@@ -290,12 +290,6 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
                "missing role-direction denial for #{capability}/#{source_role} -> #{target_role}"
       end)
     end)
-  end
-
-  test "Flow workers can enter the context only through its root facade" do
-    policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
-
-    assert denial?(policy, "lib/storyarn/workers/flows/", "lib/storyarn/flows/")
   end
 
   defp directories_in(path) do

@@ -22,9 +22,9 @@ defmodule Storyarn.Sheets.Health.Queries.Snapshots do
 
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Editor
+  alias Storyarn.Sheets.Expressions
   alias Storyarn.Sheets.Health.Queries.Stats
   alias Storyarn.Sheets.Health.Rules.Checker
-  alias Storyarn.Sheets.Logic
   alias Storyarn.Sheets.References
 
   @doc """
@@ -137,7 +137,7 @@ defmodule Storyarn.Sheets.Health.Queries.Snapshots do
     inheritance_issues =
       Editor.list_project_inheritance_health_issues(sheets, raw_table_data)
 
-    table_data = Logic.enrich_table_formulas(raw_table_data, project_id)
+    table_data = Expressions.enrich_table_formulas(raw_table_data, project_id)
 
     %{
       table_data: table_data,
@@ -219,7 +219,7 @@ defmodule Storyarn.Sheets.Health.Queries.Snapshots do
   @spec variable_types(integer()) :: %{String.t() => String.t()}
   def variable_types(project_id) do
     project_id
-    |> Logic.list_project_variables()
+    |> Expressions.list_project_variables()
     |> Map.new(fn variable ->
       {"#{variable.sheet_shortcut}.#{variable.variable_name}", variable.block_type}
     end)

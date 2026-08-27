@@ -20,9 +20,9 @@ defmodule Storyarn.Scenes.Scene do
   import Storyarn.Scenes.Editor.Rules.ChangesetHelpers
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Scenes.Editor.Data.AssetRecord
-  alias Storyarn.Scenes.Editor.Data.EntityVersionRecord
-  alias Storyarn.Scenes.Editor.Data.ProjectRecord
+  alias Storyarn.Scenes.Editor.Projections.AssetRecord
+  alias Storyarn.Scenes.Editor.Projections.EntityVersionRecord
+  alias Storyarn.Scenes.Editor.Projections.ProjectRecord
   alias Storyarn.Scenes.Editor.Rules.Schema
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation

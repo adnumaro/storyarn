@@ -12,7 +12,6 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
 
   alias Storyarn.Accounts
   alias Storyarn.AI
-  alias Storyarn.Repo
 
   @requirements ["app.start"]
 
@@ -25,8 +24,8 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
 
     workspace_id = required!(opts, :workspace_id)
     actor_id = required!(opts, :actor_id)
-    user = Repo.get(Storyarn.Accounts.User, actor_id) || Mix.raise("Actor not found")
-    scope = Accounts.Scope.for_user(user)
+    user = fetch_actor!(actor_id)
+    scope = Accounts.scope_for_user(user)
     input = %{"probe" => AI.managed_diagnostic_probe()}
 
     {:ok, intent} =
@@ -53,6 +52,12 @@ defmodule Mix.Tasks.Storyarn.Ai.Diagnose do
   end
 
   defp required!(opts, key), do: Keyword.get(opts, key) || usage!()
+
+  defp fetch_actor!(actor_id) do
+    Accounts.get_user!(actor_id)
+  rescue
+    Ecto.NoResultsError -> Mix.raise("Actor not found")
+  end
 
   defp usage! do
     Mix.raise("Usage: mix storyarn.ai.diagnose --workspace-id ID --actor-id ID")

@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Annotations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.Positions
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
@@ -11,7 +11,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Annotations do
   alias Storyarn.Scenes.SceneAnnotation
 
   def create_annotation(scene_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->
@@ -28,7 +28,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Annotations do
   end
 
   def update_annotation(%SceneAnnotation{} = annotation, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     annotation.scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->

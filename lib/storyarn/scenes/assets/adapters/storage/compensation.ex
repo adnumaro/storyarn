@@ -6,10 +6,10 @@ defmodule Storyarn.Scenes.Assets.Adapters.Storage.Compensation do
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
-  alias Storyarn.Scenes.Assets.Data.StorageCleanupRequestRecord
-  alias Storyarn.Scenes.Assets.Data.StorageReservationRecord
-  alias Storyarn.Scenes.Assets.Data.WorkspaceSnapshotImportRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
+  alias Storyarn.Scenes.Assets.Entities.StorageCleanupRequestRecord
+  alias Storyarn.Scenes.Assets.Projections.StorageReservationRecord
+  alias Storyarn.Scenes.Assets.Projections.WorkspaceSnapshotImportRecord
 
   @tracker_key {__MODULE__, :tracked}
   @retained_key {__MODULE__, :retained}

@@ -29,11 +29,11 @@ defmodule Storyarn.Scenes.Versioning.SceneSnapshot do
   alias Storyarn.Scenes.Versioning.Commands.EntityRestoreSafety
   alias Storyarn.Scenes.Versioning.Commands.MaterializationHelpers
   alias Storyarn.Scenes.Versioning.Commands.ReferenceProjection, as: References
-  alias Storyarn.Scenes.Versioning.Data.AssetRecord, as: Asset
-  alias Storyarn.Scenes.Versioning.Data.FlowRecord, as: Flow
-  alias Storyarn.Scenes.Versioning.Data.ProjectRecord, as: Project
-  alias Storyarn.Scenes.Versioning.Data.SheetRecord, as: Sheet
+  alias Storyarn.Scenes.Versioning.Entities.AssetRecord, as: Asset
   alias Storyarn.Scenes.Versioning.Execution.AssetMaterializationScope
+  alias Storyarn.Scenes.Versioning.Projections.FlowRecord, as: Flow
+  alias Storyarn.Scenes.Versioning.Projections.ProjectRecord, as: Project
+  alias Storyarn.Scenes.Versioning.Projections.SheetRecord, as: Sheet
   alias Storyarn.Scenes.Versioning.RestorePolicy
 
   @scene_restore_root_fields ~w(

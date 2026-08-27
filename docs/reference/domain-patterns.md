@@ -2,69 +2,22 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-25
+> Last reviewed: 2026-08-27
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
 > `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
 
-## Context Facade Pattern
+## Architecture model
 
-Every domain uses the same structure. NEVER bypass the facade.
+Storyarn is a modular monolith: one Phoenix application, one supervision tree,
+one `Storyarn.Repo`, one PostgreSQL schema and nine bounded contexts. A bounded
+context is defined by language, invariants and ownership, not by having a
+directory or a Phoenix-style context module.
 
-```
-lib/storyarn/{context}.ex          # Facade — ONLY entry point for external callers
-lib/storyarn/{context}/
-├── {entity}.ex                    # Ecto schema
-├── {entity}_crud.ex               # CRUD operations
-├── {entity}_queries.ex            # Read-only queries (optional)
-└── {helper}.ex                    # Domain-specific helpers
-```
+The current strategic relationships, ordinary writers and deliberate
+exceptions are documented in the [bounded-context map](context-map.md).
 
-**Rules:**
-
-- Facade exposes public API via `defdelegate` to submodules
-- LiveViews call `Context.function()`, NEVER `Context.SubModule.function()`
-- Submodules can call each other within the same context
-- Calls to an allowed supporting context go through its public facade, never one
-  of its internals
-
-`mix convention.check` enforces this as the `facade_bypass` rule, but only for a
-hardcoded submodule list (`@facade_submodules` in `lib/mix/tasks/convention_check.ex`)
-and only under `lib/storyarn_web/`. The rule above is broader than the linter.
-
-### ENG-92 bounded-context ratchet
-
-Storyarn currently recognizes nine bounded contexts: `Accounts`, `Workspaces`,
-`Projects`, `Sheets`, `Flows`, `Scenes`, `Localization`, `AI`, and `Platform`.
-Capabilities such as Assets, References, Versioning, Imports, Exports,
-ProjectTemplates, Billing, Notifications, and Analytics belong to one of those
-contexts; they are not bounded contexts merely because they have a namespace.
-
-For the eight contexts sealed by ENG-92, new code dependencies between bounded
-contexts are denied by default. A
-durable cross-boundary contract must target a public context facade or an
-explicitly classified technical contract. Temporary internal dependencies are
-migration debt and must remain visible to the ratchet; they cannot be hidden as
-permanent exceptions. Consumer-owned Ecto records may map the existing shared
-tables, but must not associate to schemas owned by another boundary. ENG-92
-keeps the shared Repo and SQL schema while decoupling code ownership.
-
-`mix architecture.check` compares the JSON `mix xref` graph with that policy.
-`Platform` is a supporting control-plane context, not a technical catch-all.
-Infrastructure is classified separately and may contain only adapters and
-application composition without business ownership. `AI` is accepted as its
-own bounded context, but its existing dependency graph is intentionally not
-sealed in this pass and remains transitionally classified by the ratchet. Its
-eventual relationship with Projects remains a strategic decision, not an
-excuse for other contexts to call its internals.
-
-The ratchet operates at xref file-edge granularity. If a source file already has
-a baselined edge to a target file, another call between that same pair is not
-distinguishable in the JSON graph. Review must therefore still reject semantic
-expansion inside a legacy edge; the automated gate prevents new file edges and
-dependency-kind strengthening, not individual call sites.
-
-### Bounded contexts and ownership
+### Bounded contexts
 
 | Bounded context | Public facade | Owned business capabilities |
 | --- | --- | --- |
@@ -76,7 +29,76 @@ dependency-kind strengthening, not individual call sites.
 | Scenes | `Storyarn.Scenes` | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning |
 | Localization | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport |
 | AI | `Storyarn.AI` | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior |
-| Platform | `Storyarn.Platform` | Billing/catalog/entitlements, notifications, product analytics and genuinely platform-wide control-plane policy |
+| Platform | `Storyarn.Platform` | Commercial policy, notifications, product reactions and genuinely platform-wide control-plane behavior |
+
+Platform is an organizational control-plane boundary, not a claim that billing,
+notifications and analytics share one aggregate or ubiquitous language.
+Discovery, realtime collaboration and technical adapters may live physically
+under `platform/` while being classified as application or infrastructure code.
+That does not create another bounded context or make those modules generally
+shareable.
+
+### Public facade rule
+
+Code outside a bounded context enters through its root facade:
+
+```text
+StoryarnWeb.FlowLive      -> Storyarn.Flows
+Storyarn.Workers.Flows.*  -> Storyarn.Flows
+Storyarn.Projects         -> Storyarn.Platform
+Mix.Tasks.Storyarn.*      -> owning root facade
+```
+
+Within one bounded context, capabilities collaborate through their capability
+facades. A capability must not import another capability's private
+`commands/`, `queries/`, `entities/`, `rules/`, `execution/`, `adapters/` or
+`projections/` modules merely because both live below the same context.
+
+Root facades are stable integration surfaces, not files where business logic
+belongs. Prefer a clear delegate or a small request/value contract. Do not add
+generic repository behaviours, macros or facade generators just to reduce line
+count.
+
+### Capability-first, role-second organization
+
+Contexts contain business capabilities first. Each capability uses only the
+responsibility folders it needs:
+
+```text
+lib/storyarn/{context}.ex
+lib/storyarn/{context}/README.md
+lib/storyarn/{context}/{capability}/
+├── {capability}.ex       # internal capability facade, when collaboration needs one
+├── commands/             # state-changing use cases and transaction boundaries
+├── queries/              # read-only persistence operations
+├── entities/             # context-owned mutable state and changesets
+├── rules/                # deterministic policy and validation
+├── execution/            # indivisible multi-step workflows
+├── contracts/            # stable values and behaviours crossing a real seam
+├── events/               # facts owned by the producing capability
+├── projections/          # passive consumer-owned read mappings
+├── records/              # controlled writable mappings or exact reconstitution
+├── reference_data/       # immutable shipped catalogs
+└── adapters/             # provider, PostgreSQL, OTP, storage or delivery translation
+```
+
+This is a navigation and ownership convention, not mandatory hexagonal
+layering. Empty folders are forbidden. A transaction, fencing protocol or lock
+order stays together when splitting it would weaken correctness.
+
+### Persistence shapes
+
+- A `projection` is a consumer-owned, read-only Ecto mapping. It declares only
+  fields, associations and types; it has no `Repo` calls or ordinary changesets.
+- A `record` may participate in controlled writes such as exact import,
+  reconstitution, trash or repair. The owning README must name that authority.
+- `reference_data` has no database identity or external I/O.
+- `Repo` is shared technical infrastructure, not a domain layer.
+- Two contexts may deliberately duplicate a table mapping or business
+  interpretation. Shared SQL does not imply shared Elixir schemas.
+
+ENG-92 protects code ownership. It does not assign one writer per table. That
+separate decision belongs to ENG-103.
 
 ### Internal capabilities are not bounded contexts
 
@@ -86,7 +108,7 @@ existence does not create another domain boundary:
 | Owner | Internal capability examples |
 | --- | --- |
 | Projects | `Assets`, `References`, `Versioning`, `Imports`, `Exports`, `ProjectTemplates` |
-| Platform | `Billing`, `Notifications`, `Analytics`, `Collaboration`, `RateLimiter`, `GlobalSearch` |
+| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, delivery policy |
 | AI | `Operations`, `Execution`, `Allowance`, `IntegrationCrud`, provider clients and model catalog |
 
 Workers, Repo, storage transports, mail delivery, PubSub, telemetry and release
@@ -97,107 +119,24 @@ and the ratchet assigns each slice to that bounded context. Their flat
 shared domain layer. Workers orchestrate through the public facade of the
 capability owner.
 
-Snapshot lifecycle classes such as `ProjectSnapshotLifecycle`,
-`ProjectSnapshotReconciliation`, `SnapshotArchiveStorage` and
-`SnapshotCleanupIntent` are internal Projects capabilities.
+### Architecture ratchet
 
----
+`mix architecture.check` classifies all backend, Web and operator Mix-task
+paths declared in `config/architecture_boundaries.exs`. All nine bounded
+contexts are sealed. Cross-boundary calls are denied unless they are exact,
+reviewed root-facade or technical contracts.
 
-## CRUD Module Pattern
+Migration exceptions are debt, not infrastructure. The current storage calls
+from tools, Web and the OTP root into Projects are registered individually and
+must disappear through ENG-107. New consumers cannot copy that relationship.
 
-All CRUD modules follow the same structure. When creating a new one, follow this template:
+The ratchet sees compile/runtime file edges. It cannot detect that two contexts
+write the same table or that a new call was added between two files already
+connected. Review and ENG-103's persistence-ownership policy remain necessary.
 
-```elixir
-defmodule Storyarn.{Context}.{Entity}Crud do
-  import Ecto.Query
-  alias Storyarn.Repo
-  alias Storyarn.{Context}.{Entity}
-  # Each context owns its TreeOperations semantics.
-  alias Storyarn.{Context}.TreeOperations
-  # Entity-specific shortcut policy is consumer-owned.
-  alias Storyarn.{Context}.ShortcutGenerator
-  # Import only what this context actually owns and uses.
-  alias Storyarn.Platform.Shared.MapUtils
-  alias Storyarn.Platform.Shared.SearchHelpers  # only if search is needed
-
-  # ========== Queries ==========
-  def list_{entities}(project_id) do
-    from(e in Entity,
-      where: e.project_id == ^project_id and is_nil(e.deleted_at),
-      order_by: [asc: e.position, asc: e.name]
-    )
-    |> Repo.all()
-  end
-
-  def get_{entity}(project_id, id) do
-    Repo.get_by(Entity, id: id, project_id: project_id)
-  end
-
-  def search_{entities}(project_id, query, opts \\ []) do
-    sanitized = SearchHelpers.sanitize_like_query(query)
-    # ... ILIKE search
-  end
-
-  # ========== Create ==========
-  def create_{entity}(project, attrs) do
-    attrs =
-      attrs
-      |> MapUtils.stringify_keys()
-      |> ShortcutGenerator.prepare_create(project.id, nil)
-      |> Map.put_new("position", TreeOperations.next_position(project.id, parent_id))
-
-    %Entity{project_id: project.id}
-    |> Entity.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  # ========== Update ==========
-  def update_{entity}(entity, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
-    # Apply the owning context's shortcut/backlink policy here.
-
-    entity
-    |> Entity.update_changeset(attrs)
-    |> Repo.update()
-  end
-end
-```
-
-The calls above are illustrative: use the owning context's actual local API.
-Do not create a global tree, shortcut, or soft-delete helper to make the sample compile.
-Deletion and restoration must remain explicit context operations because their
-invariants differ between Sheets, Flows, Scenes, Projects and Workspaces.
-
----
-
-## Schema Pattern
-
-All hierarchical entities share these fields:
-
-```elixir
-schema "{entities}" do
-  field :name, :string                    # Required, 1-200 chars
-  field :shortcut, :string                # Unique per project
-  field :description, :string             # Optional rich text
-  field :position, :integer, default: 0   # Order among siblings
-  field :deleted_at, :utc_datetime        # Soft delete
-
-  belongs_to :project, Project
-  belongs_to :parent, __MODULE__            # auto-generates parent_id field
-  has_many :children, __MODULE__, foreign_key: :parent_id
-
-  timestamps(type: :utc_datetime)
-end
-```
-
-**Changesets:** Always separate by operation: `create_changeset/2`, `update_changeset/2`, `move_changeset/2`, `delete_changeset/1`, `restore_changeset/1`
-
-**Validation:** Use the owning context's schema policy, such as
-`Storyarn.Sheets.Schema` or `Storyarn.Scenes.Schema`. Do not import Project
-validation rules into another bounded context.
-
-Changesets and hierarchy invariants are consumer-owned. Duplication is
-preferable to reintroducing a shared business superclass.
+Mix tasks are operator adapters. Every task is classified explicitly and may
+call root facades, `Repo` where its startup contract requires it, and technical
+infrastructure. A new task remains unclassified until its ownership is reviewed.
 
 ---
 
@@ -284,7 +223,8 @@ Roles: project = `owner | editor | viewer`; workspace = `owner | admin | member 
 
 ## PubSub Pattern
 
-All real-time features use `Phoenix.PubSub` through the `Collaboration` context.
+All real-time features use `Phoenix.PubSub` through the technical
+`Storyarn.Platform.Collaboration` facade.
 Every editor function takes a **scope tuple** `{type, id}` where type is an atom —
 `{:flow, flow.id}`, `{:sheet, sheet.id}`, `{:scene, scene.id}`, `{:project, project.id}`
 — not a bare id.
@@ -430,23 +370,20 @@ end
 
 ## Storage Pattern (Assets)
 
-```elixir
-# Behaviour + Adapter pattern
-Storyarn.Projects.Assets.Storage.upload(key, data, content_type)
-Storyarn.Projects.Assets.Storage.delete(key)
-Storyarn.Projects.Assets.Storage.get_url(key)
+The current object-store implementation still mixes technical provider behavior
+with Project-specific blob, snapshot, import and cleanup policy under
+`Storyarn.Projects.Assets.Storage`. That is a tracked seam, not the target
+architecture.
 
-# Key generation
-key = Assets.generate_key(project, filename)
-# => "projects/{project_id}/assets/{id}/{sanitized_filename}"
-```
+- Projects may use that policy boundary internally.
+- Existing Flows, Sheets, Scenes, Web and OTP callers are registered as exact
+  ENG-107 migration exceptions.
+- New external callers are forbidden.
+- Do not move the entire module to a shared namespace: recoverable-blob deletion,
+  snapshot/import cleanup grammar and purge authority must remain with Projects.
+- ENG-107 will extract only neutral provider operations, hashing and generic
+  locking while preserving keys, provider configuration, lock identities,
+  errors and external I/O ordering.
 
-Full behaviour: `upload/3`, `put_if_absent/3`, `delete/1`, `get_url/1`, `download/1`,
-`stat/1`, `stream/4`, `presigned_upload_url/3`, `presigned_download_url/3`,
-`copy/2`, `copy_if_absent/2`, `key_from_url/1`.
-
-Adapters: `Storage.Local` (dev) and the legacy-named `Storage.R2` adapter
-(S3-compatible storage; Fly Tigris in production).
-Application code always goes through the `Storage` facade so deletion safety
-checks cannot be bypassed. Direct adapter deletion is reserved for explicit
-test-only helpers that simulate provider-side loss or clean up fixtures.
+Direct provider deletion remains reserved for explicit tests that simulate
+provider-side loss or clean up isolated fixtures.

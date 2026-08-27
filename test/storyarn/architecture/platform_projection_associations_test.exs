@@ -1,9 +1,9 @@
 defmodule Storyarn.Architecture.PlatformProjectionAssociationsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Platform.Notifications.Data.ProjectRecord
-  alias Storyarn.Platform.Notifications.Data.UserRecord
   alias Storyarn.Platform.Notifications.Notification
+  alias Storyarn.Platform.Notifications.Projections.ProjectRecord
+  alias Storyarn.Platform.Notifications.Projections.UserRecord
 
   test "notification associations use notification-owned projections" do
     assert association(Notification, :recipient) == UserRecord

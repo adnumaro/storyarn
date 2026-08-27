@@ -7,7 +7,7 @@ defmodule Storyarn.Sheets.Assets.Commands.AssetsTest do
   alias Storyarn.Platform
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Assets.Data.AssetRecord
+  alias Storyarn.Sheets.Assets.Entities.AssetRecord
 
   test "binary uploads use the Sheet-owned pipeline and remain project-scoped" do
     user = user_fixture()

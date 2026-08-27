@@ -2,9 +2,9 @@ defmodule Storyarn.Localization.Languages.Commands.EnsureSource do
   @moduledoc false
 
   alias Storyarn.Localization.Languages.Commands.Add
-  alias Storyarn.Localization.Languages.Data.Catalog
-  alias Storyarn.Localization.Languages.Data.ProjectRecord
+  alias Storyarn.Localization.Languages.Projections.ProjectRecord
   alias Storyarn.Localization.Languages.Queries.Languages, as: LanguageQueries
+  alias Storyarn.Localization.Languages.ReferenceData.Catalog
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Repo
 

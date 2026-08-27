@@ -10,7 +10,7 @@ defmodule Storyarn.Sheets.Health.Queries.Stats do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Health.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.Health.Projections.VariableReferenceRecord
   alias Storyarn.Sheets.Health.Queries.Snapshots
   alias Storyarn.Sheets.Health.Rules.Checker
   alias Storyarn.Sheets.Localization
@@ -293,7 +293,7 @@ defmodule Storyarn.Sheets.Health.Queries.Stats do
 
   defp resolve_reference_pairs(project_id, reference_pairs) do
     namespaces = reference_pairs |> Enum.map(&elem(&1, 0)) |> Enum.uniq()
-    namespace_ids = Storyarn.Sheets.Logic.resolve_sheet_ids(project_id, namespaces)
+    namespace_ids = Storyarn.Sheets.Expressions.resolve_sheet_ids(project_id, namespaces)
     namespace_by_id = Map.new(namespace_ids, fn {namespace, id} -> {id, namespace} end)
     sheet_ids = Map.keys(namespace_by_id)
 

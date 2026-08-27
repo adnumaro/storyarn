@@ -14,7 +14,8 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Editor.Data.AssetRecord
+  alias Storyarn.Flows.Editor.Projections.AssetRecord
+  alias Storyarn.Flows.Editor.Queries.Sequences
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.References
@@ -31,71 +32,30 @@ defmodule Storyarn.Flows.SequenceCrud do
   time, with `sequence_config` preloaded.
   """
   @spec list_sequences(integer()) :: [sequence()]
-  def list_sequences(flow_id) do
-    Repo.all(
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "sequence" and is_nil(n.deleted_at),
-        order_by: [asc: n.inserted_at],
-        preload: [:sequence_config]
-      )
-    )
-  end
+  defdelegate list_sequences(flow_id), to: Sequences, as: :list
 
   @doc """
   Lists soft-deleted sequences for a flow (for trash/restore UIs).
   """
   @spec list_deleted(integer()) :: [sequence()]
-  def list_deleted(flow_id) do
-    Repo.all(
-      from(n in FlowNode,
-        where: n.flow_id == ^flow_id and n.type == "sequence" and not is_nil(n.deleted_at),
-        order_by: [desc: n.deleted_at],
-        preload: [:sequence_config]
-      )
-    )
-  end
+  def list_deleted(flow_id), do: Sequences.list(flow_id, true)
 
   @doc """
   Fetches an active sequence by id scoped to a flow. Returns nil if
   absent, soft-deleted, or not a sequence.
   """
   @spec get_sequence(integer(), integer()) :: sequence() | nil
-  def get_sequence(flow_id, id) do
-    Repo.one(
-      from(n in FlowNode,
-        where: n.id == ^id and n.flow_id == ^flow_id and n.type == "sequence" and is_nil(n.deleted_at),
-        preload: [:sequence_config]
-      )
-    )
-  end
+  defdelegate get_sequence(flow_id, id), to: Sequences, as: :get
 
   @doc """
   Fetches a sequence by id scoped to a flow. Raises if absent.
   """
   @spec get_sequence!(integer(), integer()) :: sequence()
-  def get_sequence!(flow_id, id) do
-    Repo.one!(
-      from(n in FlowNode,
-        where: n.id == ^id and n.flow_id == ^flow_id and n.type == "sequence",
-        preload: [:sequence_config]
-      )
-    )
-  end
+  defdelegate get_sequence!(flow_id, id), to: Sequences, as: :get!
 
   @doc "Gets the sequence-specific configuration for an active sequence node."
   @spec get_sequence_config(integer()) :: SequenceConfig.t() | nil
-  def get_sequence_config(sequence_id) do
-    Repo.one(
-      from(config in SequenceConfig,
-        join: node in FlowNode,
-        on: node.id == config.flow_node_id,
-        where:
-          config.flow_node_id == ^sequence_id and node.type == "sequence" and
-            is_nil(node.deleted_at),
-        select: config
-      )
-    )
-  end
+  defdelegate get_sequence_config(sequence_id), to: Sequences, as: :get_config
 
   @doc """
   Creates a sequence (flow_node + sequence_config) atomically.
@@ -383,26 +343,12 @@ defmodule Storyarn.Flows.SequenceCrud do
   Lists all visual layers for a sequence, ordered for player rendering.
   """
   @spec list_sequence_visual_layers(integer()) :: [SequenceVisualLayer.t()]
-  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id) do
-    Repo.all(
-      from(l in SequenceVisualLayer,
-        where: l.flow_node_id == ^sequence_id,
-        order_by: [asc: l.z_index, asc: l.id],
-        preload: [:asset]
-      )
-    )
-  end
+  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id), do: Sequences.list_visual_layers(sequence_id)
 
   @doc "Fetches a visual layer scoped to its sequence."
   @spec get_sequence_visual_layer(integer(), integer()) :: SequenceVisualLayer.t() | nil
-  def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id) do
-    Repo.one(
-      from(l in SequenceVisualLayer,
-        where: l.flow_node_id == ^sequence_id and l.id == ^id,
-        preload: [:asset]
-      )
-    )
-  end
+  def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id),
+    do: Sequences.get_visual_layer(sequence_id, id)
 
   @doc """
   Creates a visual layer for a sequence. `kind` drives sensible stage
@@ -652,26 +598,13 @@ defmodule Storyarn.Flows.SequenceCrud do
   Returns `[]` for sequences with no tracks.
   """
   @spec list_sequence_tracks(integer()) :: [SequenceTrack.t()]
-  def list_sequence_tracks(sequence_id) when is_integer(sequence_id) do
-    Repo.all(
-      from(t in SequenceTrack,
-        where: t.flow_node_id == ^sequence_id,
-        order_by: [asc: t.kind, asc: t.position]
-      )
-    )
-  end
+  def list_sequence_tracks(sequence_id) when is_integer(sequence_id), do: Sequences.list_tracks(sequence_id)
 
   @doc """
   Fetches a sequence's track for a given kind, or `nil`.
   """
   @spec get_sequence_track(integer(), String.t()) :: SequenceTrack.t() | nil
-  def get_sequence_track(sequence_id, kind) when is_binary(kind) do
-    Repo.one(
-      from(t in SequenceTrack,
-        where: t.flow_node_id == ^sequence_id and t.kind == ^kind
-      )
-    )
-  end
+  def get_sequence_track(sequence_id, kind) when is_binary(kind), do: Sequences.get_track(sequence_id, kind)
 
   @doc """
   Upserts the track row for `(sequence_id, kind)`. If no row exists it's

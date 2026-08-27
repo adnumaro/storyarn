@@ -10,7 +10,7 @@ defmodule Storyarn.Sheets.Health.Rules.Checker do
 
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Logic, as: FormulaEngine
+  alias Storyarn.Sheets.Expressions, as: FormulaEngine
 
   @type severity :: :error | :warning | :info
 

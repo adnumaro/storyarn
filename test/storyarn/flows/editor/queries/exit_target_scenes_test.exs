@@ -7,7 +7,7 @@ defmodule Storyarn.Flows.ExitTargetScenesTest do
   import Storyarn.ScenesFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Editor.Data.SceneRecord
+  alias Storyarn.Flows.Editor.Projections.SceneRecord
   alias Storyarn.Repo
   alias Storyarn.Scenes
 

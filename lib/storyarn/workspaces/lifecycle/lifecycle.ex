@@ -4,9 +4,9 @@ defmodule Storyarn.Workspaces.Lifecycle do
   alias Storyarn.Workspaces.Lifecycle.Commands.CreateWorkspace
   alias Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace
   alias Storyarn.Workspaces.Lifecycle.Commands.UpdateWorkspace
-  alias Storyarn.Workspaces.Lifecycle.Data.SourceLocaleCatalog
   alias Storyarn.Workspaces.Lifecycle.Queries.UniqueSlug
   alias Storyarn.Workspaces.Lifecycle.Queries.Workspaces
+  alias Storyarn.Workspaces.Lifecycle.ReferenceData.SourceLocaleCatalog
   alias Storyarn.Workspaces.Workspace
 
   defdelegate get_workspace!(id), to: Workspaces, as: :get!

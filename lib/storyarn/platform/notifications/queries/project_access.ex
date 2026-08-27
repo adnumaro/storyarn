@@ -9,9 +9,9 @@ defmodule Storyarn.Platform.Notifications.ProjectAccess do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Notifications.Data.ProjectMembershipRecord, as: ProjectMembership
-  alias Storyarn.Platform.Notifications.Data.ProjectRecord, as: Project
-  alias Storyarn.Platform.Notifications.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.Platform.Notifications.Projections.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Platform.Notifications.Projections.ProjectRecord, as: Project
+  alias Storyarn.Platform.Notifications.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Repo
 
   @workspace_to_project_role %{

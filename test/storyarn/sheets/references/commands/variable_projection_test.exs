@@ -11,7 +11,7 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjectionTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Sheets.References.Commands.VariableProjection
-  alias Storyarn.Sheets.References.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.References.Projections.VariableReferenceRecord
 
   setup do
     user = user_fixture()

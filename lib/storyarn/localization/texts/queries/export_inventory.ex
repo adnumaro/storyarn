@@ -6,11 +6,11 @@ defmodule Storyarn.Localization.Texts.Queries.ExportInventory do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Localization.Texts.Data.BlockRecord
-  alias Storyarn.Localization.Texts.Data.FlowNodeRecord
-  alias Storyarn.Localization.Texts.Data.FlowRecord
-  alias Storyarn.Localization.Texts.Data.LanguageRecord
-  alias Storyarn.Localization.Texts.Data.SheetRecord
+  alias Storyarn.Localization.Texts.Projections.BlockRecord
+  alias Storyarn.Localization.Texts.Projections.FlowNodeRecord
+  alias Storyarn.Localization.Texts.Projections.FlowRecord
+  alias Storyarn.Localization.Texts.Projections.LanguageRecord
+  alias Storyarn.Localization.Texts.Projections.SheetRecord
   alias Storyarn.Repo
 
   @doc """

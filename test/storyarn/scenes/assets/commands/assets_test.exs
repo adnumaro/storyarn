@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Assets.Commands.Assets, as: AssetCommands
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
 
   test "generated assets use the Scene-owned projection and remain project-scoped" do
     user = user_fixture()

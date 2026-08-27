@@ -3,7 +3,6 @@ defmodule StoryarnWeb.ProjectLive.Form do
 
   use StoryarnWeb, :live_component
 
-  alias Storyarn.Platform
   alias Storyarn.Projects
 
   @impl true
@@ -21,7 +20,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
             do: dgettext("projects", "Create Project"),
             else: dgettext("projects", "Save")
         }
-        metrics-options={Platform.product_metric_project_options()}
+        metrics-options={Projects.project_classification_options()}
         cancel-url={@navigate}
       />
     </div>

@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.LocalizationExportPolicy do
   @moduledoc false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Projects.Exports.ExportOptions
 
   def text_eligible?(text, %ExportOptions{localization_policy: policy}), do: text_eligible?(text, policy)
@@ -35,7 +35,7 @@ defmodule Storyarn.Projects.LocalizationExportPolicy do
   def voiceover_eligible?(_text, policy),
     do: raise(ArgumentError, "unknown localization export policy: #{inspect(policy)}")
 
-  defp attr(record, field), do: MapUtils.get_flexible(record, field)
+  defp attr(record, field), do: MapAccess.get_flexible(record, field)
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(_value), do: false
 end

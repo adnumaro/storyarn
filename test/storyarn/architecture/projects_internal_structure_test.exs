@@ -6,14 +6,14 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
   @root "lib/storyarn/projects"
   @capability_roles %{
     "access" => ~w(commands delivery entities queries),
-    "assets" => ~w(adapters contracts data entities execution queries rules),
+    "assets" => ~w(adapters commands contracts entities execution projections queries rules),
     "interchange" => ~w(exports imports),
-    "lifecycle" => ~w(commands data entities events rules),
-    "overview" => ~w(contracts data execution queries rules),
-    "references" => ~w(commands data entities execution queries rules),
+    "lifecycle" => ~w(commands entities events projections queries reference_data rules),
+    "overview" => ~w(contracts execution queries rules),
+    "references" => ~w(commands entities execution projections queries records reference_data rules),
     "templates" => ~w(adapters commands entities execution queries rules),
     "trash" => ~w(execution),
-    "versioning" => ~w(adapters commands contracts data entities execution queries rules)
+    "versioning" => ~w(adapters commands contracts entities execution projections queries rules)
   }
   @capability_root_files %{
     "access" => ~w(access.ex invitations.ex memberships.ex),
@@ -28,63 +28,55 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
   }
   @private_role_roots %{
     "access" => ~w(commands delivery queries),
-    "assets" => ~w(adapters data execution queries rules),
+    "assets" => ~w(adapters commands execution projections queries rules),
     "interchange" => ~w(
       imports/adapters imports/commands imports/execution imports/queries imports/rules
       exports/adapters exports/queries exports/rules
     ),
-    "lifecycle" => ~w(commands data events rules),
-    "overview" => ~w(data execution queries rules),
-    "references" => ~w(commands data execution queries rules),
+    "lifecycle" => ~w(commands events projections queries reference_data rules),
+    "overview" => ~w(execution queries rules),
+    "references" => ~w(commands execution projections queries records reference_data rules),
     "templates" => ~w(adapters commands execution queries rules),
     "trash" => ~w(execution),
-    "versioning" => ~w(adapters commands data execution queries rules)
+    "versioning" => ~w(adapters commands execution projections queries rules)
   }
   @private_role_compatibility MapSet.new([
-                                {"access", "lifecycle", "data"},
+                                {"access", "lifecycle", "projections"},
                                 {"access", "lifecycle", "rules"},
-                                {"assets", "lifecycle", "data"},
+                                {"assets", "lifecycle", "projections"},
                                 {"assets", "lifecycle", "events"},
-                                {"assets", "overview", "data"},
                                 {"assets", "references", "commands"},
-                                {"assets", "versioning", "data"},
+                                {"assets", "versioning", "projections"},
                                 {"assets", "versioning", "execution"},
                                 {"interchange", "assets", "adapters"},
-                                {"interchange", "lifecycle", "data"},
+                                {"interchange", "lifecycle", "projections"},
                                 {"interchange", "lifecycle", "rules"},
-                                {"interchange", "overview", "data"},
                                 {"interchange", "overview", "queries"},
                                 {"interchange", "references", "commands"},
                                 {"interchange", "trash", "execution"},
                                 {"interchange", "versioning", "adapters"},
                                 {"interchange", "versioning", "execution"},
                                 {"lifecycle", "access", "queries"},
-                                {"lifecycle", "overview", "data"},
-                                {"overview", "lifecycle", "rules"},
-                                {"overview", "references", "data"},
+                                {"overview", "references", "records"},
                                 {"overview", "references", "queries"},
-                                {"references", "overview", "data"},
                                 {"templates", "access", "queries"},
                                 {"templates", "assets", "adapters"},
                                 {"templates", "assets", "execution"},
-                                {"templates", "lifecycle", "data"},
+                                {"templates", "lifecycle", "projections"},
                                 {"templates", "lifecycle", "events"},
                                 {"templates", "lifecycle", "rules"},
-                                {"templates", "overview", "data"},
                                 {"templates", "versioning", "adapters"},
                                 {"templates", "versioning", "execution"},
-                                {"trash", "overview", "data"},
                                 {"trash", "references", "commands"},
-                                {"trash", "references", "data"},
+                                {"trash", "references", "records"},
                                 {"trash", "references", "execution"},
-                                {"trash", "versioning", "data"},
+                                {"trash", "versioning", "projections"},
                                 {"versioning", "access", "queries"},
                                 {"versioning", "assets", "adapters"},
                                 {"versioning", "assets", "execution"},
                                 {"versioning", "assets", "queries"},
-                                {"versioning", "lifecycle", "data"},
+                                {"versioning", "lifecycle", "projections"},
                                 {"versioning", "lifecycle", "rules"},
-                                {"versioning", "overview", "data"},
                                 {"versioning", "overview", "queries"},
                                 {"versioning", "references", "commands"},
                                 {"versioning", "references", "queries"},
@@ -119,12 +111,24 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     {"rules", "execution"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "events"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
+    {"reference_data", "commands"},
+    {"reference_data", "queries"},
+    {"reference_data", "execution"},
+    {"reference_data", "events"},
+    {"reference_data", "adapters"},
+    {"reference_data", "rules"},
+    {"records", "commands"},
+    {"records", "queries"},
+    {"records", "execution"},
+    {"records", "events"},
+    {"records", "adapters"},
+    {"records", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "events"},
@@ -142,7 +146,6 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     {"adapters", "events"}
   ]
   @role_compatibility MapSet.new([
-                        {"overview", "data", "rules"},
                         {"interchange/exports", "contracts", "adapters"},
                         {"interchange/exports", "rules", "adapters"},
                         {"interchange/imports", "rules", "adapters"}
@@ -180,6 +183,20 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
       |> Enum.filter(&(File.read!(&1) =~ ~r/^defmodule Storyarn\.Projects\.Content do/m))
 
     assert violations == [], "content/ must not acquire a capability facade: #{inspect(violations)}"
+
+    for tool <- ~w(flows sheets scenes localization) do
+      assert File.dir?(Path.join([content_root, tool, "records"])),
+             "#{tool} content records must be explicit and must not live under Overview"
+    end
+
+    refute File.dir?(Path.join([@root, "overview", "data"]))
+  end
+
+  test "persistence-shaped folders never fall back to generic data" do
+    generic_data_directories = Path.wildcard(Path.join(@root, "**/data"))
+
+    assert generic_data_directories == [],
+           "Projects must classify SQL models and catalogs explicitly: #{inspect(generic_data_directories)}"
   end
 
   test "the root facade is declarative and names only capability facades or stable public types" do
@@ -205,7 +222,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
            )
   end
 
-  test "every closed content model serves at least two Project capabilities" do
+  test "every closed content model is integrated in at least two Project areas" do
     content_modules =
       @root
       |> Path.join("content/**/*.ex")
@@ -216,19 +233,18 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
       @root
       |> Path.join("**/*.ex")
       |> Path.wildcard()
-      |> Enum.reject(&String.starts_with?(&1, Path.join(@root, "content/")))
       |> Enum.reduce(Map.new(content_modules, fn {module, _path} -> {module, MapSet.new()} end), fn path, acc ->
-        case project_capability(path) do
+        case project_area(path) do
           nil ->
             acc
 
-          capability ->
+          area ->
             path
             |> File.read!()
             |> project_module_references(path)
             |> Enum.reduce(acc, fn module, references ->
-              if Map.has_key?(references, module) do
-                Map.update!(references, module, &MapSet.put(&1, capability))
+              if Map.has_key?(references, module) and Map.fetch!(content_modules, module) != path do
+                Map.update!(references, module, &MapSet.put(&1, area))
               else
                 references
               end
@@ -245,7 +261,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
       |> Enum.sort()
 
     assert violations == [],
-           "content/ modules must serve at least two Project capabilities: #{inspect(violations)}"
+           "content/ modules must serve at least two Project areas: #{inspect(violations)}"
   end
 
   test "historical module identities survive their physical relocation" do
@@ -255,6 +271,8 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     refute File.dir?(Path.join(@root, "project_templates"))
 
     assert Code.ensure_loaded?(Storyarn.Projects.Persistence.BlockRecord)
+    assert Code.ensure_loaded?(Storyarn.Projects.Persistence.ProjectLanguageRecord)
+    assert Code.ensure_loaded?(Storyarn.Projects.Persistence.SceneRecord)
     assert Code.ensure_loaded?(Storyarn.Projects.Assets.Persistence.FlowRecord)
     assert Code.ensure_loaded?(Storyarn.Projects.References.Persistence.BlockRecord)
     assert Code.ensure_loaded?(Storyarn.Projects.Imports)
@@ -351,6 +369,13 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
 
       _other ->
         nil
+    end
+  end
+
+  defp project_area(path) do
+    case path |> Path.relative_to(@root) |> Path.split() do
+      ["content" | _rest] -> "content"
+      _other -> project_capability(path)
     end
   end
 

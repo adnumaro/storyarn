@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.NodeRestoreIntegrityTest do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.References.Data.EntityReferenceRecord, as: EntityReference
+  alias Storyarn.Flows.References.Projections.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Localization.RuntimeKey
   alias Storyarn.Projects.References

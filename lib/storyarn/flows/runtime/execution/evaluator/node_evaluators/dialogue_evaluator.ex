@@ -10,7 +10,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   alias Storyarn.Flows.Evaluator.ConditionEval
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @doc """
   Evaluate a dialogue node. Returns one of:
@@ -46,7 +46,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.DialogueEvaluator do
   end
 
   defp apply_response_results(state, node_id, new_variables, changes, errors, warnings) do
-    new_variables = Logic.recompute_formulas(new_variables)
+    new_variables = Expressions.recompute_formulas(new_variables)
     state = %{state | variables: new_variables}
 
     state =

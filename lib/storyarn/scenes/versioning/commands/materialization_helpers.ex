@@ -6,8 +6,8 @@ defmodule Storyarn.Scenes.Versioning.Commands.MaterializationHelpers do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Assets
-  alias Storyarn.Scenes.Versioning.Data.SheetAvatarRecord
-  alias Storyarn.Scenes.Versioning.Data.SheetRecord
+  alias Storyarn.Scenes.Versioning.Projections.SheetAvatarRecord
+  alias Storyarn.Scenes.Versioning.Projections.SheetRecord
 
   def now, do: TimeHelpers.now()
   def timestamps(now), do: %{inserted_at: now, updated_at: now}

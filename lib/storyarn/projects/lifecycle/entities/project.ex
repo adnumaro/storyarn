@@ -10,9 +10,9 @@ defmodule Storyarn.Projects.Project do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Platform
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
+  alias Storyarn.Projects.ProjectClassification
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
@@ -183,7 +183,7 @@ defmodule Storyarn.Projects.Project do
     |> validate_length(:name, min: 1, max: 100)
     |> validate_length(:description, max: 1000)
     |> validate_length(:project_type_other, max: 120)
-    |> validate_inclusion(:project_type, Platform.product_metric_project_types())
+    |> validate_inclusion(:project_type, ProjectClassification.project_types())
     |> validate_project_subtype()
     |> validate_project_type_other()
   end
@@ -206,7 +206,7 @@ defmodule Storyarn.Projects.Project do
   end
 
   defp project_subtype_error(project_type, field, project_subtype) do
-    if Platform.known_product_metric_project_subtype?(project_type, project_subtype) do
+    if ProjectClassification.known_project_subtype?(project_type, project_subtype) do
       []
     else
       [{field, "is invalid"}]

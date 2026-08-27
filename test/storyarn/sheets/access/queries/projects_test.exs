@@ -6,8 +6,8 @@ defmodule Storyarn.Sheets.Access.Queries.ProjectsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Access.Data.ProjectMembershipRecord
-  alias Storyarn.Sheets.Access.Data.ProjectRecord
+  alias Storyarn.Sheets.Access.Projections.ProjectMembershipRecord
+  alias Storyarn.Sheets.Access.Projections.ProjectRecord
 
   test "returns an active project and its direct membership" do
     user = user_fixture()

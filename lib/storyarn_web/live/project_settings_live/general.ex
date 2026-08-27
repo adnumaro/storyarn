@@ -5,7 +5,6 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
-  alias Storyarn.Platform
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
@@ -35,7 +34,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         v-inject="settings-layout"
         id="project-settings-general"
         project-details={serialize_project_details(@project)}
-        project-metrics-options={Platform.product_metric_project_options()}
+        project-metrics-options={Projects.project_classification_options()}
         source-language={serialize_source_language(@source_language)}
         source-language-options={Projects.source_language_options()}
         theme-primary={@theme_primary}
@@ -466,7 +465,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp iso_datetime(datetime), do: DateTime.to_iso8601(datetime)
 
   defp do_save_theme(socket) do
-    alias Storyarn.Platform.Shared.ColorUtils
+    alias StoryarnWeb.Helpers.ColorUtils
 
     primary = socket.assigns.theme_primary
     accent = socket.assigns.theme_accent

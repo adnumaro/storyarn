@@ -26,8 +26,8 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Platform.Shared.HtmlSanitizer
-  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
@@ -526,7 +526,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp update_ambient_flow_priority(socket, af_id, value) do
-    id = MapUtils.parse_int(af_id)
+    id = IntegerParser.parse(af_id)
 
     case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
       nil -> socket
@@ -535,7 +535,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp save_ambient_flow_priority(socket, ambient_flow, value) do
-    priority = MapUtils.parse_int(value) || 0
+    priority = IntegerParser.parse(value) || 0
 
     case Scenes.update_ambient_flow(ambient_flow, %{"priority" => priority}) do
       {:ok, _} -> reload_ambient_flows(socket)
@@ -546,7 +546,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp do_remove_ambient_flow(socket, id) do
     scene = socket.assigns.scene
 
-    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+    case Scenes.get_ambient_flow(scene.id, IntegerParser.parse(id)) do
       nil ->
         socket
 
@@ -564,7 +564,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp do_toggle_ambient_flow(socket, id) do
     scene = socket.assigns.scene
 
-    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+    case Scenes.get_ambient_flow(scene.id, IntegerParser.parse(id)) do
       nil ->
         socket
 
@@ -608,7 +608,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp compute_reorder_index(idx, _direction, _len), do: idx
 
   defp do_update_ambient_flow_trigger(socket, params) do
-    id = MapUtils.parse_int(params["id"])
+    id = IntegerParser.parse(params["id"])
 
     case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
       nil ->
@@ -633,11 +633,11 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       "trigger_type" => trigger_type,
       "trigger_config" => build_trigger_config(trigger_type, params),
-      "priority" => MapUtils.parse_int(params["priority"]) || 0
+      "priority" => IntegerParser.parse(params["priority"]) || 0
     }
   end
 
-  defp build_trigger_config("timed", params), do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
+  defp build_trigger_config("timed", params), do: %{"interval_ms" => IntegerParser.parse(params["interval_ms"]) || 30_000}
 
   defp build_trigger_config("on_event", params), do: %{"variable_ref" => params["variable_ref"] || ""}
 
@@ -1212,7 +1212,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       project_id = socket.assigns.project.id
 
-      case Scenes.get_asset(project_id, MapUtils.parse_int(asset_id)) do
+      case Scenes.get_asset(project_id, IntegerParser.parse(asset_id)) do
         nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Asset not found."))}
         asset -> process_background_upload(socket, asset)
       end
@@ -1250,7 +1250,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("select_add_ambient_flow", %{"id" => flow_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
-             "flow_id" => MapUtils.parse_int(flow_id)
+             "flow_id" => IntegerParser.parse(flow_id)
            }) do
         {:ok, _} ->
           {:noreply, reload_ambient_flows(socket)}
@@ -1266,7 +1266,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
-             "flow_id" => MapUtils.parse_int(flow_id)
+             "flow_id" => IntegerParser.parse(flow_id)
            }) do
         {:ok, _} ->
           {:noreply, reload_ambient_flows(socket)}

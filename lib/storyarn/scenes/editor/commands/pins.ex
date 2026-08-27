@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Pins do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.Positions
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
@@ -111,7 +111,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Pins do
 
   # When is_playable is set to false, force is_leader to false too
   defp enforce_leader_constraints(_pin, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
     playable_value = attrs["is_playable"]
 
     if playable_value in [false, "false"] do

@@ -43,6 +43,9 @@ defmodule Storyarn.Projects do
   @doc false
   defdelegate source_language_option(code, label), to: Lifecycle
 
+  @doc "Returns the Project-owned classification options used by project forms."
+  defdelegate project_classification_options(), to: Lifecycle
+
   # =============================================================================
   # Type Definitions
   # =============================================================================
@@ -408,6 +411,11 @@ defmodule Storyarn.Projects do
     to: Templates,
     as: :import_portable_template
 
+  @doc false
+  defdelegate export_portable_project_template(project_id, output_path, opts \\ []),
+    to: Templates,
+    as: :export_portable_template
+
   defdelegate list_project_template_installs(scope, template, opts \\ []),
     to: Templates,
     as: :list_template_installs
@@ -514,6 +522,10 @@ defmodule Storyarn.Projects do
   defdelegate publish_committed_workspace_data_hard_delete(preparation), to: Lifecycle
 
   defdelegate request_full_project_snapshot(scope, project, attrs), to: Versioning
+
+  @doc false
+  defdelegate run_snapshot_archive_smoke!(snapshot_id), to: Versioning
+
   defdelegate request_project_snapshot_restore(scope, project, snapshot, attrs), to: Versioning
   defdelegate project_snapshot_restore_enabled?(), to: Versioning
   defdelegate list_project_snapshot_restores(project_id, opts \\ []), to: Versioning
@@ -710,18 +722,23 @@ defmodule Storyarn.Projects do
 
   @doc """
   Creates a membership.
+
+  The owner membership is created only by the Project lifecycle or exact
+  reconstitution. Ordinary membership operations cannot assign `owner`.
   """
   @spec create_membership(integer(), integer(), role()) ::
-          {:ok, membership()} | {:error, changeset()}
+          {:ok, membership()} | {:error, changeset() | :cannot_assign_owner_role}
   defdelegate create_membership(project_id, user_id, role), to: Access
 
   @doc """
   Updates a member's role.
 
   Cannot change the owner's role.
+  Cannot promote an ordinary membership to owner.
   """
   @spec update_member_role(membership(), role()) ::
-          {:ok, membership()} | {:error, changeset() | :cannot_change_owner}
+          {:ok, membership()}
+          | {:error, changeset() | :cannot_assign_owner_role | :cannot_change_owner_role}
   defdelegate update_member_role(membership, role), to: Access
 
   @doc """
@@ -832,6 +849,9 @@ defmodule Storyarn.Projects do
   """
   @spec get_pending_invitation(integer()) :: invitation() | nil
   defdelegate get_pending_invitation(id), to: Access
+
+  @doc "Checks the Project invitation rate-limit policy."
+  defdelegate check_invitation_rate(project_id, user_id), to: Access
 
   # =============================================================================
   # Dashboard

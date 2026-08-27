@@ -5,9 +5,9 @@ defmodule Storyarn.AI.Result do
   import Ecto.Changeset
 
   alias Storyarn.AI.Operation
-  alias Storyarn.AI.Operations.Data.ProjectRecord, as: Project
-  alias Storyarn.AI.Operations.Data.UserRecord, as: User
-  alias Storyarn.AI.Operations.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Operations.Projections.ProjectRecord, as: Project
+  alias Storyarn.AI.Operations.Projections.UserRecord, as: User
+  alias Storyarn.AI.Operations.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.Platform.Shared.EncryptedBinary
 
   @derive {Inspect, except: [:input_encrypted, :output_encrypted]}

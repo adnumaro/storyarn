@@ -5,10 +5,10 @@ defmodule Storyarn.Flows.LocalizationProjection do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.Localization.Adapters.AdvisoryLocks
-  alias Storyarn.Flows.Localization.Adapters.LocalizedTextUpsert
-  alias Storyarn.Flows.Localization.Data.LocalizedTextRecord
-  alias Storyarn.Flows.Localization.Data.ProjectLanguageRecord
+  alias Storyarn.Flows.Localization.Adapters.Postgres.AdvisoryLocks
+  alias Storyarn.Flows.Localization.Adapters.Postgres.LocalizedTextUpsert
+  alias Storyarn.Flows.Localization.Projections.LocalizedTextRecord
+  alias Storyarn.Flows.Localization.Projections.ProjectLanguageRecord
   alias Storyarn.Flows.References
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Platform.Shared.TimeHelpers

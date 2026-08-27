@@ -2,7 +2,7 @@ defmodule Storyarn.Sheets.Assets.Events do
   @moduledoc false
 
   alias Storyarn.Platform
-  alias Storyarn.Sheets.Assets.Data.AssetRecord
+  alias Storyarn.Sheets.Assets.Entities.AssetRecord
 
   @doc "Publishes the coarse product fact for a Sheet-owned asset write."
   @spec asset_uploaded(term(), AssetRecord.t(), map()) :: :ok

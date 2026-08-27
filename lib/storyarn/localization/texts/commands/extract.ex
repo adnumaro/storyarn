@@ -3,18 +3,18 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.SourceContract
   alias Storyarn.Localization.Texts.Adapters.Locks.Postgres
   alias Storyarn.Localization.Texts.Commands.Lifecycle
   alias Storyarn.Localization.Texts.Commands.Reconcile
-  alias Storyarn.Localization.Texts.Data.BlockRecord
-  alias Storyarn.Localization.Texts.Data.FlowNodeRecord
-  alias Storyarn.Localization.Texts.Data.FlowRecord
-  alias Storyarn.Localization.Texts.Data.LanguageRecord
-  alias Storyarn.Localization.Texts.Data.SheetRecord
+  alias Storyarn.Localization.Texts.Projections.BlockRecord
+  alias Storyarn.Localization.Texts.Projections.FlowNodeRecord
+  alias Storyarn.Localization.Texts.Projections.FlowRecord
+  alias Storyarn.Localization.Texts.Projections.LanguageRecord
+  alias Storyarn.Localization.Texts.Projections.SheetRecord
   alias Storyarn.Localization.Texts.Queries.Texts, as: TextsQuery
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Repo
@@ -489,7 +489,7 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
   end
 
   defp lock_active_project!(project_id) do
-    case Access.lock_active_project(project_id, :update) do
+    case ProjectAccess.lock_active_project(project_id, :update) do
       {:ok, _project} -> :ok
       {:error, reason} -> Repo.rollback(reason)
     end

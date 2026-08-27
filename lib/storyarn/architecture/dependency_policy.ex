@@ -7,6 +7,7 @@ defmodule Storyarn.Architecture.DependencyPolicy do
   @web_infrastructure_boundary :web_infrastructure
   @presentation_boundary :presentation_adapters
   @required_classification_roots [
+    "lib/mix/tasks/",
     "lib/storyarn.ex",
     "lib/storyarn/",
     "lib/storyarn_web.ex",

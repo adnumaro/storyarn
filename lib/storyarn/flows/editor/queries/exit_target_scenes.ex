@@ -9,7 +9,7 @@ defmodule Storyarn.Flows.ExitTargetScenes do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Editor.Data.SceneRecord
+  alias Storyarn.Flows.Editor.Projections.SceneRecord
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
 

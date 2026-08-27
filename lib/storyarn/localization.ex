@@ -9,12 +9,12 @@ defmodule Storyarn.Localization do
   behind capability boundaries; callers must not depend on their internals.
   """
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.Exchange
   alias Storyarn.Localization.Glossary
   alias Storyarn.Localization.GlossaryEntry
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers
@@ -42,10 +42,10 @@ defmodule Storyarn.Localization do
   # =============================================================================
 
   @doc "Gets an active project visible to the current actor, with its workspace preloaded."
-  defdelegate get_project(actor_scope, project_id), to: Access
+  defdelegate get_project(actor_scope, project_id), to: ProjectAccess
 
   @doc "Gets an active project by workspace/project slugs for the current actor."
-  defdelegate get_project_by_slugs(actor_scope, workspace_slug, project_slug), to: Access
+  defdelegate get_project_by_slugs(actor_scope, workspace_slug, project_slug), to: ProjectAccess
 
   # =============================================================================
   # Project Languages

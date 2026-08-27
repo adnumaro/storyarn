@@ -11,9 +11,9 @@ defmodule Storyarn.Scenes.Editor.Commands.ItemCapacity do
 
   alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Editor.Data.FlowNodeRecord
-  alias Storyarn.Scenes.Editor.Data.FlowRecord
-  alias Storyarn.Scenes.Editor.Data.SheetRecord
+  alias Storyarn.Scenes.Editor.Projections.FlowNodeRecord
+  alias Storyarn.Scenes.Editor.Projections.FlowRecord
+  alias Storyarn.Scenes.Editor.Projections.SheetRecord
   alias Storyarn.Scenes.Scene
 
   def can_create_item?(project), do: can_create_items?(project, 1)

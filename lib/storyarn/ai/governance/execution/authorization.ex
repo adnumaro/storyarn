@@ -6,11 +6,11 @@ defmodule Storyarn.AI.Governance.Execution.Authorization do
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Governance.Adapters.FeatureFlags
   alias Storyarn.AI.Governance.Commands.Policies, as: PolicyCommands
-  alias Storyarn.AI.Governance.Data.ProjectMembershipRecord, as: ProjectMembership
-  alias Storyarn.AI.Governance.Data.ProjectRecord, as: Project
-  alias Storyarn.AI.Governance.Data.UserRecord, as: User
-  alias Storyarn.AI.Governance.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
-  alias Storyarn.AI.Governance.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Governance.Projections.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.AI.Governance.Projections.ProjectRecord, as: Project
+  alias Storyarn.AI.Governance.Projections.UserRecord, as: User
+  alias Storyarn.AI.Governance.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Governance.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Governance.Queries.Policies
   alias Storyarn.AI.Governance.Queries.ProjectAccess
   alias Storyarn.AI.Governance.Queries.WorkspaceAccess

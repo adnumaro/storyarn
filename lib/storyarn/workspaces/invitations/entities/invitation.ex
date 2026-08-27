@@ -13,7 +13,7 @@ defmodule Storyarn.Workspaces.WorkspaceInvitation do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Workspaces.Invitations.Data.UserRecord
+  alias Storyarn.Workspaces.Invitations.Projections.UserRecord
   alias Storyarn.Workspaces.Invitations.Rules.Email
   alias Storyarn.Workspaces.Invitations.Rules.Policy
   alias Storyarn.Workspaces.Workspace

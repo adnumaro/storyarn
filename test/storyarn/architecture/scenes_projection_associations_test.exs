@@ -1,42 +1,42 @@
 defmodule Storyarn.Architecture.ScenesProjectionAssociationsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Scenes.Access.Data.ProjectRecord, as: AccessProjectRecord
-  alias Storyarn.Scenes.Access.Data.WorkspaceRecord, as: AccessWorkspaceRecord
-  alias Storyarn.Scenes.Assets.Data.ProjectRecord, as: AssetsProjectRecord
-  alias Storyarn.Scenes.Assets.Data.WorkspaceRecord, as: AssetsWorkspaceRecord
-  alias Storyarn.Scenes.Editor.Data.AssetRecord, as: EditorAssetRecord
-  alias Storyarn.Scenes.Editor.Data.EntityVersionRecord, as: EditorVersionRecord
-  alias Storyarn.Scenes.Editor.Data.FlowRecord, as: EditorFlowRecord
-  alias Storyarn.Scenes.Editor.Data.ProjectRecord, as: EditorProjectRecord
-  alias Storyarn.Scenes.Editor.Data.SheetRecord, as: EditorSheetRecord
-  alias Storyarn.Scenes.Exploration.Data.AssetRecord, as: ExplorationAssetRecord
-  alias Storyarn.Scenes.Exploration.Data.ProjectRecord, as: ExplorationProjectRecord
-  alias Storyarn.Scenes.Exploration.Data.SheetAvatarRecord, as: ExplorationAvatarRecord
-  alias Storyarn.Scenes.Exploration.Data.SheetRecord, as: ExplorationSheetRecord
-  alias Storyarn.Scenes.Exploration.Data.UserRecord, as: ExplorationUserRecord
+  alias Storyarn.Scenes.Access.Projections.ProjectRecord, as: AccessProjectRecord
+  alias Storyarn.Scenes.Access.Projections.WorkspaceRecord, as: AccessWorkspaceRecord
+  alias Storyarn.Scenes.Assets.Projections.ProjectRecord, as: AssetsProjectRecord
+  alias Storyarn.Scenes.Assets.Projections.WorkspaceRecord, as: AssetsWorkspaceRecord
+  alias Storyarn.Scenes.Editor.Projections.AssetRecord, as: EditorAssetRecord
+  alias Storyarn.Scenes.Editor.Projections.EntityVersionRecord, as: EditorVersionRecord
+  alias Storyarn.Scenes.Editor.Projections.FlowRecord, as: EditorFlowRecord
+  alias Storyarn.Scenes.Editor.Projections.ProjectRecord, as: EditorProjectRecord
+  alias Storyarn.Scenes.Editor.Projections.SheetRecord, as: EditorSheetRecord
+  alias Storyarn.Scenes.Exploration.Projections.AssetRecord, as: ExplorationAssetRecord
+  alias Storyarn.Scenes.Exploration.Projections.ProjectRecord, as: ExplorationProjectRecord
+  alias Storyarn.Scenes.Exploration.Projections.SheetAvatarRecord, as: ExplorationAvatarRecord
+  alias Storyarn.Scenes.Exploration.Projections.SheetRecord, as: ExplorationSheetRecord
+  alias Storyarn.Scenes.Exploration.Projections.UserRecord, as: ExplorationUserRecord
   alias Storyarn.Scenes.ExplorationSession
-  alias Storyarn.Scenes.Health.Data.AssetRecord, as: HealthAssetRecord
-  alias Storyarn.Scenes.Health.Data.BlockRecord, as: HealthBlockRecord
-  alias Storyarn.Scenes.Health.Data.SheetAvatarRecord, as: HealthAvatarRecord
-  alias Storyarn.Scenes.Health.Data.SheetRecord, as: HealthSheetRecord
-  alias Storyarn.Scenes.References.Data.AssetRecord, as: ReferencesAssetRecord
-  alias Storyarn.Scenes.References.Data.BlockRecord, as: ReferencesBlockRecord
-  alias Storyarn.Scenes.References.Data.ProjectRecord, as: ReferencesProjectRecord
-  alias Storyarn.Scenes.References.Data.SheetAvatarRecord, as: ReferencesAvatarRecord
-  alias Storyarn.Scenes.References.Data.SheetRecord, as: ReferencesSheetRecord
-  alias Storyarn.Scenes.References.Data.WorkspaceRecord, as: ReferencesWorkspaceRecord
+  alias Storyarn.Scenes.Health.Projections.AssetRecord, as: HealthAssetRecord
+  alias Storyarn.Scenes.Health.Projections.BlockRecord, as: HealthBlockRecord
+  alias Storyarn.Scenes.Health.Projections.SheetAvatarRecord, as: HealthAvatarRecord
+  alias Storyarn.Scenes.Health.Projections.SheetRecord, as: HealthSheetRecord
+  alias Storyarn.Scenes.References.Projections.AssetRecord, as: ReferencesAssetRecord
+  alias Storyarn.Scenes.References.Projections.BlockRecord, as: ReferencesBlockRecord
+  alias Storyarn.Scenes.References.Projections.ProjectRecord, as: ReferencesProjectRecord
+  alias Storyarn.Scenes.References.Projections.SheetAvatarRecord, as: ReferencesAvatarRecord
+  alias Storyarn.Scenes.References.Projections.SheetRecord, as: ReferencesSheetRecord
+  alias Storyarn.Scenes.References.Projections.WorkspaceRecord, as: ReferencesWorkspaceRecord
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.ScenePin
   alias Storyarn.Scenes.SceneZone
-  alias Storyarn.Scenes.Versioning.Data.AssetRecord, as: VersioningAssetRecord
-  alias Storyarn.Scenes.Versioning.Data.BlockRecord, as: VersioningBlockRecord
-  alias Storyarn.Scenes.Versioning.Data.ProjectRecord, as: VersioningProjectRecord
-  alias Storyarn.Scenes.Versioning.Data.SheetAvatarRecord, as: VersioningAvatarRecord
-  alias Storyarn.Scenes.Versioning.Data.SheetRecord, as: VersioningSheetRecord
-  alias Storyarn.Scenes.Versioning.Data.UserRecord, as: VersioningUserRecord
-  alias Storyarn.Scenes.Versioning.Data.WorkspaceRecord, as: VersioningWorkspaceRecord
+  alias Storyarn.Scenes.Versioning.Entities.AssetRecord, as: VersioningAssetRecord
   alias Storyarn.Scenes.Versioning.EntityVersionRecord
+  alias Storyarn.Scenes.Versioning.Projections.BlockRecord, as: VersioningBlockRecord
+  alias Storyarn.Scenes.Versioning.Projections.ProjectRecord, as: VersioningProjectRecord
+  alias Storyarn.Scenes.Versioning.Projections.SheetAvatarRecord, as: VersioningAvatarRecord
+  alias Storyarn.Scenes.Versioning.Projections.SheetRecord, as: VersioningSheetRecord
+  alias Storyarn.Scenes.Versioning.Projections.UserRecord, as: VersioningUserRecord
+  alias Storyarn.Scenes.Versioning.Projections.WorkspaceRecord, as: VersioningWorkspaceRecord
 
   test "owned schemas associate to the projection of their own Scene capability" do
     assert association(AccessProjectRecord, :workspace) == AccessWorkspaceRecord

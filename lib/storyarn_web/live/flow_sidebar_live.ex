@@ -13,7 +13,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias StoryarnWeb.Helpers.Authorize
 
   @impl true
@@ -197,7 +197,7 @@ defmodule StoryarnWeb.FlowSidebarLive do
 
   defp move_flow_to_parent(socket, params) do
     with %{"item_id" => id, "new_parent_id" => new_parent_id, "position" => position} <- params,
-         %{} = flow <- Flows.get_flow(socket.assigns.project_id, MapUtils.parse_int(id)) do
+         %{} = flow <- Flows.get_flow(socket.assigns.project_id, IntegerParser.parse(id)) do
       move_existing_flow(socket, flow, new_parent_id, position)
     else
       _invalid -> {:noreply, socket}
@@ -224,8 +224,8 @@ defmodule StoryarnWeb.FlowSidebarLive do
   end
 
   defp move_existing_flow(socket, flow, new_parent_id, position) do
-    parent_id = if new_parent_id in [nil, ""], do: nil, else: MapUtils.parse_int(new_parent_id)
-    position = MapUtils.parse_int(position) || 0
+    parent_id = if new_parent_id in [nil, ""], do: nil, else: IntegerParser.parse(new_parent_id)
+    position = IntegerParser.parse(position) || 0
 
     case Flows.move_flow_to_position(flow, parent_id, position) do
       {:ok, _flow} ->

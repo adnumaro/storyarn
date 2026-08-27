@@ -4,7 +4,7 @@ defmodule Storyarn.Flows.Versioning.AssetStorageCompensationPersistenceTest do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Versioning.AssetStorageCompensation
-  alias Storyarn.Flows.Versioning.Data.StorageCleanupRequestRecord
+  alias Storyarn.Flows.Versioning.Entities.StorageCleanupRequestRecord
   alias Storyarn.Repo
 
   @storage_key "projects/1/assets/550e8400-e29b-41d4-a716-446655440000/voice.mp3"

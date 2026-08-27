@@ -11,7 +11,7 @@ defmodule Storyarn.Scenes.References.Commands.EntityProjection do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.References.Commands.ProjectIntegrity
-  alias Storyarn.Scenes.References.Data.EntityReferenceRecord
+  alias Storyarn.Scenes.References.Projections.EntityReferenceRecord
   alias Storyarn.Scenes.References.Queries.VariableNamespaces
 
   def update_pin_references(pin, opts \\ [])

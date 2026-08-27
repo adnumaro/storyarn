@@ -9,7 +9,7 @@ defmodule Storyarn.Scenes.Editor.Commands.ScenesTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Editor
-  alias Storyarn.Scenes.References.Data.EntityReferenceRecord
+  alias Storyarn.Scenes.References.Projections.EntityReferenceRecord
 
   # Shared setup that creates a user and project for most tests
   defp create_project(_context \\ %{}) do

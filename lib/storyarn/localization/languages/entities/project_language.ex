@@ -16,7 +16,7 @@ defmodule Storyarn.Localization.ProjectLanguage do
 
   import Ecto.Changeset
 
-  alias Storyarn.Localization.Languages.Data.ProjectRecord
+  alias Storyarn.Localization.Languages.Projections.ProjectRecord
   alias Storyarn.Localization.LocaleCode
 
   @type t :: %__MODULE__{

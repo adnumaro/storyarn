@@ -3,15 +3,15 @@ defmodule Storyarn.Localization.Texts.Commands.Update do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.Texts.Commands.TranslationAttributes
-  alias Storyarn.Localization.Texts.Data.AssetRecord
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Localization.Texts.Projections.AssetRecord
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   def update_text(%LocalizedText{} = text, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     fn ->
       update_text_in_transaction(text, attrs)
@@ -27,7 +27,7 @@ defmodule Storyarn.Localization.Texts.Commands.Update do
     # project row from deadlocking while it upgrades its localized_texts lock.
     # The caller's project_id is only an identity hint: the row is re-read and
     # ownership-checked below while locked.
-    case Access.lock_active_project(text.project_id, :update) do
+    case ProjectAccess.lock_active_project(text.project_id, :update) do
       {:ok, _project} -> :ok
       {:error, reason} -> Repo.rollback(reason)
     end
@@ -108,7 +108,7 @@ defmodule Storyarn.Localization.Texts.Commands.Update do
         do: attrs["vo_asset_id"],
         else: text.vo_asset_id
 
-    case Access.lock_active_references(text.project_id, [
+    case ProjectAccess.lock_active_references(text.project_id, [
            {:sheet, :speaker_sheet_id, speaker_sheet_id},
            {:asset, :vo_asset_id, vo_asset_id}
          ]) do

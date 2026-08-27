@@ -1,7 +1,7 @@
 defmodule Storyarn.Localization.Exchange.Rules.ExportPolicy do
   @moduledoc "Central release/preview eligibility rules for engine localization exports."
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
 
   @spec text_eligible?(map(), %{required(:localization_policy) => atom()} | atom()) :: boolean()
   def text_eligible?(text, %{localization_policy: policy}), do: text_eligible?(text, policy)
@@ -40,7 +40,7 @@ defmodule Storyarn.Localization.Exchange.Rules.ExportPolicy do
     raise ArgumentError, "unknown localization export policy: #{inspect(policy)}"
   end
 
-  defp attr(record, field), do: MapUtils.get_flexible(record, field)
+  defp attr(record, field), do: MapAccess.get_flexible(record, field)
 
   defp present?(value) when is_binary(value), do: String.trim(value) != ""
   defp present?(_value), do: false

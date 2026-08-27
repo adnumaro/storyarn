@@ -5,25 +5,23 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
 
   @root "lib/storyarn/platform"
   @areas %{
-    "abuse_prevention" => ~w(adapters),
-    "adapters" => ~w(configuration database email presentation release security time),
+    "adapters" => ~w(configuration email rate_limiter security),
     "collaboration" => ~w(adapters rules),
-    "commercial" => ~w(commands data entities execution queries rules),
+    "commercial" => ~w(commands entities execution projections queries reference_data rules),
     "delivery" => ~w(adapters),
-    "discovery" => ~w(adapters commands data entities queries),
-    "kernel" => ~w(rules),
-    "notifications" => ~w(adapters data entities execution queries),
-    "onboarding" => ~w(commands data entities queries),
-    "reactions" => ~w(adapters contracts data events execution)
+    "discovery" => ~w(adapters commands entities projections queries reference_data),
+    "kernel" => [],
+    "notifications" => ~w(adapters entities execution projections queries),
+    "onboarding" => ~w(commands entities projections queries),
+    "reactions" => ~w(adapters contracts events execution reference_data)
   }
   @root_files %{
-    "abuse_prevention" => ~w(rate_limiter.ex),
-    "adapters" => [],
+    "adapters" => ~w(clock.ex rate_limiter.ex),
     "collaboration" => ~w(collaboration.ex),
     "commercial" => ~w(billing.ex commercial.ex project_storage_reservations.ex subscription_crud.ex),
     "delivery" => ~w(delivery.ex),
     "discovery" => ~w(command_palette.ex dashboard_cache.ex global_search.ex),
-    "kernel" => [],
+    "kernel" => ~w(html_utils.ex integer_parser.ex map_access.ex search_helpers.ex string_utils.ex),
     "notifications" => ~w(notifications.ex),
     "onboarding" => ~w(onboarding.ex),
     "reactions" => ~w(reactions.ex)
@@ -34,16 +32,17 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
       "project_storage_reservations.ex",
       "subscription_crud.ex",
       "commands/",
-      "data/",
       "entities/",
       "execution/",
+      "projections/",
       "queries/",
+      "reference_data/",
       "rules/"
     ],
     "delivery" => ["adapters/"],
-    "notifications" => ["adapters/", "data/", "entities/", "execution/", "queries/"],
-    "onboarding" => ["commands/", "data/", "entities/", "queries/"],
-    "reactions" => ["data/", "events/", "execution/"]
+    "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
+    "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
+    "reactions" => ["events/", "execution/", "reference_data/"]
   }
   @effectful_patterns [
     ~r/\bStoryarn\.Repo\b/,
@@ -67,7 +66,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
   ]
   @web_application_private_targets %{
     "collaboration" => ["adapters/", "rules/"],
-    "discovery" => ["adapters/", "commands/", "data/", "entities/", "queries/"]
+    "discovery" => ["adapters/", "commands/", "entities/", "projections/", "queries/", "reference_data/"]
   }
 
   test "Platform has exactly the agreed areas and no loose implementation files" do
@@ -100,18 +99,20 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
            "Platform uses capability-owned data and a closed kernel, not generic folders: #{inspect(forbidden)}"
   end
 
-  test "data projections and reference data remain passive" do
+  test "projections and reference data remain passive" do
+    passive_data_sources =
+      Enum.flat_map(~w(projections reference_data), fn role ->
+        Path.wildcard(Path.join(@root, "*/#{role}/**/*.ex"))
+      end)
+
     violations =
-      @root
-      |> Path.join("*/data/**/*.ex")
-      |> Path.wildcard()
-      |> Enum.filter(fn path ->
+      Enum.filter(passive_data_sources, fn path ->
         source = File.read!(path)
         Enum.any?(@effectful_patterns, &Regex.match?(&1, source))
       end)
 
     assert violations == [],
-           "Platform data must not perform persistence, messaging, provider, or clock I/O: #{inspect(violations)}"
+           "Platform passive data must not perform persistence, messaging, provider, or clock I/O: #{inspect(violations)}"
   end
 
   test "the technical kernel is deterministic and business-context neutral" do

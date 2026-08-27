@@ -10,16 +10,17 @@ defmodule Storyarn.Sheets.References.Queries.VariableUsage do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.References.Data.FlowNodeRecord
-  alias Storyarn.Sheets.References.Data.FlowRecord
-  alias Storyarn.Sheets.References.Data.SceneAmbientFlowRecord
-  alias Storyarn.Sheets.References.Data.ScenePinRecord
-  alias Storyarn.Sheets.References.Data.SceneRecord
-  alias Storyarn.Sheets.References.Data.SceneZoneRecord
-  alias Storyarn.Sheets.References.Data.VariableReferenceRecord
+  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
+  alias Storyarn.Sheets.References.Projections.SceneAmbientFlowRecord
+  alias Storyarn.Sheets.References.Projections.ScenePinRecord
+  alias Storyarn.Sheets.References.Projections.SceneRecord
+  alias Storyarn.Sheets.References.Projections.SceneZoneRecord
+  alias Storyarn.Sheets.References.Projections.VariableReferenceRecord
+  alias Storyarn.Sheets.References.Queries.VariableNamespaces
   alias Storyarn.Sheets.Sheet
 
-  require Storyarn.Sheets.Logic
+  require VariableNamespaces
 
   @stale_variable_reference_sql """
   CASE WHEN ? = 'table' THEN
@@ -38,7 +39,7 @@ defmodule Storyarn.Sheets.References.Queries.VariableUsage do
     sql = @stale_variable_reference_sql
 
     quote do
-      not Storyarn.Sheets.Logic.authoritative_namespace_owner?(unquote(sheet)) or
+      not VariableNamespaces.authoritative_owner?(unquote(sheet)) or
         fragment(
           unquote(sql),
           unquote(block).type,

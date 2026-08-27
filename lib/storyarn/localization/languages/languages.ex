@@ -8,8 +8,8 @@ defmodule Storyarn.Localization.Languages do
   alias Storyarn.Localization.Languages.Commands.Remove
   alias Storyarn.Localization.Languages.Commands.Reorder
   alias Storyarn.Localization.Languages.Commands.Update
-  alias Storyarn.Localization.Languages.Data.Catalog
   alias Storyarn.Localization.Languages.Queries.Languages, as: LanguageQueries
+  alias Storyarn.Localization.Languages.ReferenceData.Catalog
 
   defdelegate list_languages(project_id), to: LanguageQueries, as: :list
   defdelegate list_languages_for_backup(project_id), to: LanguageQueries, as: :list_for_backup

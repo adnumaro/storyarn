@@ -21,8 +21,8 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       prepare_exploration_data_for_vue: 4
     ]
 
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Platform.Shared.HtmlUtils
-  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Scenes
   alias StoryarnWeb.SceneLive.FlowPresenter
 
@@ -540,7 +540,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Pin with dedicated flow_id field
   defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
        when is_binary(flow_id) and flow_id != "" do
-    case MapUtils.parse_int(flow_id) do
+    case IntegerParser.parse(flow_id) do
       nil ->
         socket
 
@@ -562,7 +562,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Zone with target_type/target_id (zones still use the old pattern)
   defp handle_element_target(%{"target_type" => "flow", "target_id" => flow_id}, socket)
        when not is_nil(flow_id) and flow_id != "" do
-    case MapUtils.parse_int(flow_id) do
+    case IntegerParser.parse(flow_id) do
       nil ->
         socket
 
@@ -1158,7 +1158,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp load_item_sheet_data(item, project_id) do
-    case MapUtils.parse_int(item["sheet_id"]) do
+    case IntegerParser.parse(item["sheet_id"]) do
       nil ->
         item
 
@@ -1511,7 +1511,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     duration = ambient_bubble_duration(plain_text)
 
     # Find pin matching the speaker's sheet_id
-    speaker_sheet_id = MapUtils.parse_int(data["speaker_sheet_id"])
+    speaker_sheet_id = IntegerParser.parse(data["speaker_sheet_id"])
     pin = find_pin_for_speaker(socket.assigns.pins, speaker_sheet_id)
 
     socket =

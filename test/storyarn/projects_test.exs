@@ -276,6 +276,17 @@ defmodule Storyarn.ProjectsTest do
       assert Projects.get_membership(project.id, user.id) == nil
     end
 
+    test "create_membership/3 cannot create a second owner" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      new_member = user_fixture()
+
+      assert {:error, :cannot_assign_owner_role} =
+               Projects.create_membership(project.id, new_member.id, "owner")
+
+      assert Projects.get_membership(project.id, new_member.id) == nil
+    end
+
     test "update_member_role/2 updates the role" do
       owner = user_fixture()
       member = user_fixture()
@@ -293,6 +304,18 @@ defmodule Storyarn.ProjectsTest do
 
       assert {:error, :cannot_change_owner_role} =
                Projects.update_member_role(membership, "editor")
+    end
+
+    test "update_member_role/2 cannot promote a member to owner" do
+      owner = user_fixture()
+      member = user_fixture()
+      project = project_fixture(owner)
+      membership = membership_fixture(project, member, "editor")
+
+      assert {:error, :cannot_assign_owner_role} =
+               Projects.update_member_role(membership, "owner")
+
+      assert %{role: "editor"} = Projects.get_membership(project.id, member.id)
     end
 
     test "remove_member/1 removes the member" do

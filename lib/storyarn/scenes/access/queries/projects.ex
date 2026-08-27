@@ -4,10 +4,10 @@ defmodule Storyarn.Scenes.Access.Queries.Projects do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Access.Data.ProjectMembershipRecord
-  alias Storyarn.Scenes.Access.Data.ProjectRecord
-  alias Storyarn.Scenes.Access.Data.WorkspaceMembershipRecord
-  alias Storyarn.Scenes.Access.Data.WorkspaceRecord
+  alias Storyarn.Scenes.Access.Projections.ProjectMembershipRecord
+  alias Storyarn.Scenes.Access.Projections.ProjectRecord
+  alias Storyarn.Scenes.Access.Projections.WorkspaceMembershipRecord
+  alias Storyarn.Scenes.Access.Projections.WorkspaceRecord
 
   @workspace_to_project_role %{
     "owner" => "editor",

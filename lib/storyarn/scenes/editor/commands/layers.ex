@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Layers do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Adapters.Postgres.Positions, as: PositionPersistence
   alias Storyarn.Scenes.Editor.Commands.Positions
@@ -23,7 +23,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Layers do
   # pin and zone writes do. `toggle_layer_visibility/1` and `reorder_layers/2` are
   # deliberately NOT wired: no finding reads `visible` or `position`.
   def create_layer(scene_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->

@@ -10,7 +10,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   alias Storyarn.AI.Audit
   alias Storyarn.AI.Governance
   alias Storyarn.AI.Integration
-  alias Storyarn.AI.Integrations.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Integrations.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.PersonalConsent
   alias Storyarn.AI.WorkspacePolicy

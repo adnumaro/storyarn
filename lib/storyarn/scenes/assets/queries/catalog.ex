@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.Assets.Queries.Catalog do
 
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
 
   @asset_option_limit 80
   @max_option_limit 100

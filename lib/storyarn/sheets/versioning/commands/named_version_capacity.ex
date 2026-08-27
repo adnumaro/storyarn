@@ -10,8 +10,8 @@ defmodule Storyarn.Sheets.Versioning.Commands.NamedVersionCapacity do
 
   alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Versioning.Data.ProjectRecord
   alias Storyarn.Sheets.Versioning.EntityVersionRecord
+  alias Storyarn.Sheets.Versioning.Projections.ProjectRecord
 
   @spec can_create?(pos_integer(), pos_integer()) ::
           :ok | {:error, :project_scope_mismatch | :limit_reached, map()}

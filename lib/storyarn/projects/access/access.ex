@@ -1,6 +1,7 @@
 defmodule Storyarn.Projects.Access do
   @moduledoc false
 
+  alias Storyarn.Projects.Access.RateLimits
   alias Storyarn.Projects.Invitations
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.ProjectMembership
@@ -35,6 +36,10 @@ defmodule Storyarn.Projects.Access do
   defdelegate accept_invitation(invitation, user), to: Invitations
   defdelegate revoke_invitation(invitation), to: Invitations
   defdelegate get_pending_invitation(id), to: Invitations
+
+  defdelegate check_invitation_rate(project_id, user_id),
+    to: RateLimits,
+    as: :check
 
   defdelegate validate_project_email_format(changeset),
     to: Validations,

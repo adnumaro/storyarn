@@ -983,7 +983,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       scene_id =
         if scene_id in [nil, "", "null"],
           do: nil,
-          else: Storyarn.Platform.Shared.MapUtils.parse_int(scene_id)
+          else: Storyarn.Platform.Kernel.IntegerParser.parse(scene_id)
 
       case Flows.update_flow_scene(socket.assigns.flow, %{scene_id: scene_id}) do
         {:ok, updated_flow} ->

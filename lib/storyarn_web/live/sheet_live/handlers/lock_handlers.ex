@@ -7,11 +7,11 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   def handle_acquire(%{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
+    block_id = IntegerParser.parse(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do
@@ -37,7 +37,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
   end
 
   def handle_release(%{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
+    block_id = IntegerParser.parse(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do
@@ -52,7 +52,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.LockHandlers do
   end
 
   def handle_refresh(%{"block_id" => block_id}, socket) do
-    block_id = MapUtils.parse_int(block_id)
+    block_id = IntegerParser.parse(block_id)
     scope = socket.assigns[:collab_scope]
 
     if scope do

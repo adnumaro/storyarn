@@ -3,8 +3,8 @@ defmodule Storyarn.Flows.Editor.Commands.ItemCapacity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Editor.Data.SceneRecord
-  alias Storyarn.Flows.Editor.Data.SheetRecord
+  alias Storyarn.Flows.Editor.Projections.SceneRecord
+  alias Storyarn.Flows.Editor.Projections.SheetRecord
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Platform

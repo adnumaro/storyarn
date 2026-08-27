@@ -8,8 +8,9 @@ defmodule Storyarn.Sheets.Editor.Commands.Tables do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.Editor.Adapters.Postgres.Positions
+  alias Storyarn.Sheets.Editor.Queries.Tables, as: TableQueries
   alias Storyarn.Sheets.Editor.Rules.Naming
-  alias Storyarn.Sheets.Logic, as: FormulaEngine
+  alias Storyarn.Sheets.Expressions, as: FormulaEngine
   alias Storyarn.Sheets.References, as: VariableUsage
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.TableColumn
@@ -20,19 +21,13 @@ defmodule Storyarn.Sheets.Editor.Commands.Tables do
   # =============================================================================
 
   @doc "Lists all columns for a block, ordered by position."
-  def list_columns(block_id) do
-    Repo.all(from(c in TableColumn, where: c.block_id == ^block_id, order_by: [asc: c.position]))
-  end
+  defdelegate list_columns(block_id), to: TableQueries
 
   @doc "Gets a single column by ID, scoped to a block. Raises if not found."
-  def get_column!(block_id, column_id) do
-    Repo.one!(from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id))
-  end
+  defdelegate get_column!(block_id, column_id), to: TableQueries
 
   @doc "Gets a single column by ID, scoped to a block. Returns nil if not found."
-  def get_column(block_id, column_id) do
-    Repo.one(from(c in TableColumn, where: c.id == ^column_id and c.block_id == ^block_id))
-  end
+  defdelegate get_column(block_id, column_id), to: TableQueries
 
   @doc """
   Creates a new column on a table block.
@@ -276,53 +271,20 @@ defmodule Storyarn.Sheets.Editor.Commands.Tables do
   Batch loads table data (columns + rows) for multiple blocks at once.
   Returns a map of block_id => %{columns: [...], rows: [...]}.
   """
-  def batch_load_table_data(block_ids) when is_list(block_ids) do
-    columns =
-      Repo.all(
-        from(c in TableColumn,
-          where: c.block_id in ^block_ids,
-          order_by: [asc: c.block_id, asc: c.position, asc: c.id]
-        )
-      )
-
-    rows =
-      Repo.all(
-        from(r in TableRow,
-          where: r.block_id in ^block_ids,
-          order_by: [asc: r.block_id, asc: r.position, asc: r.id]
-        )
-      )
-
-    columns_by_block = Enum.group_by(columns, & &1.block_id)
-    rows_by_block = Enum.group_by(rows, & &1.block_id)
-
-    Map.new(block_ids, fn block_id ->
-      {block_id,
-       %{
-         columns: Map.get(columns_by_block, block_id, []),
-         rows: Map.get(rows_by_block, block_id, [])
-       }}
-    end)
-  end
+  def batch_load_table_data(block_ids) when is_list(block_ids), do: TableQueries.batch_load(block_ids)
 
   # =============================================================================
   # Row Operations
   # =============================================================================
 
   @doc "Lists all rows for a block, ordered by position."
-  def list_rows(block_id) do
-    Repo.all(from(r in TableRow, where: r.block_id == ^block_id, order_by: [asc: r.position]))
-  end
+  defdelegate list_rows(block_id), to: TableQueries
 
   @doc "Gets a single row by ID. Raises if not found."
-  def get_row!(row_id) do
-    Repo.get!(TableRow, row_id)
-  end
+  defdelegate get_row!(row_id), to: TableQueries
 
   @doc "Gets a single row by ID. Returns nil if not found."
-  def get_row(row_id) do
-    Repo.get(TableRow, row_id)
-  end
+  defdelegate get_row(row_id), to: TableQueries
 
   @doc """
   Creates a new row on a table block.

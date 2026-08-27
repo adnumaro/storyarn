@@ -10,8 +10,8 @@ defmodule Storyarn.Workspaces.Workspace do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Workspaces.Lifecycle.Data.ProjectRecord
-  alias Storyarn.Workspaces.Lifecycle.Data.UserRecord
+  alias Storyarn.Workspaces.Lifecycle.Projections.ProjectRecord
+  alias Storyarn.Workspaces.Lifecycle.Projections.UserRecord
   alias Storyarn.Workspaces.WorkspaceMembership
 
   # Color format: hex color with 3, 6, or 8 characters (e.g., #fff, #3b82f6, #3b82f680)

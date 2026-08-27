@@ -6,7 +6,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Accept do
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Invitations.Data.UserRecord
+  alias Storyarn.Workspaces.Invitations.Projections.UserRecord
   alias Storyarn.Workspaces.Invitations.Rules.Acceptance
   alias Storyarn.Workspaces.Memberships
   alias Storyarn.Workspaces.Workspace

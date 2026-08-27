@@ -1,5 +1,10 @@
 defmodule Storyarn.Scenes.Health do
-  @moduledoc false
+  @moduledoc """
+  Scene health boundary.
+
+  It builds Scene-owned diagnostic snapshots and turns them into stable health
+  findings without importing another tool's runtime or write models.
+  """
 
   alias Storyarn.Scenes.Health.Queries.Snapshots
   alias Storyarn.Scenes.Health.Queries.Stats

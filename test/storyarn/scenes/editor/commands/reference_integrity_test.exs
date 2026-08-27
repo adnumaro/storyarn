@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.Editor.Commands.ReferenceIntegrityTest do
 
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.References.Data.EntityReferenceRecord, as: EntityReference
+  alias Storyarn.Scenes.References.Projections.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
   alias Storyarn.Scenes.ScenePin

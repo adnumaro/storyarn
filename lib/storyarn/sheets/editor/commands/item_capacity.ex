@@ -11,9 +11,9 @@ defmodule Storyarn.Sheets.Editor.Commands.ItemCapacity do
 
   alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Editor.Data.FlowNodeRecord
-  alias Storyarn.Sheets.Editor.Data.FlowRecord
-  alias Storyarn.Sheets.Editor.Data.SceneRecord
+  alias Storyarn.Sheets.Editor.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.Editor.Projections.FlowRecord
+  alias Storyarn.Sheets.Editor.Projections.SceneRecord
   alias Storyarn.Sheets.Sheet
 
   def can_create_item?(project), do: can_create_items?(project, 1)

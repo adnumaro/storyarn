@@ -1,9 +1,9 @@
 defmodule Storyarn.Flows.AI.ContextContractTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.Context.SubjectRef
+  alias Storyarn.AI.Routing.Rules.ModelLimits
   alias Storyarn.AI.Task
   alias Storyarn.Flows.AI.ContextContract
   alias StoryarnTest.Flows.AI.ContextTask

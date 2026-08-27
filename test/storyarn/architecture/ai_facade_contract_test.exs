@@ -10,6 +10,7 @@ defmodule Storyarn.Architecture.AIFacadeContractTest do
     apply_result: 4,
     assign_integration: 3,
     cancel: 2,
+    check_integration_connect_rate: 1,
     connect: 3,
     created_operation?: 3,
     delete_personal_preference: 3,
@@ -78,7 +79,7 @@ defmodule Storyarn.Architecture.AIFacadeContractTest do
     source = File.read!("lib/storyarn/ai.ex")
 
     refute Regex.match?(~r/^\s*def(?:p|macro|macrop)?\s/m, source)
-    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 50
+    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 51
   end
 
   defp exports(module) do

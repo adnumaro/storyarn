@@ -7,7 +7,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKeyLock
-  alias Storyarn.Projects.NameNormalizer
+  alias Storyarn.Projects.Lifecycle
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
@@ -694,7 +694,12 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
          source_project,
          nil
        ) do
-    slug = NameNormalizer.generate_unique_slug(ProjectTemplate, [owner_id: scope.user.id], publication.name)
+    slug =
+      Lifecycle.generate_unique_slug(
+        ProjectTemplate,
+        [owner_id: scope.user.id],
+        publication.name
+      )
 
     insert_template(scope, source_project, %{"description" => publication.description}, publication.name, slug)
   end

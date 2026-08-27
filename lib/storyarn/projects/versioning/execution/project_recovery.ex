@@ -12,8 +12,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Lifecycle
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
-  alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
@@ -1449,7 +1449,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   # ========== Project Creation ==========
 
   defp create_project(workspace_id, user_id, name, snapshot_data, opts) do
-    slug = NameNormalizer.generate_unique_slug(Project, [workspace_id: workspace_id], name)
+    slug = Lifecycle.generate_unique_slug(Project, [workspace_id: workspace_id], name)
     project = snapshot_import_project(user_id, opts)
 
     changeset =

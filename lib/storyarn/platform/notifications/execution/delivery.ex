@@ -13,12 +13,12 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   alias Ecto.Changeset
   alias Storyarn.Accounts.Scope
   alias Storyarn.Platform.Notifications.Adapters.PubSub, as: NotificationPubSub
-  alias Storyarn.Platform.Notifications.Data.ProjectMembershipRecord, as: ProjectMembership
-  alias Storyarn.Platform.Notifications.Data.ProjectRecord, as: Project
-  alias Storyarn.Platform.Notifications.Data.UserRecord, as: User
-  alias Storyarn.Platform.Notifications.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Platform.Notifications.ProjectAccess
+  alias Storyarn.Platform.Notifications.Projections.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Platform.Notifications.Projections.ProjectRecord, as: Project
+  alias Storyarn.Platform.Notifications.Projections.UserRecord, as: User
+  alias Storyarn.Platform.Notifications.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 

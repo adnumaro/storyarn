@@ -10,13 +10,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.FormulaHandlers do
   import Phoenix.Component, only: [assign: 3]
   import StoryarnWeb.SheetLive.Helpers.FormulaHelpers
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
   def handle_open(params, socket, _helpers) do
-    row_id = MapUtils.parse_int(params["row-id"])
-    block_id = MapUtils.parse_int(params["block-id"])
+    row_id = IntegerParser.parse(params["row-id"])
+    block_id = IntegerParser.parse(params["block-id"])
     slug = params["column-slug"]
 
     table_entry = Map.get(socket.assigns.table_data, block_id, %{columns: [], rows: []})
@@ -132,7 +132,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.FormulaHandlers do
 
   def handle_load_more(_params, socket, _helpers) do
     query = socket.assigns.formula_search_query
-    offset = MapUtils.ensure_integer(socket.assigns.formula_search_offset)
+    offset = IntegerParser.ensure(socket.assigns.formula_search_offset)
 
     {new_results, has_more} =
       search_binding_variables(socket.assigns.project.id, query, offset)

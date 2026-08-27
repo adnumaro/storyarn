@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Shortcuts do
 
   import Ecto.Query
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.Tree
   alias Storyarn.Scenes.Scene
@@ -19,7 +19,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Shortcuts do
   end
 
   def prepare_update(%Scene{} = scene, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
     new_name = attrs["name"]
 
     cond do
@@ -31,7 +31,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Shortcuts do
   end
 
   def assign_position(attrs, project_id, parent_id) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     if Map.has_key?(attrs, "position"),
       do: attrs,

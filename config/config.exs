@@ -241,7 +241,8 @@ config :storyarn, Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue,
 
 # Composition-root wiring: Workspaces owns the banner lifecycle and consumes
 # object storage only through its technical port. The current implementation is
-# reused while storage providers are still housed in the legacy Projects path.
+# reused while storage providers are still housed in the legacy Projects path;
+# ENG-107 owns extraction of this exact temporary seam.
 config :storyarn, Storyarn.Workspaces.Banner.Adapters.Storage.Port, adapter: Storage
 
 # This is intentionally independent from Project asset limits: changing one

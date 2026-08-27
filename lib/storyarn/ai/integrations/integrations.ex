@@ -10,6 +10,7 @@ defmodule Storyarn.AI.Integrations do
   alias Storyarn.AI.IntegrationAssignments
   alias Storyarn.AI.IntegrationCrud
   alias Storyarn.AI.Integrations.Queries.Integrations, as: IntegrationQueries
+  alias Storyarn.AI.Integrations.RateLimits
   alias Storyarn.AI.PersonalConsents
   alias Storyarn.AI.PersonalPreferences
   alias Storyarn.AI.PersonalProviders
@@ -18,6 +19,8 @@ defmodule Storyarn.AI.Integrations do
 
   @type actor :: %{required(:id) => integer(), optional(atom()) => term()}
   @type scope :: %{required(:user) => actor(), optional(atom()) => term()}
+
+  defdelegate check_connect_rate(user_id), to: RateLimits, as: :check_connect
 
   # Connection lifecycle and provider SPI
   defdelegate list_active(user), to: IntegrationQueries

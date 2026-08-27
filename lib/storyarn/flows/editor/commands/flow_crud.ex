@@ -4,10 +4,10 @@ defmodule Storyarn.Flows.FlowCrud do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Editor.Commands.ItemCapacity
-  alias Storyarn.Flows.Editor.Data.ProjectRecord
+  alias Storyarn.Flows.Editor.Projections.ProjectRecord
+  alias Storyarn.Flows.Editor.Queries.Flows
   alias Storyarn.Flows.EntityTrashRef
   alias Storyarn.Flows.Flow
-  alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.FlowTrash
   alias Storyarn.Flows.Localization
@@ -15,11 +15,9 @@ defmodule Storyarn.Flows.FlowCrud do
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.References
   alias Storyarn.Flows.ShortcutGenerator
-  alias Storyarn.Flows.TreeOperations
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
-  alias Storyarn.Platform.Shared.SearchHelpers
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
@@ -30,250 +28,23 @@ defmodule Storyarn.Flows.FlowCrud do
     :sources_locked
   ]
 
-  @doc """
-  Lists all non-deleted flows for a project.
-  Returns flows ordered by is_main (descending) then name.
-  """
-  def list_flows(project_id) do
-    Repo.all(
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        order_by: [desc: f.is_main, asc: f.name]
-      )
-    )
-  end
+  defdelegate list_flows(project_id), to: Flows, as: :list
+  defdelegate list_flows_tree(project_id), to: Flows, as: :list_tree
+  defdelegate default_search_limit(), to: Flows
+  defdelegate search_flows(project_id, query, opts \\ []), to: Flows, as: :search
 
-  @doc """
-  Lists flows as a tree structure.
-  Returns root-level flows with their children preloaded (up to 5 levels deep).
-  """
-  def list_flows_tree(project_id) do
-    all_flows =
-      Repo.all(
-        from(f in Flow,
-          where: f.project_id == ^project_id and is_nil(f.deleted_at),
-          order_by: [asc: f.position, asc: f.name]
-        )
-      )
+  defdelegate search_flows_in_projects(project_ids, query, opts \\ []),
+    to: Flows,
+    as: :search_in_projects
 
-    TreeOperations.build_tree_from_flat_list(all_flows)
-  end
+  defdelegate search_flows_deep(project_id, query, opts \\ []),
+    to: Flows,
+    as: :search_deep
 
-  @default_search_limit 25
-  @max_deep_search_limit 50
-  @max_deep_search_offset 1_000
-
-  @doc "Returns the default search limit used by search_flows/3 and search_flows_deep/3."
-  def default_search_limit, do: @default_search_limit
-
-  @doc """
-  Searches flows by name or shortcut for reference selection.
-  Excludes soft-deleted flows.
-
-  ## Options
-    - `:limit` - Max results (default #{@default_search_limit})
-    - `:offset` - Skip N results (default 0)
-    - `:exclude_id` - Flow ID to exclude from results (e.g., current flow)
-  """
-  def search_flows(project_id, query, opts \\ []) when is_binary(query) do
-    limit = Keyword.get(opts, :limit, @default_search_limit)
-    offset = Keyword.get(opts, :offset, 0)
-    exclude_id = Keyword.get(opts, :exclude_id)
-    query_str = String.trim(query)
-
-    base =
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at)
-      )
-
-    base = maybe_exclude_flow(base, exclude_id)
-
-    if query_str == "" do
-      Repo.all(
-        from(f in base, order_by: [desc: f.updated_at], limit: ^limit, offset: ^offset),
-        log: false
-      )
-    else
-      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
-
-      Repo.all(
-        from(f in base,
-          where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
-          order_by: [asc: f.name],
-          limit: ^limit,
-          offset: ^offset
-        ),
-        log: false
-      )
-    end
-  end
-
-  defp maybe_exclude_flow(query, nil), do: query
-  defp maybe_exclude_flow(query, id), do: from(f in query, where: f.id != ^id)
-
-  @doc """
-  Searches flows by name or shortcut across a pre-authorized set of projects.
-
-  Callers OWN the authorization of `project_ids` (see `Storyarn.Platform.GlobalSearch`);
-  this function never widens the set. Empty queries list the most recently
-  updated flows — pickers browse before typing.
-  """
-  @spec search_flows_in_projects([integer()], String.t(), keyword()) :: [Flow.t()]
-  def search_flows_in_projects(project_ids, query, opts \\ []) when is_list(project_ids) and is_binary(query) do
-    limit = Keyword.get(opts, :limit, @default_search_limit)
-    query_str = String.trim(query)
-
-    cond do
-      project_ids == [] ->
-        []
-
-      query_str == "" ->
-        Repo.all(
-          from(f in Flow,
-            where: f.project_id in ^project_ids and is_nil(f.deleted_at),
-            order_by: [desc: f.updated_at, desc: f.id],
-            limit: ^limit
-          ),
-          log: false
-        )
-
-      true ->
-        search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
-
-        Repo.all(
-          from(f in Flow,
-            where: f.project_id in ^project_ids and is_nil(f.deleted_at),
-            where: ilike(f.name, ^search_term) or ilike(f.shortcut, ^search_term),
-            order_by: [asc: f.name],
-            limit: ^limit
-          ),
-          log: false
-        )
-    end
-  end
-
-  @doc """
-  Deep search over flow metadata, connection labels, and every authored string
-  nested inside active node data.
-
-  ## Options
-    - `:limit` - Max results (default #{@default_search_limit})
-    - `:offset` - Skip N results (default 0)
-    - `:exclude_id` - Flow ID to exclude from results
-  """
-  def search_flows_deep(project_id, query, opts \\ []) when is_binary(query) do
-    query_str = String.trim(query)
-
-    if query_str == "" do
-      search_flows(project_id, query_str, opts)
-    else
-      limit = bounded_deep_search_limit(opts)
-      offset = bounded_deep_search_offset(opts)
-      exclude_id = Keyword.get(opts, :exclude_id)
-
-      search_term = "%#{SearchHelpers.sanitize_like_query(query_str)}%"
-
-      from(f in Flow,
-        where: f.project_id == ^project_id and is_nil(f.deleted_at),
-        where:
-          ilike(f.name, ^search_term) or
-            ilike(f.shortcut, ^search_term) or
-            ilike(f.description, ^search_term) or
-            f.id in subquery(node_content_subquery(project_id, search_term)) or
-            f.id in subquery(connection_content_subquery(project_id, search_term)),
-        order_by: [asc: f.name],
-        limit: ^limit,
-        offset: ^offset
-      )
-      |> maybe_exclude_flow(exclude_id)
-      |> Repo.all(log: false)
-    end
-  end
-
-  defp node_content_subquery(project_id, search_term) do
-    from(n in FlowNode,
-      join: fl in Flow,
-      on: n.flow_id == fl.id,
-      where: fl.project_id == ^project_id and is_nil(fl.deleted_at) and is_nil(n.deleted_at),
-      where:
-        fragment(
-          """
-          EXISTS (
-            SELECT 1
-            FROM jsonb_path_query(COALESCE(?, '{}'::jsonb), '$.** \\? (@.type() == "string")')
-              AS authored(value)
-            WHERE authored.value #>> '{}' ILIKE ?
-          )
-          """,
-          n.data,
-          ^search_term
-        ),
-      select: n.flow_id
-    )
-  end
-
-  defp connection_content_subquery(project_id, search_term) do
-    from(connection in FlowConnection,
-      join: flow in Flow,
-      on: flow.id == connection.flow_id,
-      where: flow.project_id == ^project_id and is_nil(flow.deleted_at),
-      where: ilike(connection.label, ^search_term),
-      select: connection.flow_id
-    )
-  end
-
-  defp bounded_deep_search_limit(opts) do
-    case Keyword.get(opts, :limit, @default_search_limit) do
-      limit when is_integer(limit) -> limit |> max(1) |> min(@max_deep_search_limit)
-      _invalid -> @default_search_limit
-    end
-  end
-
-  defp bounded_deep_search_offset(opts) do
-    case Keyword.get(opts, :offset, 0) do
-      offset when is_integer(offset) -> offset |> max(0) |> min(@max_deep_search_offset)
-      _invalid -> 0
-    end
-  end
-
-  def get_flow(project_id, flow_id) do
-    active_nodes_query =
-      from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
-
-    Repo.one(
-      from(f in Flow,
-        where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
-        preload: [:connections, nodes: ^active_nodes_query]
-      )
-    )
-  end
-
-  @doc """
-  Gets a flow with only basic fields (no preloads).
-  Used for breadcrumbs and lightweight lookups.
-  """
-  def get_flow_brief(project_id, flow_id) do
-    Repo.one(from(f in Flow, where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at)))
-  end
-
-  def get_flow!(project_id, flow_id, _opts \\ []) do
-    active_nodes_query =
-      from(n in FlowNode, where: is_nil(n.deleted_at), order_by: [asc: n.inserted_at])
-
-    Repo.one!(
-      from(f in Flow,
-        where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at),
-        preload: [:connections, nodes: ^active_nodes_query]
-      )
-    )
-  end
-
-  @doc """
-  Gets a flow including soft-deleted ones (for trash/restore).
-  """
-  def get_flow_including_deleted(project_id, flow_id) do
-    Repo.one(from(f in Flow, where: f.project_id == ^project_id and f.id == ^flow_id, preload: [:nodes, :connections]))
-  end
+  defdelegate get_flow(project_id, flow_id), to: Flows, as: :get
+  defdelegate get_flow_brief(project_id, flow_id), to: Flows, as: :get_brief
+  def get_flow!(project_id, flow_id, _opts \\ []), do: Flows.get!(project_id, flow_id)
+  defdelegate get_flow_including_deleted(project_id, flow_id), to: Flows, as: :get_including_deleted
 
   @doc """
   Creates a child flow and assigns it to a node's referenced_flow_id.
@@ -1217,7 +988,7 @@ defmodule Storyarn.Flows.FlowCrud do
   Validates that the map belongs to the same project.
   """
   def update_flow_scene(%Flow{} = flow, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     fn ->
       with {:ok, %{flow: locked_flow, project_id: project_id}} <-
@@ -1304,7 +1075,7 @@ defmodule Storyarn.Flows.FlowCrud do
     )
   end
 
-  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+  defp stringify_keys(map), do: MapAccess.stringify_keys(map)
 
   defp project_id!(%{id: project_id}), do: project_id!(project_id)
   defp project_id!(project_id) when is_integer(project_id) and project_id > 0, do: project_id
@@ -1336,26 +1107,8 @@ defmodule Storyarn.Flows.FlowCrud do
     ShortcutGenerator.assign_position(attrs, project_id, parent_id)
   end
 
-  @doc """
-  Counts non-deleted flows for a project.
-  """
-  def count_flows(project_id) do
-    Repo.aggregate(from(f in Flow, where: f.project_id == ^project_id and is_nil(f.deleted_at)), :count)
-  end
-
-  @doc """
-  Counts non-deleted flow nodes across all non-deleted flows in a project.
-  """
-  def count_nodes_for_project(project_id) do
-    Repo.aggregate(
-      from(n in FlowNode,
-        join: f in Flow,
-        on: n.flow_id == f.id,
-        where: f.project_id == ^project_id and is_nil(n.deleted_at) and is_nil(f.deleted_at)
-      ),
-      :count
-    )
-  end
+  defdelegate count_flows(project_id), to: Flows, as: :count
+  defdelegate count_nodes_for_project(project_id), to: Flows, as: :count_nodes
 
   defp broadcast_flow_dashboard_result({:ok, _value} = result, project_id) do
     Collaboration.broadcast_dashboard_change(project_id, :flows)

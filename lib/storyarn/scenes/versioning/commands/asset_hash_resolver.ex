@@ -17,7 +17,7 @@ defmodule Storyarn.Scenes.Versioning.Commands.AssetHashResolver do
   alias Storyarn.Scenes.Versioning.AssetBlobKeys, as: BlobStore
   alias Storyarn.Scenes.Versioning.AssetCopyError
   alias Storyarn.Scenes.Versioning.Commands.MaterializationHelpers
-  alias Storyarn.Scenes.Versioning.Data.AssetRecord, as: Asset
+  alias Storyarn.Scenes.Versioning.Entities.AssetRecord, as: Asset
   alias Storyarn.Scenes.Versioning.Execution.AssetMaterializationCache
   alias Storyarn.Scenes.Versioning.Rules.AssetPolicy
   alias Storyarn.Scenes.Versioning.SnapshotMetadata, as: SnapshotObjectFormat

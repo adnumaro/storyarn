@@ -13,10 +13,10 @@ defmodule Storyarn.Flows.Versioning.ConflictDetector do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.References
   alias Storyarn.Flows.Versioning.AssetCatalog
-  alias Storyarn.Flows.Versioning.Data.SceneRecord
-  alias Storyarn.Flows.Versioning.Data.SheetAvatarRecord
-  alias Storyarn.Flows.Versioning.Data.SheetRecord
   alias Storyarn.Flows.Versioning.FlowSnapshot
+  alias Storyarn.Flows.Versioning.Projections.SceneRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetAvatarRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetRecord
   alias Storyarn.Repo
 
   @doc "Returns the conflict report consumed by the Flow version-history UI."

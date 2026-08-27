@@ -13,7 +13,7 @@ defmodule Storyarn.AI.Integration do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.Integrations.Data.UserRecord, as: User
+  alias Storyarn.AI.Integrations.Projections.UserRecord, as: User
   alias Storyarn.AI.Integrations.Rules.ProviderIds
 
   @derive {Inspect, except: [:api_key_encrypted]}

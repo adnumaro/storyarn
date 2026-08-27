@@ -17,7 +17,7 @@ defmodule Storyarn.Localization.ProviderConfig do
 
   import Ecto.Changeset
 
-  alias Storyarn.Localization.Providers.Data.ProjectRecord
+  alias Storyarn.Localization.Providers.Projections.ProjectRecord
 
   @default_api_endpoint "https://api-free.deepl.com"
   @supported_api_endpoints [@default_api_endpoint, "https://api.deepl.com"]

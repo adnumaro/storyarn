@@ -16,9 +16,9 @@ defmodule Storyarn.Sheets.Versioning.Execution.Conflicts do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.Versioning.Commands.AssetHashResolver
-  alias Storyarn.Sheets.Versioning.Data.AssetRecord, as: Asset
-  alias Storyarn.Sheets.Versioning.Data.FlowRecord, as: Flow
-  alias Storyarn.Sheets.Versioning.Data.SceneRecord, as: Scene
+  alias Storyarn.Sheets.Versioning.Entities.AssetRecord, as: Asset
+  alias Storyarn.Sheets.Versioning.Projections.FlowRecord, as: Flow
+  alias Storyarn.Sheets.Versioning.Projections.SceneRecord, as: Scene
   alias Storyarn.Sheets.Versioning.SheetSnapshot
 
   @type_to_schema %{

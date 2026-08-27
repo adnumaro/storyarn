@@ -11,7 +11,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   alias Storyarn.AI.Integrations
   alias Storyarn.AI.ManagedSpend
   alias Storyarn.AI.Operation
-  alias Storyarn.AI.Operations.Data.UserRecord, as: User
+  alias Storyarn.AI.Operations.Projections.UserRecord, as: User
   alias Storyarn.AI.Result
   alias Storyarn.AI.Routing
   alias Storyarn.AI.Task

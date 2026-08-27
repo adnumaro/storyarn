@@ -9,10 +9,10 @@ defmodule Storyarn.Sheets.References.Queries.Scenes do
   import Ecto.Query
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord
-  alias Storyarn.Sheets.References.Data.ScenePinRecord
-  alias Storyarn.Sheets.References.Data.SceneRecord
-  alias Storyarn.Sheets.References.Data.SceneZoneRecord
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
+  alias Storyarn.Sheets.References.Projections.ScenePinRecord
+  alias Storyarn.Sheets.References.Projections.SceneRecord
+  alias Storyarn.Sheets.References.Projections.SceneZoneRecord
 
   @doc false
   def project_id(scene_id) do

@@ -15,8 +15,8 @@ defmodule Storyarn.Scenes do
   alias Storyarn.Scenes.Assets
   alias Storyarn.Scenes.Editor
   alias Storyarn.Scenes.Exploration
+  alias Storyarn.Scenes.Expressions
   alias Storyarn.Scenes.Health
-  alias Storyarn.Scenes.Logic
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneAmbientFlow
   alias Storyarn.Scenes.SceneAnnotation
@@ -572,7 +572,7 @@ defmodule Storyarn.Scenes do
   defdelegate get_sheet(project_id, sheet_id), to: Exploration
 
   @doc "Returns every variable addressable by Scene conditions and instructions."
-  defdelegate list_referenceable_variables(project_id), to: Logic, as: :list_referenceable
+  defdelegate list_referenceable_variables(project_id), to: Expressions, as: :list_referenceable
 
   @doc "Builds the in-memory variable state used by Scene exploration."
   defdelegate build_runtime_variables(project_id), to: Exploration

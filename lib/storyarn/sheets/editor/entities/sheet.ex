@@ -20,8 +20,8 @@ defmodule Storyarn.Sheets.Sheet do
 
   alias Ecto.Association.NotLoaded
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Editor.Data.AssetRecord, as: Asset
-  alias Storyarn.Sheets.Editor.Data.ProjectRecord, as: Project
+  alias Storyarn.Sheets.Editor.Projections.AssetRecord, as: Asset
+  alias Storyarn.Sheets.Editor.Projections.ProjectRecord, as: Project
   alias Storyarn.Sheets.Editor.Rules.Schema
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.Versioning.EntityVersionRecord

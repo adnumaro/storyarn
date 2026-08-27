@@ -11,7 +11,7 @@ defmodule Storyarn.Sheets.SheetAvatar do
 
   import Ecto.Changeset
 
-  alias Storyarn.Sheets.Editor.Data.AssetRecord, as: Asset
+  alias Storyarn.Sheets.Editor.Projections.AssetRecord, as: Asset
   alias Storyarn.Sheets.Editor.Rules.Naming
   alias Storyarn.Sheets.Sheet
 

@@ -12,7 +12,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.References.Data.EntityReferenceRecord, as: EntityReference
+  alias Storyarn.Flows.References.Projections.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer

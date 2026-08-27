@@ -10,6 +10,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   alias Storyarn.Sheets.Editor.Adapters.Postgres.BlockLayout
   alias Storyarn.Sheets.Editor.Adapters.Postgres.Positions
   alias Storyarn.Sheets.Editor.Commands.Inheritance, as: PropertyInheritance
+  alias Storyarn.Sheets.Editor.Queries.Blocks, as: BlockQueries
   alias Storyarn.Sheets.Editor.Rules.Naming
   alias Storyarn.Sheets.Localization
   alias Storyarn.Sheets.References, as: VariableUsage
@@ -21,55 +22,20 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   # Query Operations
   # =============================================================================
 
-  def list_blocks(sheet_id) do
-    Repo.all(
-      from(b in Block,
-        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-        order_by: [asc: b.position],
-        preload: [:inherited_from_block]
-      )
-    )
-  end
-
-  def get_block(block_id) do
-    Block
-    |> where(id: ^block_id)
-    |> where([b], is_nil(b.deleted_at))
-    |> Repo.one()
-  end
-
-  def get_block!(block_id) do
-    Block
-    |> where(id: ^block_id)
-    |> where([b], is_nil(b.deleted_at))
-    |> Repo.one!()
-  end
+  defdelegate list_blocks(sheet_id), to: BlockQueries, as: :list
+  defdelegate get_block(block_id), to: BlockQueries, as: :get
+  defdelegate get_block!(block_id), to: BlockQueries, as: :get!
 
   @doc """
   Gets a block by ID, ensuring it belongs to the specified project.
   Returns nil if not found or not in project.
   """
-  def get_block_in_project(block_id, project_id) do
-    Repo.one(
-      from(b in Block,
-        join: s in Sheet,
-        on: b.sheet_id == s.id,
-        where: b.id == ^block_id and s.project_id == ^project_id,
-        where: is_nil(b.deleted_at) and is_nil(s.deleted_at),
-        select: b
-      )
-    )
-  end
+  defdelegate get_block_in_project(block_id, project_id), to: BlockQueries, as: :get_in_project
 
   @doc """
   Gets a block by ID with project validation. Raises if not found.
   """
-  def get_block_in_project!(block_id, project_id) do
-    case get_block_in_project(block_id, project_id) do
-      nil -> raise Ecto.NoResultsError, queryable: Block
-      block -> block
-    end
-  end
+  defdelegate get_block_in_project!(block_id, project_id), to: BlockQueries, as: :get_in_project!
 
   # =============================================================================
   # CRUD Operations
@@ -882,38 +848,13 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   @doc """
   Returns the next available block position for a sheet.
   """
-  def next_block_position(sheet_id) do
-    query =
-      from(b in Block,
-        where: b.sheet_id == ^sheet_id and is_nil(b.deleted_at),
-        select: max(b.position)
-      )
-
-    (Repo.one(query) || -1) + 1
-  end
+  defdelegate next_block_position(sheet_id), to: BlockQueries, as: :next_position
 
   @doc """
   Returns all existing variable names for a sheet, optionally excluding a block ID.
   """
-  def list_variable_names(sheet_id, exclude_block_id \\ nil) do
-    query =
-      from(b in Block,
-        where:
-          b.sheet_id == ^sheet_id and
-            is_nil(b.deleted_at) and
-            not is_nil(b.variable_name),
-        select: b.variable_name
-      )
-
-    query =
-      if exclude_block_id do
-        where(query, [b], b.id != ^exclude_block_id)
-      else
-        query
-      end
-
-    Repo.all(query)
-  end
+  defdelegate list_variable_names(sheet_id, exclude_block_id \\ nil),
+    to: BlockQueries
 
   @doc """
   Finds a unique variable name by appending _2, _3, etc. if collisions exist.

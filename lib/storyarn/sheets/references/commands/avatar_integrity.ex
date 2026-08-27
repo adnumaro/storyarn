@@ -10,8 +10,8 @@ defmodule Storyarn.Sheets.References.Commands.AvatarIntegrity do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.References.Data.EntityTrashRefRecord
-  alias Storyarn.Sheets.References.Data.FlowNodeRecord
+  alias Storyarn.Sheets.References.Projections.EntityTrashRefRecord
+  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
 
   @spec ensure_deletable(integer()) :: :ok | {:error, term()}
   @doc "Validates that an avatar belongs to the sheet a dialogue speaker points at."

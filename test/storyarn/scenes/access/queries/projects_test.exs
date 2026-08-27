@@ -7,9 +7,9 @@ defmodule Storyarn.Scenes.Access.Queries.ProjectsTest do
 
   alias Storyarn.Projects
   alias Storyarn.Scenes
-  alias Storyarn.Scenes.Access.Data.ProjectMembershipRecord
-  alias Storyarn.Scenes.Access.Data.ProjectRecord
-  alias Storyarn.Scenes.Access.Data.WorkspaceRecord
+  alias Storyarn.Scenes.Access.Projections.ProjectMembershipRecord
+  alias Storyarn.Scenes.Access.Projections.ProjectRecord
+  alias Storyarn.Scenes.Access.Projections.WorkspaceRecord
 
   test "authorizes a direct project member through Scene-owned projections" do
     owner = user_fixture()

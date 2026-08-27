@@ -13,11 +13,11 @@ defmodule Storyarn.Sheets.Localization.Commands.Projection do
   alias Storyarn.Repo
   alias Storyarn.Sheets.Localization.Adapters.Postgres.Inventory
   alias Storyarn.Sheets.Localization.Contracts.Content
-  alias Storyarn.Sheets.Localization.Data.BlockRecord, as: Block
-  alias Storyarn.Sheets.Localization.Data.LocalizedTextRecord
-  alias Storyarn.Sheets.Localization.Data.ProjectLanguageRecord
-  alias Storyarn.Sheets.Localization.Data.ProjectRecord
-  alias Storyarn.Sheets.Localization.Data.SheetRecord, as: Sheet
+  alias Storyarn.Sheets.Localization.Projections.BlockRecord, as: Block
+  alias Storyarn.Sheets.Localization.Projections.LocalizedTextRecord
+  alias Storyarn.Sheets.Localization.Projections.ProjectLanguageRecord
+  alias Storyarn.Sheets.Localization.Projections.ProjectRecord
+  alias Storyarn.Sheets.Localization.Projections.SheetRecord, as: Sheet
 
   @inventory_lock_namespace "storyarn:localization:inventory"
   @block_lock_namespace "storyarn:localization:block"

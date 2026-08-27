@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.Exports.LocalizationCatalog do
   @moduledoc false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Projects.Exports.ExportOptions
   alias Storyarn.Projects.Exports.Serializers.GraphTraversal
   alias Storyarn.Projects.Exports.Serializers.Helpers
@@ -249,5 +249,5 @@ defmodule Storyarn.Projects.Exports.LocalizationCatalog do
   defp normalize_translation(nil), do: ""
   defp normalize_translation(value), do: value |> to_string() |> Helpers.strip_html()
 
-  defp attr(record, field), do: MapUtils.get_flexible(record, field)
+  defp attr(record, field), do: MapAccess.get_flexible(record, field)
 end

@@ -9,7 +9,7 @@ defmodule Storyarn.Sheets.Localization.Commands.ProjectionTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.Localization.Data.LocalizedTextRecord
+  alias Storyarn.Sheets.Localization.Projections.LocalizedTextRecord
 
   setup do
     project = project_fixture()

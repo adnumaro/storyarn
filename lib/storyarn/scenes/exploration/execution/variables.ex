@@ -1,8 +1,8 @@
 defmodule Storyarn.Scenes.FlowRuntime.Variables do
   @moduledoc false
 
+  alias Storyarn.Scenes.Expressions
   alias Storyarn.Scenes.FlowRuntime.FormulaRuntime
-  alias Storyarn.Scenes.Logic
 
   @doc """
   Returns the flat list of all variable descriptors (sheets + pins + zones).
@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.FlowRuntime.Variables do
 
   Delegates so this set cannot drift from the one the health checkers use.
   """
-  def list_all_variables(project_id), do: Logic.list_referenceable(project_id)
+  def list_all_variables(project_id), do: Expressions.list_referenceable(project_id)
 
   def build_variables(project_id) do
     variables =

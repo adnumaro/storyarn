@@ -1,5 +1,13 @@
 defmodule Storyarn.Projects.LocalizationProjection do
-  @moduledoc false
+  @moduledoc """
+  Maintains Projects' localization-derived rows after Project-owned content changes.
+
+  This is a state-changing projector, not a passive SQL projection. It is kept
+  inside the closed Project content model because snapshot restore, trash and
+  source-language workflows must reconcile derived localization inventory while
+  holding their existing Project locks. It does not grant Projects ownership of
+  ordinary translation or review writes.
+  """
 
   import Ecto.Query, warn: false
 

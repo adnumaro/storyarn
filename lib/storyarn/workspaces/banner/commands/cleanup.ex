@@ -2,7 +2,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Cleanup do
   @moduledoc false
 
   alias Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue
-  alias Storyarn.Workspaces.Banner.Adapters.Storage.Safe
+  alias Storyarn.Workspaces.Banner.Adapters.Storage.ResilientStorage
   alias Storyarn.Workspaces.Banner.Rules.StorageKey
 
   require Logger
@@ -33,7 +33,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Cleanup do
   def perform_cleanup(workspace_slug, storage_key, opts)
       when is_binary(workspace_slug) and is_binary(storage_key) and is_list(opts) do
     if StorageKey.owned?(workspace_slug, storage_key),
-      do: Safe.delete(storage_key, opts),
+      do: ResilientStorage.delete(storage_key, opts),
       else: {:error, :invalid_banner_key}
   end
 
@@ -72,7 +72,7 @@ defmodule Storyarn.Workspaces.Banner.Commands.Cleanup do
   defp stored_key(_workspace_slug, "", _opts), do: {:error, :no_banner}
 
   defp stored_key(workspace_slug, url, opts) when is_binary(url) do
-    with {:ok, key} <- Safe.key_from_url(url, opts),
+    with {:ok, key} <- ResilientStorage.key_from_url(url, opts),
          true <- StorageKey.owned?(workspace_slug, key) do
       {:ok, key}
     else

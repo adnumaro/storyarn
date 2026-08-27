@@ -3,7 +3,7 @@ defmodule Storyarn.Localization.Providers.Commands.GlossaryState do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
 
@@ -73,7 +73,7 @@ defmodule Storyarn.Localization.Providers.Commands.GlossaryState do
         )
       ) || Repo.rollback(:provider_config_not_found)
 
-    case Access.lock_active_project(project_id, :update) do
+    case ProjectAccess.lock_active_project(project_id, :update) do
       {:ok, _project} ->
         Repo.one!(
           from(config in ProviderConfig,

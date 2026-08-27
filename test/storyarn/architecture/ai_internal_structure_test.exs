@@ -5,15 +5,23 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
 
   @root "lib/storyarn/ai"
   @capability_roles %{
-    "context" => ~w(adapters contracts execution rules),
-    "governance" => ~w(adapters commands data entities events execution queries rules),
-    "integrations" => ~w(adapters commands contracts data entities events execution queries rules),
-    "managed_spend" => ~w(adapters commands contracts data entities execution queries rules),
-    "operations" => ~w(adapters commands contracts data entities execution rules),
-    "routing" => ~w(commands contracts data entities execution queries rules)
+    "context_building" => ~w(adapters contracts execution rules),
+    "governance" => ~w(adapters commands entities events execution projections queries rules),
+    "integrations" => ~w(adapters commands contracts entities events execution projections queries rules),
+    "managed_spend" => ~w(adapters commands compatibility contracts entities execution projections queries rules),
+    "operations" => ~w(adapters commands compatibility contracts entities execution projections rules),
+    "routing" => ~w(commands contracts entities execution projections queries reference_data rules tasks)
   }
-  @private_roles ~w(adapters commands queries rules data execution events)
-  @passive_roles ~w(contracts data entities rules)
+  @root_files %{
+    "context_building" => ~w(context.ex),
+    "governance" => ~w(governance.ex),
+    "integrations" => ~w(integrations.ex),
+    "managed_spend" => ~w(managed_spend.ex),
+    "operations" => ~w(operations.ex),
+    "routing" => ~w(routing.ex)
+  }
+  @private_roles ~w(adapters commands compatibility execution events projections queries reference_data rules tasks)
+  @passive_roles ~w(contracts entities projections reference_data rules)
   @root_facade_dependencies ~w(
     Storyarn.AI.Governance
     Storyarn.AI.Integrations
@@ -31,12 +39,18 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
     {"rules", "execution"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "events"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
+    {"reference_data", "commands"},
+    {"reference_data", "queries"},
+    {"reference_data", "execution"},
+    {"reference_data", "events"},
+    {"reference_data", "adapters"},
+    {"reference_data", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},
@@ -46,7 +60,8 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
     {"contracts", "queries"},
     {"contracts", "execution"},
     {"contracts", "events"},
-    {"contracts", "data"},
+    {"contracts", "projections"},
+    {"contracts", "reference_data"},
     {"events", "commands"},
     {"events", "queries"},
     {"events", "execution"},
@@ -69,10 +84,15 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
       assert directories_in(capability_root) == Enum.sort(expected_roles),
              "#{capability} must use its agreed role folders"
 
-      assert Path.wildcard(Path.join(capability_root, "*.ex")) == [
-               Path.join(capability_root, "#{capability}.ex")
-             ],
-             "#{capability} may keep only its capability facade outside a role folder"
+      actual_root_files =
+        capability_root
+        |> Path.join("*.ex")
+        |> Path.wildcard()
+        |> Enum.map(&Path.basename/1)
+        |> Enum.sort()
+
+      assert actual_root_files == Enum.sort(Map.fetch!(@root_files, capability)),
+             "#{capability} may keep only its agreed public entry points outside a role folder"
     end)
   end
 
@@ -120,20 +140,23 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
       end)
 
     assert violations == [],
-           "AI contracts, data, entities, and rules must stay free of persistence effects: #{inspect(violations)}"
+           "AI passive roles must stay free of persistence effects: #{inspect(violations)}"
   end
 
-  test "every data module documents its projection or reference-data purpose" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection and reference-data module documents its passive purpose" do
+    passive_data_sources =
+      Enum.flat_map(~w(projections reference_data), fn role ->
+        Path.wildcard(Path.join(@root, "*/#{role}/**/*.ex"))
+      end)
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(passive_data_sources, fn path ->
         source = File.read!(path)
         source =~ "@moduledoc" and not (source =~ "@moduledoc false")
       end)
 
-    assert data_sources != []
-    assert violations == [], "AI data semantics must be explicit: #{inspect(violations)}"
+    assert passive_data_sources != []
+    assert violations == [], "AI passive-data semantics must be explicit: #{inspect(violations)}"
   end
 
   test "the ratchet blocks cross-capability access to private roles" do
@@ -177,14 +200,14 @@ defmodule Storyarn.Architecture.AIInternalStructureTest do
     end)
   end
 
-  test "rules may consume capability-local passive reference data" do
+  test "rules may consume capability-local reference data" do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
 
     Enum.each(Map.keys(@capability_roles), fn capability ->
       refute denial?(
                policy,
                "#{@root}/#{capability}/rules/",
-               "#{@root}/#{capability}/data/"
+               "#{@root}/#{capability}/reference_data/"
              ),
              "#{capability} rules must be able to read passive reference data"
     end)

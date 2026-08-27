@@ -26,13 +26,13 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   alias Storyarn.Sheets.Versioning.Commands.DiffHelpers
   alias Storyarn.Sheets.Versioning.Commands.EntityRestoreSafety
   alias Storyarn.Sheets.Versioning.Commands.MaterializationHelpers
-  alias Storyarn.Sheets.Versioning.Data.ProjectRecord, as: Project
   alias Storyarn.Sheets.Versioning.Execution.AssetMaterializationScope
   alias Storyarn.Sheets.Versioning.Execution.LocalizationCodec, as: LocalizationSnapshotCodec
 
   alias Storyarn.Sheets.Versioning.Execution.LocalizationSnapshotValidator,
     as: SheetLocalizationSnapshotValidator
 
+  alias Storyarn.Sheets.Versioning.Projections.ProjectRecord, as: Project
   alias Storyarn.Sheets.Versioning.RestorePolicy
 
   @sheet_snapshot_fields ~w(

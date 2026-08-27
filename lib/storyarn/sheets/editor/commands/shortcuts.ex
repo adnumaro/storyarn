@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Shortcuts do
 
   import Ecto.Query
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Sheets.Editor.Rules.Naming
   alias Storyarn.Sheets.References, as: ReferenceTracker
@@ -18,7 +18,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Shortcuts do
   end
 
   def prepare_update(%Sheet{} = sheet, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     cond do
       Map.has_key?(attrs, "shortcut") ->

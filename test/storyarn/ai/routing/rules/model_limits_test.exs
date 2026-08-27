@@ -1,9 +1,9 @@
-defmodule Storyarn.AI.Context.ModelLimitsTest do
+defmodule Storyarn.AI.Routing.Rules.ModelLimitsTest do
   use ExUnit.Case, async: false
 
-  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.Context.Policy
   alias Storyarn.AI.ModelCatalog
+  alias Storyarn.AI.Routing.Rules.ModelLimits
   alias Storyarn.Sheets.AI.ContextContract
 
   setup do

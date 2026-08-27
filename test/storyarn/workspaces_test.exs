@@ -203,6 +203,17 @@ defmodule Storyarn.WorkspacesTest do
       assert membership.user_id == new_member.id
     end
 
+    test "create_membership/3 cannot create a second owner" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      new_member = user_fixture()
+
+      assert {:error, :cannot_assign_owner_role} =
+               Workspaces.create_membership(workspace.id, new_member.id, "owner")
+
+      assert Workspaces.get_membership(workspace.id, new_member.id) == nil
+    end
+
     test "update_member_role/2 updates the role" do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
@@ -220,6 +231,18 @@ defmodule Storyarn.WorkspacesTest do
 
       assert {:error, :cannot_change_owner_role} =
                Workspaces.update_member_role(owner_membership, "admin")
+    end
+
+    test "update_member_role/2 cannot promote a member to owner" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      member = user_fixture()
+      membership = workspace_membership_fixture(workspace, member, "member")
+
+      assert {:error, :cannot_assign_owner_role} =
+               Workspaces.update_member_role(membership, "owner")
+
+      assert %{role: "member"} = Workspaces.get_membership(workspace.id, member.id)
     end
 
     test "remove_member/1 removes the member" do

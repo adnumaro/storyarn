@@ -5,8 +5,8 @@ defmodule Storyarn.AI.AllowanceGrant do
   import Ecto.Changeset
 
   alias Storyarn.AI.AllowanceAccount
-  alias Storyarn.AI.ManagedSpend.Data.UserRecord, as: User
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.ManagedSpend.Projections.UserRecord, as: User
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_grants" do
     field :workspace_id_snapshot, :integer

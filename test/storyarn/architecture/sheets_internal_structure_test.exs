@@ -5,18 +5,18 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
 
   @root "lib/storyarn/sheets"
   @capability_roles %{
-    "access" => ~w(data queries),
-    "ai" => ~w(commands contracts data execution queries),
-    "assets" => ~w(adapters commands data events queries),
-    "editor" => ~w(adapters commands data entities events queries rules),
-    "health" => ~w(contracts data queries rules),
-    "localization" => ~w(adapters commands contracts data rules),
-    "logic" => ~w(data execution queries rules),
-    "references" => ~w(commands data queries rules),
-    "versioning" => ~w(adapters commands contracts data entities events execution queries rules)
+    "access" => ~w(projections queries),
+    "ai" => ~w(commands contracts projections execution queries),
+    "assets" => ~w(adapters commands entities events projections queries),
+    "editor" => ~w(adapters commands projections entities events queries rules),
+    "health" => ~w(contracts projections queries rules),
+    "localization" => ~w(adapters commands contracts projections rules),
+    "expressions" => ~w(compatibility execution projections queries rules),
+    "references" => ~w(commands entities projections queries rules),
+    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
-  @private_roles ~w(adapters commands queries rules data execution events)
-  @passive_roles ~w(rules contracts entities data)
+  @private_roles ~w(adapters commands compatibility queries rules projections execution events)
+  @passive_roles ~w(rules contracts entities projections)
   @root_facade_dependencies ~w(
     Storyarn.Sheets.AI
     Storyarn.Sheets.Access
@@ -24,7 +24,7 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     Storyarn.Sheets.Editor
     Storyarn.Sheets.Health
     Storyarn.Sheets.Localization
-    Storyarn.Sheets.Logic
+    Storyarn.Sheets.Expressions
     Storyarn.Sheets.References
     Storyarn.Sheets.Versioning
   )
@@ -38,12 +38,12 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     {"rules", "execution"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "events"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},
@@ -112,7 +112,7 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     assert violations == [], "Sheet queries must remain read-only: #{inspect(violations)}"
   end
 
-  test "data, entities, contracts, and rules do not perform persistence I/O" do
+  test "projections, entities, contracts, and rules do not perform persistence I/O" do
     passive_sources =
       for capability <- Map.keys(@capability_roles),
           role <- @passive_roles,
@@ -129,18 +129,18 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
            "Sheet passive roles must not perform persistence I/O: #{inspect(violations)}"
   end
 
-  test "every data module documents its projection or reference-data purpose" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection module documents its consumer-owned read purpose" do
+    projection_sources = Path.wildcard(Path.join(@root, "*/projections/**/*.ex"))
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(projection_sources, fn path ->
         source = File.read!(path)
         source =~ "@moduledoc" and not (source =~ "@moduledoc false")
       end)
 
-    assert data_sources != []
-    assert violations == [], "Sheet data semantics must be explicit: #{inspect(violations)}"
-    assert File.read!(Path.join(@root, "README.md")) =~ "## `data/`"
+    assert projection_sources != []
+    assert violations == [], "Sheet projections semantics must be explicit: #{inspect(violations)}"
+    assert File.read!(Path.join(@root, "README.md")) =~ "## `projections/`"
   end
 
   test "raw SQL and shared object-storage contracts live only in adapters" do

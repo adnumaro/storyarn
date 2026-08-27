@@ -10,7 +10,7 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   alias Storyarn.AI.AllowanceLedgerEntry
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.ExecutionRoute
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.ManagedSpend.Rules.SpendableGrants
   alias Storyarn.AI.Operation
   alias Storyarn.Platform.Shared.TimeHelpers

@@ -1,22 +1,22 @@
 defmodule Storyarn.Architecture.SheetsProjectionAssociationsTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Sheets.Access.Data.ProjectRecord, as: AccessProjectRecord
-  alias Storyarn.Sheets.Access.Data.WorkspaceRecord, as: AccessWorkspaceRecord
-  alias Storyarn.Sheets.Assets.Data.ProjectRecord, as: AssetsProjectRecord
-  alias Storyarn.Sheets.Assets.Data.WorkspaceRecord, as: AssetsWorkspaceRecord
+  alias Storyarn.Sheets.Access.Projections.ProjectRecord, as: AccessProjectRecord
+  alias Storyarn.Sheets.Access.Projections.WorkspaceRecord, as: AccessWorkspaceRecord
+  alias Storyarn.Sheets.Assets.Projections.ProjectRecord, as: AssetsProjectRecord
+  alias Storyarn.Sheets.Assets.Projections.WorkspaceRecord, as: AssetsWorkspaceRecord
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.BlockGalleryImage
-  alias Storyarn.Sheets.Editor.Data.AssetRecord, as: EditorAssetRecord
-  alias Storyarn.Sheets.Editor.Data.ProjectRecord, as: EditorProjectRecord
+  alias Storyarn.Sheets.Editor.Projections.AssetRecord, as: EditorAssetRecord
+  alias Storyarn.Sheets.Editor.Projections.ProjectRecord, as: EditorProjectRecord
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
-  alias Storyarn.Sheets.Versioning.Data.ProjectRecord, as: VersioningProjectRecord
-  alias Storyarn.Sheets.Versioning.Data.UserRecord, as: VersioningUserRecord
-  alias Storyarn.Sheets.Versioning.Data.WorkspaceRecord, as: VersioningWorkspaceRecord
   alias Storyarn.Sheets.Versioning.EntityVersionRecord
+  alias Storyarn.Sheets.Versioning.Projections.ProjectRecord, as: VersioningProjectRecord
+  alias Storyarn.Sheets.Versioning.Projections.UserRecord, as: VersioningUserRecord
+  alias Storyarn.Sheets.Versioning.Projections.WorkspaceRecord, as: VersioningWorkspaceRecord
 
   test "owned schemas associate to the projection of their own Sheet capability" do
     assert association(AccessProjectRecord, :workspace) == AccessWorkspaceRecord

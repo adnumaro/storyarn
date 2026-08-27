@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Zones do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.Positions
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
@@ -17,7 +17,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Zones do
   # count. Vertices are also health inputs (`invalid_zone_geometry` and
   # `element_outside_canvas`), so the optimized drag path must invalidate too.
   def create_zone(scene_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     scene_id
     |> ReferenceIntegrity.with_active_scene_lock(
@@ -46,7 +46,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Zones do
   end
 
   def update_zone(%SceneZone{} = zone, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     zone.scene_id
     |> ReferenceIntegrity.with_active_scene_lock(
@@ -129,7 +129,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Zones do
 
   # Regenerate shortcut on update when name changes
   defp maybe_regenerate_zone_shortcut(zone, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
     new_name = attrs["name"]
 
     cond do

@@ -13,7 +13,10 @@ defmodule Storyarn.Workspaces.Invitations do
   alias Storyarn.Workspaces.Invitations.Delivery.Handler
   alias Storyarn.Workspaces.Invitations.Queries.ByToken
   alias Storyarn.Workspaces.Invitations.Queries.Pending
+  alias Storyarn.Workspaces.Invitations.RateLimits
   alias Storyarn.Workspaces.WorkspaceInvitation
+
+  defdelegate check_rate(workspace_id, user_id, limit \\ 10), to: RateLimits, as: :check
 
   defdelegate validate_email_format(changeset), to: WorkspaceInvitation
 

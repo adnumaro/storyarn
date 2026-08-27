@@ -14,10 +14,10 @@ defmodule Storyarn.Sheets.References.Commands.ProjectIntegrity do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.References.Data.AssetRecord, as: Asset
-  alias Storyarn.Sheets.References.Data.FlowRecord
-  alias Storyarn.Sheets.References.Data.ProjectRecord, as: Project
-  alias Storyarn.Sheets.References.Data.SceneRecord, as: Scene
+  alias Storyarn.Sheets.References.Projections.AssetRecord, as: Asset
+  alias Storyarn.Sheets.References.Projections.FlowRecord
+  alias Storyarn.Sheets.References.Projections.ProjectRecord, as: Project
+  alias Storyarn.Sheets.References.Projections.SceneRecord, as: Scene
   alias Storyarn.Sheets.Sheet
 
   @reference_types [:asset, :flow, :scene, :sheet]

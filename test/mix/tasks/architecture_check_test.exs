@@ -202,7 +202,7 @@ defmodule Mix.Tasks.Architecture.CheckTest do
       classification_roots: classification_roots(),
       boundaries: %{
         flows: ["lib/storyarn/flows.ex", "lib/storyarn/flows/"],
-        infrastructure: ["lib/storyarn/repo.ex"],
+        infrastructure: ["lib/mix/tasks/dummy.ex", "lib/storyarn/repo.ex"],
         presentation_adapters: ["lib/storyarn_web/live_vue_encoders.ex"],
         scenes: ["lib/storyarn/scenes/"],
         sheets: ["lib/storyarn/sheets.ex", "lib/storyarn/sheets/"],
@@ -239,6 +239,12 @@ defmodule Mix.Tasks.Architecture.CheckTest do
   end
 
   defp classification_roots do
-    ["lib/storyarn.ex", "lib/storyarn/", "lib/storyarn_web.ex", "lib/storyarn_web/"]
+    [
+      "lib/mix/tasks/",
+      "lib/storyarn.ex",
+      "lib/storyarn/",
+      "lib/storyarn_web.ex",
+      "lib/storyarn_web/"
+    ]
   end
 end

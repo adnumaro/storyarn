@@ -2,16 +2,16 @@ defmodule Storyarn.AI.Routing.Execution.Preflight do
   @moduledoc "Resolves and discloses authorized route choices without creating an operation."
 
   alias Storyarn.AI.Context
-  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Governance
   alias Storyarn.AI.RouteOptions
   alias Storyarn.AI.RouteResolver
+  alias Storyarn.AI.Routing.RateLimits
   alias Storyarn.AI.Routing.Rules.CanonicalJSON
+  alias Storyarn.AI.Routing.Rules.ModelLimits
   alias Storyarn.AI.Task
   alias Storyarn.AI.TaskRegistry
-  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
 
   @spec run(ExecutionIntent.t()) :: {:ok, map()} | {:error, atom() | Ecto.Changeset.t()}
@@ -19,7 +19,7 @@ defmodule Storyarn.AI.Routing.Execution.Preflight do
     with {:ok, task} <- TaskRegistry.fetch(intent.task_id),
          :ok <- validate_input(task, intent),
          {:ok, decision} <- Governance.authorize(intent, task, :execute),
-         :ok <- RateLimiter.check_ai_preflight(intent.scope.user.id, task.id),
+         :ok <- RateLimits.check_preflight(intent.scope.user.id, task.id),
          {:ok, context} <- Context.prepare(intent.scope, task, intent),
          resolution = RouteResolver.preflight_options(decision, task),
          :ok <- routable(resolution) do

@@ -5,7 +5,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Tree do
 
   alias Storyarn.Repo
   alias Storyarn.Sheets.Editor.Adapters.Postgres.Positions
-  alias Storyarn.Sheets.Editor.Data.ProjectRecord, as: Project
+  alias Storyarn.Sheets.Editor.Projections.ProjectRecord, as: Project
   alias Storyarn.Sheets.Editor.Queries.Tree, as: TreeQueries
   alias Storyarn.Sheets.References, as: ProjectReferenceIntegrity
   alias Storyarn.Sheets.Sheet

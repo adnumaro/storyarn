@@ -11,11 +11,11 @@ defmodule Storyarn.Scenes.References.Commands.VariableProjection do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Condition
-  alias Storyarn.Scenes.References.Data.BlockRecord
-  alias Storyarn.Scenes.References.Data.SheetRecord
-  alias Storyarn.Scenes.References.Data.TableColumnRecord
-  alias Storyarn.Scenes.References.Data.TableRowRecord
-  alias Storyarn.Scenes.References.Data.VariableReferenceRecord
+  alias Storyarn.Scenes.References.Projections.BlockRecord
+  alias Storyarn.Scenes.References.Projections.SheetRecord
+  alias Storyarn.Scenes.References.Projections.TableColumnRecord
+  alias Storyarn.Scenes.References.Projections.TableRowRecord
+  alias Storyarn.Scenes.References.Projections.VariableReferenceRecord
   alias Storyarn.Scenes.References.Queries.VariableNamespaces
 
   require VariableNamespaces

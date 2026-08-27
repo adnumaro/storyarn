@@ -22,10 +22,10 @@ defmodule Storyarn.Localization.LocalizedText do
   alias Ecto.Association.NotLoaded
   alias Storyarn.Localization.LocaleCode
   alias Storyarn.Localization.SourceContract
-  alias Storyarn.Localization.Texts.Data.AssetRecord
-  alias Storyarn.Localization.Texts.Data.ProjectRecord
-  alias Storyarn.Localization.Texts.Data.SheetRecord
-  alias Storyarn.Localization.Texts.Data.UserRecord
+  alias Storyarn.Localization.Texts.Projections.AssetRecord
+  alias Storyarn.Localization.Texts.Projections.ProjectRecord
+  alias Storyarn.Localization.Texts.Projections.SheetRecord
+  alias Storyarn.Localization.Texts.Projections.UserRecord
   alias Storyarn.Localization.Texts.Rules.HtmlHandler
 
   @valid_statuses ~w(pending draft in_progress review final)

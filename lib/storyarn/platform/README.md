@@ -9,12 +9,11 @@ technical areas. None of these folders is an additional bounded context.
 | `commercial/` | Plans, subscriptions, entitlements, limits, storage accounting, reservations, leases, and workspace-scoped commercial policy. |
 | `reactions/` | Platform reaction routing, product metrics, privacy-safe taxonomy, and analytics transport contracts. |
 | `notifications/` | Durable inbox state, recipient resolution, deduplication, visibility, read state, and post-commit invalidation. |
-| `collaboration/` | Presence, cursors, editing locks, and realtime collaboration signals. |
-| `discovery/` | Command-palette operations, global search, destinations, and optimized read-only discovery projections. |
+| `collaboration/` | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context. |
+| `discovery/` | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
 | `onboarding/` | Product-wide tutorial progress and onboarding summaries. |
-| `abuse_prevention/` | Rate-limit policy and its local or distributed enforcement adapters. |
 | `delivery/` | Durable handoff to delivery workers after the producing context has decided intent and content. |
-| `adapters/` | Stable technical integration points shared by Platform capabilities or explicitly exposed to application composition. |
+| `adapters/` | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration. |
 | `kernel/` | A closed set of small, deterministic, business-neutral primitives used by several contexts. |
 
 Platform is not an umbrella for code that merely happens to be shared. A new
@@ -22,6 +21,9 @@ module enters Platform only when its policy is genuinely product-wide or when
 it implements one of the technical contracts above. Tool-specific decisions
 remain with Projects, Sheets, Flows, Scenes, Localization, AI, Workspaces, or
 Accounts.
+
+Rate-limit policy follows the same rule: each consumer owns its bucket names,
+limits and windows. Platform owns only the ETS/Redis counter mechanism.
 
 ## Capability roles
 
@@ -34,7 +36,8 @@ Each capability uses only the folders it needs:
 | `entities/` | Mutable Platform-owned business state, including Ecto schemas and changesets. |
 | `contracts/` | Stable value and behaviour contracts owned by the capability. |
 | `rules/` | Deterministic policy, validation, normalization, and reference data decisions. |
-| `data/` | Passive consumer-local SQL projections or immutable reference data; never persistence I/O. |
+| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
+| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O. |
 | `execution/` | Stateful or multi-step orchestration whose transaction or lock ordering must remain indivisible. |
 | `events/` | Product facts and reaction handlers owned by the capability. |
 | `adapters/` | Translation to PostgreSQL-specific operations, PubSub, OTP state, Oban, caches, or external providers. |
@@ -45,9 +48,9 @@ particular, storage accounting keeps its existing transaction boundaries,
 fencing, lease semantics, SQL, and lock acquisition order inside
 `commercial/execution/`.
 
-## `data/`
+## Projections and reference data
 
-`data/` accepts exactly two categories.
+The two passive roles remain explicit siblings of `adapters/`.
 
 ### Consumer-owned SQL projections
 
@@ -56,12 +59,12 @@ Platform capability needs. It may duplicate another capability's mapping. That
 duplication is deliberate: a notification query must not import Billing's
 model just because both currently read the `projects` table.
 
-For example, `Notifications.Data.ProjectRecord`,
+For example, `Notifications.Projections.ProjectRecord`,
 `ProjectMembershipRecord`, `WorkspaceMembershipRecord`, and `UserRecord` are
 owned by Notifications. They can evolve for inbox visibility and recipient
 resolution without changing Commercial's accounting projections.
 
-A data projection declares fields, associations, types, and narrowly scoped
+A projection declares fields, associations, types, and narrowly scoped
 changesets only. It does not call `Repo`, open a transaction, acquire a lock,
 publish a signal, contact a provider, or decide product policy. Reads belong in
 `queries/`; writes and invariants belong in `commands/` or an indivisible
@@ -87,13 +90,14 @@ The top-level `adapters/` directory is intentionally explicit:
 - `configuration/` resolves runtime feature and URL configuration.
 - `email/` provides mail transport and shared email layout mechanics; the
   producing context still owns semantic intent and copy.
-- `database/` contains generic provider-bound import mechanics, not domain
-  models.
-- `presentation/` contains HTML and color translation used at application
-  boundaries.
-- `release/` is operational release orchestration.
-- `security/` contains encryption and token-provider adapters.
-- `time/` owns access to the wall clock.
+- `security/` contains encryption, sanitization and token-provider adapters.
+- `clock.ex` owns access to the wall clock without pretending Time is a capability.
+- `rate_limiter.ex` and `rate_limiter/` implement the policy-neutral counter mechanism.
+
+Release migration orchestration lives outside Platform's business tree at
+`lib/storyarn/release.ex`; its established module identity remains stable for
+release scripts. Presentation-only color and severity helpers live in
+`StoryarnWeb`.
 
 An adapter executes a technical operation. It does not silently acquire a new
 transaction, alter lock ordering, invent an email or notification intent, or
@@ -111,9 +115,10 @@ following:
    duplicate or own the code locally.
 4. A change can be reviewed as a stable shared-kernel contract.
 
-The current kernel contains small JSON, map, string, search, HTML, and severity
-normalization rules. Provider-bound encryption, time, sanitization, and token
-generation remain adapters instead.
+The current kernel contains narrowly named map access, integer parsing, string,
+search and HTML primitives. Formula numeric semantics, presentation severity,
+canonical AI JSON and import workflows belong to their consumers rather than
+to this kernel.
 
 ## Stable module identities
 
@@ -127,12 +132,15 @@ jobs. Important stable entry points include:
 - `EventTracker`, `ProductMetrics`, `Analytics`, and its adapters/contracts
 - `Collaboration`, `Collaboration.Presence`, and `Collaboration.Locks`
 - `CommandPalette`, `GlobalSearch`, `Onboarding`, and `RateLimiter`
-- `Mailer`, `Vault`, `FeatureFlags`, `Urls`, `Release`, and the established
-  `Storyarn.Platform.Shared.*` technical identities
+- `Mailer`, `Vault`, `FeatureFlags`, `Urls`, `Release`, and the remaining
+  compatibility-safe technical identities
 - `Storyarn.Workers.DeliverInvitationWorker`
 
 Stable identity is a compatibility contract, not permission to call private
 commands, queries, projections, execution modules, events, or adapters.
+The few surviving `Storyarn.Platform.Shared.*` module names are compatibility
+identities only: there is no `shared/` folder or open Shared layer, and new code
+must use the named `Kernel` or adapter contract instead.
 
 ## Boundary rules
 
@@ -142,7 +150,7 @@ commands, queries, projections, execution modules, events, or adapters.
 - Existing platform-wide application services retain exact public facets while
   their consumers are migrated deliberately; their private role folders remain
   internal.
-- One capability never imports another capability's `data/`, `commands/`,
+- One capability never imports another capability's `projections/`, `commands/`,
   `queries/`, `execution/`, `events/`, or `adapters/` folders.
 - Workers retain their stable `Storyarn.Workers.*` identity and orchestrate
   through public facades.

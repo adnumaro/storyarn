@@ -6,7 +6,6 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
   import Ecto.Changeset, only: [cast: 3, validate_length: 3, validate_required: 2]
 
   alias Storyarn.Accounts
-  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
 
@@ -86,7 +85,7 @@ defmodule StoryarnWeb.UserLive.ForgotPassword do
   end
 
   defp send_reset_instructions(socket, email) do
-    case RateLimiter.check_password_reset(socket.assigns.client_ip, email) do
+    case Accounts.check_password_reset_rate(socket.assigns.client_ip, email) do
       :ok ->
         reset_url = fn token ->
           reset_path = ~p"/users/reset-password/#{token}"

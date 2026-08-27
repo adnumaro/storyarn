@@ -3,12 +3,10 @@ defmodule Storyarn.Projects.SceneChangesetHelpers do
 
   import Ecto.Changeset
 
-  alias Storyarn.Platform.Shared.TimeHelpers
-
   @color_regex ~r/\A#[0-9a-fA-F]{3}([0-9a-fA-F]{3}([0-9a-fA-F]{2})?)?\z/
   @shortcut_format ~r/^[a-z0-9][a-z0-9.\-]*[a-z0-9]$|^[a-z0-9]$/
 
-  def delete_changeset(entity), do: change(entity, %{deleted_at: TimeHelpers.now()})
+  def delete_changeset(entity, deleted_at), do: change(entity, %{deleted_at: deleted_at})
   def restore_changeset(entity), do: change(entity, %{deleted_at: nil})
 
   def move_changeset(entity, attrs) do

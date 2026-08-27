@@ -2,7 +2,7 @@ defmodule Storyarn.Flows.EditorCatalog do
   @moduledoc """
   Consumer-owned read model for the Flow editor's foreign catalogs.
 
-  The records in `Storyarn.Flows.Editor.Data` map the shared tables directly.
+  The records in `Storyarn.Flows.Editor.Projections` map the shared tables directly.
   This module converts them into the small presentation shape consumed by the
   Flow editor so neither foreign schemas nor storage details cross the Flows
   boundary.
@@ -10,11 +10,11 @@ defmodule Storyarn.Flows.EditorCatalog do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Editor.Data.AssetRecord
-  alias Storyarn.Flows.Editor.Data.BlockRecord
-  alias Storyarn.Flows.Editor.Data.GalleryImageRecord
-  alias Storyarn.Flows.Editor.Data.SceneRecord
-  alias Storyarn.Flows.Editor.Data.SheetRecord
+  alias Storyarn.Flows.Editor.Projections.AssetRecord
+  alias Storyarn.Flows.Editor.Projections.BlockRecord
+  alias Storyarn.Flows.Editor.Projections.GalleryImageRecord
+  alias Storyarn.Flows.Editor.Projections.SceneRecord
+  alias Storyarn.Flows.Editor.Projections.SheetRecord
   alias Storyarn.Flows.Flow
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo

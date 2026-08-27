@@ -32,7 +32,6 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.CommandPalette
   alias Storyarn.Platform.GlobalSearch
-  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Workspaces
@@ -394,7 +393,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp reserve_deep_search(socket, <<"*", _query::binary>>, true) do
     now = System.monotonic_time(:millisecond)
 
-    with :ok <- RateLimiter.check_palette_deep_search(socket.assigns.current_scope.user.id),
+    with :ok <- CommandPalette.check_deep_search_rate(socket.assigns.current_scope.user.id),
          :ok <- check_deep_search_interval(socket.assigns.palette_deep_search_last_at, now) do
       {:ok, assign(socket, :palette_deep_search_last_at, now)}
     else

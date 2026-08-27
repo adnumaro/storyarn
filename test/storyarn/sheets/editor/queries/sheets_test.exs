@@ -894,7 +894,7 @@ defmodule Storyarn.Sheets.Editor.Queries.SheetsTest do
       flow = flow_fixture(project)
 
       assert {:ok, result} = Sheets.validate_reference_target("flow", flow.id, project.id)
-      assert %Storyarn.Sheets.References.Data.FlowRecord{} = result
+      assert %Storyarn.Sheets.References.Projections.FlowRecord{} = result
       assert result.id == flow.id
     end
 

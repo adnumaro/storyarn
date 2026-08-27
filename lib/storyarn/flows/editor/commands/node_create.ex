@@ -2,7 +2,7 @@ defmodule Storyarn.Flows.NodeCreate do
   @moduledoc false
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Editor.Adapters.CircularReferenceQuery
+  alias Storyarn.Flows.Editor.Adapters.Postgres.CircularReferenceQuery
   alias Storyarn.Flows.Editor.Commands.ItemCapacity
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
@@ -11,7 +11,7 @@ defmodule Storyarn.Flows.NodeCreate do
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.References
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   # Prevents infinite recursion in circular reference detection
@@ -257,5 +257,5 @@ defmodule Storyarn.Flows.NodeCreate do
     (subflow_refs ++ exit_refs) |> Enum.reject(&is_nil/1) |> Enum.uniq()
   end
 
-  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+  defp stringify_keys(map), do: MapAccess.stringify_keys(map)
 end

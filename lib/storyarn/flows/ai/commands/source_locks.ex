@@ -3,9 +3,9 @@ defmodule Storyarn.Flows.AI.SourceLocks do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.AI.Data.BlockRecord
-  alias Storyarn.Flows.AI.Data.ProjectRecord
-  alias Storyarn.Flows.AI.Data.SheetRecord
+  alias Storyarn.Flows.AI.Projections.BlockRecord
+  alias Storyarn.Flows.AI.Projections.ProjectRecord
+  alias Storyarn.Flows.AI.Projections.SheetRecord
   alias Storyarn.Flows.Flow, as: FlowRecord
   alias Storyarn.Flows.FlowConnection, as: FlowConnectionRecord
   alias Storyarn.Flows.FlowNode, as: FlowNodeRecord

@@ -4,10 +4,10 @@ defmodule Storyarn.Scenes.References.Commands.ProjectIntegrity do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Scenes.References.Data.AssetRecord
-  alias Storyarn.Scenes.References.Data.FlowRecord
-  alias Storyarn.Scenes.References.Data.ProjectRecord
-  alias Storyarn.Scenes.References.Data.SheetRecord
+  alias Storyarn.Scenes.References.Projections.AssetRecord
+  alias Storyarn.Scenes.References.Projections.FlowRecord
+  alias Storyarn.Scenes.References.Projections.ProjectRecord
+  alias Storyarn.Scenes.References.Projections.SheetRecord
   alias Storyarn.Scenes.Scene
 
   @reference_types [:asset, :flow, :scene, :sheet]

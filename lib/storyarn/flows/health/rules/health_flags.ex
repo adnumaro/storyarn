@@ -1,7 +1,7 @@
 defmodule Storyarn.Flows.HealthFlags do
   @moduledoc false
 
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @spec add([map()], MapSet.t(), %{String.t() => String.t()}) :: [map()]
   def add(nodes, stale_node_ids, variable_types) do
@@ -19,7 +19,7 @@ defmodule Storyarn.Flows.HealthFlags do
   def add_type_warning(data, "instruction", variable_types) do
     assignments = data["assignments"] || []
 
-    if Logic.instruction_has_type_warnings?(assignments, variable_types),
+    if Expressions.instruction_has_type_warnings?(assignments, variable_types),
       do: Map.put(data, "has_type_warnings", true),
       else: data
   end
@@ -31,7 +31,7 @@ defmodule Storyarn.Flows.HealthFlags do
       Enum.map(responses, fn response ->
         assignments = response["instruction_assignments"] || []
 
-        if Logic.instruction_has_type_warnings?(assignments, variable_types),
+        if Expressions.instruction_has_type_warnings?(assignments, variable_types),
           do: Map.put(response, "has_type_warnings", true),
           else: response
       end)

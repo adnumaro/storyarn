@@ -1,16 +1,14 @@
 defmodule Storyarn.Projects.Versioning do
   @moduledoc """
-  The Versioning context.
+  Project-owned snapshot, restore and reconciliation workflows.
 
-  Manages the legacy entity version history for Sheets. Flow and Scene version
-  history belong exclusively to `Storyarn.Flows` and `Storyarn.Scenes`.
-  Versions are snapshots stored as compressed JSON in object storage (R2/Local),
-  with metadata tracked in the database.
+  This capability owns full-project snapshots, standalone workspace imports,
+  exact restore, archive download leases, cleanup recovery and reconciliation.
+  Tool-level entity histories are owned independently by `Storyarn.Sheets`,
+  `Storyarn.Flows` and `Storyarn.Scenes`; they are not part of this facade.
 
-  This module serves as a facade, delegating to specialized submodules:
-  - `VersionCrud` - CRUD operations for versions
-  - `SnapshotStorage` - Compressed JSON storage in R2/Local
-  - `Builders.*` - Entity-specific snapshot building and restoration
+  The module coordinates the specialized Project versioning modules while the
+  public application boundary remains `Storyarn.Projects`.
   """
 
   alias Storyarn.Platform
@@ -30,10 +28,14 @@ defmodule Storyarn.Projects.Versioning do
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle
   alias Storyarn.Projects.Versioning.RestorePolicy
+  alias Storyarn.Projects.Versioning.SnapshotArchiveSmoke
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImports
 
   @type project_snapshot :: ProjectSnapshot.t()
+
+  @doc false
+  defdelegate run_snapshot_archive_smoke!(snapshot_id), to: SnapshotArchiveSmoke, as: :run!
 
   # ========== Project Snapshots ==========
 

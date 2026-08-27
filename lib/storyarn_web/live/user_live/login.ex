@@ -7,7 +7,6 @@ defmodule StoryarnWeb.UserLive.Login do
     only: [add_error: 3, cast: 3, get_field: 2, validate_length: 3, validate_required: 2]
 
   alias Storyarn.Accounts
-  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserLoginToken
@@ -102,7 +101,7 @@ defmodule StoryarnWeb.UserLive.Login do
   end
 
   defp authenticate(socket, changeset, user_params) do
-    case RateLimiter.check_login(socket.assigns.client_ip) do
+    case Accounts.check_login_rate(socket.assigns.client_ip) do
       :ok ->
         email = get_field(changeset, :email) || ""
         password = get_field(changeset, :password) || ""

@@ -3,13 +3,13 @@ defmodule Storyarn.Localization.Languages.Commands.ChangeSource do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Access
   alias Storyarn.Localization.Languages.Adapters.Notifications.Delivery
   alias Storyarn.Localization.Languages.Commands.Locks
-  alias Storyarn.Localization.Languages.Data.Catalog
-  alias Storyarn.Localization.Languages.Data.ProjectRecord
+  alias Storyarn.Localization.Languages.Projections.ProjectRecord
   alias Storyarn.Localization.Languages.Queries.Languages, as: LanguageQueries
+  alias Storyarn.Localization.Languages.ReferenceData.Catalog
   alias Storyarn.Localization.LocaleCode
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.Texts
   alias Storyarn.Repo
@@ -85,7 +85,7 @@ defmodule Storyarn.Localization.Languages.Commands.ChangeSource do
 
   defp authorize_actor_project(%{user: %{id: actor_id}} = actor_scope, project)
        when is_integer(actor_id) and actor_id > 0 do
-    case Access.get_project(actor_scope, project.id) do
+    case ProjectAccess.get_project(actor_scope, project.id) do
       {:ok, authorized_project, _membership} -> {:ok, authorized_project}
       {:error, _reason} -> {:error, :not_found}
     end

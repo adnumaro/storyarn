@@ -12,6 +12,7 @@ defmodule Storyarn.Platform.CommandPalette do
   alias Storyarn.Platform.CommandPalette.Commands
   alias Storyarn.Platform.CommandPalette.Definition
   alias Storyarn.Platform.CommandPalette.Queries
+  alias Storyarn.Platform.CommandPalette.RateLimits
 
   @type reply :: %{optional(:url) => String.t(), optional(:deleted) => boolean(), optional(:error) => String.t()}
   @type parameter_completion :: %{
@@ -30,6 +31,9 @@ defmodule Storyarn.Platform.CommandPalette do
   @doc "Returns whether an id belongs to a registered command-palette operation."
   @spec registered_operation_id?(term()) :: boolean()
   defdelegate registered_operation_id?(operation_id), to: Queries
+
+  @doc "Applies the command palette's consumer-owned deep-search rate limit."
+  defdelegate check_deep_search_rate(user_id, limit \\ 12), to: RateLimits, as: :check_deep_search
 
   @doc """
   Runs a palette mutation once per actor/event/execution ID.

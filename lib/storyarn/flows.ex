@@ -10,10 +10,10 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.AI
   alias Storyarn.Flows.Editor
   alias Storyarn.Flows.EditorCatalog
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Health
   alias Storyarn.Flows.Localization
-  alias Storyarn.Flows.Logic
   alias Storyarn.Flows.References
   alias Storyarn.Flows.Runtime
   alias Storyarn.Flows.StructuralAnalysis.Analysis
@@ -137,10 +137,10 @@ defmodule Storyarn.Flows do
   defdelegate localizable_node_types(), to: Localization
 
   @doc "Recomputes formula values according to the Flow runtime contract."
-  defdelegate recompute_formula_variables(variables), to: Logic
+  defdelegate recompute_formula_variables(variables), to: Expressions
 
   @doc "Translates a same-row binding into the variable key consumed by Flows."
-  defdelegate translate_same_row_binding(formula_ref, bindings), to: Logic
+  defdelegate translate_same_row_binding(formula_ref, bindings), to: Expressions
 
   @doc "Computes the player-facing word count for one Flow node."
   defdelegate node_word_count(type, data), to: Localization
@@ -947,23 +947,23 @@ defmodule Storyarn.Flows do
   # Condition
   # =============================================================================
 
-  defdelegate condition_sanitize(condition), to: Logic
-  defdelegate condition_new(), to: Logic
-  defdelegate condition_has_rules?(condition), to: Logic
-  defdelegate condition_to_json(condition), to: Logic
-  defdelegate condition_parse(condition), to: Logic
+  defdelegate condition_sanitize(condition), to: Expressions
+  defdelegate condition_new(), to: Expressions
+  defdelegate condition_has_rules?(condition), to: Expressions
+  defdelegate condition_to_json(condition), to: Expressions
+  defdelegate condition_parse(condition), to: Expressions
 
   # =============================================================================
   # Instruction
   # =============================================================================
 
-  defdelegate instruction_sanitize(assignments), to: Logic
-  defdelegate instruction_format_short(assignment), to: Logic
+  defdelegate instruction_sanitize(assignments), to: Expressions
+  defdelegate instruction_format_short(assignment), to: Expressions
 
-  defdelegate instruction_has_type_warnings?(assignments, variable_types), to: Logic
+  defdelegate instruction_has_type_warnings?(assignments, variable_types), to: Expressions
 
   @doc "Builds the `\"shortcut.name\" => block_type` map the type-warning check reads."
-  defdelegate variable_type_map(project_variables), to: Logic
+  defdelegate variable_type_map(project_variables), to: Expressions
 
   # =============================================================================
   # Dialogue preview and debug runtime
@@ -1089,16 +1089,16 @@ defmodule Storyarn.Flows do
   delegates here.
   """
   @spec list_referenceable_variables(integer()) :: [map()]
-  defdelegate list_referenceable_variables(project_id), to: Logic
+  defdelegate list_referenceable_variables(project_id), to: Expressions
 
   @doc "Searches and projects Flow variable suggestions for the dialogue editor."
   @spec search_variable_suggestions([map()], String.t()) :: [VariableSearch.suggestion()]
-  defdelegate search_variable_suggestions(variables, query), to: Logic
+  defdelegate search_variable_suggestions(variables, query), to: Expressions
 
   @doc "Returns a bounded page of Flow-owned variable picker options."
   @spec search_variable_options([map()], keyword()) ::
           {[VariableSearch.picker_option()], boolean()}
-  defdelegate search_variable_options(variables, opts \\ []), to: Logic
+  defdelegate search_variable_options(variables, opts \\ []), to: Expressions
 
   @doc """
   Every health finding of a flow from already-serialized canvas data.

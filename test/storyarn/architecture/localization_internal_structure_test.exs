@@ -5,17 +5,17 @@ defmodule Storyarn.Architecture.LocalizationInternalStructureTest do
 
   @root "lib/storyarn/localization"
   @capability_roles %{
-    "access" => ~w(commands data queries rules),
     "exchange" => ~w(adapters commands queries rules),
-    "glossary" => ~w(commands data entities execution queries),
-    "languages" => ~w(adapters commands contracts data entities queries),
-    "providers" => ~w(adapters commands contracts data entities queries),
-    "reporting" => ~w(data queries),
-    "texts" => ~w(adapters commands contracts data entities queries rules),
-    "translation" => ~w(adapters commands data entities execution queries)
+    "glossary" => ~w(commands entities execution projections queries),
+    "languages" => ~w(adapters commands contracts entities projections queries reference_data),
+    "project_access" => ~w(commands projections queries rules),
+    "providers" => ~w(adapters commands contracts entities projections queries),
+    "reporting" => ~w(projections queries),
+    "texts" => ~w(adapters commands contracts entities projections queries rules),
+    "translation" => ~w(adapters commands entities execution projections queries)
   }
-  @private_roles ~w(adapters commands queries rules data execution)
-  @passive_roles ~w(rules contracts entities data)
+  @private_roles ~w(adapters commands execution projections queries reference_data rules)
+  @passive_roles ~w(contracts entities projections reference_data rules)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "execution"},
@@ -24,11 +24,16 @@ defmodule Storyarn.Architecture.LocalizationInternalStructureTest do
     {"rules", "queries"},
     {"rules", "execution"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
+    {"reference_data", "commands"},
+    {"reference_data", "queries"},
+    {"reference_data", "execution"},
+    {"reference_data", "adapters"},
+    {"reference_data", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},
@@ -78,7 +83,7 @@ defmodule Storyarn.Architecture.LocalizationInternalStructureTest do
     assert violations == [], "Localization queries must remain read-only: #{inspect(violations)}"
   end
 
-  test "rules, contracts, entities, and data modules do not perform persistence I/O" do
+  test "passive roles do not perform persistence I/O" do
     passive_sources =
       for capability <- Map.keys(@capability_roles),
           role <- @passive_roles,
@@ -95,17 +100,22 @@ defmodule Storyarn.Architecture.LocalizationInternalStructureTest do
            "Localization passive roles must not perform persistence I/O: #{inspect(violations)}"
   end
 
-  test "every data module documents its projection or reference-data purpose" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection and reference-data module documents its passive purpose" do
+    passive_data_sources =
+      Enum.flat_map(~w(projections reference_data), fn role ->
+        Path.wildcard(Path.join(@root, "*/#{role}/**/*.ex"))
+      end)
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(passive_data_sources, fn path ->
         source = File.read!(path)
         source =~ "@moduledoc" and not (source =~ "@moduledoc false")
       end)
 
-    assert violations == [], "Localization data semantics must be explicit: #{inspect(violations)}"
-    assert File.read!(Path.join(@root, "README.md")) =~ "## `data/`"
+    assert violations == [],
+           "Localization passive-data semantics must be explicit: #{inspect(violations)}"
+
+    assert File.read!(Path.join(@root, "README.md")) =~ "## Projections and reference data"
   end
 
   test "provider, job, PubSub, and raw-SQL integrations live in adapters" do

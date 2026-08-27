@@ -79,7 +79,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             failures: @template_installation_failures
           }
         }
-        project-metrics-options={Platform.product_metric_project_options()}
+        project-metrics-options={Projects.project_classification_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>

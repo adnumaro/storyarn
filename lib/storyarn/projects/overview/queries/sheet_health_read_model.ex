@@ -9,9 +9,9 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.FlowVariableNamespaceResolver, as: VariableNamespaceResolver
+  alias Storyarn.Projects.Overview.FormulaNumber
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.EntityReferenceRecord, as: EntityReference
@@ -689,7 +689,7 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
         value =
           case binding do
             %{"type" => "same_row", "column_slug" => slug} ->
-              MapUtils.parse_to_number(row_cells[slug])
+              FormulaNumber.parse(row_cells[slug])
 
             %{"type" => "variable", "ref" => _ref} ->
               # Cross-table variable refs in nested formulas fall back to 0
@@ -704,7 +704,7 @@ defmodule Storyarn.Projects.SheetHealthReadModel do
       end)
 
     case FormulaEngine.compute(expression, values) do
-      {:ok, result} -> MapUtils.format_number_result(result)
+      {:ok, result} -> FormulaNumber.format_result(result)
       {:error, _} -> nil
     end
   end

@@ -9,7 +9,7 @@ defmodule Storyarn.Sheets.Editor.Commands.SheetRestoreIntegrityTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord, as: EntityReference
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord, as: EntityReference
   alias Storyarn.Sheets.Sheet
 
   test "restores a reference block with its original ID and rebuilds its tracker" do

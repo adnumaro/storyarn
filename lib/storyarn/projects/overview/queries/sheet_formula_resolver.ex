@@ -12,8 +12,8 @@ defmodule Storyarn.Projects.SheetFormulaResolver do
   Called during table data loading to inject computed values into formula cells.
   """
 
-  alias Storyarn.Platform.Shared.MapUtils
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
+  alias Storyarn.Projects.Overview.FormulaNumber
   alias Storyarn.Projects.SheetHealthReadModel
 
   @doc """
@@ -103,7 +103,7 @@ defmodule Storyarn.Projects.SheetFormulaResolver do
       values = resolve_bindings(bindings, row_cells, columns, cross_values)
 
       case FormulaEngine.compute(expression, values) do
-        {:ok, result} -> %{result: MapUtils.format_number_result(result), resolved: values}
+        {:ok, result} -> %{result: FormulaNumber.format_result(result), resolved: values}
         {:error, _} -> %{result: nil, resolved: values}
       end
     end
@@ -113,11 +113,11 @@ defmodule Storyarn.Projects.SheetFormulaResolver do
     Enum.reduce(bindings, %{}, fn
       {symbol, %{"type" => "same_row", "column_slug" => slug}}, values
       when is_binary(symbol) and is_binary(slug) and slug != "" ->
-        Map.put(values, symbol, MapUtils.parse_to_number(row_cells[slug]))
+        Map.put(values, symbol, FormulaNumber.parse(row_cells[slug]))
 
       {symbol, %{"type" => "variable", "ref" => ref}}, values
       when is_binary(symbol) and is_binary(ref) and ref != "" ->
-        Map.put(values, symbol, MapUtils.parse_to_number(Map.get(cross_values, ref)))
+        Map.put(values, symbol, FormulaNumber.parse(Map.get(cross_values, ref)))
 
       _invalid_binding, values ->
         values

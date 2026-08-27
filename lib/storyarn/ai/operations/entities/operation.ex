@@ -5,9 +5,9 @@ defmodule Storyarn.AI.Operation do
   import Ecto.Changeset
 
   alias Storyarn.AI.Context
-  alias Storyarn.AI.Operations.Data.ProjectRecord, as: Project
-  alias Storyarn.AI.Operations.Data.UserRecord, as: User
-  alias Storyarn.AI.Operations.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Operations.Projections.ProjectRecord, as: Project
+  alias Storyarn.AI.Operations.Projections.UserRecord, as: User
+  alias Storyarn.AI.Operations.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.RouteOption
   alias Storyarn.Platform.Shared.TimeHelpers
 

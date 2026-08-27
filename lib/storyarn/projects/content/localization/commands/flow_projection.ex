@@ -1,5 +1,11 @@
 defmodule Storyarn.Projects.FlowLocalizationProjection do
-  @moduledoc false
+  @moduledoc """
+  Reconciles localization-derived rows for Flow content in Project workflows.
+
+  The module is a state-changing projector used by restore, trash and repair;
+  it is deliberately not classified as a read projection. Localization retains
+  ownership of ordinary translation and review behavior.
+  """
 
   import Ecto.Query, warn: false
 

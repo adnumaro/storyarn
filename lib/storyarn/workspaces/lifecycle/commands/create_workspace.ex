@@ -5,8 +5,8 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.CreateWorkspace do
 
   alias Storyarn.Platform
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Lifecycle.Data.UserRecord
   alias Storyarn.Workspaces.Lifecycle.Events.WorkspaceCreated
+  alias Storyarn.Workspaces.Lifecycle.Projections.UserRecord
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 

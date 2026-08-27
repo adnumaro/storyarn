@@ -4,9 +4,9 @@ defmodule Storyarn.Sheets do
   alias Storyarn.Sheets.AI
   alias Storyarn.Sheets.Assets
   alias Storyarn.Sheets.Editor
+  alias Storyarn.Sheets.Expressions
   alias Storyarn.Sheets.Health
   alias Storyarn.Sheets.Localization
-  alias Storyarn.Sheets.Logic
   alias Storyarn.Sheets.References
   alias Storyarn.Sheets.Versioning
 
@@ -44,7 +44,7 @@ defmodule Storyarn.Sheets do
 
   @doc "Clamps a value to its block type constraints.\n\nDispatches to the appropriate constraint module based on `block_type`.\nRich text values pass through unclamped.\n"
   @spec clamp_to_constraints(any(), map() | nil, String.t()) :: any()
-  defdelegate clamp_to_constraints(value, constraints, type), to: Logic
+  defdelegate clamp_to_constraints(value, constraints, type), to: Expressions
   @doc "Counts backlinks for a target.\n"
   @spec count_backlinks(String.t(), id()) :: integer()
   defdelegate count_backlinks(target_type, target_id), to: References
@@ -120,15 +120,15 @@ defmodule Storyarn.Sheets do
   @doc "Duplicates a block, placing the copy immediately after the original.\n"
   defdelegate duplicate_block(block), to: Editor
   @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
-  defdelegate enrich_table_formulas(table_data, project_id), to: Logic
+  defdelegate enrich_table_formulas(table_data, project_id), to: Expressions
   @doc "Ensures that Sheet version restore is currently enabled."
   defdelegate ensure_version_restore_enabled(), to: Versioning
   @doc "Extracts symbol names from a parsed formula AST."
-  defdelegate extract_formula_symbols(ast), to: Logic
+  defdelegate extract_formula_symbols(ast), to: Expressions
   @doc "Renders a parsed formula AST as LaTeX."
-  defdelegate formula_to_latex(ast), to: Logic
+  defdelegate formula_to_latex(ast), to: Expressions
   @doc "Renders a parsed formula AST as LaTeX with bound values substituted."
-  defdelegate formula_to_latex_substituted(ast, resolved), to: Logic
+  defdelegate formula_to_latex_substituted(ast, resolved), to: Expressions
   @doc "Returns the previous and next stored Sheet version numbers."
   defdelegate get_adjacent_version_numbers(sheet_id, current_number), to: Versioning
   @doc "Gets an asset through the Sheet-owned read projection."
@@ -215,7 +215,7 @@ defmodule Storyarn.Sheets do
   @spec get_trashed_sheet(id(), id()) :: sheet() | nil
   defdelegate get_trashed_sheet(project_id, sheet_id), to: Editor
   @doc "Resolves one active variable definition inside a project."
-  defdelegate get_variable_definition(project_id, block_id, qualified_ref), to: Logic
+  defdelegate get_variable_definition(project_id, block_id, qualified_ref), to: Expressions
   @doc "Gets a specific version by sheet_id and version_number.\n"
   defdelegate get_version(sheet_id, version_number), to: Versioning
   @spec has_children?(id()) :: boolean()
@@ -250,7 +250,7 @@ defmodule Storyarn.Sheets do
   @doc "Lists dialogue lines spoken by a Sheet for its audio workspace."
   defdelegate list_dialogue_audio_lines(project_id, sheet_id), to: Editor
   @doc "Lists bounded formula cells that read one qualified variable reference."
-  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []), to: Logic
+  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []), to: Expressions
   defdelegate list_gallery_images(block_id), to: Editor
   @doc "Lists all blocks with `scope: \"children\"` for a sheet.\n"
   defdelegate list_inheritable_blocks(sheet_id), to: Editor
@@ -264,11 +264,11 @@ defmodule Storyarn.Sheets do
 
   @doc "Lists all variables (blocks that can be variables) across all sheets in a project.\nUsed for the condition builder to list available variables.\n"
   @spec list_project_variables(id()) :: [map()]
-  defdelegate list_project_variables(project_id), to: Logic
+  defdelegate list_project_variables(project_id), to: Expressions
 
   @doc ~s{Returns project sheets as options for reference columns.\nEach option has `"key"` (shortcut) and `"value"` (name).\n}
   @spec list_reference_options(id()) :: [map()]
-  defdelegate list_reference_options(project_id), to: Logic
+  defdelegate list_reference_options(project_id), to: Expressions
   @doc "Lists Scene-owned placements that display a Sheet."
   defdelegate list_scene_appearances(sheet_id), to: References
 
@@ -322,11 +322,11 @@ defmodule Storyarn.Sheets do
           {:ok, sheet()} | {:error, validation_error() | term()}
   defdelegate move_sheet_to_position(sheet, new_parent_id, new_position), to: Editor
   @doc "Parses a string value, clamps to min/max constraints, and formats back to string.\n"
-  defdelegate number_clamp_and_format(value, config), to: Logic
+  defdelegate number_clamp_and_format(value, config), to: Expressions
   @doc "Parses a constraint value (from form params or config) into a number or nil.\n"
-  defdelegate number_parse_constraint(value), to: Logic
+  defdelegate number_parse_constraint(value), to: Expressions
   @doc "Parses a table formula expression into an AST."
-  defdelegate parse_formula(expression), to: Logic
+  defdelegate parse_formula(expression), to: Expressions
   @doc "Permanently deletes a block from the database.\n"
   @spec permanently_delete_block(block()) :: {:ok, block()} | {:error, changeset()}
   defdelegate permanently_delete_block(block), to: Editor
@@ -384,7 +384,7 @@ defmodule Storyarn.Sheets do
 
   @doc "Resolves current default values for a list of variable references.\nReturns `%{\"ref\" => value}` for each found variable.\n"
   @spec resolve_variable_values(id(), [String.t()]) :: map()
-  defdelegate resolve_variable_values(project_id, refs), to: Logic
+  defdelegate resolve_variable_values(project_id, refs), to: Expressions
   @doc "Restores a soft-deleted block.\n"
   @spec restore_block(block()) :: {:ok, block()} | {:error, changeset()}
   defdelegate restore_block(block), to: Editor
@@ -414,7 +414,7 @@ defmodule Storyarn.Sheets do
   @spec search_sheets_in_projects([integer()], String.t(), keyword()) :: [sheet()]
   defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: Editor
   @doc "Searches bounded variable definitions for an authorized project search."
-  defdelegate search_variable_definitions(project_id, filter \\ :all, opts \\ []), to: Logic
+  defdelegate search_variable_definitions(project_id, filter \\ :all, opts \\ []), to: Expressions
   @doc "Searches authored variable initial values after applying a typed predicate."
   defdelegate search_variable_initial_value_matches(
                 project_id,
@@ -423,7 +423,7 @@ defmodule Storyarn.Sheets do
                 literal,
                 opts \\ []
               ),
-              to: Logic
+              to: Expressions
 
   @doc "Serializes a stored Sheet snapshot into the read-only viewer block list."
   defdelegate serialize_version_snapshot(snapshot), to: Versioning
@@ -485,5 +485,5 @@ defmodule Storyarn.Sheets do
   defdelegate validate_reference_target(target_type, target_id, project_id), to: References
   @doc "Resolves normalized predicate aliases without exposing field configuration."
   defdelegate variable_predicate_string_aliases(project_id, definition, operator, literal),
-    to: Logic
+    to: Expressions
 end

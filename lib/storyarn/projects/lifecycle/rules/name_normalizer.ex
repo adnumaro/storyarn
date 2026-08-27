@@ -17,34 +17,6 @@ defmodule Storyarn.Projects.NameNormalizer do
   - `shortcutify/1` — entity shortcuts (`"mc.jaime"`, allows `.`)
   """
 
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Repo
-
-  # ---------------------------------------------------------------------------
-  # Slug generation (URL-safe identifiers)
-  # ---------------------------------------------------------------------------
-
-  @doc """
-  Generates a unique slug for a name, checking against an Ecto schema.
-
-  ## Examples
-
-      generate_unique_slug(Workspace, [], "My Workspace")
-      generate_unique_slug(Project, [workspace_id: 1], "My Project")
-  """
-  def generate_unique_slug(queryable, scope, name, suffix \\ nil) do
-    base_slug = slugify(name)
-
-    slug = if suffix, do: "#{base_slug}-#{suffix}", else: base_slug
-
-    if slug_available?(queryable, scope, slug) do
-      slug
-    else
-      generate_unique_slug(queryable, scope, name, generate_suffix())
-    end
-  end
-
   # ---------------------------------------------------------------------------
   # Public normalizers
   # ---------------------------------------------------------------------------
@@ -134,24 +106,5 @@ defmodule Storyarn.Projects.NameNormalizer do
 
     trim_chars = separator <> extra_chars
     String.replace(str, ~r/^[#{Regex.escape(trim_chars)}]+|[#{Regex.escape(trim_chars)}]+$/, "")
-  end
-
-  # ---------------------------------------------------------------------------
-  # Private helpers
-  # ---------------------------------------------------------------------------
-
-  defp slug_available?(queryable, scope, slug) do
-    query = from(q in queryable, where: q.slug == ^slug)
-
-    query =
-      Enum.reduce(scope, query, fn {field, value}, q ->
-        from(r in q, where: field(r, ^field) == ^value)
-      end)
-
-    not Repo.exists?(query)
-  end
-
-  defp generate_suffix do
-    4 |> :crypto.strong_rand_bytes() |> Base.encode16(case: :lower)
   end
 end

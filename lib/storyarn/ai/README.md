@@ -9,7 +9,7 @@ Each capability also has a smaller facade for collaboration inside AI:
 
 | Capability | Facade | Responsibility |
 | --- | --- | --- |
-| Context | `Storyarn.AI.Context` | Deterministic, bounded context-package construction and freshness checks against a consumer-owned contract. |
+| Context Building | `Storyarn.AI.Context` | Deterministic, bounded context-package construction and freshness checks. The folder is `context_building/` so it cannot be confused with a DDD bounded context. |
 | Governance | `Storyarn.AI.Governance` | Workspace and project access, egress policy, permitted lanes and execution/apply authorization. |
 | Integrations | `Storyarn.AI.Integrations` | Personal provider connections, workspace assignments, consent, model preferences, key validation and the integration audit trail. |
 | Routing | `Storyarn.AI.Routing` | Task contracts, model catalog, intents, opaque route options, preflight and provider-neutral route selection. |
@@ -34,15 +34,18 @@ has. Empty architectural layers are not required.
 | `execution/` | Stateful or multi-step workflows whose security, transaction or exactly-once boundary must remain whole. |
 | `events/` | Business facts and append-only audit records owned by the producing capability. |
 | `adapters/` | Translation to providers, credentials, jobs, telemetry, feature flags, PostgreSQL locks or another technical mechanism. |
-| `data/` | Passive consumer-local SQL projections or immutable reference data; never a generic persistence layer. |
+| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
+| `reference_data/` | Immutable shipped catalogs without database identity, lifecycle, or I/O. |
+| `tasks/` | Registered AI task definitions; executable product contracts rather than passive data. |
+| `compatibility/` | Temporary public compatibility facades; never provider adapters or new entry points. |
 
 The capability facade sits directly inside its capability folder. Private
-commands, queries, rules, execution modules, events, adapters and data records
+commands, queries, rules, execution modules, events, adapters and projections
 remain behind it.
 
-## The `data/` contract
+## Projections and reference data
 
-`data/` accepts exactly two kinds of module.
+The two passive data roles remain explicit and separate from adapters.
 
 ### Consumer-local SQL projections
 
@@ -58,7 +61,7 @@ associations. That duplication is intentional: changing a Governance access
 projection must not silently alter Routing, Operations or Managed Spend.
 Sharing PostgreSQL in this phase does not imply sharing schema modules.
 
-A `data/` module declares fields, associations and types. It does not call
+A projection declares fields, associations and types. It does not call
 `Repo`, coordinate a transaction or lock, emit an event, contact a provider or
 decide business policy. Reads belong in `queries/`; writes and invariants belong
 to the owning `commands/` or to an indivisible `execution/` workflow.
@@ -66,9 +69,9 @@ to the owning `commands/` or to an indivisible `execution/` workflow.
 ### Reference data
 
 Reference data is immutable application data with no database lifecycle or
-external I/O. Routing's shipped model defaults and registered managed
-diagnostic definition are examples. Reference data is not a place for helper
-functions, runtime state or arbitrary shared configuration.
+external I/O. Routing's shipped model defaults are the current example. The
+managed diagnostic is a registered task definition and therefore lives in
+`routing/tasks/`, not in reference data.
 
 There is intentionally no generic `persistence/` folder. `Repo` is technical
 infrastructure shared by the application, while persistence behavior remains
@@ -112,7 +115,7 @@ rolling deployments; new cross-capability code must use the owning facade.
 - Stable structs and value contracts may cross a seam when they are the
   explicit input or output of that facade.
 - A capability never imports another capability's `commands/`, `queries/`,
-  `rules/`, `execution/`, `events/`, `adapters/` or `data/` modules.
+  `rules/`, `execution/`, `events/`, `adapters/` or `projections/` modules.
 - An orchestration may remain inside one database transaction when splitting it
   would weaken authorization, idempotency, no-overspend or exactly-once
   guarantees. The call still enters the other capability through its facade.

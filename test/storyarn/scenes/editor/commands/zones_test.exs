@@ -8,8 +8,8 @@ defmodule Storyarn.Scenes.Editor.Commands.ZonesTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Scenes.Editor
-  alias Storyarn.Scenes.References.Data.EntityReferenceRecord, as: EntityReference
-  alias Storyarn.Scenes.References.Data.VariableReferenceRecord
+  alias Storyarn.Scenes.References.Projections.EntityReferenceRecord, as: EntityReference
+  alias Storyarn.Scenes.References.Projections.VariableReferenceRecord
   alias Storyarn.Scenes.SceneZone
 
   defp create_scene(_context \\ %{}) do

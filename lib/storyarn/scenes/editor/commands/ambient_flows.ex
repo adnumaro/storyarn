@@ -4,10 +4,11 @@ defmodule Storyarn.Scenes.Editor.Commands.AmbientFlows do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
-  alias Storyarn.Scenes.Editor.Data.FlowRecord
+  alias Storyarn.Scenes.Editor.Projections.FlowRecord
   alias Storyarn.Scenes.Editor.Queries.AmbientFlows, as: AmbientFlowQueries
   alias Storyarn.Scenes.References
   alias Storyarn.Scenes.SceneAmbientFlow
@@ -17,7 +18,7 @@ defmodule Storyarn.Scenes.Editor.Commands.AmbientFlows do
   Validates the flow belongs to the same project as the scene.
   """
   def create_ambient_flow(scene_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->
@@ -43,7 +44,7 @@ defmodule Storyarn.Scenes.Editor.Commands.AmbientFlows do
   Updates an ambient flow (enabled, trigger_type, trigger_config, priority, position).
   """
   def update_ambient_flow(%SceneAmbientFlow{} = ambient_flow, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     ambient_flow.scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->
@@ -143,7 +144,7 @@ defmodule Storyarn.Scenes.Editor.Commands.AmbientFlows do
   defp requested_flow_id(attrs, current_flow_id) do
     flow_id =
       if Map.has_key?(attrs, "flow_id") do
-        MapUtils.parse_int(attrs["flow_id"])
+        IntegerParser.parse(attrs["flow_id"])
       else
         current_flow_id
       end

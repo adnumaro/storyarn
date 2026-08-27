@@ -4,8 +4,8 @@ defmodule Storyarn.AI.WorkspacePolicy do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.Governance.Data.UserRecord, as: User
-  alias Storyarn.AI.Governance.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Governance.Projections.UserRecord, as: User
+  alias Storyarn.AI.Governance.Projections.WorkspaceRecord, as: Workspace
 
   @initial_lanes ~w(managed personal_byok)
 

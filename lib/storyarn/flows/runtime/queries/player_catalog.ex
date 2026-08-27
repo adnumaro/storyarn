@@ -9,7 +9,7 @@ defmodule Storyarn.Flows.PlayerCatalog do
 
   import Ecto.Query
 
-  alias Storyarn.Flows.Runtime.Data.SheetRecord
+  alias Storyarn.Flows.Runtime.Projections.SheetRecord
   alias Storyarn.Repo
 
   @type media_ref :: %{id: integer(), filename: String.t() | nil}

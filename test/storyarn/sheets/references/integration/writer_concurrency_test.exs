@@ -14,8 +14,8 @@ defmodule Storyarn.Sheets.References.Integration.WriterConcurrencyTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.References
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord
-  alias Storyarn.Sheets.References.Data.FlowRecord
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
   alias Storyarn.Workspaces.Workspace
 
   @barrier_timeout 15_000

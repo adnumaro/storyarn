@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Connections do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
   alias Storyarn.Scenes.Editor.Commands.Scenes
@@ -14,7 +14,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Connections do
   Validates that any pinned endpoints belong to the same scene.
   """
   def create_connection(scene_id, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->
@@ -29,7 +29,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Connections do
   end
 
   def update_connection(%SceneConnection{} = connection, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     connection.scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->
@@ -53,7 +53,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Connections do
   Updates only the waypoints of a connection (optimized for drag).
   """
   def update_connection_waypoints(%SceneConnection{} = connection, attrs) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     connection.scene_id
     |> ReferenceIntegrity.with_active_scene_lock(fn scene ->

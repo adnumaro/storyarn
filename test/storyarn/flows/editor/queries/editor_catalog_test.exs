@@ -10,9 +10,9 @@ defmodule Storyarn.Flows.EditorCatalogTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Editor.Data.BlockRecord
-  alias Storyarn.Flows.Editor.Data.SceneRecord
-  alias Storyarn.Flows.Editor.Data.SheetRecord
+  alias Storyarn.Flows.Editor.Projections.BlockRecord
+  alias Storyarn.Flows.Editor.Projections.SceneRecord
+  alias Storyarn.Flows.Editor.Projections.SheetRecord
   alias Storyarn.Flows.Flow
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets

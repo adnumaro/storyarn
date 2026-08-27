@@ -4,9 +4,9 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
   alias Storyarn.Architecture.DependencyPolicy
 
   @spi_targets [
-    "lib/storyarn/ai/context/contracts/contract.ex",
-    "lib/storyarn/ai/context/contracts/policy.ex",
-    "lib/storyarn/ai/context/contracts/subject_ref.ex"
+    "lib/storyarn/ai/context_building/contracts/contract.ex",
+    "lib/storyarn/ai/context_building/contracts/policy.ex",
+    "lib/storyarn/ai/context_building/contracts/subject_ref.ex"
   ]
 
   test "the AI context SPI is exact and does not open the AI internals to Flows" do
@@ -16,14 +16,14 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
     assert Enum.all?(@spi_targets, &(&1 in durable_targets))
     refute Enum.any?(@spi_targets, &(&1 in policy.globally_allowed_technical_targets))
     refute "lib/storyarn/ai/" in policy.globally_allowed_technical_targets
-    refute "lib/storyarn/ai/context/" in policy.globally_allowed_technical_targets
+    refute "lib/storyarn/ai/context_building/" in policy.globally_allowed_technical_targets
 
     graph = %{
       "lib/storyarn/flows/ai/contracts/context_contract.ex" => %{
-        "lib/storyarn/ai/context/contracts/contract.ex" => "runtime",
-        "lib/storyarn/ai/context/contracts/policy.ex" => "export",
-        "lib/storyarn/ai/context/contracts/subject_ref.ex" => "export",
-        "lib/storyarn/ai/context/rules/finalizer.ex" => "runtime"
+        "lib/storyarn/ai/context_building/contracts/contract.ex" => "runtime",
+        "lib/storyarn/ai/context_building/contracts/policy.ex" => "export",
+        "lib/storyarn/ai/context_building/contracts/subject_ref.ex" => "export",
+        "lib/storyarn/ai/context_building/rules/finalizer.ex" => "runtime"
       }
     }
 
@@ -31,7 +31,7 @@ defmodule Storyarn.Flows.AI.ContextArchitectureTest do
              MapSet.new([
                {
                  "lib/storyarn/flows/ai/contracts/context_contract.ex",
-                 "lib/storyarn/ai/context/rules/finalizer.ex",
+                 "lib/storyarn/ai/context_building/rules/finalizer.ex",
                  "runtime"
                }
              ])

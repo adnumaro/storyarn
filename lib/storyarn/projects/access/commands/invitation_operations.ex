@@ -18,9 +18,9 @@ defmodule Storyarn.Projects.InvitationOperations do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform
-  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Access.RateLimits
   alias Storyarn.Projects.InvitationNotifier
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
@@ -146,7 +146,8 @@ defmodule Storyarn.Projects.InvitationOperations do
   # Private helpers
 
   defp check_invitation_rate_limit(config, parent_id, user_id) do
-    RateLimiter.check_invitation(config.rate_limit_context, parent_id, user_id)
+    "project" = config.rate_limit_context
+    RateLimits.check(parent_id, user_id)
   end
 
   defp member_exists?(config, parent_id, email) do

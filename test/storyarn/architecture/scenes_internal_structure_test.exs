@@ -5,24 +5,24 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
 
   @root "lib/storyarn/scenes"
   @capability_roles %{
-    "access" => ~w(data queries),
-    "assets" => ~w(adapters commands data events queries),
-    "editor" => ~w(adapters commands contracts data entities queries rules),
-    "exploration" => ~w(commands contracts data entities events execution queries),
-    "health" => ~w(contracts data queries rules),
-    "logic" => ~w(contracts data queries rules),
-    "references" => ~w(commands data queries),
-    "versioning" => ~w(adapters commands contracts data entities events execution rules)
+    "access" => ~w(projections queries),
+    "assets" => ~w(adapters commands entities events projections queries),
+    "editor" => ~w(adapters commands contracts projections entities queries rules),
+    "exploration" => ~w(commands contracts projections entities events execution queries),
+    "health" => ~w(contracts projections queries rules),
+    "expressions" => ~w(compatibility contracts projections queries rules),
+    "references" => ~w(commands projections queries),
+    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
-  @private_roles ~w(adapters commands queries rules data execution events)
-  @passive_roles ~w(rules contracts entities data)
+  @private_roles ~w(adapters commands compatibility queries rules projections execution events)
+  @passive_roles ~w(rules contracts entities projections)
   @root_facade_dependencies ~w(
     Storyarn.Scenes.Access
     Storyarn.Scenes.Assets
     Storyarn.Scenes.Editor
     Storyarn.Scenes.Exploration
     Storyarn.Scenes.Health
-    Storyarn.Scenes.Logic
+    Storyarn.Scenes.Expressions
     Storyarn.Scenes.Scene
     Storyarn.Scenes.SceneAmbientFlow
     Storyarn.Scenes.SceneAnnotation
@@ -42,12 +42,12 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
     {"rules", "execution"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "execution"},
-    {"data", "events"},
-    {"data", "adapters"},
-    {"data", "rules"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "execution"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"projections", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},
@@ -116,7 +116,7 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
     assert violations == [], "Scene queries must remain read-only: #{inspect(violations)}"
   end
 
-  test "data, entities, contracts, and rules do not perform persistence I/O" do
+  test "projections, entities, contracts, and rules do not perform persistence I/O" do
     passive_sources =
       for capability <- Map.keys(@capability_roles),
           role <- @passive_roles,
@@ -133,18 +133,18 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
            "Scene passive roles must not perform persistence I/O: #{inspect(violations)}"
   end
 
-  test "every data module documents its projection or reference-data purpose" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection module documents its consumer-owned read purpose" do
+    projection_sources = Path.wildcard(Path.join(@root, "*/projections/**/*.ex"))
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(projection_sources, fn path ->
         source = File.read!(path)
         source =~ "@moduledoc" and not (source =~ "@moduledoc false")
       end)
 
-    assert data_sources != []
-    assert violations == [], "Scene data semantics must be explicit: #{inspect(violations)}"
-    assert File.read!(Path.join(@root, "README.md")) =~ "## `data/`"
+    assert projection_sources != []
+    assert violations == [], "Scene projections semantics must be explicit: #{inspect(violations)}"
+    assert File.read!(Path.join(@root, "README.md")) =~ "## `projections/`"
   end
 
   test "raw SQL and shared object-storage contracts live only in adapters" do

@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Export do
 
   use Mix.Task
 
-  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects
 
   @requirements ["app.start"]
 
@@ -38,7 +38,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Export do
 
     {project_id, output_path} = parse_args!(positional, opts)
 
-    case ProjectTemplates.export_portable_template(project_id, output_path, opts) do
+    case Projects.export_portable_project_template(project_id, output_path, opts) do
       {:ok, %{manifest: manifest, path: path}} ->
         Mix.shell().info("Exported template bundle: #{path}")
         Mix.shell().info("Name: #{get_in(manifest, ["template", "name"])}")

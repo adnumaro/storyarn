@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.PlayerCatalogTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.Runtime.Data.SheetRecord
+  alias Storyarn.Flows.Runtime.Projections.SheetRecord
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo

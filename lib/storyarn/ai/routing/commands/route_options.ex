@@ -3,12 +3,12 @@ defmodule Storyarn.AI.RouteOptions do
 
   import Ecto.Query
 
-  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.Context.Package
   alias Storyarn.AI.CredentialRef
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ExecutionRoute
   alias Storyarn.AI.RouteOption
+  alias Storyarn.AI.Routing.Rules.ModelLimits
   alias Storyarn.AI.Task
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo

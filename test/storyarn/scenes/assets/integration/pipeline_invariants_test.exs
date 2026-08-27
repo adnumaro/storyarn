@@ -12,8 +12,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
   alias Storyarn.Repo
   alias Storyarn.Scenes.Assets.Adapters.Images.Processor, as: ImageProcessor
   alias Storyarn.Scenes.Assets.Commands.Assets, as: AssetCommands
-  alias Storyarn.Scenes.Assets.Data.AssetRecord
-  alias Storyarn.Scenes.Assets.Data.ProjectRecord
+  alias Storyarn.Scenes.Assets.Entities.AssetRecord
+  alias Storyarn.Scenes.Assets.Projections.ProjectRecord
   alias Storyarn.SnapshotReadSwitchStorage
 
   test "Scene background upload owns dimensions, purpose scheduling and variant linking" do

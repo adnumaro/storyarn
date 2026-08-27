@@ -1,4 +1,4 @@
-defmodule Storyarn.Shared.NameNormalizerTest do
+defmodule Storyarn.Projects.Lifecycle.Rules.NameNormalizerTest do
   use Storyarn.DataCase, async: true
 
   alias Storyarn.Projects.NameNormalizer
@@ -6,8 +6,6 @@ defmodule Storyarn.Shared.NameNormalizerTest do
   # ===========================================================================
   # slugify/1
   # ===========================================================================
-
-  alias Storyarn.Workspaces.Workspace
 
   describe "slugify/1" do
     test "converts simple name to slug" do
@@ -155,58 +153,6 @@ defmodule Storyarn.Shared.NameNormalizerTest do
 
     test "handles Unicode transliteration" do
       assert NameNormalizer.shortcutify("Cafe.Paris") == "cafe.paris"
-    end
-  end
-
-  # ===========================================================================
-  # generate_unique_slug/4
-  # ===========================================================================
-
-  describe "generate_unique_slug/4" do
-    test "generates slug from name when no collision" do
-      # Using Storyarn.Workspaces.Workspace which has a slug field
-      slug =
-        NameNormalizer.generate_unique_slug(Workspace, [], "My Workspace")
-
-      assert slug == "my-workspace"
-    end
-
-    test "generates slug with suffix on collision" do
-      import Storyarn.WorkspacesFixtures
-
-      # Create a workspace to cause collision (fixture includes slug)
-      user = Storyarn.AccountsFixtures.user_fixture()
-      _workspace = workspace_fixture(user, %{name: "Test Workspace"})
-
-      # Now try to generate slug for the same name - it should add a suffix
-      slug =
-        NameNormalizer.generate_unique_slug(
-          Workspace,
-          [],
-          "Test Workspace"
-        )
-
-      assert String.starts_with?(slug, "test-workspace")
-      # Should have a suffix since "test-workspace" is taken
-      assert slug != "test-workspace"
-    end
-
-    test "generates slug with scope filtering" do
-      import Storyarn.WorkspacesFixtures
-
-      user = Storyarn.AccountsFixtures.user_fixture()
-      workspace = workspace_fixture(user, %{name: "Scoped Workspace"})
-
-      # Generate slug for a different name - no collision
-      slug =
-        NameNormalizer.generate_unique_slug(
-          Workspace,
-          [],
-          "Unique Name"
-        )
-
-      assert slug == "unique-name"
-      assert workspace.slug == "scoped-workspace"
     end
   end
 

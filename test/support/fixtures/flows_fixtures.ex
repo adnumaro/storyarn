@@ -7,7 +7,7 @@ defmodule Storyarn.FlowsFixtures do
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
 
@@ -86,8 +86,8 @@ defmodule Storyarn.FlowsFixtures do
         data: %{"speaker" => "Character", "text" => "Hello!"}
       })
 
-    type = MapUtils.get_flexible(attrs, :type)
-    data = MapUtils.get_flexible(attrs, :data)
+    type = MapAccess.get_flexible(attrs, :type)
+    data = MapAccess.get_flexible(attrs, :data)
 
     %FlowNode{flow_id: flow.id}
     |> FlowNode.create_changeset(attrs)

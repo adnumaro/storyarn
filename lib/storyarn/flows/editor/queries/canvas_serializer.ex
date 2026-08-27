@@ -7,11 +7,11 @@ defmodule Storyarn.Flows.Editor.Queries.CanvasSerializer do
   """
 
   alias Storyarn.Flows.Editor.Queries.Nodes
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Health
   alias Storyarn.Flows.HubColors
-  alias Storyarn.Flows.Logic
   alias Storyarn.Flows.NodeConnectionRules
   alias Storyarn.Flows.References
   alias Storyarn.Repo
@@ -38,8 +38,8 @@ defmodule Storyarn.Flows.Editor.Queries.CanvasSerializer do
     variable_types =
       if node.type in ["instruction", "dialogue"] do
         project_id
-        |> Logic.list_referenceable_variables()
-        |> Logic.variable_type_map()
+        |> Expressions.list_referenceable_variables()
+        |> Expressions.variable_type_map()
       else
         %{}
       end
@@ -66,8 +66,10 @@ defmodule Storyarn.Flows.Editor.Queries.CanvasSerializer do
     # ONE map for the whole flow. Built per node this was 96% of the project
     # health sweep and a 15× penalty on flow open; the option still takes the
     # variable LIST because that is what callers already hold.
-    variable_types =
-      Logic.variable_type_map(opts[:project_variables] || Logic.list_referenceable_variables(flow.project_id))
+    project_variables =
+      opts[:project_variables] || Expressions.list_referenceable_variables(flow.project_id)
+
+    variable_types = Expressions.variable_type_map(project_variables)
 
     # Sequences now live in flow.nodes with type='sequence'. Preload their
     # 1:1 config to expose name/width/height alongside the base fields.

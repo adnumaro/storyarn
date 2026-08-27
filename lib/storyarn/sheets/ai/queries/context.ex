@@ -8,8 +8,8 @@ defmodule Storyarn.Sheets.AI.Queries.Context do
   import Ecto.Query
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.AI.Data.BlockRecord, as: Block
-  alias Storyarn.Sheets.AI.Data.SheetRecord, as: Sheet
+  alias Storyarn.Sheets.AI.Projections.BlockRecord, as: Block
+  alias Storyarn.Sheets.AI.Projections.SheetRecord, as: Sheet
 
   @spec get_sheet_brief(integer(), integer()) :: Sheet.t() | nil
   def get_sheet_brief(project_id, sheet_id) do

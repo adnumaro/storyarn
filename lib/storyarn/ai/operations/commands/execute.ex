@@ -13,11 +13,11 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
   alias Storyarn.AI.ManagedSpend
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Operations.Adapters.Jobs.ExecutionQueue
+  alias Storyarn.AI.Operations.RateLimits
   alias Storyarn.AI.Operations.Rules.CanonicalJSON
   alias Storyarn.AI.Result
   alias Storyarn.AI.Routing
   alias Storyarn.AI.Task
-  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
 
   @idempotency_lock_namespace 981_005
@@ -66,7 +66,7 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
            Governance.authorize(intent, task, :execute, lane: route.lane, lock_policy: true),
          true <- decision.policy_version == route.policy_version || {:error, :route_ref_stale},
          true <- Routing.route_current?(decision, task, route) || {:error, :route_ref_stale},
-         :ok <- RateLimiter.check_ai_execution(intent.scope.user.id, task.id),
+         :ok <- RateLimits.check_execution(intent.scope.user.id, task.id),
          {:ok, context} <- Context.prepare(intent.scope, task, intent),
          :ok <- context_matches_option(context, route_option),
          {:ok, input} <- context_input(intent.input, context) do

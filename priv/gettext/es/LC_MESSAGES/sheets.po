@@ -124,7 +124,7 @@ msgstr "Atajo %{error}"
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
 
-#: lib/storyarn_web/live/hooks/palette.ex:584
+#: lib/storyarn_web/live/hooks/palette.ex:583
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:92
 #, elixir-autogen, elixir-format
 msgid "Untitled"

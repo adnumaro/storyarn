@@ -7,10 +7,10 @@ defmodule Storyarn.Flows.Versioning.Commands.VersionLifecycle do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.Versioning.Commands.NamedVersionCapacity
-  alias Storyarn.Flows.Versioning.Data.ProjectRecord
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.Execution.SnapshotReader
   alias Storyarn.Flows.Versioning.FlowSnapshot
+  alias Storyarn.Flows.Versioning.Projections.ProjectRecord
   alias Storyarn.Flows.Versioning.Queries.History
   alias Storyarn.Flows.Versioning.SnapshotStorage
   alias Storyarn.Flows.Versioning.VersionNumberLock

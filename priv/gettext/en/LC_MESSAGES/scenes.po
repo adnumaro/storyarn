@@ -452,7 +452,7 @@ msgstr ""
 msgid "Undo: zone restored."
 msgstr ""
 
-#: lib/storyarn_web/live/hooks/palette.ex:590
+#: lib/storyarn_web/live/hooks/palette.ex:589
 #: lib/storyarn_web/live/scene_sidebar_live.ex:92
 #: lib/storyarn_web/live/scene_sidebar_live.ex:109
 #, elixir-autogen, elixir-format
@@ -734,7 +734,7 @@ msgstr ""
 msgid "Walkable Area"
 msgstr ""
 
-#: lib/storyarn/projects/overview/data/scene_ambient_flow_record.ex:41
+#: lib/storyarn/projects/content/scenes/records/scene_ambient_flow_record.ex:41
 #: lib/storyarn/scenes/editor/entities/scene_ambient_flow.ex:64
 #, elixir-autogen, elixir-format
 msgid "this flow is already linked to this scene"
@@ -755,7 +755,7 @@ msgstr ""
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr ""
 
-#: lib/storyarn/projects/overview/data/scene_ambient_flow_record.ex:65
+#: lib/storyarn/projects/content/scenes/records/scene_ambient_flow_record.ex:65
 #: lib/storyarn/scenes/editor/entities/scene_ambient_flow.ex:98
 #, elixir-autogen, elixir-format
 msgid "timed trigger requires interval_ms >= 1000"

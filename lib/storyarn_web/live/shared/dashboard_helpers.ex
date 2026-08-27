@@ -8,7 +8,7 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Platform.Shared.Severity
+  alias StoryarnWeb.Helpers.Severity
 
   @default_per_page 25
   @max_bigint 9_223_372_036_854_775_807

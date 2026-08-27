@@ -8,8 +8,8 @@ defmodule Storyarn.Scenes.Editor.Commands.AmbientFlowsTest do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Scenes.Editor
-  alias Storyarn.Scenes.Editor.Data.FlowRecord
-  alias Storyarn.Scenes.References.Data.VariableReferenceRecord, as: VariableReference
+  alias Storyarn.Scenes.Editor.Projections.FlowRecord
+  alias Storyarn.Scenes.References.Projections.VariableReferenceRecord, as: VariableReference
   alias Storyarn.Scenes.SceneAmbientFlow
 
   describe "dashboard invalidation" do

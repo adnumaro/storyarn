@@ -7,7 +7,7 @@ defmodule Storyarn.Flows.RuntimeVariables do
   presentation adapter cannot accidentally redefine runtime behavior.
   """
 
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @type descriptor :: map()
   @type variable_key :: String.t()
@@ -17,7 +17,7 @@ defmodule Storyarn.Flows.RuntimeVariables do
   @spec build(pos_integer()) :: variables()
   def build(project_id) when is_integer(project_id) do
     project_id
-    |> Logic.list_referenceable_variables()
+    |> Expressions.list_referenceable_variables()
     |> from_descriptors()
   end
 
@@ -47,7 +47,7 @@ defmodule Storyarn.Flows.RuntimeVariables do
       variable = if formula, do: Map.put(variable, :formula, formula), else: variable
       Map.put(variables, key, variable)
     end)
-    |> Logic.recompute_formulas()
+    |> Expressions.recompute_formulas()
   end
 
   @doc "Coerces a user-provided debugger override according to Flow runtime rules."
@@ -93,7 +93,7 @@ defmodule Storyarn.Flows.RuntimeVariables do
     if is_binary(expression) and expression != "" do
       formula = %{
         expression: expression,
-        bindings: Logic.translate_same_row(key, raw_bindings)
+        bindings: Expressions.translate_same_row(key, raw_bindings)
       }
 
       {nil, formula}

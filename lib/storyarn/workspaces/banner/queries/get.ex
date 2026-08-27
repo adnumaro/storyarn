@@ -1,7 +1,7 @@
 defmodule Storyarn.Workspaces.Banner.Queries.Get do
   @moduledoc false
 
-  alias Storyarn.Workspaces.Banner.Adapters.Storage.Safe
+  alias Storyarn.Workspaces.Banner.Adapters.Storage.ResilientStorage
   alias Storyarn.Workspaces.Banner.Rules.StorageKey
   alias Storyarn.Workspaces.Banner.Rules.UploadPolicy
   alias Storyarn.Workspaces.Memberships
@@ -28,7 +28,7 @@ defmodule Storyarn.Workspaces.Banner.Queries.Get do
   defp stored_key(_workspace_slug, "", _opts), do: {:error, :no_banner}
 
   defp stored_key(workspace_slug, url, opts) when is_binary(url) do
-    with {:ok, key} <- Safe.key_from_url(url, opts),
+    with {:ok, key} <- ResilientStorage.key_from_url(url, opts),
          true <- StorageKey.owned?(workspace_slug, key) do
       {:ok, key}
     else

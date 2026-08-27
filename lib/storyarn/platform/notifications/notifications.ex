@@ -10,10 +10,10 @@ defmodule Storyarn.Platform.Notifications do
 
   alias Ecto.Changeset
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Notifications.Data.ProjectRecord, as: Project
-  alias Storyarn.Platform.Notifications.Data.UserRecord, as: User
   alias Storyarn.Platform.Notifications.Execution.Delivery
   alias Storyarn.Platform.Notifications.Notification
+  alias Storyarn.Platform.Notifications.Projections.ProjectRecord, as: Project
+  alias Storyarn.Platform.Notifications.Projections.UserRecord, as: User
 
   @type delivery_outcome :: Delivery.delivery_outcome()
   @type delivery_error :: :not_found | Changeset.t()

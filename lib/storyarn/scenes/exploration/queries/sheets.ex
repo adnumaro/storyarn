@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.SheetCatalog do
 
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Exploration.Data.SheetRecord
+  alias Storyarn.Scenes.Exploration.Projections.SheetRecord
 
   @default_search_limit 20
 

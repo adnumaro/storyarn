@@ -18,8 +18,17 @@ defmodule Storyarn.Accounts.Authentication do
   alias Storyarn.Accounts.Authentication.Queries.PasswordReset, as: PasswordResetQuery
   alias Storyarn.Accounts.Authentication.Queries.Sessions
   alias Storyarn.Accounts.Authentication.Queries.SudoHandoff, as: SudoHandoffQuery
+  alias Storyarn.Accounts.Authentication.RateLimits
   alias Storyarn.Accounts.Authentication.Rules.SudoWindow
   alias Storyarn.Accounts.Scope
+
+  defdelegate check_login_rate(ip_address), to: RateLimits, as: :check_login
+  defdelegate check_sudo_rate(user_id, ip_address), to: RateLimits, as: :check_sudo
+  defdelegate check_registration_rate(ip_address), to: RateLimits, as: :check_registration
+
+  defdelegate check_password_reset_rate(ip_address, email),
+    to: RateLimits,
+    as: :check_password_reset
 
   defdelegate get_user_by_email_and_password(email, password), to: Credentials, as: :authenticate
   defdelegate user_logged_in(user, auth_method), to: UserLoggedIn, as: :publish

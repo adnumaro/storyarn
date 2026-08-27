@@ -3,7 +3,7 @@ defmodule Storyarn.Sheets.Assets do
 
   alias Storyarn.Sheets.Assets.Commands.Assets, as: AssetCommands
   alias Storyarn.Sheets.Assets.Commands.References
-  alias Storyarn.Sheets.Assets.Data.AssetRecord
+  alias Storyarn.Sheets.Assets.Entities.AssetRecord
   alias Storyarn.Sheets.Assets.Queries.Catalog
 
   defdelegate list_assets(project_id, opts \\ []), to: Catalog

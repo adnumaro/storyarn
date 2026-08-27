@@ -4,12 +4,12 @@ defmodule Storyarn.Flows.FlowStats do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Editor
+  alias Storyarn.Flows.Expressions
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.Health.Data.SheetRecord
+  alias Storyarn.Flows.Health.Projections.SheetRecord
   alias Storyarn.Flows.HealthFlags
   alias Storyarn.Flows.Localization
-  alias Storyarn.Flows.Logic
   alias Storyarn.Flows.References
   alias Storyarn.Flows.SpeakerSheetId
   alias Storyarn.Flows.StructuralAnalysis
@@ -177,9 +177,9 @@ defmodule Storyarn.Flows.FlowStats do
     variable_types =
       context
       |> Map.get_lazy(:referenceable_variables, fn ->
-        Logic.list_referenceable_variables(project_id)
+        Expressions.list_referenceable_variables(project_id)
       end)
-      |> Logic.variable_type_map()
+      |> Expressions.variable_type_map()
 
     # Batched, like the sheets and scenes sweeps: the per-flow pair of
     # stale-reference queries made this O(N) — 2 queries per flow — while the

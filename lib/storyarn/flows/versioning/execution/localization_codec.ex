@@ -3,12 +3,12 @@ defmodule Storyarn.Flows.Versioning.LocalizationCodec do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Versioning.Data.AssetRecord
-  alias Storyarn.Flows.Versioning.Data.LocalizedTextRecord
-  alias Storyarn.Flows.Versioning.Data.ProjectLanguageRecord
-  alias Storyarn.Flows.Versioning.Data.SheetRecord
-  alias Storyarn.Flows.Versioning.Data.UserRecord
+  alias Storyarn.Flows.Versioning.Entities.AssetRecord
   alias Storyarn.Flows.Versioning.LocaleCode
+  alias Storyarn.Flows.Versioning.Projections.LocalizedTextRecord
+  alias Storyarn.Flows.Versioning.Projections.ProjectLanguageRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetRecord
+  alias Storyarn.Flows.Versioning.Projections.UserRecord
   alias Storyarn.Flows.Versioning.SourceContract
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Platform.Shared.TimeHelpers

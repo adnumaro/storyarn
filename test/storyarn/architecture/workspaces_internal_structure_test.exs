@@ -6,11 +6,17 @@ defmodule Storyarn.Architecture.WorkspacesInternalStructureTest do
   @root "lib/storyarn/workspaces"
   @capability_roles %{
     "banner" => ~w(adapters commands queries rules),
-    "invitations" => ~w(adapters commands data delivery entities queries rules tokens),
-    "lifecycle" => ~w(commands data entities events queries rules),
-    "memberships" => ~w(commands data entities queries rules)
+    "invitations" => ~w(adapters commands delivery entities projections queries rules tokens),
+    "lifecycle" => ~w(commands entities events projections queries reference_data rules),
+    "memberships" => ~w(commands entities projections queries rules)
   }
-  @private_roles ~w(adapters commands queries rules data delivery tokens events)
+  @root_files %{
+    "banner" => ~w(banner.ex),
+    "invitations" => ~w(invitations.ex),
+    "lifecycle" => ~w(lifecycle.ex),
+    "memberships" => ~w(memberships.ex)
+  }
+  @private_roles ~w(adapters commands delivery events projections queries reference_data rules tokens)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "delivery"},
@@ -20,11 +26,16 @@ defmodule Storyarn.Architecture.WorkspacesInternalStructureTest do
     {"rules", "delivery"},
     {"rules", "events"},
     {"rules", "adapters"},
-    {"data", "commands"},
-    {"data", "queries"},
-    {"data", "delivery"},
-    {"data", "events"},
-    {"data", "adapters"},
+    {"projections", "commands"},
+    {"projections", "queries"},
+    {"projections", "delivery"},
+    {"projections", "events"},
+    {"projections", "adapters"},
+    {"reference_data", "commands"},
+    {"reference_data", "queries"},
+    {"reference_data", "delivery"},
+    {"reference_data", "events"},
+    {"reference_data", "adapters"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "delivery"},
@@ -32,7 +43,8 @@ defmodule Storyarn.Architecture.WorkspacesInternalStructureTest do
     {"entities", "adapters"},
     {"adapters", "commands"},
     {"adapters", "queries"},
-    {"adapters", "data"},
+    {"adapters", "projections"},
+    {"adapters", "reference_data"},
     {"adapters", "entities"},
     {"adapters", "delivery"},
     {"adapters", "events"},
@@ -53,10 +65,15 @@ defmodule Storyarn.Architecture.WorkspacesInternalStructureTest do
       assert directories_in(capability_root) == Enum.sort(expected_roles),
              "#{capability} must use its agreed role folders"
 
-      assert Path.wildcard(Path.join(capability_root, "*.ex")) == [
-               Path.join(capability_root, "#{capability}.ex")
-             ],
-             "#{capability} may keep only its capability facade outside a role folder"
+      actual_root_files =
+        capability_root
+        |> Path.join("*.ex")
+        |> Path.wildcard()
+        |> Enum.map(&Path.basename/1)
+        |> Enum.sort()
+
+      assert actual_root_files == Enum.sort(Map.fetch!(@root_files, capability)),
+             "#{capability} may keep only its agreed public entry points outside a role folder"
     end)
   end
 
@@ -90,29 +107,37 @@ defmodule Storyarn.Architecture.WorkspacesInternalStructureTest do
     assert violations == [], "Workspace rules must not depend on persistence: #{inspect(violations)}"
   end
 
-  test "data modules remain passive projections or reference data without I/O" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "projections and reference data remain passive without I/O" do
+    passive_data_sources =
+      Enum.flat_map(~w(projections reference_data), fn role ->
+        Path.wildcard(Path.join(@root, "*/#{role}/**/*.ex"))
+      end)
 
     violations =
-      Enum.filter(data_sources, fn path ->
+      Enum.filter(passive_data_sources, fn path ->
         source = File.read!(path)
         source =~ "Storyarn.Repo" or source =~ "Ecto.Query" or Regex.match?(~r/\bRepo\./, source)
       end)
 
     assert violations == [],
-           "Workspace data modules must not perform persistence I/O: #{inspect(violations)}"
+           "Workspace passive-data modules must not perform persistence I/O: #{inspect(violations)}"
   end
 
-  test "every data module documents whether it is a projection or reference data" do
-    data_sources = Path.wildcard(Path.join(@root, "*/data/**/*.ex"))
+  test "every projection and reference-data module documents its purpose" do
+    passive_data_sources =
+      Enum.flat_map(~w(projections reference_data), fn role ->
+        Path.wildcard(Path.join(@root, "*/#{role}/**/*.ex"))
+      end)
 
     violations =
-      Enum.reject(data_sources, fn path ->
+      Enum.reject(passive_data_sources, fn path ->
         path |> File.read!() |> String.contains?("@moduledoc \"\"\"")
       end)
 
-    assert violations == [], "Workspace data semantics must be explicit: #{inspect(violations)}"
-    assert File.read!(Path.join(@root, "README.md")) =~ "## `data/`"
+    assert violations == [],
+           "Workspace passive-data semantics must be explicit: #{inspect(violations)}"
+
+    assert File.read!(Path.join(@root, "README.md")) =~ "## Projections and reference data"
   end
 
   test "the architecture ratchet blocks cross-capability access to private role folders" do

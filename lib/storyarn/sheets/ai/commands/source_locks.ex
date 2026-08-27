@@ -4,10 +4,10 @@ defmodule Storyarn.Sheets.AI.SourceLocks do
   import Ecto.Query
 
   alias Storyarn.Repo
-  alias Storyarn.Sheets.AI.Data.BlockRecord, as: Block
-  alias Storyarn.Sheets.AI.Data.FlowRecord
-  alias Storyarn.Sheets.AI.Data.ProjectRecord
-  alias Storyarn.Sheets.AI.Data.SheetRecord, as: Sheet
+  alias Storyarn.Sheets.AI.Projections.BlockRecord, as: Block
+  alias Storyarn.Sheets.AI.Projections.FlowRecord
+  alias Storyarn.Sheets.AI.Projections.ProjectRecord
+  alias Storyarn.Sheets.AI.Projections.SheetRecord, as: Sheet
 
   @persisted_types ~w(flow sheet sheet_block)
   @max_included_sources 500

@@ -16,62 +16,62 @@ msgstr ""
 msgid "%{name}'s workspace"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:180
+#: lib/storyarn_web/controllers/user_session_controller.ex:179
 #, elixir-autogen, elixir-format
 msgid "Failed to update password."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:76
-#: lib/storyarn_web/live/user_live/login.ex:138
+#: lib/storyarn_web/controllers/user_session_controller.ex:75
+#: lib/storyarn_web/live/user_live/login.ex:137
 #, elixir-autogen, elixir-format
 msgid "Invalid email or password"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:187
+#: lib/storyarn_web/controllers/user_session_controller.ex:186
 #, elixir-autogen, elixir-format
 msgid "Logged out successfully."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:173
+#: lib/storyarn_web/controllers/user_session_controller.ex:172
 #, elixir-autogen, elixir-format
 msgid "Password updated successfully!"
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:153
+#: lib/storyarn_web/controllers/user_session_controller.ex:152
 #, elixir-autogen, elixir-format
 msgid "Please re-authenticate to change your password."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:58
-#: lib/storyarn_web/live/user_live/login.ex:123
+#: lib/storyarn_web/controllers/user_session_controller.ex:57
+#: lib/storyarn_web/live/user_live/login.ex:122
 #, elixir-autogen, elixir-format
 msgid "Too many login attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:85
+#: lib/storyarn_web/live/user_live/registration.ex:84
 #, elixir-autogen, elixir-format
 msgid "Too many registration attempts. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:18
+#: lib/storyarn_web/controllers/user_session_controller.ex:17
 #, elixir-autogen, elixir-format
 msgid "Welcome back!"
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirm_access.ex:57
+#: lib/storyarn_web/live/user_live/confirm_access.ex:56
 #: lib/storyarn_web/user_auth.ex:243
 #: lib/storyarn_web/user_auth.ex:508
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:103
+#: lib/storyarn_web/live/user_live/registration.ex:102
 #, elixir-autogen, elixir-format
 msgid "Account created successfully! Welcome."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:56
-#: lib/storyarn_web/live/user_live/registration.ex:116
+#: lib/storyarn_web/live/user_live/registration.ex:55
+#: lib/storyarn_web/live/user_live/registration.ex:115
 #, elixir-autogen, elixir-format
 msgid "Invalid or expired registration link."
 msgstr ""
@@ -81,28 +81,28 @@ msgstr ""
 msgid "Invalid or expired password reset link."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/forgot_password.ex:124
+#: lib/storyarn_web/live/user_live/forgot_password.ex:123
 #, elixir-autogen, elixir-format
 msgid "Too many password reset requests. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/forgot_password.ex:115
+#: lib/storyarn_web/live/user_live/forgot_password.ex:114
 #, elixir-autogen, elixir-format
 msgid "We couldn't process your password reset request. Please try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/registration.ex:124
+#: lib/storyarn_web/live/user_live/registration.ex:123
 #, elixir-autogen, elixir-format
 msgid "We couldn't create your workspace. Please try again."
 msgstr ""
 
-#: lib/storyarn_web/live/user_live/confirm_access.ex:104
+#: lib/storyarn_web/live/user_live/confirm_access.ex:103
 #, elixir-autogen, elixir-format
 msgid "Your session has expired. Please log in again."
 msgstr ""
 
-#: lib/storyarn_web/controllers/user_session_controller.ex:119
-#: lib/storyarn_web/controllers/user_session_controller.ex:135
+#: lib/storyarn_web/controllers/user_session_controller.ex:118
+#: lib/storyarn_web/controllers/user_session_controller.ex:134
 #, elixir-autogen, elixir-format
 msgid "Your access confirmation has expired. Please try again."
 msgstr ""

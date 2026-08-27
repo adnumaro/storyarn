@@ -4,8 +4,8 @@ defmodule Storyarn.Workspaces.Memberships.Queries.WorkspaceAccess do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Memberships.Data.ProjectMembershipRecord, as: ProjectMembership
-  alias Storyarn.Workspaces.Memberships.Data.ProjectRecord, as: Project
+  alias Storyarn.Workspaces.Memberships.Projections.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.Workspaces.Memberships.Projections.ProjectRecord, as: Project
   alias Storyarn.Workspaces.Memberships.Queries.Members
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership

@@ -3,7 +3,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Flows.Editor.Adapters.NodePositionStore
+  alias Storyarn.Flows.Editor.Adapters.Postgres.NodePositionStore
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode

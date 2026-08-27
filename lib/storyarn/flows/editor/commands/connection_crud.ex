@@ -3,6 +3,7 @@ defmodule Storyarn.Flows.ConnectionCrud do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Editor.Queries.Connections
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowConnection
   alias Storyarn.Flows.FlowNode
@@ -11,37 +12,10 @@ defmodule Storyarn.Flows.ConnectionCrud do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
-  def list_connections(flow_id) do
-    Repo.all(
-      from(c in FlowConnection,
-        join: sn in FlowNode,
-        on: c.source_node_id == sn.id,
-        join: tn in FlowNode,
-        on: c.target_node_id == tn.id,
-        where: c.flow_id == ^flow_id and is_nil(sn.deleted_at) and is_nil(tn.deleted_at),
-        order_by: [asc: c.inserted_at],
-        preload: [:source_node, :target_node]
-      )
-    )
-  end
-
-  def get_connection(flow_id, connection_id) do
-    FlowConnection
-    |> where(flow_id: ^flow_id, id: ^connection_id)
-    |> preload([:source_node, :target_node])
-    |> Repo.one()
-  end
-
-  def get_connection!(flow_id, connection_id) do
-    FlowConnection
-    |> where(flow_id: ^flow_id, id: ^connection_id)
-    |> preload([:source_node, :target_node])
-    |> Repo.one!()
-  end
-
-  def get_connection_by_id!(connection_id) do
-    Repo.get!(FlowConnection, connection_id)
-  end
+  defdelegate list_connections(flow_id), to: Connections, as: :list
+  defdelegate get_connection(flow_id, connection_id), to: Connections, as: :get
+  defdelegate get_connection!(flow_id, connection_id), to: Connections, as: :get!
+  defdelegate get_connection_by_id!(connection_id), to: Connections, as: :get_by_id!
 
   def create_connection(%Flow{} = flow, %FlowNode{} = source_node, %FlowNode{} = target_node, attrs) do
     attrs =
@@ -420,11 +394,6 @@ defmodule Storyarn.Flows.ConnectionCrud do
     FlowConnection.update_changeset(connection, attrs)
   end
 
-  def get_outgoing_connections(node_id) do
-    Repo.all(from(c in FlowConnection, where: c.source_node_id == ^node_id, preload: [:target_node]))
-  end
-
-  def get_incoming_connections(node_id) do
-    Repo.all(from(c in FlowConnection, where: c.target_node_id == ^node_id, preload: [:source_node]))
-  end
+  defdelegate get_outgoing_connections(node_id), to: Connections, as: :outgoing
+  defdelegate get_incoming_connections(node_id), to: Connections, as: :incoming
 end

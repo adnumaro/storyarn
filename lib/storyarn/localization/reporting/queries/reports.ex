@@ -3,9 +3,9 @@ defmodule Storyarn.Localization.Reporting.Queries.Reports do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Localization.Reporting.Data.LocalizedTextRecord
-  alias Storyarn.Localization.Reporting.Data.ProjectLanguageRecord
-  alias Storyarn.Localization.Reporting.Data.SheetRecord
+  alias Storyarn.Localization.Reporting.Projections.LocalizedTextRecord
+  alias Storyarn.Localization.Reporting.Projections.ProjectLanguageRecord
+  alias Storyarn.Localization.Reporting.Projections.SheetRecord
   alias Storyarn.Repo
 
   @doc """

@@ -1,5 +1,12 @@
 defmodule Storyarn.Projects.LocalizationReconstitution do
-  @moduledoc false
+  @moduledoc """
+  Exact Localization record writer for a Project import.
+
+  This is the explicit reconstitution exception: it recreates imported language,
+  localized-text and glossary state inside the enclosing Project import workflow.
+  It is not an ordinary Localization writer and must not be called by editors or
+  routine translation workflows.
+  """
 
   alias Storyarn.Projects.LocalizationSourceContract
   alias Storyarn.Projects.Persistence.GlossaryEntryRecord

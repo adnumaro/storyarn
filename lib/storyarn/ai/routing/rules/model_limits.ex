@@ -1,4 +1,4 @@
-defmodule Storyarn.AI.Context.ModelLimits do
+defmodule Storyarn.AI.Routing.Rules.ModelLimits do
   @moduledoc """
   Fails closed before contextual input can exceed a curated model contract.
 

@@ -9,10 +9,10 @@ defmodule Storyarn.AI.Governance.Queries.WorkspaceAccess do
   import Ecto.Query, warn: false
 
   alias Storyarn.AI.Governance
-  alias Storyarn.AI.Governance.Data.ProjectMembershipRecord, as: ProjectMembership
-  alias Storyarn.AI.Governance.Data.ProjectRecord, as: Project
-  alias Storyarn.AI.Governance.Data.WorkspaceMembershipRecord, as: WorkspaceMembership
-  alias Storyarn.AI.Governance.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Governance.Projections.ProjectMembershipRecord, as: ProjectMembership
+  alias Storyarn.AI.Governance.Projections.ProjectRecord, as: Project
+  alias Storyarn.AI.Governance.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
+  alias Storyarn.AI.Governance.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Governance.Rules.WorkspacePermissions
   alias Storyarn.Repo
 

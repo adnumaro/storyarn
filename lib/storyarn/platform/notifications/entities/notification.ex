@@ -12,8 +12,8 @@ defmodule Storyarn.Platform.Notifications.Notification do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Platform.Notifications.Data.ProjectRecord, as: Project
-  alias Storyarn.Platform.Notifications.Data.UserRecord, as: User
+  alias Storyarn.Platform.Notifications.Projections.ProjectRecord, as: Project
+  alias Storyarn.Platform.Notifications.Projections.UserRecord, as: User
 
   @kinds ~w(async_operation content_created content_deleted)
   @entity_types ~w(

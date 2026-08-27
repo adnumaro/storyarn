@@ -11,7 +11,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Scenes do
 
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Commands.ItemCapacity
   alias Storyarn.Scenes.Editor.Commands.ReferenceIntegrity
@@ -340,7 +340,7 @@ defmodule Storyarn.Scenes.Editor.Commands.Scenes do
     Shortcuts.prepare_update(scene, attrs)
   end
 
-  defp stringify_keys(attrs), do: MapUtils.stringify_keys(attrs)
+  defp stringify_keys(attrs), do: MapAccess.stringify_keys(attrs)
 
   defp maybe_assign_position(attrs, project_id, parent_id) do
     Shortcuts.assign_position(attrs, project_id, parent_id)

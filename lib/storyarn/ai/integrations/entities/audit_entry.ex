@@ -14,7 +14,7 @@ defmodule Storyarn.AI.AuditEntry do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.Integrations.Data.UserRecord, as: User
+  alias Storyarn.AI.Integrations.Projections.UserRecord, as: User
 
   @actions ~w(
     connected

@@ -12,7 +12,7 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.References
-  alias Storyarn.Sheets.References.Data.EntityReferenceRecord
+  alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
 
   @max_pg_bigint 9_223_372_036_854_775_807
 

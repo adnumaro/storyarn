@@ -5,7 +5,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
 
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.Assets, as: AssetReferences
@@ -13,7 +13,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
   alias Storyarn.Sheets.Editor.Commands.Inheritance, as: PropertyInheritance
   alias Storyarn.Sheets.Editor.Commands.ItemCapacity, as: Limits
   alias Storyarn.Sheets.Editor.Commands.Shortcuts, as: ShortcutGenerator
-  alias Storyarn.Sheets.Editor.Data.ProjectRecord
+  alias Storyarn.Sheets.Editor.Projections.ProjectRecord
   alias Storyarn.Sheets.Editor.Queries.Tree, as: TreeQueries
   alias Storyarn.Sheets.Localization
   alias Storyarn.Sheets.References, as: ReferenceTracker
@@ -422,7 +422,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Sheets do
     TreeQueries.next_position(project_id, parent_id)
   end
 
-  defp stringify_keys(map), do: MapUtils.stringify_keys(map)
+  defp stringify_keys(map), do: MapAccess.stringify_keys(map)
 
   defp deliver_content_activity!(actor_id, project_id, action, sheet) do
     case Platform.deliver_content_activity_by_ids(actor_id, project_id, action, "sheet", sheet) do

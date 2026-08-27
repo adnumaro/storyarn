@@ -6,9 +6,9 @@ defmodule Storyarn.AI.RouteOption do
 
   alias Storyarn.AI.Context
   alias Storyarn.AI.Operation
-  alias Storyarn.AI.Routing.Data.ProjectRecord, as: Project
-  alias Storyarn.AI.Routing.Data.UserRecord, as: User
-  alias Storyarn.AI.Routing.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Routing.Projections.ProjectRecord, as: Project
+  alias Storyarn.AI.Routing.Projections.UserRecord, as: User
+  alias Storyarn.AI.Routing.Projections.WorkspaceRecord, as: Workspace
 
   @derive {Inspect, except: [:token_hash, :credential_ref]}
 

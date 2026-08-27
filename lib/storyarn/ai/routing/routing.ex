@@ -6,12 +6,12 @@ defmodule Storyarn.AI.Routing do
   never performs inference or owns durable operation state.
   """
 
-  alias Storyarn.AI.Context.ModelLimits
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.RouteOptions
   alias Storyarn.AI.RouteResolver
   alias Storyarn.AI.Routing.Execution.Preflight
+  alias Storyarn.AI.Routing.Rules.ModelLimits
   alias Storyarn.AI.TaskRegistry
   alias Storyarn.AI.Tasks.ManagedDiagnostic
 

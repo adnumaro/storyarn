@@ -16,7 +16,7 @@ defmodule Storyarn.Workspaces.WorkspaceMembership do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Workspaces.Memberships.Data.UserRecord
+  alias Storyarn.Workspaces.Memberships.Projections.UserRecord
   alias Storyarn.Workspaces.Memberships.Rules.Permissions
   alias Storyarn.Workspaces.Workspace
 

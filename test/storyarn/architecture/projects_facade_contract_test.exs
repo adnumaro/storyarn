@@ -24,6 +24,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     change_project: 1,
     change_project: 2,
     change_source_language: 4,
+    check_invitation_rate: 2,
     count_assets: 1,
     count_assets: 2,
     count_assets_by_type: 1,
@@ -53,6 +54,8 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     enqueue_project_import: 3,
     enqueue_project_import: 4,
     ensure_source_language: 1,
+    export_portable_project_template: 2,
+    export_portable_project_template: 3,
     external_project_storage?: 0,
     get_asset: 2,
     get_asset_family_usages: 2,
@@ -140,6 +143,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     prepare_workspace_data_hard_delete: 1,
     preview_portable_project_template: 1,
     preview_portable_project_template: 2,
+    project_classification_options: 0,
     project_export_options: 1,
     project_import_active_statuses: 0,
     project_import_resume_storage_key: 2,
@@ -178,6 +182,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     resume_project_import: 4,
     revoke_invitation: 1,
     run_asset_materialization_scope: 2,
+    run_snapshot_archive_smoke!: 1,
     save_project_import_review: 3,
     sheet_referenced_block_ids: 1,
     slugify_project_name: 1,
@@ -261,9 +266,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "dda538334436658cf501a5b68be54bf920465e752c74fe50049931d53811e80a"
+  @docs_digest "8de6fbd966b86d394c3b20362083efb45c5f2468d1bf00df9987416fe3f0d882"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "b8fa48d62a01839bd848b8a228abe0be227c5b4561ee512968e4490c971f3992"
+  @specs_digest "94800341e839c234aca49af0f6669f27c870eba0eb209b717803b9c81734b586"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract)
@@ -295,10 +300,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 177
+    assert length(established_docs) == 181
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 72, hidden: 12, none: 93}
+             %{documented: 74, hidden: 14, none: 93}
 
     assert length(worker_docs) == 42
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))

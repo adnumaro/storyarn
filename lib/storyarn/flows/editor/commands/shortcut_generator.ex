@@ -5,7 +5,7 @@ defmodule Storyarn.Flows.ShortcutGenerator do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.TreeOperations
-  alias Storyarn.Platform.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.Repo
 
   @spec prepare_create(map(), pos_integer(), pos_integer() | nil) :: map()
@@ -19,7 +19,7 @@ defmodule Storyarn.Flows.ShortcutGenerator do
 
   @spec prepare_update(Flow.t(), map(), boolean() | (-> boolean())) :: map()
   def prepare_update(%Flow{} = flow, attrs, referenced?) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
     new_name = attrs["name"]
 
     cond do
@@ -53,7 +53,7 @@ defmodule Storyarn.Flows.ShortcutGenerator do
 
   @spec assign_position(map(), pos_integer(), pos_integer() | nil) :: map()
   def assign_position(attrs, project_id, parent_id) do
-    attrs = MapUtils.stringify_keys(attrs)
+    attrs = MapAccess.stringify_keys(attrs)
 
     if Map.has_key?(attrs, "position") do
       attrs

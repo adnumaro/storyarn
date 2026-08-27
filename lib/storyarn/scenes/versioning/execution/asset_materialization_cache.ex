@@ -10,7 +10,7 @@ defmodule Storyarn.Scenes.Versioning.Execution.AssetMaterializationCache do
   import Ecto.Query, warn: false
 
   alias Storyarn.Repo
-  alias Storyarn.Scenes.Versioning.Data.AssetRecord
+  alias Storyarn.Scenes.Versioning.Entities.AssetRecord
 
   @type mode :: :reuse | :copy
   @type fingerprint :: term()

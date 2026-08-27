@@ -4,7 +4,7 @@ defmodule Storyarn.AI.AllowanceAccount do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
 
   schema "ai_allowance_accounts" do
     field :status, :string, default: "active"

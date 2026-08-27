@@ -4,7 +4,7 @@ defmodule Storyarn.AI.ProviderBudgetReservation do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.ManagedSpend.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Operation
 
   schema "ai_provider_budget_reservations" do

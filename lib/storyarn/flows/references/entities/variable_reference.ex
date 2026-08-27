@@ -15,7 +15,7 @@ defmodule Storyarn.Flows.VariableReference do
   import Ecto.Changeset
 
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Flows.References.Data.BlockRecord
+  alias Storyarn.Flows.References.Projections.BlockRecord
 
   # What `VariableReferenceTracker.replace_references/4` actually writes.
   # `"map_zone"` was here from before the Maps→Scenes rename and matches no row;

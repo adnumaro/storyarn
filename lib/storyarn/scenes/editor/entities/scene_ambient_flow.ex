@@ -14,7 +14,7 @@ defmodule Storyarn.Scenes.SceneAmbientFlow do
   import Ecto.Changeset
 
   alias Ecto.Association.NotLoaded
-  alias Storyarn.Scenes.Editor.Data.FlowRecord
+  alias Storyarn.Scenes.Editor.Projections.FlowRecord
   alias Storyarn.Scenes.Scene
 
   @type t :: %__MODULE__{

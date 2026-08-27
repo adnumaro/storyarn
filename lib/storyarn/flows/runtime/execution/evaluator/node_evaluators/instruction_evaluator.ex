@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
 
   alias Storyarn.Flows.Evaluator.EngineHelpers
   alias Storyarn.Flows.Evaluator.InstructionExec
-  alias Storyarn.Flows.Logic
+  alias Storyarn.Flows.Expressions
 
   @doc """
   Evaluate an instruction node: execute all assignments and follow the output.
@@ -21,7 +21,7 @@ defmodule Storyarn.Flows.Evaluator.NodeEvaluators.InstructionEvaluator do
     {:ok, new_variables, changes, errors, warnings} =
       InstructionExec.execute(assignments, state.variables)
 
-    new_variables = Logic.recompute_formulas(new_variables)
+    new_variables = Expressions.recompute_formulas(new_variables)
     state = %{state | variables: new_variables}
 
     # Log each change to console + history

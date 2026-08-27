@@ -6,7 +6,7 @@ Localization, not additional bounded contexts:
 
 | Capability | Responsibility |
 | --- | --- |
-| `access/` | Localization's project visibility model and transactional validation of project-owned references. |
+| `project_access/` | Localization's project visibility model and transactional validation of project-owned references. |
 | `languages/` | Project languages, source-language changes, ordering, and the immutable language catalog. |
 | `texts/` | Localized-text lifecycle, runtime inventory, extraction, source reconciliation, and export-facing text reads. |
 | `providers/` | Translation-provider configuration and provider technical adapters. |
@@ -31,7 +31,8 @@ Each capability uses only the folders it needs:
 | `entities/` | Localization-owned mutable schemas and changesets. |
 | `contracts/` | Stable Localization value/protocol contracts consumed by more than one capability or context. |
 | `rules/` | Pure validation, normalization, eligibility, and transformation rules. |
-| `data/` | Passive consumer-local SQL projections or immutable reference data; never persistence I/O. |
+| `projections/` | Passive, consumer-owned, read-only SQL mappings over shared tables. |
+| `reference_data/` | Immutable catalogs without database identity, lifecycle, or I/O. |
 | `execution/` | Long-running application orchestration such as batch translation or glossary synchronization. |
 | `adapters/` | Technical translations to PostgreSQL-specific operations, HTTP providers, Oban, PubSub, notifications, or XLSX encoding. |
 
@@ -39,9 +40,9 @@ This is a pragmatic functional architecture. A capability does not need every
 role folder, and technical behavior is not wrapped in a port merely to satisfy
 a diagram. The folder name must, however, describe the responsibility it owns.
 
-## `data/`
+## Projections and reference data
 
-`data/` accepts exactly two categories.
+The passive data roles are explicit siblings of `adapters/`.
 
 ### Consumer-local SQL projections
 
@@ -49,13 +50,13 @@ These are minimal Ecto schemas over shared tables. They let each capability
 read the exact shape it needs without importing another capability's or bounded
 context's code model. Duplication is intentional:
 
-- `Access.Data.ProjectRecord`, `Languages.Data.ProjectRecord`,
-  `Providers.Data.ProjectRecord`, `Glossary.Data.ProjectRecord`,
-  `Texts.Data.ProjectRecord`, and `Translation.Data.ProjectRecord` all describe
+- `ProjectAccess.Projections.ProjectRecord`, `Languages.Projections.ProjectRecord`,
+  `Providers.Projections.ProjectRecord`, `Glossary.Projections.ProjectRecord`,
+  `Texts.Projections.ProjectRecord`, and `Translation.Projections.ProjectRecord` all describe
   different consumer needs over the same `projects` table.
-- `Texts.Data.FlowNodeRecord` and `Texts.Data.BlockRecord` contain only the
+- `Texts.Projections.FlowNodeRecord` and `Texts.Projections.BlockRecord` contain only the
   fields needed to build Localization's runtime inventory.
-- `Reporting.Data.LocalizedTextRecord` is an aggregation projection and does
+- `Reporting.Projections.LocalizedTextRecord` is an aggregation projection and does
   not reuse the write-side `LocalizedText` entity.
 
 A data module declares fields, associations, and types only. Queries and
@@ -66,11 +67,10 @@ or bounded context.
 
 Reference data is an immutable catalog compiled with the application. It has no
 database identity, lifecycle, external I/O, or transaction semantics.
-`Languages.Data.Catalog` is the current example.
+`Languages.ReferenceData.Catalog` is the current example.
 
-Every data module documents which category it belongs to and why the consumer
-needs it. `data/` is not a synonym for persistence and must not become a generic
-schema folder.
+Every projection documents why its consumer needs it. Neither role is a
+synonym for persistence or a place for generic schemas.
 
 ## Stable module identities
 

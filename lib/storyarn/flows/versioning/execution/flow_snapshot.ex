@@ -26,14 +26,14 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Flows.Versioning.AssetCatalog
-  alias Storyarn.Flows.Versioning.Data.AssetRecord
-  alias Storyarn.Flows.Versioning.Data.LocalizedTextRecord
-  alias Storyarn.Flows.Versioning.Data.SheetAvatarRecord
-  alias Storyarn.Flows.Versioning.Data.SheetRecord
+  alias Storyarn.Flows.Versioning.Entities.AssetRecord
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.FlowSnapshotDiff
   alias Storyarn.Flows.Versioning.FlowSnapshotValidator
   alias Storyarn.Flows.Versioning.LocalizationCodec
+  alias Storyarn.Flows.Versioning.Projections.LocalizedTextRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetAvatarRecord
+  alias Storyarn.Flows.Versioning.Projections.SheetRecord
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Flows.Versioning.SourceContract
   alias Storyarn.Platform.Shared.HtmlUtils
@@ -180,203 +180,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
 
   @doc "Extracts every external reference needed by restore conflict preview."
   @spec scan_references(map()) :: [map()]
-  def scan_references(snapshot) when is_map(snapshot) do
-    refs =
-      maybe_add_scan_ref(
-        [],
-        :scene,
-        snapshot["scene_id"],
-        dgettext("flows", "Flow backdrop scene")
-      )
-
-    refs =
-      snapshot
-      |> snapshot_collection("nodes")
-      |> Enum.with_index(1)
-      |> Enum.reduce(refs, fn {node, index}, acc ->
-        scan_node_references(node, index, acc)
-      end)
-
-    scan_localization_references(snapshot, refs)
-  end
-
-  def scan_references(_snapshot), do: []
-
-  defp scan_node_references(node, index, refs) when is_map(node) do
-    data = node["data"] || %{}
-    type = node["type"] || "unknown"
-
-    refs
-    |> maybe_add_scan_ref(
-      :sheet,
-      data["speaker_sheet_id"],
-      dgettext("flows", "Node #%{n} (%{type}) — speaker", n: index, type: type)
-    )
-    |> maybe_add_scan_ref(
-      :sheet,
-      data["location_sheet_id"],
-      dgettext("flows", "Node #%{n} (%{type}) — location", n: index, type: type)
-    )
-    |> maybe_add_scan_ref(
-      :flow,
-      data["referenced_flow_id"],
-      dgettext("flows", "Node #%{n} (%{type}) — referenced flow", n: index, type: type)
-    )
-    |> maybe_add_scan_asset(
-      data["audio_asset_id"],
-      dgettext("flows", "Node #%{n} (%{type}) — audio", n: index, type: type),
-      "audio/"
-    )
-    |> maybe_add_scan_avatar(
-      data["avatar_id"],
-      data["speaker_sheet_id"],
-      dgettext("flows", "Node #%{n} (%{type}) — avatar", n: index, type: type)
-    )
-    |> scan_exit_target(data, index, type)
-    |> scan_mentions(data, index, type)
-    |> scan_sequence_assets(node, index)
-  end
-
-  defp scan_node_references(_node, _index, refs), do: refs
-
-  defp maybe_add_scan_ref(refs, _type, nil, _context), do: refs
-
-  defp maybe_add_scan_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]
-
-  defp maybe_add_scan_asset(refs, nil, _context, _prefix), do: refs
-
-  defp maybe_add_scan_asset(refs, id, context, prefix) do
-    [%{type: :asset, id: id, context: context, expected_content_type_prefix: prefix} | refs]
-  end
-
-  defp maybe_add_scan_avatar(refs, nil, _speaker_sheet_id, _context), do: refs
-
-  defp maybe_add_scan_avatar(refs, id, speaker_sheet_id, context) do
-    [%{type: :avatar, id: id, speaker_sheet_id: speaker_sheet_id, context: context} | refs]
-  end
-
-  defp scan_exit_target(refs, %{"target_type" => target_type, "target_id" => id}, index, type)
-       when target_type in ["flow", "scene"] do
-    maybe_add_scan_ref(
-      refs,
-      String.to_existing_atom(target_type),
-      id,
-      dgettext("flows", "Node #%{n} (%{type}) — terminal target", n: index, type: type)
-    )
-  end
-
-  defp scan_exit_target(refs, _data, _index, _type), do: refs
-
-  defp scan_mentions(refs, data, index, type) do
-    context =
-      dgettext("flows", "Node #%{n} (%{type}) — rich-text mention",
-        n: index,
-        type: type
-      )
-
-    data
-    |> References.rich_text_html_candidates()
-    |> Enum.reduce(refs, &scan_mentions_from_html(&1, context, &2))
-  end
-
-  defp scan_mentions_from_html(html, context, refs) do
-    case References.extract_rich_text_mentions(html) do
-      {:ok, mentions} ->
-        Enum.reduce(mentions, refs, fn mention, mention_refs ->
-          [
-            %{
-              type: mention_reference_type(mention.type),
-              id: mention.id,
-              context: context
-            }
-            | mention_refs
-          ]
-        end)
-
-      {:error, reason} ->
-        [%{type: :reference, id: malformed_mention_id(reason), context: context} | refs]
-    end
-  end
-
-  defp mention_reference_type("sheet"), do: :sheet
-  defp mention_reference_type("flow"), do: :flow
-
-  defp malformed_mention_id({:invalid_mention, %{id: [id]}}), do: id
-  defp malformed_mention_id({:invalid_mention, details}), do: inspect(details)
-  defp malformed_mention_id(_reason), do: nil
-
-  defp scan_sequence_assets(refs, node, node_index) do
-    refs =
-      node
-      |> snapshot_collection("sequence_tracks")
-      |> Enum.with_index(1)
-      |> Enum.reduce(refs, fn
-        {%{} = track, track_index}, acc ->
-          maybe_add_scan_asset(
-            acc,
-            track["asset_id"],
-            dgettext("flows", "Node #%{n} sequence track #%{track} — audio",
-              n: node_index,
-              track: track_index
-            ),
-            "audio/"
-          )
-
-        {_track, _track_index}, acc ->
-          acc
-      end)
-
-    node
-    |> snapshot_collection("sequence_visual_layers")
-    |> Enum.with_index(1)
-    |> Enum.reduce(refs, fn
-      {%{} = layer, layer_index}, acc ->
-        maybe_add_scan_asset(
-          acc,
-          layer["asset_id"],
-          dgettext("flows", "Node #%{n} sequence visual layer #%{layer}",
-            n: node_index,
-            layer: layer_index
-          ),
-          "image/"
-        )
-
-      {_layer, _layer_index}, acc ->
-        acc
-    end)
-  end
-
-  defp scan_localization_references(snapshot, refs) do
-    snapshot
-    |> snapshot_collection("localization")
-    |> Enum.with_index(1)
-    |> Enum.reduce(refs, fn
-      {%{} = row, index}, acc ->
-        acc
-        |> maybe_add_scan_asset(
-          row["vo_asset_id"],
-          dgettext("flows", "Localization row #%{n} — voice-over", n: index),
-          "audio/"
-        )
-        |> maybe_add_scan_ref(
-          :sheet,
-          row["speaker_sheet_id"],
-          dgettext("flows", "Localization row #%{n} — speaker", n: index)
-        )
-
-      {_row, _index}, acc ->
-        acc
-    end)
-  end
-
-  defp snapshot_collection(snapshot, key) when is_map(snapshot) do
-    case Map.get(snapshot, key, []) do
-      collection when is_list(collection) -> collection
-      _malformed -> []
-    end
-  end
-
-  defp snapshot_collection(_snapshot, _key), do: []
+  defdelegate scan_references(snapshot), to: Storyarn.Flows.Versioning.Execution.ReferenceScanner, as: :scan
 
   defp lock_flow(flow_id, project_id) do
     case Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR UPDATE")) do

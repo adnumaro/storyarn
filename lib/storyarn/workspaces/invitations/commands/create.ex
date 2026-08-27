@@ -4,18 +4,17 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform
-  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Invitations.Adapters.Delivery.Request
+  alias Storyarn.Workspaces.Invitations.Adapters.Notifications.PlatformRequest
   alias Storyarn.Workspaces.Invitations.Queries.Pending
+  alias Storyarn.Workspaces.Invitations.RateLimits
   alias Storyarn.Workspaces.Invitations.Rules.Email
   alias Storyarn.Workspaces.Invitations.Tokens.Issuer
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
 
-  @rate_limit_context "workspace"
   @preload_after_insert [:workspace, :invited_by]
 
   def execute(%Workspace{} = workspace, invited_by, email, role \\ "member") do
@@ -29,7 +28,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
   end
 
   defp check_invitation_rate_limit(workspace_id, user_id) do
-    RateLimiter.check_invitation(@rate_limit_context, workspace_id, user_id)
+    RateLimits.check(workspace_id, user_id)
   end
 
   defp member_exists?(workspace_id, email) do
@@ -68,7 +67,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
            :ok <- normalize_limit_result(Platform.can_invite_member?(locked_workspace, email)),
            :ok <- delete_inactive_invitation(locked_workspace.id, email),
            {:ok, invitation} <- insert_invitation(changeset),
-           {:ok, _job} <- Request.enqueue(encoded_token, opts) do
+           {:ok, _job} <- PlatformRequest.enqueue(encoded_token, opts) do
         {:ok, invitation}
       end
     end)

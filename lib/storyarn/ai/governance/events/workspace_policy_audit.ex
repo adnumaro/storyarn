@@ -4,8 +4,8 @@ defmodule Storyarn.AI.WorkspacePolicyAudit do
 
   import Ecto.Changeset
 
-  alias Storyarn.AI.Governance.Data.UserRecord, as: User
-  alias Storyarn.AI.Governance.Data.WorkspaceRecord, as: Workspace
+  alias Storyarn.AI.Governance.Projections.UserRecord, as: User
+  alias Storyarn.AI.Governance.Projections.WorkspaceRecord, as: Workspace
 
   schema "ai_workspace_policy_audits" do
     field :workspace_id_snapshot, :integer

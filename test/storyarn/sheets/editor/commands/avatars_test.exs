@@ -11,7 +11,7 @@ defmodule Storyarn.Sheets.Editor.Commands.AvatarsTest do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets
-  alias Storyarn.Sheets.Editor.Data.FlowNodeRecord
+  alias Storyarn.Sheets.Editor.Projections.FlowNodeRecord
 
   setup do
     user = user_fixture()

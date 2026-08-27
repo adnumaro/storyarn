@@ -35,6 +35,10 @@ defmodule Storyarn.Projects.MembershipOperations do
   @doc """
   Creates a membership.
   """
+  def create_membership(_config, _parent_id, _user_id, "owner") do
+    {:error, :cannot_assign_owner_role}
+  end
+
   def create_membership(config, parent_id, user_id, role) do
     config.membership_schema
     |> struct()
@@ -51,6 +55,10 @@ defmodule Storyarn.Projects.MembershipOperations do
   """
   def update_member_role(_config, %{role: "owner"}, _role) do
     {:error, :cannot_change_owner_role}
+  end
+
+  def update_member_role(_config, _membership, "owner") do
+    {:error, :cannot_assign_owner_role}
   end
 
   def update_member_role(config, membership, role) do

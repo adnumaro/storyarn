@@ -14,9 +14,9 @@ defmodule Storyarn.Scenes.Versioning.Execution.Conflicts do
   alias Storyarn.Scenes.References
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.Versioning.Commands.AssetHashResolver
-  alias Storyarn.Scenes.Versioning.Data.AssetRecord
-  alias Storyarn.Scenes.Versioning.Data.FlowRecord
-  alias Storyarn.Scenes.Versioning.Data.SheetRecord
+  alias Storyarn.Scenes.Versioning.Entities.AssetRecord
+  alias Storyarn.Scenes.Versioning.Projections.FlowRecord
+  alias Storyarn.Scenes.Versioning.Projections.SheetRecord
   alias Storyarn.Scenes.Versioning.SceneSnapshot
 
   @type_to_schema %{

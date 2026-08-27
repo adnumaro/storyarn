@@ -11,8 +11,8 @@ defmodule Storyarn.Flows.EntityReferenceTracker do
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.ProjectReferenceIntegrity
-  alias Storyarn.Flows.References.Data.EntityReferenceRecord
-  alias Storyarn.Flows.References.Data.SheetRecord
+  alias Storyarn.Flows.References.Projections.EntityReferenceRecord
+  alias Storyarn.Flows.References.Projections.SheetRecord
   alias Storyarn.Flows.RichTextMentions
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo

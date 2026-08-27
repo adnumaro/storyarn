@@ -7,11 +7,11 @@ defmodule Storyarn.Sheets.Versioning.Execution.LocalizationCodec do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.Versioning.Data.AssetRecord, as: Asset
-  alias Storyarn.Sheets.Versioning.Data.LocalizedTextRecord, as: LocalizedText
-  alias Storyarn.Sheets.Versioning.Data.ProjectLanguageRecord, as: ProjectLanguage
-  alias Storyarn.Sheets.Versioning.Data.UserRecord, as: User
+  alias Storyarn.Sheets.Versioning.Entities.AssetRecord, as: Asset
   alias Storyarn.Sheets.Versioning.LocaleCode
+  alias Storyarn.Sheets.Versioning.Projections.LocalizedTextRecord, as: LocalizedText
+  alias Storyarn.Sheets.Versioning.Projections.ProjectLanguageRecord, as: ProjectLanguage
+  alias Storyarn.Sheets.Versioning.Projections.UserRecord, as: User
   alias Storyarn.Sheets.Versioning.SourceContract
 
   @manifest_fields ~w(count sha256 target_locales)

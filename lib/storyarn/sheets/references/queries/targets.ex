@@ -11,7 +11,7 @@ defmodule Storyarn.Sheets.References.Queries.Targets do
   alias Storyarn.Platform.Shared.SearchHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets.Editor
-  alias Storyarn.Sheets.References.Data.FlowRecord
+  alias Storyarn.Sheets.References.Projections.FlowRecord
   alias Storyarn.Sheets.Sheet
 
   @spec validate(String.t(), integer(), integer()) ::

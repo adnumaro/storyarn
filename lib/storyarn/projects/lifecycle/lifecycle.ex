@@ -2,11 +2,13 @@ defmodule Storyarn.Projects.Lifecycle do
   @moduledoc false
 
   alias Storyarn.Projects.Events
+  alias Storyarn.Projects.Lifecycle.Commands.UniqueSlug
   alias Storyarn.Projects.LocalizationLanguageCatalog
   alias Storyarn.Projects.LocalizationReadModel
   alias Storyarn.Projects.LocalizationSettings
   alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectClassification
   alias Storyarn.Projects.ProjectCrud
   alias Storyarn.Projects.WorkspaceDataLifecycle
 
@@ -41,7 +43,10 @@ defmodule Storyarn.Projects.Lifecycle do
     to: LocalizationLanguageCatalog,
     as: :option
 
+  defdelegate project_classification_options(), to: ProjectClassification, as: :project_options
+
   defdelegate slugify_project_name(name), to: NameNormalizer, as: :slugify
+  defdelegate generate_unique_slug(queryable, scope, name), to: UniqueSlug, as: :generate
 
   def new_project, do: %Project{}
   defdelegate project_theme_colors(project), to: Project, as: :theme_colors

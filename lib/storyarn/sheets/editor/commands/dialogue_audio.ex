@@ -10,9 +10,9 @@ defmodule Storyarn.Sheets.Editor.Commands.DialogueAudio do
 
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
-  alias Storyarn.Sheets.Editor.Data.AssetRecord
-  alias Storyarn.Sheets.Editor.Data.FlowNodeRecord
-  alias Storyarn.Sheets.Editor.Data.FlowRecord
+  alias Storyarn.Sheets.Editor.Projections.AssetRecord
+  alias Storyarn.Sheets.Editor.Projections.FlowNodeRecord
+  alias Storyarn.Sheets.Editor.Projections.FlowRecord
 
   @derivatives_fingerprint_version 1
 
