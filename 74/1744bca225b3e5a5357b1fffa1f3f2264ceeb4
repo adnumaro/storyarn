@@ -1,0 +1,41 @@
+lib/storyarn/accounts/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 10-17,19-21
+lib/storyarn/ai/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 10-17,27-40
+lib/storyarn/sheets/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 7-17,28-40
+lib/storyarn/platform/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 7-17,32-43
+lib/storyarn/projects/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 7-17,63-76
+lib/storyarn/localization/README.md
+  s_e7b250b9258242::t_d82fee1113e870 7-16,27-37
+docs/reference/context-map.md
+  s_e7b250b9258242::t_d82fee1113e870 16-27,38-48
+docs/reference/shared-utilities.md
+  s_e7b250b9258242::t_d82fee1113e870 259-268
+lib/storyarn/flows/README.md
+  s_e7b250b9258242::t_b0c4c1bac10bed 7-16,33-45
+docs/reference/domain-patterns.md
+  s_e7b250b9258242::t_d82fee1113e870 22-32,108-112
+lib/storyarn/scenes/README.md
+  s_e7b250b9258242::t_8d33948040c160 7-16,27-39
+lib/storyarn/workspaces/README.md
+  s_e7b250b9258242::t_94c4eaa006c56b 9,14-15
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.24",
+  "base_commit_sha": "741744bca225b3e5a5357b1fffa1f3f2264ceeb4",
+  "prompts": {},
+  "sessions": {
+    "s_e7b250b9258242": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "9ab613fd-ba10-480f-84b0-d82e37ddf35e",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
