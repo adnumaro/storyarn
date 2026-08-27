@@ -200,7 +200,7 @@ defmodule Storyarn.Flows.NodeAuthoringTest do
     assert Enum.map(connections, & &1.id) == [connection.id]
   end
 
-  test "restore_data accepts the serialized node id used by the LiveView adapter", %{flow: flow} do
+  test "restore_data allowlists authored fields and preserves the live runtime identity", %{flow: flow} do
     node =
       node_fixture(flow, %{
         type: "dialogue",
@@ -214,11 +214,21 @@ defmodule Storyarn.Flows.NodeAuthoringTest do
 
     assert {:ok, result} =
              Flows.edit_node(flow.id, Integer.to_string(node.id), :restore_data, %{
-               data: %{"text" => "Original", "speaker_sheet_id" => nil}
+               data: %{
+                 "text" => "Original",
+                 "speaker_sheet_id" => nil,
+                 "localization_id" => "dialogue_snapshot_must_not_replace_live_identity",
+                 "foreign_payload" => "must not persist"
+               }
              })
 
     assert result.current_data["text"] == "Original"
     assert result.current_data["localization_id"] == localization_id
-    assert Flows.get_node!(flow.id, node.id).data["text"] == "Original"
+    refute Map.has_key?(result.current_data, "foreign_payload")
+
+    persisted = Flows.get_node!(flow.id, node.id)
+    assert persisted.data["text"] == "Original"
+    assert persisted.data["localization_id"] == localization_id
+    refute Map.has_key?(persisted.data, "foreign_payload")
   end
 end

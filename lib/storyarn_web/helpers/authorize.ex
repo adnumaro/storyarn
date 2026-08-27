@@ -31,6 +31,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
   - `:manage_workspace_members` - Invite/remove members in workspace
   """
 
+  use Gettext, backend: Storyarn.Gettext
+
   alias Phoenix.LiveView.Socket
   alias Storyarn.Projects
   alias Storyarn.Workspaces
@@ -105,8 +107,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
   end
 
   defp unauthorized_message do
-    # Use Gettext directly since we can't use the macro in a function body
-    Gettext.gettext(Storyarn.Gettext, "You don't have permission to perform this action.")
+    gettext("You don't have permission to perform this action.")
   end
 
   @doc """

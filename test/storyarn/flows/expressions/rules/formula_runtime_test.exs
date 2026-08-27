@@ -51,6 +51,19 @@ defmodule Storyarn.Flows.FormulaRuntimeTest do
     assert result["sheet.table.row.invalid"].value == nil
   end
 
+  test "terminates circular formulas and evaluates each once with the zero fallback" do
+    variables = %{
+      "sheet.table.row.a" =>
+        variable(nil, "formula", formula: %{expression: "b + 1", bindings: %{"b" => "sheet.table.row.b"}}),
+      "sheet.table.row.b" =>
+        variable(nil, "formula", formula: %{expression: "a + 1", bindings: %{"a" => "sheet.table.row.a"}})
+    }
+
+    result = Flows.recompute_formula_variables(variables)
+
+    assert result |> Map.values() |> Enum.map(& &1.value) |> Enum.sort() == [1, 2]
+  end
+
   test "translates same-row and explicit variable bindings" do
     bindings = %{
       "same" => %{"type" => "same_row", "column_slug" => "base"},

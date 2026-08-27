@@ -11,10 +11,10 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
     "exploration" => ~w(commands contracts projections entities events execution queries),
     "health" => ~w(contracts projections queries rules),
     "expressions" => ~w(compatibility contracts projections queries rules),
-    "references" => ~w(commands projections queries),
+    "references" => ~w(commands projections queries records),
     "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
-  @private_roles ~w(adapters commands compatibility queries rules projections execution events)
+  @private_roles ~w(adapters commands compatibility queries rules projections records execution events)
   @passive_roles ~w(rules contracts entities projections)
   @root_facade_dependencies ~w(
     Storyarn.Scenes.Access
@@ -48,6 +48,12 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
     {"projections", "events"},
     {"projections", "adapters"},
     {"projections", "rules"},
+    {"records", "commands"},
+    {"records", "queries"},
+    {"records", "execution"},
+    {"records", "events"},
+    {"records", "adapters"},
+    {"records", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},

@@ -22,6 +22,20 @@ defmodule Storyarn.Sheets.VersioningTest do
   end
 
   describe "Sheet versioning lifecycle" do
+    test "persists the human-readable diff detail as the change summary", %{
+      sheet: sheet,
+      user: user
+    } do
+      assert {:ok, _initial} = Sheets.create_version(sheet, user.id)
+      assert {:ok, changed} = Sheets.update_sheet(sheet, %{name: "Renamed sheet"})
+      changed = Repo.preload(changed, :blocks, force: true)
+      assert {:ok, version} = Sheets.create_version(changed, user.id)
+
+      assert %{"changes" => [%{"detail" => detail} | _]} = version.change_details
+      assert version.change_summary =~ detail
+      refute version.change_summary =~ ~r/^\d+ added, \d+ modified, \d+ removed$/
+    end
+
     test "create, list, restore, delete cycle", %{project: project, user: user} do
       sheet = sheet_fixture(project)
 

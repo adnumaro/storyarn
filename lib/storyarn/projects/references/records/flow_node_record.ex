@@ -1,10 +1,11 @@
 defmodule Storyarn.Projects.References.Persistence.FlowNodeRecord do
   @moduledoc """
-  References-owned projection and repair model for `flow_nodes`.
+  References-owned writable repair record for `flow_nodes`.
 
   It intentionally contains only the columns needed to extract and maintain
-  entity and variable references. Flow editor associations and editor-specific
-  changesets remain private to the Flow bounded context.
+  entity and variable references during Project-owned repair workflows. Flow
+  editor associations and editor-specific changesets remain private to the
+  Flow bounded context.
   """
 
   use Ecto.Schema

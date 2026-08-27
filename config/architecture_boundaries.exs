@@ -627,9 +627,9 @@ localization_worker_facade_denial = %{
 
 # Sheets is one bounded context split by business capability. Stable Sheet
 # entities and value contracts may cross capability lines; operational roles
-# and consumer-owned SQL projections remain private to their owner.
+# and consumer-owned SQL projections and records remain private to their owner.
 sheet_capabilities = ~w(access ai assets editor health localization expressions references versioning)
-sheet_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
+sheet_private_roles = ~w(adapters commands queries rules projections records compatibility execution events)
 
 sheet_internal_path_denials =
   for source_capability <- sheet_capabilities,
@@ -676,6 +676,12 @@ sheet_role_dependency_denials =
         {"projections", "events"},
         {"projections", "adapters"},
         {"projections", "rules"},
+        {"records", "commands"},
+        {"records", "queries"},
+        {"records", "execution"},
+        {"records", "events"},
+        {"records", "adapters"},
+        {"records", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -707,9 +713,9 @@ sheet_role_dependency_denials =
 
 # Scenes is one bounded context split by business capability. Stable Scene
 # entities and value contracts may cross capability lines; operational roles
-# and consumer-owned SQL projections remain private to their owner.
+# and consumer-owned SQL projections and records remain private to their owner.
 scene_capabilities = ~w(access assets editor exploration health expressions references versioning)
-scene_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
+scene_private_roles = ~w(adapters commands queries rules projections records compatibility execution events)
 
 scene_internal_path_denials =
   for source_capability <- scene_capabilities,
@@ -756,6 +762,12 @@ scene_role_dependency_denials =
         {"projections", "events"},
         {"projections", "adapters"},
         {"projections", "rules"},
+        {"records", "commands"},
+        {"records", "queries"},
+        {"records", "execution"},
+        {"records", "events"},
+        {"records", "adapters"},
+        {"records", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
@@ -787,9 +799,9 @@ scene_role_dependency_denials =
 
 # Flows is one bounded context split by business capability. Flow, node,
 # connection, and sequence authoring remains one Editor aggregate; the other
-# capabilities own their consumer-specific runtime, projections, and policies.
+# capabilities own their consumer-specific runtime, projections, records, and policies.
 flow_capabilities = ~w(ai editor health localization expressions references runtime versioning)
-flow_private_roles = ~w(adapters commands queries rules projections compatibility execution events)
+flow_private_roles = ~w(adapters commands queries rules projections records compatibility execution events)
 
 flow_internal_path_denials =
   for source_capability <- flow_capabilities,
@@ -836,6 +848,12 @@ flow_role_dependency_denials =
         {"projections", "events"},
         {"projections", "adapters"},
         {"projections", "rules"},
+        {"records", "commands"},
+        {"records", "queries"},
+        {"records", "execution"},
+        {"records", "events"},
+        {"records", "adapters"},
+        {"records", "rules"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},

@@ -93,6 +93,12 @@ jobs:
       - name: Check Elixir formatting
         run: mix format --check-formatted
 
+      - name: Check backend conventions
+        run: mix convention.check
+
+      - name: Check backend architecture
+        run: mix architecture.check
+
       - name: Run Credo
         run: mix credo --strict
 
@@ -101,6 +107,9 @@ jobs:
 
       - name: Run JS checks
         run: pnpm run fmt:check && pnpm run lint && pnpm run typecheck
+
+      - name: Check frontend architecture
+        run: pnpm arch
 
       - name: Run Elixir tests
         run: mix test

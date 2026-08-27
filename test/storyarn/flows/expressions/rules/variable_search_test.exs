@@ -67,6 +67,16 @@ defmodule Storyarn.Flows.VariableSearchTest do
                {[%{id: "hero.health", name: "Hero health"}], false}
     end
 
+    test "matches picker queries case-insensitively" do
+      variables = [
+        %{sheet_shortcut: "mc", variable_name: "health", label: "MC Health"},
+        %{sheet_shortcut: "world", variable_name: "weather", label: "World weather"}
+      ]
+
+      assert Flows.search_variable_options(variables, query: " HEALTH ") ==
+               {[%{id: "mc.health", name: "MC Health"}], false}
+    end
+
     test "keeps a matching selected option visible outside the page and reports more results" do
       variables = [
         %{sheet_shortcut: "hero", variable_name: "health", label: "Hero health"},

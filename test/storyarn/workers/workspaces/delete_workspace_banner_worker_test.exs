@@ -1,5 +1,5 @@
 defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
   import Storyarn.AccountsFixtures
@@ -9,7 +9,9 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Workers.DeleteWorkspaceBannerWorker
+  alias Storyarn.WorkspaceBannerCleanupQueueStub, as: CleanupQueueStub
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue
   alias Storyarn.Workspaces.Workspace
 
   test "replacement commits an Oban cleanup intent and the worker deletes the obsolete object" do
@@ -92,6 +94,32 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
     refute Repo.get(Workspace, workspace.id)
 
     refute_enqueued(worker: DeleteWorkspaceBannerWorker)
+  end
+
+  test "hard delete rolls back when the banner cleanup intent cannot be persisted" do
+    owner = user_fixture()
+    workspace = workspace_fixture(owner)
+    key = "workspaces/#{workspace.slug}/banner/#{Ecto.UUID.generate()}.png"
+    {:ok, url} = Storage.upload(key, "workspace banner", "image/png")
+    on_exit(fn -> Storage.delete(key) end)
+
+    workspace =
+      workspace
+      |> Workspace.banner_changeset(%{banner_url: url})
+      |> Repo.update!()
+
+    original_queue = Application.fetch_env!(:storyarn, Queue)
+    CleanupQueueStub.reset()
+    CleanupQueueStub.respond({:error, :queue_unavailable})
+    Application.put_env(:storyarn, Queue, adapter: CleanupQueueStub)
+    on_exit(fn -> Application.put_env(:storyarn, Queue, original_queue) end)
+
+    assert {:error, {:workspace_banner_cleanup_enqueue_failed, :queue_unavailable}} =
+             Workspaces.delete_workspace(workspace)
+
+    assert Repo.get!(Workspace, workspace.id).banner_url == url
+    assert {:ok, _stat} = Storage.stat(key)
+    assert CleanupQueueStub.calls() == [{workspace.slug, key}]
   end
 
   test "worker discards a key outside the captured Workspace namespace" do

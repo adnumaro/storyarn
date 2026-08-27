@@ -39,6 +39,7 @@ Each capability uses only the roles it actually needs:
 | `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful.                                       |
 | `rules/`          | Deterministic validation, normalization, formula, graph, and health decisions.                                                                   |
 | `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                                                            |
+| `records/`        | Controlled writable mappings for derived indexes, localization inventory, or exact reconstitution.                                               |
 | `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                                                              |
 | `execution/`      | Stateful or multi-step runtime orchestration such as evaluation, debugging, and snapshot materialization.                                        |
 | `events/`         | Business facts owned by the capability that produced them.                                                                                       |
@@ -61,15 +62,15 @@ capability's or bounded context's model:
 
 - `Editor.Projections.*` contains the foreign project, Scene, Sheet, avatar, gallery,
   and asset facts needed while authoring the Flow aggregate.
-- `References.Projections.*` contains the target and variable facts required to
-  validate and rebuild Flow-owned reference indexes.
+- `References.Projections.*` contains the target and variable facts read while
+  validating Flow-owned reference indexes.
 - `Runtime.Projections.*` contains only the authored facts needed to execute a Flow;
   it does not use Editor's persistence model as its read model.
 - `Health.Projections.*` may map the same Flow tables independently when project-wide
   analysis needs a purpose-built projection.
 - `AI.Projections.*` is bounded to the evidence needed to build a Flow AI package.
-- `Localization.Projections.*` maps the localization inventory and active language
-  facts needed by Flow extraction.
+- `Localization.Projections.*` maps the active-language facts needed by Flow
+  extraction.
 - `Versioning.Projections.*` is independently shaped for capture, validation,
   materialization, and exact restore.
 
@@ -83,6 +84,16 @@ does not call `Repo`, coordinate a transaction or lock, emit an event, contact
 a provider, or decide business policy. Reads live in `queries/`; write models
 and invariants live in `entities/`, `commands/`, or an indivisible `execution/`
 workflow.
+
+## `records/`
+
+Records are equally consumer-owned, but they are deliberate write targets. Flow
+localization reconciliation writes its inventory record, References rebuilds
+its derived entity-reference index, and Versioning writes localized text only
+during exact restore. Keeping these mappings out of `projections/` makes write
+authority visible without importing another bounded context's schema. Their
+established `*.Projections.*` module names remain temporarily stable; the
+physical folder is the authority classification.
 
 ## `reference_data/`
 

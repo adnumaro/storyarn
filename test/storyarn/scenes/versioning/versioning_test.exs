@@ -40,6 +40,19 @@ defmodule Storyarn.Scenes.VersioningTest do
   end
 
   describe "Scene-owned version lifecycle" do
+    test "persists the human-readable diff detail as the change summary", %{
+      user: user,
+      scene: scene
+    } do
+      assert {:ok, _initial} = Versioning.create_version(scene, user.id)
+      assert {:ok, changed} = Scenes.update_scene(scene, %{name: "Renamed opening"})
+      assert {:ok, version} = Versioning.create_version(changed, user.id)
+
+      assert %{"changes" => [%{"detail" => detail} | _]} = version.change_details
+      assert version.change_summary =~ detail
+      refute version.change_summary =~ ~r/^\d+ added, \d+ modified, \d+ removed$/
+    end
+
     test "creates, verifies, lists, rate-limits, names, and deletes versions", %{
       user: user,
       scene: scene

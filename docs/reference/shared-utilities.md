@@ -1,358 +1,120 @@
-# Shared Utilities Registry
+# Shared technical primitives
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-25
+> Last reviewed: 2026-08-27
 >
-> Sources of truth: the module files linked below and
-> `lib/storyarn/platform/README.md` for Platform kernel and adapter ownership.
-
-**IMPORTANT: Before writing any helper function, search this registry first. Reuse a listed utility only when the
-consumer needs the exact same stable, business-neutral contract. When semantics or ownership differ by bounded
-context, a deliberate consumer-owned implementation is preferred even if it duplicates code.**
-
-## `Storyarn.Projects.NameNormalizer`
-
-**File:** `lib/storyarn/projects/lifecycle/rules/name_normalizer.ex` — **owned by the Project
-boundary** since ENG-92 (its only consumers). Tools carry their own copies
-(e.g. `Workspaces.Lifecycle.Rules.Slug`, per-context `ShortcutGenerator`s); do not add
-foreign consumers.
-
-Centralizes the Project boundary's name-to-identifier conversions. Handles Unicode transliteration (accents → ASCII), lowercasing, and character filtering.
-
-| Function                   | Input → Output                                                                         | Used For                                                                            |
-| -------------------------- | -------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
-| `slugify/1`                | `"My Workspace!"` → `"my-workspace"`                                                   | URL slugs. Allows `[a-z0-9-]`                                                       |
-| `variablify/1`             | `"Health Points"` → `"health_points"`                                                  | Variable names. Allows `[a-z0-9_.]`, `nil` on blank                                 |
-| `shortcutify/1`            | `"MC.Jaime"` → `"mc.jaime"`                                                            | Sheet/flow/scene shortcuts. Allows `[a-z0-9-.]` — spaces become `-`, dots preserved |
-| `generate_unique_slug/3-4` | `(Schema, scope, name, suffix \\ nil)` → `"my-workspace"` or `"my-workspace-a1b2c3d4"` | Unique slugs with collision suffix                                                  |
-| `maybe_regenerate/4`       | `(current, new_name, referenced?, normalize_fn)` → `String.t()`                        | Smart rename: skips if entity has backlinks                                         |
-
-**Pipeline:** NFD decomposition → strip combining marks → lowercase → filter allowed chars → collapse separators → trim
-
-```elixir
-# URL slug for project/workspace
-NameNormalizer.generate_unique_slug(Project, [workspace_id: ws_id], "My Project")
-
-# Variable name from block label
-NameNormalizer.variablify("Health Points")  # => "health_points"
-
-# Entity shortcut
-NameNormalizer.shortcutify("MC.Jaime")  # => "mc.jaime"
-```
-
----
-
-## Shortcut lifecycle (consumer-owned)
-
-`Storyarn.Shared.ShortcutHelpers` and the global `Storyarn.Shortcuts` module
-were deleted during the ENG-92 bounded-context migration. Each tool owns its
-shortcut policy (e.g. `Storyarn.Sheets.ShortcutGenerator`,
-`Storyarn.Flows.ShortcutGenerator`). Copy the pattern into the owning context
-instead of recreating a shared module.
-
----
-
-## Tree operations (consumer-owned)
-
-`Storyarn.Shared.TreeOperations` was deleted during the ENG-92 migration.
-Each hierarchical tool carries its own copy closed over its schema
-(`Storyarn.Sheets.TreeOperations`, `Storyarn.Flows.TreeOperations`,
-`Storyarn.Scenes.TreeOperations`) including the `batch_set_positions`
-allowlists. Copy the pattern into the owning context.
-
----
-
-## Soft delete (consumer-owned)
-
-`Storyarn.Shared.SoftDelete` was deleted during the ENG-92 bounded-context
-migration. Recursive soft-delete now lives inside each owning context (e.g.
-`Storyarn.Scenes.SoftDelete` — `soft_delete_children/3`, `list_deleted/2`;
-Flows uses its own `FlowTrash` cascade). Do not recreate a shared module —
-copy the pattern into the owning context instead.
-
----
-
-## `Storyarn.Projects.Validations`
-
-**File:** `lib/storyarn/projects/lifecycle/rules/validations.ex` — **owned by the Project
-boundary** since ENG-92. Workspaces and Accounts carry their formats inline
-(`Workspace.validate_slug`, `User.validate_email_format`,
-`WorkspaceInvitation.validate_email_format`); do not add foreign consumers.
-
-Centralized Ecto validators for the Project boundary. Do NOT write custom regex for these.
-
-| Function                  | Purpose                                                             | Pattern                                      |
-| ------------------------- | ------------------------------------------------------------------- | -------------------------------------------- |
-| `validate_shortcut/1-2`   | Shortcut format (1-50 chars), optional `opts` for custom `:message` | `^[a-z0-9][a-z0-9.\-]*[a-z0-9]$\|^[a-z0-9]$` |
-| `validate_email_format/1` | Email format                                                        | `^[^@,;\s]+@[^@,;\s]+$`                      |
-| `validate_slug/1`         | Slug format on the `:slug` field (1-100 chars)                      | `^[a-z0-9]+(?:-[a-z0-9]+)*$`                 |
-| `shortcut_format/0`       | Returns shortcut regex                                              | For reference                                |
-| `email_format/0`          | Returns email regex                                                 | For reference                                |
-
-```elixir
-changeset
-|> Validations.validate_shortcut()
-|> unique_constraint(:shortcut, name: :sheets_project_id_shortcut_index)
-```
-
----
-
-## `Storyarn.Platform.Shared.MapUtils`
-
-**File:** `lib/storyarn/platform/kernel/rules/map_utils.ex`
-
-Map transformation and parsing utilities for handling mixed atom/string key maps from forms and JSON.
-
-| Function                 | Purpose                                                                              |
-| ------------------------ | ------------------------------------------------------------------------------------ |
-| `stringify_keys/1`       | Convert top-level atom keys to strings (NOT recursive — nested maps keep their keys) |
-| `get_flexible/2`         | Fetch by atom key, falling back to the string key                                    |
-| `parse_int/1`            | Safe integer parsing: `"42"` → `42`, `42` → `42`, `nil` → `nil`                      |
-| `parse_to_number/1`      | Parse any value to float for formulas: `"42"` → `42.0`, `nil` → `0.0`                |
-| `ensure_integer/1`       | Integer passthrough, `0` for anything else                                           |
-| `format_number_result/1` | Collapse a whole float back to an integer for display                                |
-
-```elixir
-MapUtils.stringify_keys(%{name: "test", nested: %{key: "val"}})
-# => %{"name" => "test", "nested" => %{key: "val"}}  (inner map NOT converted)
-
-MapUtils.parse_int("42")  # => 42
-MapUtils.parse_int(nil)   # => nil
-
-MapUtils.parse_to_number("42")  # => 42.0
-MapUtils.parse_to_number(nil)   # => 0.0
-```
-
----
-
-## `Storyarn.Platform.Shared.Severity`
-
-**File:** `lib/storyarn/platform/kernel/rules/severity.ex`
-
-The single ordering of the health severity catalog for shared Web dashboards
-(`StoryarnWeb.Live.Shared.DashboardHelpers`). Sealed boundaries carry their own
-copies (`Flows.Severity`, `Projects.Severity`, …) — reimplement the copy in the
-owning context, never a cross-boundary call.
-
-| Function    | Purpose                                                       |
-| ----------- | ------------------------------------------------------------- |
-| `rank/1`    | Sort key: `:error`/`"error"` → 0, `:warning` → 1, `:info` → 2 |
-| `catalog/0` | `[:error, :warning, :info]`, in rank order                    |
-
-Strict by design: severity is a closed catalog, so `rank/1` raises `ArgumentError` on anything else rather than silently sorting it last.
-
-```elixir
-Enum.sort_by(findings, &Severity.rank(&1.severity))
-```
-
----
-
-## `Storyarn.Platform.Shared.StringUtils`
-
-**File:** `lib/storyarn/platform/kernel/rules/string_utils.ex`
-
-| Function          | Purpose                                                                                                          |
-| ----------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `blank?/1`        | `nil` or `""` → true. **Does NOT trim.**                                                                         |
-| `present_label/2` | `value` if it has a non-whitespace char, else `fallback`. Trims to decide presence; returns the value untouched. |
-
-`blank?/1` replaced eight byte-equivalent private copies. **Three modules keep a different, trimming `blank?/1` and must not be folded in** — `Sheets.HealthChecker`, `Scenes.HealthChecker`, `Localization.GlossarySync`: for them a whitespace-only label counts as empty, and changing that changes which findings the health sweeps report.
-
----
-
-## `Storyarn.Platform.Shared.SearchHelpers`
-
-**File:** `lib/storyarn/platform/kernel/rules/search_helpers.ex`
-
-SQL injection prevention for LIKE queries.
-
-| Function                | Purpose                                          |
-| ----------------------- | ------------------------------------------------ |
-| `sanitize_like_query/1` | Escapes `%`, `_`, `\` in user input before ILIKE |
-
-```elixir
-sanitized = SearchHelpers.sanitize_like_query(user_input)
-where(query, [q], ilike(q.name, ^"%#{sanitized}%"))
-```
-
----
-
-## `Storyarn.Platform.Shared.TimeHelpers`
-
-**File:** `lib/storyarn/platform/adapters/time/time_helpers.ex`
-
-| Function | Purpose                                             |
-| -------- | --------------------------------------------------- |
-| `now/0`  | `DateTime.utc_now() \|> DateTime.truncate(:second)` |
-
-**ALWAYS use this** instead of inline `DateTime.utc_now()` with truncation.
-
----
-
-## `Storyarn.Platform.Shared.TokenGenerator`
-
-**File:** `lib/storyarn/platform/adapters/security/token_generator.ex`
-
-Cryptographic token generation for invitations and auth tokens.
-
-| Function               | Purpose                                                  |
-| ---------------------- | -------------------------------------------------------- |
-| `build_hashed_token/0` | Returns `{encoded_token, hashed_token}` for invite links |
-| `decode_and_hash/1`    | Verifies user-provided token                             |
-
----
-
-## `Storyarn.Platform.Shared.EncryptedBinary`
-
-**File:** `lib/storyarn/platform/adapters/security/encrypted_binary.ex`
-
-Custom Ecto type for Cloak-encrypted fields. Use in schemas:
-
-```elixir
-field :api_key_encrypted, Storyarn.Platform.Shared.EncryptedBinary
-```
-
----
-
-## `Storyarn.Platform.Shared.CanonicalJSON`
-
-**File:** `lib/storyarn/platform/kernel/rules/canonical_json.ex`
-
-Deterministic canonical JSON encoding and SHA-256 hashing. Sorted object keys, rejects structs/duplicate-normalized-keys/improper lists. Its only consumers are in `lib/storyarn/ai/`: context payload and entity content hashing, the execution-intent input hash that makes a repeated AI request replay instead of re-spending, and output encoding for the size cap and stored result. Any new hash over structured data MUST go through this module — two encoders mean two hashes for the same input, and the spend guarantee is exactly that identical input yields an identical key.
-
-| Function    | Purpose                                                          |
-| ----------- | ---------------------------------------------------------------- |
-| `encode/1`  | `{:ok, canonical_json}` or `{:error, :invalid_structured_input}` |
-| `encode!/1` | Raising variant                                                  |
-| `hash/1`    | `{:ok, lowercase_hex_sha256}` of the canonical encoding          |
-| `hash!/1`   | Raising variant                                                  |
-
----
-
-## `Storyarn.Platform.Shared.HtmlSanitizer`
-
-**File:** `lib/storyarn/platform/adapters/presentation/html_sanitizer.ex`
-
-HTML sanitizer with XSS protection. **ALWAYS use when rendering `raw()` content.**
-
-| Function          | Purpose                                                |
-| ----------------- | ------------------------------------------------------ |
-| `sanitize_html/1` | Strips unsafe tags/attributes, blocks javascript: URIs |
-
-Allowlist: `p br em strong b i u s span a ul ol li blockquote code pre sub sup del h1-h6 div`
-
-```elixir
-# ALWAYS wrap raw() with sanitizer
-{raw(HtmlSanitizer.sanitize_html(user_content))}
-
-# NEVER do this
-{raw(user_content)}
-```
-
----
-
-## Additional Platform and Project-owned modules
-
-One line each. Open the file and confirm its owner before writing anything that overlaps.
-
-| Module                                   | File                                                             | Owner                      | What it owns                                                                                                                                                                                                   |
-| ---------------------------------------- | ---------------------------------------------------------------- | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `Storyarn.Platform.Shared.ColorUtils`    | `lib/storyarn/platform/adapters/presentation/color_utils.ex`     | Platform technical adapter | `valid_hex?/1`, `hex_to_oklch/1`, `darken_oklch/2` — hex→oklch for theme customization                                                                                                                         |
-| `Storyarn.Platform.Shared.HtmlUtils`     | `lib/storyarn/platform/kernel/rules/html_utils.ex`               | Platform technical kernel  | `strip_html/1`, `strip_and_truncate/2`, `word_count/1`, `add_heading_ids/1`, `heading_outline/1` — **not** a sanitizer                                                                                         |
-| `Storyarn.Platform.Shared.ImportHelpers` | `lib/storyarn/platform/adapters/database/import_helpers.ex`      | Platform technical adapter | `detect_shortcut_conflicts/3`, `soft_delete_by_shortcut/3`, `bulk_insert/2-3`                                                                                                                                  |
-| `Storyarn.Projects.InvitationSchema`     | `lib/storyarn/projects/access/entities/invitation_schema.ex`     | Projects                   | `use`-macro that generates the invitation schema/changesets for Projects; the workspace arm lives in `Workspaces.WorkspaceInvitation`                                                                          |
-| `Storyarn.Projects.InvitationOperations` | `lib/storyarn/projects/access/commands/invitation_operations.ex` | Projects                   | Config-map-driven invitation CRUD for Projects (`create_invitation`, `accept_invitation`, `revoke_…`); the workspace arm lives in `Workspaces.Invitations`                                                     |
-| `Storyarn.Projects.InvitationNotifier`   | `lib/storyarn/projects/access/delivery/invitation_notifier.ex`   | Projects                   | `deliver_invitation/2-3` — email delivery for the above; Workspaces owns its workflow and copy in `Workspaces.Invitations.Delivery`, with transport isolated in `Workspaces.Invitations.Adapters.Email.Mailer` |
-| `Storyarn.Projects.MembershipOperations` | `lib/storyarn/projects/access/commands/membership_operations.ex` | Projects                   | Config-map-driven membership CRUD + `authorize/4` for Projects; the workspace arm lives in `Workspaces.Memberships`                                                                                            |
-| `Storyarn.Projects.WordCount`            | `lib/storyarn/projects/versioning/rules/sheet_word_count.ex`     | Projects                   | `for_block/2`, `for_block_value/1`, `for_name/1` — versioning builders own this copy; tools own their own semantics                                                                                            |
-
-`EncryptedBinary` is covered above; it is a type, not a helper.
-
-`FormulaEngine`, `FormulaRuntime`, and `HierarchicalSchema` were deleted in the
-ENG-92 migration — each tool (and, for project coordination, `Storyarn.Projects`)
-carries its own copy (`Storyarn.Sheets.FormulaEngine`,
-`Storyarn.Flows.FormulaRuntime`, `Storyarn.Sheets.Schema`, …).
-
----
-
-## `StoryarnWeb.Helpers.Authorize`
-
-**File:** `lib/storyarn_web/helpers/authorize.ex`
-
-Authorization for LiveView event handlers. Prevents bypassing UI-only permission checks.
-
-```elixir
-use StoryarnWeb.Helpers.Authorize
-
-# In LiveView handle_event
-def handle_event("delete", params, socket) do
-  with_authorization(socket, :edit_content, fn socket ->
-    do_delete(socket, params)
-  end)
-end
-
-# Compatibility spelling for canonical :edit_content authorization
-def handle_event("save", params, socket) do
-  with_edit_authorization(socket, fn socket ->
-    do_save(socket, params)
-  end)
-end
-```
-
-The compatibility helper reauthorizes through `Projects`; it does not trust a
-cached `@can_edit` value from mount time.
-
-Actions: `:edit_content`, `:use_ai`, `:manage_project`, `:manage_members`, `:manage_workspace`, `:manage_workspace_members`
-
----
-
-## `StoryarnWeb.Helpers.SaveStatusTimer`
-
-**File:** `lib/storyarn_web/helpers/save_status_timer.ex`
-
-Schedules a delayed reset of the save status indicator for LiveViews.
-
-| Function             | Purpose                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------ |
-| `schedule_reset/1-2` | Sends `:reset_save_status` after `timeout_ms` (default 4000ms). Returns socket for piping. |
-
-```elixir
-socket
-|> assign(:save_status, :saved)
-|> SaveStatusTimer.schedule_reset()
-```
-
----
-
-## Remaining `StoryarnWeb.Helpers.*` modules
-
-| Module                  | File                         | What it owns                                                                                                                                         |
-| ----------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `AutoSnapshot`          | `auto_snapshot.ex`           | `schedule/2`, `cancel/1` — debounced auto-versioning for entity editors                                                                              |
-| `EntitySearch`          | `entity_search.ex`           | `search_entities/4`, `search_entities_multi/4`, `search_variables/2-3`, `get_entity_name/3`, `get_entity_name_multi/3`, `get_variable_name/2` — pure |
-| `UndoRedoStack`         | `undo_redo_stack.ex`         | `init/1`, `push_undo/2-3`, `push_undo_no_clear/2-3`, `push_coalesced/4-5`, `pop_undo/1`, `pop_redo/1`, `push_redo/2-3`, `clear/1`                    |
-| `VersionEventHelpers`   | `version_event_helpers.ex`   | `handle_create`, `handle_delete`, `handle_promote`, `handle_compare`, `handle_*_restore`, `with_authorized_restore`                                  |
-| `VersionHistoryHelpers` | `version_history_helpers.ex` | `load_history_data`, `load_more_history`, `serialize_versions`, `show_conflict_preview`, `detect_and_show_restore_preview`                           |
-
-Domain-agnostic LiveView helpers also live in `lib/storyarn_web/live/shared/`:
-`CollaborationHelpers`, `DashboardHandlers`, `DashboardHelpers`, `InvitationHelpers`,
-`OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`.
-
----
-
-## JS Utilities
-
-There is no shared JS utility layer under `assets/js/` — it holds only `app.js`
-and the `PublicMobileNavigation` / `SeoMetadata` / PostHog scripts. Everything
-else is Vue/TypeScript under `assets/app/`:
-
-| Concern                      | Where                                                                     |
-| ---------------------------- | ------------------------------------------------------------------------- |
-| Pure utilities               | `assets/app/shared/utils/` (`utils.ts`, `date-utils.ts`)                  |
-| Composables                  | `assets/app/shared/composables/` (`useLive`, `usePresence`, `useUpload`)  |
-| Popovers, dropdowns, dialogs | reka-ui primitives in `assets/app/components/ui/` — never hand-positioned |
-| Icons                        | `lucide-vue-next` components; `Record<string, Component>` map for dynamic |
-| Flow node canvas metadata    | `assets/app/modules/flows/editor/lib/node-configs.ts`                     |
-
-Import via the `@shared` / `@components` / `@modules` / `@shell` / `@plugins` aliases.
+> Sources of truth: `lib/storyarn/platform/README.md`, the modules linked below,
+> and `config/architecture_boundaries.exs`
+
+This registry is intentionally small. Reuse a module only when the consumer
+needs the same stable, business-neutral contract. When language, invariants or
+ownership differ, keep a consumer-owned implementation even if that duplicates
+code. `Storyarn.Platform` and `Storyarn.Shared` are not catch-all namespaces.
+
+## Platform kernel
+
+Kernel modules are deterministic and contain no persistence or provider I/O.
+
+| Module | File | Contract |
+| --- | --- | --- |
+| `Storyarn.Platform.Kernel.MapAccess` | `lib/storyarn/platform/kernel/map_access.ex` | `stringify_keys/1` and atom/string-key lookup with `get_flexible/2` |
+| `Storyarn.Platform.Kernel.IntegerParser` | `lib/storyarn/platform/kernel/integer_parser.ex` | Strict complete integer parsing with `parse/1`; integer-or-zero normalization with `ensure/1` |
+| `Storyarn.Platform.Shared.StringUtils` | `lib/storyarn/platform/kernel/string_utils.ex` | Exact empty check with `blank?/1` and non-blank label fallback with `present_label/2` |
+| `Storyarn.Platform.Shared.SearchHelpers` | `lib/storyarn/platform/kernel/search_helpers.ex` | Escapes `%`, `_` and `\\` before a value is interpolated into an `ILIKE` pattern |
+| `Storyarn.Platform.Shared.HtmlUtils` | `lib/storyarn/platform/kernel/html_utils.ex` | Text extraction, truncation, word counts and documentation heading IDs; this is not an HTML sanitizer |
+
+`IntegerParser.parse/1` rejects partial values such as `"42px"` and decimal
+strings. Formula coercion is domain behavior and therefore stays in the owning
+Sheet, Flow, Scene or Project implementation.
+
+`StringUtils.blank?/1` deliberately does not trim. A consumer for which
+whitespace is empty must keep that stronger rule locally.
+
+## Platform technical adapters
+
+| Module | File | Contract |
+| --- | --- | --- |
+| `Storyarn.Platform.Shared.TimeHelpers` | `lib/storyarn/platform/adapters/clock.ex` | `now/0`, UTC truncated to seconds; use it instead of direct `DateTime.utc_now/0` |
+| `Storyarn.Platform.Shared.TokenGenerator` | `lib/storyarn/platform/adapters/security/token_generator.ex` | Generates and verifies hashed invitation/authentication tokens |
+| `Storyarn.Platform.Shared.EncryptedBinary` | `lib/storyarn/platform/adapters/security/encrypted_binary.ex` | Cloak-backed encrypted Ecto type |
+| `Storyarn.Platform.Shared.HtmlSanitizer` | `lib/storyarn/platform/adapters/security/html_sanitizer.ex` | Sanitizes untrusted HTML before `raw/1` or equivalent rendering |
+| `Storyarn.Platform.Vault` | `lib/storyarn/platform/adapters/security/vault.ex` | Cloak vault used by encrypted persistence fields |
+
+The historical `Storyarn.Platform.Shared.*` module identities above are stable
+compatibility contracts. Their physical folders express the current ownership.
+
+`HtmlUtils` strips markup for text processing; `HtmlSanitizer` enforces the XSS
+allowlist. They are not interchangeable.
+
+`Storyarn.Platform.Shared.HierarchySearch` is not a kernel primitive despite its
+historical module name. It lives at
+`lib/storyarn/platform/discovery/queries/hierarchy_search.ex` and is a read-only
+Discovery coordinator used by global search. New business-context callers must
+enter through the Platform discovery facade rather than importing it as a
+generic helper.
+
+## Presentation-only helpers
+
+These modules belong to the Web adapter and must not be imported by domain
+contexts:
+
+| Module | File | Contract |
+| --- | --- | --- |
+| `StoryarnWeb.Helpers.Authorize` | `lib/storyarn_web/helpers/authorize.ex` | Reauthorizes mutating LiveView events through the owning context |
+| `StoryarnWeb.Helpers.AutoSnapshot` | `lib/storyarn_web/helpers/auto_snapshot.ex` | Schedules and cancels debounced editor snapshot attempts; persistence gating stays in the owning facade |
+| `StoryarnWeb.Helpers.ColorUtils` | `lib/storyarn_web/helpers/color_utils.ex` | Validates theme hex colors and converts them to CSS OKLCH values |
+| `StoryarnWeb.Helpers.Severity` | `lib/storyarn_web/helpers/severity.ex` | Presentation ordering for the closed error/warning/info catalog |
+| `StoryarnWeb.Helpers.SaveStatusTimer` | `lib/storyarn_web/helpers/save_status_timer.ex` | Marks a LiveView save as complete and schedules its status reset |
+| `StoryarnWeb.Helpers.UndoRedoStack` | `lib/storyarn_web/helpers/undo_redo_stack.ex` | Generic bounded stack operations; each editor owns action interpretation and persistence |
+
+Every mutating `handle_event` must use `with_authorization/3`,
+`with_edit_authorization/2`, or an equivalent helper that calls
+`authorize/2`. A cached `@can_edit` assign is presentation state, not an
+authorization decision.
+
+## Consumer-owned domain patterns
+
+The following code is deliberately not shared:
+
+- Project normalization and validation live in
+  `lib/storyarn/projects/lifecycle/rules/name_normalizer.ex` and
+  `lib/storyarn/projects/lifecycle/rules/validations.ex`. Other contexts own
+  their slug, shortcut, variable and validation semantics.
+- Shortcut allocation, tree operations, soft deletion, formulas, health
+  severity and version summaries belong to their consumers. Copy an existing
+  pattern only after confirming that its invariants match.
+- Import persistence is split between the Flow, Sheet and Scene import writers
+  under `lib/storyarn/projects/interchange/imports/commands/`; there is no
+  generic import helper with cross-tool write authority.
+- Project invitation schemas, operations and delivery live under
+  `lib/storyarn/projects/access/`. Workspaces owns its separate invitation
+  workflow and copy.
+
+## AI canonical JSON
+
+Canonical JSON is AI-owned because it participates in AI persistence and spend
+guarantees. Each consumer keeps its own contract-local implementation:
+
+| Owner | File |
+| --- | --- |
+| Context building | `lib/storyarn/ai/context_building/rules/canonical_json.ex` |
+| Operations | `lib/storyarn/ai/operations/rules/canonical_json.ex` |
+| Routing | `lib/storyarn/ai/routing/rules/canonical_json.ex` |
+
+Do not recreate a Platform-wide canonical encoder. When adding an AI hash,
+choose the copy owned by that exact contract and preserve its canonicalization
+tests.
+
+## Vue and LiveView utilities
+
+- Reusable Vue components live under `assets/app/components/`; pure TypeScript
+  helpers and composables live under `assets/app/shared/`.
+- LiveView helpers live under `lib/storyarn_web/helpers/` or
+  `lib/storyarn_web/live/shared/` and may coordinate presentation state only.
+- Background jobs live under `lib/storyarn/workers/{owner}/` and enter business
+  code through the owner's root facade.
+
+Before adding a utility, search for the behavior, identify its owner, and check
+`config/architecture_boundaries.exs`. Similar code is not sufficient evidence
+that two consumers share one contract.

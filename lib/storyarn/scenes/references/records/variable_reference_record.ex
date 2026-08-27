@@ -1,5 +1,5 @@
 defmodule Storyarn.Scenes.References.Projections.VariableReferenceRecord do
-  @moduledoc "References-owned consumer-local SQL projection used to validate and maintain Scene reference indexes."
+  @moduledoc "References-owned writable SQL record used to validate and maintain Scene reference indexes."
 
   use Ecto.Schema
 

@@ -1,6 +1,6 @@
 defmodule Storyarn.Flows.Versioning.Projections.LocalizedTextRecord do
   @moduledoc """
-  Versioning-owned projection of localized Flow text used during snapshot capture and restore.
+  Versioning-owned writable record of localized Flow text used during snapshot capture and exact restore.
   """
 
   use Ecto.Schema

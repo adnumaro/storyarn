@@ -351,18 +351,19 @@ defmodule Storyarn.Scenes.Versioning.Commands.VersionLifecycle do
     end
   end
 
-  defp format_summary([]), do: gettext("No changes")
+  defp format_summary([]), do: gettext("No changes detected")
 
   defp format_summary(changes) do
-    added = Enum.count(changes, &(&1.action == :added))
-    modified = Enum.count(changes, &(&1.action == :modified))
-    removed = Enum.count(changes, &(&1.action == :removed))
+    frequencies = Enum.frequencies_by(changes, & &1.detail)
 
-    gettext("%{added} added, %{modified} modified, %{removed} removed",
-      added: added,
-      modified: modified,
-      removed: removed
-    )
+    changes
+    |> Enum.uniq_by(& &1.detail)
+    |> Enum.map_join(", ", fn change ->
+      case Map.get(frequencies, change.detail, 1) do
+        1 -> change.detail
+        count -> "#{change.detail} (×#{count})"
+      end
+    end)
   end
 
   defp serialize_changes([]), do: nil

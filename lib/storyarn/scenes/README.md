@@ -33,6 +33,7 @@ Each capability uses only the roles it actually needs:
 | `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
 | `rules/`          | Pure validation, normalization, policy, and health decisions.                                              |
 | `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                      |
+| `records/`        | Controlled writable mappings for derived reference indexes.                                                |
 | `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                        |
 | `execution/`      | Stateful or multi-step runtime orchestration such as exploration and snapshot materialization.             |
 | `events/`         | Business facts owned by the capability that produced them.                                                 |
@@ -54,9 +55,9 @@ capability's or bounded context's model:
   `FlowConnectionRecord` form the executable graph needed by exploration.
 - `Health.Projections.SheetRecord` and related block/table projections contain only
   the foreign facts needed to evaluate Scene health.
-- `References.Projections.VariableReferenceRecord` is the projection used to maintain
-  the reference index, while `Versioning.Projections.SheetRecord` is independently
-  shaped for snapshot capture and restore.
+- `References.Projections.*` contains the foreign facts read while validating
+  references, while `Versioning.Projections.SheetRecord` is independently shaped
+  for snapshot capture and restore.
 
 Those modules may point at the same SQL tables and still differ in fields,
 associations, indexes, and future storage strategy. Duplication is intentional:
@@ -77,6 +78,13 @@ this role.
 
 `projections/` cannot call `Repo`, coordinate locks or transactions, emit events,
 perform external I/O, or decide business policy.
+
+## `records/`
+
+References owns writable records for the derived entity- and variable-reference
+indexes it rebuilds from Scene content. Their established
+`References.Projections.*` module identities remain temporarily stable, while
+the physical `records/` folder declares their write authority.
 
 ## Stable module identities
 

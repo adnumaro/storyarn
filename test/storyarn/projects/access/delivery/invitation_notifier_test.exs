@@ -53,6 +53,18 @@ defmodule Storyarn.Projects.InvitationNotifierTest do
       assert email.text_body =~ "Project Owner"
     end
 
+    test "falls back to the inviter email when no display name is set", %{
+      invitation: invitation,
+      url: url,
+      owner: owner
+    } do
+      owner = owner |> Ecto.Changeset.change(display_name: nil) |> Repo.update!()
+      invitation = %{invitation | invited_by: owner}
+
+      assert {:ok, email} = InvitationNotifier.deliver_invitation(invitation, url)
+      assert email.text_body =~ owner.email
+    end
+
     test "defaults admin-created invitations to the Storyarn identity", %{
       invitation: invitation,
       url: url

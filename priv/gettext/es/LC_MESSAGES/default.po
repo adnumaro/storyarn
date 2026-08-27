@@ -120,16 +120,14 @@ msgstr "Archivo multimedia no encontrado"
 msgid "You do not have permission to export this project"
 msgstr "No tienes permiso para exportar este proyecto"
 
-#: lib/storyarn/flows/versioning/commands/version_lifecycle.ex:360
-#: lib/storyarn/scenes/versioning/commands/version_lifecycle.ex:361
-#: lib/storyarn/sheets/versioning/commands/version_lifecycle.ex:361
-#, elixir-autogen, elixir-format
-msgid "%{added} added, %{modified} modified, %{removed} removed"
-msgstr "%{added} añadidos, %{modified} modificados, %{removed} eliminados"
-
 #: lib/storyarn/flows/versioning/commands/version_lifecycle.ex:353
 #: lib/storyarn/scenes/versioning/commands/version_lifecycle.ex:354
 #: lib/storyarn/sheets/versioning/commands/version_lifecycle.ex:354
 #, elixir-autogen, elixir-format
-msgid "No changes"
-msgstr "Sin cambios"
+msgid "No changes detected"
+msgstr "No se detectaron cambios"
+
+#: lib/storyarn_web/helpers/authorize.ex:110
+#, elixir-autogen, elixir-format
+msgid "You don't have permission to perform this action."
+msgstr "No tienes permiso para realizar esta acción."

@@ -93,7 +93,7 @@ msgid "Workspace deleted."
 msgstr "Espacio de trabajo eliminado."
 
 #: lib/storyarn_web/live/hooks/workspace_scope.ex:58
-#: lib/storyarn_web/live/project_live/form.ex:79
+#: lib/storyarn_web/live/project_live/form.ex:78
 #: lib/storyarn_web/live/workspace_live/show.ex:120
 #, elixir-autogen, elixir-format
 msgid "Workspace not found."
@@ -123,7 +123,7 @@ msgstr "Ya eres miembro de este espacio de trabajo."
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
-#: lib/storyarn_web/live/project_live/form.ex:76
+#: lib/storyarn_web/live/project_live/form.ex:75
 #: lib/storyarn_web/live/template_live/show.ex:461
 #: lib/storyarn_web/live/workspace_live/show.ex:117
 #: lib/storyarn_web/live/workspace_live/show.ex:157
@@ -207,7 +207,7 @@ msgstr "Espacio de trabajo"
 msgid "Workspaces"
 msgstr "Espacios de trabajo"
 
-#: lib/storyarn_web/live/project_live/form.ex:86
+#: lib/storyarn_web/live/project_live/form.ex:85
 #: lib/storyarn_web/live/workspace_live/show.ex:127
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to create projects in this workspace."

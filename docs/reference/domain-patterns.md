@@ -71,20 +71,26 @@ lib/storyarn/{context}/{capability}/
 ├── {capability}.ex       # internal capability facade, when collaboration needs one
 ├── commands/             # state-changing use cases and transaction boundaries
 ├── queries/              # read-only persistence operations
-├── entities/             # context-owned mutable state and changesets
-├── rules/                # deterministic policy and validation
-├── execution/            # indivisible multi-step workflows
-├── contracts/            # stable values and behaviours crossing a real seam
+├── entities/             # capability-owned mutable state and changesets
+├── rules/                # deterministic policy, validation and interpretation
+├── execution/            # indivisible stateful or multi-step workflows
+├── contracts/            # stable values or behaviours at a deliberate seam
 ├── events/               # facts owned by the producing capability
+├── delivery/             # owner-specific delivery intent and copy
 ├── projections/          # passive consumer-owned read mappings
 ├── records/              # controlled writable mappings or exact reconstitution
 ├── reference_data/       # immutable shipped catalogs
-└── adapters/             # provider, PostgreSQL, OTP, storage or delivery translation
+├── tokens/               # context-owned token issue and verification
+├── tasks/                # registered task definitions owned by the capability
+├── compatibility/        # explicit legacy identities while callers migrate
+└── adapters/             # provider, PostgreSQL, OTP, storage or transport translation
 ```
 
 This is a navigation and ownership convention, not mandatory hexagonal
 layering. Empty folders are forbidden. A transaction, fencing protocol or lock
-order stays together when splitting it would weaken correctness.
+order stays together when splitting it would weaken correctness. A capability
+uses only the roles it actually needs; `delivery/`, `tokens/`, `tasks/` and
+`compatibility/` are specialized roles, not required layers.
 
 ### Persistence shapes
 
@@ -107,9 +113,9 @@ existence does not create another domain boundary:
 
 | Owner    | Internal capability examples                                                                  |
 | -------- | --------------------------------------------------------------------------------------------- |
-| Projects | `Assets`, `References`, `Versioning`, `Imports`, `Exports`, `ProjectTemplates`                |
-| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, delivery policy                     |
-| AI       | `Operations`, `Execution`, `Allowance`, `IntegrationCrud`, provider clients and model catalog |
+| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                              |
+| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`                         |
+| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                         |
 
 Workers, Repo, storage transports, mail delivery, PubSub, telemetry and release
 wiring are adapters or application composition. They are not bounded contexts.
@@ -249,12 +255,11 @@ def handle_info({:cursor_leave, user_id}, socket), do: ...
 Topic format: `"{type}:{id}:{channel}"` where channel is `presence`, `changes`,
 `locks`, or `cursors`.
 
-Project-wide channels take a bare `project_id`, not a scope tuple:
+The project-wide dashboard channel takes a bare `project_id`, not a scope tuple:
 
-| Channel    | Subscribe                | Topic                     |
-| ---------- | ------------------------ | ------------------------- |
-| Flow graph | `subscribe_flow_graph/1` | `project:{id}:flow_graph` |
-| Dashboard  | `subscribe_dashboard/1`  | `project:{id}:dashboard`  |
+| Channel   | Subscribe               | Topic                    |
+| --------- | ----------------------- | ------------------------ |
+| Dashboard | `subscribe_dashboard/1` | `project:{id}:dashboard` |
 
 ---
 
@@ -303,7 +308,7 @@ to keep a feature PR reviewable, extract everything and revert every domain but
 yours.
 
 The merge then leaves work in `priv/gettext/es/LC_MESSAGES/`, and
-`test/storyarn/publication/locales_test.exs` blocks on all of it — across all 19
+`test/storyarn/public/publication/locales_test.exs` blocks on all of it — across all 19
 domains, not just the public ones:
 
 - **Fill every empty `msgstr`.** Informal second person ("Selecciona…", "No tienes

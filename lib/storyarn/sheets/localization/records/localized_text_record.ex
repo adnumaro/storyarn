@@ -1,7 +1,14 @@
-defmodule Storyarn.Flows.Localization.Projections.LocalizedTextRecord do
-  @moduledoc "Consumer-owned projection of localization inventory rows written from Flow content."
+defmodule Storyarn.Sheets.Localization.Projections.LocalizedTextRecord do
+  @moduledoc """
+  Sheets-local writable record of localization inventory rows.
+
+  The record contains the lifecycle fields required to reconcile, archive
+  and purge Sheet-owned source text without depending on Localization internals.
+  """
 
   use Ecto.Schema
+
+  @type t :: %__MODULE__{}
 
   schema "localized_texts" do
     field :project_id, :id
@@ -16,17 +23,11 @@ defmodule Storyarn.Flows.Localization.Projections.LocalizedTextRecord do
     field :status, :string, default: "pending"
     field :vo_status, :string, default: "none"
     field :vo_asset_id, :id
-    field :translator_notes, :string
-    field :reviewer_notes, :string
     field :speaker_sheet_id, :id
     field :word_count, :integer
     field :content_role, :string, default: "runtime_value"
     field :vo_eligible, :boolean, default: false
     field :machine_translated, :boolean, default: false
-    field :last_translated_at, :utc_datetime
-    field :last_reviewed_at, :utc_datetime
-    field :translated_by_id, :id
-    field :reviewed_by_id, :id
     field :lock_version, :integer, default: 1
     field :archived_at, :utc_datetime
     field :archive_reason, :string

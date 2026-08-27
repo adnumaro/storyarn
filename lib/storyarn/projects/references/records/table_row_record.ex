@@ -1,5 +1,5 @@
 defmodule Storyarn.Projects.References.Persistence.TableRowRecord do
-  @moduledoc "References-owned projection and rewrite model for table rows."
+  @moduledoc "References-owned writable record for Project repair of table rows."
 
   use Ecto.Schema
 

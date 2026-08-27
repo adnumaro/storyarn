@@ -116,7 +116,7 @@ defmodule Storyarn.Flows.VariableSearch do
 
   defp bounded_limit(_limit), do: @picker_default_limit
 
-  defp normalize_query(query) when is_binary(query), do: String.trim(query)
+  defp normalize_query(query) when is_binary(query), do: query |> String.trim() |> normalize()
   defp normalize_query(_query), do: ""
 
   defp normalize(value) when is_binary(value), do: String.downcase(value)

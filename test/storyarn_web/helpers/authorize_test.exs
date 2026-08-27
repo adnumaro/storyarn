@@ -214,6 +214,22 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
       assert {:noreply, %Socket{} = result_socket} = result
       assert result_socket.assigns.flash["error"]
     end
+
+    test "translates the shared unauthorized flash in the active locale" do
+      message =
+        Gettext.with_locale(Storyarn.Gettext, "es", fn ->
+          socket = socket_with_membership("viewer")
+
+          {:noreply, result_socket} =
+            Authorize.with_authorization(socket, :edit_content, fn _socket ->
+              raise "should not be called"
+            end)
+
+          result_socket.assigns.flash["error"]
+        end)
+
+      assert message == "No tienes permiso para realizar esta acción."
+    end
   end
 
   describe "with_edit_authorization/2" do

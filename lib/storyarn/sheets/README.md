@@ -34,6 +34,7 @@ Each capability uses only the roles it actually needs:
 | `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
 | `rules/`          | Pure validation, normalization, policy, formula, and health decisions.                                     |
 | `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                      |
+| `records/`        | Controlled writable mappings for derived indexes, localization inventory, or exact reconstitution.         |
 | `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                        |
 | `execution/`      | Stateful or multi-step runtime orchestration such as AI context and snapshot materialization.              |
 | `events/`         | Business facts owned by the capability that produced them.                                                 |
@@ -65,6 +66,19 @@ A projection declares fields, associations, and types. Database reads live in
 `queries/` or the read portion of an owning workflow. `projections/` has no
 changesets and never calls `Repo`, coordinates locks or transactions, emits
 events, performs external I/O, or decides policy.
+
+## `records/`
+
+Records make narrow write authority explicit. Sheet localization reconciliation
+writes its localization inventory record, References repairs the derived
+variable-reference index, and Versioning writes localized text only during exact
+restore. Their established `*.Projections.*` module names remain temporarily
+stable; their physical `records/` location is authoritative.
+
+`Editor.Projections.FlowNodeRecord` is the sole transitional exception: the
+dialogue-audio workflow still writes a Flow node directly. It remains visibly a
+projection until ENG-103 decides the cross-context write contract; moving it to
+`records/` now would incorrectly normalize that ownership leak.
 
 ## `reference_data/`
 

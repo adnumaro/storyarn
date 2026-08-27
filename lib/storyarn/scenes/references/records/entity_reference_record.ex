@@ -1,5 +1,5 @@
-defmodule Storyarn.Flows.References.Projections.EntityReferenceRecord do
-  @moduledoc "Consumer-owned projection of the cross-entity reference index maintained by Flows."
+defmodule Storyarn.Scenes.References.Projections.EntityReferenceRecord do
+  @moduledoc "References-owned writable SQL record used to validate and maintain Scene reference indexes."
 
   use Ecto.Schema
 

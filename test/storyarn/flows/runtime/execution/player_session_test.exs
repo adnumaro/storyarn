@@ -1,5 +1,9 @@
 defmodule Storyarn.Flows.PlayerSessionTest do
-  use ExUnit.Case, async: true
+  use Storyarn.DataCase, async: true
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures
+  import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Flows.Evaluator.Engine
@@ -108,6 +112,62 @@ defmodule Storyarn.Flows.PlayerSessionTest do
       assert restarted.state.call_stack == []
       assert restarted.state.step_count == 1
     end
+
+    test "restart from a subflow returns to the root flow's first interaction" do
+      project = project_fixture(user_fixture())
+      root_flow = flow_fixture(project, %{name: "Root flow"})
+      child_flow = flow_fixture(project, %{name: "Child flow"})
+
+      root_entry = entry_node(root_flow)
+      root_dialogue = node_fixture(root_flow, %{type: "dialogue", data: %{"text" => "Root"}})
+
+      subflow =
+        node_fixture(root_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => child_flow.id}
+        })
+
+      child_entry = entry_node(child_flow)
+      child_dialogue = node_fixture(child_flow, %{type: "dialogue", data: %{"text" => "Child"}})
+
+      connection_fixture(root_flow, root_entry, root_dialogue)
+      connection_fixture(root_flow, root_dialogue, subflow)
+      connection_fixture(child_flow, child_entry, child_dialogue)
+
+      assert {:ok, root_session} = Flows.start_player_session(root_flow, %{})
+      assert root_session.flow.id == root_flow.id
+      assert root_session.state.current_node_id == root_dialogue.id
+
+      assert {:ok, child_session} = Flows.continue_player_session(root_session)
+      assert child_session.flow.id == child_flow.id
+      assert child_session.state.current_node_id == child_dialogue.id
+      assert [%{flow_id: root_flow_id}] = child_session.state.call_stack
+      assert root_flow_id == root_flow.id
+
+      assert {:ok, restarted} = Flows.restart_player_session(child_session)
+      assert restarted.flow.id == root_flow.id
+      assert restarted.state.current_flow_id == root_flow.id
+      assert restarted.state.current_node_id == root_dialogue.id
+      assert restarted.state.call_stack == []
+    end
+  end
+
+  describe "cross-flow transition limit" do
+    test "fails closed when a malformed recursive subflow exceeds the transition bound" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      entry = entry_node(flow)
+
+      recursive_subflow =
+        raw_node_fixture(flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => flow.id}
+        })
+
+      connection_fixture(flow, entry, recursive_subflow)
+
+      assert {:error, :transition_limit} = Flows.start_player_session(flow, %{})
+    end
   end
 
   defp stopped_session(nodes, connections) do
@@ -122,6 +182,12 @@ defmodule Storyarn.Flows.PlayerSessionTest do
   defp session(nodes, connections, state) do
     flow = %Flow{id: 10, project_id: 20, name: "Player test"}
     Flows.restore_player_session(flow, %{state | current_flow_id: flow.id}, nodes, connections, nil)
+  end
+
+  defp entry_node(flow) do
+    flow.id
+    |> Flows.list_nodes()
+    |> Enum.find(&(&1.type == "entry"))
   end
 
   defp nodes(nodes), do: Map.new(nodes, &{&1.id, &1})

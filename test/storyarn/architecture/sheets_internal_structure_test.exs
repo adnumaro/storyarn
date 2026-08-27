@@ -10,12 +10,12 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     "assets" => ~w(adapters commands entities events projections queries),
     "editor" => ~w(adapters commands projections entities events queries rules),
     "health" => ~w(contracts projections queries rules),
-    "localization" => ~w(adapters commands contracts projections rules),
+    "localization" => ~w(adapters commands contracts projections records rules),
     "expressions" => ~w(compatibility execution projections queries rules),
-    "references" => ~w(commands entities projections queries rules),
-    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
+    "references" => ~w(commands entities projections queries records rules),
+    "versioning" => ~w(adapters commands contracts projections records entities events execution queries rules)
   }
-  @private_roles ~w(adapters commands compatibility queries rules projections execution events)
+  @private_roles ~w(adapters commands compatibility queries rules projections records execution events)
   @passive_roles ~w(rules contracts entities projections)
   @root_facade_dependencies ~w(
     Storyarn.Sheets.AI
@@ -44,6 +44,12 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     {"projections", "events"},
     {"projections", "adapters"},
     {"projections", "rules"},
+    {"records", "commands"},
+    {"records", "queries"},
+    {"records", "execution"},
+    {"records", "events"},
+    {"records", "adapters"},
+    {"records", "rules"},
     {"entities", "commands"},
     {"entities", "queries"},
     {"entities", "execution"},

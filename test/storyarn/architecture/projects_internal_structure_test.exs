@@ -199,6 +199,24 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
            "Projects must classify SQL models and catalogs explicitly: #{inspect(generic_data_directories)}"
   end
 
+  test "Projects projections remain passive read mappings" do
+    projection_sources = Path.wildcard(Path.join(@root, "*/projections/**/*.ex"))
+
+    violations =
+      Enum.filter(projection_sources, fn path ->
+        source = File.read!(path)
+
+        source =~ "Storyarn.Repo" or source =~ "Ecto.Query" or
+          Regex.match?(~r/\bRepo\./, source) or
+          Regex.match?(~r/^\s*def\s+\w*changeset\b/m, source)
+      end)
+
+    assert projection_sources != []
+
+    assert violations == [],
+           "Projects projections must remain read-only; move writable mappings to records/: #{inspect(violations)}"
+  end
+
   test "the root facade is declarative and names only capability facades or stable public types" do
     source = File.read!("lib/storyarn/projects.ex")
 

@@ -7,6 +7,7 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows
   alias Storyarn.Flows.Versioning.RestorePolicy, as: FlowRestorePolicy
   alias Storyarn.Repo
   alias Storyarn.Scenes
@@ -140,6 +141,43 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     assert Sheets.get_sheet(project.id, sheet.id).name == "Changed"
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == [block.id]
     assert Sheets.count_versions(sheet.id) == 1
+    refute_push_event(view, "show_unsaved_modal", %{})
+    refute_push_event(view, "show_restore_modal", %{})
+    refute_push_event(view, "version_restored", %{})
+  end
+
+  test "forged Flow restore events do not mutate data or create a safety version", %{
+    conn: conn,
+    user: user
+  } do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Original Flow"})
+    _node = node_fixture(flow)
+    node_ids = Enum.map(Flows.list_nodes(flow.id), & &1.id)
+
+    {:ok, version} =
+      Flows.create_version(flow, user.id, title: "Restore target")
+
+    {:ok, _changed_flow} = Flows.update_flow(flow, %{name: "Changed Flow"})
+
+    url =
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+    {:ok, view, _html} = live(conn, url)
+    await_async(view)
+
+    params = %{
+      "version_number" => to_string(version.version_number),
+      "request_id" => "contained-flow-request"
+    }
+
+    render_click(view, "preview_restore", params)
+    render_click(view, "review_restore", params)
+    render_click(view, "confirm_restore", params)
+
+    assert Flows.get_flow(project.id, flow.id).name == "Changed Flow"
+    assert Enum.map(Flows.list_nodes(flow.id), & &1.id) == node_ids
+    assert Flows.count_versions(flow.id) == 1
     refute_push_event(view, "show_unsaved_modal", %{})
     refute_push_event(view, "show_restore_modal", %{})
     refute_push_event(view, "version_restored", %{})

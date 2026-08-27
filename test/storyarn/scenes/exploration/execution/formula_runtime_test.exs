@@ -1,7 +1,6 @@
 defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Flows.FormulaRuntime, as: PreviousFormulaRuntime
   alias Storyarn.Scenes.FlowRuntime.FormulaEngine
   alias Storyarn.Scenes.FlowRuntime.FormulaRuntime
   alias Storyarn.Sheets.FormulaEngine, as: PreviousFormulaEngine
@@ -28,36 +27,52 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
   end
 
   test "Scenes-owned formula runtime preserves chained, invalid, and empty recomputation" do
-    cases = [
-      %{
-        "sheet.table.row.base" => variable(10, "number"),
-        "sheet.table.row.mid" =>
-          variable(nil, "formula",
-            formula: %{
-              expression: "base * 2",
-              bindings: %{"base" => "sheet.table.row.base"}
-            }
-          ),
-        "sheet.table.row.total" =>
-          variable(nil, "formula",
-            formula: %{
-              expression: "mid + 5",
-              bindings: %{"mid" => "sheet.table.row.mid"}
-            }
-          )
-      },
-      %{
-        "sheet.table.row.invalid" =>
-          variable(nil, "formula", formula: %{expression: "value / value", bindings: %{"value" => "missing"}})
-      },
-      %{"sheet.value" => variable(3, "number")},
-      %{}
-    ]
+    chained = %{
+      "sheet.table.row.base" => variable(10, "number"),
+      "sheet.table.row.mid" =>
+        variable(nil, "formula",
+          formula: %{
+            expression: "base * 2",
+            bindings: %{"base" => "sheet.table.row.base"}
+          }
+        ),
+      "sheet.table.row.total" =>
+        variable(nil, "formula",
+          formula: %{
+            expression: "mid + 5",
+            bindings: %{"mid" => "sheet.table.row.mid"}
+          }
+        )
+    }
 
-    for variables <- cases do
-      assert FormulaRuntime.recompute_formulas(variables) ==
-               PreviousFormulaRuntime.recompute_formulas(variables)
-    end
+    result = FormulaRuntime.recompute_formulas(chained)
+    assert result["sheet.table.row.base"].value == 10
+    assert result["sheet.table.row.mid"].value == 20
+    assert result["sheet.table.row.total"].value == 25
+
+    invalid = %{
+      "sheet.table.row.invalid" =>
+        variable(nil, "formula", formula: %{expression: "value / value", bindings: %{"value" => "missing"}})
+    }
+
+    assert FormulaRuntime.recompute_formulas(invalid)["sheet.table.row.invalid"].value == nil
+
+    ordinary = %{"sheet.value" => variable(3, "number")}
+    assert FormulaRuntime.recompute_formulas(ordinary) == ordinary
+    assert FormulaRuntime.recompute_formulas(%{}) == %{}
+  end
+
+  test "Scenes-owned runtime terminates circular formulas with its local fallback semantics" do
+    variables = %{
+      "sheet.table.row.a" =>
+        variable(nil, "formula", formula: %{expression: "b + 1", bindings: %{"b" => "sheet.table.row.b"}}),
+      "sheet.table.row.b" =>
+        variable(nil, "formula", formula: %{expression: "a + 1", bindings: %{"a" => "sheet.table.row.a"}})
+    }
+
+    result = FormulaRuntime.recompute_formulas(variables)
+
+    assert result |> Map.values() |> Enum.map(& &1.value) |> Enum.sort() == [1, 2]
   end
 
   test "Scenes-owned formula runtime preserves nil-bindings fallback" do
@@ -81,8 +96,11 @@ defmodule Storyarn.Scenes.FlowRuntime.FormulaRuntimeTest do
       "invalid" => %{"type" => "unknown"}
     }
 
-    assert FormulaRuntime.translate_same_row("sheet.table.row.total", bindings) ==
-             PreviousFormulaRuntime.translate_same_row("sheet.table.row.total", bindings)
+    assert FormulaRuntime.translate_same_row("sheet.table.row.total", bindings) == %{
+             "same" => "sheet.table.row.base",
+             "other" => "other.value",
+             "invalid" => nil
+           }
   end
 
   defp variable(value, type, opts \\ []) do

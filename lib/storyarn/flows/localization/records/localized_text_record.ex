@@ -1,5 +1,5 @@
-defmodule Storyarn.Sheets.Versioning.Projections.LocalizedTextRecord do
-  @moduledoc "Versioning-owned consumer-local SQL projection used to capture and restore Sheet versions without importing another context's schema."
+defmodule Storyarn.Flows.Localization.Projections.LocalizedTextRecord do
+  @moduledoc "Consumer-owned writable record for localization inventory maintained from Flow content."
 
   use Ecto.Schema
 

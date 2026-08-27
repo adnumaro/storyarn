@@ -79,6 +79,32 @@ This is a pragmatic functional architecture. A transaction is not split merely
 to make a file fit a diagram, and a pure function does not need a behaviour or
 port unless there is a real replaceable seam.
 
+## Effective project authorization
+
+Project authorization has one effective-membership policy across reads and
+writes. A direct Project membership always takes precedence. When no direct
+membership exists, access is inherited from the containing Workspace:
+
+| Workspace role | Effective Project role |
+| -------------- | ---------------------- |
+| `owner`        | `editor`               |
+| `admin`        | `editor`               |
+| `member`       | `editor`               |
+| `viewer`       | `viewer`               |
+
+Inherited access is intentionally synthetic: it has no Project membership row
+and never grants Project ownership. Consequently, inherited editors may view,
+edit content and use single-item AI actions, but cannot manage the Project,
+manage its members or run owner-only bulk AI. An explicit Project membership can
+upgrade or reduce this inherited access; for example, a direct `viewer` remains
+a viewer even when the user is a Workspace admin. Soft-deleted Projects are
+never authorizable.
+
+This is the established product policy used by Project loading and the editor,
+not a convenience fallback for individual callers. Changing to per-Project
+opt-in access is a separate authorization redesign and must not be achieved by
+bypassing effective membership in one code path.
+
 ## Persistence-shaped folders
 
 ### Consumer-local SQL projections
@@ -109,6 +135,11 @@ catalog is the current example.
 writes. The closed content records are used by exact import/snapshot
 reconstitution, trash, repair and Project-wide integrity workflows. They are not
 presented as ordinary read projections.
+
+References also keeps its `FlowNodeRecord` and `TableRowRecord` here because
+Project-owned repair commands update those rows. Their historical
+`Storyarn.Projects.References.Persistence.*` module identities remain stable;
+the physical `records/` location states their actual write authority.
 
 Localization records are the most sensitive case. Projects may write them only
 while maintaining derived localization inventory after Project content changes,

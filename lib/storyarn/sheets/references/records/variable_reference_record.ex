@@ -1,9 +1,9 @@
 defmodule Storyarn.Sheets.References.Projections.VariableReferenceRecord do
   @moduledoc """
-  References-owned SQL projection of recorded Sheet variable usages.
+  References-owned writable SQL record of recorded Sheet variable usages.
 
   Commands maintain missing rows after restore and queries report usage and
-  staleness. The schema is passive and contains no cross-context behavior.
+  staleness. It contains no cross-context behavior.
   """
 
   use Ecto.Schema
