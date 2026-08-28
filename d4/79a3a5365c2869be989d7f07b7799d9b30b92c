@@ -1,0 +1,315 @@
+test/storyarn/platform/object_storage_test.exs
+  s_e9e5a90425bc26::t_fac8be4f39c966 1-15
+test/storyarn/scenes/assets/storage_objects_test.exs
+  s_e9e5a90425bc26::t_f0549d4c567c0f 1-42,45,49
+  s_e9e5a90425bc26::t_6378c97790146f 43-44
+  s_e9e5a90425bc26::t_0ff4e3e577ea44 46-48
+test/storyarn/sheets/versioning/integration/concurrency_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 11
+test/storyarn_web/controllers/private_media_controller_test.exs
+  s_e9e5a90425bc26::t_a0024ffe8ba760 181-195
+lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex
+  s_e9e5a90425bc26::t_d54ddfea5da76d 6-7
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_eb1d06c9ab52ea 33-34
+  s_e9e5a90425bc26::t_f913ae61213437 1041
+  s_e9e5a90425bc26::t_76f3aa2b6c0f67 1293-1295,1487
+  s_e9e5a90425bc26::t_c7cf4755cdc9e1 1350-1351,1353,1356-1357,1359,1362-1363,1365,1368-1369,1371,1374-1375,1377,1380-1381,1383,1386-1387,1389,1393,1395,1399,1401,1405,1407,1411,1413,1416-1417,1419,1422-1423,1425,1428-1429,1431,1434-1435,1437,1440-1441,1443,1446-1447,1449
+  s_e9e5a90425bc26::t_c5d882a04f046f 1452-1453,1455,1477,1483,1489
+  s_e9e5a90425bc26::t_1d2262ee15db83 1007
+  s_e9e5a90425bc26::t_caca2beae53af5 1040,1042-1043,1045-1046,1050,1296,1486
+  s_e9e5a90425bc26::t_2db7b685dceb22 1036-1039,1044,1047-1049,1051-1056,1228
+  s_e9e5a90425bc26::t_a23fe733aa4828 1476
+  s_e9e5a90425bc26::t_fa45bab651b8ee 1482
+  s_e9e5a90425bc26::t_be7b3e65bdf96c 1485
+  s_e9e5a90425bc26::t_be8f8d02b0c0af 1488
+  s_e9e5a90425bc26::t_f9c280d5c8550c 1490-1491
+  s_e9e5a90425bc26::t_919a7655e3bd55 1458-1459,1461,1464-1465,1467,1470-1471,1473,1479
+test/storyarn/architecture/sheets_internal_structure_test.exs
+  s_e9e5a90425bc26::t_c383c0299f92de 152,160
+lib/storyarn/sheets/versioning/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+  s_e9e5a90425bc26::t_dbd75ca9b29632 6-7,14-31,51-56
+  s_e9e5a90425bc26::t_4ad60dc32b3c8b 8-13,32-50
+lib/storyarn/sheets/assets/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_dbd75ca9b29632 6,50-67,103-107
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+  s_e9e5a90425bc26::t_422a046472b690 8-10,20-29,33-39,41-47,78-93
+  s_e9e5a90425bc26::t_3ba7f280a8a1a5 30,32,40
+  s_e9e5a90425bc26::t_68c4535553fd4e 11-19,48-49,68-77,94-102
+  s_e9e5a90425bc26::t_69be12f8c35423 31
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_e9e5a90425bc26::t_74ae15a20dd008 15
+lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex
+  s_e9e5a90425bc26::t_48dc893c33703a 5
+  s_e9e5a90425bc26::t_4ad60dc32b3c8b 9
+test/storyarn/projects/versioning/contracts/project_snapshot_archive_contract_test.exs
+  s_e9e5a90425bc26::t_f05b33744fc4fd 8,163-164
+docs/reference/context-map.md
+  s_e9e5a90425bc26::t_48dc893c33703a 5,25,84
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_e9e5a90425bc26::t_397907bbb698a3 17,306,309
+  s_e9e5a90425bc26::t_470cf176141d19 148,152
+  s_e9e5a90425bc26::t_5ed2d219860250 272
+test/support/snapshot_reset_storage.ex
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+lib/storyarn/scenes/assets/adapters/storage/hashing.ex
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+test/storyarn/projects/versioning/execution/project_snapshot_zip_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+lib/storyarn/sheets/versioning/adapters/storage/snapshot_storage.ex
+  s_e9e5a90425bc26::t_48dc893c33703a 5
+  s_e9e5a90425bc26::t_4ad60dc32b3c8b 9
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_e9e5a90425bc26::t_f2af995c52ed18 134,137
+  s_e9e5a90425bc26::t_15512f0b2d1bfc 135-136
+  s_e9e5a90425bc26::t_5bcde051999e51 107
+lib/storyarn/scenes/assets/adapters/storage/locks.ex
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+  s_e9e5a90425bc26::t_10bc68994d3764 5-49
+lib/storyarn/platform/object_storage/adapters/local/conditional_copy_sweeper.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1,6
+config/config.exs
+  s_e9e5a90425bc26::t_70f18d74f70de6 245
+  s_e9e5a90425bc26::t_a42e1b634d45ef 243-244
+  s_e9e5a90425bc26::t_f05b33744fc4fd 172
+  s_e9e5a90425bc26::t_ab189a59031fa1 13
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_e9e5a90425bc26::t_f05b33744fc4fd 12,762,807-808,873-875,954-955
+lib/storyarn/application.ex
+  s_e9e5a90425bc26::t_eb1d06c9ab52ea 10-30
+lib/storyarn/sheets/assets/adapters/storage/compensation.ex
+  s_e9e5a90425bc26::t_86cec999cca64a 7-8,268
+lib/storyarn/flows/versioning/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_dbd75ca9b29632 6-7,18-35,55-60
+  s_e9e5a90425bc26::t_d54ddfea5da76d 1-3,5,8-17,36-54,61
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+test/storyarn/projects/versioning/integration/workspace_snapshot_referenced_tombstones_test.exs
+  s_e9e5a90425bc26::t_f05b33744fc4fd 16,81,91,140-141,387-388
+test/support/failing_stream_storage.ex
+  s_e9e5a90425bc26::t_ab189a59031fa1 4,7
+test/storyarn/scenes/assets/commands/assets_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 8
+  s_e9e5a90425bc26::t_f05b33744fc4fd 69,191
+lib/storyarn/platform/object_storage/key_lock.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1-419
+test/storyarn/projects/assets/rules/upload_decision_test.exs
+  s_e9e5a90425bc26::t_ad029b18a6920d 161
+test/storyarn/architecture/storage_composition_boundary_test.exs
+  s_e9e5a90425bc26::t_89b2caf676d9b7 137
+  s_e9e5a90425bc26::t_2db7b685dceb22 36,77-78,174,184,186-191
+  s_e9e5a90425bc26::t_a604c21e2bc09d 37-76,79-100,135,138
+  s_e9e5a90425bc26::t_8ec81c4d613b18 123-132
+  s_e9e5a90425bc26::t_cd9f1314c7efe3 4-5,8-27,29-32,34-35,101-122,141-165,168-170,173,175-183,185,192
+  s_e9e5a90425bc26::t_e5753d17844431 136
+test/storyarn/architecture/scenes_internal_structure_test.exs
+  s_e9e5a90425bc26::t_c383c0299f92de 156,164
+test/storyarn/scenes/assets/integration/pipeline_invariants_test.exs
+  s_e9e5a90425bc26::t_0ff4e3e577ea44 339,583,585
+  s_e9e5a90425bc26::t_86edfe7ab95a37 584
+  s_e9e5a90425bc26::t_ab189a59031fa1 8
+  s_e9e5a90425bc26::t_f05b33744fc4fd 128,159,209,252,298-299,330-332,373-375,406-407,441-442,470-471,549
+  s_e9e5a90425bc26::t_20cd03c15b75e9 380
+  s_e9e5a90425bc26::t_9cd170b3a46c31 586-587
+AGENTS.md
+  s_e9e5a90425bc26::t_48dc893c33703a 399-402
+test/storyarn/projects/assets/rules/storage_key_test.exs
+  s_e9e5a90425bc26::t_470cf176141d19 76-77,79-84,88-90
+  s_e9e5a90425bc26::t_c5d882a04f046f 73-75,78,85-87,91-92
+test/storyarn/scenes/versioning/adapters/storage/snapshot_storage_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+  s_e9e5a90425bc26::t_63c9148b15cecf 141,152
+  s_e9e5a90425bc26::t_74b45d502b93e1 30-34
+lib/storyarn/projects/assets/adapters/storage/key_lock.ex
+  s_e9e5a90425bc26::t_190aed802a29a3 2-4,21-22,26-31,41,48-49
+  s_e9e5a90425bc26::t_434adf4f8c236d 6
+test/support/snapshot_read_switch_storage.ex
+  s_e9e5a90425bc26::t_63c9148b15cecf 78-80
+  s_e9e5a90425bc26::t_ab189a59031fa1 4,6
+test/support/storage_test_helpers.ex
+  s_e9e5a90425bc26::t_ad029b18a6920d 9
+lib/storyarn/sheets/assets/adapters/storage/locks.ex
+  s_e9e5a90425bc26::t_10bc68994d3764 5-49
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+test/storyarn/architecture/dependency_policy_test.exs
+  s_e9e5a90425bc26::t_8a24f10fde6df0 672,676-678,687-688
+lib/storyarn/flows/versioning/execution/asset_catalog.ex
+  s_e9e5a90425bc26::t_d54ddfea5da76d 12-14,452
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1,8,10-12,49-50,53-54
+lib/storyarn/projects/README.md
+  s_e9e5a90425bc26::t_48dc893c33703a 11,76,180-190
+lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex
+  s_e9e5a90425bc26::t_d54ddfea5da76d 9
+  s_e9e5a90425bc26::t_48dc893c33703a 5
+test/storyarn/projects/versioning/adapters/archive/project_snapshot_archive_reader_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+lib/storyarn/platform/object_storage.ex
+  s_e9e5a90425bc26::t_eb1d06c9ab52ea 9-10,80-84
+  s_e9e5a90425bc26::t_336ad9a5f9c5f7 78-79,97-99
+  s_e9e5a90425bc26::t_1d2262ee15db83 12-13,85-92
+  s_e9e5a90425bc26::t_58f574cc66f012 107,114-116
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1-8,11,14-77,93-96,100-106,108-113,117-342,344-447
+  s_e9e5a90425bc26::t_361314822616b8 343
+test/storyarn/architecture/projects_boundary_test.exs
+  s_e9e5a90425bc26::t_da4d8d81e5aba2 118,122,135-136
+lib/storyarn/scenes/versioning/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_dbd75ca9b29632 6-7,14-31,51-56
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+  s_e9e5a90425bc26::t_4ad60dc32b3c8b 8-13,32-50
+lib/storyarn/projects/assets/execution/blob_store.ex
+  s_e9e5a90425bc26::t_58f574cc66f012 338
+test/storyarn/projects/versioning/execution/project_snapshot_asset_materializer_test.exs
+  s_e9e5a90425bc26::t_1bc661a0413fe0 829
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_e9e5a90425bc26::t_58f574cc66f012 1420-1422,1425
+test/storyarn/architecture/scenes_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_e87da751340c88 100,114,120-122
+  s_e9e5a90425bc26::t_f913ae61213437 109
+lib/storyarn/scenes/assets/adapters/storage/objects.ex
+  s_e9e5a90425bc26::t_69be12f8c35423 32
+  s_e9e5a90425bc26::t_68c4535553fd4e 5,11-20,49-50,69-78,95-103
+  s_e9e5a90425bc26::t_422a046472b690 8-10,21-30,34-40,42-48,79-94
+  s_e9e5a90425bc26::t_ab189a59031fa1 4
+  s_e9e5a90425bc26::t_3ba7f280a8a1a5 31,33,41
+  s_e9e5a90425bc26::t_dbd75ca9b29632 6-7,51-68,104-108
+lib/storyarn/sheets/assets/adapters/storage/hashing.ex
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+test/storyarn/architecture/flows_internal_structure_test.exs
+  s_e9e5a90425bc26::t_c383c0299f92de 204,210-215,218
+lib/storyarn_web/controllers/private_media_controller.ex
+  s_e9e5a90425bc26::t_470cf176141d19 50
+lib/storyarn/platform/object_storage/adapters/local/conditional_copy_registry.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1
+lib/storyarn/projects.ex
+  s_e9e5a90425bc26::t_c5d882a04f046f 360-363,365-366,368
+  s_e9e5a90425bc26::t_470cf176141d19 364,367
+lib/storyarn/platform/object_storage/adapters/r2.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1,9,13,183-185,191-193
+  s_e9e5a90425bc26::t_361314822616b8 73,695,698
+lib/storyarn_web/private_download.ex
+  s_e9e5a90425bc26::t_ab189a59031fa1 12
+lib/storyarn/projects/assets/rules/storage_key.ex
+  s_e9e5a90425bc26::t_c5d882a04f046f 4-6,28-31,34-36,38-52
+  s_e9e5a90425bc26::t_470cf176141d19 25-27,32-33
+  s_e9e5a90425bc26::t_288647e6f469dc 37
+  s_e9e5a90425bc26::t_55aed2e889bf80 53
+test/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage_test.exs
+  s_e9e5a90425bc26::t_7ffa8af249f7d3 10
+test/storyarn/flows/versioning/adapters/storage/asset_storage_compensation_persistence_test.exs
+  s_e9e5a90425bc26::t_ddbe4c65b5c444 2
+  s_e9e5a90425bc26::t_bb8625a399a4ea 5,12-13,31-67,69
+  s_e9e5a90425bc26::t_83301737dbfd41 68
+  s_e9e5a90425bc26::t_b91a32fc8d99f3 70
+test/storyarn/sheets/assets/storage_objects_test.exs
+  s_e9e5a90425bc26::t_f0549d4c567c0f 1-42,45,49
+  s_e9e5a90425bc26::t_6378c97790146f 43-44
+  s_e9e5a90425bc26::t_0ff4e3e577ea44 46-48
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_e9e5a90425bc26::t_74ae15a20dd008 56
+lib/storyarn/projects/versioning/execution/project_snapshot_asset_materializer.ex
+  s_e9e5a90425bc26::t_74ae15a20dd008 25
+test/storyarn/sheets/assets/commands/assets_test.exs
+  s_e9e5a90425bc26::t_f05b33744fc4fd 146
+  s_e9e5a90425bc26::t_86edfe7ab95a37 154
+  s_e9e5a90425bc26::t_0ff4e3e577ea44 9,11,81-117,120-139,153,155-162
+  s_e9e5a90425bc26::t_ab189a59031fa1 8
+  s_e9e5a90425bc26::t_5791cfd6f6347d 163
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_e9e5a90425bc26::t_f05b33744fc4fd 18,647,883-884
+test/storyarn/architecture/platform_internal_structure_test.exs
+  s_e9e5a90425bc26::t_63097cffc10d95 15,46,77
+  s_e9e5a90425bc26::t_f913ae61213437 27
+priv/gettext/default.pot
+  s_e9e5a90425bc26::t_3c624a2e75131e 113
+test/support/multipart_storage_spy.ex
+  s_e9e5a90425bc26::t_69be12f8c35423 4
+  s_e9e5a90425bc26::t_a0024ffe8ba760 5-8,18-33
+  s_e9e5a90425bc26::t_922ed130000013 1-3,9-17,34
+lib/storyarn/projects/versioning/adapters/storage/hashing.ex
+  s_e9e5a90425bc26::t_1fee3087e44499 1-3,5
+  s_e9e5a90425bc26::t_6dc8bcf4a57d27 4
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 2
+test/storyarn/projects/interchange/imports/integration/replacement_restore_integration_test.exs
+  s_e9e5a90425bc26::t_ab189a59031fa1 12
+test/storyarn/projects/versioning/execution/project_snapshot_build_test.exs
+  s_e9e5a90425bc26::t_7ffa8af249f7d3 18
+test/storyarn/architecture/object_storage_lock_boundary_test.exs
+  s_e9e5a90425bc26::t_f2af995c52ed18 1-3,6-7,9-11,14,17-18,89-90,92-104,106,108-110,113,115-117,143,172
+  s_e9e5a90425bc26::t_bf8c0cd8d0bf94 84-85,91,145-159,170-171
+  s_e9e5a90425bc26::t_1ff9cee9542afb 105,107,111-112,114,118-121
+  s_e9e5a90425bc26::t_fc3059e4f3cbad 133-142
+  s_e9e5a90425bc26::t_15512f0b2d1bfc 4-5,8,12-13,15-16,21-68,122-132,160-169
+  s_e9e5a90425bc26::t_fac8be4f39c966 19-20,69-83,86-88,144
+test/storyarn/sheets/versioning/adapters/storage/snapshot_storage_test.exs
+  s_e9e5a90425bc26::t_74b45d502b93e1 1-10
+lib/storyarn/projects/assets/assets.ex
+  s_e9e5a90425bc26::t_c5d882a04f046f 21,144
+  s_e9e5a90425bc26::t_470cf176141d19 145-146
+lib/storyarn/platform/README.md
+  s_e9e5a90425bc26::t_48dc893c33703a 16,29-53,161,175-176
+lib/storyarn_web/private_media.ex
+  s_e9e5a90425bc26::t_ab189a59031fa1 11
+  s_e9e5a90425bc26::t_c5d882a04f046f 12,77
+  s_e9e5a90425bc26::t_470cf176141d19 66,72
+test/storyarn/platform/object_storage/adapters/r2_test.exs
+  s_e9e5a90425bc26::t_8052168ec1b457 1,4-5,516-518
+test/storyarn/flows/versioning/adapters/storage/snapshot_storage_test.exs
+  s_e9e5a90425bc26::t_74b45d502b93e1 30-34
+  s_e9e5a90425bc26::t_63c9148b15cecf 141,152
+  s_e9e5a90425bc26::t_ab189a59031fa1 5
+test/storyarn/projects/assets/execution/blob_store_test.exs
+  s_e9e5a90425bc26::t_7ffa8af249f7d3 8
+docs/reference/domain-patterns.md
+  s_e9e5a90425bc26::t_48dc893c33703a 5,32,117,120-123,137-141,382-397
+lib/storyarn/projects/assets/adapters/storage/hash.ex
+  s_e9e5a90425bc26::t_6dc8bcf4a57d27 4
+test/storyarn/projects/assets/adapters/storage/storage_test.exs
+  s_e9e5a90425bc26::t_30a65e15848074 162-163
+  s_e9e5a90425bc26::t_336ad9a5f9c5f7 5,7-8,14-26,337-339
+  s_e9e5a90425bc26::t_d4d833dfbbb0f8 164-169
+  s_e9e5a90425bc26::t_922ed130000013 4,172-178,207-212
+  s_e9e5a90425bc26::t_8cc4293d3862c3 49,52-53,55,58,62,67,69
+  s_e9e5a90425bc26::t_6378c97790146f 170-171,205-206
+  s_e9e5a90425bc26::t_9fefa56a6cc428 27-28
+  s_e9e5a90425bc26::t_4ec93bd8edf6c8 213
+lib/storyarn/scenes/assets/adapters/storage/compensation.ex
+  s_e9e5a90425bc26::t_86cec999cca64a 7-8,268
+test/support/conditional_copy_storage_spy.ex
+  s_e9e5a90425bc26::t_faea7c66162a03 1-15
+lib/storyarn/projects/assets/adapters/storage/storage.ex
+  s_e9e5a90425bc26::t_c6dcd5b8fe3688 3,6-7,11,15-26,33,56-72,74-75,82-86,88-90,101-103,105,108-109,113,116-118,145,155,173
+  s_e9e5a90425bc26::t_58f574cc66f012 73,149-152
+  s_e9e5a90425bc26::t_ab189a59031fa1 5,10
+  s_e9e5a90425bc26::t_30a65e15848074 87
+  s_e9e5a90425bc26::t_69be12f8c35423 106
+lib/storyarn/flows/versioning/adapters/storage/hashing.ex
+  s_e9e5a90425bc26::t_d54ddfea5da76d 1-3,5
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+lib/storyarn/platform/object_storage/hashing.ex
+  s_e9e5a90425bc26::t_83a08dc8afe6f8 1-26
+lib/storyarn/flows/versioning/adapters/storage/locks.ex
+  s_e9e5a90425bc26::t_d54ddfea5da76d 1-3,5-49
+  s_e9e5a90425bc26::t_434adf4f8c236d 4
+test/storyarn/platform/object_storage/adapters/local_test.exs
+  s_e9e5a90425bc26::t_1eca10cb864e2c 1,4-5
+test/storyarn/platform/object_storage/hashing_test.exs
+  s_e9e5a90425bc26::t_fc9f8a02931d8f 1,4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "d479a3a5365c2869be989d7f07b7799d9b30b92c",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
