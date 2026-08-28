@@ -13,8 +13,12 @@ import {
   type FlowGraphQueries,
   type FlowGraphNodeLike,
 } from "../lib/flowGraphQueries";
-import type { FlowContext } from "./editorHandlers";
 import type { FlowAreaExtra, FlowSchemes } from "../lib/rete-schemes";
+
+/** Selection state needed by sequence scoping, independent of editor handlers. */
+export interface FlowSequenceSelectionContext {
+  selectedReteIds: Set<string | number>;
+}
 
 interface SequenceScopeNode extends FlowGraphNodeLike {
   id: string;
@@ -51,7 +55,7 @@ export interface FlowSequenceScopesController {
 export interface FlowSequenceScopesOptions {
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   editor: NodeEditor<FlowSchemes>;
-  flowContext: FlowContext;
+  flowContext: FlowSequenceSelectionContext;
   onReparented: SequenceReparentListener;
 }
 
@@ -161,7 +165,10 @@ export function resolveFlowSequenceParent(
   return { ok: true, parentId };
 }
 
-function selectedNodeIds(editor: NodeEditor<FlowSchemes>, flowContext: FlowContext): string[] {
+function selectedNodeIds(
+  editor: NodeEditor<FlowSchemes>,
+  flowContext: FlowSequenceSelectionContext,
+): string[] {
   const contextIds = [...flowContext.selectedReteIds].map(String);
   if (contextIds.length > 0) {
     return contextIds;
@@ -173,7 +180,10 @@ function selectedNodeIds(editor: NodeEditor<FlowSchemes>, flowContext: FlowConte
     .map((node) => (node as unknown as SequenceScopeNode).id);
 }
 
-function selectedNodeIdSet(editor: NodeEditor<FlowSchemes>, flowContext: FlowContext): Set<string> {
+function selectedNodeIdSet(
+  editor: NodeEditor<FlowSchemes>,
+  flowContext: FlowSequenceSelectionContext,
+): Set<string> {
   return new Set(selectedNodeIds(editor, flowContext));
 }
 
@@ -197,7 +207,7 @@ function hasSelectedAncestorBelowRoot(
 function currentMovingIds(
   pickedId: string,
   editor: NodeEditor<FlowSchemes>,
-  flowContext: FlowContext,
+  flowContext: FlowSequenceSelectionContext,
 ): string[] {
   const selected = selectedNodeIds(editor, flowContext);
   if (selected.includes(pickedId)) {

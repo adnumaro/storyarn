@@ -73,7 +73,7 @@ Each capability uses only the roles it needs:
 | `execution/`      | Stateful or multi-step workflows whose transaction, lock or recovery order must remain intact.                                                              |
 | `events/`         | Product facts owned by Projects.                                                                                                                            |
 | `delivery/`       | Project-owned delivery decisions and content, before technical handoff.                                                                                     |
-| `adapters/`       | Translation to Platform object storage, archives, images, PostgreSQL locks, Oban, email or another provider.                                               |
+| `adapters/`       | Translation to Platform object storage, archives, images, PostgreSQL locks, Oban, email or another provider.                                                |
 
 This is a pragmatic functional architecture. A transaction is not split merely
 to make a file fit a diagram, and a pure function does not need a behaviour or

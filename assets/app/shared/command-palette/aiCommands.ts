@@ -1,4 +1,4 @@
-import type { PaletteCommandBase } from "./registry";
+import type { PaletteCommandBase } from "./commandTypes";
 
 export type AIExecutionLane = "managed" | "personal_byok" | "workspace_byok";
 

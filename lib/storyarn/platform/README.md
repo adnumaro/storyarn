@@ -4,18 +4,18 @@
 organized by cohesive product capabilities plus explicit application and
 technical areas. None of these folders is an additional bounded context.
 
-| Area             | Responsibility                                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `commercial/`    | Plans, subscriptions, entitlements, limits, storage accounting, reservations, leases, and workspace-scoped commercial policy.                                 |
-| `reactions/`     | Platform reaction routing, product metrics, privacy-safe taxonomy, and analytics transport contracts.                                                         |
-| `notifications/` | Durable inbox state, recipient resolution, deduplication, visibility, read state, and post-commit invalidation.                                               |
-| `collaboration/` | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context.                                |
-| `discovery/`     | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
-| `onboarding/`    | Product-wide tutorial progress and onboarding summaries.                                                                                                      |
-| `delivery/`      | Durable handoff to delivery workers after the producing context has decided intent and content.                                                               |
+| Area              | Responsibility                                                                                                                                                |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `commercial/`     | Plans, subscriptions, entitlements, limits, storage accounting, reservations, leases, and workspace-scoped commercial policy.                                 |
+| `reactions/`      | Platform reaction routing, product metrics, privacy-safe taxonomy, and analytics transport contracts.                                                         |
+| `notifications/`  | Durable inbox state, recipient resolution, deduplication, visibility, read state, and post-commit invalidation.                                               |
+| `collaboration/`  | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context.                                |
+| `discovery/`      | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
+| `onboarding/`     | Product-wide tutorial progress and onboarding summaries.                                                                                                      |
+| `delivery/`       | Durable handoff to delivery workers after the producing context has decided intent and content.                                                               |
 | `object_storage/` | Provider-neutral object I/O, hashing, key locks and Local/R2 implementations. Consumer contexts retain every business storage decision.                       |
-| `adapters/`      | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration.                                                     |
-| `kernel/`        | A closed set of small, deterministic, business-neutral primitives used by several contexts.                                                                   |
+| `adapters/`       | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration.                                                     |
+| `kernel/`         | A closed set of small, deterministic, business-neutral primitives used by several contexts.                                                                   |
 
 Platform is not an umbrella for code that merely happens to be shared. A new
 module enters Platform only when its policy is genuinely product-wide or when
@@ -33,11 +33,11 @@ public facade. It is consumed directly rather than being re-exported through
 the business-oriented `Storyarn.Platform` facade. Its `adapters/`, `Hashing`
 and `KeyLock` modules are private implementation details.
 
-| Platform owns                                  | Consumer contexts own                                                                                   |
-| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Provider selection and runtime configuration   | Key namespaces and key construction                                                                     |
+| Platform owns                                 | Consumer contexts own                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Provider selection and runtime configuration  | Key namespaces and key construction                                                                     |
 | Local/R2 I/O and conditional-copy supervision | Authorization, reachability, retention and deletion decisions                                           |
-| Incremental hashing and generic key locks      | Snapshots, imports, durable cleanup, ownership transfer, quota application and provider-error semantics |
+| Incremental hashing and generic key locks     | Snapshots, imports, durable cleanup, ownership transfer, quota application and provider-error semantics |
 
 Projects therefore keeps its recoverable-blob guard, multipart cleanup grammar,
 compensation and reconstitution policy. Flows, Sheets and Scenes keep their own

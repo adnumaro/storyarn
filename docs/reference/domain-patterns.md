@@ -19,16 +19,16 @@ exceptions are documented in the [bounded-context map](context-map.md).
 
 ### Bounded contexts
 
-| Bounded context | Public facade           | Owned business capabilities                                                                                                      |
-| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                            |
-| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                        |
-| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity |
-| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                    |
-| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                     |
-| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                               |
-| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
-| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
+| Bounded context | Public facade           | Owned business capabilities                                                                                                             |
+| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                                   |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                               |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity        |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                           |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                            |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                                      |
+| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                                   |
+| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                                    |
 | Platform        | `Storyarn.Platform`     | Commercial policy, notifications, product reactions, provider-neutral object storage and genuinely platform-wide control-plane behavior |
 
 Platform is an organizational control-plane boundary, not a claim that billing,
@@ -111,11 +111,11 @@ separate decision belongs to ENG-103.
 The following namespaces organize capabilities inside their owner. Their
 existence does not create another domain boundary:
 
-| Owner    | Internal capability examples                                                                  |
-| -------- | --------------------------------------------------------------------------------------------- |
-| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                              |
-| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`, `ObjectStorage`        |
-| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                         |
+| Owner    | Internal capability examples                                                           |
+| -------- | -------------------------------------------------------------------------------------- |
+| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                       |
+| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`, `ObjectStorage` |
+| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                  |
 
 Workers, Repo, mail delivery, PubSub, telemetry and release wiring are adapters
 or application composition. They are not bounded contexts. The provider-neutral
