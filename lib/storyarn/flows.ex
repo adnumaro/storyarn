@@ -391,6 +391,10 @@ defmodule Storyarn.Flows do
   @spec get_preview_speaker_name(integer(), integer()) :: String.t() | nil
   defdelegate get_preview_speaker_name(project_id, speaker_id), to: Editor
 
+  @doc "Returns the current active Scene name rendered by the Flow editor."
+  @spec get_editor_scene_name(integer(), integer()) :: String.t() | nil
+  defdelegate get_editor_scene_name(project_id, scene_id), to: Editor
+
   @doc """
   Sets a flow as the main flow for its project.
   Unsets any existing main flow.

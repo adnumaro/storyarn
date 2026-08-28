@@ -188,6 +188,7 @@ defmodule Storyarn.Flows.Editor do
   defdelegate search_asset_options(project_id, kind, opts \\ []), to: EditorCatalog, as: :asset_options
   defdelegate initial_asset_options(project_id, kind, selected_ids), to: EditorCatalog
   defdelegate get_preview_speaker_name(project_id, speaker_id), to: EditorCatalog, as: :speaker_name
+  defdelegate get_editor_scene_name(project_id, scene_id), to: EditorCatalog, as: :scene_name
   defdelegate search_exit_target_scenes(project_id, query, opts \\ []), to: ExitTargetScenes, as: :search
 
   # Nodes

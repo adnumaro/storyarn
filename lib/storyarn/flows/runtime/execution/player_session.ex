@@ -150,7 +150,7 @@ defmodule Storyarn.Flows.PlayerSession do
   def can_go_back?(%__MODULE__{} = session) do
     Enum.any?(session.state.snapshots, fn snapshot ->
       snapshot.node_id != session.state.current_node_id and
-        renderable_node?(snapshot_node(session, snapshot))
+        renderable_node?(Map.get(session.nodes, snapshot.node_id))
     end)
   end
 
@@ -172,7 +172,12 @@ defmodule Storyarn.Flows.PlayerSession do
     |> resolve_step(session, transition_count)
   end
 
-  defp resolve_step(_result, session, count) when count >= @max_flow_transitions do
+  defp resolve_step({:flow_jump, _state, _target_flow_id, _skipped}, session, count)
+       when count >= @max_flow_transitions do
+    {:error, :transition_limit, session}
+  end
+
+  defp resolve_step({:flow_return, _state, _skipped}, session, count) when count >= @max_flow_transitions do
     {:error, :transition_limit, session}
   end
 
@@ -337,19 +342,6 @@ defmodule Storyarn.Flows.PlayerSession do
 
       nil ->
         session
-    end
-  end
-
-  defp snapshot_node(session, %{current_flow_id: flow_id, node_id: node_id}) when flow_id == session.flow.id do
-    Map.get(session.nodes, node_id)
-  end
-
-  defp snapshot_node(session, %{current_flow_id: flow_id, node_id: node_id}) do
-    session.state.call_stack
-    |> Enum.find(&(&1.flow_id == flow_id))
-    |> case do
-      %{nodes: nodes} -> Map.get(nodes, node_id)
-      _missing_frame -> nil
     end
   end
 

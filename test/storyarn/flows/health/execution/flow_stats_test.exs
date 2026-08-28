@@ -154,4 +154,19 @@ defmodule Storyarn.Flows.FlowStatsTest do
                Flows.count_dialogue_lines_by_speaker(project.id)
     end
   end
+
+  describe "flow_word_count/1" do
+    test "recomputes from node data when an imported persisted counter is stale", %{project: project} do
+      flow = flow_fixture(project)
+      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "One two three"}})
+
+      node
+      |> Ecto.Changeset.change(word_count: 0)
+      |> Repo.update!()
+
+      loaded_flow = Flows.get_flow!(project.id, flow.id)
+
+      assert Flows.flow_word_count(loaded_flow) == 3
+    end
+  end
 end

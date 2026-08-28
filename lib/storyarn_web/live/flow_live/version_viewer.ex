@@ -29,7 +29,7 @@ defmodule StoryarnWeb.FlowLive.VersionViewer do
         v-component="live/versioning/viewer/VersionViewerError"
         v-socket={@socket}
         v-inject="compare-layout"
-        id="flow-version-viewer-error"
+        id="version-viewer-error"
         class="w-full h-full"
         reason={@view_error}
       />

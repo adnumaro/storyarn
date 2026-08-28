@@ -1709,19 +1709,13 @@ defmodule StoryarnWeb.FlowLive.Show do
     resolved_id = Flows.resolve_scene_id(flow)
     is_inherited = resolved_id != nil and resolved_id != flow.scene_id
 
-    scene_name = resolved_scene_name(socket.assigns.available_scenes, resolved_id)
+    scene_name =
+      if resolved_id,
+        do: Flows.get_editor_scene_name(socket.assigns.project.id, resolved_id)
 
     socket
     |> assign(:scene_name, scene_name)
     |> assign(:scene_inherited, is_inherited)
-  end
-
-  defp resolved_scene_name(_available_scenes, nil), do: nil
-
-  defp resolved_scene_name(available_scenes, resolved_id) do
-    Enum.find_value(available_scenes, fn scene ->
-      if scene.id == resolved_id, do: scene.name
-    end)
   end
 
   defp picker_query(query) when is_binary(query), do: String.trim(query)

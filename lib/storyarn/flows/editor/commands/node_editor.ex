@@ -85,15 +85,19 @@ defmodule Storyarn.Flows.NodeEditor do
 
   defp do_apply_operation(node, _flow, _project_id, :restore_data, payload, data) do
     with {:ok, restored_data} <- require_payload_map(payload, :data) do
-      restored_data =
-        restored_data
-        |> stringify_keys()
-        |> Map.take(Map.get(@restorable_fields, node.type, []))
-
       defaults = NodeTypes.default_data(node.type)
-      defaults = preserve_runtime_identity(node.type, defaults, data)
+      extension_fields = Map.keys(data) -- Map.keys(defaults)
+      snapshot_data = stringify_keys(restored_data)
 
-      {:ok, Map.merge(defaults, restored_data)}
+      restored_data =
+        Map.take(snapshot_data, Map.get(@restorable_fields, node.type, []) ++ extension_fields)
+
+      base_data =
+        defaults
+        |> Map.merge(Map.take(data, extension_fields))
+        |> preserve_runtime_identity(node.type, data, snapshot_data)
+
+      {:ok, Map.merge(base_data, restored_data)}
     end
   end
 
@@ -462,17 +466,20 @@ defmodule Storyarn.Flows.NodeEditor do
 
   defp editable_fields(type), do: Map.get(@editable_fields, type, [])
 
-  defp preserve_runtime_identity("dialogue", defaults, data) do
-    case data["localization_id"] do
-      localization_id when is_binary(localization_id) and localization_id != "" ->
-        Map.put(defaults, "localization_id", localization_id)
+  defp preserve_runtime_identity(defaults, "dialogue", data, restored_data) do
+    cond do
+      RuntimeKey.valid_dialogue_id?(data["localization_id"]) ->
+        Map.put(defaults, "localization_id", data["localization_id"])
 
-      _missing ->
+      RuntimeKey.valid_dialogue_id?(restored_data["localization_id"]) ->
+        Map.put(defaults, "localization_id", restored_data["localization_id"])
+
+      true ->
         defaults
     end
   end
 
-  defp preserve_runtime_identity(_type, defaults, _data), do: defaults
+  defp preserve_runtime_identity(defaults, _type, _data, _restored_data), do: defaults
 
   defp merge_editable_fields(type, data, params) do
     params =

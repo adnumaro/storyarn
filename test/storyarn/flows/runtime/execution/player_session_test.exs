@@ -144,6 +144,11 @@ defmodule Storyarn.Flows.PlayerSessionTest do
       assert [%{flow_id: root_flow_id}] = child_session.state.call_stack
       assert root_flow_id == root_flow.id
 
+      refute Flows.player_session_can_go_back?(child_session)
+
+      assert {:error, :no_history, ^child_session} =
+               Flows.go_back_player_session(child_session)
+
       assert {:ok, restarted} = Flows.restart_player_session(child_session)
       assert restarted.flow.id == root_flow.id
       assert restarted.state.current_flow_id == root_flow.id
@@ -153,6 +158,45 @@ defmodule Storyarn.Flows.PlayerSessionTest do
   end
 
   describe "cross-flow transition limit" do
+    test "allows exactly 100 transitions and rejects transition 101" do
+      project = project_fixture(user_fixture())
+
+      flows =
+        for index <- 0..101 do
+          raw_flow_fixture(project, %{
+            name: "Transition boundary #{index}",
+            shortcut: "transition-boundary-#{index}"
+          })
+        end
+
+      flows
+      |> Enum.chunk_every(2, 1, :discard)
+      |> Enum.each(fn [flow, target_flow] ->
+        entry = raw_node_fixture(flow, %{type: "entry", data: %{}})
+
+        subflow =
+          raw_node_fixture(flow, %{
+            type: "subflow",
+            data: %{"referenced_flow_id" => target_flow.id}
+          })
+
+        connection_fixture(flow, entry, subflow)
+      end)
+
+      final_flow = List.last(flows)
+      final_entry = raw_node_fixture(final_flow, %{type: "entry", data: %{}})
+      final_dialogue = raw_node_fixture(final_flow, %{type: "dialogue", data: %{"text" => "Done"}})
+      connection_fixture(final_flow, final_entry, final_dialogue)
+
+      [_over_limit_root, within_limit_root | _rest] = flows
+
+      assert {:ok, session} = Flows.start_player_session(within_limit_root, %{})
+      assert session.flow.id == final_flow.id
+      assert session.state.current_node_id == final_dialogue.id
+
+      assert {:error, :transition_limit} = Flows.start_player_session(hd(flows), %{})
+    end
+
     test "fails closed when a malformed recursive subflow exceeds the transition bound" do
       project = project_fixture(user_fixture())
       flow = flow_fixture(project)

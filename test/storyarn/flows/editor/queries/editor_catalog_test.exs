@@ -181,6 +181,35 @@ defmodule Storyarn.Flows.EditorCatalogTest do
     end
   end
 
+  describe "get_editor_scene_name/2" do
+    test "reads the current active Scene name instead of a stale editor catalog" do
+      user = user_fixture()
+      project = project_fixture(user)
+      other_project = project_fixture(user)
+      scene = scene_fixture(project, %{name: "Old name"})
+
+      Repo.update_all(
+        from(record in SceneRecord, where: record.id == ^scene.id),
+        set: [name: "Current name"]
+      )
+
+      assert Flows.get_editor_scene_name(project.id, scene.id) == "Current name"
+      assert Flows.get_editor_scene_name(other_project.id, scene.id) == nil
+    end
+
+    test "returns nil after the source Scene is soft-deleted" do
+      project = project_fixture(user_fixture())
+      scene = scene_fixture(project, %{name: "Deleted scene"})
+
+      Repo.update_all(
+        from(record in SceneRecord, where: record.id == ^scene.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
+
+      assert Flows.get_editor_scene_name(project.id, scene.id) == nil
+    end
+  end
+
   describe "search_mentions/2" do
     test "returns active Sheet and Flow mentions in stable name order within one project" do
       user = user_fixture()

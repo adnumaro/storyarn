@@ -7,6 +7,7 @@ defmodule Storyarn.Flows.NodeAuthoringTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows.Editor, as: Flows
+  alias Storyarn.Repo
 
   setup do
     user = user_fixture()
@@ -204,11 +205,19 @@ defmodule Storyarn.Flows.NodeAuthoringTest do
     node =
       node_fixture(flow, %{
         type: "dialogue",
-        data: %{"text" => "Original", "speaker_sheet_id" => nil}
+        data: %{
+          "text" => "Original",
+          "speaker_sheet_id" => nil,
+          "legacy_payload" => "Original legacy value"
+        }
       })
 
     assert {:ok, _updated, _meta} =
-             Flows.update_node_data(node, %{"text" => "Modified", "speaker_sheet_id" => nil})
+             Flows.update_node_data(node, %{
+               "text" => "Modified",
+               "speaker_sheet_id" => nil,
+               "legacy_payload" => "Modified legacy value"
+             })
 
     localization_id = Flows.get_node!(flow.id, node.id).data["localization_id"]
 
@@ -218,17 +227,40 @@ defmodule Storyarn.Flows.NodeAuthoringTest do
                  "text" => "Original",
                  "speaker_sheet_id" => nil,
                  "localization_id" => "dialogue_snapshot_must_not_replace_live_identity",
+                 "legacy_payload" => "Original legacy value",
                  "foreign_payload" => "must not persist"
                }
              })
 
     assert result.current_data["text"] == "Original"
     assert result.current_data["localization_id"] == localization_id
+    assert result.current_data["legacy_payload"] == "Original legacy value"
     refute Map.has_key?(result.current_data, "foreign_payload")
 
     persisted = Flows.get_node!(flow.id, node.id)
     assert persisted.data["text"] == "Original"
     assert persisted.data["localization_id"] == localization_id
+    assert persisted.data["legacy_payload"] == "Original legacy value"
     refute Map.has_key?(persisted.data, "foreign_payload")
+  end
+
+  test "restore_data recovers a valid snapshot identity for malformed legacy dialogue data", %{
+    flow: flow
+  } do
+    node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Original"}})
+    snapshot_localization_id = node.data["localization_id"]
+
+    node =
+      node
+      |> Ecto.Changeset.change(data: Map.put(node.data, "localization_id", ""))
+      |> Repo.update!()
+
+    assert {:ok, result} =
+             Flows.edit_node(flow.id, node.id, :restore_data, %{
+               data: Map.put(node.data, "localization_id", snapshot_localization_id)
+             })
+
+    assert result.current_data["localization_id"] == snapshot_localization_id
+    assert Flows.get_node!(flow.id, node.id).data["localization_id"] == snapshot_localization_id
   end
 end

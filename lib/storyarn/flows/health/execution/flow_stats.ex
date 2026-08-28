@@ -76,7 +76,9 @@ defmodule Storyarn.Flows.FlowStats do
     localizable_node_types = Localization.localizable_node_types()
 
     Enum.reduce(nodes, 0, fn node, total ->
-      if node.type in localizable_node_types, do: total + (node.word_count || 0), else: total
+      if node.type in localizable_node_types,
+        do: total + Localization.node_word_count(node.type, node.data),
+        else: total
     end)
   end
 

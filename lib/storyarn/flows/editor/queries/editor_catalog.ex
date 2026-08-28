@@ -184,6 +184,19 @@ defmodule Storyarn.Flows.EditorCatalog do
     )
   end
 
+  @doc "Returns the current active Scene name shown in the Flow header."
+  @spec scene_name(integer(), integer()) :: String.t() | nil
+  def scene_name(project_id, scene_id) do
+    Repo.one(
+      from(scene in SceneRecord,
+        where:
+          scene.project_id == ^project_id and scene.id == ^scene_id and
+            is_nil(scene.deleted_at),
+        select: scene.name
+      )
+    )
+  end
+
   defp mention_candidates(project_id, "") do
     sheets =
       Repo.all(
