@@ -335,7 +335,7 @@ defmodule Storyarn.Projects.Assets.BlobStore do
 
   defp delete_content_type_invalid_blob(destination_key, blob_hash, invalid_stat) do
     identity = invalid_blob_identity(invalid_stat, blob_hash)
-    result = Storage.adapter().delete_if_matches(destination_key, identity)
+    result = Storage.delete_if_matches(destination_key, identity)
 
     handle_content_type_invalid_blob_delete(result, destination_key, blob_hash)
   end

@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-27
+> Last reviewed: 2026-08-28
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
 > `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
@@ -19,17 +19,17 @@ exceptions are documented in the [bounded-context map](context-map.md).
 
 ### Bounded contexts
 
-| Bounded context | Public facade           | Owned business capabilities                                                                                                      |
-| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                            |
-| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                        |
-| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity |
-| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                    |
-| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                     |
-| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                               |
-| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
-| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
-| Platform        | `Storyarn.Platform`     | Commercial policy, notifications, product reactions and genuinely platform-wide control-plane behavior                           |
+| Bounded context | Public facade           | Owned business capabilities                                                                                                             |
+| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                                   |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                               |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity        |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                           |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                            |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                                      |
+| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                                   |
+| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                                    |
+| Platform        | `Storyarn.Platform`     | Commercial policy, notifications, product reactions, provider-neutral object storage and genuinely platform-wide control-plane behavior |
 
 Platform is an organizational control-plane boundary, not a claim that billing,
 notifications and analytics share one aggregate or ubiquitous language.
@@ -111,14 +111,16 @@ separate decision belongs to ENG-103.
 The following namespaces organize capabilities inside their owner. Their
 existence does not create another domain boundary:
 
-| Owner    | Internal capability examples                                                                  |
-| -------- | --------------------------------------------------------------------------------------------- |
-| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                              |
-| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`                         |
-| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                         |
+| Owner    | Internal capability examples                                                           |
+| -------- | -------------------------------------------------------------------------------------- |
+| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                       |
+| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`, `ObjectStorage` |
+| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                  |
 
-Workers, Repo, storage transports, mail delivery, PubSub, telemetry and release
-wiring are adapters or application composition. They are not bounded contexts.
+Workers, Repo, mail delivery, PubSub, telemetry and release wiring are adapters
+or application composition. They are not bounded contexts. The provider-neutral
+storage mechanism lives as the technical `Platform.ObjectStorage` capability;
+consumer-specific keys and lifecycle policy remain in each consumer.
 Background jobs are grouped physically under `lib/storyarn/workers/{owner}/`
 and the ratchet assigns each slice to that bounded context. Their flat
 `Storyarn.Workers.*` module names are a stable Oban persistence ABI, not a
@@ -132,9 +134,11 @@ paths declared in `config/architecture_boundaries.exs`. All nine bounded
 contexts are sealed. Cross-boundary calls are denied unless they are exact,
 reviewed root-facade or technical contracts.
 
-Migration exceptions are debt, not infrastructure. The current storage calls
-from tools, Web and the OTP root into Projects are registered individually and
-must disappear through ENG-107. New consumers cannot copy that relationship.
+Migration exceptions are debt, not infrastructure. ENG-107 has no remaining
+migration exceptions: its reviewed consumers terminate at the exact
+`Storyarn.Platform.ObjectStorage` facade, while provider, hashing and lock
+internals remain private. A new consumer must add an explicit adapter/port and a
+reviewed durable edge; it cannot make ObjectStorage globally available.
 
 The ratchet sees compile/runtime file edges. It cannot detect that two contexts
 write the same table or that a new call was added between two files already
@@ -375,20 +379,22 @@ end
 
 ## Storage Pattern (Assets)
 
-The current object-store implementation still mixes technical provider behavior
-with Project-specific blob, snapshot, import and cleanup policy under
-`Storyarn.Projects.Assets.Storage`. That is a tracked seam, not the target
-architecture.
+`Storyarn.Platform.ObjectStorage` owns only the provider-neutral mechanism:
+configuration, Local/R2 I/O, conditional-copy supervision, incremental hashing
+and generic key locks. Its provider, hashing and lock modules are private.
 
-- Projects may use that policy boundary internally.
-- Existing Flows, Sheets, Scenes, Web and OTP callers are registered as exact
-  ENG-107 migration exceptions.
-- New external callers are forbidden.
-- Do not move the entire module to a shared namespace: recoverable-blob deletion,
-  snapshot/import cleanup grammar and purge authority must remain with Projects.
-- ENG-107 will extract only neutral provider operations, hashing and generic
-  locking while preserving keys, provider configuration, lock identities,
-  errors and external I/O ordering.
+Each consumer owns its storage language and policy:
+
+- key namespaces and key construction;
+- authorization, reachability, retention and deletion decisions;
+- snapshots, imports, durable cleanup and ownership transfer;
+- quota application and consumer-facing error interpretation.
+
+Projects therefore retains its recoverable-blob guard, multipart cleanup
+grammar and compensation/reconstitution workflow. Flows, Sheets and Scenes use
+their own adapters and broad blob-deletion guards. Workspaces uses a local port.
+The 17 production edges to ObjectStorage are exact durable contracts, not
+permission to call `Adapters.Local`, `Adapters.R2`, `Hashing` or `KeyLock`.
 
 Direct provider deletion remains reserved for explicit tests that simulate
 provider-side loss or clean up isolated fixtures.

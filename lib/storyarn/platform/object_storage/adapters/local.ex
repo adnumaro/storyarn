@@ -1,15 +1,15 @@
-defmodule Storyarn.Projects.Assets.Storage.Local do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   @moduledoc """
   Local file storage adapter for development.
 
   Stores files in priv/static/uploads and serves them through authenticated media routes.
   """
 
-  @behaviour Storyarn.Projects.Assets.Storage
+  @behaviour Storyarn.Platform.ObjectStorage
 
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.Local.ConditionalCopyRegistry
-  alias Storyarn.Projects.Assets.StorageHash
+  alias Storyarn.Platform.ObjectStorage, as: Storage
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local.ConditionalCopyRegistry
+  alias Storyarn.Platform.ObjectStorage.Hashing, as: StorageHash
 
   @stream_chunk_size 1_048_576
   @conditional_copy_directory ".storyarn-copy"
@@ -46,11 +46,11 @@ defmodule Storyarn.Projects.Assets.Storage.Local do
   end
 
   @impl true
-  def incomplete_multipart_upload_count(key, opts) do
-    if Storage.multipart_cleanup_key?(key) and Keyword.keyword?(opts),
-      do: {:ok, 0},
-      else: {:error, :invalid_multipart_inventory_request}
+  def incomplete_multipart_upload_count(_key, opts) when is_list(opts) do
+    if Keyword.keyword?(opts), do: {:ok, 0}, else: {:error, :invalid_multipart_inventory_request}
   end
+
+  def incomplete_multipart_upload_count(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
 
   @impl true
   # sobelow_skip ["Traversal.FileModule"]

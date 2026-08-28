@@ -1,8 +1,8 @@
-defmodule Storyarn.Projects.Assets.Storage.LocalTest do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.LocalTest do
   use ExUnit.Case, async: false
 
-  alias Storyarn.Projects.Assets.Storage.Local
-  alias Storyarn.Projects.Assets.Storage.Local.ConditionalCopyRegistry
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local.ConditionalCopyRegistry
 
   setup do
     # Each test gets its own unique directory to avoid async race conditions

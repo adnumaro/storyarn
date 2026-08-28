@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
   alias Storyarn.Flows
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Assets
@@ -77,7 +78,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
     assert {:ok, deleted} = Projects.delete_project(context.project, context.user.id)
     assert {:ok, _project} = Projects.permanently_delete_project(deleted)
     refute Repo.get(Project, source_project_id)
-    Enum.each(original_keys, fn key -> Storage.adapter().delete(key) end)
+    Enum.each(original_keys, fn key -> ObjectStorage.delete(key) end)
 
     assert {:ok, accepted} =
              Versioning.request_workspace_snapshot_import(
@@ -87,7 +88,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
                %{original_filename: "referenced-tombstones.zip"}
              )
 
-    on_exit(fn -> Storage.adapter().delete(accepted.archive_storage_key) end)
+    on_exit(fn -> ObjectStorage.delete(accepted.archive_storage_key) end)
     assert :ok = accepted |> import_job!() |> ImportProjectSnapshotWorker.perform()
 
     completed = Repo.get!(WorkspaceSnapshotImport, accepted.id)
@@ -136,8 +137,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
            )
 
     on_exit(fn ->
-      Storage.adapter().delete(recovered_asset.key)
-      Storage.adapter().delete(protected_blob_key(recovered_asset))
+      ObjectStorage.delete(recovered_asset.key)
+      ObjectStorage.delete(protected_blob_key(recovered_asset))
     end)
   end
 
@@ -383,8 +384,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
              Assets.upload_binary_and_create_asset(bytes, %{filename: filename, content_type: "image/png"}, project, user)
 
     on_exit(fn ->
-      Storage.adapter().delete(asset.key)
-      Storage.adapter().delete(protected_blob_key(asset))
+      ObjectStorage.delete(asset.key)
+      ObjectStorage.delete(protected_blob_key(asset))
     end)
 
     asset

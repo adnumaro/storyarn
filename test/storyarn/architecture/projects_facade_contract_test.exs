@@ -14,6 +14,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     can?: 2,
     can_manage_project_template?: 2,
     can_publish_project_template?: 2,
+    canonical_storage_key?: 1,
     cancel_invitation_delivery: 1,
     cancel_project_import: 2,
     cancel_project_snapshot: 3,
@@ -144,9 +145,11 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     preview_portable_project_template: 1,
     preview_portable_project_template: 2,
     project_classification_options: 0,
+    project_asset_route_key?: 2,
     project_export_options: 1,
     project_import_active_statuses: 0,
     project_import_resume_storage_key: 2,
+    project_media_route_key?: 2,
     project_snapshot_accounting: 2,
     project_snapshot_archive_max_size_bytes: 0,
     project_snapshot_build_statuses: 1,
@@ -266,7 +269,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "8de6fbd966b86d394c3b20362083efb45c5f2468d1bf00df9987416fe3f0d882"
+  @docs_digest "31af3acde766f2457218c68031b741f3ad3fd95cfed8276e7bfafc5d59974cba"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
   @specs_digest "94800341e839c234aca49af0f6669f27c870eba0eb209b717803b9c81734b586"
 
@@ -300,10 +303,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 181
+    assert length(established_docs) == 184
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 74, hidden: 14, none: 93}
+             %{documented: 74, hidden: 17, none: 93}
 
     assert length(worker_docs) == 42
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))

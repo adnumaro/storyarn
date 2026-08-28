@@ -1,11 +1,29 @@
 defmodule Storyarn.Projects.Assets.StorageTest do
   use ExUnit.Case, async: false
 
+  alias Storyarn.MultipartStorageSpy
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.Local
+
+  @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
 
   defmodule NoMultipartInventoryAdapter do
     @moduledoc false
+  end
+
+  test "keeps the legacy multipart deadline key as a deployment compatibility fallback" do
+    current_config = Application.get_env(:storyarn, ObjectStorage)
+    legacy_config = Application.get_env(:storyarn, @legacy_config_key)
+
+    Application.delete_env(:storyarn, ObjectStorage)
+    Application.put_env(:storyarn, @legacy_config_key, multipart_upload_part_deadline_ms: 1_234)
+
+    on_exit(fn ->
+      restore_env(ObjectStorage, current_config)
+      restore_env(@legacy_config_key, legacy_config)
+    end)
+
+    assert Storage.multipart_upload_part_deadline_ms() == 1_234
   end
 
   @test_dir "test/tmp/storage_dispatch"
@@ -28,27 +46,27 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   end
 
   # =============================================================================
-  # adapter/0
+  # provider selection
   # =============================================================================
 
-  describe "adapter/0" do
-    test "returns Local adapter when configured as :local" do
+  describe "provider selection" do
+    test "uses the local provider when configured as :local" do
       Application.put_env(:storyarn, :storage, adapter: :local)
-      assert Storage.adapter() == Local
+      refute Storage.external_upload?()
     end
 
-    test "returns R2 adapter when configured as :r2" do
+    test "uses the external provider when configured as :r2" do
       original = Application.get_env(:storyarn, :storage, [])
       Application.put_env(:storyarn, :storage, adapter: :r2)
 
-      assert Storage.adapter() == Storyarn.Projects.Assets.Storage.R2
+      assert Storage.external_upload?()
 
       Application.put_env(:storyarn, :storage, original)
     end
 
-    test "defaults to Local adapter when no adapter configured" do
+    test "defaults to the local provider when no adapter is configured" do
       Application.put_env(:storyarn, :storage, [])
-      assert Storage.adapter() == Local
+      refute Storage.external_upload?()
     end
 
     test "reports direct external upload support without leaking the concrete adapter to callers" do
@@ -141,6 +159,23 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   end
 
   describe "abort_incomplete_multipart_uploads/2" do
+    test "skips keys that Projects policy never writes with multipart upload" do
+      assert {:ok, 0} =
+               Storage.abort_incomplete_multipart_uploads(
+                 "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/.storyarn-copy/copy-token",
+                 []
+               )
+    end
+
+    test "dispatches approved keys through the neutral provider contract" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      opts = [max_uploads: 7]
+      Application.put_env(:storyarn, :storage, adapter: MultipartStorageSpy)
+
+      assert {:ok, 17} = Storage.abort_incomplete_multipart_uploads(key, opts)
+      assert_received {:multipart_abort_dispatched, ^key, ^opts}
+    end
+
     test "treats a non-multipart adapter as an empty exact inventory" do
       assert {:ok, 0} =
                Storage.abort_incomplete_multipart_uploads(
@@ -165,6 +200,15 @@ defmodule Storyarn.Projects.Assets.StorageTest do
                Storage.incomplete_multipart_upload_count(
                  "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
                )
+    end
+
+    test "dispatches approved inventory through the neutral provider contract" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      opts = [max_uploads: 7]
+      Application.put_env(:storyarn, :storage, adapter: MultipartStorageSpy)
+
+      assert {:ok, 23} = Storage.incomplete_multipart_upload_count(key, opts)
+      assert_received {:multipart_inventory_dispatched, ^key, ^opts}
     end
 
     test "treats the local non-multipart backend as an exact empty inventory" do
@@ -290,4 +334,7 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       end
     end
   end
+
+  defp restore_env(key, nil), do: Application.delete_env(:storyarn, key)
+  defp restore_env(key, value), do: Application.put_env(:storyarn, key, value)
 end

@@ -110,7 +110,7 @@ msgstr ""
 msgid "Invalid localization policy"
 msgstr ""
 
-#: lib/storyarn_web/controllers/private_media_controller.ex:68
+#: lib/storyarn_web/controllers/private_media_controller.ex:67
 #, elixir-autogen, elixir-format
 msgid "Media not found"
 msgstr ""

@@ -1,14 +1,12 @@
 defmodule Storyarn.StorageTestHelpers do
   @moduledoc false
 
-  alias Storyarn.Projects.Assets.Storage
-
   def delete_storage_blob(key) when is_binary(key) do
     if !recoverable_blob_key?(key) do
       raise ArgumentError, "expected a canonical recoverable blob key"
     end
 
-    Storage.adapter().delete(key)
+    Storyarn.Platform.ObjectStorage.delete(key)
   end
 
   defp recoverable_blob_key?(key) do

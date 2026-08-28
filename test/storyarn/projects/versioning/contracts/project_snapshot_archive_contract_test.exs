@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveContractTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
@@ -159,8 +160,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveContractTest do
     temporary_path = write_internal_storage_object!(temporary_key, "partial")
 
     on_exit(fn ->
-      Storage.adapter().delete(archive_key)
-      Storage.adapter().delete(temporary_key)
+      ObjectStorage.delete(archive_key)
+      ObjectStorage.delete(temporary_key)
     end)
 
     assert :ok = StorageCompensation.delete_storage_keys([archive_key, temporary_key])

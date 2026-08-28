@@ -1,7 +1,7 @@
 defmodule Storyarn.SnapshotResetStorage do
   @moduledoc false
 
-  alias Storyarn.Projects.Assets.Storage.Local
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
 
   @objects_key {__MODULE__, :objects}
   @failures_key {__MODULE__, :failures}

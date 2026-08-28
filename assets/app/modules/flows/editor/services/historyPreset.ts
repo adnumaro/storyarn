@@ -14,7 +14,20 @@ import type { AreaPlugin } from "rete-area-plugin";
 import type { HistoryAction as Action, HistoryPlugin } from "rete-history-plugin";
 import type { NodeData } from "../lib/node-configs";
 import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-schemes";
-import type { HookProxy } from "./editorHandlers";
+
+/**
+ * Minimal editor capabilities required by history actions.
+ *
+ * Keeping this contract local prevents the history preset from depending on
+ * the editor-handlers factory that consumes it.
+ */
+export interface HistoryHookProxy {
+  pushEvent(event: string, payload: Record<string, unknown>): void;
+  isLoadingFromServer: boolean;
+  _historyTriggeredDelete?: string | number | null;
+  enterLoadingFromServer(): void;
+  exitLoadingFromServer(): void;
+}
 
 export interface Position {
   x: number;
@@ -149,10 +162,10 @@ class RemoveConnectionAction implements Action {
  * Undo sends restore_node to server; redo sends delete_node.
  */
 export class DeleteNodeAction implements Action {
-  hookProxy: HookProxy;
+  hookProxy: HistoryHookProxy;
   nodeId: string | number;
 
-  constructor(hookProxy: HookProxy, nodeId: string | number) {
+  constructor(hookProxy: HistoryHookProxy, nodeId: string | number) {
     this.hookProxy = hookProxy;
     this.nodeId = nodeId;
   }
@@ -172,10 +185,10 @@ export class DeleteNodeAction implements Action {
  * Undo deletes the node; redo restores it.
  */
 export class CreateNodeAction implements Action {
-  hookProxy: HookProxy;
+  hookProxy: HistoryHookProxy;
   nodeId: string | number;
 
-  constructor(hookProxy: HookProxy, nodeId: string | number) {
+  constructor(hookProxy: HistoryHookProxy, nodeId: string | number) {
     this.hookProxy = hookProxy;
     this.nodeId = nodeId;
   }
@@ -197,12 +210,12 @@ export class CreateNodeAction implements Action {
 export const FLOW_META_COALESCE_MS = 2000;
 
 export class FlowMetaAction implements Action {
-  hookProxy: HookProxy;
+  hookProxy: HistoryHookProxy;
   field: string;
   prevValue: unknown;
   newValue: unknown;
 
-  constructor(hookProxy: HookProxy, field: string, prevValue: unknown, newValue: unknown) {
+  constructor(hookProxy: HistoryHookProxy, field: string, prevValue: unknown, newValue: unknown) {
     this.hookProxy = hookProxy;
     this.field = field;
     this.prevValue = prevValue;
@@ -231,13 +244,13 @@ export class FlowMetaAction implements Action {
 export const NODE_DATA_COALESCE_MS = 1000;
 
 export class NodeDataAction implements Action {
-  hookProxy: HookProxy;
+  hookProxy: HistoryHookProxy;
   nodeId: string | number;
   prevData: NodeData;
   newData: NodeData;
 
   constructor(
-    hookProxy: HookProxy,
+    hookProxy: HistoryHookProxy,
     nodeId: string | number,
     prevData: NodeData,
     newData: NodeData,
@@ -271,13 +284,13 @@ export class NodeDataAction implements Action {
  * persist the resulting layout in one batch via `batch_update_positions`.
  */
 export class AutoLayoutAction implements Action {
-  hookProxy: HookProxy;
+  hookProxy: HistoryHookProxy;
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   prevPositions: Map<string, Position>;
   newPositions: Map<string, Position>;
 
   constructor(
-    hookProxy: HookProxy,
+    hookProxy: HistoryHookProxy,
     area: AreaPlugin<FlowSchemes, FlowAreaExtra>,
     prevPositions: Map<string, Position>,
     newPositions: Map<string, Position>,
@@ -317,7 +330,7 @@ export class AutoLayoutAction implements Action {
 /**
  * Creates a custom history preset for the flow canvas.
  */
-export function historyPreset(hookProxy: HookProxy): {
+export function historyPreset(hookProxy: HistoryHookProxy): {
   connect(history: HistoryPlugin<FlowSchemes>): void;
 } {
   return {

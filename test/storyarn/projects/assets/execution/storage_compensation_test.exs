@@ -9,6 +9,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
   alias Storyarn.Platform.Billing.StorageCleanupInventory
   alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupPersistenceError
@@ -758,7 +759,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       })
 
     assert {:ok, _url} = Storage.upload(storage_key, "p", "application/zip")
-    on_exit(fn -> Storage.adapter().delete(storage_key) end)
+    on_exit(fn -> ObjectStorage.delete(storage_key) end)
 
     assert :ok = StorageCompensation.delete_storage_keys([storage_key])
     assert {:ok, "p"} = Storage.download(storage_key)
@@ -803,8 +804,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(poisoned_key, "poisoned", "application/zip")
 
     on_exit(fn ->
-      Storage.adapter().delete(published_key)
-      Storage.adapter().delete(poisoned_key)
+      ObjectStorage.delete(published_key)
+      ObjectStorage.delete(poisoned_key)
     end)
 
     assert :ok = StorageCompensation.delete_storage_keys([published_key])
@@ -869,9 +870,9 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(transactional_key, "transactional", "image/png")
 
     on_exit(fn ->
-      Storage.adapter().delete(normal_key)
-      Storage.adapter().delete(force_key)
-      Storage.adapter().delete(transactional_key)
+      ObjectStorage.delete(normal_key)
+      ObjectStorage.delete(force_key)
+      ObjectStorage.delete(transactional_key)
     end)
 
     reservation =
@@ -950,8 +951,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(concurrently_owned_key, "concurrent", "image/png")
 
     on_exit(fn ->
-      Storage.adapter().delete(owned_key)
-      Storage.adapter().delete(concurrently_owned_key)
+      ObjectStorage.delete(owned_key)
+      ObjectStorage.delete(concurrently_owned_key)
     end)
 
     platform_owner =

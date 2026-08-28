@@ -97,7 +97,7 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
     direct_storage_references =
       Enum.filter(non_adapter_sources, fn path ->
         Regex.match?(
-          ~r/\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b/,
+          ~r/\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b|\bStoryarn\.Platform\.ObjectStorage\b/,
           File.read!(path)
         )
       end)
@@ -106,25 +106,20 @@ defmodule Storyarn.Architecture.ScenesWebFacadeBoundaryTest do
            "Scene workflows must reach shared storage only through Scene-owned adapters: " <>
              inspect(direct_storage_references)
 
-    allowed_storage_contracts =
-      MapSet.new([
-        "Storyarn.Projects.Assets.Storage",
-        "Storyarn.Projects.Assets.StorageHash",
-        "Storyarn.Projects.Assets.StorageKeyLock"
-      ])
+    allowed_storage_contracts = MapSet.new(["Storyarn.Platform.ObjectStorage"])
 
     adapter_references =
       adapter_sources
       |> Enum.flat_map(fn path ->
-        ~r/Storyarn\.Projects\.Assets\.[A-Za-z.]+/
+        ~r/Storyarn\.(?:Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)[A-Za-z.]*|Platform\.ObjectStorage(?:\.[A-Za-z.]+)?)/
         |> Regex.scan(File.read!(path))
         |> List.flatten()
       end)
       |> MapSet.new()
 
-    assert MapSet.subset?(adapter_references, allowed_storage_contracts),
-           "Scene storage adapters may use only the reviewed technical contracts, got: " <>
-             inspect(MapSet.difference(adapter_references, allowed_storage_contracts))
+    assert adapter_references == allowed_storage_contracts,
+           "Scene storage adapters may use only the public Platform ObjectStorage facade, got: " <>
+             inspect(adapter_references)
 
     assert File.exists?("lib/storyarn/scenes/assets/adapters/storage/objects.ex")
     assert File.exists?("lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex")

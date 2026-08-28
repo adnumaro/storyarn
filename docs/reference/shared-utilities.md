@@ -16,13 +16,13 @@ code. `Storyarn.Platform` and `Storyarn.Shared` are not catch-all namespaces.
 
 Kernel modules are deterministic and contain no persistence or provider I/O.
 
-| Module | File | Contract |
-| --- | --- | --- |
-| `Storyarn.Platform.Kernel.MapAccess` | `lib/storyarn/platform/kernel/map_access.ex` | `stringify_keys/1` and atom/string-key lookup with `get_flexible/2` |
-| `Storyarn.Platform.Kernel.IntegerParser` | `lib/storyarn/platform/kernel/integer_parser.ex` | Strict complete integer parsing with `parse/1`; integer-or-zero normalization with `ensure/1` |
-| `Storyarn.Platform.Shared.StringUtils` | `lib/storyarn/platform/kernel/string_utils.ex` | Exact empty check with `blank?/1` and non-blank label fallback with `present_label/2` |
-| `Storyarn.Platform.Shared.SearchHelpers` | `lib/storyarn/platform/kernel/search_helpers.ex` | Escapes `%`, `_` and `\\` before a value is interpolated into an `ILIKE` pattern |
-| `Storyarn.Platform.Shared.HtmlUtils` | `lib/storyarn/platform/kernel/html_utils.ex` | Text extraction, truncation, word counts and documentation heading IDs; this is not an HTML sanitizer |
+| Module                                   | File                                             | Contract                                                                                              |
+| ---------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------------------------------------------------- |
+| `Storyarn.Platform.Kernel.MapAccess`     | `lib/storyarn/platform/kernel/map_access.ex`     | `stringify_keys/1` and atom/string-key lookup with `get_flexible/2`                                   |
+| `Storyarn.Platform.Kernel.IntegerParser` | `lib/storyarn/platform/kernel/integer_parser.ex` | Strict complete integer parsing with `parse/1`; integer-or-zero normalization with `ensure/1`         |
+| `Storyarn.Platform.Shared.StringUtils`   | `lib/storyarn/platform/kernel/string_utils.ex`   | Exact empty check with `blank?/1` and non-blank label fallback with `present_label/2`                 |
+| `Storyarn.Platform.Shared.SearchHelpers` | `lib/storyarn/platform/kernel/search_helpers.ex` | Escapes `%`, `_` and `\\` before a value is interpolated into an `ILIKE` pattern                      |
+| `Storyarn.Platform.Shared.HtmlUtils`     | `lib/storyarn/platform/kernel/html_utils.ex`     | Text extraction, truncation, word counts and documentation heading IDs; this is not an HTML sanitizer |
 
 `IntegerParser.parse/1` rejects partial values such as `"42px"` and decimal
 strings. Formula coercion is domain behavior and therefore stays in the owning
@@ -33,13 +33,13 @@ whitespace is empty must keep that stronger rule locally.
 
 ## Platform technical adapters
 
-| Module | File | Contract |
-| --- | --- | --- |
-| `Storyarn.Platform.Shared.TimeHelpers` | `lib/storyarn/platform/adapters/clock.ex` | `now/0`, UTC truncated to seconds; use it instead of direct `DateTime.utc_now/0` |
-| `Storyarn.Platform.Shared.TokenGenerator` | `lib/storyarn/platform/adapters/security/token_generator.ex` | Generates and verifies hashed invitation/authentication tokens |
-| `Storyarn.Platform.Shared.EncryptedBinary` | `lib/storyarn/platform/adapters/security/encrypted_binary.ex` | Cloak-backed encrypted Ecto type |
-| `Storyarn.Platform.Shared.HtmlSanitizer` | `lib/storyarn/platform/adapters/security/html_sanitizer.ex` | Sanitizes untrusted HTML before `raw/1` or equivalent rendering |
-| `Storyarn.Platform.Vault` | `lib/storyarn/platform/adapters/security/vault.ex` | Cloak vault used by encrypted persistence fields |
+| Module                                     | File                                                          | Contract                                                                         |
+| ------------------------------------------ | ------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| `Storyarn.Platform.Shared.TimeHelpers`     | `lib/storyarn/platform/adapters/clock.ex`                     | `now/0`, UTC truncated to seconds; use it instead of direct `DateTime.utc_now/0` |
+| `Storyarn.Platform.Shared.TokenGenerator`  | `lib/storyarn/platform/adapters/security/token_generator.ex`  | Generates and verifies hashed invitation/authentication tokens                   |
+| `Storyarn.Platform.Shared.EncryptedBinary` | `lib/storyarn/platform/adapters/security/encrypted_binary.ex` | Cloak-backed encrypted Ecto type                                                 |
+| `Storyarn.Platform.Shared.HtmlSanitizer`   | `lib/storyarn/platform/adapters/security/html_sanitizer.ex`   | Sanitizes untrusted HTML before `raw/1` or equivalent rendering                  |
+| `Storyarn.Platform.Vault`                  | `lib/storyarn/platform/adapters/security/vault.ex`            | Cloak vault used by encrypted persistence fields                                 |
 
 The historical `Storyarn.Platform.Shared.*` module identities above are stable
 compatibility contracts. Their physical folders express the current ownership.
@@ -59,14 +59,14 @@ generic helper.
 These modules belong to the Web adapter and must not be imported by domain
 contexts:
 
-| Module | File | Contract |
-| --- | --- | --- |
-| `StoryarnWeb.Helpers.Authorize` | `lib/storyarn_web/helpers/authorize.ex` | Reauthorizes mutating LiveView events through the owning context |
-| `StoryarnWeb.Helpers.AutoSnapshot` | `lib/storyarn_web/helpers/auto_snapshot.ex` | Schedules and cancels debounced editor snapshot attempts; persistence gating stays in the owning facade |
-| `StoryarnWeb.Helpers.ColorUtils` | `lib/storyarn_web/helpers/color_utils.ex` | Validates theme hex colors and converts them to CSS OKLCH values |
-| `StoryarnWeb.Helpers.Severity` | `lib/storyarn_web/helpers/severity.ex` | Presentation ordering for the closed error/warning/info catalog |
-| `StoryarnWeb.Helpers.SaveStatusTimer` | `lib/storyarn_web/helpers/save_status_timer.ex` | Marks a LiveView save as complete and schedules its status reset |
-| `StoryarnWeb.Helpers.UndoRedoStack` | `lib/storyarn_web/helpers/undo_redo_stack.ex` | Generic bounded stack operations; each editor owns action interpretation and persistence |
+| Module                                | File                                            | Contract                                                                                                |
+| ------------------------------------- | ----------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `StoryarnWeb.Helpers.Authorize`       | `lib/storyarn_web/helpers/authorize.ex`         | Reauthorizes mutating LiveView events through the owning context                                        |
+| `StoryarnWeb.Helpers.AutoSnapshot`    | `lib/storyarn_web/helpers/auto_snapshot.ex`     | Schedules and cancels debounced editor snapshot attempts; persistence gating stays in the owning facade |
+| `StoryarnWeb.Helpers.ColorUtils`      | `lib/storyarn_web/helpers/color_utils.ex`       | Validates theme hex colors and converts them to CSS OKLCH values                                        |
+| `StoryarnWeb.Helpers.Severity`        | `lib/storyarn_web/helpers/severity.ex`          | Presentation ordering for the closed error/warning/info catalog                                         |
+| `StoryarnWeb.Helpers.SaveStatusTimer` | `lib/storyarn_web/helpers/save_status_timer.ex` | Marks a LiveView save as complete and schedules its status reset                                        |
+| `StoryarnWeb.Helpers.UndoRedoStack`   | `lib/storyarn_web/helpers/undo_redo_stack.ex`   | Generic bounded stack operations; each editor owns action interpretation and persistence                |
 
 Every mutating `handle_event` must use `with_authorization/3`,
 `with_edit_authorization/2`, or an equivalent helper that calls
@@ -96,11 +96,11 @@ The following code is deliberately not shared:
 Canonical JSON is AI-owned because it participates in AI persistence and spend
 guarantees. Each consumer keeps its own contract-local implementation:
 
-| Owner | File |
-| --- | --- |
+| Owner            | File                                                       |
+| ---------------- | ---------------------------------------------------------- |
 | Context building | `lib/storyarn/ai/context_building/rules/canonical_json.ex` |
-| Operations | `lib/storyarn/ai/operations/rules/canonical_json.ex` |
-| Routing | `lib/storyarn/ai/routing/rules/canonical_json.ex` |
+| Operations       | `lib/storyarn/ai/operations/rules/canonical_json.ex`       |
+| Routing          | `lib/storyarn/ai/routing/rules/canonical_json.ex`          |
 
 Do not recreate a Platform-wide canonical encoder. When adding an AI hash,
 choose the copy owned by that exact contract and preserve its canonicalization

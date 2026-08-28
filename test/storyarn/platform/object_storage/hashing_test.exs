@@ -1,7 +1,7 @@
-defmodule Storyarn.Projects.Assets.StorageHashTest do
+defmodule Storyarn.Platform.ObjectStorage.HashingTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Assets.StorageHash
+  alias Storyarn.Platform.ObjectStorage.Hashing, as: StorageHash
 
   test "hashes streamed chunks without buffering the complete object" do
     chunks = [{:ok, "story"}, {:ok, "arn"}]

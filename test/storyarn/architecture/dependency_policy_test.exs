@@ -669,13 +669,13 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              MapSet.new([{"lib/storyarn.ex", "lib/storyarn_web/endpoint.ex", "runtime"}])
   end
 
-  test "Flows may use the storage contract but cannot bind to a concrete storage adapter" do
+  test "Flows may use the Platform storage contract but cannot bind to a concrete provider" do
     policy = DependencyPolicy.load!("config/architecture_boundaries.exs")
 
     graph = %{
-      "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex" => %{
-        "lib/storyarn/projects/assets/adapters/storage/storage.ex" => "runtime",
-        "lib/storyarn/projects/assets/adapters/storage/local.ex" => "runtime"
+      "lib/storyarn/flows/versioning/adapters/storage/objects.ex" => %{
+        "lib/storyarn/platform/object_storage.ex" => "runtime",
+        "lib/storyarn/platform/object_storage/adapters/local.ex" => "runtime"
       }
     }
 
@@ -684,8 +684,8 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert forbidden.flows ==
              MapSet.new([
                {
-                 "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex",
-                 "lib/storyarn/projects/assets/adapters/storage/local.ex",
+                 "lib/storyarn/flows/versioning/adapters/storage/objects.ex",
+                 "lib/storyarn/platform/object_storage/adapters/local.ex",
                  "runtime"
                }
              ])

@@ -1417,12 +1417,12 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   defp storage_not_found?(_reason), do: false
 
   # `Storage.delete/1` deliberately protects every project blob at the public
-  # boundary. Compensation reaches the adapter only after validating the key,
-  # fencing it with `StorageKeyLock`, and proving that no committed owner must
-  # retain it.
+  # boundary. Compensation reaches the raw technical delete only after
+  # validating the key, fencing it with `StorageKeyLock`, and proving that no
+  # committed owner must retain it.
   defp delete_storage_object(storage_key) do
     with {:ok, aborted_count} <- Storage.abort_incomplete_multipart_uploads(storage_key),
-         :ok <- Storage.adapter().delete(storage_key) do
+         :ok <- Storage.delete_after_policy_check(storage_key) do
       record_multipart_cleanup_evidence(aborted_count)
       report_aborted_multipart_uploads(aborted_count)
       :ok

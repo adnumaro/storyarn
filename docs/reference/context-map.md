@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-27
+> Last reviewed: 2026-08-28
 >
 > Scope: current modular monolith over one Repo and PostgreSQL schema
 
@@ -13,18 +13,18 @@ names semantic ownership, write authority and transitional relationships.
 
 ## Context relationships
 
-| Upstream / owner                     | Downstream / consumer      | Contract today                                                                                  | Status                                                           |
-| ------------------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Accounts                             | Workspaces                 | Registration provisions the initial workspace through `Storyarn.Workspaces`                     | Application workflow; atomic in the monolith                     |
-| Workspaces                           | Projects                   | Workspace lifecycle coordinates Project-owned hard deletion through `Storyarn.Projects`         | Application workflow; extraction needs an idempotent coordinator |
-| Projects                             | Platform                   | Commercial capacity, notifications and product reactions through `Storyarn.Platform`            | Reviewed public contracts                                        |
-| Flows, Sheets, Scenes                | Platform                   | Commercial policy, notifications and product reactions through `Storyarn.Platform`              | Reviewed public contracts                                        |
-| Flows, Sheets                        | AI                         | Consumer-owned context builders implement explicit AI contracts; execution enters `Storyarn.AI` | Reviewed public contracts                                        |
-| Workspaces                           | AI                         | AI team/settings presentation composes the public AI facade                                     | Reviewed Web composition                                         |
-| Tools and project-wide consumers     | Shared PostgreSQL          | Consumer-owned projections or records map the same tables independently                         | Accepted schema coupling; ENG-106 is later                       |
-| Flows, Sheets, Scenes, Web, OTP root | Projects storage internals | Exact storage/hash/lock edges                                                                   | Transitional debt; ENG-107                                       |
-| Platform delivery worker             | Projects and Workspaces    | Invitation delivery dispatches back into producer contexts                                      | Transitional runtime cycle; ENG-109                              |
-| Project settings                     | Localization               | Two ordinary source-language writers currently exist                                            | Deferred ownership correction; ENG-110 under ENG-103             |
+| Upstream / owner                 | Downstream / consumer                                         | Contract today                                                                                                | Status                                                           |
+| -------------------------------- | ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Accounts                         | Workspaces                                                    | Registration provisions the initial workspace through `Storyarn.Workspaces`                                   | Application workflow; atomic in the monolith                     |
+| Workspaces                       | Projects                                                      | Workspace lifecycle coordinates Project-owned hard deletion through `Storyarn.Projects`                       | Application workflow; extraction needs an idempotent coordinator |
+| Projects                         | Platform                                                      | Commercial capacity, notifications and product reactions through `Storyarn.Platform`                          | Reviewed public contracts                                        |
+| Flows, Sheets, Scenes            | Platform                                                      | Commercial policy, notifications and product reactions through `Storyarn.Platform`                            | Reviewed public contracts                                        |
+| Flows, Sheets                    | AI                                                            | Consumer-owned context builders implement explicit AI contracts; execution enters `Storyarn.AI`               | Reviewed public contracts                                        |
+| Workspaces                       | AI                                                            | AI team/settings presentation composes the public AI facade                                                   | Reviewed Web composition                                         |
+| Tools and project-wide consumers | Shared PostgreSQL                                             | Consumer-owned projections or records map the same tables independently                                       | Accepted schema coupling; ENG-106 is later                       |
+| Platform ObjectStorage           | Projects, Flows, Sheets, Scenes, Workspaces, Web and OTP root | Provider-neutral I/O, hashing and locks through one public technical facade; consumers own keys and lifecycle | Reviewed technical contract; ENG-107 complete                    |
+| Platform delivery worker         | Projects and Workspaces                                       | Invitation delivery dispatches back into producer contexts                                                    | Transitional runtime cycle; ENG-109                              |
+| Project settings                 | Localization                                                  | Two ordinary source-language writers currently exist                                                          | Deferred ownership correction; ENG-110 under ENG-103             |
 
 No direct code relationship is allowed among Flows, Sheets and Scenes. Shared
 facts are read through consumer-local mappings. A matching table name or payload
@@ -81,7 +81,7 @@ stable.
 
 - [ENG-92](https://linear.app/sunset/issue/ENG-92/decouple-bounded-contexts-at-code-level-over-the-shared-database): code boundaries and ratchet.
 - [ENG-103](https://linear.app/sunset/issue/ENG-103/separate-reads-from-writes-and-enforce-bounded-context-ownership): ordinary write ownership, including the deferred Sheet/Flow paths.
-- [ENG-107](https://linear.app/sunset/issue/ENG-107/extract-neutral-object-storage-infrastructure-from-projects-ownership): neutral object-store mechanism.
+- [ENG-107](https://linear.app/sunset/issue/ENG-107/extract-neutral-object-storage-infrastructure-from-projects-ownership): neutral object-store mechanism completed on 2026-08-28.
 - [ENG-108](https://linear.app/sunset/issue/ENG-108/add-transactional-owner-transfer-workflows-for-workspaces-and-projects): explicit owner transfer after defensive guards.
 - [ENG-109](https://linear.app/sunset/issue/ENG-109/remove-the-platform-invitation-delivery-runtime-cycle): invitation-delivery cycle.
 - [ENG-110](https://linear.app/sunset/issue/ENG-110/make-localization-the-ordinary-writer-for-source-language-changes): Localization ordinary writer.

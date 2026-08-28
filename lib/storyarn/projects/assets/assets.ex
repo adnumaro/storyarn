@@ -18,6 +18,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.Queries.AssetQueries
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Assets.StorageKey
   alias Storyarn.Projects.Assets.UploadPolicy
   alias Storyarn.Projects.Versioning
 
@@ -140,6 +141,9 @@ defmodule Storyarn.Projects.Assets do
   defdelegate parse_asset_upload_purpose(purpose), to: UploadPolicy, as: :parse_purpose
   defdelegate asset_upload_purpose_supported?(purpose), to: UploadPolicy, as: :supported_purpose?
   defdelegate external_project_storage?(), to: Storage, as: :external_upload?
+  defdelegate canonical_storage_key?(key), to: StorageKey, as: :canonical?
+  defdelegate project_asset_route_key?(project_id, key), to: StorageKey
+  defdelegate project_media_route_key?(project_id, key), to: StorageKey
   defdelegate delete_storage_keys(cleanup_targets), to: StorageCompensation
   defdelegate persist_cleanup_request(cleanup_targets), to: StorageCompensation
   defdelegate retry_persisted_cleanup_requests(), to: StorageCompensation

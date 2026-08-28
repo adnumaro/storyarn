@@ -2,11 +2,11 @@ defmodule Storyarn.Sheets.Versioning.SnapshotStorage do
   @moduledoc """
   Sheet-owned storage codec for compressed entity-version snapshots.
 
-  It uses the shared asset storage capability, but owns the Sheet snapshot key
+  It uses the Platform object-storage contract, but owns the Sheet snapshot key
   contract, size limits, checksum verification, and decoding policy.
   """
 
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Sheets.Versioning.Adapters.Storage.Objects, as: Storage
 
   @default_max_compressed_bytes 128 * 1024 * 1024
   @default_max_uncompressed_bytes 128 * 1024 * 1024

@@ -12,6 +12,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
     "discovery" => ~w(adapters commands entities projections queries reference_data),
     "kernel" => [],
     "notifications" => ~w(adapters entities execution projections queries),
+    "object_storage" => ~w(adapters),
     "onboarding" => ~w(commands entities projections queries),
     "reactions" => ~w(adapters contracts events execution reference_data)
   }
@@ -23,6 +24,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
     "discovery" => ~w(command_palette.ex dashboard_cache.ex global_search.ex),
     "kernel" => ~w(html_utils.ex integer_parser.ex map_access.ex search_helpers.ex string_utils.ex),
     "notifications" => ~w(notifications.ex),
+    "object_storage" => ~w(hashing.ex key_lock.ex),
     "onboarding" => ~w(onboarding.ex),
     "reactions" => ~w(reactions.ex)
   }
@@ -41,6 +43,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
     ],
     "delivery" => ["adapters/"],
     "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
+    "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
     "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
     "reactions" => ["events/", "execution/", "reference_data/"]
   }
@@ -71,7 +74,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
 
   test "Platform has exactly the agreed areas and no loose implementation files" do
     assert directories_in(@root) == @areas |> Map.keys() |> Enum.sort()
-    assert files_in(@root) == ["README.md"]
+    assert files_in(@root) == ["README.md", "object_storage.ex"]
   end
 
   test "every area has only its agreed roles and stable public entry files" do

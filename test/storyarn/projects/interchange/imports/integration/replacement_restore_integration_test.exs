@@ -9,8 +9,8 @@ defmodule Storyarn.Projects.Imports.ReplacementRestoreIntegrationTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Assets.Storage.Local
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection

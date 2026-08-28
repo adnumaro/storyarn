@@ -1,9 +1,9 @@
-defmodule Storyarn.Projects.Assets.Storage.Local.ConditionalCopySweeper do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.Local.ConditionalCopySweeper do
   @moduledoc false
 
   use GenServer
 
-  alias Storyarn.Projects.Assets.Storage.Local
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
 
   require Logger
 

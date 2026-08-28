@@ -28,11 +28,6 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     "lib/storyarn/release.ex"
   ]
 
-  @web_technical_project_contracts %{
-    "lib/storyarn_web/private_download.ex" => [[:Storyarn, :Projects, :Assets, :Storage]],
-    "lib/storyarn_web/private_media.ex" => [[:Storyarn, :Projects, :Assets, :Storage]]
-  }
-
   @foreign_domain_roots [
     "lib/storyarn/accounts",
     "lib/storyarn/workspaces",
@@ -120,11 +115,11 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     """
   end
 
-  test "the ratchet seals baselines and exposes only the ENG-107 storage seam" do
+  test "the ratchet seals baselines with no remaining ENG-107 migration debt" do
     config = File.read!("config/architecture_boundaries.exs")
     {policy, _binding} = Code.eval_file("config/architecture_boundaries.exs")
 
-    for context <- ~w(accounts flows localization platform projects scenes sheets workspaces) do
+    for context <- ~w(accounts ai flows localization platform projects scenes sheets workspaces) do
       assert config =~ ~r/zero_debt_consumers:[^\]]*:#{context}/s
       assert config =~ ~r/isolated_contexts:[^\]]*:#{context}/s
     end
@@ -137,17 +132,8 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
              "#{baseline} must stay empty: sealed consumers cannot accept hidden debt"
     end
 
-    assert length(policy.migration_exceptions) == 24
-
-    assert Enum.all?(policy.migration_exceptions, fn exception ->
-             exception.reason ==
-               "Existing storage seam pending ENG-107 neutral infrastructure extraction" and
-               String.starts_with?(
-                 exception.target,
-                 "lib/storyarn/projects/assets/adapters/storage/"
-               )
-           end),
-           "the only visible migration debt must be the exact storage seam tracked by ENG-107"
+    assert policy.migration_exceptions == [],
+           "ENG-107 is complete; storage dependencies must terminate at reviewed public contracts"
 
     assert policy.durable_contracts != [],
            "reviewed root-facade calls must remain explicit durable contracts"
@@ -245,7 +231,6 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     ast
     |> module_aliases()
     |> Enum.filter(&internal_projects_alias?(&1.segments, local_aliases))
-    |> Enum.reject(&technical_project_contract?(path, &1.segments))
     |> Enum.map(&"#{path}:#{&1.line}: #{Enum.join(&1.segments, ".")}")
     |> Kernel.++(grouped_projects_alias_violations(path, source))
     |> Enum.uniq()
@@ -290,10 +275,6 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     do: MapSet.member?(local_aliases, local_alias)
 
   defp internal_projects_alias?(_segments, _local_aliases), do: false
-
-  defp technical_project_contract?(path, segments) do
-    segments in Map.get(@web_technical_project_contracts, path, [])
-  end
 
   defp grouped_projects_alias_violations(path, source) do
     source
