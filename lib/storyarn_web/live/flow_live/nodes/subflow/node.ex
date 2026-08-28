@@ -10,7 +10,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   use Gettext, backend: Storyarn.Gettext
 
   import Phoenix.Component, only: [assign: 3]
-  import Phoenix.LiveView, only: [put_flash: 3]
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
@@ -20,13 +19,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   def label, do: dgettext("flows", "Subflow")
   def description, do: dgettext("flows", "Embed another flow as a node")
 
-  def default_data, do: %{"referenced_flow_id" => nil}
-
-  def extract_form_data(data) do
-    %{
-      "referenced_flow_id" => data["referenced_flow_id"]
-    }
-  end
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   @doc "Loads available flows and exit nodes when a subflow node is selected."
   def on_select(node, socket) do
@@ -58,7 +52,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   def on_double_click(_node), do: :toolbar
 
   @doc "Keep reference on duplicate."
-  def duplicate_data_cleanup(data), do: data
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 
   @doc "Handles updating the referenced flow from the sidebar dropdown."
   def handle_update_reference(ref_id, socket) do
@@ -72,46 +66,14 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   end
 
   defp do_update_reference(node, ref_id, socket) do
-    ref_id = if ref_id == "" || is_nil(ref_id), do: nil, else: ref_id
-
-    case validate_reference(ref_id, socket.assigns.flow.id) do
-      :ok -> persist_reference(node, ref_id, socket)
-      {:error, message} -> {:noreply, put_flash(socket, :error, message)}
-    end
+    persist_reference(node, ref_id, socket)
   end
 
-  defp validate_reference(nil, _current_flow_id), do: :ok
-
-  defp validate_reference(ref_id, current_flow_id) do
-    parsed = Flows.safe_to_integer(ref_id)
-
-    cond do
-      is_nil(parsed) ->
-        {:error, dgettext("flows", "Invalid flow reference.")}
-
-      parsed == current_flow_id ->
-        {:error, dgettext("flows", "A flow cannot reference itself.")}
-
-      Flows.has_circular_reference?(current_flow_id, parsed) ->
-        {:error,
-         dgettext(
-           "flows",
-           "Circular reference detected. This flow is already referenced by the target."
-         )}
-
-      true ->
-        :ok
-    end
-  end
-
-  defp persist_reference(node, ref_id, socket) do
-    parsed_ref_id = if ref_id, do: Flows.safe_to_integer(ref_id)
-
-    case NodeHelpers.persist_node_update(socket, node.id, fn data ->
-           Map.put(data, "referenced_flow_id", parsed_ref_id)
-         end) do
+  defp persist_reference(node, flow_id, socket) do
+    case NodeHelpers.persist_node_update(socket, node.id, :put_subflow_reference, %{value: flow_id}) do
       {:noreply, updated_socket} ->
-        exit_nodes = load_exit_nodes(parsed_ref_id)
+        current_flow_id = updated_socket.assigns.selected_node.data["referenced_flow_id"]
+        exit_nodes = load_exit_nodes(current_flow_id)
         {:noreply, assign(updated_socket, :subflow_exits, exit_nodes)}
 
       other ->

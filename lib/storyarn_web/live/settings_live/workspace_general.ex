@@ -5,11 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
-  alias Storyarn.Assets
-  alias Storyarn.Assets.ImageProcessor
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.UploadPolicy
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption
@@ -60,7 +56,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         workspace-description={@workspace.description || ""}
         workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
-        language-options={LanguagePickerOption.all()}
+        language-options={source_locale_options()}
         is-owner={@membership.role == "owner"}
         can-edit-workspace={Workspaces.can?(@membership.role, :manage_workspace)}
         ai={serialize_ai_settings(assigns)}
@@ -128,24 +124,21 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         socket
       ) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      with [header, base64_data] <- split_banner_data(data),
-           {:ok, profile} <- UploadPolicy.profile_for(:banner),
-           :ok <- validate_banner_metadata(profile, filename, content_type, header),
-           :ok <- UploadPolicy.validate_base64_size(profile, base64_data),
-           {:ok, binary_data} <- Base.decode64(base64_data),
-           :ok <- validate_banner_binary(profile, binary_data, content_type),
-           safe_filename = Assets.sanitize_filename(filename),
-           key = "workspaces/#{socket.assigns.workspace.slug}/banner/#{safe_filename}",
-           {:ok, url} <- Storage.upload(key, binary_data, content_type),
-           {:ok, workspace} <-
-             Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: url}) do
-        {:noreply,
-         socket
-         |> assign(:workspace, workspace)
-         |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-         |> put_flash(:info, dgettext("workspaces", "Banner uploaded successfully."))}
-      else
-        _ ->
+      attrs = %{filename: filename, content_type: content_type, data: data}
+
+      case Workspaces.upload_workspace_banner(
+             socket.assigns.current_scope,
+             socket.assigns.workspace.id,
+             attrs
+           ) do
+        {:ok, workspace} ->
+          {:noreply,
+           socket
+           |> assign(:workspace, workspace)
+           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+           |> put_flash(:info, dgettext("workspaces", "Banner uploaded successfully."))}
+
+        {:error, _reason} ->
           {:noreply,
            put_flash(
              socket,
@@ -159,7 +152,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   @impl true
   def handle_event("remove_workspace_banner", _params, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.update_workspace(socket.assigns.workspace, %{banner_url: nil}) do
+      case Workspaces.remove_workspace_banner(
+             socket.assigns.current_scope,
+             socket.assigns.workspace.id
+           ) do
         {:ok, workspace} ->
           {:noreply,
            socket
@@ -167,16 +163,20 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
            |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
            |> put_flash(:info, dgettext("workspaces", "Banner removed successfully."))}
 
-        {:error, %Ecto.Changeset{} = changeset} ->
-          {:noreply, assign(socket, :form, to_form(changeset))}
+        {:error, _reason} ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("workspaces", "Banner could not be removed.")
+           )}
       end
     end)
   end
 
   @impl true
   def handle_event("delete", _params, socket) do
-    # Only owner can delete workspace
-    if socket.assigns.membership.role == "owner" do
+    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
       case Workspaces.delete_workspace(socket.assigns.workspace) do
         {:ok, _} ->
           {:noreply,
@@ -187,47 +187,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
       end
-    else
-      {:noreply,
-       put_flash(
-         socket,
-         :error,
-         dgettext("workspaces", "Only the workspace owner can delete the workspace.")
-       )}
-    end
+    end)
   end
 
-  defp split_banner_data(data) when is_binary(data), do: String.split(data, ",", parts: 2)
-  defp split_banner_data(_data), do: []
-
-  defp validate_banner_metadata(profile, filename, content_type, header)
-       when is_binary(filename) and is_binary(content_type) and is_binary(header) do
-    safe_filename = Assets.sanitize_filename(filename)
-
-    with true <- String.trim(filename) != "",
-         true <- safe_filename not in ["", ".", ".."],
-         true <- header == "data:#{content_type};base64",
-         true <- MIME.from_path(safe_filename) == content_type,
-         :ok <- UploadPolicy.validate(profile, %{content_type: content_type, size: 0}) do
-      :ok
-    else
-      _ -> {:error, :invalid_banner_upload}
-    end
-  end
-
-  defp validate_banner_metadata(_profile, _filename, _content_type, _header), do: {:error, :invalid_banner_upload}
-
-  defp validate_banner_binary(profile, binary_data, content_type) do
-    with :ok <-
-           UploadPolicy.validate(profile, %{
-             content_type: content_type,
-             size: byte_size(binary_data)
-           }),
-         {:ok, ^content_type} <- ImageProcessor.content_type_from_binary(binary_data) do
-      :ok
-    else
-      _ -> {:error, :invalid_banner_upload}
-    end
+  defp source_locale_options do
+    Enum.map(Workspaces.source_locale_options(), fn locale ->
+      LanguagePickerOption.from_code(locale.code, label: locale.name)
+    end)
   end
 
   defp assign_ai_settings(socket) do

@@ -11,13 +11,7 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   import Phoenix.Component, only: [assign: 3, to_form: 2]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
 
-  alias Storyarn.Billing
-  alias Storyarn.Flows
-  alias Storyarn.Localization
   alias Storyarn.Projects
-  alias Storyarn.Repo
-  alias Storyarn.Shared.Validations
-  alias Storyarn.Versioning
 
   # ---------------------------------------------------------------------------
   # Form changesets
@@ -33,16 +27,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     |> Ecto.Changeset.cast(params, Map.keys(types))
     |> Ecto.Changeset.update_change(:email, &String.trim/1)
     |> Ecto.Changeset.validate_required([:email, :role])
-    |> Validations.validate_email_format()
+    |> Projects.validate_project_email_format()
     |> Ecto.Changeset.validate_inclusion(:role, @project_invite_roles)
-  end
-
-  def get_provider_config(project_id) do
-    Localization.get_provider_config(project_id)
-  end
-
-  def provider_changeset(config) do
-    Localization.change_provider_config(config)
   end
 
   # ---------------------------------------------------------------------------
@@ -145,68 +131,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   # Action helpers (called from handle_event)
   # ---------------------------------------------------------------------------
 
-  def do_test_provider_connection(socket) do
-    config = get_provider_config(socket.assigns.project.id)
-
-    if config && config.api_key_encrypted do
-      case Localization.get_deepl_usage(config) do
-        {:ok, usage} ->
-          {:noreply,
-           socket
-           |> assign(:provider_usage, usage)
-           |> put_flash(:info, dgettext("projects", "Connection successful."))}
-
-        {:error, :invalid_api_key} ->
-          {:noreply, put_flash(socket, :error, dgettext("projects", "Invalid API key."))}
-
-        {:error, _reason} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "Connection failed. Check your API key and endpoint.")
-           )}
-      end
-    else
-      {:noreply, put_flash(socket, :error, dgettext("projects", "No API key configured."))}
-    end
-  end
-
-  def do_save_provider_config(socket, params) do
-    project = socket.assigns.project
-
-    # Don't overwrite API key if the field is empty (user didn't change it)
-    params =
-      if params["api_key_encrypted"] == "" do
-        Map.delete(params, "api_key_encrypted")
-      else
-        params
-      end
-
-    result = Localization.upsert_provider_config(project, params)
-
-    case result do
-      {:ok, config} ->
-        socket =
-          socket
-          |> assign(:provider_form, to_form(provider_changeset(config), as: "provider"))
-          |> assign(:has_api_key, config.api_key_encrypted != nil)
-          |> put_flash(:info, dgettext("projects", "Provider settings saved."))
-
-        {:noreply, socket}
-
-      {:error, changeset} ->
-        {:noreply,
-         assign(
-           socket,
-           :provider_form,
-           changeset |> Map.put(:action, :validate) |> to_form(as: "provider")
-         )}
-    end
-  end
-
   def do_repair_variable_references(socket) do
-    do_repair_variable_references(socket, &Flows.repair_stale_references/1)
+    do_repair_variable_references(socket, &Projects.repair_stale_project_variable_references/1)
   end
 
   @doc false
@@ -235,26 +161,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   end
 
   @doc false
-  def snapshot_storage_accounting(project) do
-    result =
-      Repo.repeatable_read(
-        fn ->
-          snapshots = Versioning.list_project_snapshots(project.id)
-          plan = Billing.plan_for(project.workspace)
-
-          %{
-            snapshots: snapshots,
-            snapshot_reservations: Billing.active_storage_reservations_by_snapshot(Enum.map(snapshots, & &1.id)),
-            snapshot_slots_used: Billing.project_snapshot_slot_usage(project.id),
-            snapshot_slots_limit: Billing.plan_limit(plan, :project_snapshots_per_project),
-            storage_usage: Billing.workspace_storage_usage(project.workspace_id),
-            storage_limit: Billing.plan_limit(plan, :storage_bytes_per_workspace)
-          }
-        end,
-        timeout: :infinity
-      )
-
-    case result do
+  def snapshot_storage_accounting(scope, project) do
+    case Projects.project_snapshot_accounting(scope, project.id) do
       {:ok, accounting} -> accounting
       {:error, reason} -> raise "snapshot accounting read failed: #{inspect(reason)}"
     end

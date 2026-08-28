@@ -2,9 +2,9 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-08-27
 >
-> Source of truth: `lib/storyarn_web/components/`, `lib/storyarn_web/storyarn_web.ex`, and `assets/app/`
+> Source of truth: `lib/storyarn_web/components/`, `lib/storyarn_web.ex`, and `assets/app/`
 
 The UI is Vue. HEEx is reduced to layout shells, the SEO head, and a handful of
 public-page partials; every interactive surface is a `<.vue>` boundary rendering
@@ -169,17 +169,18 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)
-is listed in @docs/reference/shared-utilities.md.
+contains presentation coordination helpers, not domain services.
 
 ---
 
 ## Changeset Helpers (Scenes domain)
 
-**File:** `lib/storyarn/scenes/changeset_helpers.ex`
+**File:** `lib/storyarn/scenes/editor/rules/changeset_helpers.ex`
 
 | Function                          | Purpose                                                                                    |
 | --------------------------------- | ------------------------------------------------------------------------------------------ |
 | `validate_target_pair(cs, types)` | Ensures target_type/target_id are both set or both nil, and that target_type is in `types` |
 | `validate_color(cs, field)`       | Validates hex color format (#RGB, #RRGGBB, #RRGGBBAA) on `field`                           |
 
-These are Scenes-specific but could be promoted to `Storyarn.Shared` if needed elsewhere.
+These helpers are Scene editor rules. Another context should keep its own copy
+unless both consumers deliberately agree a shared-kernel contract.

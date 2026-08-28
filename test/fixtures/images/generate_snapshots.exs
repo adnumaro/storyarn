@@ -12,7 +12,7 @@
 # Note: ZoneImageExtractor always crops via bounding_box/1 (rectangular),
 # so all zones use simple 4-vertex rectangles matching the crop region.
 
-alias Storyarn.Scenes.ZoneImageExtractor
+alias Storyarn.Scenes.Assets
 
 output_dir = "test/fixtures/images/snapshots"
 File.rm_rf!(output_dir)
@@ -47,7 +47,7 @@ zones = [
 IO.puts("Generating snapshots for #{length(zones)} zones...\n")
 
 for {name, vertices} <- zones do
-  {min_x, min_y, max_x, max_y} = ZoneImageExtractor.bounding_box(vertices)
+  {min_x, min_y, max_x, max_y} = Assets.zone_bounding_box(vertices)
 
   left = round(min_x / 100.0 * img_w)
   top = round(min_y / 100.0 * img_h)

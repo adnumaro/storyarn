@@ -11,7 +11,7 @@ defmodule StoryarnWeb.E2E.OnboardingTest do
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform.Onboarding
   alias Storyarn.Workspaces
 
   @moduletag :e2e

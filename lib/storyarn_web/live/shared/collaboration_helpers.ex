@@ -27,8 +27,7 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
 
   @doc """
   Sets up collaboration subscriptions for an editor.
@@ -67,16 +66,14 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
   Call before switching entities (patch navigation) or in terminate/2.
   """
   def teardown(scope, user_id) do
-    topic = Presence.topic(scope)
-
     # Unsubscribe from all topics
-    Phoenix.PubSub.unsubscribe(Storyarn.PubSub, "proxy:#{topic}")
+    Collaboration.unsubscribe_presence(scope)
     Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.changes_topic(scope))
     Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.locks_topic(scope))
     Phoenix.PubSub.unsubscribe(Storyarn.PubSub, Collaboration.cursors_topic(scope))
 
     # Untrack presence (safety — LiveView process death also untracks)
-    Presence.untrack(self(), topic, user_id)
+    Collaboration.untrack_presence(self(), scope, user_id)
 
     # Release any held locks
     Collaboration.release_all_locks(scope, user_id)
@@ -139,7 +136,7 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   @doc """
   Handles a presence join event. Updates the online_users assign.
-  Call from handle_info matching `{Storyarn.Collaboration.Presence, {:join, presence}}`.
+  Call after the Collaboration facade identifies a presence join event.
   """
   def handle_presence_join(socket, presence) do
     user_meta = presence_to_user_meta(presence)
@@ -154,7 +151,7 @@ defmodule StoryarnWeb.Live.Shared.CollaborationHelpers do
 
   @doc """
   Handles a presence leave event. Updates the online_users assign.
-  Call from handle_info matching `{Storyarn.Collaboration.Presence, {:leave, presence}}`.
+  Call after the Collaboration facade identifies a presence leave event.
   """
   def handle_presence_leave(socket, %{metas: %{metas: []}} = presence) do
     # Phoenix.Presence converts tracked keys to strings, but online_users

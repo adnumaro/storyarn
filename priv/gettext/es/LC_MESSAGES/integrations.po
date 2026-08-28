@@ -27,7 +27,7 @@ msgstr "Esta funcionalidad no está disponible en tu cuenta."
 msgid "AI preferences are not available."
 msgstr "Las preferencias de IA no están disponibles."
 
-#: lib/storyarn_web/live/settings_live/integration_detail.ex:39
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:38
 #, elixir-autogen, elixir-format
 msgid "AI provider not found."
 msgstr "Proveedor de IA no encontrado."

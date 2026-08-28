@@ -276,6 +276,17 @@ defmodule Storyarn.ProjectsTest do
       assert Projects.get_membership(project.id, user.id) == nil
     end
 
+    test "create_membership/3 cannot create a second owner" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      new_member = user_fixture()
+
+      assert {:error, :cannot_assign_owner_role} =
+               Projects.create_membership(project.id, new_member.id, "owner")
+
+      assert Projects.get_membership(project.id, new_member.id) == nil
+    end
+
     test "update_member_role/2 updates the role" do
       owner = user_fixture()
       member = user_fixture()
@@ -293,6 +304,18 @@ defmodule Storyarn.ProjectsTest do
 
       assert {:error, :cannot_change_owner_role} =
                Projects.update_member_role(membership, "editor")
+    end
+
+    test "update_member_role/2 cannot promote a member to owner" do
+      owner = user_fixture()
+      member = user_fixture()
+      project = project_fixture(owner)
+      membership = membership_fixture(project, member, "editor")
+
+      assert {:error, :cannot_assign_owner_role} =
+               Projects.update_member_role(membership, "owner")
+
+      assert %{role: "editor"} = Projects.get_membership(project.id, member.id)
     end
 
     test "remove_member/1 removes the member" do
@@ -705,6 +728,92 @@ defmodule Storyarn.ProjectsTest do
 
       scope = user_scope_fixture(non_member)
       assert {:error, :not_found} = Projects.authorize(scope, project.id, :view)
+    end
+
+    test "authorize/3 preserves inherited workspace access" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      member = user_fixture()
+      _workspace_membership = workspace_membership_fixture(workspace, member, "member")
+
+      assert {:ok, authorized_project, %{role: "editor", id: nil}} =
+               Projects.authorize(user_scope_fixture(member), project.id, :edit_content)
+
+      assert authorized_project.id == project.id
+    end
+
+    test "authorize/3 applies the complete inherited workspace role matrix" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      actions = [:view, :edit_content, :use_ai, :run_bulk_ai, :manage_project, :manage_members]
+
+      matrix = [
+        {"owner", "editor", [:view, :edit_content, :use_ai]},
+        {"admin", "editor", [:view, :edit_content, :use_ai]},
+        {"member", "editor", [:view, :edit_content, :use_ai]},
+        {"viewer", "viewer", [:view]}
+      ]
+
+      for {workspace_role, expected_project_role, allowed_actions} <- matrix do
+        user = user_fixture()
+        _membership = workspace_membership_fixture(workspace, user, workspace_role)
+        scope = user_scope_fixture(user)
+
+        for action <- actions do
+          result = Projects.authorize(scope, project.id, action)
+
+          if action in allowed_actions do
+            assert {:ok, authorized_project, %{role: ^expected_project_role, id: nil}} = result
+            assert authorized_project.id == project.id
+          else
+            assert {:error, :unauthorized} = result
+          end
+        end
+      end
+    end
+
+    test "authorize/3 keeps direct project membership precedence over workspace access" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      member = user_fixture()
+      _workspace_membership = workspace_membership_fixture(workspace, member, "admin")
+      _project_membership = membership_fixture(project, member, "viewer")
+
+      assert {:error, :unauthorized} =
+               Projects.authorize(user_scope_fixture(member), project.id, :edit_content)
+    end
+
+    test "authorize/3 lets a direct editor override inherited viewer access" do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      project = project_fixture(owner, %{workspace: workspace})
+      member = user_fixture()
+      _workspace_membership = workspace_membership_fixture(workspace, member, "viewer")
+      direct_membership = membership_fixture(project, member, "editor")
+
+      assert {:ok, _project, authorized_membership} =
+               Projects.authorize(user_scope_fixture(member), project.id, :edit_content)
+
+      assert authorized_membership.id == direct_membership.id
+      assert authorized_membership.role == "editor"
+    end
+
+    test "authorize/3 fails closed for soft-deleted projects and invalid callers" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      scope = user_scope_fixture(owner)
+
+      project
+      |> Ecto.Changeset.change(deleted_at: ~U[2026-01-01 00:00:00Z])
+      |> Repo.update!()
+
+      assert {:error, :not_found} = Projects.authorize(scope, project.id, :view)
+      assert {:error, :unauthorized} = Projects.authorize(%{}, project.id, :view)
+      assert {:error, :unauthorized} = Projects.authorize(scope, nil, :view)
+      assert {:error, :unauthorized} = Projects.authorize(scope, -1, :view)
     end
   end
 

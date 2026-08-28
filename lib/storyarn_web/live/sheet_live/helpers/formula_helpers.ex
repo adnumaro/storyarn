@@ -6,13 +6,12 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Shared.FormulaEngine
   alias Storyarn.Sheets
 
   @doc "Extract symbol names from an expression string."
   def formula_symbols(expression) when is_binary(expression) do
-    case FormulaEngine.parse(expression) do
-      {:ok, ast} -> FormulaEngine.extract_symbols(ast)
+    case Sheets.parse_formula(expression) do
+      {:ok, ast} -> Sheets.extract_formula_symbols(ast)
       {:error, _} -> []
     end
   end
@@ -40,8 +39,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
 
   @doc "Generate LaTeX preview from a formula cell value."
   def formula_preview_from_cell(%{"expression" => expr}) when is_binary(expr) and expr != "" do
-    case FormulaEngine.parse(expr) do
-      {:ok, ast} -> FormulaEngine.to_latex(ast)
+    case Sheets.parse_formula(expr) do
+      {:ok, ast} -> Sheets.formula_to_latex(ast)
       {:error, _reason} -> nil
     end
   end
@@ -53,9 +52,9 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
       when is_binary(expr) and expr != "" and not is_nil(result) do
     resolved = Map.get(cell, "__resolved", %{})
 
-    case FormulaEngine.parse(expr) do
+    case Sheets.parse_formula(expr) do
       {:ok, ast} ->
-        substituted = FormulaEngine.to_latex_substituted(ast, resolved)
+        substituted = Sheets.formula_to_latex_substituted(ast, resolved)
         "#{substituted} = #{format_formula_value(result)}"
 
       {:error, _} ->
@@ -172,7 +171,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
 
     parse_error =
       if expr != "" do
-        case FormulaEngine.parse(expr) do
+        case Sheets.parse_formula(expr) do
           {:ok, _} -> nil
           {:error, reason} -> reason
         end
@@ -240,7 +239,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.FormulaHelpers do
   phantom `invalid_table_structure`, while the sweep — which never had a rescue —
   took the whole project's dashboard down. The one raise a designer could
   actually author, float overflow, is now an `{:error, _}` inside
-  `FormulaEngine.evaluate/2`, so the checker reports it as
+  `Sheets.FormulaEngine.evaluate/2`, so the checker reports it as
   `formula_evaluation_failed` on both surfaces. Anything still raising past that
   is a real bug and must not be hidden.
   """

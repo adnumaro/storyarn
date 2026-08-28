@@ -87,7 +87,13 @@ defmodule StoryarnWeb.ProjectLive.ShowTest do
     test "sends per-tool counts and no server-rendered prose", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project)
-      entry = Repo.get_by(Storyarn.Flows.FlowNode, flow_id: flow.id, type: "entry")
+
+      entry =
+        Repo.get_by(Storyarn.Projects.Persistence.FlowNodeRecord,
+          flow_id: flow.id,
+          type: "entry"
+        )
+
       Repo.delete!(entry)
 
       {:ok, view, _html} =

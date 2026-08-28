@@ -10,7 +10,7 @@ import Config
 # Keep every object-storage socket phase bounded well below the import-plan
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
-alias Storyarn.Workers.ExpireAIResultsWorker
+alias Storyarn.Projects.Assets.Storage
 alias Storyarn.Workers.TrashRetentionWorker
 
 config :ex_aws, :req_opts,
@@ -126,7 +126,11 @@ config :storyarn, Oban,
     snapshot_restores: 1,
     snapshot_imports: 1,
     snapshots_maintenance: 1,
-    storage_cleanup: 1
+    storage_cleanup: 1,
+    # This queue was introduced together with its worker. Keeping it separate
+    # prevents an older node in a rolling deployment from claiming a job whose
+    # module and argument contract it does not know yet.
+    workspace_banner_cleanup: 1
   ],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},
@@ -142,7 +146,7 @@ config :storyarn, Oban,
         {"0 * * * *", Storyarn.Workers.ExpireProjectImportsWorker},
         # Correctness does not depend on this sweep: the read path already
         # refuses results past `expires_at`. It only reclaims rows.
-        {"*/30 * * * *", ExpireAIResultsWorker},
+        {"*/30 * * * *", Storyarn.Workers.ExpireAIResultsWorker},
         # Recovery bound is `stale_after_seconds` + this interval. Holding the
         # documented ≤20 min means 300 + 900, where it used to be 900 + 300.
         {"*/15 * * * *", Storyarn.Workers.ReconcileAIReservationsWorker},
@@ -162,6 +166,10 @@ config :storyarn, Oban,
     }
   ]
 
+# UploadPart has a hard wall-clock deadline in addition to the socket-phase
+# limits above. Durable multipart cleanup uses this same value as its minimum
+# quiescence window, so one policy bounds both sides of the handoff.
+config :storyarn, Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
 config :storyarn, Storyarn.AI.CredentialResolver, Storyarn.AI.CredentialResolver.Unavailable
 config :storyarn, Storyarn.AI.InferenceProviders, providers: %{}
 config :storyarn, Storyarn.AI.RouteOptions, ttl_seconds: 300
@@ -172,37 +180,35 @@ config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
 # configuration provides them. The task list is owned by config/runtime.exs;
 # dev/test override it explicitly.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
-
-# UploadPart has a hard wall-clock deadline in addition to the socket-phase
-# limits above. Durable multipart cleanup uses this same value as its minimum
-# quiescence window, so one policy bounds both sides of the handoff.
-config :storyarn, Storyarn.Assets.Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
+config :storyarn, Storyarn.Flows.Versioning.RestorePolicy, flow_version_restore: false
 
 # Configure Gettext locales
 config :storyarn, Storyarn.Gettext,
   default_locale: "en",
   locales: ~w(en es)
 
+config :storyarn, Storyarn.Localization.TranslationJobQueue,
+  worker: "Storyarn.Workers.LocalizationBatchTranslationWorker",
+  queue: :localization,
+  max_attempts: 3
+
+config :storyarn, Storyarn.Platform.Billing.StorageLeasePolicy,
+  download_signed_url_ttl_seconds: 5 * 60,
+  download_max_transfer_seconds: 60 * 60,
+  download_lease_safety_seconds: 60,
+  build_heartbeat_interval_seconds: 60,
+  build_lease_ttl_seconds: 5 * 60,
+  export_lease_retention_seconds: 7 * 24 * 60 * 60
+
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)
 # Production uses Resend API (configured in runtime.exs)
-config :storyarn, Storyarn.Mailer, adapter: Swoosh.Adapters.Local
-
-# Public, indexable locales are deliberately configured separately from
-# Gettext. A locale can be available inside the authenticated application
-# before its landing page, docs, legal copy, and editorial content are ready
-# to be published under a canonical URL.
-config :storyarn, Storyarn.Publication.Locales,
-  default_locale: "en",
-  locales: [
-    %{gettext_locale: "en", language_tag: "en", path_segment: "en"},
-    %{gettext_locale: "es", language_tag: "es", path_segment: "es"}
-  ]
+config :storyarn, Storyarn.Platform.Mailer, adapter: Swoosh.Adapters.Local
 
 # Cloak encryption configuration
 # Development key - NEVER use in production!
 # Generate production key with: 32 |> :crypto.strong_rand_bytes() |> Base.encode64()
-config :storyarn, Storyarn.Vault,
+config :storyarn, Storyarn.Platform.Vault,
   ciphers: [
     default: {
       Cloak.Ciphers.AES.GCM,
@@ -211,22 +217,37 @@ config :storyarn, Storyarn.Vault,
     }
   ]
 
-config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
-  download_signed_url_ttl_seconds: 5 * 60,
-  download_max_transfer_seconds: 60 * 60,
-  download_lease_safety_seconds: 60,
-  build_heartbeat_interval_seconds: 60,
-  build_lease_ttl_seconds: 5 * 60,
-  export_lease_retention_seconds: 7 * 24 * 60 * 60
+# Public, indexable locales are deliberately configured separately from
+# Gettext. A locale can be available inside the authenticated application
+# before its landing page, docs, legal copy, and editorial content are ready
+# to be published under a canonical URL.
+config :storyarn, Storyarn.Public.Publication.Locales,
+  default_locale: "en",
+  locales: [
+    %{gettext_locale: "en", language_tag: "en", path_segment: "en"},
+    %{gettext_locale: "es", language_tag: "es", path_segment: "es"}
+  ]
+
+config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy, scene_version_restore: false
 
 # Entity-version restore surfaces remain disabled by default and are enabled
 # independently only after their canonical workflows are operationally ready.
 # Exact full-project snapshot restore is part of the recovery contract and is
 # always available to authorized project managers.
-config :storyarn, Storyarn.Versioning.RestorePolicy,
-  sheet_version_restore: false,
-  flow_version_restore: false,
-  scene_version_restore: false
+config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy, sheet_version_restore: false
+
+config :storyarn, Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue,
+  adapter: Storyarn.Workspaces.Banner.Adapters.Cleanup.Oban
+
+# Composition-root wiring: Workspaces owns the banner lifecycle and consumes
+# object storage only through its technical port. The current implementation is
+# reused while storage providers are still housed in the legacy Projects path;
+# ENG-107 owns extraction of this exact temporary seam.
+config :storyarn, Storyarn.Workspaces.Banner.Adapters.Storage.Port, adapter: Storage
+
+# This is intentionally independent from Project asset limits: changing one
+# bounded context's upload policy must not silently change the other.
+config :storyarn, Storyarn.Workspaces.Banner.Rules.UploadPolicy, max_file_size: 52_428_800
 
 # Configures the endpoint
 config :storyarn, StoryarnWeb.Endpoint,
@@ -264,6 +285,12 @@ config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}
 config :storyarn, :posthog_frontend,
   frontend_enabled: false,
   error_tracking_enabled: false
+
+# Shared compile-time HTTP/domain limit. Endpoint consumes only these scalar
+# values, avoiding a compile dependency on the complete Projects facade.
+config :storyarn, :project_asset_upload_limits,
+  max_image_size: 52_428_800,
+  multipart_request_overhead: 1_048_576
 
 config :storyarn, :scopes,
   user: [

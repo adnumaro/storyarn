@@ -3,12 +3,8 @@ defmodule StoryarnWeb.SnapshotDownloadController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
-  alias Storyarn.Versioning
   alias StoryarnWeb.PrivateDownload
-
-  require Logger
 
   @download_stop_event [:storyarn, :snapshot, :download, :stop]
   @max_snapshot_id 9_223_372_036_854_775_807
@@ -16,19 +12,14 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   def download(conn, %{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => snapshot_id_param}) do
     started_at = System.monotonic_time()
 
-    with {:ok, project, membership} <-
+    with {:ok, project, _membership} <-
            Projects.get_project_by_slugs(
              conn.assigns.current_scope,
              workspace_slug,
              project_slug
            ),
-         :ok <- authorize_download(membership),
          {:ok, snapshot_id} <- parse_snapshot_id(snapshot_id_param) do
-      project
-      |> Versioning.with_project_snapshot_archive(snapshot_id, fn delivery ->
-        deliver_archive(conn, project, delivery)
-      end)
-      |> handle_result(conn, started_at, project.id, snapshot_id)
+      download_authorized_snapshot(conn, started_at, project.id, snapshot_id)
     else
       {:error, :not_found} -> request_error(conn, started_at, :project_not_found, &not_found/1)
       {:error, :unauthorized} -> request_error(conn, started_at, :unauthorized, &forbidden/1)
@@ -40,11 +31,20 @@ defmodule StoryarnWeb.SnapshotDownloadController do
     request_error(conn, System.monotonic_time(), :invalid_request, &not_found/1)
   end
 
-  defp authorize_download(%{role: role}) do
-    if Projects.can?(role, :manage_project), do: :ok, else: {:error, :unauthorized}
-  end
+  defp download_authorized_snapshot(conn, started_at, project_id, snapshot_id) do
+    case Projects.with_authorized_project_snapshot_download(
+           conn.assigns.current_scope,
+           project_id,
+           snapshot_id,
+           fn delivery -> deliver_archive(conn, delivery) end
+         ) do
+      {:error, :unauthorized} ->
+        request_error(conn, started_at, :unauthorized, &forbidden/1)
 
-  defp authorize_download(_membership), do: {:error, :unauthorized}
+      result ->
+        handle_result(result, conn, started_at, project_id, snapshot_id)
+    end
+  end
 
   defp parse_snapshot_id(value) when is_binary(value) do
     case Integer.parse(value) do
@@ -58,55 +58,39 @@ defmodule StoryarnWeb.SnapshotDownloadController do
 
   defp parse_snapshot_id(_value), do: {:error, :invalid_snapshot_id}
 
-  defp deliver_archive(conn, project, %{snapshot: snapshot} = delivery) do
-    filename = sanitize_download_filename("#{project.slug}-snapshot-v#{snapshot.version_number}.zip")
+  defp deliver_archive(conn, %{delivery: :redirect, url: signed_url, size_bytes: size_bytes}) do
+    conn =
+      conn
+      |> put_redirect_headers()
+      |> put_resp_header("location", signed_url)
+      |> send_resp(:found, "")
 
-    case sign_download_url(delivery.storage_key, filename, project.id, snapshot.id) do
-      {:ok, signed_url} ->
-        conn =
-          conn
-          |> put_redirect_headers()
-          |> put_resp_header("location", signed_url)
-          |> send_resp(:found, "")
-
-        {:keep_lease, {:grant_issued, conn, delivery.size_bytes}}
-
-      {:error, :not_supported} ->
-        result =
-          case PrivateDownload.send_tracked(put_private_download_headers(conn), delivery.storage_key,
-                 content_type: "application/zip",
-                 filename: filename
-               ) do
-            {:ok, conn, %{outcome: :delivered, bytes_sent: bytes_sent}} ->
-              {:local_delivered, conn, bytes_sent, delivery.size_bytes}
-
-            {:ok, conn, %{outcome: outcome, bytes_sent: bytes_sent}} ->
-              {:local_incomplete, conn, bytes_sent, delivery.size_bytes, outcome}
-
-            {:error, reason} ->
-              {:local_failed, :snapshot_export_unavailable, delivery.size_bytes, local_preflight_error(reason)}
-          end
-
-        {:keep_lease, result}
-
-      {:error, _reason} ->
-        {:keep_lease, {:error, :snapshot_export_unavailable}}
-    end
+    {:keep_lease, {:grant_issued, conn, size_bytes}}
   end
 
-  defp sign_download_url(storage_key, filename, project_id, snapshot_id) do
-    Storage.presigned_download_url(storage_key, "application/zip",
-      expires_in: Versioning.project_snapshot_download_signed_url_ttl_seconds(),
-      filename: filename
-    )
-  rescue
-    exception ->
-      Logger.warning(
-        "Snapshot download grant failed project_id=#{project_id} snapshot_id=#{snapshot_id} " <>
-          "error_code=signing_exception exception_module=#{inspect(exception.__struct__)}"
-      )
+  defp deliver_archive(conn, %{
+         delivery: :stream,
+         storage_key: storage_key,
+         content_type: content_type,
+         filename: filename,
+         size_bytes: size_bytes
+       }) do
+    result =
+      case PrivateDownload.send_tracked(put_private_download_headers(conn), storage_key,
+             content_type: content_type,
+             filename: filename
+           ) do
+        {:ok, conn, %{outcome: :delivered, bytes_sent: bytes_sent}} ->
+          {:local_delivered, conn, bytes_sent, size_bytes}
 
-      {:error, :signing_exception}
+        {:ok, conn, %{outcome: outcome, bytes_sent: bytes_sent}} ->
+          {:local_incomplete, conn, bytes_sent, size_bytes, outcome}
+
+        {:error, reason} ->
+          {:local_failed, :snapshot_export_unavailable, size_bytes, local_preflight_error(reason)}
+      end
+
+    {:keep_lease, result}
   end
 
   defp handle_result({:grant_issued, %Plug.Conn{} = conn, artifact_bytes}, _conn, started_at, project_id, snapshot_id) do
@@ -203,10 +187,6 @@ defmodule StoryarnWeb.SnapshotDownloadController do
   defp local_preflight_error({:storage_stat_failed, _reason}), do: :stat_unavailable
   defp local_preflight_error({:storage_stream_start_failed, _reason}), do: :stream_unavailable
   defp local_preflight_error(_reason), do: :unexpected_local_error
-
-  defp sanitize_download_filename(filename) do
-    String.replace(filename, ["\r", "\n", "\"", "\\", <<0>>], "_")
-  end
 
   defp request_error(conn, started_at, error_code, response) do
     emit_download_stop(

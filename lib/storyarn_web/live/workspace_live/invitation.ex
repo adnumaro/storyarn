@@ -9,7 +9,7 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias Storyarn.Workspaces
   alias StoryarnWeb.Live.Shared.InvitationHelpers
   alias StoryarnWeb.PublicURLs

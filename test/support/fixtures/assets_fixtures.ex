@@ -1,12 +1,12 @@
 defmodule Storyarn.AssetsFixtures do
   @moduledoc """
-  Test helpers for creating entities via the `Storyarn.Assets` context.
+  Test helpers for creating entities via the `Storyarn.Projects.Assets` context.
   """
 
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets
+  alias Storyarn.Projects.Assets
 
   @max_asset_size 50 * 1024 * 1024
 

@@ -1,0 +1,281 @@
+defmodule Storyarn.Platform.Billing.StorageAccountingConcurrencyTest do
+  use ExUnit.Case, async: false
+
+  import Ecto.Query
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+  import Storyarn.VersioningFixtures
+
+  alias Ecto.Adapters.SQL.Sandbox
+  alias Storyarn.Accounts.User
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Project
+  alias Storyarn.Repo
+  alias Storyarn.Workspaces.Workspace
+
+  @timeout 10_000
+
+  test "concurrent reservations cannot both consume the same workspace capacity" do
+    %{user: user, project: project, snapshot: snapshot, workspace: workspace, limit: limit} =
+      Sandbox.unboxed_run(Repo, fn ->
+        user =
+          user_fixture(%{
+            email: "storage-reservation-race-#{Ecto.UUID.generate()}@example.com"
+          })
+
+        project = project_fixture(user)
+        workspace = Repo.get!(Workspace, project.workspace_id)
+        limit = Billing.plan_limit(Billing.default_plan(), :storage_bytes_per_workspace)
+        snapshot = insert_full_snapshot!(project)
+
+        %Asset{}
+        |> Ecto.Changeset.change(%{
+          filename: "capacity.bin",
+          content_type: "application/octet-stream",
+          size: limit - snapshot.accounted_size_bytes - 100,
+          key: "projects/#{project.id}/assets/#{Ecto.UUID.generate()}/capacity.bin",
+          project_id: project.id,
+          uploaded_by_id: user.id
+        })
+        |> Repo.insert!()
+
+        %{user: user, project: project, snapshot: snapshot, workspace: workspace, limit: limit}
+      end)
+
+    on_exit(fn -> cleanup_fixture(user, project, workspace) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    reserve = fn key ->
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          send(parent, {barrier, :ready, self()})
+
+          receive do
+            {^barrier, :reserve} ->
+              Billing.reserve_storage(%{
+                workspace_id: workspace.id,
+                project_id: project.id,
+                project_snapshot_id: snapshot.id,
+                idempotency_key: key,
+                kind: "restore_staging",
+                reserved_bytes: 75
+              })
+          after
+            @timeout -> exit(:reservation_barrier_timeout)
+          end
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+    end
+
+    first = reserve.("race:first")
+    second = reserve.("race:second")
+
+    assert_receive {^barrier, :ready, first_pid}, @timeout
+    assert_receive {^barrier, :ready, second_pid}, @timeout
+
+    send(first_pid, {barrier, :reserve})
+    send(second_pid, {barrier, :reserve})
+
+    results = [Task.await(first, @timeout), Task.await(second, @timeout)]
+
+    assert Enum.count(results, &match?({:ok, %StorageReservation{}}, &1)) == 1
+
+    assert Enum.count(
+             results,
+             &match?(
+               {:error, :limit_reached, %{required: 75, available: 25, limit: ^limit}},
+               &1
+             )
+           ) == 1
+
+    usage = Sandbox.unboxed_run(Repo, fn -> Billing.workspace_storage_usage(workspace.id) end)
+    assert usage.active_reservations.bytes == 75
+    assert usage.accounted_bytes == limit - 25
+  end
+
+  test "concurrent build reservations cannot own the same snapshot target" do
+    %{user: user, project: project, snapshot: snapshot, workspace: workspace} =
+      Sandbox.unboxed_run(Repo, fn ->
+        user =
+          user_fixture(%{
+            email: "storage-snapshot-operation-race-#{Ecto.UUID.generate()}@example.com"
+          })
+
+        project = project_fixture(user)
+        workspace = Repo.get!(Workspace, project.workspace_id)
+        snapshot = insert_pending_snapshot!(project)
+
+        %{user: user, project: project, snapshot: snapshot, workspace: workspace}
+      end)
+
+    on_exit(fn -> cleanup_fixture(user, project, workspace) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    reserve = fn key ->
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          send(parent, {barrier, :ready, self()})
+
+          receive do
+            {^barrier, :reserve} ->
+              Billing.reserve_storage(%{
+                workspace_id: workspace.id,
+                project_id: project.id,
+                project_snapshot_id: snapshot.id,
+                idempotency_key: key,
+                kind: "snapshot_build",
+                reserved_bytes: 75
+              })
+          after
+            @timeout -> exit(:reservation_barrier_timeout)
+          end
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+    end
+
+    first = reserve.("snapshot-race:first")
+    second = reserve.("snapshot-race:second")
+
+    assert_receive {^barrier, :ready, first_pid}, @timeout
+    assert_receive {^barrier, :ready, second_pid}, @timeout
+
+    send(first_pid, {barrier, :reserve})
+    send(second_pid, {barrier, :reserve})
+
+    results = [Task.await(first, @timeout), Task.await(second, @timeout)]
+
+    assert Enum.count(results, &match?({:ok, %StorageReservation{}}, &1)) == 1
+    assert Enum.count(results, &match?({:error, :storage_reservation_active_for_snapshot}, &1)) == 1
+
+    active_count =
+      Sandbox.unboxed_run(Repo, fn ->
+        Repo.aggregate(
+          from(reservation in StorageReservation,
+            where:
+              reservation.project_snapshot_id_snapshot == ^snapshot.id and
+                reservation.status == "active"
+          ),
+          :count
+        )
+      end)
+
+    assert active_count == 1
+  end
+
+  test "concurrent snapshot download grants coalesce onto one active lease" do
+    %{user: user, project: project, snapshot: snapshot, workspace: workspace} =
+      Sandbox.unboxed_run(Repo, fn ->
+        user =
+          user_fixture(%{
+            email: "snapshot-export-lease-race-#{Ecto.UUID.generate()}@example.com"
+          })
+
+        project = project_fixture(user)
+        workspace = Repo.get!(Workspace, project.workspace_id)
+        snapshot = insert_full_snapshot!(project)
+
+        %{user: user, project: project, snapshot: snapshot, workspace: workspace}
+      end)
+
+    on_exit(fn -> cleanup_fixture(user, project, workspace) end)
+
+    parent = self()
+    barrier = make_ref()
+
+    acquire = fn ->
+      Task.async(fn ->
+        :ok = Sandbox.checkout(Repo, sandbox: false)
+
+        try do
+          send(parent, {barrier, :ready, self()})
+
+          receive do
+            {^barrier, :acquire} ->
+              Billing.acquire_snapshot_export_lease(%{
+                workspace_id: workspace.id,
+                project_id: project.id,
+                project_snapshot_id: snapshot.id
+              })
+          after
+            @timeout -> exit(:snapshot_export_lease_barrier_timeout)
+          end
+        after
+          Sandbox.checkin(Repo)
+        end
+      end)
+    end
+
+    first = acquire.()
+    second = acquire.()
+
+    assert_receive {^barrier, :ready, first_pid}, @timeout
+    assert_receive {^barrier, :ready, second_pid}, @timeout
+
+    send(first_pid, {barrier, :acquire})
+    send(second_pid, {barrier, :acquire})
+
+    assert [
+             {:ok, %StorageReservation{id: lease_id, generation: 1}},
+             {:ok, %StorageReservation{id: lease_id, generation: 2}}
+           ] =
+             Enum.sort_by([Task.await(first, @timeout), Task.await(second, @timeout)], fn {:ok, reservation} ->
+               reservation.generation
+             end)
+
+    persisted =
+      Sandbox.unboxed_run(Repo, fn ->
+        Repo.all(
+          from(reservation in StorageReservation,
+            where:
+              reservation.project_snapshot_id_snapshot == ^snapshot.id and
+                reservation.kind == "snapshot_export" and reservation.status == "active"
+          )
+        )
+      end)
+
+    assert [%StorageReservation{id: ^lease_id, generation: 2}] = persisted
+  end
+
+  defp insert_full_snapshot!(project) do
+    full_project_snapshot_fixture(project, %{
+      version_number: 1,
+      project_size_bytes: 10,
+      manifest_size_bytes: 10,
+      asset_blob_size_bytes: 10,
+      asset_count: 1,
+      blob_count: 1
+    })
+  end
+
+  defp insert_pending_snapshot!(project) do
+    pending_project_snapshot_fixture(project, %{version_number: 1})
+  end
+
+  defp cleanup_fixture(user, project, workspace) do
+    Sandbox.unboxed_run(Repo, fn ->
+      Repo.delete_all(
+        from(reservation in StorageReservation,
+          where: reservation.workspace_id_snapshot == ^workspace.id
+        )
+      )
+
+      Repo.delete_all(from(current in Project, where: current.id == ^project.id))
+      Repo.delete_all(from(current in Workspace, where: current.id == ^workspace.id))
+      Repo.delete_all(from(current in User, where: current.id == ^user.id))
+    end)
+  end
+end

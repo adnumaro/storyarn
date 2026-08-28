@@ -1,0 +1,76 @@
+defmodule Storyarn.Public.Docs.Guide do
+  @moduledoc """
+  Represents a documentation guide parsed from Markdown files at compile time.
+
+  Guides are organized by category and ordered within each category.
+  No database, no external dependencies — pure compile-time content.
+  """
+
+  use NimblePublisher,
+    build: Storyarn.Public.Docs.GuideBuilder,
+    from: "priv/docs/**/*.md",
+    as: :guides,
+    highlighters: [:makeup_elixir],
+    earmark_options: %Earmark.Options{gfm_tables: true}
+
+  @default_locale "en"
+
+  @doc "List all guides for a locale, sorted by category order then guide order."
+  def list_guides(locale \\ @default_locale) do
+    @guides
+    |> Enum.filter(&(&1.locale == locale))
+    |> Enum.sort_by(fn g ->
+      {category_order(g.category), g.section_order, g.order}
+    end)
+  end
+
+  @doc "Get a single guide by category and slug."
+  def get_guide(category, slug_or_path, locale \\ @default_locale) do
+    path = String.split(slug_or_path, "/", trim: true)
+
+    Enum.find(@guides, fn guide ->
+      guide.locale == locale &&
+        guide.category == category &&
+        (guide.path == path || guide.slug == slug_or_path)
+    end)
+  end
+
+  @doc "Get all guides in a category."
+  def list_by_category(category, locale \\ @default_locale) do
+    @guides
+    |> Enum.filter(&(&1.locale == locale && &1.category == category))
+    |> Enum.sort_by(&{&1.section_order, &1.order})
+  end
+
+  @doc "Simple text search across title and body."
+  def search(query, locale \\ @default_locale)
+
+  def search(query, locale) when is_binary(query) and byte_size(query) > 0 do
+    q = String.downcase(query)
+
+    @guides
+    |> Enum.filter(fn g ->
+      g.locale == locale &&
+        (String.contains?(String.downcase(g.title), q) ||
+           String.contains?(String.downcase(g.body), q))
+    end)
+    |> Enum.sort_by(fn g ->
+      if String.contains?(String.downcase(g.title), q), do: 0, else: 1
+    end)
+  end
+
+  def search(_, _), do: []
+
+  defp category_order("welcome"), do: 0
+  defp category_order("quick-start"), do: 1
+  defp category_order("project-management"), do: 2
+  defp category_order("world-building"), do: 3
+  defp category_order("narrative-design"), do: 4
+  defp category_order("screenwriting"), do: 5
+  defp category_order("scene-design"), do: 6
+  defp category_order("localization"), do: 7
+  defp category_order("collaboration"), do: 8
+  defp category_order("import-export"), do: 9
+  defp category_order("ai"), do: 10
+  defp category_order(_), do: 99
+end

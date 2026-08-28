@@ -31,6 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.Report do
           "project_slug" => @project.slug,
           "selected_locale" => nil,
           "can_edit" => @can_edit,
+          "membership" => @membership,
           "active_tool" => "localization",
           "dashboard_url" =>
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",

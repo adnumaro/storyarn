@@ -11,8 +11,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   import Phoenix.LiveView, only: [push_event: 3, push_patch: 2]
 
   alias Storyarn.Flows
-  alias Storyarn.Flows.SequenceConfig
-  alias Storyarn.Repo
   alias StoryarnWeb.PrivateMedia
 
   @doc "Advances the debugger by one step. May trigger cross-flow navigation."
@@ -21,9 +19,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     nodes = socket.assigns.debug_nodes
     connections = socket.assigns.debug_connections
 
-    result = Flows.evaluator_step(state, nodes, connections)
+    result = Flows.debug_step(state, nodes, connections, socket.assigns.flow.name)
 
-    case apply_step_result(result, socket) do
+    case apply_debug_result(result, socket) do
       {:navigating, socket} ->
         {:noreply, socket}
 
@@ -36,7 +34,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def handle_debug_step_back(socket) do
     state = socket.assigns.debug_state
 
-    case Flows.evaluator_step_back(state) do
+    case Flows.debug_step_back(state) do
       {:ok, new_state} ->
         {:noreply,
          socket
@@ -53,7 +51,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     state = socket.assigns.debug_state
     connections = socket.assigns.debug_connections
 
-    case Flows.evaluator_choose_response(state, response_id, connections) do
+    case Flows.debug_choose_response(state, response_id, connections) do
       {:ok, new_state} ->
         socket =
           socket
@@ -105,15 +103,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   def handle_debug_auto_step(socket) do
     state = socket.assigns.debug_state
 
-    cond do
-      !socket.assigns.debug_auto_playing || is_nil(state) || state.status == :finished ->
-        {:noreply, assign(socket, :debug_auto_playing, false)}
-
-      state.status == :waiting_input ->
-        {:noreply, socket}
-
-      true ->
-        do_auto_step(socket, state)
+    if !socket.assigns.debug_auto_playing || is_nil(state) do
+      {:noreply, assign(socket, :debug_auto_playing, false)}
+    else
+      do_auto_step(socket, state)
     end
   end
 
@@ -124,7 +117,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   @doc "Pushes node highlight and connection highlight events to the canvas."
   def push_debug_canvas(socket, state) do
     path = Enum.reverse(state.execution_path)
-    active_connection = find_active_connection(path, socket.assigns.debug_connections)
+    active_connection = Flows.debug_active_connection(path, socket.assigns.debug_connections)
 
     status_str =
       if state.status == :finished and
@@ -203,177 +196,86 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   defp do_auto_step(socket, state) do
     nodes = socket.assigns.debug_nodes
     connections = socket.assigns.debug_connections
-    result = Flows.evaluator_step(state, nodes, connections)
+    result = Flows.debug_auto_step(state, nodes, connections, socket.assigns.flow.name)
 
-    case apply_step_result(result, socket) do
+    case apply_auto_step_result(result, socket) do
       {:navigating, socket} -> {:noreply, socket}
-      {:continue, socket} -> finalize_auto_step(socket)
+      {:continue, socket, :stop} -> {:noreply, assign(socket, :debug_auto_playing, false)}
+      {:continue, socket, :wait} -> {:noreply, socket}
+      {:continue, socket, :continue} -> {:noreply, schedule_auto_step(socket)}
     end
   end
 
-  defp finalize_auto_step(socket) do
-    new_state = socket.assigns.debug_state
-    {new_state, hit_breakpoint} = maybe_hit_breakpoint(new_state)
+  defp apply_debug_result({:navigate, state, graph, target_flow_id}, socket) do
+    graph = present_runtime_graph(graph)
 
     socket =
       socket
-      |> assign(:debug_state, new_state)
-      |> push_debug_canvas(new_state)
+      |> assign(:debug_state, state)
+      |> assign(:debug_nodes, graph.nodes)
+      |> assign(:debug_connections, graph.connections)
 
-    schedule_or_stop_auto_play(socket, new_state, hit_breakpoint)
+    store_and_navigate(socket, target_flow_id)
   end
 
-  defp maybe_hit_breakpoint(state) do
-    if state.status not in [:finished, :waiting_input] and Flows.evaluator_at_breakpoint?(state) do
-      {Flows.evaluator_add_breakpoint_hit(state, state.current_node_id), true}
-    else
-      {state, false}
-    end
-  end
+  defp apply_debug_result({:continue, state, graph, step_limit_reached?}, socket) do
+    graph = present_runtime_graph(graph)
 
-  defp schedule_or_stop_auto_play(socket, _state, true), do: {:noreply, assign(socket, :debug_auto_playing, false)}
+    socket =
+      socket
+      |> assign(:debug_state, state)
+      |> assign(:debug_nodes, graph.nodes)
+      |> assign(:debug_connections, graph.connections)
+      |> assign(:debug_step_limit_reached, step_limit_reached?)
 
-  defp schedule_or_stop_auto_play(socket, %{status: :finished}, _),
-    do: {:noreply, assign(socket, :debug_auto_playing, false)}
-
-  defp schedule_or_stop_auto_play(socket, %{status: :waiting_input}, _), do: {:noreply, socket}
-
-  defp schedule_or_stop_auto_play(socket, _state, _), do: {:noreply, schedule_auto_step(socket)}
-
-  defp apply_step_result({:flow_jump, state, target_flow_id}, socket) do
-    current_node_id = state.current_node_id
-    nodes = socket.assigns.debug_nodes
-    connections = socket.assigns.debug_connections
-    flow_name = socket.assigns.flow.name
-
-    state =
-      Flows.evaluator_push_flow_context(state, current_node_id, nodes, connections, flow_name)
-
-    target_nodes = build_nodes_map(target_flow_id)
-    target_connections = build_connections(target_flow_id)
-
-    case find_entry_node(target_nodes) do
-      nil ->
-        {:continue, assign(socket, :debug_state, %{state | status: :finished})}
-
-      entry_id ->
-        log_entry = %{node_id: entry_id, depth: length(state.call_stack)}
-
-        state = %{
-          state
-          | current_node_id: entry_id,
-            current_flow_id: target_flow_id,
-            execution_path: [entry_id | state.execution_path],
-            execution_log: [log_entry | state.execution_log]
-        }
-
-        socket =
-          socket
-          |> assign(:debug_state, state)
-          |> assign(:debug_nodes, target_nodes)
-          |> assign(:debug_connections, target_connections)
-
-        store_and_navigate(socket, target_flow_id)
-    end
-  end
-
-  defp apply_step_result({:flow_return, state}, socket) do
-    case Flows.evaluator_pop_flow_context(state) do
-      {:error, :empty_stack} ->
-        {:continue, assign(socket, :debug_state, %{state | status: :finished})}
-
-      {:ok, frame, state} ->
-        state = %{state | current_flow_id: frame.flow_id}
-
-        next_conn =
-          Flows.evaluator_find_return_connection(
-            frame.connections,
-            frame.return_node_id,
-            state.current_node_id
-          )
-
-        state =
-          if next_conn do
-            log_entry = %{node_id: next_conn.target_node_id, depth: length(state.call_stack)}
-
-            %{
-              state
-              | current_node_id: next_conn.target_node_id,
-                execution_path: [next_conn.target_node_id | frame.execution_path],
-                execution_log: [log_entry | state.execution_log]
-            }
-          else
-            %{state | status: :finished}
-          end
-
-        socket =
-          socket
-          |> assign(:debug_state, state)
-          |> assign(:debug_nodes, frame.nodes)
-          |> assign(:debug_connections, frame.connections)
-
-        store_and_navigate(socket, frame.flow_id)
-    end
-  end
-
-  defp apply_step_result({:step_limit, state}, socket) do
-    {:continue,
-     socket
-     |> assign(:debug_state, state)
-     |> assign(:debug_step_limit_reached, true)
-     |> cancel_auto_timer()
-     |> assign(:debug_auto_playing, false)}
-  end
-
-  defp apply_step_result({_status, state}, socket) do
-    {:continue,
-     socket
-     |> assign(:debug_state, state)
-     |> assign(:debug_step_limit_reached, false)}
-  end
-
-  defp apply_step_result({:error, state, _reason}, socket) do
-    {:continue,
-     socket
-     |> assign(:debug_state, state)
-     |> assign(:debug_step_limit_reached, false)}
-  end
-
-  defp find_active_connection([], _), do: nil
-  defp find_active_connection([_single], _), do: nil
-
-  defp find_active_connection(path, connections) do
-    source_id = Enum.at(path, -2)
-    target_id = Enum.at(path, -1)
-
-    Enum.find_value(connections, fn conn ->
-      if conn.source_node_id == source_id and conn.target_node_id == target_id do
-        %{source_node_id: source_id, target_node_id: target_id, source_pin: conn.source_pin}
+    socket =
+      if step_limit_reached? do
+        socket
+        |> cancel_auto_timer()
+        |> assign(:debug_auto_playing, false)
+      else
+        socket
       end
-    end)
+
+    {:continue, socket}
   end
 
-  @doc "Builds a `%{node_id => node_map}` lookup from all nodes in a flow."
-  def build_nodes_map(flow_id) do
-    flow_id
-    |> Flows.list_nodes()
-    |> Repo.preload([:sequence_config, sequence_tracks: [:asset], sequence_visual_layers: [:asset]])
-    |> Map.new(fn node -> {node.id, build_node_map(node)} end)
+  defp apply_auto_step_result({:navigate, state, graph, target_flow_id}, socket) do
+    apply_debug_result({:navigate, state, graph, target_flow_id}, socket)
   end
 
-  defp build_node_map(node) do
-    %{
-      id: node.id,
-      type: node.type,
-      data: node.data || %{},
-      parent_id: node.parent_id,
-      sequence_config: serialize_sequence_config(node.sequence_config),
-      sequence_visual_layers: Enum.map(node.sequence_visual_layers || [], &serialize_sequence_visual_layer/1),
-      sequence_tracks: Enum.map(node.sequence_tracks || [], &serialize_sequence_track/1)
-    }
+  defp apply_auto_step_result({:continue, state, graph, step_limit_reached?, action}, socket) do
+    {:continue, socket} =
+      apply_debug_result({:continue, state, graph, step_limit_reached?}, socket)
+
+    {:continue, push_debug_canvas(socket, state), action}
   end
 
-  defp serialize_sequence_config(%SequenceConfig{} = config) do
+  @doc "Converts runtime media records into the client-facing debug graph."
+  def present_runtime_graph(%{nodes: nodes, connections: connections}) do
+    %{nodes: Map.new(nodes, fn {id, node} -> {id, present_runtime_node(node)} end), connections: connections}
+  end
+
+  defp present_runtime_node(node) do
+    if Map.has_key?(node, :sequence_config) or
+         Map.has_key?(node, :sequence_visual_layers) or
+         Map.has_key?(node, :sequence_tracks) do
+      %{
+        id: node.id,
+        type: node.type,
+        data: Map.get(node, :data) || %{},
+        parent_id: Map.get(node, :parent_id),
+        sequence_config: serialize_sequence_config(Map.get(node, :sequence_config)),
+        sequence_visual_layers:
+          Enum.map(Map.get(node, :sequence_visual_layers) || [], &serialize_sequence_visual_layer/1),
+        sequence_tracks: Enum.map(Map.get(node, :sequence_tracks) || [], &serialize_sequence_track/1)
+      }
+    else
+      node
+    end
+  end
+
+  defp serialize_sequence_config(%{} = config) do
     %{
       name: config.name,
       width: config.width,
@@ -382,6 +284,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   end
 
   defp serialize_sequence_config(_), do: nil
+
+  defp serialize_sequence_visual_layer(%{url: _url} = layer), do: layer
 
   defp serialize_sequence_visual_layer(layer) do
     %{
@@ -403,6 +307,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
     }
   end
 
+  defp serialize_sequence_track(%{url: _url} = track), do: track
+
   defp serialize_sequence_track(track) do
     %{
       id: track.id,
@@ -418,27 +324,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers do
   defp serialize_volume(nil), do: 1.0
   defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
   defp serialize_volume(volume) when is_number(volume), do: volume
-
-  @doc "Builds a list of connection maps for the debugger engine."
-  def build_connections(flow_id) do
-    flow_id
-    |> Flows.list_connections()
-    |> Enum.map(fn conn ->
-      %{
-        source_node_id: conn.source_node_id,
-        source_pin: conn.source_pin,
-        target_node_id: conn.target_node_id,
-        target_pin: conn.target_pin
-      }
-    end)
-  end
-
-  @doc "Finds the entry node ID in a nodes map. Returns nil if none exists."
-  def find_entry_node(nodes_map) do
-    Enum.find_value(nodes_map, fn {id, node} ->
-      if node.type == "entry", do: id
-    end)
-  end
 
   defp parse_speed(val) when is_binary(val) do
     case Integer.parse(val) do

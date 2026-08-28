@@ -1,9 +1,9 @@
 defmodule StoryarnWeb.SitemapController do
   use StoryarnWeb, :controller
 
-  alias Storyarn.Blog
-  alias Storyarn.Docs
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Docs
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   @static_path_functions [:home_path, :contact_path, :privacy_path, :terms_path]

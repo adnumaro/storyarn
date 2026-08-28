@@ -12,7 +12,7 @@ defmodule Storyarn.Repo.Migrations.RuntimeLocalizationRepairTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Flows.FlowConnection
+  alias Storyarn.Projects.Persistence.FlowConnectionRecord
   alias Storyarn.Repo.Migrations.RuntimeLocalizationRepair
 
   test "preserves valid runtime IDs and avoids IDs reserved by references" do
@@ -177,8 +177,8 @@ defmodule Storyarn.Repo.Migrations.RuntimeLocalizationRepairTest do
   end
 
   defp insert_legacy_connection!(flow, source, target, source_pin) do
-    %FlowConnection{flow_id: flow.id}
-    |> FlowConnection.create_changeset(%{
+    %FlowConnectionRecord{flow_id: flow.id}
+    |> FlowConnectionRecord.create_changeset(%{
       source_node_id: source.id,
       source_pin: source_pin,
       target_node_id: target.id,

@@ -18,7 +18,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       invitee = user_fixture()
 
-      {encoded_token, _invitation} = create_invitation(workspace, owner, invitee.email)
+      {encoded_token, _invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
 
       assert {:error, {:redirect, %{to: "/users/log-in", flash: flash}}} =
                live(conn, ~p"/workspaces/invitations/#{encoded_token}")
@@ -32,7 +33,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       email = "newuser@example.com"
 
-      {encoded_token, invitation} = create_invitation(workspace, owner, email)
+      {encoded_token, invitation} = workspace_invitation_fixture(workspace, owner, email)
       invitation_path = ~p"/workspaces/invitations/#{encoded_token}"
 
       assert {:error, {:redirect, %{to: registration_path, flash: flash}}} =
@@ -58,7 +59,7 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       email = "newuser@example.com"
       password = valid_user_password()
 
-      {encoded_token, invitation} = create_invitation(workspace, owner, email)
+      {encoded_token, invitation} = workspace_invitation_fixture(workspace, owner, email)
       invitation_path = ~p"/workspaces/invitations/#{encoded_token}"
 
       assert {:error, {:redirect, %{to: registration_path}}} =
@@ -89,7 +90,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       invitee = user_fixture()
 
-      {encoded_token, invitation} = create_invitation(workspace, owner, invitee.email)
+      {encoded_token, invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
 
       # Accept first — token query filters out accepted invitations
       Workspaces.accept_invitation(invitation, invitee)
@@ -105,7 +107,8 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       workspace = workspace_fixture(owner)
       invitee = user_fixture()
 
-      {encoded_token, _invitation} = create_invitation(workspace, owner, invitee.email)
+      {encoded_token, _invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
 
       # Add as member before accepting
       workspace_membership_fixture(workspace, invitee, "member")
@@ -125,7 +128,9 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
       existing_member = user_fixture()
       conn = init_test_session(conn, %{locale: "es"})
 
-      {encoded_token, invitation} = create_invitation(workspace, owner, invitee.email)
+      {encoded_token, invitation} =
+        workspace_invitation_fixture(workspace, owner, invitee.email)
+
       workspace_membership_fixture(workspace, existing_member, "viewer")
 
       assert {:error, {:redirect, %{to: "/es", flash: flash}}} =
@@ -184,14 +189,6 @@ defmodule StoryarnWeb.WorkspaceLive.InvitationTest do
   # =============================================================================
   # Helpers
   # =============================================================================
-
-  defp create_invitation(workspace, owner, email, role \\ "member") do
-    {encoded_token, invitation_struct} =
-      WorkspaceInvitation.build_invitation(workspace, owner, email, role)
-
-    {:ok, invitation} = Repo.insert(invitation_struct)
-    {encoded_token, invitation}
-  end
 
   defp registration_redirect(path) do
     uri = URI.parse(path)

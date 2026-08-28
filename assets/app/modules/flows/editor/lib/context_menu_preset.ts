@@ -9,13 +9,40 @@
  */
 
 import type { BaseSchemes } from "rete";
-import type { RenderPreset } from "rete-vue-plugin/_types/presets/types";
-import type { ContextMenuRender } from "rete-vue-plugin/_types/presets/context-menu/types";
+import type { RenderPreset } from "rete-vue-plugin";
 import FlowRendererContextMenu from "../components/entities/rete/FlowRendererContextMenu.vue";
+import type { FlowContextMenuItem } from "./context_menu_items";
+
+/**
+ * Flow-owned view of the context-menu render signal.
+ *
+ * rete-vue-plugin does not export this signal from its public API. Depending
+ * on its private `_types` tree made Flows compile against an implementation
+ * detail and dependency-cruiser could not resolve it.
+ */
+type FlowContextMenuRender =
+  | {
+      type: "render";
+      data: {
+        element: HTMLElement;
+        filled?: boolean;
+        type: "contextmenu";
+        items: FlowContextMenuItem[];
+        onHide(): void;
+        searchBar?: boolean;
+      };
+    }
+  | {
+      type: "rendered";
+      data: {
+        element: HTMLElement;
+        type: "contextmenu";
+      };
+    };
 
 export function flowContextMenuPreset<
   Schemes extends BaseSchemes,
-  K extends ContextMenuRender,
+  K extends FlowContextMenuRender,
 >(): RenderPreset<Schemes, K> {
   return {
     update(context) {

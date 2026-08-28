@@ -3,8 +3,8 @@ defmodule StoryarnWeb.AssetLive.Index do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
@@ -87,7 +87,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     %{project: project} = socket.assigns
-    type_counts = Assets.count_assets_by_type(project.id)
+    type_counts = Projects.count_assets_by_type(project.id)
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project.id))
@@ -136,7 +136,7 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   def handle_info({:remote_change, _action, _payload}, socket) do
-    type_counts = Assets.count_assets_by_type(socket.assigns.project.id)
+    type_counts = Projects.count_assets_by_type(socket.assigns.project.id)
 
     {:noreply,
      socket
@@ -218,12 +218,12 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp handle_select_asset(socket, project_id, int_id) do
-    case Assets.get_asset(project_id, int_id) do
+    case Projects.get_asset(project_id, int_id) do
       nil ->
         {:noreply, socket}
 
       asset ->
-        usages = Assets.get_asset_family_usages(project_id, asset.id)
+        usages = Projects.get_asset_family_usages(project_id, asset.id)
 
         {:noreply,
          socket
@@ -273,10 +273,9 @@ defmodule StoryarnWeb.AssetLive.Index do
   end
 
   defp do_upload(socket, filename, content_type, binary_data) do
-    if Assets.allowed_content_type?(content_type) do
+    if Projects.asset_content_type_allowed?(content_type) do
       project = socket.assigns.project
-      user = socket.assigns.current_scope.user
-      do_upload_file(socket, project, user, filename, content_type, binary_data)
+      do_upload_file(socket, project, filename, content_type, binary_data)
     else
       {:noreply,
        socket
@@ -285,16 +284,16 @@ defmodule StoryarnWeb.AssetLive.Index do
     end
   end
 
-  defp do_upload_file(socket, project, user, filename, content_type, binary_data) do
-    case Assets.upload_binary_and_create_asset(
+  defp do_upload_file(socket, project, filename, content_type, binary_data) do
+    case Projects.upload_binary_asset(
+           socket.assigns.current_scope,
+           project.id,
            binary_data,
-           %{filename: filename, content_type: content_type},
-           project,
-           user
+           %{filename: filename, content_type: content_type}
          ) do
       {:ok, asset} ->
-        type_counts = Assets.count_assets_by_type(project.id)
-        usages = Assets.get_asset_family_usages(project.id, asset.id)
+        type_counts = Projects.count_assets_by_type(project.id)
+        usages = Projects.get_asset_family_usages(project.id, asset.id)
         broadcast_asset_change(project.id, :asset_created)
 
         {:noreply,
@@ -332,10 +331,10 @@ defmodule StoryarnWeb.AssetLive.Index do
         project_id = socket.assigns.project.id
         actor_id = socket.assigns.current_scope.user.id
 
-        case Assets.move_asset_to_trash(project_id, asset.id, actor_id) do
+        case Projects.move_asset_to_trash(project_id, asset.id, actor_id) do
           {:ok, _} ->
             broadcast_asset_change(project_id, :asset_trashed)
-            type_counts = Assets.count_assets_by_type(project_id)
+            type_counts = Projects.count_assets_by_type(project_id)
 
             {:noreply,
              socket
@@ -354,12 +353,12 @@ defmodule StoryarnWeb.AssetLive.Index do
   defp load_assets(socket) do
     project_id = socket.assigns.project.id
     opts = filter_opts(socket.assigns.filter) ++ search_opts(socket.assigns.search)
-    total_count = Assets.count_assets(project_id, opts)
+    total_count = Projects.count_assets(project_id, opts)
     total_pages = max(div(total_count + @assets_per_page - 1, @assets_per_page), 1)
     page = socket.assigns.asset_page |> max(1) |> min(total_pages)
 
     assets =
-      Assets.list_assets(
+      Projects.list_assets(
         project_id,
         opts ++ [limit: @assets_per_page, offset: (page - 1) * @assets_per_page]
       )
@@ -410,7 +409,7 @@ defmodule StoryarnWeb.AssetLive.Index do
         socket
 
       asset ->
-        case Assets.get_asset(socket.assigns.project.id, asset.id) do
+        case Projects.get_asset(socket.assigns.project.id, asset.id) do
           nil ->
             socket
             |> assign(:selected_asset, nil)

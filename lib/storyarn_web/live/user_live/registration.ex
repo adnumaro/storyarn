@@ -4,7 +4,6 @@ defmodule StoryarnWeb.UserLive.Registration do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
 
@@ -59,7 +58,7 @@ defmodule StoryarnWeb.UserLive.Registration do
   end
 
   def mount(_params, _session, socket) do
-    user = %Accounts.User{}
+    user = Accounts.new_user()
     changeset = Ecto.Changeset.cast(user, %{}, [])
 
     {:ok,
@@ -73,7 +72,7 @@ defmodule StoryarnWeb.UserLive.Registration do
 
   @impl true
   def handle_event("save", %{"user" => user_params}, socket) do
-    case RateLimiter.check_registration(socket.assigns[:client_ip] || ClientIp.missing_peer_data()) do
+    case Accounts.check_registration_rate(socket.assigns[:client_ip] || ClientIp.missing_peer_data()) do
       :ok ->
         do_register(socket, user_params)
 

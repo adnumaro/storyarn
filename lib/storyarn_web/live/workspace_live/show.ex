@@ -5,11 +5,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Billing
-  alias Storyarn.ProductMetrics.Taxonomy
+  alias Storyarn.Platform
   alias Storyarn.Projects
-  alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateMedia
 
@@ -22,7 +19,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     can_create_project = can_create_project?(workspace, socket.assigns.membership)
 
     if connected?(socket) do
-      ProjectTemplates.subscribe_workspace_installations(workspace)
+      Projects.subscribe_workspace_template_installations(socket.assigns.current_scope, workspace.id)
     end
 
     {:ok,
@@ -33,8 +30,8 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
      |> assign(:search_query, "")
      |> assign(:can_create_project, can_create_project)
      |> assign(:new_project_modal_open, false)
-     |> assign(:project_form, to_form(Projects.change_new_project(%Project{})))
-     |> assign(:project_templates, serialize_project_templates(ProjectTemplates.list_templates(scope)))
+     |> assign(:project_form, to_form(Projects.change_new_project()))
+     |> assign(:project_templates, serialize_project_templates(Projects.list_project_templates(scope)))
      |> assign_template_installation_feedback()}
   end
 
@@ -82,7 +79,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
             failures: @template_installation_failures
           }
         }
-        project-metrics-options={Taxonomy.project_options()}
+        project-metrics-options={Projects.project_classification_options()}
         settings-url={~p"/users/settings/workspaces/#{@workspace.slug}/general"}
       />
     </StoryarnWeb.Components.WorkspaceLayout.workspace>
@@ -140,10 +137,11 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
          {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id),
          %{current_version: version} when not is_nil(version) <- template,
          {:ok, installation} <-
-           ProjectTemplates.request_template_instantiation(
+           Projects.request_project_template_instantiation(
              socket.assigns.current_scope,
-             version,
-             socket.assigns.workspace,
+             template.id,
+             version.id,
+             socket.assigns.workspace.id,
              Map.put(template_params, "source", "workspace_dashboard")
            ) do
       socket =
@@ -166,9 +164,9 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   def handle_event("dismiss_template_installation_failure", %{"installation_id" => installation_id}, socket) do
     with {:ok, installation_id} <- parse_template_id(installation_id),
          {:ok, _installation} <-
-           ProjectTemplates.dismiss_installation_failure(
+           Projects.dismiss_project_template_installation_failure(
              socket.assigns.current_scope,
-             socket.assigns.workspace,
+             socket.assigns.workspace.id,
              installation_id
            ) do
       {:reply, %{status: "ok"}, assign_template_installation_feedback(socket)}
@@ -201,7 +199,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   defp can_create_project?(workspace, membership) do
-    Workspaces.can?(membership.role, :create_project) and Billing.can_create_project?(workspace) == :ok
+    Workspaces.can?(membership.role, :create_project) and Platform.can_create_project?(workspace) == :ok
   end
 
   defp parse_template_id(value) when is_integer(value), do: {:ok, value}
@@ -216,7 +214,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   defp parse_template_id(_value), do: {:error, :invalid_template_id}
 
   defp fetch_template(scope, template_id) do
-    ProjectTemplates.get_template(scope, template_id)
+    Projects.get_project_template(scope, template_id)
   end
 
   defp filter_projects(projects, query) when query in [nil, ""], do: projects
@@ -261,12 +259,12 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
     socket
     |> assign(
       :template_installations,
-      serialize_template_installations(ProjectTemplates.list_active_workspace_installations(scope, workspace))
+      serialize_template_installations(Projects.list_active_workspace_template_installations(scope, workspace.id))
     )
     |> assign(
       :template_installation_failures,
       serialize_template_installation_failures(
-        ProjectTemplates.list_pending_workspace_installation_failures(scope, workspace)
+        Projects.list_pending_workspace_template_installation_failures(scope, workspace.id)
       )
     )
   end

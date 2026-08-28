@@ -9,10 +9,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.Storage.R2
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshotArchiveReader
+  alias Storyarn.Projects
   alias Storyarn.Workspaces
 
   @impl true
@@ -27,12 +24,12 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
         |> assign(:quota_rejection, nil)
         |> assign(:request_error_code, nil)
         |> assign(:upload_error_code, nil)
-        |> assign(:external_upload?, Storage.adapter() == R2)
+        |> assign(:external_upload?, Projects.external_project_storage?())
         |> allow_snapshot_upload()
         |> reload_imports()
 
       if connected?(socket) do
-        :ok = Versioning.subscribe_workspace_snapshot_imports(workspace.id)
+        :ok = Projects.subscribe_workspace_snapshot_imports(workspace.id)
       end
 
       {:ok, socket}
@@ -116,7 +113,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   def handle_event("cancel_snapshot_upload", %{"id" => import_id}, socket) do
     case Integer.parse(to_string(import_id)) do
       {id, ""} ->
-        _ = Versioning.cancel_workspace_snapshot_upload(socket.assigns.current_scope, socket.assigns.workspace, id)
+        _ =
+          Projects.cancel_workspace_snapshot_upload(
+            socket.assigns.current_scope,
+            socket.assigns.workspace.id,
+            id
+          )
+
         {:noreply, socket |> cancel_upload_entry(id) |> reload_imports()}
 
       _invalid ->
@@ -145,9 +148,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   defp consume_snapshot_upload(%{assigns: %{external_upload?: false}} = socket, workspace) do
     consume_uploaded_entries(socket, :snapshot_zip, fn %{path: path}, entry ->
       result =
-        Versioning.request_workspace_snapshot_import(
+        Projects.request_workspace_snapshot_import(
           socket.assigns.current_scope,
-          workspace,
+          workspace.id,
           path,
           %{original_filename: entry.client_name}
         )
@@ -159,9 +162,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   defp consume_snapshot_upload(%{assigns: %{external_upload?: true}} = socket, workspace) do
     consume_uploaded_entries(socket, :snapshot_zip, fn %{import_id: import_id}, _entry ->
       {:ok,
-       Versioning.request_stored_workspace_snapshot_import(
+       Projects.request_stored_workspace_snapshot_import(
          socket.assigns.current_scope,
-         workspace,
+         workspace.id,
          import_id
        )}
     end)
@@ -171,7 +174,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
     opts = [
       accept: [".zip"],
       max_entries: 1,
-      max_file_size: ProjectSnapshotArchiveReader.max_archive_size_bytes(),
+      max_file_size: Projects.project_snapshot_archive_max_size_bytes(),
       progress: &snapshot_upload_progress/3
     ]
 
@@ -181,9 +184,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
 
   defp presign_snapshot_upload(entry, socket) do
     result =
-      Versioning.prepare_external_workspace_snapshot_import(
+      Projects.prepare_external_workspace_snapshot_import(
         socket.assigns.current_scope,
-        socket.assigns.workspace,
+        socket.assigns.workspace.id,
         %{original_filename: entry.client_name, archive_size_bytes: entry.client_size}
       )
 
@@ -206,9 +209,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
     if upload_errors(socket.assigns.uploads.snapshot_zip, entry) == [] do
       with %{import_id: import_id} <- meta do
         _ =
-          Versioning.update_workspace_snapshot_upload_progress(
+          Projects.update_workspace_snapshot_upload_progress(
             socket.assigns.current_scope,
-            socket.assigns.workspace,
+            socket.assigns.workspace.id,
             import_id,
             entry.progress
           )
@@ -235,7 +238,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   end
 
   defp maybe_cancel_upload_owner(socket, %{import_id: import_id}) do
-    Versioning.cancel_workspace_snapshot_upload(socket.assigns.current_scope, socket.assigns.workspace, import_id)
+    Projects.cancel_workspace_snapshot_upload(
+      socket.assigns.current_scope,
+      socket.assigns.workspace.id,
+      import_id
+    )
   end
 
   defp maybe_cancel_upload_owner(_socket, _meta), do: :ok
@@ -277,9 +284,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
 
   defp reload_imports(socket) do
     imports =
-      Versioning.list_workspace_snapshot_imports(
+      Projects.list_workspace_snapshot_imports(
         socket.assigns.current_scope,
-        socket.assigns.workspace
+        socket.assigns.workspace.id
       )
 
     assign(socket, :imports, imports)

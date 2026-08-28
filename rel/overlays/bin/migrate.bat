@@ -1,1 +1,1 @@
-call "%~dp0\storyarn" eval Storyarn.Release.migrate
+call "%~dp0\storyarn" eval Storyarn.Platform.Release.migrate

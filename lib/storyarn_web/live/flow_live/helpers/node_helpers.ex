@@ -7,51 +7,45 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [push_event: 3, put_flash: 3]
-  import StoryarnWeb.FlowLive.Helpers.NodeDataHelpers, only: [default_node_data: 1]
   import StoryarnWeb.FlowLive.Helpers.SocketHelpers
   import StoryarnWeb.Helpers.AutoSnapshot, only: [schedule: 2]
   import StoryarnWeb.Helpers.SaveStatusTimer, only: [mark_saved: 1]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Analytics
   alias Storyarn.Flows
-  alias Storyarn.Flows.FlowNode
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
-  alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @doc """
   Single canonical path for all node data updates.
 
-  Always reads fresh from DB (never from socket assigns), applies the caller's
-  transform function, writes to DB, reloads flow data, and pushes to canvas.
+  Web passes a closed Flow operation and its payload. Flows locks and reloads
+  the node before deriving the transition, then returns the before/after data
+  needed by the transport adapter.
 
   ## Parameters
 
     * `socket` - The LiveView socket
     * `node_id` - The database ID of the node to update
-    * `update_fn` - A function `(current_data :: map()) -> new_data :: map()`
+    * `operation` - an operation owned by `Storyarn.Flows.NodeEditor`
+    * `payload` - the operation's typed input
 
   ## Returns
 
     `{:noreply, socket}` — ready for direct return from a handle_event/handle_info.
   """
-  @spec persist_node_update(Socket.t(), any(), (map() -> map())) ::
+  @spec persist_node_update(Socket.t(), any(), atom(), map()) ::
           {:noreply, Socket.t()}
-  def persist_node_update(socket, node_id, update_fn) do
-    # 1. ALWAYS read fresh from DB (never from socket.assigns.selected_node)
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    old_data = node.data || %{}
+  def persist_node_update(socket, node_id, operation, payload \\ %{}) do
+    case Flows.edit_node(socket.assigns.flow.id, node_id, operation, payload) do
+      {:ok, %{changed?: false}} ->
+        {:noreply, socket}
 
-    # 2. Apply caller's transform
-    new_data = update_fn.(old_data)
-
-    # 3. Write to DB
-    case Flows.update_node_data(node, new_data) do
-      {:ok, updated_node, meta} ->
-        renamed_count = Map.get(meta, :renamed_jumps, 0)
-        connections_changed? = Map.get(meta, :connections_changed?, false)
-        full_refresh? = renamed_count > 0 or connections_changed?
+      {:ok, result} ->
+        updated_node = result.node
+        renamed_count = result.renamed_jumps
+        connections_changed? = result.connections_changed?
+        full_refresh? = result.graph_changed?
         form = FormHelpers.node_data_to_form(updated_node)
 
         socket =
@@ -89,8 +83,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           else
             push_event(socket, "node_data_changed", %{
               id: node_id,
-              prev_data: old_data,
-              new_data: new_data
+              prev_data: result.previous_data,
+              new_data: result.current_data
             })
           end
 
@@ -112,6 +106,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
            Gettext.dgettext(Storyarn.Gettext, "flows", "Hub ID already exists in this flow.")
          )}
 
+      {:error, reason}
+      when reason in [:invalid_flow_reference, :self_reference, :circular_reference, :flow_not_found] ->
+        {:noreply, put_node_operation_error(socket, operation, reason)}
+
       {:error, _} ->
         {:noreply, socket}
     end
@@ -128,12 +126,16 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def add_node(socket, "sequence", opts) do
     {pos_x, pos_y} = node_position(opts)
 
-    attrs = maybe_put_parent_id(%{"name" => "Sequence", "position_x" => pos_x, "position_y" => pos_y}, opts)
+    attrs = maybe_put_parent_id(%{"position_x" => pos_x, "position_y" => pos_y}, opts)
 
-    case Flows.create_sequence(socket.assigns.flow.id, attrs) do
+    case Flows.create_editor_sequence(
+           socket.assigns.current_scope,
+           socket.assigns.flow,
+           attrs,
+           "create"
+         ) do
       {:ok, node} ->
-        node_data = sequence_node_data(node)
-        track_node_created(socket, node, opts, "create")
+        node_data = Flows.serialize_editor_node(node, socket.assigns.flow.project_id)
 
         {:noreply,
          socket
@@ -157,21 +159,18 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
     attrs =
       maybe_put_parent_id(
-        %{type: type, position_x: pos_x, position_y: pos_y, data: default_node_data(type)},
+        %{type: type, position_x: pos_x, position_y: pos_y, data: Flows.default_node_data(type)},
         opts
       )
 
-    case Flows.create_node(socket.assigns.flow, attrs) do
+    case Flows.create_editor_node(
+           socket.assigns.current_scope,
+           socket.assigns.flow,
+           attrs,
+           "create"
+         ) do
       {:ok, node} ->
-        track_node_created(socket, node, opts, "create")
-
-        node_data = %{
-          id: node.id,
-          type: node.type,
-          parent_id: node.parent_id,
-          position: %{x: node.position_x, y: node.position_y},
-          data: canvas_data(node, socket.assigns.flow.project_id)
-        }
+        node_data = Flows.serialize_editor_node(node, socket.assigns.flow.project_id)
 
         {:noreply,
          socket
@@ -212,11 +211,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   defp do_update_node_data(socket, node_params) do
     node_id = socket.assigns.selected_node.id
-    normalized_params = normalize_form_params(node_params)
 
-    persist_node_update(socket, node_id, fn data ->
-      Map.merge(data, normalized_params)
-    end)
+    persist_node_update(socket, node_id, :merge_form, %{params: node_params})
   end
 
   @doc """
@@ -228,26 +224,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   def duplicate_node(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
-    # Delegate unique identifier cleanup to per-type module
-    data = NodeTypeRegistry.duplicate_data_cleanup(node.type, node.data)
-
-    attrs = %{
-      type: node.type,
-      position_x: node.position_x + 50.0,
-      position_y: node.position_y + 50.0,
-      data: data
-    }
-
-    case Flows.create_node(socket.assigns.flow, attrs) do
+    case Flows.duplicate_editor_node(socket.assigns.current_scope, socket.assigns.flow, node) do
       {:ok, new_node} ->
-        track_node_created(socket, new_node, [], "duplicate")
-
-        node_data = %{
-          id: new_node.id,
-          type: new_node.type,
-          position: %{x: new_node.position_x, y: new_node.position_y},
-          data: canvas_data(new_node, socket.assigns.flow.project_id)
-        }
+        node_data = Flows.serialize_editor_node(new_node, socket.assigns.flow.project_id)
 
         {:noreply,
          socket
@@ -281,9 +260,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_text(Socket.t(), any(), String.t()) ::
           {:noreply, Socket.t()}
   def update_node_text(socket, node_id, content) do
-    persist_node_update(socket, node_id, fn data ->
-      Map.put(data, "text", content)
-    end)
+    persist_node_update(socket, node_id, :put_field, %{field: "text", value: content})
   end
 
   @doc """
@@ -316,9 +293,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec update_node_field(Socket.t(), any(), String.t(), any()) ::
           {:noreply, Socket.t()}
   def update_node_field(socket, node_id, field, value) do
-    persist_node_update(socket, node_id, fn data ->
-      Map.put(data, field, value)
-    end)
+    persist_node_update(socket, node_id, :put_field, %{field: field, value: value})
   end
 
   # Private functions
@@ -330,22 +305,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
-  defp sequence_node_data(node) do
-    config = node.sequence_config
-
-    %{
-      id: node.id,
-      type: node.type,
-      parent_id: node.parent_id,
-      position: %{x: node.position_x, y: node.position_y},
-      data: %{
-        "name" => config.name,
-        "width" => config.width,
-        "height" => config.height
-      }
-    }
-  end
-
   defp maybe_put_parent_id(attrs, opts) do
     case Keyword.get(opts, :parent_id) do
       parent_id when is_integer(parent_id) -> Map.put(attrs, :parent_id, parent_id)
@@ -353,67 +312,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
-  defp track_node_created(socket, node, opts, creation_method) do
-    Analytics.track(socket.assigns.current_scope, "flow node created", %{
-      creation_method: creation_method,
-      flow_id: socket.assigns.flow.id,
-      has_parent: not is_nil(node.parent_id || Keyword.get(opts, :parent_id)),
-      node_type: node.type,
-      project_id: socket.assigns.flow.project_id
-    })
-  end
-
-  # Resolves node data for canvas events (e.g., validated Hub colors and type warnings).
-  # Also used by persist_node_update and add_node.
-  # Only fetches project_variables when the node type needs type-warning checks.
+  # Web keeps the event envelope; Flows owns the node projection itself.
   defp canvas_data(node, project_id) do
-    data = Flows.resolve_node_colors(node.type, node.data)
-
-    if node.type in ["instruction", "dialogue"] do
-      # `list_referenceable_variables/1`, not the sheets-only set: a single-node
-      # canvas update that type-checked against a smaller vocabulary than the
-      # editor and the dashboard would drop the warning on every assignment to a
-      # scene pin or zone property, and put it back on the next full reload.
-      # Keyed once here, not once per assignment.
-      variable_types =
-        project_id
-        |> Flows.list_referenceable_variables()
-        |> Flows.variable_type_map()
-
-      maybe_add_type_warning_flag(data, node.type, variable_types)
-    else
-      data
-    end
+    node
+    |> Flows.serialize_editor_node(project_id)
+    |> Map.fetch!(:data)
   end
-
-  defp maybe_add_type_warning_flag(data, "instruction", variable_types) do
-    assignments = data["assignments"] || []
-
-    if Flows.instruction_has_type_warnings?(assignments, variable_types) do
-      Map.put(data, "has_type_warnings", true)
-    else
-      data
-    end
-  end
-
-  defp maybe_add_type_warning_flag(data, "dialogue", variable_types) do
-    responses = data["responses"] || []
-
-    updated =
-      Enum.map(responses, fn response ->
-        assignments = response["instruction_assignments"] || []
-
-        if Flows.instruction_has_type_warnings?(assignments, variable_types) do
-          Map.put(response, "has_type_warnings", true)
-        else
-          response
-        end
-      end)
-
-    Map.put(data, "responses", updated)
-  end
-
-  defp maybe_add_type_warning_flag(data, _type, _variable_types), do: data
 
   # Pushes a full flow update for graph-wide mutations, otherwise a single node update.
   defp push_node_or_flow_update(socket, _node, renamed_count, _connections_changed?) when renamed_count > 0 do
@@ -476,19 +380,35 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   defp maybe_refresh_dialogue_panel(socket, _node), do: socket
 
-  # Normalizes empty strings to nil for ID fields that should be nullable.
-  @doc false
-  def normalize_form_params(params) do
-    params
-    |> normalize_empty_to_nil("speaker_sheet_id")
-    |> normalize_empty_to_nil("audio_asset_id")
+  defp put_node_operation_error(socket, :put_exit_flow_reference, :self_reference) do
+    put_flash(socket, :error, dgettext("flows", "Cannot reference the current flow."))
   end
 
-  defp normalize_empty_to_nil(params, key) do
-    case params[key] do
-      "" -> Map.put(params, key, nil)
-      _ -> params
-    end
+  defp put_node_operation_error(socket, :put_subflow_reference, :self_reference) do
+    put_flash(socket, :error, dgettext("flows", "A flow cannot reference itself."))
+  end
+
+  defp put_node_operation_error(socket, :put_subflow_reference, :circular_reference) do
+    put_flash(
+      socket,
+      :error,
+      dgettext(
+        "flows",
+        "Circular reference detected. This flow is already referenced by the target."
+      )
+    )
+  end
+
+  defp put_node_operation_error(socket, _operation, :circular_reference) do
+    put_flash(socket, :error, dgettext("flows", "This would create a circular reference."))
+  end
+
+  defp put_node_operation_error(socket, _operation, :flow_not_found) do
+    put_flash(socket, :error, dgettext("flows", "Flow not found."))
+  end
+
+  defp put_node_operation_error(socket, _operation, :invalid_flow_reference) do
+    put_flash(socket, :error, dgettext("flows", "Invalid flow reference."))
   end
 
   @doc """
@@ -498,13 +418,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec restore_node(Socket.t(), any()) ::
           {:noreply, Socket.t()}
   def restore_node(socket, node_id) do
-    case Flows.restore_node(socket.assigns.flow.id, node_id) do
-      {:ok, %FlowNode{} = node} ->
-        socket = reload_flow_data(socket)
-        {node_data, connections} = build_restored_node_payload(socket, node)
-
+    case Flows.restore_editor_node(socket.assigns.flow, node_id) do
+      {:ok, %{node: %{id: restored_node_id} = node_data, connections: connections}}
+      when is_integer(restored_node_id) ->
         {:noreply,
          socket
+         |> reload_flow_data()
          |> push_event("node_restored", %{node: node_data, connections: connections})
          |> CollaborationHelpers.broadcast_change(:node_restored, %{
            node_data: node_data,
@@ -531,15 +450,10 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   @spec restore_node_data(Socket.t(), any(), map()) ::
           {:noreply, Socket.t()}
   def restore_node_data(socket, node_id, data) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-
-    case Flows.update_node_data(node, data) do
-      {:ok, updated_node, meta} ->
+    case Flows.edit_node(socket.assigns.flow.id, node_id, :restore_data, %{data: data}) do
+      {:ok, result} ->
+        updated_node = result.node
         form = FormHelpers.node_data_to_form(updated_node)
-
-        full_refresh? =
-          Map.get(meta, :renamed_jumps, 0) > 0 or
-            Map.get(meta, :connections_changed?, false)
 
         socket =
           socket
@@ -550,7 +464,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
           |> maybe_refresh_referencing_jumps(updated_node)
 
         {:noreply,
-         if full_refresh? do
+         if result.graph_changed? do
            push_event(socket, "flow_updated", socket.assigns.flow_data)
          else
            push_event(socket, "node_updated", %{
@@ -585,28 +499,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     end
   end
 
-  defp build_restored_node_payload(socket, node) do
-    node_data = %{
-      id: node.id,
-      type: node.type,
-      position: %{x: node.position_x, y: node.position_y},
-      data: canvas_data(node, socket.assigns.flow.project_id)
-    }
-
-    # Use flow_data.connections (already serialized by reload_flow_data)
-    # and filter to connections involving this node where both endpoints are active.
-    active_node_ids = MapSet.new(socket.assigns.flow_data.nodes, & &1.id)
-
-    connections =
-      Enum.filter(socket.assigns.flow_data.connections, fn c ->
-        (c.source_node_id == node.id or c.target_node_id == node.id) and
-          MapSet.member?(active_node_ids, c.source_node_id) and
-          MapSet.member?(active_node_ids, c.target_node_id)
-      end)
-
-    {node_data, connections}
-  end
-
   defp perform_node_deletion(socket, node_id) do
     node = Flows.get_node!(socket.assigns.flow.id, node_id)
 
@@ -634,36 +526,28 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
          |> push_event("flow_updated", flow_data)
          |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
 
-      {:ok, deleted_node, _meta} ->
+      {:ok, _deleted_node, %{graph_changed?: true}} ->
+        socket = reload_flow_data(socket)
+        flow_data = socket.assigns.flow_data
+
+        {:noreply,
+         socket
+         |> schedule(:flow)
+         |> assign(:selected_node, nil)
+         |> assign(:node_form, nil)
+         |> push_event("flow_updated", flow_data)
+         |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
+
+      {:ok, _deleted_node, %{graph_changed?: false}} ->
         socket = reload_flow_data(socket)
 
-        # Sequence deletes reparent children to grandparent via the
-        # `fn_flow_nodes_soft_delete_reparent_children` trigger. A single
-        # `node_removed` event only tells the client to drop the sequence —
-        # it leaves the children visually orphaned because the client
-        # doesn't know their new parent. Broadcasting `flow_updated` forces
-        # a full re-hydrate so the surviving children render under the
-        # correct (grand)parent. For non-sequence nodes there's no cascade,
-        # so the cheap `node_removed` path stays.
-        if deleted_node.type == "sequence" do
-          flow_data = socket.assigns.flow_data
-
-          {:noreply,
-           socket
-           |> schedule(:flow)
-           |> assign(:selected_node, nil)
-           |> assign(:node_form, nil)
-           |> push_event("flow_updated", flow_data)
-           |> CollaborationHelpers.broadcast_change(:flow_refresh, %{node_id: node_id})}
-        else
-          {:noreply,
-           socket
-           |> schedule(:flow)
-           |> assign(:selected_node, nil)
-           |> assign(:node_form, nil)
-           |> push_event("node_removed", %{id: node_id, self: true})
-           |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
-        end
+        {:noreply,
+         socket
+         |> schedule(:flow)
+         |> assign(:selected_node, nil)
+         |> assign(:node_form, nil)
+         |> push_event("node_removed", %{id: node_id, self: true})
+         |> CollaborationHelpers.broadcast_change(:node_deleted, %{node_id: node_id})}
 
       {:error, :cannot_delete_entry_node} ->
         {:noreply,

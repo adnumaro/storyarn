@@ -7,9 +7,10 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
   import Storyarn.WorkspacesFixtures
   import StoryarnWeb.PrivateDownloadAssertions
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Workspace
   alias StoryarnWeb.PrivateMedia
 
   setup :register_and_log_in_user
@@ -106,6 +107,38 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
       assert conn.status == 404
       refute conn.resp_body == body
       assert_no_external_storage_response(conn)
+    end
+
+    test "rejects malformed asset storage keys before reaching storage", %{
+      conn: conn,
+      user: user,
+      project: project
+    } do
+      asset_uuid = Ecto.UUID.generate()
+
+      invalid_keys = [
+        "projects/#{project.id}/assets/../forged.png",
+        "projects/#{project.id}/assets/#{asset_uuid}/forged\\escape.png",
+        "projects/#{project.id}/assets/not-a-uuid/forged.png"
+      ]
+
+      Enum.each(invalid_keys, fn key ->
+        asset =
+          asset_fixture(project, user, %{
+            filename: "forged.png",
+            content_type: "image/png",
+            size: 8,
+            key: key,
+            url: "/uploads/forged.png"
+          })
+
+        conn = get(conn, PrivateMedia.asset_url(asset))
+
+        assert conn.status == 404
+        assert_no_external_storage_response(conn)
+      end)
+
+      refute Storage.canonical_key?("projects/#{project.id}/assets/#{asset_uuid}/forged.png" <> <<0>>)
     end
 
     test "redirects an unauthenticated request", %{user: user, project: project} do
@@ -264,8 +297,11 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
     key = "workspaces/#{workspace.slug}/banner/#{Ecto.UUID.generate()}.png"
     {:ok, url} = Storage.upload(key, body, "image/png")
     on_exit(fn -> Storage.delete(key) end)
-    {:ok, workspace} = Workspaces.update_workspace(workspace, %{banner_url: url})
-    workspace
+
+    workspace.id
+    |> Workspaces.get_workspace!()
+    |> Workspace.banner_changeset(%{banner_url: url})
+    |> Repo.update!()
   end
 
   defp project_file_path(project_id, key) do

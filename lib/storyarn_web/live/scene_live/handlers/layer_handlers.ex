@@ -163,7 +163,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.LayerHandlers do
   def handle_remove_pin_icon(_params, socket) do
     pin = socket.assigns.selected_element
 
-    if is_struct(pin, Storyarn.Scenes.ScenePin) do
+    if Scenes.scene_pin?(pin) do
       case Scenes.update_pin(pin, %{"icon_asset_id" => nil}) do
         {:ok, updated} ->
           updated = Scenes.preload_pin_associations(updated)

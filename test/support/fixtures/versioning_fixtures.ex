@@ -3,9 +3,9 @@ defmodule Storyarn.VersioningFixtures do
 
   import Ecto.Query
 
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Repo
-  alias Storyarn.Versioning.ProjectSnapshot
-  alias Storyarn.Versioning.SnapshotArchiveStorage
 
   def pending_project_snapshot_fixture(project, attrs \\ %{}) do
     attrs = Map.new(attrs)
@@ -54,7 +54,7 @@ defmodule Storyarn.VersioningFixtures do
     asset_count = Map.get(attrs, :asset_count, if(asset_blob_size > 0, do: 1, else: 0))
     blob_count = Map.get(attrs, :blob_count, if(asset_blob_size > 0, do: 1, else: 0))
 
-    now = Storyarn.Shared.TimeHelpers.now()
+    now = Storyarn.Platform.Shared.TimeHelpers.now()
     inserted_at = Map.get(attrs, :inserted_at, now)
     attrs = Map.delete(attrs, :inserted_at)
 

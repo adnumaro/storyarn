@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.Router do
   use StoryarnWeb, :router
 
-  alias Storyarn.Publication.Locales
+  alias Storyarn.Public.Publication.Locales
 
   # Content Security Policy
   @csp_dev_extras if(Mix.env() == :dev,
@@ -223,12 +223,12 @@ defmodule StoryarnWeb.Router do
       live "/templates/:id", TemplateLive.Show, :show
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/compare/:version_number",
-           CompareLive.Sheet,
+           SheetLive.Compare,
            :compare
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets/:id/versions/:version_number/viewer",
-           VersionViewerLive,
-           :sheet
+           SheetLive.VersionViewer,
+           :view
 
       # Flows — immersive player and compare views keep their own chromeless
       # layouts, while sharing the authenticated app live_session for fast nav.
@@ -237,12 +237,12 @@ defmodule StoryarnWeb.Router do
            :play
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/compare/:version_number",
-           CompareLive.Flow,
+           FlowLive.Compare,
            :compare
 
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/versions/:version_number/viewer",
-           VersionViewerLive,
-           :flow
+           FlowLive.VersionViewer,
+           :view
 
       # Scenes — immersive exploration keeps its chromeless layout while
       # sharing the authenticated app live_session for fast nav.
@@ -251,12 +251,12 @@ defmodule StoryarnWeb.Router do
            :explore
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/compare/:version_number",
-           CompareLive.Scene,
+           SceneLive.Compare,
            :compare
 
       live "/workspaces/:workspace_slug/projects/:project_slug/scenes/:id/versions/:version_number/viewer",
-           VersionViewerLive,
-           :scene
+           SceneLive.VersionViewer,
+           :view
 
       live "/workspaces/:workspace_slug/projects/:project_slug/sheets",
            SheetLive.Index,

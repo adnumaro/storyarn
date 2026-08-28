@@ -1,9 +1,9 @@
 defmodule Storyarn.SnapshotReadSwitchStorage do
   @moduledoc false
 
-  @behaviour Storyarn.Assets.Storage
+  @behaviour Storyarn.Projects.Assets.Storage
 
-  alias Storyarn.Assets.Storage.Local
+  alias Storyarn.Projects.Assets.Storage.Local
 
   def start_link(replacements) when is_map(replacements) do
     Agent.start_link(
@@ -13,9 +13,11 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
           replacements: replacements,
           content_type_overrides: %{},
           put_content_types: %{},
+          put_if_absent_result: :delegate,
           presigned_download_result: {:error, :not_supported},
           stat_result: :delegate,
           stream_result: :delegate,
+          delete_if_matches_result: :delegate,
           io_observer: nil,
           namespace_observer: nil,
           namespace_fingerprint_override: nil
@@ -51,6 +53,14 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
 
   def set_stream_result(result) do
     Agent.update(__MODULE__, &%{&1 | stream_result: result})
+  end
+
+  def set_delete_if_matches_result(result) do
+    Agent.update(__MODULE__, &%{&1 | delete_if_matches_result: result})
+  end
+
+  def set_put_if_absent_result(result) do
+    Agent.update(__MODULE__, &%{&1 | put_if_absent_result: result})
   end
 
   def observe_io(callback) when is_function(callback, 2) do
@@ -120,7 +130,14 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   @impl true
   def put_if_absent(key, data, content_type) do
     Agent.update(__MODULE__, &put_in(&1, [:put_content_types, key], content_type))
-    result = Local.put_if_absent(key, data, content_type)
+
+    result =
+      case Agent.get(__MODULE__, & &1.put_if_absent_result) do
+        :delegate -> Local.put_if_absent(key, data, content_type)
+        callback when is_function(callback, 3) -> callback.(key, data, content_type)
+        result -> result
+      end
+
     if match?({:ok, _url, true}, result), do: observe_io(:put_if_absent, key)
     result
   end
@@ -129,7 +146,13 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   defdelegate delete(key), to: Local
 
   @impl true
-  defdelegate delete_if_matches(key, identity), to: Local
+  def delete_if_matches(key, identity) do
+    case Agent.get(__MODULE__, & &1.delete_if_matches_result) do
+      :delegate -> Local.delete_if_matches(key, identity)
+      callback when is_function(callback, 2) -> callback.(key, identity)
+      result -> result
+    end
+  end
 
   @impl true
   def namespace_fingerprint do

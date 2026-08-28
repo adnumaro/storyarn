@@ -8,7 +8,7 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.UserToken
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias Storyarn.Repo
   alias Storyarn.Workers.DeliverResetPasswordInstructionsWorker
   alias Storyarn.Workers.RequestResetPasswordInstructionsWorker
@@ -301,7 +301,9 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
     job =
       Repo.one!(
         from(job in Oban.Job,
-          where: job.worker == ^inspect(DeliverResetPasswordInstructionsWorker),
+          where:
+            job.worker ==
+              ^inspect(DeliverResetPasswordInstructionsWorker),
           order_by: [desc: job.id],
           limit: 1
         )
@@ -314,7 +316,9 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
     job =
       Repo.one!(
         from(job in Oban.Job,
-          where: job.worker == ^inspect(RequestResetPasswordInstructionsWorker),
+          where:
+            job.worker ==
+              ^inspect(RequestResetPasswordInstructionsWorker),
           order_by: [desc: job.id],
           limit: 1
         )
@@ -326,7 +330,9 @@ defmodule StoryarnWeb.UserLive.PasswordResetTest do
   defp refute_reset_password_job_enqueued do
     refute Repo.exists?(
              from(job in Oban.Job,
-               where: job.worker == ^inspect(DeliverResetPasswordInstructionsWorker)
+               where:
+                 job.worker ==
+                   ^inspect(DeliverResetPasswordInstructionsWorker)
              )
            )
   end

@@ -6,7 +6,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
   # Waits for the automatic flow data load started by handle_params.
@@ -184,7 +184,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       # Send a presence join message via the new proxy pattern
       send(
         view.pid,
-        {Storyarn.Collaboration.Presence,
+        {Storyarn.Platform.Collaboration.Presence,
          {:join,
           %{
             id: user.id,

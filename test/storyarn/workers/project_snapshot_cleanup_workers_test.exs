@@ -6,13 +6,13 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Assets.StorageCleanupRequest
-  alias Storyarn.Assets.StorageCompensation
-  alias Storyarn.Shared.TimeHelpers
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.SnapshotArchiveStorage
-  alias Storyarn.Versioning.SnapshotCleanupIntent
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
+  alias Storyarn.Projects.Versioning.SnapshotCleanupIntent
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.CleanupProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker

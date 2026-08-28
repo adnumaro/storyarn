@@ -4,8 +4,8 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
@@ -31,6 +31,7 @@ defmodule StoryarnWeb.LocalizationLive.Edit do
           "project_slug" => @project.slug,
           "selected_locale" => @text.locale_code,
           "can_edit" => @can_edit,
+          "membership" => @membership,
           "active_tool" => "localization",
           "dashboard_url" =>
             ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization",

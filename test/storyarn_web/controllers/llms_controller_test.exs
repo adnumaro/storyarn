@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.LlmsControllerTest do
   use StoryarnWeb.ConnCase, async: true
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
 
   test "GET /llms.txt groups canonical public content by locale", %{conn: conn} do
     conn = get(conn, ~p"/llms.txt")

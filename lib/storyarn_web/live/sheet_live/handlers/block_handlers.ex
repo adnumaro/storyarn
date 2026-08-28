@@ -7,7 +7,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
 
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Analytics
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -38,13 +37,13 @@ defmodule StoryarnWeb.SheetLive.Handlers.BlockHandlers do
   end
 
   defp track_block_created(socket, block, params, creation_method) do
-    Analytics.track(socket.assigns.current_scope, "sheet block created", %{
-      block_type: block.type,
-      creation_method: creation_method,
-      project_id: socket.assigns.project.id,
-      scope: params["scope"],
-      sheet_id: socket.assigns.sheet.id
-    })
+    Sheets.record_block_created(
+      socket.assigns.current_scope,
+      socket.assigns.sheet,
+      block,
+      creation_method,
+      params["scope"]
+    )
   end
 
   def handle_update_value(%{"id" => id, "value" => value}, socket, helpers) do

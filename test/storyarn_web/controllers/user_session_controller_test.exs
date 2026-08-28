@@ -4,7 +4,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform.RateLimiter
   alias StoryarnWeb.UserAuth
 
   setup do
@@ -393,8 +393,8 @@ defmodule StoryarnWeb.UserSessionControllerTest do
       remote_ip = {192, 0, third_octet, fourth_octet}
       ip_address = remote_ip |> :inet.ntoa() |> to_string()
 
-      for _ <- 1..5, do: assert(:ok = RateLimiter.check_login(ip_address))
-      assert {:error, :rate_limited} = RateLimiter.check_login(ip_address)
+      for _ <- 1..5, do: assert(:ok = Accounts.check_login_rate(ip_address))
+      assert {:error, :rate_limited} = Accounts.check_login_rate(ip_address)
 
       authenticated_at = DateTime.add(DateTime.utc_now(:second), -19, :minute)
       new_password = valid_user_password() <> " replacement"
@@ -427,7 +427,7 @@ defmodule StoryarnWeb.UserSessionControllerTest do
                Accounts.get_user_by_session_token(new_session_token)
 
       assert UserAuth.sudo_mode?(session_user)
-      assert {:error, :rate_limited} = RateLimiter.check_login(ip_address)
+      assert {:error, :rate_limited} = Accounts.check_login_rate(ip_address)
     end
   end
 

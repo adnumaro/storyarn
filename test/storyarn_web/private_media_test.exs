@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.PrivateMediaTest do
   use StoryarnWeb.ConnCase, async: true
 
-  alias Storyarn.Assets.Asset
+  alias Storyarn.Projects.Assets.Asset
   alias StoryarnWeb.PrivateMedia
 
   describe "asset_url/1" do
@@ -19,6 +19,16 @@ defmodule StoryarnWeb.PrivateMediaTest do
       }
 
       assert PrivateMedia.asset_url(asset) == "/media/assets/84"
+    end
+
+    test "prefers the optimized variant for consumer-owned asset-shaped records" do
+      asset_record = %{
+        id: 42,
+        filename: "original.png",
+        metadata: %{"web_asset_id" => 84}
+      }
+
+      assert PrivateMedia.asset_url(asset_record) == "/media/assets/84"
     end
 
     test "returns nil without an asset" do
@@ -105,7 +115,30 @@ defmodule StoryarnWeb.PrivateMediaTest do
       banner_url: "https://t3.storage.dev/private-bucket/workspaces/writers-room/banner/image.png"
     }
 
-    assert PrivateMedia.workspace_banner_url(workspace) ==
-             "/media/workspaces/writers-room/banner"
+    url = PrivateMedia.workspace_banner_url(workspace)
+    uri = URI.parse(url)
+
+    assert uri.path == "/media/workspaces/writers-room/banner"
+    assert uri.query =~ ~r/\Arevision=[A-Za-z0-9_-]{16}\z/
+    refute url =~ "t3.storage.dev"
+    refute url =~ "private-bucket"
+  end
+
+  test "workspace_banner_url/1 changes its opaque revision when the stored banner changes" do
+    workspace = %{
+      slug: "writers-room",
+      banner_url: "https://storage.invalid/workspaces/writers-room/banner/first.png"
+    }
+
+    first_url = PrivateMedia.workspace_banner_url(workspace)
+
+    second_url =
+      PrivateMedia.workspace_banner_url(%{
+        workspace
+        | banner_url: String.replace(workspace.banner_url, "first", "second")
+      })
+
+    assert first_url == PrivateMedia.workspace_banner_url(workspace)
+    refute first_url == second_url
   end
 end

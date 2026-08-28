@@ -2,7 +2,7 @@ defmodule StoryarnWeb.Live.Shared.DashboardHelpersTest do
   use ExUnit.Case, async: true
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Shared.Severity
+  alias StoryarnWeb.Helpers.Severity
   alias StoryarnWeb.Live.Shared.DashboardHelpers
 
   @issue_opts [

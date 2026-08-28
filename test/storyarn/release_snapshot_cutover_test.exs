@@ -2,7 +2,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   use Storyarn.DataCase, async: false
 
   alias Ecto.Migration.Runner
-  alias Storyarn.Release
+  alias Storyarn.Platform.Release
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AddSnapshotStorageAccounting
   alias Storyarn.Repo.Migrations.AllowZeroByteSnapshotExportLeases
@@ -352,7 +352,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
         |> Path.expand(__DIR__)
         |> File.read!()
 
-      refute source =~ "Storyarn.Release.",
+      refute source =~ "Storyarn.Platform.Release.",
              "#{migration_file} must remain independent of live release-task functions"
     end
   end

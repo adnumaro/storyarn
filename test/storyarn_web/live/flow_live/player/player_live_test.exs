@@ -12,9 +12,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SheetsFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Repo
+  alias Storyarn.Sheets
   alias StoryarnWeb.PrivateMedia
 
   # ===========================================================================
@@ -151,6 +153,51 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       assert vue.props["slide"]["type"] in ["dialogue", "outcome"]
     end
 
+    test "renders a speaker through the Flows-owned player catalog", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      default_asset = image_asset_fixture(project, user, %{filename: "speaker-default.png"})
+      optimized_avatar = image_asset_fixture(project, user, %{filename: "speaker-alt-web.webp"})
+
+      original_avatar =
+        image_asset_fixture(project, user, %{
+          filename: "speaker-alt-original.png",
+          metadata: %{"web_asset_id" => optimized_avatar.id}
+        })
+
+      speaker = sheet_fixture(project, %{name: "Ada Lovelace", color: "#123456"})
+      assert {:ok, _default_avatar} = Sheets.add_avatar(speaker, default_asset.id)
+      assert {:ok, alternate_avatar} = Sheets.add_avatar(speaker, original_avatar.id)
+
+      flow = flow_fixture(project, %{name: "Speaker Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Hello from Ada</p>",
+            "speaker_sheet_id" => speaker.id,
+            "avatar_id" => alternate_avatar.id,
+            "stage_directions" => "",
+            "menu_text" => "",
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+      slide = get_player_vue(view).props["slide"]
+
+      assert slide["speaker_name"] == "Ada Lovelace"
+      assert slide["speaker_initials"] == "AL"
+      assert slide["speaker_color"] == "#123456"
+      assert slide["speaker_avatar_url"] == PrivateMedia.asset_url(optimized_avatar)
+    end
+
     test "redirects when flow not found", %{conn: conn, project: project} do
       fake_flow = %{id: 999_999}
 
@@ -171,6 +218,21 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       assert path == "/workspaces"
       assert flash["error"] =~ "access"
+    end
+
+    test "does not load a flow through another authorized project", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      other_project = user |> project_fixture() |> Repo.preload(:workspace)
+      {other_flow, _entry, _dialogue} = create_basic_flow(other_project)
+
+      {:error, {:redirect, %{to: path, flash: flash}}} =
+        live(conn, player_url(project, other_flow))
+
+      assert path =~ "/projects/#{project.slug}/flows"
+      assert flash["error"] =~ "Flow not found"
     end
 
     test "shows outcome when flow goes directly to exit", %{conn: conn, project: project} do
@@ -478,12 +540,22 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   end
 
   # ===========================================================================
-  # Scene backdrop
+  # Scene context
   # ===========================================================================
 
-  describe "scene backdrop" do
-    test "renders player with scene flow", %{conn: conn, project: project} do
-      scene = Storyarn.ScenesFixtures.scene_fixture(project)
+  describe "scene context" do
+    test "does not synthesize a sequence layer from the Scene background", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      background = image_asset_fixture(project, user, %{filename: "scene-background.png"})
+
+      scene =
+        Storyarn.ScenesFixtures.scene_fixture(project, %{
+          background_asset_id: background.id
+        })
+
       flow = flow_fixture(project, %{name: "Scene Flow"})
       Flows.update_flow(flow, %{scene_id: scene.id})
       {entry, _exit} = get_auto_nodes(flow)
@@ -698,7 +770,11 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   # ===========================================================================
 
   describe "cross-flow navigation" do
-    setup %{project: project} do
+    setup %{project: project, user: user} do
+      speaker_asset = image_asset_fixture(project, user, %{filename: "session-speaker.png"})
+      speaker = sheet_fixture(project, %{name: "Session Speaker"})
+      assert {:ok, _avatar} = Sheets.add_avatar(speaker, speaker_asset.id)
+
       # ===== Sub-flow: entry → sub_dialogue → exit(caller_return) =====
       sub_flow = flow_fixture(project, %{name: "Sub Flow"})
       {sub_entry, sub_exit} = get_auto_nodes(sub_flow)
@@ -714,7 +790,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           type: "dialogue",
           data: %{
             "text" => "<p>Sub flow dialogue</p>",
-            "speaker_sheet_id" => nil,
+            "speaker_sheet_id" => speaker.id,
             "stage_directions" => "",
             "menu_text" => "",
             "responses" => [
@@ -760,7 +836,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           type: "dialogue",
           data: %{
             "text" => "<p>Main dialogue</p>",
-            "speaker_sheet_id" => nil,
+            "speaker_sheet_id" => speaker.id,
             "stage_directions" => "",
             "menu_text" => "",
             "responses" => [
@@ -798,7 +874,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
           type: "dialogue",
           data: %{
             "text" => "<p>Back in main</p>",
-            "speaker_sheet_id" => nil,
+            "speaker_sheet_id" => speaker.id,
             "stage_directions" => "",
             "menu_text" => "",
             "responses" => [
@@ -841,7 +917,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
         sub_flow: sub_flow,
         main_resp_id: main_resp_id,
         sub_resp_id: sub_resp_id,
-        after_resp_id: after_resp_id
+        after_resp_id: after_resp_id,
+        speaker_avatar_url: PrivateMedia.asset_url(speaker_asset)
       }
     end
 
@@ -867,7 +944,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       conn: conn,
       project: project,
       main_flow: main_flow,
-      main_resp_id: main_resp_id
+      main_resp_id: main_resp_id,
+      speaker_avatar_url: speaker_avatar_url
     } do
       {:ok, view, _html} = live(conn, player_url(project, main_flow))
       render_click(view, "choose_response", %{"id" => main_resp_id})
@@ -878,6 +956,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = LiveVue.Test.get_vue(new_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
+      assert vue.props["slide"]["speaker_name"] == "Session Speaker"
+      assert vue.props["slide"]["speaker_avatar_url"] == speaker_avatar_url
+      refute vue.props["can-go-back"]
     end
 
     test "flow_return navigates back to parent flow", %{
@@ -885,7 +966,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       project: project,
       main_flow: main_flow,
       main_resp_id: main_resp_id,
-      sub_resp_id: sub_resp_id
+      sub_resp_id: sub_resp_id,
+      speaker_avatar_url: speaker_avatar_url
     } do
       # Step 1: Navigate into sub-flow
       {:ok, view, _html} = live(conn, player_url(project, main_flow))
@@ -897,6 +979,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = LiveVue.Test.get_vue(sub_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
+      assert vue.props["slide"]["speaker_name"] == "Session Speaker"
+      assert vue.props["slide"]["speaker_avatar_url"] == speaker_avatar_url
 
       render_click(sub_view, "choose_response", %{"id" => sub_resp_id})
       {parent_path, _} = assert_redirect(sub_view)
@@ -906,6 +990,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = LiveVue.Test.get_vue(parent_view, name: "live/flow/player/FlowPlayer")
       assert vue.props["slide"]["text"] =~ "Back in main"
+      assert vue.props["slide"]["speaker_name"] == "Session Speaker"
+      assert vue.props["slide"]["speaker_avatar_url"] == speaker_avatar_url
     end
 
     test "handles subflow node with nil referenced_flow_id", %{

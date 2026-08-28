@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Repo
-  alias Storyarn.Versioning.WorkspaceSnapshotImport
 
   defp get_imports_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsImports")

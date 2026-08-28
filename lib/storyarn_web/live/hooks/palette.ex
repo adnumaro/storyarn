@@ -8,7 +8,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   (`palette_delete_search` / `palette_delete`) and product analytics
   (`palette_opened`, command/search metrics and operation lifecycle metrics).
 
-  Server-backed completion replies are built from `Storyarn.GlobalSearch` —
+  Server-backed completion replies are built from `Storyarn.Platform.GlobalSearch` —
   authorization lives in
   the domain layer and derives from the socket's `current_scope` only; ids
   arriving from the client are re-validated against the composed authorized
@@ -27,13 +27,11 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   import Phoenix.Component, only: [assign: 3]
 
   alias Storyarn.AI
-  alias Storyarn.Analytics
-  alias Storyarn.Collaboration
-  alias Storyarn.CommandPalette
   alias Storyarn.Flows
-  alias Storyarn.GlobalSearch
-  alias Storyarn.Notifications
-  alias Storyarn.RateLimiter
+  alias Storyarn.Platform
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.CommandPalette
+  alias Storyarn.Platform.GlobalSearch
   alias Storyarn.Scenes
   alias Storyarn.Sheets
   alias Storyarn.Workspaces
@@ -300,14 +298,14 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp handle_palette_event("palette_opened", %{"surface" => surface}, socket) when surface in @known_surfaces do
-    Analytics.track(socket.assigns.current_scope, "palette opened", %{surface: surface})
+    Platform.track_analytics(socket.assigns.current_scope, "palette opened", %{surface: surface})
     {:halt, socket}
   end
 
   defp handle_palette_event("palette_command_executed", %{"command_id" => command_id, "surface" => surface}, socket)
        when is_binary(command_id) and surface in @known_surfaces do
     if valid_command_id?(command_id) do
-      Analytics.track(socket.assigns.current_scope, "palette command executed", %{
+      Platform.track_analytics(socket.assigns.current_scope, "palette command executed", %{
         command_id: command_id,
         surface: surface
       })
@@ -318,7 +316,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
 
   defp handle_palette_event("palette_search_no_results", %{"query_length" => query_length, "surface" => surface}, socket)
        when is_integer(query_length) and query_length >= 0 and query_length <= 100 and surface in @known_surfaces do
-    Analytics.track(socket.assigns.current_scope, "palette search no results", %{
+    Platform.track_analytics(socket.assigns.current_scope, "palette search no results", %{
       query_length: query_length,
       surface: surface
     })
@@ -330,7 +328,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
        when event in @operation_analytics_events and is_binary(operation_id) and byte_size(operation_id) <= 64 and
               surface in @known_surfaces do
     if CommandPalette.registered_operation_id?(operation_id) do
-      Analytics.track(socket.assigns.current_scope, Map.fetch!(@operation_analytics_names, event), %{
+      Platform.track_analytics(socket.assigns.current_scope, Map.fetch!(@operation_analytics_names, event), %{
         operation_id: operation_id,
         surface: surface
       })
@@ -395,7 +393,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp reserve_deep_search(socket, <<"*", _query::binary>>, true) do
     now = System.monotonic_time(:millisecond)
 
-    with :ok <- RateLimiter.check_palette_deep_search(socket.assigns.current_scope.user.id),
+    with :ok <- CommandPalette.check_deep_search_rate(socket.assigns.current_scope.user.id),
          :ok <- check_deep_search_interval(socket.assigns.palette_deep_search_last_at, now) do
       {:ok, assign(socket, :palette_deep_search_last_at, now)}
     else
@@ -591,13 +589,13 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
     do: Scenes.create_scene_in_transaction(scope, project, %{name: dgettext("scenes", "Untitled")})
 
   defp delete_entity_subtree_in_transaction(scope, "sheet", entity),
-    do: Sheets.delete_sheet_subtree_in_transaction(scope, entity)
+    do: Sheets.delete_sheet_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp delete_entity_subtree_in_transaction(scope, "flow", entity),
-    do: Flows.delete_flow_subtree_in_transaction(scope, entity)
+    do: Flows.delete_flow_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp delete_entity_subtree_in_transaction(scope, "scene", entity),
-    do: Scenes.delete_scene_subtree_in_transaction(scope, entity)
+    do: Scenes.delete_scene_subtree_by_id_in_transaction(scope, entity.project_id, entity.id)
 
   defp create_error_reply({:limit_reached, _details}), do: %{error: "limit_reached"}
   defp create_error_reply(_reason), do: %{error: "create_failed"}
@@ -624,7 +622,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   defp run_post_commit(nil), do: :ok
 
   defp run_post_commit({:entity_created, project_id, type, entity, notification_outcome}) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
 
     if type == "sheet", do: Sheets.sync_created_sheet_localization(entity)
 
@@ -633,7 +631,7 @@ defmodule StoryarnWeb.Live.Hooks.Palette do
   end
 
   defp run_post_commit({:entities_deleted, project_id, type, deleted_ids, affected_flow_ids, notification_outcome}) do
-    Notifications.publish_committed(notification_outcome)
+    Platform.publish_notification_delivery(notification_outcome)
 
     # Plain broadcast (not broadcast_from): the LV serving this event may
     # itself be showing a deleted entity and must navigate away too.

@@ -11,7 +11,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
-  alias Storyarn.Shared.MapUtils
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
 
@@ -145,9 +145,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.ConnectionHelpers do
         {:ok,
          %{
            id: nil,
-           source_node_id: MapUtils.parse_int(source_id),
+           source_node_id: IntegerParser.parse(source_id),
            source_pin: source_pin,
-           target_node_id: MapUtils.parse_int(target_id),
+           target_node_id: IntegerParser.parse(target_id),
            target_pin: target_pin
          }}
 

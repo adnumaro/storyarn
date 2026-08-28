@@ -158,6 +158,7 @@ defmodule Storyarn.MixProject do
         # fails it — re-run `mix gettext.extract --merge` and commit the result.
         "gettext.extract --check-up-to-date",
         "convention.check",
+        "architecture.check",
         "credo --strict",
         # `--warnings-as-errors` here covers the `.exs` test files, which the
         # `compile` step above never sees: `elixirc_paths(:test)` is

@@ -1,0 +1,195 @@
+defmodule Storyarn.RateLimiterTest do
+  use ExUnit.Case, async: false
+
+  alias Storyarn.Accounts.Authentication.RateLimits, as: AccountRateLimits
+  alias Storyarn.AI.Operations.RateLimits, as: OperationRateLimits
+  alias Storyarn.AI.Routing.RateLimits, as: RoutingRateLimits
+  alias Storyarn.Platform.CommandPalette.RateLimits, as: PaletteRateLimits
+  alias Storyarn.Platform.RateLimiter
+  # Rate limiter is disabled in test config. Tests that verify blocking
+  # temporarily enable it, then restore the original setting.
+  alias Storyarn.Platform.RateLimiter.ETSBackend
+  alias Storyarn.Platform.RateLimiter.RedisBackend
+  alias Storyarn.Projects.Access.RateLimits, as: ProjectInvitationRateLimits
+
+  defp with_rate_limiting_enabled(fun) do
+    original = Application.get_env(:storyarn, RateLimiter)
+    Application.put_env(:storyarn, RateLimiter, enabled: true)
+
+    try do
+      fun.()
+    after
+      Application.put_env(:storyarn, RateLimiter, original || [])
+    end
+  end
+
+  describe "check_login/1" do
+    test "allows requests when rate limiting is disabled (test default)" do
+      ip = "test-login-#{System.unique_integer([:positive])}"
+
+      # Should always allow when disabled
+      for _ <- 1..20, do: assert(:ok = AccountRateLimits.check_login(ip))
+    end
+
+    test "blocks requests over the limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-login-block-#{System.unique_integer([:positive])}"
+
+        # 5 allowed
+        for _ <- 1..5, do: assert(:ok = AccountRateLimits.check_login(ip))
+
+        # 6th should be blocked
+        assert {:error, :rate_limited} = AccountRateLimits.check_login(ip)
+      end)
+    end
+  end
+
+  describe "check_sudo/2" do
+    test "uses a bucket separate from login and from other users" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-sudo-#{System.unique_integer([:positive])}"
+        user_id = System.unique_integer([:positive])
+        other_user_id = System.unique_integer([:positive])
+
+        for _ <- 1..5, do: assert(:ok = AccountRateLimits.check_sudo(user_id, ip))
+
+        assert {:error, :rate_limited} = AccountRateLimits.check_sudo(user_id, ip)
+        assert :ok = AccountRateLimits.check_sudo(other_user_id, ip)
+        assert :ok = AccountRateLimits.check_login(ip)
+      end)
+    end
+  end
+
+  describe "check_registration/1" do
+    test "blocks requests over the limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-reg-block-#{System.unique_integer([:positive])}"
+
+        for _ <- 1..3, do: assert(:ok = AccountRateLimits.check_registration(ip))
+
+        assert {:error, :rate_limited} = AccountRateLimits.check_registration(ip)
+      end)
+    end
+  end
+
+  describe "check_password_reset/2" do
+    test "blocks requests over the IP limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        ip = "test-password-reset-ip-#{System.unique_integer([:positive])}"
+
+        for index <- 1..3 do
+          assert :ok = AccountRateLimits.check_password_reset(ip, "user#{index}@example.com")
+        end
+
+        assert {:error, :rate_limited} =
+                 AccountRateLimits.check_password_reset(ip, "another-user@example.com")
+      end)
+    end
+
+    test "blocks requests over the normalized email limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        email = "Victim#{System.unique_integer([:positive])}@Example.com"
+
+        for index <- 1..3 do
+          assert :ok = AccountRateLimits.check_password_reset("192.0.2.#{index}", email)
+        end
+
+        assert {:error, :rate_limited} =
+                 AccountRateLimits.check_password_reset("192.0.2.99", String.downcase(email))
+      end)
+    end
+  end
+
+  describe "check_invitation/3" do
+    test "blocks requests over custom limit when enabled" do
+      with_rate_limiting_enabled(fn ->
+        user_id = System.unique_integer([:positive])
+        ctx_id = System.unique_integer([:positive])
+
+        for _ <- 1..2,
+            do: assert(:ok = ProjectInvitationRateLimits.check(ctx_id, user_id, 2))
+
+        assert {:error, :rate_limited} =
+                 ProjectInvitationRateLimits.check(ctx_id, user_id, 2)
+      end)
+    end
+  end
+
+  describe "AI execution buckets" do
+    test "separates preflight from accepted operations and scopes both by task" do
+      with_rate_limiting_enabled(fn ->
+        user_id = System.unique_integer([:positive])
+
+        assert :ok = RoutingRateLimits.check_preflight(user_id, "dialogue.translate", 1)
+        assert {:error, :rate_limited} = RoutingRateLimits.check_preflight(user_id, "dialogue.translate", 1)
+        assert :ok = RoutingRateLimits.check_preflight(user_id, "dialogue.summarize", 1)
+
+        assert :ok = OperationRateLimits.check_execution(user_id, "dialogue.translate", 1)
+        assert {:error, :rate_limited} = OperationRateLimits.check_execution(user_id, "dialogue.translate", 1)
+      end)
+    end
+  end
+
+  describe "check_palette_deep_search/2" do
+    test "limits full searches per user without sharing the bucket" do
+      with_rate_limiting_enabled(fn ->
+        user_id = System.unique_integer([:positive])
+        other_user_id = System.unique_integer([:positive])
+
+        assert :ok = PaletteRateLimits.check_deep_search(user_id, 1)
+        assert {:error, :rate_limited} = PaletteRateLimits.check_deep_search(user_id, 1)
+        assert :ok = PaletteRateLimits.check_deep_search(other_user_id, 1)
+      end)
+    end
+  end
+
+  # A configured URL is the ONLY thing that selects Redis, so "Redis without a
+  # URL" is not a state a test can set up either.
+  defp with_redis_url(url, fun) do
+    original = Application.get_env(:storyarn, :rate_limiter_redis_url)
+    Application.put_env(:storyarn, :rate_limiter_redis_url, url)
+
+    try do
+      fun.()
+    after
+      if original,
+        do: Application.put_env(:storyarn, :rate_limiter_redis_url, original),
+        else: Application.delete_env(:storyarn, :rate_limiter_redis_url)
+    end
+  end
+
+  describe "backend/0" do
+    test "defaults to ETS backend" do
+      assert RateLimiter.backend() == ETSBackend
+    end
+
+    test "returns Redis backend when a URL is configured" do
+      with_redis_url("redis://example.test:6379", fn ->
+        assert RateLimiter.backend() == RedisBackend
+      end)
+    end
+  end
+
+  test "Redis retains the counter namespace used before the backend module moved under Platform" do
+    assert RedisBackend.namespace_prefix() == "Storyarn.RateLimiter.RedisBackend"
+  end
+
+  describe "child_spec_for_backend/0" do
+    test "returns ETS child spec by default" do
+      {module, opts} = RateLimiter.child_spec_for_backend()
+      assert module == ETSBackend
+      assert Keyword.has_key?(opts, :clean_period)
+    end
+
+    test "passes the configured URL straight through to the Redis backend" do
+      with_redis_url("redis://example.test:6379", fn ->
+        {module, opts} = RateLimiter.child_spec_for_backend()
+        assert module == RedisBackend
+        # config/runtime.exs is the only reader of REDIS_URL and it trims and
+        # rejects blanks, so the value that selected the backend is the value the
+        # backend gets. There is no second, raw read to disagree with it.
+        assert opts[:url] == "redis://example.test:6379"
+      end)
+    end
+  end
+end

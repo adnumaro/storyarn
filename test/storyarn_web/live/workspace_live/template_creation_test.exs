@@ -8,12 +8,12 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.Notifications.Notification
+  alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Projects.Project
-  alias Storyarn.ProjectTemplates
-  alias Storyarn.ProjectTemplates.ProjectTemplate
-  alias Storyarn.ProjectTemplates.ProjectTemplateInstall
-  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
   alias Storyarn.Workers.InstallProjectTemplateWorker
 
@@ -203,6 +203,6 @@ defmodule StoryarnWeb.WorkspaceLive.TemplateCreationTest do
 
   defp make_public(template) do
     Repo.update_all(from(t in ProjectTemplate, where: t.id == ^template.id), set: [visibility: "public"])
-    ProjectTemplates.get_template!(user_scope_fixture(template.owner), template.id)
+    ProjectTemplates.get_template!(user_scope_fixture(Storyarn.Accounts.get_user!(template.owner.id)), template.id)
   end
 end

@@ -25,20 +25,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   import StoryarnWeb.SceneLive.Helpers.SceneHelpers
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
-  alias Storyarn.Analytics
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Kernel.IntegerParser
+  alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Scenes
-  alias Storyarn.Shared.HtmlSanitizer
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Versioning
-  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.Helpers.VersionEventHelpers
-  alias StoryarnWeb.Helpers.VersionHistoryHelpers
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
-  alias StoryarnWeb.Live.Shared.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
@@ -47,6 +39,9 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.SceneLive.Handlers.LayerHandlers
   alias StoryarnWeb.SceneLive.Handlers.TreeHandlers
   alias StoryarnWeb.SceneLive.Handlers.UndoRedoHandlers
+  alias StoryarnWeb.SceneLive.PickerSearch
+  alias StoryarnWeb.SceneLive.VersionEvents
+  alias StoryarnWeb.SceneLive.VersionHistory
 
   @lock_heartbeat_interval 10_000
   @zone_label_icon_max_size 256 * 1024
@@ -317,7 +312,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       canEdit: assigns.can_edit,
       restoreEnabled:
         assigns.can_edit &&
-          Versioning.restore_enabled?({:entity_version_restore, "scene"}),
+          Scenes.restore_enabled?(),
       loading: assigns.right_panel == :versions && is_nil(history_data)
     }
   end
@@ -531,7 +526,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp update_ambient_flow_priority(socket, af_id, value) do
-    id = MapUtils.parse_int(af_id)
+    id = IntegerParser.parse(af_id)
 
     case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
       nil -> socket
@@ -540,7 +535,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp save_ambient_flow_priority(socket, ambient_flow, value) do
-    priority = MapUtils.parse_int(value) || 0
+    priority = IntegerParser.parse(value) || 0
 
     case Scenes.update_ambient_flow(ambient_flow, %{"priority" => priority}) do
       {:ok, _} -> reload_ambient_flows(socket)
@@ -551,7 +546,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp do_remove_ambient_flow(socket, id) do
     scene = socket.assigns.scene
 
-    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+    case Scenes.get_ambient_flow(scene.id, IntegerParser.parse(id)) do
       nil ->
         socket
 
@@ -569,7 +564,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp do_toggle_ambient_flow(socket, id) do
     scene = socket.assigns.scene
 
-    case Scenes.get_ambient_flow(scene.id, MapUtils.parse_int(id)) do
+    case Scenes.get_ambient_flow(scene.id, IntegerParser.parse(id)) do
       nil ->
         socket
 
@@ -613,7 +608,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp compute_reorder_index(idx, _direction, _len), do: idx
 
   defp do_update_ambient_flow_trigger(socket, params) do
-    id = MapUtils.parse_int(params["id"])
+    id = IntegerParser.parse(params["id"])
 
     case Scenes.get_ambient_flow(socket.assigns.scene.id, id) do
       nil ->
@@ -638,11 +633,11 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       "trigger_type" => trigger_type,
       "trigger_config" => build_trigger_config(trigger_type, params),
-      "priority" => MapUtils.parse_int(params["priority"]) || 0
+      "priority" => IntegerParser.parse(params["priority"]) || 0
     }
   end
 
-  defp build_trigger_config("timed", params), do: %{"interval_ms" => MapUtils.parse_int(params["interval_ms"]) || 30_000}
+  defp build_trigger_config("timed", params), do: %{"interval_ms" => IntegerParser.parse(params["interval_ms"]) || 30_000}
 
   defp build_trigger_config("on_event", params), do: %{"variable_ref" => params["variable_ref"] || ""}
 
@@ -690,10 +685,10 @@ defmodule StoryarnWeb.SceneLive.Show do
     start_async(socket, :load_sidebar_data, fn ->
       %{
         project_scenes: Scenes.list_scenes(project.id),
-        project_sheets: Storyarn.Sheets.list_sheets_tree(project.id),
-        project_flows: Storyarn.Flows.list_flows(project.id),
-        project_variables: VariableHelpers.list_all_variables(project.id),
-        project_asset_ids: Assets.list_asset_ids(project.id, images_only: true)
+        project_sheets: Scenes.list_sheets_tree(project.id),
+        project_flows: Scenes.list_flows(project.id),
+        project_variables: Scenes.list_referenceable_variables(project.id),
+        project_asset_ids: Scenes.list_image_asset_ids(project.id)
       }
     end)
   end
@@ -719,13 +714,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("open_versions_panel", _params, socket) do
-    maybe_track_version_panel_opened(socket, "scene")
+    maybe_track_version_panel_opened(socket)
 
     socket =
       if is_nil(socket.assigns.history_data) do
-        VersionHistoryHelpers.load_history_data(
+        VersionHistory.load_history_data(
           socket,
-          "scene",
           socket.assigns.scene,
           socket.assigns.project.id,
           socket.assigns.workspace.id
@@ -746,35 +740,35 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("create_version", %{"title" => title, "description" => description}, socket) do
-    VersionEventHelpers.handle_create(%{"title" => title, "description" => description}, socket, scene_version_config())
+    VersionEvents.handle_create(%{"title" => title, "description" => description}, socket, scene_version_config())
   end
 
   def handle_event("promote_version", params, socket) do
-    VersionEventHelpers.handle_promote(params, socket, scene_version_config())
+    VersionEvents.handle_promote(params, socket, scene_version_config())
   end
 
   def handle_event("delete_version", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_delete(%{"version_number" => vn}, socket, scene_version_config())
+    VersionEvents.handle_delete(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("load_more_versions", _params, socket) do
-    VersionEventHelpers.handle_load_more(socket, scene_version_config())
+    VersionEvents.handle_load_more(socket, scene_version_config())
   end
 
   def handle_event("preview_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_preview_restore(params, socket, scene_version_config())
+    VersionEvents.handle_preview_restore(params, socket, scene_version_config())
   end
 
   def handle_event("review_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_review_restore(params, socket, scene_version_config())
+    VersionEvents.handle_review_restore(params, socket, scene_version_config())
   end
 
   def handle_event("confirm_restore", %{"version_number" => _version_number} = params, socket) do
-    VersionEventHelpers.handle_confirm_restore(params, socket, scene_version_config())
+    VersionEvents.handle_confirm_restore(params, socket, scene_version_config())
   end
 
   def handle_event("compare_version", %{"version_number" => vn}, socket) do
-    VersionEventHelpers.handle_compare(%{"version_number" => vn}, socket, scene_version_config())
+    VersionEvents.handle_compare(%{"version_number" => vn}, socket, scene_version_config())
   end
 
   def handle_event("save_name", params, socket) do
@@ -964,7 +958,9 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("upload_pin_icon", %{"id" => id, "filename" => filename, "content_type" => ct, "data" => data}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with %{__struct__: Scenes.ScenePin} = pin <- Scenes.get_pin(socket.assigns.scene.id, id),
+      pin = Scenes.get_pin(socket.assigns.scene.id, id)
+
+      with true <- Scenes.scene_pin?(pin),
            :ok <- validate_zone_label_icon_type(filename, ct),
            [_header, base64] <- String.split(data, ",", parts: 2),
            {:ok, binary} <- Base.decode64(base64),
@@ -1017,7 +1013,9 @@ defmodule StoryarnWeb.SceneLive.Show do
         socket
       ) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      with %{__struct__: Scenes.SceneZone} = zone <- Scenes.get_zone(socket.assigns.scene.id, id),
+      zone = Scenes.get_zone(socket.assigns.scene.id, id)
+
+      with true <- Scenes.scene_zone?(zone),
            :ok <- validate_zone_label_icon_type(filename, ct),
            [_header, base64] <- String.split(data, ",", parts: 2),
            {:ok, binary} <- Base.decode64(base64),
@@ -1214,7 +1212,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     Authorize.with_authorization(socket, :edit_content, fn socket ->
       project_id = socket.assigns.project.id
 
-      case Assets.get_asset(project_id, MapUtils.parse_int(asset_id)) do
+      case Scenes.get_asset(project_id, IntegerParser.parse(asset_id)) do
         nil -> {:noreply, put_flash(socket, :error, dgettext("scenes", "Asset not found."))}
         asset -> process_background_upload(socket, asset)
       end
@@ -1252,7 +1250,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("select_add_ambient_flow", %{"id" => flow_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
-             "flow_id" => MapUtils.parse_int(flow_id)
+             "flow_id" => IntegerParser.parse(flow_id)
            }) do
         {:ok, _} ->
           {:noreply, reload_ambient_flows(socket)}
@@ -1268,7 +1266,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   def handle_event("add_ambient_flow", %{"flow_id" => flow_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       case Scenes.create_ambient_flow(socket.assigns.scene.id, %{
-             "flow_id" => MapUtils.parse_int(flow_id)
+             "flow_id" => IntegerParser.parse(flow_id)
            }) do
         {:ok, _} ->
           {:noreply, reload_ambient_flows(socket)}
@@ -1569,7 +1567,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("navigate_to_referencing_flow", %{"flow-id" => flow_id}, socket) do
-    case Storyarn.Flows.get_flow_brief(socket.assigns.project.id, flow_id) do
+    case Scenes.get_flow_brief(socket.assigns.project.id, flow_id) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Flow not found."))}
 
@@ -1683,33 +1681,6 @@ defmodule StoryarnWeb.SceneLive.Show do
     end)
   end
 
-  def handle_info({:pin_icon_uploaded, asset}, socket) do
-    case socket.assigns[:selected_element] do
-      %{__struct__: Storyarn.Scenes.ScenePin} = pin ->
-        case Scenes.update_pin(pin, %{"icon_asset_id" => asset.id}) do
-          {:ok, updated} ->
-            updated = Scenes.preload_pin_associations(updated)
-
-            broadcast_scene_change(
-              {:noreply,
-               socket
-               |> assign(:selected_element, updated)
-               |> update_pin_in_list(updated)
-               |> assign(:show_pin_icon_upload, false)
-               |> assign(:_broadcast, {:pin_updated, %{id: updated.id}})
-               |> push_event("pin_updated", serialize_pin(updated))
-               |> put_flash(:info, dgettext("scenes", "Pin icon updated."))}
-            )
-
-          {:error, _} ->
-            {:noreply, put_flash(socket, :error, dgettext("scenes", "Could not update pin icon."))}
-        end
-
-      _ ->
-        {:noreply, socket}
-    end
-  end
-
   @impl true
   def handle_info({:try_auto_snapshot, token}, socket) do
     if token == socket.assigns[:auto_snapshot_ref] do
@@ -1729,12 +1700,16 @@ defmodule StoryarnWeb.SceneLive.Show do
   # Handle Info: Collaboration
   # ---------------------------------------------------------------------------
 
-  def handle_info({Presence, {:join, presence}}, socket) do
-    Collab.handle_presence_join(socket, presence)
+  def handle_info({source, {:join, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_join(socket, presence),
+      else: {:noreply, socket}
   end
 
-  def handle_info({Presence, {:leave, _} = event}, socket) do
-    Collab.handle_presence_leave(socket, elem(event, 1))
+  def handle_info({source, {:leave, presence}}, socket) do
+    if Collaboration.presence_event_source?(source),
+      do: Collab.handle_presence_leave(socket, presence),
+      else: {:noreply, socket}
   end
 
   def handle_info({:cursor_update, cursor_data}, socket) do
@@ -1878,28 +1853,22 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp parse_element_id(_), do: nil
 
   defp reload_history_data(socket) do
-    VersionHistoryHelpers.load_history_data(
+    VersionHistory.load_history_data(
       socket,
-      "scene",
       socket.assigns.scene,
       socket.assigns.project.id,
       socket.assigns.workspace.id
     )
   end
 
-  defp maybe_track_version_panel_opened(socket, entity_type) do
+  defp maybe_track_version_panel_opened(socket) do
     if socket.assigns[:right_panel] != :versions do
-      Analytics.track(socket.assigns.current_scope, "version panel opened", %{
-        entity_type: entity_type,
-        project_id: socket.assigns.project.id
-      })
+      Scenes.record_version_panel_opened(socket.assigns.current_scope, socket.assigns.scene)
     end
   end
 
   defp scene_version_config do
     %{
-      entity_type: "scene",
-      entity_key: :scene,
       reload_history: &reload_history_data/1,
       restore_path: &scene_restore_path/1,
       compare_path: &scene_compare_path/2
@@ -1966,7 +1935,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp consume_background_entry(%{path: path}, entry, socket) do
-    case Assets.upload_and_create_asset(
+    case Scenes.upload_asset(
            path,
            entry,
            socket.assigns.project,
@@ -2050,7 +2019,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp upload_scene_icon_asset(icon_binary, filename, "image/svg+xml", socket) do
-    Assets.upload_sanitized_svg_and_create_asset(
+    Scenes.create_sanitized_svg_asset(
       icon_binary,
       %{filename: filename, content_type: "image/svg+xml"},
       socket.assigns.project,
@@ -2059,7 +2028,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp upload_scene_icon_asset(icon_binary, filename, content_type, socket) do
-    Assets.upload_binary_and_create_asset(
+    Scenes.create_binary_asset(
       icon_binary,
       %{filename: filename, content_type: content_type},
       socket.assigns.project,

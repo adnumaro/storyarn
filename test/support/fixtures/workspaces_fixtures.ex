@@ -5,7 +5,9 @@ defmodule Storyarn.WorkspacesFixtures do
   """
 
   alias Storyarn.AccountsFixtures
+  alias Storyarn.Repo
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Invitations.Tokens.Issuer
   alias Storyarn.Workspaces.WorkspaceMembership
 
   def unique_workspace_name, do: "Workspace #{System.unique_integer([:positive])}"
@@ -47,7 +49,7 @@ defmodule Storyarn.WorkspacesFixtures do
       # Use direct changeset to also update slug (Workspaces.update_workspace ignores slug)
       workspace
       |> Ecto.Changeset.change(update_attrs)
-      |> Storyarn.Repo.update!()
+      |> Repo.update!()
     end
   end
 
@@ -62,9 +64,17 @@ defmodule Storyarn.WorkspacesFixtures do
         user_id: user.id,
         role: role
       })
-      |> Storyarn.Repo.insert()
+      |> Repo.insert()
 
     membership
+  end
+
+  @doc "Creates a persisted workspace invitation and returns its public token."
+  def workspace_invitation_fixture(workspace, invited_by, email, role \\ "member") do
+    {encoded_token, invitation_struct} = Issuer.issue(workspace, invited_by, email, role)
+    invitation = Repo.insert!(invitation_struct)
+
+    {encoded_token, invitation}
   end
 
   @doc """

@@ -9,7 +9,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Flows
-  alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.HtmlSanitizer
 
   @doc """
   Build a slide from the current engine state and node.
@@ -17,21 +17,20 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   Returns a map with `:type` and type-specific fields.
   """
   @spec build(map() | nil, map(), map(), integer()) :: map()
-  def build(nil, _state, _sheets_map, _project_id) do
+  def build(nil, _state, _speakers_map, _project_id) do
     %{type: :empty}
   end
 
-  def build(%{type: "dialogue"} = node, state, sheets_map, _project_id) do
+  def build(%{type: "dialogue"} = node, state, speakers_map, _project_id) do
     data = node.data || %{}
-    sheet_info = resolve_sheet_info(data["speaker_sheet_id"], sheets_map)
-    speaker = build_speaker(sheet_info)
-    avatar_url = resolve_avatar_url(data["avatar_id"], sheet_info, speaker)
+    speaker_info = resolve_speaker_info(data["speaker_sheet_id"], speakers_map)
+    speaker = build_speaker(speaker_info)
+    avatar_url = resolve_avatar_url(data["avatar_id"], speaker_info, speaker)
 
     text =
       (data["text"] || "")
       |> HtmlSanitizer.sanitize_html()
-      |> resolve_variable_refs(state.variables)
-      |> interpolate_variables(state.variables)
+      |> Flows.interpolate_player_rich_text(state.variables, &render_variable_resolution/1)
 
     stage_directions = data["stage_directions"] || ""
     menu_text = data["menu_text"] || ""
@@ -44,7 +43,7 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
           |> Enum.map(fn {resp, idx} ->
             %{
               id: resp.id,
-              text: interpolate_response_text(resp.text || "", state.variables),
+              text: Flows.interpolate_player_response_text(resp.text || "", state.variables),
               valid: resp.valid,
               number: idx,
               has_condition: resp[:rule_details] != nil and resp[:rule_details] != []
@@ -69,28 +68,14 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(%{type: "exit"} = node, state, _sheets_map, _project_id) do
-    data = node.data || %{}
-
-    variables_changed =
-      Enum.count(state.variables, fn {_key, %{value: v, initial_value: iv}} -> v != iv end)
-
-    choices_made =
-      Enum.count(state.console, fn entry -> String.starts_with?(entry.message, "Selected:") end)
-
-    %{
-      type: :outcome,
-      label: data["label"] || Flows.evaluator_strip_html(data["text"]) || dgettext("flows", "The End"),
-      outcome_color: data["outcome_color"],
-      outcome_tags: data["outcome_tags"] || [],
-      step_count: state.step_count,
-      variables_changed: variables_changed,
-      choices_made: choices_made,
-      node_id: node.id
-    }
+  def build(%{type: "exit"} = node, state, _speakers_map, _project_id) do
+    node
+    |> Flows.build_player_outcome(state)
+    |> Map.put(:type, :outcome)
+    |> Map.update!(:label, &(&1 || dgettext("flows", "The End")))
   end
 
-  def build(_node, _state, _sheets_map, _project_id) do
+  def build(_node, _state, _speakers_map, _project_id) do
     %{type: :empty}
   end
 
@@ -98,12 +83,12 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   # Speaker resolution
   # ===========================================================================
 
-  defp resolve_sheet_info(sheet_id, sheets_map) when is_integer(sheet_id) or is_binary(sheet_id) do
-    id = parse_sheet_id(sheet_id)
-    Map.get(sheets_map, to_string(id))
+  defp resolve_speaker_info(speaker_id, speakers_map) when is_integer(speaker_id) or is_binary(speaker_id) do
+    id = parse_speaker_id(speaker_id)
+    Map.get(speakers_map, to_string(id))
   end
 
-  defp resolve_sheet_info(_, _), do: nil
+  defp resolve_speaker_info(_, _), do: nil
 
   defp build_speaker(nil), do: %{name: nil, initials: "?", color: nil, avatar_url: nil}
 
@@ -116,8 +101,8 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  defp resolve_avatar_url(avatar_id, sheet_info, speaker) when not is_nil(avatar_id) do
-    avatars = (sheet_info && sheet_info[:avatars]) || []
+  defp resolve_avatar_url(avatar_id, speaker_info, speaker) when not is_nil(avatar_id) do
+    avatars = (speaker_info && speaker_info[:avatars]) || []
 
     case Enum.find(avatars, &(&1.id == avatar_id)) do
       %{url: url} -> url
@@ -127,16 +112,16 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   defp resolve_avatar_url(_, _, speaker), do: speaker.avatar_url
 
-  defp parse_sheet_id(id) when is_integer(id), do: id
+  defp parse_speaker_id(id) when is_integer(id), do: id
 
-  defp parse_sheet_id(id) when is_binary(id) do
+  defp parse_speaker_id(id) when is_binary(id) do
     case Integer.parse(id) do
       {parsed, ""} -> parsed
       _ -> nil
     end
   end
 
-  defp parse_sheet_id(_), do: nil
+  defp parse_speaker_id(_), do: nil
 
   defp speaker_initials(nil), do: "?"
 
@@ -152,71 +137,17 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     end
   end
 
-  # ===========================================================================
-  # Variable interpolation
-  # ===========================================================================
-
-  # Resolve <span class="variable-ref" data-ref="...">$ref</span> from Tiptap.
-  # Attributes may appear in any order, so we match data-ref anywhere inside the tag.
-  defp resolve_variable_refs("", _variables), do: ""
-
-  defp resolve_variable_refs(html, variables) when is_binary(html) do
-    Regex.replace(
-      ~r/<span\s[^>]*?data-ref="([^"]+)"[^>]*>[^<]*<\/span>/,
-      html,
-      fn full, ref ->
-        if String.contains?(full, "variable-ref") do
-          resolve_variable_value(ref, variables)
-        else
-          full
-        end
-      end
-    )
+  defp render_variable_resolution({:value, _ref, value}) do
+    "<span class=\"player-var\">#{escape(Flows.format_player_value(value))}</span>"
   end
 
-  defp resolve_variable_value(ref, variables) do
-    case Map.get(variables, ref) do
-      %{value: val} ->
-        "<span class=\"player-var\">#{format_value(val)}</span>"
-
-      nil ->
-        "<span class=\"player-var-unknown\">[#{ref}]</span>"
-    end
+  defp render_variable_resolution({:missing, ref}) do
+    "<span class=\"player-var-unknown\">[#{escape(ref)}]</span>"
   end
 
-  # Interpolate $ref patterns in plain text (response text).
-  # Refs must contain at least one dot (e.g. $mc.health) to avoid false positives on $100.
-  defp interpolate_response_text("", _variables), do: ""
-
-  defp interpolate_response_text(text, variables) when is_binary(text) do
-    Regex.replace(~r/\$([a-zA-Z_][a-zA-Z0-9_]*(?:\.[a-zA-Z0-9_]+)+)/, text, fn _full, ref ->
-      case Map.get(variables, ref) do
-        %{value: val} -> format_value(val)
-        nil -> "[$#{ref}]"
-      end
-    end)
+  defp escape(value) do
+    value
+    |> Phoenix.HTML.html_escape()
+    |> Phoenix.HTML.safe_to_string()
   end
-
-  defp interpolate_variables("", _variables), do: ""
-
-  defp interpolate_variables(text, variables) when is_binary(text) do
-    Regex.replace(~r/\{([a-zA-Z0-9_.]+)\}/, text, fn _full, ref ->
-      case Map.get(variables, ref) do
-        %{value: val} ->
-          "<span class=\"player-var\">#{format_value(val)}</span>"
-
-        nil ->
-          "<span class=\"player-var-unknown\">[#{ref}]</span>"
-      end
-    end)
-  end
-
-  defp format_value(nil), do: "nil"
-  defp format_value(true), do: "true"
-  defp format_value(false), do: "false"
-  defp format_value(val) when is_list(val), do: Enum.join(val, ", ")
-
-  defp format_value(val) when is_binary(val), do: val |> Phoenix.HTML.html_escape() |> Phoenix.HTML.safe_to_string()
-
-  defp format_value(val), do: to_string(val)
 end

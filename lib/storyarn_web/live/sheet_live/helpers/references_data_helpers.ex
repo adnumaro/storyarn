@@ -3,8 +3,6 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Flows
-  alias Storyarn.Scenes
   alias Storyarn.Sheets
 
   def load_references_data(socket) do
@@ -28,7 +26,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
     all_blocks
     |> Enum.filter(&variable_block?/1)
     |> Enum.map(fn block ->
-      usage = Flows.check_stale_references(block.id, project_id)
+      usage = Sheets.check_stale_variable_references(block.id, project_id)
       reads = Enum.filter(usage, &(&1.kind == "read"))
       writes = Enum.filter(usage, &(&1.kind == "write"))
 
@@ -136,29 +134,16 @@ defmodule StoryarnWeb.SheetLive.Helpers.ReferencesDataHelpers do
   end
 
   defp build_scene_appearances(sheet_id) do
-    %{zones: zones, pins: pins} = Scenes.get_elements_for_target("sheet", sheet_id)
-
-    zone_items =
-      Enum.map(zones, fn zone ->
-        %{
-          elementType: "zone",
-          elementName: zone.name,
-          sceneId: zone.scene.id,
-          sceneName: zone.scene.name
-        }
-      end)
-
-    pin_items =
-      Enum.map(pins, fn pin ->
-        %{
-          elementType: "pin",
-          elementName: pin.label,
-          sceneId: pin.scene.id,
-          sceneName: pin.scene.name
-        }
-      end)
-
-    zone_items ++ pin_items
+    sheet_id
+    |> Sheets.list_scene_appearances()
+    |> Enum.map(fn appearance ->
+      %{
+        elementType: appearance.element_type,
+        elementName: appearance.element_name,
+        sceneId: appearance.scene_id,
+        sceneName: appearance.scene_name
+      }
+    end)
   end
 
   defp variable_block?(%{variable_name: nil}), do: false

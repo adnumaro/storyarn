@@ -13,7 +13,7 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Sheets
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
@@ -47,7 +47,8 @@ defmodule StoryarnWeb.SheetLive.Helpers.HealthHelpers do
 
   # Order does not matter here — these blocks only feed a `Map.new/2` of labels.
   # The order that DOES matter (which block of a column group carries an
-  # `invalid_block_layout`) is assembled once inside `Sheets.HealthSnapshots`.
+  # `invalid_block_layout`) is assembled once behind
+  # `Storyarn.Sheets.sheet_health_snapshot/1`.
   defp labelled_blocks(%{blocks: own_blocks, inherited_groups: inherited_groups}) do
     Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
   end

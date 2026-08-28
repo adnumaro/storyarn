@@ -87,10 +87,14 @@ if bool_env.("NOINDEX") do
 end
 
 if config_env() != :test do
-  config :storyarn, Storyarn.Versioning.RestorePolicy,
-    sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED"),
-    flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED"),
+  config :storyarn, Storyarn.Flows.Versioning.RestorePolicy,
+    flow_version_restore: bool_env.("FLOW_VERSION_RESTORE_ENABLED")
+
+  config :storyarn, Storyarn.Scenes.Versioning.RestorePolicy,
     scene_version_restore: bool_env.("SCENE_VERSION_RESTORE_ENABLED")
+
+  config :storyarn, Storyarn.Sheets.Versioning.RestorePolicy,
+    sheet_version_restore: bool_env.("SHEET_VERSION_RESTORE_ENABLED")
 
   config :storyarn, Storyarn.Workers.TrashRetentionWorker, enabled: bool_env.("ENTITY_TRASH_RETENTION_ENABLED")
 end
@@ -401,7 +405,7 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  config :storyarn, Storyarn.Versioning.ProjectSnapshotLeasePolicy,
+  config :storyarn, Storyarn.Platform.Billing.StorageLeasePolicy,
     download_signed_url_ttl_seconds:
       bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),
     download_max_transfer_seconds: positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS", 60 * 60)
@@ -492,9 +496,17 @@ if config_env() == :prod do
 
   %URI{host: s3_host} = URI.parse(s3_endpoint)
 
-  config :storyarn, Storyarn.Mailer,
+  config :storyarn, Storyarn.Platform.Mailer,
     adapter: Swoosh.Adapters.Resend,
     api_key: resend_api_key
+
+  config :storyarn, Storyarn.Platform.Vault,
+    ciphers: [
+      default: {
+        Cloak.Ciphers.AES.GCM,
+        tag: "AES.GCM.V1", key: decoded_cloak_key, iv_length: 12
+      }
+    ]
 
   config :storyarn, Storyarn.Repo,
     ssl: if(System.get_env("DATABASE_SSL") == "false", do: false, else: true),
@@ -503,14 +515,6 @@ if config_env() == :prod do
     # For machines with several cores, consider starting multiple pools of `pool_size`
     # pool_count: 4,
     socket_options: maybe_ipv6
-
-  config :storyarn, Storyarn.Vault,
-    ciphers: [
-      default: {
-        Cloak.Ciphers.AES.GCM,
-        tag: "AES.GCM.V1", key: decoded_cloak_key, iv_length: 12
-      }
-    ]
 
   config :storyarn, StoryarnWeb.Endpoint,
     url: [host: host, port: 443, scheme: "https"],

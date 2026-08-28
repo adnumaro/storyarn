@@ -9,15 +9,14 @@ defmodule Mix.Tasks.Storyarn.SnapshotArchiveSmoke do
 
       mix storyarn.snapshot_archive_smoke --snapshot-id 123 --yes-read-only
 
-  Production releases must invoke
-  `Storyarn.Versioning.SnapshotArchiveSmoke.run!/1` through the release `rpc`
-  command instead of running Mix.
+  Production releases must invoke `Storyarn.Projects.run_snapshot_archive_smoke!/1`
+  through the release `rpc` command instead of running Mix.
   """
 
   use Mix.Task
 
+  alias Storyarn.Projects
   alias Storyarn.Repo
-  alias Storyarn.Versioning.SnapshotArchiveSmoke
 
   @runtime_applications [:ecto_sql, :postgrex, :req, :ex_aws, :ex_aws_s3]
   @usage "Usage: mix storyarn.snapshot_archive_smoke --snapshot-id ID --yes-read-only"
@@ -35,7 +34,7 @@ defmodule Mix.Tasks.Storyarn.SnapshotArchiveSmoke do
     snapshot_id = required_positive_integer!(opts, :snapshot_id)
     ensure_runtime_started!()
 
-    result = SnapshotArchiveSmoke.run!(snapshot_id)
+    result = Projects.run_snapshot_archive_smoke!(snapshot_id)
 
     Mix.shell().info(
       "Snapshot archive provider smoke succeeded " <>

@@ -22,10 +22,9 @@ defmodule StoryarnWeb.FlowLive.Index do
       put_pending_delete_id: 2
     ]
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
   alias Storyarn.Flows
-  alias Storyarn.Shared.Severity
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers
@@ -55,6 +54,7 @@ defmodule StoryarnWeb.FlowLive.Index do
           "project_slug" => @project.slug,
           "flow_id" => nil,
           "can_edit" => @can_edit,
+          "membership" => @membership,
           "active_tool" => "flows",
           "dashboard_url" => ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/flows",
           "current_scope" => @current_scope,
@@ -196,7 +196,6 @@ defmodule StoryarnWeb.FlowLive.Index do
   def handle_info(:load_dashboard_overview, socket), do: {:noreply, start_dashboard_overview(socket)}
   def handle_info(:load_dashboard_issues, socket), do: {:noreply, start_dashboard_issues(socket)}
 
-  def handle_info({StoryarnWeb.FlowLive.Form, {:saved, _flow}}, socket), do: {:noreply, socket}
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
 
   @impl true
@@ -568,7 +567,7 @@ defmodule StoryarnWeb.FlowLive.Index do
     # it, errors would otherwise sit behind hundreds of info findings.
     |> Enum.sort_by(
       &{
-        Severity.rank(&1.severity),
+        Flows.health_severity_rank(&1.severity),
         &1.label,
         &1.code,
         &1.flow_id,

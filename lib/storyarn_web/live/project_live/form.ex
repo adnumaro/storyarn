@@ -3,9 +3,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
 
   use StoryarnWeb, :live_component
 
-  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects
-  alias Storyarn.Projects.Project
 
   @impl true
   def render(assigns) do
@@ -22,7 +20,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
             do: dgettext("projects", "Create Project"),
             else: dgettext("projects", "Save")
         }
-        metrics-options={Taxonomy.project_options()}
+        metrics-options={Projects.project_classification_options()}
         cancel-url={@navigate}
       />
     </div>
@@ -31,7 +29,7 @@ defmodule StoryarnWeb.ProjectLive.Form do
 
   @impl true
   def update(assigns, socket) do
-    project = Map.get(assigns, :project, %Project{})
+    project = Map.get(assigns, :project, Projects.new_project())
     changeset = project_changeset(project, assigns[:action])
 
     socket =
@@ -107,6 +105,6 @@ defmodule StoryarnWeb.ProjectLive.Form do
 
   defp project_changeset(project, action, attrs \\ %{})
 
-  defp project_changeset(%Project{} = project, :new, attrs), do: Projects.change_new_project(project, attrs)
-  defp project_changeset(%Project{} = project, _action, attrs), do: Projects.change_project(project, attrs)
+  defp project_changeset(project, :new, attrs), do: Projects.change_new_project(project, attrs)
+  defp project_changeset(project, _action, attrs), do: Projects.change_project(project, attrs)
 end

@@ -5,7 +5,7 @@ defmodule StoryarnWeb.SettingsLive.TutorialsTest do
   import Storyarn.AccountsFixtures
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform.Onboarding
 
   defp get_tutorials_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/account/settings/AccountSettingsTutorials")

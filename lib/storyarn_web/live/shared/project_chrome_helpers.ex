@@ -9,7 +9,7 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
 
   use StoryarnWeb, :verified_routes
 
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
 
   @tools [
     %{key: :dashboard, section: "dashboard"},

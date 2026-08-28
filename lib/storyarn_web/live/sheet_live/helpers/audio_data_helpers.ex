@@ -6,16 +6,15 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
-  alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Sheets
   alias StoryarnWeb.PrivateMedia
 
   def load_audio_data(socket) do
     %{sheet: sheet, project: project} = socket.assigns
-    nodes = Flows.list_dialogue_nodes_by_speaker(project.id, sheet.id)
+    nodes = Sheets.list_dialogue_audio_lines(project.id, sheet.id)
 
-    audio_assets = Assets.list_assets(project.id, content_type: "audio/")
+    audio_assets = Sheets.list_assets(project.id, content_type: "audio/")
     audio_assets_by_id = Map.new(audio_assets, &{&1.id, &1})
 
     voice_lines =
@@ -55,22 +54,15 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     {node_id, ""} = Integer.parse(to_string(node_id_str))
     project_id = socket.assigns.project.id
 
-    nodes = Flows.list_dialogue_nodes_by_speaker(project_id, socket.assigns.sheet.id)
-    line = Enum.find(nodes, &(&1.id == node_id))
+    case Sheets.update_dialogue_audio(project_id, socket.assigns.sheet.id, node_id, audio_asset_id) do
+      {:ok, _updated_node} ->
+        {:noreply, load_audio_data(socket)}
 
-    if line do
-      node = Flows.get_node!(line.flow.id, node_id)
-      updated_data = Map.put(node.data, "audio_asset_id", audio_asset_id)
+      {:error, :not_found} ->
+        {:noreply, socket}
 
-      case Flows.update_node_data(node, updated_data) do
-        {:ok, _updated_node, _meta} ->
-          {:noreply, load_audio_data(socket)}
-
-        {:error, _changeset} ->
-          {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update audio."))}
-      end
-    else
-      {:noreply, socket}
+      {:error, _reason} ->
+        {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update audio."))}
     end
   end
 
@@ -112,13 +104,13 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   end
 
   defp validate_audio_content_type(content_type) do
-    if Assets.allowed_content_type?(content_type),
+    if Sheets.allowed_asset_content_type?(content_type),
       do: :ok,
       else: {:error, :unsupported_file_type}
   end
 
   defp upload_audio_asset(binary_data, filename, content_type, project, user) do
-    Assets.upload_binary_and_create_asset(
+    Sheets.create_binary_asset(
       binary_data,
       %{filename: filename, content_type: content_type},
       project,

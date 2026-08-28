@@ -2,14 +2,14 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-20
+> Last reviewed: 2026-08-27
 >
-> Source of truth: `lib/storyarn/versioning/project_snapshot_lifecycle.ex`,
-> `lib/storyarn/versioning/snapshot_archive_storage.ex`,
-> `lib/storyarn/versioning/snapshot_archive_smoke.ex`,
-> `lib/storyarn/versioning/project_snapshot_reconciliation.ex`,
-> `lib/storyarn/versioning/project_snapshot_reconciliation_repair.ex`,
-> `lib/storyarn/assets/storage/`, `lib/storyarn/release.ex`, and
+> Source of truth: `lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex`,
+> `lib/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage.ex`,
+> `lib/storyarn/projects/versioning/execution/snapshot_archive_smoke.ex`,
+> `lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex`,
+> `lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex`,
+> `lib/storyarn/projects/assets/adapters/storage/`, `lib/storyarn/release.ex`, and
 > `lib/storyarn/workers/`, plus
 > `priv/repo/migrations/20260811180000_make_project_snapshots_v2_only.exs`,
 > `priv/repo/migrations/20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs`, and
@@ -120,8 +120,8 @@ mutation authority.
 Start and inspect a run on a release node:
 
 ```text
-/app/bin/storyarn rpc 'Storyarn.Release.start_project_snapshot_reconciliation()'
-/app/bin/storyarn rpc 'Storyarn.Release.inspect_project_snapshot_reconciliation(123, 0, 100)'
+/app/bin/storyarn rpc 'Storyarn.Platform.Release.start_project_snapshot_reconciliation()'
+/app/bin/storyarn rpc 'Storyarn.Platform.Release.inspect_project_snapshot_reconciliation(123, 0, 100)'
 ```
 
 Only one run may be active for a physical provider namespace. Work uses the
@@ -160,8 +160,8 @@ namespace. A changed or already-resolved subject is a successful no-op.
 Plan and inspect repairs in bounded pages:
 
 ```text
-/app/bin/storyarn rpc 'Storyarn.Release.repair_project_snapshot_reconciliation(123, 0, 50)'
-/app/bin/storyarn rpc 'Storyarn.Release.inspect_project_snapshot_reconciliation_repairs(123, 0, 100)'
+/app/bin/storyarn rpc 'Storyarn.Platform.Release.repair_project_snapshot_reconciliation(123, 0, 50)'
+/app/bin/storyarn rpc 'Storyarn.Platform.Release.inspect_project_snapshot_reconciliation_repairs(123, 0, 100)'
 ```
 
 The planning command persists each action and immediately enqueues its
@@ -312,7 +312,7 @@ the deployed application and private Tigris configuration.
 4. Run the read-only smoke on the release node:
 
    ```bash
-   bin/storyarn rpc 'Storyarn.Versioning.SnapshotArchiveSmoke.run!(SNAPSHOT_ID)'
+   bin/storyarn rpc 'Storyarn.Projects.Versioning.SnapshotArchiveSmoke.run!(SNAPSHOT_ID)'
    ```
 
 The selected archive must be at most 300 MiB. The smoke proves exact-key

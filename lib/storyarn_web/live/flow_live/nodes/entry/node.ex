@@ -13,9 +13,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
   def type, do: "entry"
   def icon_name, do: "play"
   def label, do: dgettext("flows", "Entry")
-  def default_data, do: %{}
-
-  def extract_form_data(_data), do: %{}
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   def on_select(_node, socket) do
     flow_id = socket.assigns.flow.id
@@ -29,5 +28,5 @@ defmodule StoryarnWeb.FlowLive.Nodes.Entry.Node do
   def on_double_click(_node), do: :toolbar
 
   @doc "Entry nodes cannot be duplicated, but define cleanup for safety."
-  def duplicate_data_cleanup(data), do: data
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 end

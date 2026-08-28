@@ -16,10 +16,9 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Collaboration
   alias Storyarn.Localization
-  alias Storyarn.Localization.Languages
-  alias Storyarn.Projects
+  alias Storyarn.Platform.Collaboration
+  alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.LanguagePickerOption
 
   @impl true
@@ -161,11 +160,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
 
   # ── Helpers ───────────────────────────────────────────────────────────────
   defp with_edit(socket, fun) do
-    if socket.assigns.can_edit do
-      fun.(socket)
-    else
-      {:noreply, put_flash(socket, :error, dgettext("localization", "You don't have permission to edit."))}
-    end
+    Authorize.with_authorization(socket, :edit_content, fun)
   end
 
   defp maybe_put_locale(nil), do: :ok
@@ -175,7 +170,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
   defp load_project(_current_scope, nil), do: nil
 
   defp load_project(current_scope, project_id) do
-    case Projects.get_project(current_scope, project_id) do
+    case Localization.get_project(current_scope, project_id) do
       {:ok, project, _membership} -> project
       _ -> nil
     end
@@ -195,6 +190,7 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     |> assign(:project_slug, session["project_slug"])
     |> assign(:selected_locale, session["selected_locale"])
     |> assign(:can_edit, session["can_edit"] || false)
+    |> assign(:membership, session["membership"])
     |> assign(:active_tool, session["active_tool"] || "localization")
     |> assign(:dashboard_url, session["dashboard_url"])
     |> assign(:main_sidebar_open, false)
@@ -317,11 +313,11 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
       projectSlug: assigns.project_slug,
       sourceLanguageOptions:
         [exclude: Enum.reject([source_code], &is_nil/1)]
-        |> Languages.options_for_select()
+        |> Localization.language_options_for_select()
         |> Enum.map(&serialize_language_option/1),
       addLanguageOptions:
         [exclude: MapSet.to_list(existing_codes)]
-        |> Languages.options_for_select()
+        |> Localization.language_options_for_select()
         |> Enum.map(&serialize_language_option/1)
     }
   end
@@ -332,13 +328,15 @@ defmodule StoryarnWeb.LocalizationSidebarLive do
     %{
       id: lang.id,
       localeCode: lang.locale_code,
-      name: lang.name || Languages.name(lang.locale_code) || lang.locale_code,
-      flagCode: Languages.flag_code(lang.locale_code),
-      shortLabel: Languages.short_label(lang.locale_code)
+      name: lang.name || Localization.language_name(lang.locale_code) || lang.locale_code,
+      flagCode: Localization.language_flag_code(lang.locale_code),
+      shortLabel: Localization.language_short_label(lang.locale_code)
     }
   end
 
-  defp serialize_language_option({_label, value}), do: LanguagePickerOption.from_code(value)
+  defp serialize_language_option({_select_label, value}) do
+    LanguagePickerOption.from_code(value, label: Localization.language_name(value))
+  end
 
   @doc """
   Shared shell topic for cross-LV PubSub. Same format as the sheets sidebar

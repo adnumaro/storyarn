@@ -37,6 +37,7 @@ in this directory.
 
 - [Component registry](component-registry.md)
 - [Domain patterns](domain-patterns.md)
+- [Bounded-context map](context-map.md)
 - [Shared utilities](shared-utilities.md)
 - [Flow dialogue typography](flow-dialogue-typography.md)
 - [AI provider adapters](ai-provider-adapters.md)

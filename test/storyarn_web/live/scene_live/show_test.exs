@@ -9,11 +9,10 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Billing
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes
-  alias Storyarn.Versioning
   alias StoryarnWeb.PrivateMedia
 
   # Reads the SceneCanvas Vue component and builds a composite scene_data map
@@ -4103,7 +4102,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
         "description" => "Initial playable scene"
       })
 
-      version = Versioning.get_version("scene", scene.id, 1)
+      version = Scenes.get_version(scene.id, 1)
       assert version.title == "First milestone"
       assert version.description == "Initial playable scene"
       refute version.is_auto
@@ -4116,8 +4115,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
       url: url,
       scene: scene
     } do
-      {:ok, version} =
-        Versioning.create_version("scene", scene, project.id, user.id, title: "Before rename")
+      {:ok, version} = Scenes.create_version(scene, user.id, title: "Before rename")
 
       {:ok, _changed_scene} = Scenes.update_scene(scene, %{"name" => "Changed Scene"})
       view = mount_scene(conn, url)

@@ -23,11 +23,10 @@ defmodule StoryarnWeb.SceneLive.Index do
       put_pending_delete_id: 2
     ]
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Dashboards.Cache, as: DashboardCache
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.Severity
-  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.DashboardHandlers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
@@ -462,7 +461,7 @@ defmodule StoryarnWeb.SceneLive.Index do
     end)
     |> Enum.sort_by(
       &{
-        Severity.rank(&1.severity),
+        Scenes.health_severity_rank(&1.severity),
         &1.label,
         &1.code,
         &1.scene_id,

@@ -6,8 +6,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.AudioHandlersTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Assets
   alias Storyarn.Flows
+  alias Storyarn.Projects.Assets
   alias Storyarn.Repo
 
   setup :register_and_log_in_user

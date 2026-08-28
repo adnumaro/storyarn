@@ -5,7 +5,7 @@ defmodule StoryarnWeb.E2EHelpers do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform.Onboarding
 
   @session_options [
     store: :cookie,

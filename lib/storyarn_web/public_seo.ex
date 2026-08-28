@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.PublicSEO do
   @moduledoc false
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.Layouts
   alias StoryarnWeb.PublicURLs
 

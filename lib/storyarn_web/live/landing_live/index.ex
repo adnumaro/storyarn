@@ -2,7 +2,6 @@ defmodule StoryarnWeb.LandingLive.Index do
   @moduledoc false
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Accounts
   alias Storyarn.Workspaces
   alias StoryarnWeb.PublicSEO
   alias StoryarnWeb.PublicURLs
@@ -10,7 +9,7 @@ defmodule StoryarnWeb.LandingLive.Index do
   @impl true
   def mount(_params, _session, socket) do
     case socket.assigns do
-      %{current_scope: %{user: %Accounts.User{} = user}} ->
+      %{current_scope: %{user: %{id: _} = user}} ->
         {:ok, redirect_to_workspace(socket, user)}
 
       _ ->
@@ -108,7 +107,7 @@ defmodule StoryarnWeb.LandingLive.Index do
 
   defp redirect_to_workspace(socket, user) do
     case Workspaces.get_default_workspace(user) do
-      %Workspaces.Workspace{slug: slug} ->
+      %{slug: slug} when is_binary(slug) ->
         push_navigate(socket, to: ~p"/workspaces/#{slug}")
 
       nil ->

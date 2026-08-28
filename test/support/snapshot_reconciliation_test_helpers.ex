@@ -1,7 +1,7 @@
 defmodule Storyarn.SnapshotReconciliationTestHelpers do
   @moduledoc false
 
-  alias Storyarn.Versioning
+  alias Storyarn.Projects.Versioning
 
   @retry_window_ms 5_000
   @retry_delay_ms 20

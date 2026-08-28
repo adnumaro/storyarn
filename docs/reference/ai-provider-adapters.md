@@ -2,9 +2,11 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-08-27
 >
-> Source of truth: `lib/storyarn/ai/provider.ex`, `lib/storyarn/ai/providers.ex`, and `lib/storyarn/ai/providers/`
+> Source of truth: `lib/storyarn/ai/integrations/contracts/provider.ex`,
+> `lib/storyarn/ai/integrations/adapters/provider_registry.ex`, and
+> `lib/storyarn/ai/integrations/adapters/validation/`
 
 `Storyarn.AI.Provider` is the contract for personal-provider connection
 adapters. The ordered registry drives provider discovery, identifiers, metadata,

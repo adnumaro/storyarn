@@ -29,7 +29,7 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
 
   use Mix.Task
 
-  alias Storyarn.ProjectTemplates
+  alias Storyarn.Projects
 
   @requirements ["app.start"]
 
@@ -54,12 +54,12 @@ defmodule Mix.Tasks.Storyarn.Templates.Import do
 
     path = parse_args!(positional)
 
-    case ProjectTemplates.preview_portable_template(path, opts) do
+    case Projects.preview_portable_project_template(path, opts) do
       {:ok, manifest} ->
         print_preview(path, manifest, opts)
         ensure_confirmed!(opts)
 
-        case ProjectTemplates.import_portable_template(path, opts) do
+        case Projects.import_portable_project_template(path, opts) do
           {:ok, template} ->
             Mix.shell().info("Imported template ##{template.id}: #{template.name}")
             Mix.shell().info("Visibility: #{template.visibility}")

@@ -1,0 +1,133 @@
+defmodule Storyarn.Projects.Versioning.IntegrationTest do
+  @moduledoc """
+  Integration tests for the versioning systems owned by Sheets, Flows, and Scenes.
+
+  Flows, Scenes, and Sheets each own their versioning; these tests pin the
+  cross-context isolation contract. Flows and Scenes
+  expose their version lifecycle through their own bounded-context facades.
+  """
+  use Storyarn.DataCase, async: true
+
+  import Storyarn.AccountsFixtures
+  import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
+  import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures, except: [connection_fixture: 3, connection_fixture: 4]
+  import Storyarn.SheetsFixtures
+
+  alias Storyarn.Flows
+  alias Storyarn.Scenes
+  alias Storyarn.Sheets
+
+  setup do
+    user = user_fixture()
+    project = project_fixture(user)
+    %{user: user, project: project}
+  end
+
+  describe "flow versioning through facade" do
+    test "create and restore flow version", %{project: project, user: user} do
+      flow = flow_fixture(project, %{name: "Main Flow"})
+      n1 = node_fixture(flow, %{type: "dialogue", position_x: 100.0, position_y: 100.0})
+      n2 = node_fixture(flow, %{type: "hub", position_x: 200.0, position_y: 200.0})
+      _conn = Storyarn.FlowsFixtures.connection_fixture(flow, n1, n2)
+
+      # Create version
+      {:ok, version} = Flows.create_version(flow, user.id, title: "Before refactor")
+      assert version.entity_type == "flow"
+      assert version.version_number == 1
+
+      # Modify flow
+      {:ok, modified_flow} = Flows.update_flow(flow, %{name: "Refactored Flow"})
+      assert modified_flow.name == "Refactored Flow"
+
+      # List
+      assert Flows.count_versions(flow.id) == 1
+
+      # Restore
+      {:ok, restored} = Flows.restore_version(modified_flow, version)
+      assert restored.name == "Main Flow"
+
+      # Verify nodes and connections were restored
+      restored = Storyarn.Repo.preload(restored, [:nodes, :connections], force: true)
+      active_nodes = Enum.reject(restored.nodes, &(&1.deleted_at != nil))
+      assert length(active_nodes) >= 2
+      assert length(restored.connections) == 1
+
+      # Set current version
+      {:ok, updated_flow} = Flows.set_current_version(restored, version)
+      assert updated_flow.current_version_id == version.id
+    end
+  end
+
+  describe "scene versioning through facade" do
+    test "create and restore scene version", %{project: project, user: user} do
+      scene = scene_fixture(project, %{name: "World Map"})
+      layer = layer_fixture(scene, %{"name" => "Points of Interest"})
+
+      pin1 =
+        pin_fixture(scene, %{
+          "position_x" => 25.0,
+          "position_y" => 25.0,
+          "label" => "Town A",
+          "layer_id" => layer.id
+        })
+
+      pin2 =
+        pin_fixture(scene, %{
+          "position_x" => 75.0,
+          "position_y" => 75.0,
+          "label" => "Town B",
+          "layer_id" => layer.id
+        })
+
+      _conn = Storyarn.ScenesFixtures.connection_fixture(scene, pin1, pin2)
+
+      # Create version
+      {:ok, version} = Scenes.create_version(scene, user.id, title: "Initial map")
+      assert version.entity_type == "scene"
+      assert version.version_number == 1
+
+      # Modify scene
+      {:ok, modified_scene} = Scenes.update_scene(scene, %{"name" => "Modified Map"})
+      assert modified_scene.name == "Modified Map"
+
+      # Restore
+      {:ok, restored} = Scenes.restore_version(modified_scene, version)
+      assert restored.name == "World Map"
+
+      # Verify layers and pins were restored
+      restored = Storyarn.Repo.preload(restored, [:connections, {:layers, [:pins]}], force: true)
+      total_pins = restored.layers |> Enum.flat_map(& &1.pins) |> length()
+      assert total_pins >= 2
+      assert length(restored.connections) == 1
+
+      # Set current version
+      {:ok, updated_scene} = Scenes.set_current_version(restored, version)
+      assert updated_scene.current_version_id == version.id
+    end
+  end
+
+  describe "cross-entity isolation" do
+    test "versions are isolated per entity type and ID", %{project: project, user: user} do
+      sheet = sheet_fixture(project)
+      sheet = Storyarn.Repo.preload(sheet, :blocks)
+      flow = flow_fixture(project)
+
+      {:ok, _} = Sheets.create_version(sheet, user.id)
+
+      # Probe the SAME numeric id under other entity types while only the
+      # sheet version exists: zero here is exactly what type isolation
+      # means. (Entity tables have independent id sequences that CAN align
+      # — e.g. on a fresh CI database — so asserting zero for another
+      # entity's id is a coin flip, not an isolation proof.)
+      assert Sheets.count_versions(sheet.id) == 1
+      assert Flows.count_versions(sheet.id) == 0
+      assert Scenes.count_versions(sheet.id) == 0
+
+      {:ok, _} = Flows.create_version(flow, user.id)
+
+      assert Flows.count_versions(flow.id) == 1
+      assert Sheets.count_versions(sheet.id) == 1
+    end
+  end
+end

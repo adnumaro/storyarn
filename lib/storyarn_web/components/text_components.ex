@@ -5,7 +5,7 @@ defmodule StoryarnWeb.Components.TextComponents do
 
   import Phoenix.HTML, only: [html_escape: 1, raw: 1, safe_to_string: 1]
 
-  alias Storyarn.Shared.HtmlSanitizer
+  alias Storyarn.Platform.Shared.HtmlSanitizer
 
   @doc """
   Prevents widow words by joining the final two words with a non-breaking space.

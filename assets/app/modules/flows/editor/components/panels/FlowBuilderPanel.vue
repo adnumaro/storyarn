@@ -3,10 +3,10 @@ import { GitBranch, X, Zap } from "@lucide/vue";
 import type { Component } from "vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import type { Assignment, ConditionData } from "@components/builders/types";
-import ExpressionEditor from "../../../../../components/forms/ExpressionEditor.vue";
+import type { Assignment, ConditionData } from "../expression/builders/types";
+import ExpressionEditor from "../expression/ExpressionEditor.vue";
 import Sidebar from "../../../../../shell/Sidebar.vue";
-import type { Variable } from "../../../../../shared/domain/variables";
+import type { Variable } from "../../expression/domain/variables";
 import { useLive } from "../../../../../shared/composables/useLive";
 
 const {

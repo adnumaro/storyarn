@@ -17,21 +17,8 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
   def label, do: dgettext("flows", "Hub")
   def description, do: dgettext("flows", "Named junction for jump targets")
 
-  def default_data do
-    %{
-      "hub_id" => "",
-      "label" => "",
-      "color" => Flows.hub_color_default_hex()
-    }
-  end
-
-  def extract_form_data(data) do
-    %{
-      "hub_id" => data["hub_id"] || "",
-      "label" => data["label"] || "",
-      "color" => Flows.resolve_hub_color(data["color"])
-    }
-  end
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   @doc "Loads referencing jump nodes when a hub is selected."
   def on_select(node, socket) do
@@ -44,7 +31,5 @@ defmodule StoryarnWeb.FlowLive.Nodes.Hub.Node do
   def on_double_click(_node), do: :toolbar
 
   @doc "Clears hub_id when duplicating (must be unique)."
-  def duplicate_data_cleanup(data) do
-    Map.put(data, "hub_id", "")
-  end
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 end

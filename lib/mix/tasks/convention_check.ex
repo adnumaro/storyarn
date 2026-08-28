@@ -18,7 +18,7 @@ defmodule Mix.Tasks.Convention.Check do
   |--------------------------|-----------|------------------------------------------------|
   | raw_without_sanitizer    | web only  | raw() must use HtmlSanitizer.sanitize_html/1   |
   | datetime_utc_now         | all       | Use TimeHelpers.now/0 instead                  |
-  | facade_bypass            | web only  | Call context facade, not submodules             |
+  | facade_bypass            | web only  | Fast check for known facade bypasses             |
   | string_to_atom           | all       | Prefer to_existing_atom with allowlist          |
   | sql_interpolation        | all       | No string interpolation in Ecto queries         |
   | put_flash_without_gettext| web only  | put_flash must use gettext/dgettext             |
@@ -48,12 +48,12 @@ defmodule Mix.Tasks.Convention.Check do
     :inline_slugify
   ]
 
+  # This is a deliberately small, fast textual guard for stable internal module
+  # identities that still exist. `mix architecture.check` is the authoritative
+  # boundary verifier; do not grow this list into a second architecture model.
   @facade_submodules ~w(
-    SheetCrud SheetQueries BlockCrud TableCrud
     FlowCrud NodeCreate NodeUpdate NodeDelete ConnectionCrud
-    SceneCrud LayerCrud ZoneCrud PinCrud AnnotationCrud
-    LanguageCrud TextCrud GlossaryCrud BatchTranslator
-    ProjectCrud WorkspaceCrud
+    ProjectCrud
   )
 
   @impl Mix.Task
@@ -223,7 +223,7 @@ defmodule Mix.Tasks.Convention.Check do
     if String.contains?(line, "DateTime.utc_now") and
          not String.contains?(line, "TimeHelpers") and
          not String.contains?(line, "time_helpers") and
-         not String.contains?(file, "time_helpers.ex") and
+         not String.ends_with?(file, "lib/storyarn/platform/adapters/clock.ex") and
          not String.match?(line, ~r/DateTime\.(diff|compare|after\?|before\?)/) and
          not String.match?(line, ~r/\^DateTime\.utc_now/) do
       [{:datetime_utc_now, file, line_num, "Use TimeHelpers.now/0 instead of DateTime.utc_now()"}]
@@ -335,7 +335,7 @@ defmodule Mix.Tasks.Convention.Check do
 
   defp fix_suggestion(:raw_without_sanitizer), do: "Wrap with HtmlSanitizer.sanitize_html/1 before passing to raw()"
 
-  defp fix_suggestion(:datetime_utc_now), do: "alias Storyarn.Shared.TimeHelpers, then use TimeHelpers.now()"
+  defp fix_suggestion(:datetime_utc_now), do: "alias Storyarn.Platform.Shared.TimeHelpers, then use TimeHelpers.now()"
 
   defp fix_suggestion(:facade_bypass),
     do: "Use the context facade (e.g., Sheets.function() not Sheets.SheetCrud.function())"

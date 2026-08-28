@@ -21,19 +21,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       prepare_exploration_data_for_vue: 4
     ]
 
-  alias Storyarn.Analytics
-  alias Storyarn.Flows
-  alias Storyarn.Projects
+  alias Storyarn.Platform.Kernel.IntegerParser
+  alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.FormulaRuntime
-  alias Storyarn.Shared.HtmlUtils
-  alias Storyarn.Shared.MapUtils
-  alias Storyarn.Sheets
-  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
-  alias StoryarnWeb.FlowLive.Helpers.FormHelpers
-  alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-  alias StoryarnWeb.FlowLive.Player.PlayerEngine
-  alias StoryarnWeb.FlowLive.Player.Slide
+  alias StoryarnWeb.SceneLive.FlowPresenter
 
   # ===========================================================================
   # Render
@@ -121,7 +112,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   @impl true
   def mount(%{"workspace_slug" => workspace_slug, "project_slug" => project_slug, "id" => scene_id}, _session, socket) do
-    case Projects.get_project_by_slugs(
+    case Scenes.get_project_by_slugs(
            socket.assigns.current_scope,
            workspace_slug,
            project_slug
@@ -149,7 +140,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         user_id = socket.assigns.current_scope.user.id
         existing_session = Scenes.get_exploration_session(user_id, project.id)
 
-        variables = VariableHelpers.build_variables(project.id)
+        variables = Scenes.build_runtime_variables(project.id)
         zones = evaluate_elements(scene.zones || [], variables)
         pins = evaluate_elements(scene.pins || [], variables)
 
@@ -186,11 +177,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
           |> maybe_start_ambient_flows(scene, existing_session)
 
         if connected?(socket) do
-          Analytics.track(socket.assigns.current_scope, "scene exploration started", %{
-            has_saved_session: not is_nil(existing_session),
-            project_id: project.id,
-            scene_id: scene.id
-          })
+          Scenes.record_exploration_started(
+            socket.assigns.current_scope,
+            scene,
+            not is_nil(existing_session)
+          )
         end
 
         {:ok, socket, layout: false}
@@ -340,10 +331,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         nodes = socket.assigns.flow_nodes
         connections = socket.assigns.flow_connections
 
-        case Flows.evaluator_choose_response(state, response_id, connections) do
+        case Scenes.runtime_choose_response(state, response_id, connections) do
           {:ok, new_state} ->
             new_state
-            |> PlayerEngine.step_until_interactive(nodes, connections)
+            |> Scenes.runtime_step_until_interactive(nodes, connections)
             |> handle_response_step(socket)
 
           {:error, _state, _reason} ->
@@ -358,7 +349,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         {:noreply, socket}
 
       %{engine_state: state} ->
-        case Flows.evaluator_step_back(state) do
+        case Scenes.runtime_step_back(state) do
           {:ok, new_state} -> {:noreply, update_flow_slide_after_back(socket, new_state)}
           {:error, :no_history} -> {:noreply, socket}
         end
@@ -410,7 +401,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     project_id = socket.assigns.project.id
 
     state
-    |> PlayerEngine.step_until_interactive(nodes, connections, advance_current_dialogue: true)
+    |> Scenes.runtime_step_until_interactive(nodes, connections, advance_current_dialogue: true)
     |> handle_continue_step(socket, nodes, connections, sheets_map, project_id)
   end
 
@@ -456,7 +447,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # ===========================================================================
 
   defp restore_session_variables(socket, session) do
-    variables = VariableHelpers.build_variables(socket.assigns.project.id)
+    variables = Scenes.build_runtime_variables(socket.assigns.project.id)
 
     variables =
       Enum.reduce(session.variable_values || %{}, variables, fn {ref, value}, acc ->
@@ -466,7 +457,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         end
       end)
 
-    FormulaRuntime.recompute_formulas(variables)
+    Scenes.recompute_runtime_formulas(variables)
   end
 
   defp apply_restored_session(socket, session, variables) do
@@ -512,9 +503,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp handle_element_action(%{"action_type" => "action", "action_data" => action_data}, socket) do
     assignments = action_data["assignments"] || []
 
-    case Flows.execute_instructions(assignments, socket.assigns.variables) do
+    case Scenes.execute_runtime_instructions(assignments, socket.assigns.variables) do
       {:ok, new_variables, _changes, _errors, warnings} ->
-        new_variables = FormulaRuntime.recompute_formulas(new_variables)
+        new_variables = Scenes.recompute_runtime_formulas(new_variables)
         socket = refresh_exploration_state(socket, new_variables)
 
         if warnings == [] do
@@ -549,7 +540,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Pin with dedicated flow_id field
   defp handle_element_target(%{"element_type" => "pin", "flow_id" => flow_id}, socket)
        when is_binary(flow_id) and flow_id != "" do
-    case MapUtils.parse_int(flow_id) do
+    case IntegerParser.parse(flow_id) do
       nil ->
         socket
 
@@ -571,7 +562,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   # Zone with target_type/target_id (zones still use the old pattern)
   defp handle_element_target(%{"target_type" => "flow", "target_id" => flow_id}, socket)
        when not is_nil(flow_id) and flow_id != "" do
-    case MapUtils.parse_int(flow_id) do
+    case IntegerParser.parse(flow_id) do
       nil ->
         socket
 
@@ -592,7 +583,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp init_flow(socket, flow_id) do
     project = socket.assigns.project
 
-    case Flows.get_flow(project.id, flow_id) do
+    case Scenes.get_flow(project.id, flow_id) do
       nil ->
         {:error, put_flash(socket, :error, dgettext("scenes", "Flow not found."))}
 
@@ -603,15 +594,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp build_flow_context(project, flow) do
-    nodes_map = DebugExecutionHandlers.build_nodes_map(flow.id)
-    all_sheets = Sheets.list_all_sheets(project.id)
+    nodes_map = Scenes.runtime_nodes(project.id, flow.id)
 
     %{
       project_id: project.id,
       flow: flow,
       nodes: nodes_map,
-      connections: DebugExecutionHandlers.build_connections(flow.id),
-      sheets_map: FormHelpers.sheets_map(all_sheets)
+      connections: Scenes.runtime_connections(project.id, flow.id),
+      sheets_map: FlowPresenter.speakers_map(project.id)
     }
   end
 
@@ -640,7 +630,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp apply_finished_flow(socket, state) do
     state.variables
-    |> FormulaRuntime.recompute_formulas()
+    |> Scenes.recompute_runtime_formulas()
     |> then(&{:ok, apply_variable_update(socket, &1)})
   end
 
@@ -661,24 +651,24 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp handle_initial_flow_jump(socket, context, jumped_state, target_flow_id) do
-    placeholder_slide = Slide.build(nil, jumped_state, context.sheets_map, context.project_id)
+    placeholder_slide = Scenes.build_runtime_slide(nil, jumped_state, context.sheets_map, context.project_id)
     socket = activate_flow_socket(socket, context, jumped_state, placeholder_slide)
     {:noreply, socket} = handle_exploration_flow_jump(socket, jumped_state, target_flow_id)
     {:ok, socket}
   end
 
   defp find_entry_and_step(nodes_map, connections, variables, flow_id) do
-    case DebugExecutionHandlers.find_entry_node(nodes_map) do
+    case Scenes.runtime_entry_node(nodes_map) do
       nil ->
         {:error, dgettext("scenes", "Flow has no entry node.")}
 
       entry_id ->
         state =
           variables
-          |> Flows.evaluator_init(entry_id)
+          |> Scenes.runtime_init(entry_id)
           |> Map.put(:current_flow_id, flow_id)
 
-        case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
+        case Scenes.runtime_step_until_interactive(state, nodes_map, connections) do
           {:finished, final_state, _} -> {:ok, final_state}
           {:flow_jump, jumped_state, _target_id, _} -> {:ok, jumped_state}
           {:flow_return, returned_state, _} -> {:ok, returned_state}
@@ -701,7 +691,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_exploration_flow_jump(socket, state, target_flow_id, depth) do
     state =
-      Flows.evaluator_push_flow_context(
+      Scenes.runtime_push_flow_context(
         state,
         state.current_node_id,
         socket.assigns.flow_nodes,
@@ -709,10 +699,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         ""
       )
 
-    target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
-    target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
+    target_nodes = Scenes.runtime_nodes(socket.assigns.project.id, target_flow_id)
+    target_connections = Scenes.runtime_connections(socket.assigns.project.id, target_flow_id)
 
-    case DebugExecutionHandlers.find_entry_node(target_nodes) do
+    case Scenes.runtime_entry_node(target_nodes) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("scenes", "Target flow has no entry node."))}
 
@@ -728,7 +718,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             execution_log: [log_entry | state.execution_log]
         }
 
-        case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
+        case Scenes.runtime_step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, target_nodes, target_connections)
             handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
@@ -754,13 +744,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp handle_exploration_flow_return(socket, state, depth) do
-    case Flows.evaluator_pop_flow_context(state) do
+    case Scenes.runtime_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
         parent_connections = frame.connections
 
         conn =
-          Flows.evaluator_find_return_connection(
+          Scenes.runtime_find_return_connection(
             parent_connections,
             frame.return_node_id,
             new_state.current_node_id
@@ -785,7 +775,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             %{new_state | status: :finished, current_flow_id: frame.flow_id}
           end
 
-        case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
+        case Scenes.runtime_step_until_interactive(new_state, parent_nodes, parent_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             socket = update_active_flow(socket, stepped, parent_nodes, parent_connections)
             handle_exploration_flow_jump(socket, stepped, next_flow_id, depth + 1)
@@ -861,7 +851,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     node = Map.get(socket.assigns.flow_nodes, new_state.current_node_id)
 
     slide =
-      Slide.build(node, new_state, socket.assigns.flow_sheets_map, socket.assigns.project.id)
+      Scenes.build_runtime_slide(node, new_state, socket.assigns.flow_sheets_map, socket.assigns.project.id)
 
     assign(socket, :active_flow, %{af | engine_state: new_state, slide: slide})
   end
@@ -872,7 +862,11 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     if renderable_flow_node?(node) do
       update_flow_slide(socket, new_state)
     else
-      case PlayerEngine.step_until_interactive(new_state, socket.assigns.flow_nodes, socket.assigns.flow_connections) do
+      case Scenes.runtime_step_until_interactive(
+             new_state,
+             socket.assigns.flow_nodes,
+             socket.assigns.flow_connections
+           ) do
         {_status, resolved_state, _skipped} -> update_flow_slide(socket, resolved_state)
         _ -> update_flow_slide(socket, new_state)
       end
@@ -908,13 +902,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp build_flow_slide(state, nodes_map, sheets_map, project_id) do
     nodes_map
     |> Map.get(state.current_node_id)
-    |> Slide.build(state, sheets_map, project_id)
+    |> Scenes.build_runtime_slide(state, sheets_map, project_id)
   end
 
   defp renderable_slide?(slide), do: slide.type in [:dialogue, :outcome]
 
   defp advance_empty_slide(state, nodes_map, connections, sheets_map, project_id, attempts) do
-    case PlayerEngine.step_until_interactive(state, nodes_map, connections) do
+    case Scenes.runtime_step_until_interactive(state, nodes_map, connections) do
       {:finished, new_state, _} ->
         finish_or_render_final_slide(new_state, nodes_map, sheets_map, project_id)
 
@@ -944,7 +938,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     node = Map.get(nodes, new_state.current_node_id)
 
     slide =
-      Slide.build(node, new_state, socket.assigns.flow_sheets_map, socket.assigns.project.id)
+      Scenes.build_runtime_slide(node, new_state, socket.assigns.flow_sheets_map, socket.assigns.project.id)
 
     socket
     |> assign(:flow_nodes, nodes)
@@ -1124,9 +1118,9 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     if assignments == [] do
       socket
     else
-      case Flows.execute_instructions(assignments, socket.assigns.variables) do
+      case Scenes.execute_runtime_instructions(assignments, socket.assigns.variables) do
         {:ok, new_variables, _changes, _errors, _warnings} ->
-          new_variables = FormulaRuntime.recompute_formulas(new_variables)
+          new_variables = Scenes.recompute_runtime_formulas(new_variables)
           refresh_exploration_state(socket, new_variables)
 
         _ ->
@@ -1159,17 +1153,17 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     case item["condition"] do
       nil -> true
       condition when condition == %{} -> true
-      condition -> elem(Flows.evaluate_condition(condition, variables), 0)
+      condition -> elem(Scenes.evaluate_runtime_condition(condition, variables), 0)
     end
   end
 
   defp load_item_sheet_data(item, project_id) do
-    case MapUtils.parse_int(item["sheet_id"]) do
+    case IntegerParser.parse(item["sheet_id"]) do
       nil ->
         item
 
       sheet_id ->
-        case Sheets.get_sheet(project_id, sheet_id) do
+        case Scenes.get_sheet(project_id, sheet_id) do
           nil -> item
           sheet -> Map.put(item, "_sheet_name", sheet.name)
         end
@@ -1197,7 +1191,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp evaluate_visibility(condition, _effect, _vars) when condition == %{}, do: :visible
 
   defp evaluate_visibility(condition, effect, variables) do
-    {passed, _} = Flows.evaluate_condition(condition, variables)
+    {passed, _} = Scenes.evaluate_runtime_condition(condition, variables)
 
     if passed do
       :visible
@@ -1456,15 +1450,14 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   defp load_ambient_flow(socket, ambient_flow) do
     project = socket.assigns.project
 
-    case Flows.get_flow(project.id, ambient_flow.flow_id) do
+    case Scenes.get_flow(project.id, ambient_flow.flow_id) do
       nil ->
         :skip
 
       _flow ->
-        nodes_map = DebugExecutionHandlers.build_nodes_map(ambient_flow.flow_id)
-        connections = DebugExecutionHandlers.build_connections(ambient_flow.flow_id)
-        all_sheets = Sheets.list_all_sheets(project.id)
-        sheets_map = FormHelpers.sheets_map(all_sheets)
+        nodes_map = Scenes.runtime_nodes(project.id, ambient_flow.flow_id)
+        connections = Scenes.runtime_connections(project.id, ambient_flow.flow_id)
+        sheets_map = FlowPresenter.speakers_map(project.id)
 
         case find_entry_and_step(
                nodes_map,
@@ -1513,12 +1506,12 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     state = current.engine_state
 
     # Resolve text with variable interpolation (reuse Slide logic)
-    slide = Slide.build(node, state, current.sheets_map, socket.assigns.project.id)
+    slide = Scenes.build_runtime_slide(node, state, current.sheets_map, socket.assigns.project.id)
     plain_text = HtmlUtils.strip_html(slide.text || "")
     duration = ambient_bubble_duration(plain_text)
 
     # Find pin matching the speaker's sheet_id
-    speaker_sheet_id = MapUtils.parse_int(data["speaker_sheet_id"])
+    speaker_sheet_id = IntegerParser.parse(data["speaker_sheet_id"])
     pin = find_pin_for_speaker(socket.assigns.pins, speaker_sheet_id)
 
     socket =
@@ -1553,7 +1546,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     state =
       case state.pending_choices do
         %{responses: [first | _]} ->
-          case Flows.evaluator_choose_response(state, first.id, connections) do
+          case Scenes.runtime_choose_response(state, first.id, connections) do
             {:ok, new_state} -> new_state
             {:error, _, _} -> state
           end
@@ -1563,7 +1556,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
       end
 
     # Step to next interactive node
-    case PlayerEngine.step_until_interactive(state, nodes, connections) do
+    case Scenes.runtime_step_until_interactive(state, nodes, connections) do
       {:flow_jump, new_state, target_flow_id, _skipped} ->
         handle_ambient_flow_jump(socket, current, new_state, target_flow_id)
 
@@ -1594,7 +1587,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
 
   defp handle_ambient_flow_jump(socket, current, state, target_flow_id, depth) do
     state =
-      Flows.evaluator_push_flow_context(
+      Scenes.runtime_push_flow_context(
         state,
         state.current_node_id,
         current.nodes,
@@ -1602,10 +1595,10 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
         ""
       )
 
-    target_nodes = DebugExecutionHandlers.build_nodes_map(target_flow_id)
-    target_connections = DebugExecutionHandlers.build_connections(target_flow_id)
+    target_nodes = Scenes.runtime_nodes(socket.assigns.project.id, target_flow_id)
+    target_connections = Scenes.runtime_connections(socket.assigns.project.id, target_flow_id)
 
-    case DebugExecutionHandlers.find_entry_node(target_nodes) do
+    case Scenes.runtime_entry_node(target_nodes) do
       nil ->
         finish_ambient_flow(socket)
 
@@ -1621,7 +1614,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             execution_log: [log_entry | state.execution_log]
         }
 
-        case PlayerEngine.step_until_interactive(new_state, target_nodes, target_connections) do
+        case Scenes.runtime_step_until_interactive(new_state, target_nodes, target_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             new_current = %{
               current
@@ -1671,13 +1664,13 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
   end
 
   defp handle_ambient_flow_return(socket, current, state, depth) do
-    case Flows.evaluator_pop_flow_context(state) do
+    case Scenes.runtime_pop_flow_context(state) do
       {:ok, frame, new_state} ->
         parent_nodes = frame.nodes
         parent_connections = frame.connections
 
         conn =
-          Flows.evaluator_find_return_connection(
+          Scenes.runtime_find_return_connection(
             parent_connections,
             frame.return_node_id,
             new_state.current_node_id
@@ -1699,7 +1692,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
             %{new_state | status: :finished, current_flow_id: frame.flow_id}
           end
 
-        case PlayerEngine.step_until_interactive(new_state, parent_nodes, parent_connections) do
+        case Scenes.runtime_step_until_interactive(new_state, parent_nodes, parent_connections) do
           {:flow_jump, stepped, next_flow_id, _} ->
             new_current = %{
               current
@@ -1773,7 +1766,7 @@ defmodule StoryarnWeb.SceneLive.ExplorationLive do
     if new_variables == socket.assigns.variables do
       socket
     else
-      new_variables = FormulaRuntime.recompute_formulas(new_variables)
+      new_variables = Scenes.recompute_runtime_formulas(new_variables)
       apply_variable_update(socket, new_variables)
     end
   end

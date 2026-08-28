@@ -6,7 +6,7 @@ defmodule StoryarnWeb.UserLive.RegistrationTest do
 
   alias Storyarn.Accounts
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform.Onboarding
   alias Storyarn.Workspaces
 
   defp get_registration_vue(view) do

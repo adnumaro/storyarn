@@ -8,7 +8,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.CollaborationHelpers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
 
   @doc """

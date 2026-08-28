@@ -3,10 +3,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   use StoryarnWeb, :live_view
 
-  import StoryarnWeb.ProjectLive.Components.SettingsComponents
-
   alias Storyarn.Localization
-  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -68,9 +65,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project, membership: membership} = socket.assigns
+    %{project: project} = socket.assigns
 
-    if Projects.can?(membership.role, :manage_project) do
+    if Authorize.authorize(socket, :manage_project) == :ok do
       provider_config = get_provider_config(project.id)
 
       socket =
@@ -189,4 +186,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   defp changeset_errors(changeset) do
     Map.new(changeset.errors, fn {field, {message, _metadata}} -> {field, message} end)
   end
+
+  defp get_provider_config(project_id), do: Localization.get_provider_config(project_id)
+  defp provider_changeset(config), do: Localization.change_provider_config(config)
 end

@@ -5,11 +5,11 @@ defmodule Storyarn.Workers.ExpireProjectImportsWorkerIntegrationTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Imports
-  alias Storyarn.Imports.PlanCleanupRequest
-  alias Storyarn.Imports.ProjectImportAttempt
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects.Imports.PlanCleanupRequest
+  alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.Workers.ExpireProjectImportsWorker
 
   test "reports and drains an attempt backlog larger than one bounded batch" do

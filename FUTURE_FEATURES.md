@@ -288,18 +288,18 @@ The `variable_references` table already tracks which flow nodes read/write which
 
 ### Implementation
 
-The data layer already exists:
+The shared projection and its Sheet-owned reads already exist:
 
 ```elixir
 # Already implemented:
-Storyarn.Flows.VariableReferenceTracker.get_variable_usage(block_id, project_id)
-# Returns: [%{flow_name, node_id, node_type, kind: "read"|"write", source_sheet, source_variable}]
+Storyarn.Sheets.check_stale_variable_references(block_id, project_id)
+# Returns tracked Flow and Scene usages for the block, including kind and stale state.
 ```
 
 What's needed:
 
 1. **Sheet UI:** Add "Timeline" or "Usage" tab to the sheet editor
-2. **Query:** Group variable_references by variable, sorted by flow
+2. **Query:** Expose a paginated `Storyarn.Sheets` query that groups variable_references by variable and flow
 3. **Navigation:** Click a reference to jump to the flow node
 4. **Stale detection:** Show warning if a variable reference points to a renamed/deleted variable
 

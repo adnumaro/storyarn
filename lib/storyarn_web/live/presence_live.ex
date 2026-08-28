@@ -15,7 +15,7 @@ defmodule StoryarnWeb.PresenceLive do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Collaboration.Presence
+  alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 
   @impl true
@@ -55,16 +55,24 @@ defmodule StoryarnWeb.PresenceLive do
   end
 
   @impl true
-  def handle_info({Presence, {:join, presence}}, socket) do
-    {:noreply, socket} = Collab.handle_presence_join(socket, presence)
-    broadcast_online_users(socket.assigns.project_id, socket.assigns.online_users)
-    {:noreply, socket}
+  def handle_info({source, {:join, presence}}, socket) do
+    if Collaboration.presence_event_source?(source) do
+      {:noreply, socket} = Collab.handle_presence_join(socket, presence)
+      broadcast_online_users(socket.assigns.project_id, socket.assigns.online_users)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
-  def handle_info({Presence, {:leave, presence}}, socket) do
-    {:noreply, socket} = Collab.handle_presence_leave(socket, presence)
-    broadcast_online_users(socket.assigns.project_id, socket.assigns.online_users)
-    {:noreply, socket}
+  def handle_info({source, {:leave, presence}}, socket) do
+    if Collaboration.presence_event_source?(source) do
+      {:noreply, socket} = Collab.handle_presence_leave(socket, presence)
+      broadcast_online_users(socket.assigns.project_id, socket.assigns.online_users)
+      {:noreply, socket}
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_info(_msg, socket), do: {:noreply, socket}

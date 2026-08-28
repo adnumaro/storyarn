@@ -6,9 +6,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Flows
-  alias Storyarn.Scenes.RoutePoints
+  alias Storyarn.Scenes
   alias StoryarnWeb.PrivateMedia
 
   # ---- Scene ----
@@ -17,11 +15,11 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
     if value == trunc(value) do
       Integer.to_string(trunc(value))
     else
-      Flows.evaluator_format_value(value)
+      Scenes.format_runtime_value(value)
     end
   end
 
-  def format_display_value(value), do: Flows.evaluator_format_value(value)
+  def format_display_value(value), do: Scenes.format_runtime_value(value)
 
   def prepare_scene_for_vue(nil), do: nil
 
@@ -477,7 +475,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp route_waypoint(wp) do
     stop? = Map.get(wp, "stop", false)
-    pause_ms = RoutePoints.waypoint_pause_ms(wp)
+    pause_ms = Scenes.waypoint_pause_ms(wp)
 
     %{x: wp["x"], y: wp["y"], isPinStop: false, isStop: stop?, pauseMs: pause_ms}
   end
@@ -497,11 +495,12 @@ defmodule StoryarnWeb.SceneLive.Helpers.PropsSerializer do
 
   defp pin_avatar_url(_), do: nil
 
-  defp pin_icon_asset_url(%{icon_asset: %Asset{} = asset}), do: PrivateMedia.asset_url(asset)
+  defp pin_icon_asset_url(%{icon_asset: %{id: id} = asset}) when is_integer(id), do: PrivateMedia.asset_url(asset)
 
   defp pin_icon_asset_url(_), do: nil
 
-  defp zone_label_icon_asset_url(%{label_icon_asset: %Asset{} = asset}), do: PrivateMedia.asset_url(asset)
+  defp zone_label_icon_asset_url(%{label_icon_asset: %{id: id} = asset}) when is_integer(id),
+    do: PrivateMedia.asset_url(asset)
 
   defp zone_label_icon_asset_url(_), do: nil
 end

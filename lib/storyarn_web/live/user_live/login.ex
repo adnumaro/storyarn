@@ -7,8 +7,6 @@ defmodule StoryarnWeb.UserLive.Login do
     only: [add_error: 3, cast: 3, get_field: 2, validate_length: 3, validate_required: 2]
 
   alias Storyarn.Accounts
-  alias Storyarn.RateLimiter
-  alias Storyarn.Shared.Validations
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.PublicURLs
   alias StoryarnWeb.UserLoginToken
@@ -103,7 +101,7 @@ defmodule StoryarnWeb.UserLive.Login do
   end
 
   defp authenticate(socket, changeset, user_params) do
-    case RateLimiter.check_login(socket.assigns.client_ip) do
+    case Accounts.check_login_rate(socket.assigns.client_ip) do
       :ok ->
         email = get_field(changeset, :email) || ""
         password = get_field(changeset, :password) || ""
@@ -143,7 +141,7 @@ defmodule StoryarnWeb.UserLive.Login do
     attrs
     |> initial_login_changeset()
     |> validate_required([:email, :password])
-    |> Validations.validate_email_format()
+    |> Accounts.validate_email_format()
     |> validate_length(:email, max: 160)
   end
 
@@ -164,6 +162,6 @@ defmodule StoryarnWeb.UserLive.Login do
   end
 
   defp local_mail_adapter? do
-    Application.get_env(:storyarn, Storyarn.Mailer)[:adapter] == Swoosh.Adapters.Local
+    Application.get_env(:storyarn, Storyarn.Platform.Mailer)[:adapter] == Swoosh.Adapters.Local
   end
 end

@@ -10,8 +10,8 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.CommandPalette.Definition
-  alias Storyarn.Notifications
+  alias Storyarn.Platform.CommandPalette.Definition
+  alias Storyarn.Platform.Notifications
 
   defmodule TestAdapter do
     @moduledoc false
@@ -474,7 +474,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
           data: %{"assignments" => [assignment]}
         })
 
-      :ok = Storyarn.References.update_flow_node_variable_references(node)
+      :ok = Storyarn.Projects.References.update_flow_node_variable_references(node)
 
       scene = scene_fixture(project, %{name: "Camp"})
       pin = pin_fixture(scene, %{"label" => "Gate", "condition" => condition})
@@ -934,7 +934,7 @@ defmodule StoryarnWeb.Live.Hooks.PaletteTest do
           data: %{"referenced_flow_id" => target_flow.id}
         })
 
-      Storyarn.Collaboration.subscribe_changes({:flow, host_flow.id})
+      Storyarn.Platform.Collaboration.subscribe_changes({:flow, host_flow.id})
 
       render_hook(view, "palette_delete", %{
         "type" => "flow",

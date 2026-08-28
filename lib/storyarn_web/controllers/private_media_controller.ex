@@ -3,9 +3,6 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   use StoryarnWeb, :controller
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Assets.Storage
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateDownload
@@ -13,11 +10,9 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   def asset(conn, %{"id" => asset_id_param}) do
     with {:ok, asset_id} <- parse_positive_integer(asset_id_param),
-         %Asset{} = asset <- Assets.get_asset(asset_id),
-         {:ok, _project, _membership} <-
-           Projects.get_project(conn.assigns.current_scope, asset.project_id),
-         true <- PrivateMedia.project_asset_key?(asset.project_id, asset.key) do
-      deliver(conn, asset.key, asset.content_type)
+         {:ok, %{key: key, content_type: content_type}} <-
+           Projects.authorize_asset_download(conn.assigns.current_scope, asset_id) do
+      deliver(conn, key, content_type)
     else
       _ -> not_found(conn)
     end
@@ -35,13 +30,8 @@ defmodule StoryarnWeb.PrivateMediaController do
   end
 
   def workspace_banner(conn, %{"workspace_slug" => workspace_slug}) do
-    with {:ok, workspace, _membership} <-
-           Workspaces.get_workspace_by_slug(conn.assigns.current_scope, workspace_slug),
-         banner_url when is_binary(banner_url) <- workspace.banner_url,
-         {:ok, key} <- Storage.key_from_url(banner_url),
-         :ok <- validate_workspace_banner_key(key, workspace.slug) do
-      deliver(conn, key, MIME.from_path(key))
-    else
+    case Workspaces.get_workspace_banner(conn.assigns.current_scope, workspace_slug) do
+      {:ok, %{key: key, content_type: content_type}} -> deliver(conn, key, content_type)
       _ -> not_found(conn)
     end
   end
@@ -62,15 +52,6 @@ defmodule StoryarnWeb.PrivateMediaController do
       {:ok, key}
     else
       _ -> {:error, :invalid_key}
-    end
-  end
-
-  defp validate_workspace_banner_key(key, workspace_slug) do
-    if PrivateMedia.valid_storage_key?(key) and
-         String.starts_with?(key, "workspaces/#{workspace_slug}/banner/") do
-      :ok
-    else
-      {:error, :invalid_key}
     end
   end
 

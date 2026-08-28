@@ -7,35 +7,50 @@ defmodule StoryarnWeb.RestoreContainmentTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows
+  alias Storyarn.Flows.Versioning.RestorePolicy, as: FlowRestorePolicy
   alias Storyarn.Repo
+  alias Storyarn.Scenes
+  alias Storyarn.Scenes.Versioning.RestorePolicy, as: SceneRestorePolicy
   alias Storyarn.Sheets
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.RestorePolicy
+  alias Storyarn.Sheets.Versioning.RestorePolicy, as: SheetRestorePolicy
 
   setup :register_and_log_in_user
 
   setup do
-    original_config =
-      Application.get_env(:storyarn, RestorePolicy)
+    original_sheet_config = Application.get_env(:storyarn, SheetRestorePolicy)
+    original_flow_config = Application.get_env(:storyarn, FlowRestorePolicy)
+    original_scene_config = Application.get_env(:storyarn, SceneRestorePolicy)
 
     Application.put_env(
       :storyarn,
-      RestorePolicy,
-      sheet_version_restore: false,
-      flow_version_restore: false,
+      SheetRestorePolicy,
+      sheet_version_restore: false
+    )
+
+    Application.put_env(
+      :storyarn,
+      FlowRestorePolicy,
+      flow_version_restore: false
+    )
+
+    Application.put_env(
+      :storyarn,
+      SceneRestorePolicy,
       scene_version_restore: false
     )
 
     on_exit(fn ->
-      if is_nil(original_config) do
-        Application.delete_env(:storyarn, RestorePolicy)
-      else
-        Application.put_env(:storyarn, RestorePolicy, original_config)
-      end
+      restore_config(SheetRestorePolicy, original_sheet_config)
+      restore_config(FlowRestorePolicy, original_flow_config)
+      restore_config(SceneRestorePolicy, original_scene_config)
     end)
 
     :ok
   end
+
+  defp restore_config(module, nil), do: Application.delete_env(:storyarn, module)
+  defp restore_config(module, config), do: Application.put_env(:storyarn, module, config)
 
   test "Sheet, Flow, and Scene expose an explicit disabled restore capability", %{
     conn: conn,
@@ -101,8 +116,10 @@ defmodule StoryarnWeb.RestoreContainmentTest do
     sheet = sheet_fixture(project, %{name: "Original"})
     block = block_fixture(sheet)
 
+    sheet_with_blocks = Repo.preload(sheet, :blocks, force: true)
+
     {:ok, version} =
-      Versioning.create_version("sheet", sheet, project.id, user.id, title: "Restore target")
+      Sheets.create_version(sheet_with_blocks, user.id, title: "Restore target")
 
     {:ok, _changed_sheet} = Sheets.update_sheet(sheet, %{name: "Changed"})
 
@@ -123,7 +140,78 @@ defmodule StoryarnWeb.RestoreContainmentTest do
 
     assert Sheets.get_sheet(project.id, sheet.id).name == "Changed"
     assert Enum.map(Sheets.list_blocks(sheet.id), & &1.id) == [block.id]
-    assert Versioning.count_versions("sheet", sheet.id) == 1
+    assert Sheets.count_versions(sheet.id) == 1
+    refute_push_event(view, "show_unsaved_modal", %{})
+    refute_push_event(view, "show_restore_modal", %{})
+    refute_push_event(view, "version_restored", %{})
+  end
+
+  test "forged Flow restore events do not mutate data or create a safety version", %{
+    conn: conn,
+    user: user
+  } do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    flow = flow_fixture(project, %{name: "Original Flow"})
+    _node = node_fixture(flow)
+    node_ids = Enum.map(Flows.list_nodes(flow.id), & &1.id)
+
+    {:ok, version} =
+      Flows.create_version(flow, user.id, title: "Restore target")
+
+    {:ok, _changed_flow} = Flows.update_flow(flow, %{name: "Changed Flow"})
+
+    url =
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+
+    {:ok, view, _html} = live(conn, url)
+    await_async(view)
+
+    params = %{
+      "version_number" => to_string(version.version_number),
+      "request_id" => "contained-flow-request"
+    }
+
+    render_click(view, "preview_restore", params)
+    render_click(view, "review_restore", params)
+    render_click(view, "confirm_restore", params)
+
+    assert Flows.get_flow(project.id, flow.id).name == "Changed Flow"
+    assert Enum.map(Flows.list_nodes(flow.id), & &1.id) == node_ids
+    assert Flows.count_versions(flow.id) == 1
+    refute_push_event(view, "show_unsaved_modal", %{})
+    refute_push_event(view, "show_restore_modal", %{})
+    refute_push_event(view, "version_restored", %{})
+  end
+
+  test "forged Scene restore events do not mutate data or create a safety version", %{
+    conn: conn,
+    user: user
+  } do
+    project = user |> project_fixture() |> Repo.preload(:workspace)
+    scene = scene_fixture(project, %{name: "Original Scene"})
+
+    {:ok, version} =
+      Scenes.create_version(scene, user.id, title: "Restore target")
+
+    {:ok, _changed_scene} = Scenes.update_scene(scene, %{name: "Changed Scene"})
+
+    url =
+      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes/#{scene.id}"
+
+    {:ok, view, _html} = live(conn, url)
+    await_async(view)
+
+    params = %{
+      "version_number" => to_string(version.version_number),
+      "request_id" => "contained-scene-request"
+    }
+
+    render_click(view, "preview_restore", params)
+    render_click(view, "review_restore", params)
+    render_click(view, "confirm_restore", params)
+
+    assert Scenes.get_scene(project.id, scene.id).name == "Changed Scene"
+    assert Scenes.count_versions(scene.id) == 1
     refute_push_event(view, "show_unsaved_modal", %{})
     refute_push_event(view, "show_restore_modal", %{})
     refute_push_event(view, "version_restored", %{})

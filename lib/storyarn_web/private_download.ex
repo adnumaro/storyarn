@@ -9,7 +9,7 @@ defmodule StoryarnWeb.PrivateDownload do
 
   import Plug.Conn
 
-  alias Storyarn.Assets.Storage
+  alias Storyarn.Projects.Assets.Storage
   alias StoryarnWeb.PrivateDownload.Range, as: DownloadRange
 
   require Logger
@@ -21,7 +21,7 @@ defmodule StoryarnWeb.PrivateDownload do
           bytes_sent: non_neg_integer()
         }
 
-  @spec send(Plug.Conn.t(), Storage.key(), keyword()) ::
+  @spec send(Plug.Conn.t(), String.t(), keyword()) ::
           {:ok, Plug.Conn.t()} | {:error, term()}
   def send(conn, key, opts) do
     case send_tracked(conn, key, opts) do
@@ -32,7 +32,7 @@ defmodule StoryarnWeb.PrivateDownload do
     end
   end
 
-  @spec send_tracked(Plug.Conn.t(), Storage.key(), keyword()) ::
+  @spec send_tracked(Plug.Conn.t(), String.t(), keyword()) ::
           {:ok, Plug.Conn.t(), delivery_metadata()} | {:error, term()}
   def send_tracked(conn, key, opts) do
     case Storage.stat(key) do

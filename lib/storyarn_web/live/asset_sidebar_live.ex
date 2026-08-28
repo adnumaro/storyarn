@@ -10,8 +10,8 @@ defmodule StoryarnWeb.AssetSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
+  alias Storyarn.Projects
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @asset_filters ~w(all image audio file)
@@ -97,7 +97,7 @@ defmodule StoryarnWeb.AssetSidebarLive do
   end
 
   defp count_assets(nil), do: %{}
-  defp count_assets(project_id), do: Assets.count_assets_by_type(project_id)
+  defp count_assets(project_id), do: Projects.count_assets_by_type(project_id)
 
   defp shell_topic(project_id), do: ProjectChromeHelpers.shell_topic(project_id)
 end

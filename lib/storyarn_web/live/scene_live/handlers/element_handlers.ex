@@ -183,7 +183,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.ElementHandlers do
 
   @doc "Selects a sheet and switches to pin placement mode."
   def handle_start_pin_from_sheet(%{"sheet-id" => sheet_id}, socket) do
-    raw_sheet = Storyarn.Sheets.get_sheet(socket.assigns.project.id, sheet_id)
+    raw_sheet = Scenes.get_sheet(socket.assigns.project.id, sheet_id)
     sheet = if raw_sheet, do: Scenes.preload_sheet_avatar(raw_sheet)
 
     if sheet do

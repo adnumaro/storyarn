@@ -5,12 +5,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
-  alias Storyarn.Localization
-  alias Storyarn.ProductMetrics.Taxonomy
   alias Storyarn.Projects
-  alias Storyarn.ProjectTemplates
   alias StoryarnWeb.Helpers.Authorize
-  alias StoryarnWeb.LanguagePickerOption
 
   require Logger
 
@@ -38,9 +34,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         v-inject="settings-layout"
         id="project-settings-general"
         project-details={serialize_project_details(@project)}
-        project-metrics-options={Taxonomy.project_options()}
+        project-metrics-options={Projects.project_classification_options()}
         source-language={serialize_source_language(@source_language)}
-        source-language-options={LanguagePickerOption.all()}
+        source-language-options={Projects.source_language_options()}
         theme-primary={@theme_primary}
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
@@ -69,7 +65,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp serialize_source_language(lang) do
     lang.locale_code
-    |> LanguagePickerOption.from_code(label: lang.name || Localization.language_name(lang.locale_code))
+    |> Projects.source_language_option(lang.name)
     |> Map.put(:localeCode, lang.locale_code)
   end
 
@@ -83,7 +79,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
     if can_open_general_settings?(socket.assigns.current_scope, project, membership) do
       if connected?(socket) do
-        ProjectTemplates.subscribe_template_publications(project)
+        Projects.subscribe_project_template_publications(project)
 
         Phoenix.PubSub.subscribe(
           Storyarn.PubSub,
@@ -91,7 +87,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         )
       end
 
-      {:ok, source_language} = Localization.ensure_source_language(project)
+      {:ok, source_language} = Projects.ensure_source_language(project)
       project_changeset = Projects.change_project(project)
 
       socket =
@@ -165,7 +161,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       opts = if reset_translations?(params), do: [reset_translations: true], else: []
 
-      case Localization.change_source_language(
+      case Projects.change_source_language(
              socket.assigns.current_scope,
              socket.assigns.project,
              locale_code,
@@ -212,7 +208,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("publish_template", %{"template" => template_params}, socket) do
-    if ProjectTemplates.can_publish_source_project?(socket.assigns.current_scope, socket.assigns.project) do
+    if Projects.can_publish_project_template?(socket.assigns.current_scope, socket.assigns.project) do
       {:noreply, enqueue_template_publication(socket, template_params)}
     else
       {:noreply,
@@ -266,15 +262,27 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_info({:project_restored, _restore_id}, socket) do
-    project = socket.assigns.project.id |> Projects.get_project!() |> Storyarn.Repo.preload(:workspace)
-
-    {:noreply,
-     socket
-     |> assign(:project, project)
-     |> assign(:current_workspace, project.workspace)
-     |> assign(:project_form, to_form(Projects.change_project(project)))
-     |> assign(:source_language, Localization.get_source_language(project.id))
-     |> assign_theme(project)}
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, socket.assigns.project.id),
+         true <- can_open_general_settings?(socket.assigns.current_scope, project, membership) do
+      {:noreply,
+       socket
+       |> assign(:project, project)
+       |> assign(:membership, membership)
+       |> assign(:current_workspace, project.workspace)
+       |> assign(:project_form, to_form(Projects.change_project(project)))
+       |> assign(:source_language, Projects.get_source_language(project.id))
+       |> assign_theme(project)}
+    else
+      _reason ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("projects", "You don't have permission to manage this project.")
+         )
+         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}")}
+    end
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -284,14 +292,15 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   # ===========================================================================
 
   defp can_open_general_settings?(scope, project, membership) do
-    Projects.can?(membership.role, :manage_project) or ProjectTemplates.can_publish_source_project?(scope, project)
+    Projects.can?(membership.role, :manage_project) or
+      Projects.can_publish_project_template?(scope, project)
   end
 
   defp reset_translations?(%{"reset_translations" => value}) when value in [true, "true"], do: true
   defp reset_translations?(_params), do: false
 
   defp publish_template_from_settings(socket, %{"mode" => "new"} = params) do
-    ProjectTemplates.request_template_publication(
+    Projects.request_project_template_publication(
       socket.assigns.current_scope,
       socket.assigns.project,
       template_attrs(params)
@@ -301,10 +310,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp publish_template_from_settings(socket, %{"mode" => "update"} = params) do
     with {:ok, template_id} <- parse_template_id(params["template_id"]),
          {:ok, template} <- fetch_template(socket.assigns.current_scope, template_id) do
-      ProjectTemplates.request_template_version_publication(
+      Projects.request_project_template_version_publication(
         socket.assigns.current_scope,
-        template,
-        socket.assigns.project,
+        template.id,
+        socket.assigns.project.id,
         template_attrs(params)
       )
     end
@@ -392,7 +401,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp parse_template_id(_value), do: {:error, :invalid_template_id}
 
   defp fetch_template(scope, template_id) do
-    ProjectTemplates.get_template(scope, template_id)
+    Projects.get_project_template(scope, template_id)
   end
 
   defp assign_project_templates(socket) do
@@ -407,7 +416,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     assign(
       socket,
       :template_publications,
-      ProjectTemplates.list_template_publications(socket.assigns.current_scope,
+      Projects.list_project_template_publications(socket.assigns.current_scope,
         source_project_id: socket.assigns.project.id,
         limit: 10
       )
@@ -416,7 +425,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp project_templates_for_project(scope, project) do
     scope
-    |> ProjectTemplates.list_templates(source_project_id: project.id)
+    |> Projects.list_project_templates(source_project_id: project.id)
     |> Enum.filter(&(&1.visibility == "private" and &1.source_project_id == project.id))
   end
 
@@ -456,7 +465,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   defp iso_datetime(datetime), do: DateTime.to_iso8601(datetime)
 
   defp do_save_theme(socket) do
-    alias Storyarn.Shared.ColorUtils
+    alias StoryarnWeb.Helpers.ColorUtils
 
     primary = socket.assigns.theme_primary
     accent = socket.assigns.theme_accent
@@ -488,7 +497,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   defp assign_theme(socket, project) do
-    case Storyarn.Projects.Project.theme_colors(project) do
+    case Projects.project_theme_colors(project) do
       %{primary: p, accent: a} ->
         socket
         |> assign(:theme_primary, p)

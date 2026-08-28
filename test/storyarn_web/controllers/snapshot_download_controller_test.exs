@@ -8,13 +8,13 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
   import Storyarn.WorkspacesFixtures
   import StoryarnWeb.PrivateDownloadAssertions
 
-  alias Storyarn.Assets.Storage
-  alias Storyarn.Billing.StorageReservation
+  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Repo
-  alias Storyarn.Shared.TimeHelpers
   alias Storyarn.SnapshotReadSwitchStorage
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.ProjectSnapshot
   alias Storyarn.Workers.BuildProjectSnapshotWorker
 
   setup :register_and_log_in_user

@@ -1,21 +1,36 @@
-import type {
-  HealthStatus,
-  HealthStatusDetails,
-  HealthStatusItem,
-  HealthStatusReason,
-  HealthStatusSeverity,
-} from "@shared/types/health";
+/**
+ * Flow-owned health read model.
+ *
+ * Keep this structural at the presentation edge: generic health UI may render
+ * it, but Flows does not compile against another context's model.
+ */
+export type FlowHealthDetails = Record<
+  string,
+  string | number | boolean | string[] | number[] | null
+>;
 
-export type FlowHealthDetails = HealthStatusDetails;
-export type FlowHealthReason = HealthStatusReason;
-export type FlowHealthSeverity = HealthStatusSeverity;
+export interface FlowHealthReason {
+  code: string;
+  details?: FlowHealthDetails;
+}
 
-export interface FlowHealthItem extends HealthStatusItem {
+export type FlowHealthSeverity = "error" | "warning" | "info";
+
+export interface FlowHealthStatusItem {
+  label: string;
+  reasons: FlowHealthReason[];
+}
+
+export interface FlowHealthItem extends FlowHealthStatusItem {
   entityType: string;
   entityId: number | string | null;
 }
 
-export type FlowHealth = HealthStatus<FlowHealthItem>;
+export interface FlowHealth {
+  errorItems: FlowHealthItem[];
+  warningItems: FlowHealthItem[];
+  infoItems: FlowHealthItem[];
+}
 
 /** One row of the flows dashboard "Problems" list. Mirrors sheets' `DashboardIssue`:
  * the server sends a CODE and the location label, Vue translates the code against

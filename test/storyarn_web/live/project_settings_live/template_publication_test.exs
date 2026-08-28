@@ -7,10 +7,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.ProjectTemplates
-  alias Storyarn.ProjectTemplates.ProjectTemplate
-  alias Storyarn.ProjectTemplates.ProjectTemplatePublication
-  alias Storyarn.ProjectTemplates.ProjectTemplateVersion
+  alias Storyarn.Projects.ProjectTemplates
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplatePublication
+  alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Repo
 
   defp settings_path(project) do

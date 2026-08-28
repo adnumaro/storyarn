@@ -149,8 +149,14 @@ defmodule StoryarnWeb.WorkspaceLive.ShowTest do
 
       vue = get_dashboard_vue(view)
 
-      assert vue.props["workspace"]["banner_url"] ==
-               "/media/workspaces/#{workspace.slug}/banner"
+      banner_url = vue.props["workspace"]["banner_url"]
+
+      assert String.starts_with?(
+               banner_url,
+               "/media/workspaces/#{workspace.slug}/banner?revision="
+             )
+
+      refute banner_url =~ "example.com"
     end
 
     test "passes workspace description to Vue", %{conn: conn, user: user} do

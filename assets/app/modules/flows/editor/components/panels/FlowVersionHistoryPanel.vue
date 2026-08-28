@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { History, X } from "@lucide/vue";
 import Sidebar from "../../../../../shell/Sidebar.vue";
-import VersionHistory from "../../../../../components/versioning/history/VersionHistory.vue";
-import type { VersionEntry } from "../../../../../components/versioning/history/useVersionHistory";
+import VersionHistory from "../versioning/VersionHistory.vue";
+import type { VersionEntry } from "../versioning/useVersionHistory";
 import { useLive } from "../../../../../shared/composables/useLive";
 
 const {

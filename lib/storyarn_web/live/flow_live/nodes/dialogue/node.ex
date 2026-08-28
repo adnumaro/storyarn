@@ -17,8 +17,6 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Storyarn.Flows
-  alias Storyarn.Localization.RuntimeKey
-  alias StoryarnWeb.FlowLive.Helpers.NodeDataHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
 
   # -- Type metadata --
@@ -28,88 +26,33 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   def label, do: dgettext("flows", "Dialogue")
   def description, do: dgettext("flows", "Character speech and player responses")
 
-  def default_data do
-    %{
-      "speaker_sheet_id" => nil,
-      "text" => "",
-      "stage_directions" => "",
-      "menu_text" => "",
-      "audio_asset_id" => nil,
-      "technical_id" => "",
-      "localization_id" => RuntimeKey.new_dialogue_id(),
-      "avatar_id" => nil,
-      "responses" => []
-    }
-  end
-
-  @form_defaults %{
-    "speaker_sheet_id" => "",
-    "text" => "",
-    "stage_directions" => "",
-    "menu_text" => "",
-    "audio_asset_id" => nil,
-    "technical_id" => "",
-    "localization_id" => "",
-    "avatar_id" => nil,
-    "responses" => []
-  }
-
-  def extract_form_data(data) do
-    Map.merge(@form_defaults, Map.take(data, Map.keys(@form_defaults)), fn
-      _key, default, nil -> default
-      _key, _default, value -> value
-    end)
-  end
+  def default_data, do: Flows.default_node_data(type())
+  def extract_form_data(data), do: Flows.node_form_data(type(), data)
 
   def on_select(_node, socket), do: socket
 
   @doc "Dialogue nodes open the dialogue panel on double-click."
   def on_double_click(_node), do: :dialogue_panel
 
-  def duplicate_data_cleanup(data) do
-    data
-    |> Map.put("technical_id", "")
-    |> Map.put("localization_id", RuntimeKey.new_dialogue_id())
-  end
+  def duplicate_data_cleanup(data), do: Flows.duplicate_node_data(type(), data)
 
   # -- Response event handlers --
 
   @doc "Adds a response to a dialogue node."
   def handle_add_response(%{"node-id" => node_id}, socket) do
-    node = Flows.get_node!(socket.assigns.flow.id, node_id)
-    responses = node.data["responses"] || []
-    new_id = RuntimeKey.new_response_id()
-
-    response_number = length(responses) + 1
-
-    NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      default_text =
-        Gettext.dgettext(Storyarn.Gettext, "flows", "Response %{n}", n: response_number)
-
-      new_response = %{
-        "id" => new_id,
-        "text" => default_text,
-        "condition" => nil,
-        "instruction" => nil,
-        "instruction_assignments" => []
-      }
-
-      Map.update(data, "responses", [new_response], &(&1 ++ [new_response]))
-    end)
+    NodeHelpers.persist_node_update(socket, node_id, :append_dialogue_response)
   end
 
   @doc "Removes a response from a dialogue node."
   def handle_remove_response(%{"response-id" => response_id, "node-id" => node_id}, socket) do
-    NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      Map.update(data, "responses", [], fn resps ->
-        Enum.reject(resps, &(&1["id"] == response_id))
-      end)
-    end)
+    NodeHelpers.persist_node_update(socket, node_id, :remove_dialogue_response, %{
+      response_id: response_id
+    })
   end
 
   @doc "Updates response text."
   def handle_update_response_text(%{"response-id" => response_id, "node-id" => node_id, "value" => text}, socket) do
-    update_response_field(socket, node_id, response_id, "text", text)
+    update_response(socket, node_id, :put_response_text, response_id, text)
   end
 
   @doc "Updates response condition."
@@ -117,8 +60,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
         %{"response-id" => response_id, "node-id" => node_id, "value" => condition},
         socket
       ) do
-    value = if condition == "", do: nil, else: condition
-    update_response_field(socket, node_id, response_id, "condition", value)
+    update_response(socket, node_id, :put_response_condition, response_id, condition)
   end
 
   @doc "Updates response instruction (legacy plain text)."
@@ -126,8 +68,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
         %{"response-id" => response_id, "node-id" => node_id, "value" => instruction},
         socket
       ) do
-    value = if instruction == "", do: nil, else: instruction
-    update_response_field(socket, node_id, response_id, "instruction", value)
+    update_response(socket, node_id, :put_response_instruction, response_id, instruction)
   end
 
   @doc "Updates response instruction assignments (structured builder data)."
@@ -135,8 +76,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
         %{"assignments" => assignments, "response-id" => response_id, "node-id" => node_id},
         socket
       ) do
-    sanitized = Flows.instruction_sanitize(assignments)
-    update_response_field(socket, node_id, response_id, "instruction_assignments", sanitized)
+    update_response(socket, node_id, :put_response_assignments, response_id, assignments)
   end
 
   # -- Technical ID generation --
@@ -144,13 +84,7 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
   @doc "Generates a technical ID for a dialogue node."
   def handle_generate_technical_id(socket) do
     node = socket.assigns.selected_node
-    flow = socket.assigns.flow
-    speaker_sheet_id = node.data["speaker_sheet_id"]
-    speaker_name = get_speaker_name(socket, speaker_sheet_id)
-    speaker_count = count_speaker_in_flow(flow, speaker_sheet_id, node.id)
-    technical_id = generate_technical_id(flow.shortcut, speaker_name, speaker_count)
-
-    NodeHelpers.update_node_field(socket, node.id, "technical_id", technical_id)
+    NodeHelpers.persist_node_update(socket, node.id, :generate_technical_id)
   end
 
   @doc """
@@ -196,49 +130,10 @@ defmodule StoryarnWeb.FlowLive.Nodes.Dialogue.Node do
 
   # -- Private helpers --
 
-  defp update_response_field(socket, node_id, response_id, field, value) do
-    NodeHelpers.persist_node_update(socket, node_id, fn data ->
-      Map.update(data, "responses", [], &set_response_field(&1, response_id, field, value))
-    end)
-  end
-
-  defp set_response_field(responses, response_id, field, value) do
-    Enum.map(responses, fn
-      %{"id" => ^response_id} = resp -> Map.put(resp, field, value)
-      resp -> resp
-    end)
-  end
-
-  defp get_speaker_name(_socket, nil), do: nil
-
-  defp get_speaker_name(socket, speaker_sheet_id) do
-    Enum.find_value(socket.assigns.all_sheets, fn sheet ->
-      if to_string(sheet.id) == to_string(speaker_sheet_id), do: sheet.name
-    end)
-  end
-
-  defp count_speaker_in_flow(flow, speaker_sheet_id, current_node_id) do
-    nodes = if Ecto.assoc_loaded?(flow.nodes), do: flow.nodes, else: Flows.list_nodes(flow.id)
-
-    same_speaker_nodes =
-      nodes
-      |> Enum.filter(fn node ->
-        node.type == "dialogue" &&
-          to_string(node.data["speaker_sheet_id"]) == to_string(speaker_sheet_id)
-      end)
-      |> Enum.sort_by(& &1.inserted_at)
-
-    case Enum.find_index(same_speaker_nodes, &(&1.id == current_node_id)) do
-      nil -> length(same_speaker_nodes) + 1
-      index -> index + 1
-    end
-  end
-
-  defp generate_technical_id(flow_slug, speaker_name, speaker_count) do
-    flow_part = NodeDataHelpers.normalize_for_id(flow_slug || "")
-    speaker_part = NodeDataHelpers.normalize_for_id(speaker_name || "")
-    flow_part = if flow_part == "", do: "dlg", else: flow_part
-    speaker_part = if speaker_part == "", do: "narrator", else: speaker_part
-    "#{flow_part}_#{speaker_part}_#{speaker_count}"
+  defp update_response(socket, node_id, operation, response_id, value) do
+    NodeHelpers.persist_node_update(socket, node_id, operation, %{
+      response_id: response_id,
+      value: value
+    })
   end
 end

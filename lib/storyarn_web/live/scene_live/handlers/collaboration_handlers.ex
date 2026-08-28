@@ -11,7 +11,7 @@ defmodule StoryarnWeb.SceneLive.Handlers.CollaborationHandlers do
   import StoryarnWeb.SceneLive.Helpers.SceneSerializer
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Collaboration
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Scenes
   alias StoryarnWeb.Live.Shared.CollaborationHelpers, as: Collab
 

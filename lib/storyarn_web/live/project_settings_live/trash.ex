@@ -3,12 +3,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Assets
-  alias Storyarn.Collaboration
-  alias Storyarn.Flows
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
-  alias Storyarn.Scenes
-  alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
   @page_size 25
@@ -148,7 +144,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     with {:ok, asset_id} <- parse_positive_integer(id),
          {:ok, expected_generation} <- parse_non_negative_integer(generation),
          {:ok, _restored} <-
-           Assets.restore_trashed_asset(
+           Projects.restore_trashed_asset(
              socket.assigns.project.id,
              asset_id,
              expected_generation,
@@ -194,7 +190,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     with {:ok, asset_id} <- parse_positive_integer(id),
          {:ok, expected_generation} <- parse_non_negative_integer(generation),
          {:ok, _purged} <-
-           Assets.purge_trashed_asset(
+           Projects.purge_trashed_asset(
              socket.assigns.project.id,
              asset_id,
              expected_generation,
@@ -290,11 +286,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     |> assign(:trash_type_counts, page.type_counts)
   end
 
-  defp fetch_trashed_item(project_id, "sheet", id), do: fetch_item(:sheet, Sheets.get_trashed_sheet(project_id, id))
-  defp fetch_trashed_item(project_id, "flow", id), do: fetch_item(:flow, Flows.get_flow_including_deleted(project_id, id))
+  defp fetch_trashed_item(project_id, "sheet", id), do: fetch_item(:sheet, Projects.get_trashed_sheet(project_id, id))
+
+  defp fetch_trashed_item(project_id, "flow", id),
+    do: fetch_item(:flow, Projects.get_flow_including_deleted(project_id, id))
 
   defp fetch_trashed_item(project_id, "scene", id),
-    do: fetch_item(:scene, Scenes.get_scene_including_deleted(project_id, id))
+    do: fetch_item(:scene, Projects.get_scene_including_deleted(project_id, id))
 
   defp fetch_trashed_item(_project_id, _type, _id), do: :error
 
@@ -337,9 +335,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   defp normalize_page(_page), do: 1
 
-  defp restore_item(%{type: :sheet, entity: sheet}), do: Sheets.restore_sheet(sheet)
-  defp restore_item(%{type: :flow, entity: flow}), do: Flows.restore_flow(flow)
-  defp restore_item(%{type: :scene, entity: scene}), do: Scenes.restore_scene(scene)
+  defp restore_item(%{type: :sheet, entity: sheet}), do: Projects.restore_trashed_sheet(sheet)
+
+  defp restore_item(%{type: :flow, entity: %{id: flow_id, project_id: project_id}}) do
+    Projects.restore_trashed_flow(project_id, flow_id)
+  end
+
+  defp restore_item(%{type: :scene, entity: scene}), do: Projects.restore_trashed_scene(scene)
 
   defp restore_error_message({:invalid_project_reference, _context, _value}), do: unavailable_reference_message()
 
@@ -373,15 +375,18 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
 
   defp asset_purge_error_message(_reason), do: dgettext("projects", "Failed to delete item.")
 
-  defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Sheets.permanently_delete_sheet(sheet)
-  defp permanently_delete_item(%{type: :flow, entity: flow}), do: Flows.hard_delete_flow(flow)
-  defp permanently_delete_item(%{type: :scene, entity: scene}), do: Scenes.hard_delete_scene(scene)
+  defp permanently_delete_item(%{type: :sheet, entity: sheet}), do: Projects.permanently_delete_trashed_sheet(sheet)
+
+  defp permanently_delete_item(%{type: :flow, entity: flow}),
+    do: Projects.permanently_delete_trashed_flow(flow.project_id, flow.id)
+
+  defp permanently_delete_item(%{type: :scene, entity: scene}), do: Projects.permanently_delete_trashed_scene(scene)
 
   defp purge_asset_items([], _project_id, _actor_id), do: []
 
   defp purge_asset_items(items, project_id, actor_id) do
     candidates = Enum.map(items, &{&1.id, &1.deletion_generation})
-    [Assets.purge_trashed_assets(project_id, candidates, actor_id)]
+    [Projects.purge_trashed_assets(project_id, candidates, actor_id)]
   end
 
   defp purge_listed_item(item, project_id) do

@@ -7,8 +7,8 @@ defmodule StoryarnWeb.BlogURLs do
   address.
   """
 
-  alias Storyarn.Blog
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Blog
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   def index_path(locale \\ Blog.default_locale()) do

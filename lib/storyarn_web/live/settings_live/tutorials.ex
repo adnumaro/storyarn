@@ -5,8 +5,7 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
 
   use StoryarnWeb, :live_view
 
-  alias Storyarn.Analytics
-  alias Storyarn.Onboarding
+  alias Storyarn.Platform
 
   @impl true
   def mount(_params, _session, socket) do
@@ -45,9 +44,9 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
 
   @impl true
   def handle_event("restart_tutorial", %{"tutorial" => tutorial}, socket) do
-    case Onboarding.restart_tutorial(socket.assigns.current_scope, tutorial) do
+    case Platform.restart_onboarding_tutorial(socket.assigns.current_scope, tutorial) do
       {:ok, _progress} ->
-        Analytics.track(socket.assigns.current_scope, "onboarding tutorial interacted", %{
+        Platform.track_analytics(socket.assigns.current_scope, "onboarding tutorial interacted", %{
           action: "restarted",
           guide: tutorial,
           source: "settings"
@@ -61,9 +60,9 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
   end
 
   def handle_event("restart_all_tutorials", _params, socket) do
-    case Onboarding.restart_all(socket.assigns.current_scope) do
+    case Platform.restart_all_onboarding_tutorials(socket.assigns.current_scope) do
       {:ok, _progress} ->
-        Analytics.track(socket.assigns.current_scope, "onboarding tutorial interacted", %{
+        Platform.track_analytics(socket.assigns.current_scope, "onboarding tutorial interacted", %{
           action: "restarted",
           guide: "all",
           source: "settings"
@@ -77,7 +76,7 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
   end
 
   defp refresh_tutorials(socket) do
-    summary = Onboarding.summary(socket.assigns.current_scope)
+    summary = Platform.onboarding_summary(socket.assigns.current_scope)
 
     socket
     |> assign(:onboarding, summary)
@@ -85,7 +84,7 @@ defmodule StoryarnWeb.SettingsLive.Tutorials do
   end
 
   defp serialize_tutorials(summary) do
-    Enum.map(Onboarding.tutorials(), fn tutorial ->
+    Enum.map(Platform.onboarding_tutorials(), fn tutorial ->
       key = Atom.to_string(tutorial)
       guide = Map.fetch!(summary.guides, key)
 

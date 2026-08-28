@@ -1,1058 +1,377 @@
 defmodule Storyarn.Sheets do
-  @moduledoc """
-  The Sheets context.
+  @moduledoc "Public facade of the Sheets bounded context.\n\nThe facade composes capability boundaries while keeping commands, queries,\nprojections, rules, execution modules, events, and adapters private. Its\npublic functions, documentation, types, and specs are pinned by architecture\ntests so an internal reorganization cannot silently erode the client contract.\n"
+  alias Storyarn.Sheets.Access
+  alias Storyarn.Sheets.AI
+  alias Storyarn.Sheets.Assets
+  alias Storyarn.Sheets.Editor
+  alias Storyarn.Sheets.Expressions
+  alias Storyarn.Sheets.Health
+  alias Storyarn.Sheets.Localization
+  alias Storyarn.Sheets.References
+  alias Storyarn.Sheets.Versioning
 
-  Manages sheets (tree nodes) and blocks (dynamic content fields) within a project.
-  Sheets form a free hierarchy tree, and each sheet can contain multiple blocks.
-
-  This module serves as a facade, delegating to specialized submodules:
-  - `SheetCrud` - CRUD operations for sheets
-  - `BlockCrud` - CRUD operations for blocks
-  - `TreeOperations` - Tree reordering and movement operations
-  """
-
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Accounts.User
-  alias Storyarn.Collaboration
-  alias Storyarn.Localization
-  alias Storyarn.Projects
-  alias Storyarn.Projects.Project
-  alias Storyarn.References
-  alias Storyarn.Repo
-  alias Storyarn.Sheets.AvatarCrud
-  alias Storyarn.Sheets.Block
-  alias Storyarn.Sheets.BlockCrud
-  alias Storyarn.Sheets.Constraints.Number
-  alias Storyarn.Sheets.ContextQueries
-  alias Storyarn.Sheets.FormulaResolver
-  alias Storyarn.Sheets.GalleryCrud
-  alias Storyarn.Sheets.HealthSnapshots
-  alias Storyarn.Sheets.PropertyInheritance
-  alias Storyarn.Sheets.ReferenceTracker
-  alias Storyarn.Sheets.Sheet
-  alias Storyarn.Sheets.SheetAvatar
-  alias Storyarn.Sheets.SheetCrud
-  alias Storyarn.Sheets.SheetQueries
-  alias Storyarn.Sheets.SheetStats
-  alias Storyarn.Sheets.TableCrud
-  alias Storyarn.Sheets.TreeOperations
-  alias Storyarn.Sheets.VariableCatalog
-  alias Storyarn.Versioning
-  alias Storyarn.Versioning.EntityVersion
-
-  # =============================================================================
-  # Type Definitions
-  # =============================================================================
-
-  @type sheet :: Sheet.t()
-  @type block :: Block.t()
+  @type sheet :: Storyarn.Sheets.Sheet.t()
+  @type block :: Storyarn.Sheets.Block.t()
   @type id :: integer()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
-
   @type validation_error ::
           :cannot_be_own_parent
           | :parent_not_found
           | :parent_different_project
           | :would_create_cycle
-
-  # =============================================================================
-  # Sheets - Tree Operations
-  # =============================================================================
-
-  @doc """
-  Lists all sheets for a project as a tree structure.
-  Returns root sheets (no parent) with children preloaded recursively.
-  """
-  @spec list_sheets_tree(id()) :: [sheet()]
-  defdelegate list_sheets_tree(project_id), to: SheetQueries
-
-  @doc "Searches sheets by name/shortcut with pagination. Options: :limit, :offset."
-  defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries
-
-  @doc "Searches sheet metadata and authored block, table, and gallery content."
-  @spec search_sheets_deep(id(), String.t(), keyword()) :: [sheet()]
-  defdelegate search_sheets_deep(project_id, query, opts \\ []), to: SheetQueries
-
-  @doc "Cross-project sheet search over a pre-authorized project set (see `Storyarn.GlobalSearch`)."
-  @spec search_sheets_in_projects([integer()], String.t(), keyword()) :: [sheet()]
-  defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: SheetQueries
-
-  @doc """
-  Gets a single sheet by ID within a project.
-  Returns `nil` if the sheet doesn't exist or doesn't belong to the project.
-  """
-  @spec get_sheet(id(), id()) :: sheet() | nil
-  defdelegate get_sheet(project_id, sheet_id), to: SheetQueries
-
-  @doc false
-  defdelegate get_context_sheet(project_id, sheet_id), to: ContextQueries, as: :get_sheet_brief
-
-  @doc false
-  defdelegate list_context_sheets(project_id, sheet_ids, limit),
-    to: ContextQueries,
-    as: :list_sheet_briefs
-
-  @doc false
-  defdelegate list_context_blocks(project_id, sheet_id, block_ids, limit),
-    to: ContextQueries,
-    as: :list_blocks
-
-  @doc false
-  defdelegate list_context_blocks_by_labels(project_id, sheet_id, labels, limit),
-    to: ContextQueries,
-    as: :list_blocks_by_labels
-
-  @doc false
-  defdelegate count_context_blocks_by_labels(project_id, sheet_id, labels),
-    to: ContextQueries,
-    as: :count_blocks_by_labels
-
-  @doc """
-  Gets a single sheet by ID within a project.
-  Raises `Ecto.NoResultsError` if not found.
-  """
-  @spec get_sheet!(id(), id()) :: sheet()
-  defdelegate get_sheet!(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Gets a sheet with all associations preloaded (blocks, assets, current_version).
-  Returns nil if not found.
-  """
-  @spec get_sheet_full(id(), id()) :: sheet() | nil
-  defdelegate get_sheet_full(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Gets a sheet with all associations preloaded (blocks, assets, current_version).
-  Raises if not found.
-  """
-  @spec get_sheet_full!(id(), id()) :: sheet()
-  defdelegate get_sheet_full!(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Gets a sheet with all its ancestors for breadcrumb.
-  Returns a list starting from the root and ending with the sheet itself.
-  """
-  @spec get_sheet_with_ancestors(id(), id()) :: [sheet()] | nil
-  defdelegate get_sheet_with_ancestors(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Gets a sheet with all descendants loaded recursively.
-  """
-  @spec get_sheet_with_descendants(id(), id()) :: sheet() | nil
-  defdelegate get_sheet_with_descendants(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Gets the children of a sheet.
-  """
-  @spec get_children(id()) :: [sheet()]
-  defdelegate get_children(sheet_id), to: SheetQueries
-
-  @spec has_children?(id()) :: boolean()
-  defdelegate has_children?(sheet_id), to: SheetQueries
-
-  @doc """
-  Lists sheets by IDs with avatar and banner preloaded.
-  Used by the version viewer for speaker data in flow snapshots.
-  """
-  @spec list_sheets_by_ids(id(), [id()]) :: [sheet()]
-  defdelegate list_sheets_by_ids(project_id, ids), to: SheetQueries
-
-  @doc """
-  Lists all sheets for a project.
-  Used for speaker selection in dialogue nodes and canvas rendering.
-  """
-  @spec list_all_sheets(id()) :: [sheet()]
-  defdelegate list_all_sheets(project_id), to: SheetQueries
-
-  @doc """
-  Lists all leaf sheets (sheets with no children) for a project.
-  """
-  @spec list_leaf_sheets(id()) :: [sheet()]
-  defdelegate list_leaf_sheets(project_id), to: SheetQueries
-
-  @doc """
-  Gets a sheet by its shortcut within a project.
-  Returns nil if not found.
-  """
-  @spec get_sheet_by_shortcut(id(), String.t()) :: sheet() | nil
-  defdelegate get_sheet_by_shortcut(project_id, shortcut), to: SheetQueries
-
-  @doc """
-  Lists all variables (blocks that can be variables) across all sheets in a project.
-  Used for the condition builder to list available variables.
-  """
-  @spec list_project_variables(id()) :: [map()]
-  defdelegate list_project_variables(project_id), to: SheetQueries
-
-  @doc "Searches bounded variable definitions for an authorized project search."
-  defdelegate search_variable_definitions(project_id, filter \\ :all, opts \\ []),
-    to: VariableCatalog,
-    as: :list_definitions
-
-  @doc "Searches authored variable initial values after applying a typed predicate."
-  defdelegate search_variable_initial_value_matches(project_id, filter, operator, literal, opts \\ []),
-    to: VariableCatalog,
-    as: :list_initial_value_matches
-
-  @doc "Resolves one active variable definition inside a project."
-  defdelegate get_variable_definition(project_id, block_id, qualified_ref),
-    to: VariableCatalog,
-    as: :get_definition
-
-  @doc "Resolves normalized predicate aliases without exposing field configuration."
-  defdelegate variable_predicate_string_aliases(project_id, definition, operator, literal),
-    to: VariableCatalog,
-    as: :predicate_string_aliases
-
-  @doc "Lists bounded formula cells that read one qualified variable reference."
-  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []),
-    to: VariableCatalog,
-    as: :list_formula_usages
-
-  @doc """
-  Resolves current default values for a list of variable references.
-  Returns `%{"ref" => value}` for each found variable.
-  """
-  @spec resolve_variable_values(id(), [String.t()]) :: map()
-  defdelegate resolve_variable_values(project_id, refs), to: SheetQueries
-
-  @doc """
-  Returns project sheets as options for reference columns.
-  Each option has `"key"` (shortcut) and `"value"` (name).
-  """
-  @spec list_reference_options(id()) :: [map()]
-  defdelegate list_reference_options(project_id), to: SheetQueries
-
-  # =============================================================================
-  # Sheets - CRUD Operations
-  # =============================================================================
-
-  @doc """
-  Creates a new sheet in a project.
-  """
-  @spec create_sheet(Project.t(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
-  defdelegate create_sheet(project, attrs), to: SheetCrud
-  defdelegate create_sheet(actor_scope, project, attrs), to: SheetCrud
-
-  @doc false
-  defdelegate create_sheet_in_transaction(project, attrs), to: SheetCrud
-  defdelegate create_sheet_in_transaction(actor_scope, project, attrs), to: SheetCrud
-
-  @doc false
-  defdelegate sync_created_sheet_localization(sheet), to: SheetCrud
-
-  @doc """
-  Updates a sheet.
-  """
-  @spec update_sheet(sheet(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
-  defdelegate update_sheet(sheet, attrs), to: SheetCrud
-
-  @doc """
-  Soft deletes a sheet (moves to trash).
-  Also soft deletes all descendant sheets.
-  """
-  @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
-  defdelegate delete_sheet(sheet), to: SheetCrud
-  defdelegate delete_sheet(actor_scope, sheet), to: SheetCrud
-
-  @doc """
-  Soft deletes a sheet and its descendants, returning the committed cascade
-  ids (collected under the delete's own locks).
-  """
-  @spec delete_sheet_subtree(sheet()) ::
-          {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
-  defdelegate delete_sheet_subtree(sheet), to: SheetCrud
-  defdelegate delete_sheet_subtree(actor_scope, sheet), to: SheetCrud
-
-  @doc false
-  defdelegate delete_sheet_subtree_in_transaction(sheet), to: SheetCrud
-  defdelegate delete_sheet_subtree_in_transaction(actor_scope, sheet), to: SheetCrud
-
-  @doc """
-  Soft deletes a sheet and all its descendants (moves to trash).
-  Alias for `delete_sheet/1`.
-  """
-  @spec trash_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
-  defdelegate trash_sheet(sheet), to: SheetCrud
-
-  @doc """
-  Restores a soft-deleted sheet from trash.
-  Note: Does not automatically restore descendants.
-  """
-  @spec restore_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
-  defdelegate restore_sheet(sheet), to: SheetCrud
-
-  @doc """
-  Permanently deletes a sheet and all its descendants.
-  Use with caution - this cannot be undone.
-  """
-  @spec permanently_delete_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
-  defdelegate permanently_delete_sheet(sheet), to: SheetCrud
-
-  @doc """
-  Lists all trashed (soft-deleted) sheets for a project.
-  """
-  @spec list_trashed_sheets(id()) :: [sheet()]
-  defdelegate list_trashed_sheets(project_id), to: SheetQueries
-
-  @doc """
-  Gets a trashed sheet by ID.
-  """
-  @spec get_trashed_sheet(id(), id()) :: sheet() | nil
-  defdelegate get_trashed_sheet(project_id, sheet_id), to: SheetQueries
-
-  @doc """
-  Moves a sheet to a new parent.
-  Returns `{:ok, sheet}` or `{:error, reason}`.
-  """
-  @spec move_sheet(sheet(), id() | nil, integer() | nil) ::
-          {:ok, sheet()} | {:error, validation_error() | changeset()}
-  defdelegate move_sheet(sheet, parent_id, position \\ nil), to: SheetCrud
-
-  # =============================================================================
-  # Sheets - Reordering
-  # =============================================================================
-
-  @doc """
-  Reorders sheets within a parent container.
-  """
-  @spec reorder_sheets(id(), id() | nil, [id()]) :: {:ok, [sheet()]} | {:error, term()}
-  defdelegate reorder_sheets(project_id, parent_id, sheet_ids), to: TreeOperations
-
-  @doc """
-  Moves a sheet to a new parent at a specific position, reordering siblings as needed.
-  """
-  @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
-          {:ok, sheet()} | {:error, validation_error() | term()}
-  def move_sheet_to_position(%Sheet{} = sheet, new_parent_id, new_position) do
-    fn ->
-      case Repo.one(
-             from(project in Project,
-               where: project.id == ^sheet.project_id,
-               lock: "FOR UPDATE"
-             )
-           ) do
-        %Project{deleted_at: nil} -> :ok
-        %Project{} -> Repo.rollback(:project_not_active)
-        nil -> Repo.rollback(:project_not_found)
-      end
-
-      current_sheet =
-        Repo.one(
-          from(current in Sheet,
-            where:
-              current.id == ^sheet.id and
-                current.project_id == ^sheet.project_id and
-                is_nil(current.deleted_at),
-            lock: "FOR UPDATE"
-          )
-        ) || Repo.rollback(:sheet_not_active)
-
-      move_sheet_to_position_transaction(
-        current_sheet,
-        new_parent_id,
-        new_position
-      )
-    end
-    |> Repo.transaction()
-    |> Collaboration.broadcast_dashboard_result(sheet.project_id, :sheets)
-  end
-
-  defp move_sheet_to_position_transaction(sheet, new_parent_id, new_position) do
-    with {:ok, moved_sheet} <-
-           TreeOperations.move_sheet_to_position(sheet, new_parent_id, new_position),
-         {:ok, %{sheet_ids: affected_sheet_ids}} <-
-           PropertyInheritance.recalculate_on_move_with_sheet_ids(moved_sheet),
-         :ok <- Localization.extract_sheet_blocks_for_sheets(affected_sheet_ids) do
-      moved_sheet
-    else
-      {:error, reason} -> Repo.rollback(reason)
-    end
-  end
-
-  # =============================================================================
-  # Property Inheritance
-  # =============================================================================
-
-  @doc """
-  Returns inherited blocks for a sheet, grouped by source sheet.
-  """
-  defdelegate resolve_inherited_blocks(sheet_id), to: PropertyInheritance
-
-  @doc """
-  Lists non-mutating inheritance integrity findings for a sheet.
-  """
-  defdelegate list_inheritance_health_issues(sheet_id), to: PropertyInheritance, as: :list_health_issues
-
-  @doc """
-  Gets a sheet's blocks split into inherited and own groups.
-  Returns `{inherited_groups, own_blocks}`.
-  """
-  defdelegate get_sheet_blocks_grouped(sheet_id), to: SheetQueries
-
-  @doc """
-  Propagates an inheritable block to selected descendant sheets.
-  """
-  def propagate_to_descendants(%Block{} = parent_block, selected_sheet_ids) do
-    fn ->
-      {:ok, count} = PropertyInheritance.propagate_to_descendants(parent_block, selected_sheet_ids)
-
-      case Localization.extract_block_tree(parent_block.id) do
-        :ok -> count
-        {:error, reason} -> Repo.rollback(reason)
-      end
-    end
-    |> Repo.transaction()
-    |> broadcast_block_dashboard_result(parent_block)
-  end
-
-  @doc """
-  Detaches an inherited block, making it a local copy.
-  """
-  def detach_block(%Block{} = block) do
-    block
-    |> PropertyInheritance.detach_block()
-    |> broadcast_block_dashboard_result(block)
-  end
-
-  @doc """
-  Re-attaches a previously detached block.
-  """
-  def reattach_block(%Block{} = block) do
-    fn -> reattach_block_transaction(block) end
-    |> Repo.transaction()
-    |> broadcast_block_dashboard_result(block)
-  end
-
-  defp reattach_block_transaction(block) do
-    with {:ok, updated_block} <- PropertyInheritance.reattach_block(block),
-         :ok <- Localization.extract_block(updated_block) do
-      updated_block
-    else
-      {:error, reason} -> Repo.rollback(reason)
-    end
-  end
-
-  @doc """
-  Hides an ancestor block from this sheet's children.
-  """
-  def hide_for_children(%Sheet{} = sheet, ancestor_block_id) do
-    sheet
-    |> PropertyInheritance.hide_for_children(ancestor_block_id)
-    |> broadcast_sheet_dashboard_result(sheet)
-  end
-
-  @doc """
-  Unhides an ancestor block for this sheet's children.
-  """
-  def unhide_for_children(%Sheet{} = sheet, ancestor_block_id) do
-    sheet
-    |> PropertyInheritance.unhide_for_children(ancestor_block_id)
-    |> broadcast_sheet_dashboard_result(sheet)
-  end
-
-  @doc """
-  Returns the source sheet for an inherited block.
-  """
-  defdelegate get_source_sheet(block), to: PropertyInheritance
-
-  @doc """
-  Returns all descendant sheet IDs for a given sheet.
-  """
-  defdelegate get_descendant_sheet_ids(sheet_id), to: PropertyInheritance
-
-  @doc """
-  Lists all blocks with `scope: "children"` for a sheet.
-  """
-  defdelegate list_inheritable_blocks(sheet_id), to: SheetQueries
-
-  @doc """
-  Lists all inherited instance blocks for a parent block.
-  """
-  defdelegate list_inherited_instances(parent_block_id), to: SheetQueries
-
-  # =============================================================================
-  # Blocks - Type Helpers
-  # =============================================================================
-
-  @doc """
-  Parses a string value, clamps to min/max constraints, and formats back to string.
-  """
-  defdelegate number_clamp_and_format(value, config),
-    to: Number,
-    as: :clamp_and_format
-
-  @doc """
-  Parses a constraint value (from form params or config) into a number or nil.
-  """
-  defdelegate number_parse_constraint(value),
-    to: Number,
-    as: :parse_constraint
-
-  @doc """
-  Clamps a value to its block type constraints.
-
-  Dispatches to the appropriate constraint module based on `block_type`.
-  Rich text values pass through unclamped.
-  """
-  @spec clamp_to_constraints(any(), map() | nil, String.t()) :: any()
-  def clamp_to_constraints(value, constraints, "number"), do: Number.clamp(value, constraints)
-
-  def clamp_to_constraints(value, constraints, "text"), do: Storyarn.Sheets.Constraints.String.clamp(value, constraints)
-
-  def clamp_to_constraints(value, _constraints, "rich_text"), do: value
-
-  def clamp_to_constraints(value, constraints, type) when type in ["select", "multi_select"],
-    do: Storyarn.Sheets.Constraints.Selector.clamp(value, constraints)
-
-  def clamp_to_constraints(value, constraints, "date"), do: Storyarn.Sheets.Constraints.Date.clamp(value, constraints)
-
-  def clamp_to_constraints(value, constraints, "boolean"),
-    do: Storyarn.Sheets.Constraints.Boolean.clamp(value, constraints)
-
-  def clamp_to_constraints(value, _constraints, _block_type), do: value
-
-  # =============================================================================
-  # Blocks - CRUD Operations
-  # =============================================================================
-
-  @doc """
-  Lists all blocks for a sheet, ordered by position.
-  """
-  @spec list_blocks(id()) :: [block()]
-  defdelegate list_blocks(sheet_id), to: BlockCrud
-
-  @doc """
-  Gets a single block by ID.
-  """
-  @spec get_block(id()) :: block() | nil
-  defdelegate get_block(block_id), to: BlockCrud
-
-  @doc """
-  Gets a single block by ID.
-  Raises `Ecto.NoResultsError` if not found.
-  """
-  @spec get_block!(id()) :: block()
-  defdelegate get_block!(block_id), to: BlockCrud
-
-  @doc """
-  Gets a block by ID, ensuring it belongs to the specified project.
-  Returns nil if not found or not in project.
-  """
-  @spec get_block_in_project(id(), id()) :: block() | nil
-  defdelegate get_block_in_project(block_id, project_id), to: BlockCrud
-
-  @doc """
-  Gets a block by ID with project validation. Raises if not found.
-  """
-  @spec get_block_in_project!(id(), id()) :: block()
-  defdelegate get_block_in_project!(block_id, project_id), to: BlockCrud
-
-  @doc """
-  Creates a new block in a sheet.
-  """
-  @spec create_block(sheet(), attrs()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate create_block(sheet, attrs), to: BlockCrud
-
-  @doc """
-  Recreates a block from a snapshot (for undo/redo).
-  Restores soft-deleted block if it exists, otherwise creates new.
-  """
-  defdelegate create_block_from_snapshot(sheet, snapshot), to: BlockCrud
-
-  @doc """
-  Updates a block.
-  """
-  @spec update_block(block(), attrs()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate update_block(block, attrs), to: BlockCrud
-
-  @doc """
-  Updates a block's variable_name directly (user-initiated rename).
-  """
-  @spec update_variable_name(block(), String.t()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate update_variable_name(block, variable_name), to: BlockCrud
-
-  @doc """
-  Updates only the value of a block.
-  """
-  @spec update_block_value(block(), map()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate update_block_value(block, value), to: BlockCrud
-
-  @doc """
-  Updates only the config of a block.
-  """
-  @spec update_block_config(block(), map()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate update_block_config(block, config), to: BlockCrud
-
-  @doc """
-  Soft-deletes a block by setting deleted_at timestamp.
-  """
-  @spec delete_block(block()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate delete_block(block), to: BlockCrud
-
-  @doc """
-  Permanently deletes a block from the database.
-  """
-  @spec permanently_delete_block(block()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate permanently_delete_block(block), to: BlockCrud
-
-  @doc """
-  Restores a soft-deleted block.
-  """
-  @spec restore_block(block()) :: {:ok, block()} | {:error, changeset()}
-  defdelegate restore_block(block), to: BlockCrud
-
-  @doc """
-  Reorders blocks within a sheet.
-  Takes a list of block IDs in the desired order.
-  """
-  @spec reorder_blocks(id(), [id()]) :: {:ok, [block()]} | {:error, term()}
-  defdelegate reorder_blocks(sheet_id, block_ids), to: BlockCrud
-
-  @doc """
-  Reorders blocks with column layout information.
-  Each item in the list contains id, column_group_id, and column_index.
-  """
-  @spec reorder_blocks_with_columns(id(), [map()]) :: {:ok, [block()]} | {:error, term()}
-  defdelegate reorder_blocks_with_columns(sheet_id, items), to: BlockCrud
-
-  @doc """
-  Creates a column group from a list of block IDs.
-  """
-  @spec create_column_group(id(), [id()]) :: {:ok, Ecto.UUID.t()} | {:error, term()}
-  defdelegate create_column_group(sheet_id, block_ids), to: BlockCrud
-
-  @doc """
-  Duplicates a block, placing the copy immediately after the original.
-  """
-  defdelegate duplicate_block(block), to: BlockCrud
-
-  @doc """
-  Moves a block up by swapping with the previous block.
-  """
-  defdelegate move_block_up(block_id, sheet_id), to: BlockCrud
-
-  @doc """
-  Moves a block down by swapping with the next block.
-  """
-  defdelegate move_block_down(block_id, sheet_id), to: BlockCrud
-
-  @doc """
-  Returns a changeset for tracking block changes.
-  """
+  @type sheet_avatar :: Storyarn.Sheets.SheetAvatar.t()
+  defdelegate add_avatar(sheet, asset_id, attrs \\ %{}), to: Editor
+  defdelegate add_gallery_image(block, asset_id), to: Editor
+  defdelegate add_gallery_images(block, asset_ids), to: Editor
+  @doc "Checks whether a content type is allowed for direct Sheet uploads."
+  defdelegate allowed_asset_content_type?(content_type), to: Assets
+  defdelegate batch_load_avatars_by_sheet(project_id), to: Editor
+  defdelegate batch_load_gallery_data(block_ids), to: Editor
+  defdelegate batch_load_gallery_data_by_sheet(project_id), to: Editor
+  defdelegate batch_load_table_data(block_ids), to: Editor
+  @doc "Computes the player-facing word count for one Sheet block."
+  defdelegate block_word_count(type, value), to: Localization, as: :word_count_for_block
+  @doc "Returns whether this project can create another named Sheet version."
+  defdelegate can_create_named_version?(project_id, workspace_id), to: Versioning
+  @doc "Returns a changeset for tracking block changes.\n"
   @spec change_block(block(), attrs()) :: changeset()
-  defdelegate change_block(block, attrs \\ %{}), to: BlockCrud
+  defdelegate change_block(block, attrs \\ %{}), to: Editor
+  @doc "Returns stale variable reference data for flow nodes."
+  defdelegate check_stale_flow_node_variable_references(block_id, project_id), to: References
+  @doc "Lists tracked variable usages and their current staleness for one block."
+  defdelegate check_stale_variable_references(block_id, project_id), to: References
 
-  # =============================================================================
-  # Table Columns
-  # =============================================================================
-
-  defdelegate list_table_columns(block_id), to: TableCrud, as: :list_columns
-  defdelegate get_table_column!(block_id, id), to: TableCrud, as: :get_column!
-  defdelegate get_table_column(block_id, id), to: TableCrud, as: :get_column
-  defdelegate create_table_column(block, attrs), to: TableCrud, as: :create_column
-
-  defdelegate create_table_column_from_snapshot(block_id, snapshot, cell_values),
-    to: TableCrud,
-    as: :create_column_from_snapshot
-
-  defdelegate update_table_column(column, attrs), to: TableCrud, as: :update_column
-  defdelegate delete_table_column(column), to: TableCrud, as: :delete_column
-  defdelegate reorder_table_columns(block_id, ids), to: TableCrud, as: :reorder_columns
-
-  # =============================================================================
-  # Table Rows
-  # =============================================================================
-
-  defdelegate list_table_rows(block_id), to: TableCrud, as: :list_rows
-  defdelegate get_table_row!(id), to: TableCrud, as: :get_row!
-  defdelegate get_table_row(id), to: TableCrud, as: :get_row
-  defdelegate create_table_row(block, attrs), to: TableCrud, as: :create_row
-
-  defdelegate create_table_row_from_snapshot(block_id, snapshot, cells),
-    to: TableCrud,
-    as: :create_row_from_snapshot
-
-  defdelegate update_table_row(row, attrs), to: TableCrud, as: :update_row
-  defdelegate delete_table_row(row), to: TableCrud, as: :delete_row
-  defdelegate reorder_table_rows(block_id, ids), to: TableCrud, as: :reorder_rows
-  defdelegate update_table_cell(row, column_slug, value), to: TableCrud, as: :update_cell
-  defdelegate update_table_cells(row, cells_map), to: TableCrud, as: :update_cells
-  defdelegate batch_load_table_data(block_ids), to: TableCrud
-
-  @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
-  defdelegate enrich_table_formulas(table_data, project_id), to: FormulaResolver, as: :enrich_table_data
-
-  # =============================================================================
-  # Gallery Images
-  # =============================================================================
-
-  defdelegate list_gallery_images(block_id), to: GalleryCrud
-  defdelegate get_gallery_image(id), to: GalleryCrud
-  defdelegate get_gallery_image_for_sheet(sheet_id, id), to: GalleryCrud
-  defdelegate add_gallery_image(block, asset_id), to: GalleryCrud
-  defdelegate add_gallery_images(block, asset_ids), to: GalleryCrud
-  defdelegate remove_gallery_image(sheet_id, gallery_image_id), to: GalleryCrud
-  defdelegate update_gallery_image(gallery_image, attrs), to: GalleryCrud
-  defdelegate reorder_gallery_images(block_id, ordered_ids), to: GalleryCrud
-  defdelegate batch_load_gallery_data(block_ids), to: GalleryCrud
-  defdelegate batch_load_gallery_data_by_sheet(project_id), to: GalleryCrud
-  defdelegate get_first_gallery_image(sheet_id), to: GalleryCrud
-
-  # =============================================================================
-  # Sheet Avatars
-  # =============================================================================
-
-  @type sheet_avatar :: SheetAvatar.t()
-
-  defdelegate list_avatars(sheet_id), to: AvatarCrud
-  defdelegate get_avatar(id), to: AvatarCrud
-  defdelegate get_default_avatar(sheet_id), to: AvatarCrud
-  defdelegate add_avatar(sheet, asset_id, attrs \\ %{}), to: AvatarCrud
-  defdelegate update_avatar(avatar, attrs), to: AvatarCrud
-  defdelegate remove_avatar(sheet_id, avatar_id), to: AvatarCrud
-  defdelegate set_avatar_default(avatar), to: AvatarCrud, as: :set_default
-  defdelegate reorder_avatars(sheet_id, ordered_ids), to: AvatarCrud
-  defdelegate batch_load_avatars_by_sheet(project_id), to: AvatarCrud
-
-  @doc """
-  Returns the default image for a sheet using fallback hierarchy:
-  default avatar → banner → first gallery image → nil.
-  """
-  def get_sheet_default_image(%Sheet{avatars: avatars} = sheet) when is_list(avatars) do
-    case Enum.find(avatars, & &1.is_default) do
-      %SheetAvatar{asset: asset} when not is_nil(asset) -> asset
-      _ -> fallback_sheet_image(sheet)
-    end
-  end
-
-  def get_sheet_default_image(%Sheet{} = sheet) do
-    case get_default_avatar(sheet.id) do
-      %SheetAvatar{asset: asset} when not is_nil(asset) -> asset
-      _ -> fallback_sheet_image(sheet)
-    end
-  end
-
-  defp fallback_sheet_image(sheet) do
-    if sheet.banner_asset_id do
-      sheet.banner_asset
-    else
-      get_first_gallery_image(sheet.id)
-    end
-  end
-
-  # =============================================================================
-  # Versioning
-  # =============================================================================
-
-  @type version :: EntityVersion.t()
-
-  @doc """
-  Creates a new version snapshot of the given sheet.
-  """
-  def create_version(sheet, user_or_id, opts \\ [])
-
-  def create_version(%Sheet{} = sheet, %User{} = user, opts) do
-    create_version(sheet, user.id, opts)
-  end
-
-  def create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
-    Versioning.create_version("sheet", sheet, sheet.project_id, user_id, opts)
-  end
-
-  @doc """
-  Lists all versions for a sheet, ordered by version number descending.
-  """
-  def list_versions(sheet_id, opts \\ []) do
-    Versioning.list_versions("sheet", sheet_id, opts)
-  end
-
-  @doc """
-  Gets a specific version by sheet_id and version_number.
-  """
-  def get_version(sheet_id, version_number) do
-    Versioning.get_version("sheet", sheet_id, version_number)
-  end
-
-  @doc """
-  Gets the latest version for a sheet.
-  """
-  def get_latest_version(sheet_id) do
-    Versioning.get_latest_version("sheet", sheet_id)
-  end
-
-  @doc """
-  Returns the total number of versions for a sheet.
-  """
-  def count_versions(sheet_id) do
-    Versioning.count_versions("sheet", sheet_id)
-  end
-
-  @doc """
-  Creates a version if enough time has passed since the last version.
-  """
-  def maybe_create_version(sheet, user_or_id, opts \\ [])
-
-  def maybe_create_version(%Sheet{} = sheet, %User{} = user, opts) do
-    maybe_create_version(sheet, user.id, opts)
-  end
-
-  def maybe_create_version(%Sheet{} = sheet, user_id, opts) when is_integer(user_id) do
-    opts = Keyword.put_new(opts, :is_auto, true)
-
-    if Keyword.get(opts, :is_auto) and
-         not Projects.auto_versioning_enabled?(sheet.project_id, :sheet) do
-      {:skipped, :auto_versioning_disabled}
-    else
-      Versioning.maybe_create_version("sheet", sheet, sheet.project_id, user_id, opts)
-    end
-  end
-
-  @doc """
-  Deletes a version and its snapshot.
-  """
-  def delete_version(version) do
-    Versioning.delete_version(version)
-  end
-
-  @doc """
-  Restores a sheet to a specific version.
-  """
-  def restore_version(%Sheet{} = sheet, version) do
-    Versioning.restore_version("sheet", sheet, version)
-  end
-
-  @doc """
-  Sets the current version for a sheet.
-  """
-  def set_current_version(%Sheet{} = sheet, version_or_nil) do
-    version_id = if version_or_nil, do: version_or_nil.id
-
-    sheet
-    |> Sheet.version_changeset(%{current_version_id: version_id})
-    |> Repo.update()
-  end
-
-  # =============================================================================
-  # Reference Search & Validation
-  # =============================================================================
-
-  @doc """
-  Validates that a reference target exists and belongs to the project.
-  Returns {:ok, target} or {:error, reason}.
-  """
-  @spec validate_reference_target(String.t(), id(), id()) ::
-          {:ok, Sheet.t() | Storyarn.Flows.Flow.t()} | {:error, :not_found | :invalid_type}
-  defdelegate validate_reference_target(target_type, target_id, project_id), to: SheetQueries
-
-  @doc """
-  Searches for sheets and flows that can be referenced.
-
-  Returns a list of maps with :type, :id, :name, :shortcut keys.
-  """
-  @spec search_referenceable(id(), String.t(), [String.t()]) :: [map()]
-  def search_referenceable(project_id, query, allowed_types \\ ["sheet", "flow"]) do
-    query = String.trim(query)
-
-    results = []
-
-    results =
-      if "sheet" in allowed_types do
-        sheets = SheetQueries.search_sheets(project_id, query)
-
-        sheet_results =
-          Enum.map(sheets, fn sheet ->
-            %{type: "sheet", id: sheet.id, name: sheet.name, shortcut: sheet.shortcut}
-          end)
-
-        results ++ sheet_results
-      else
-        results
-      end
-
-    results =
-      if "flow" in allowed_types do
-        flows = Storyarn.Flows.search_flows(project_id, query)
-
-        flow_results =
-          Enum.map(flows, fn flow ->
-            %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
-          end)
-
-        results ++ flow_results
-      else
-        results
-      end
-
-    # Sort by name and limit to 20 results
-    results
-    |> Enum.sort_by(& &1.name)
-    |> Enum.take(20)
-  end
-
-  @doc """
-  Gets the reference target (sheet or flow) for display.
-  Returns nil if not found.
-  """
-  @spec get_reference_target(String.t() | nil, id() | nil, id()) :: map() | nil
-  def get_reference_target(nil, _target_id, _project_id), do: nil
-  def get_reference_target(_target_type, nil, _project_id), do: nil
-
-  def get_reference_target("sheet", target_id, project_id) do
-    case SheetQueries.get_sheet(project_id, target_id) do
-      nil -> nil
-      sheet -> %{type: "sheet", id: sheet.id, name: sheet.name, shortcut: sheet.shortcut}
-    end
-  end
-
-  def get_reference_target("flow", target_id, project_id) do
-    case Storyarn.Flows.get_flow(project_id, target_id) do
-      nil -> nil
-      flow -> %{type: "flow", id: flow.id, name: flow.name, shortcut: flow.shortcut}
-    end
-  end
-
-  def get_reference_target(_target_type, _target_id, _project_id), do: nil
-
-  @doc "Resolves multiple active sheet and flow targets in batch."
-  defdelegate get_reference_targets(references, project_id), to: ReferenceTracker
-
-  @doc "Returns block IDs with stale tracked sheet/flow entity references."
-  defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: ReferenceTracker
-
-  # =============================================================================
-  # Reference Tracking (Backlinks)
-  # =============================================================================
-
-  @doc """
-  Gets backlinks for a target with resolved source information.
-  """
-  @spec get_backlinks_with_sources(String.t(), id(), id()) :: [map()]
-  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: References
-
-  @doc """
-  Counts backlinks for a target.
-  """
+  @doc "Clamps a value to its block type constraints.\n\nDispatches to the appropriate constraint module based on `block_type`.\nRich text values pass through unclamped.\n"
+  @spec clamp_to_constraints(any(), map() | nil, String.t()) :: any()
+  defdelegate clamp_to_constraints(value, constraints, type), to: Expressions
+  @doc "Counts backlinks for a target.\n"
   @spec count_backlinks(String.t(), id()) :: integer()
   defdelegate count_backlinks(target_type, target_id), to: References
+  @doc false
+  defdelegate count_context_blocks_by_labels(project_id, sheet_id, labels), to: AI
+  @doc "Counts stale tracked variable references for multiple blocks in one query."
+  defdelegate count_stale_variable_references(block_ids, project_id), to: References
+  @doc "Counts tracked variable usages by kind for one block."
+  defdelegate count_variable_usage(block_id), to: References
+  @doc "Returns the total number of versions for a sheet.\n"
+  defdelegate count_versions(sheet_id), to: Versioning
+  @doc "Creates a binary asset through the Sheet-owned asset command."
+  defdelegate create_binary_asset(binary, attrs, project, user), to: Assets
+  @doc "Creates a new block in a sheet.\n"
+  @spec create_block(sheet(), attrs()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate create_block(sheet, attrs), to: Editor
 
-  @doc """
-  Updates references from a flow node.
-  Called after node data is saved to track mentions and references.
-  """
-  @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
-  defdelegate update_flow_node_references(node, opts \\ []),
-    to: References,
-    as: :update_flow_node_entity_references
-
-  @doc """
-  Deletes all references from a flow node.
-  Called when a node is deleted.
-  """
+  @doc "Recreates a block from a snapshot (for undo/redo).\nRestores soft-deleted block if it exists, otherwise creates new.\n"
+  defdelegate create_block_from_snapshot(sheet, snapshot), to: Editor
+  @doc "Creates a column group from a list of block IDs.\n"
+  @spec create_column_group(id(), [id()]) :: {:ok, Ecto.UUID.t()} | {:error, term()}
+  defdelegate create_column_group(sheet_id, block_ids), to: Editor
+  @doc "Creates a named Sheet version and emits its Sheet-owned fact."
+  defdelegate create_named_version(scope, sheet, opts), to: Versioning
+  @doc "Creates a new sheet in a project.\n"
+  @spec create_sheet(map(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
+  defdelegate create_sheet(project, attrs), to: Editor
+  defdelegate create_sheet(actor_scope, project, attrs), to: Editor
+  @doc false
+  defdelegate create_sheet_in_transaction(project, attrs), to: Editor
+  defdelegate create_sheet_in_transaction(actor_scope, project, attrs), to: Editor
+  defdelegate create_table_column(block, attrs), to: Editor
+  defdelegate create_table_column_from_snapshot(block_id, snapshot, cell_values), to: Editor
+  defdelegate create_table_row(block, attrs), to: Editor
+  defdelegate create_table_row_from_snapshot(block_id, snapshot, cells), to: Editor
+  @doc "Creates a new version snapshot of the given sheet.\n"
+  defdelegate create_version(sheet, user_id, opts \\ []), to: Versioning
+  @doc "Soft-deletes a block by setting deleted_at timestamp.\n"
+  @spec delete_block(block()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate delete_block(block), to: Editor
+  @doc "Deletes all references from a flow node.\nCalled when a node is deleted.\n"
   @spec delete_flow_node_references(integer()) :: {integer(), nil}
-  defdelegate delete_flow_node_references(node_id),
-    to: References,
-    as: :delete_flow_node_entity_references
+  defdelegate delete_flow_node_references(node_id), to: References
+  @doc "Soft deletes a sheet (moves to trash).\nAlso soft deletes all descendant sheets.\n"
+  @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
+  defdelegate delete_sheet(sheet), to: Editor
+  defdelegate delete_sheet(actor_scope, sheet), to: Editor
 
-  @doc """
-  Updates references from a scene zone.
-  Called after zone data is saved to track target references.
-  """
-  @spec update_scene_zone_references(map()) :: :ok
-  defdelegate update_scene_zone_references(zone),
-    to: References,
-    as: :update_scene_zone_entity_references
+  @doc "Soft deletes a sheet and its descendants, returning the committed cascade\nids (collected under the delete's own locks).\n"
+  @spec delete_sheet_subtree(sheet()) ::
+          {:ok, %{entity: sheet(), deleted_ids: [integer()]}} | {:error, term()}
+  defdelegate delete_sheet_subtree(sheet), to: Editor
+  defdelegate delete_sheet_subtree(actor_scope, sheet), to: Editor
+  @doc false
+  defdelegate delete_sheet_subtree_by_id_in_transaction(actor_scope, project_id, sheet_id),
+    to: Editor
 
-  @doc """
-  Deletes all references from a scene zone.
-  Called when a zone is deleted.
-  """
-  @spec delete_map_zone_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_zone_references(zone_id),
-    to: References,
-    as: :delete_scene_zone_entity_references
+  @doc false
+  defdelegate delete_sheet_subtree_in_transaction(sheet), to: Editor
+  defdelegate delete_sheet_subtree_in_transaction(actor_scope, sheet), to: Editor
+  defdelegate delete_table_column(column), to: Editor
+  defdelegate delete_table_row(row), to: Editor
 
-  @doc """
-  Updates references from a scene pin.
-  Called after pin data is saved to track target references.
-  """
-  @spec update_scene_pin_references(map()) :: :ok
-  defdelegate update_scene_pin_references(pin),
-    to: References,
-    as: :update_scene_pin_entity_references
-
-  @doc """
-  Deletes all references from a scene pin.
-  Called when a pin is deleted.
-  """
-  @spec delete_map_pin_references(integer()) :: {integer(), nil}
-  defdelegate delete_map_pin_references(pin_id),
-    to: References,
-    as: :delete_scene_pin_entity_references
-
-  @doc """
-  Deletes all references where a given entity is the target.
-  Used for permanent deletion cleanup.
-  """
+  @doc "Deletes all references where a given entity is the target.\nUsed for permanent deletion cleanup.\n"
   @spec delete_target_references(String.t(), integer()) :: {integer(), nil}
   defdelegate delete_target_references(target_type, target_id), to: References
+  @doc "Deletes a version and its snapshot.\n"
+  defdelegate delete_version(version), to: Versioning
+  @doc "Detaches an inherited block, making it a local copy.\n"
+  defdelegate detach_block(block), to: Editor
+  @doc "Builds the Sheet-owned restore-conflict preview."
+  defdelegate detect_version_restore_conflicts(snapshot, sheet), to: Versioning
+  @doc "Duplicates a block, placing the copy immediately after the original.\n"
+  defdelegate duplicate_block(block), to: Editor
+  @doc "Injects computed formula results (`__result`/`__resolved`) into batched table data."
+  defdelegate enrich_table_formulas(table_data, project_id), to: Expressions
+  @doc "Ensures that Sheet version restore is currently enabled."
+  defdelegate ensure_version_restore_enabled(), to: Versioning
+  @doc "Extracts symbol names from a parsed formula AST."
+  defdelegate extract_formula_symbols(ast), to: Expressions
+  @doc "Renders a parsed formula AST as LaTeX."
+  defdelegate formula_to_latex(ast), to: Expressions
+  @doc "Renders a parsed formula AST as LaTeX with bound values substituted."
+  defdelegate formula_to_latex_substituted(ast, resolved), to: Expressions
+  @doc "Returns the previous and next stored Sheet version numbers."
+  defdelegate get_adjacent_version_numbers(sheet_id, current_number), to: Versioning
+  @doc "Gets an asset through the Sheet-owned read projection."
+  defdelegate get_asset(project_id, asset_id), to: Assets
+  defdelegate get_avatar(id), to: Editor
+  @doc "Gets backlinks for a target with resolved source information.\n"
+  @spec get_backlinks_with_sources(String.t(), id(), id()) :: [map()]
+  defdelegate get_backlinks_with_sources(target_type, target_id, project_id), to: References
+  @doc "Gets a single block by ID.\n"
+  @spec get_block(id()) :: block() | nil
+  defdelegate get_block(block_id), to: Editor
+  @doc "Gets a single block by ID.\nRaises `Ecto.NoResultsError` if not found.\n"
+  @spec get_block!(id()) :: block()
+  defdelegate get_block!(block_id), to: Editor
 
-  # =============================================================================
-  # Export / Import helpers
-  # =============================================================================
+  @doc "Gets a block by ID, ensuring it belongs to the specified project.\nReturns nil if not found or not in project.\n"
+  @spec get_block_in_project(id(), id()) :: block() | nil
+  defdelegate get_block_in_project(block_id, project_id), to: Editor
+  @doc "Gets a block by ID with project validation. Raises if not found.\n"
+  @spec get_block_in_project!(id(), id()) :: block()
+  defdelegate get_block_in_project!(block_id, project_id), to: Editor
+  @doc "Gets the children of a sheet.\n"
+  @spec get_children(id()) :: [sheet()]
+  defdelegate get_children(sheet_id), to: Editor
+  @doc false
+  defdelegate get_context_sheet(project_id, sheet_id), to: AI
+  defdelegate get_default_avatar(sheet_id), to: Editor
+  @doc "Returns all descendant sheet IDs for a given sheet.\n"
+  defdelegate get_descendant_sheet_ids(sheet_id), to: Editor
+  defdelegate get_first_gallery_image(sheet_id), to: Editor
+  defdelegate get_gallery_image(id), to: Editor
+  defdelegate get_gallery_image_for_sheet(sheet_id, id), to: Editor
+  @doc "Gets the latest version for a sheet.\n"
+  defdelegate get_latest_version(sheet_id), to: Versioning
+  @doc "Returns a Sheet-owned project projection after authorization."
+  defdelegate get_project(scope, project_id), to: Access
+  @doc "Returns a Sheet-owned project projection by workspace and project slugs."
+  defdelegate get_project_by_slugs(scope, workspace_slug, project_slug), to: Access
+  @doc "Gets the reference target (sheet or flow) for display.\nReturns nil if not found.\n"
+  @spec get_reference_target(String.t() | nil, id() | nil, id()) :: map() | nil
+  defdelegate get_reference_target(target_type, target_id, project_id), to: References
+  @doc "Resolves multiple active sheet and flow targets in batch."
+  defdelegate get_reference_targets(references, project_id), to: References
 
+  @doc "Gets a single sheet by ID within a project.\nReturns `nil` if the sheet doesn't exist or doesn't belong to the project.\n"
+  @spec get_sheet(id(), id()) :: sheet() | nil
+  defdelegate get_sheet(project_id, sheet_id), to: Editor
+  @doc "Gets a single sheet by ID within a project.\nRaises `Ecto.NoResultsError` if not found.\n"
+  @spec get_sheet!(id(), id()) :: sheet()
+  defdelegate get_sheet!(project_id, sheet_id), to: Editor
+
+  @doc "Gets a sheet's blocks split into inherited and own groups.\nReturns `{inherited_groups, own_blocks}`.\n"
+  defdelegate get_sheet_blocks_grouped(sheet_id), to: Editor
+  @doc "Gets a sheet by its shortcut within a project.\nReturns nil if not found.\n"
+  @spec get_sheet_by_shortcut(id(), String.t()) :: sheet() | nil
+  defdelegate get_sheet_by_shortcut(project_id, shortcut), to: Editor
+
+  @doc "Returns the default image for a sheet using fallback hierarchy:\ndefault avatar → banner → first gallery image → nil.\n"
+  defdelegate get_sheet_default_image(sheet), to: Editor
+
+  @doc "Gets a sheet with all associations preloaded (blocks, assets, current_version).\nReturns nil if not found.\n"
+  @spec get_sheet_full(id(), id()) :: sheet() | nil
+  defdelegate get_sheet_full(project_id, sheet_id), to: Editor
+
+  @doc "Gets a sheet with all associations preloaded (blocks, assets, current_version).\nRaises if not found.\n"
+  @spec get_sheet_full!(id(), id()) :: sheet()
+  defdelegate get_sheet_full!(project_id, sheet_id), to: Editor
   @doc "Returns the project_id for a sheet by its ID."
-  defdelegate get_sheet_project_id(sheet_id), to: SheetQueries
+  defdelegate get_sheet_project_id(sheet_id), to: Editor
 
-  @doc "Lists sheets with blocks and table data preloaded. Opts: [filter_ids: :all | [ids]]."
-  defdelegate list_sheets_for_export(project_id, opts \\ []), to: SheetQueries
+  @doc "Gets a sheet with all its ancestors for breadcrumb.\nReturns a list starting from the root and ending with the sheet itself.\n"
+  @spec get_sheet_with_ancestors(id(), id()) :: [sheet()] | nil
+  defdelegate get_sheet_with_ancestors(project_id, sheet_id), to: Editor
+  @doc "Gets a sheet with all descendants loaded recursively.\n"
+  @spec get_sheet_with_descendants(id(), id()) :: sheet() | nil
+  defdelegate get_sheet_with_descendants(project_id, sheet_id), to: Editor
+  @doc "Returns the source sheet for an inherited block.\n"
+  defdelegate get_source_sheet(block), to: Editor
+  defdelegate get_table_column(block_id, id), to: Editor
+  defdelegate get_table_column!(block_id, id), to: Editor
+  defdelegate get_table_row(id), to: Editor
+  defdelegate get_table_row!(id), to: Editor
+  @doc "Gets a trashed sheet by ID.\n"
+  @spec get_trashed_sheet(id(), id()) :: sheet() | nil
+  defdelegate get_trashed_sheet(project_id, sheet_id), to: Editor
+  @doc "Resolves one active variable definition inside a project."
+  defdelegate get_variable_definition(project_id, block_id, qualified_ref), to: Expressions
+  @doc "Gets a specific version by sheet_id and version_number.\n"
+  defdelegate get_version(sheet_id, version_number), to: Versioning
+  @spec has_children?(id()) :: boolean()
+  defdelegate has_children?(sheet_id), to: Editor
+  @doc "Returns the Sheet-owned health severity ordering."
+  defdelegate health_severity_rank(severity), to: Health, as: :severity_rank
 
-  @doc "Counts non-deleted sheets for a project."
-  defdelegate count_sheets(project_id), to: SheetQueries
+  @doc "Returns `%{variable_reference => block_type}` for the project — the vocabulary\nboth health surfaces type-check formula bindings against.\n"
+  defdelegate health_variable_types(project_id), to: Health
+  @doc "Hides an ancestor block from this sheet's children.\n"
+  defdelegate hide_for_children(sheet, ancestor_block_id), to: Editor
 
+  @doc "Lists all sheets for a project.\nUsed for speaker selection in dialogue nodes and canvas rendering.\n"
+  @spec list_all_sheets(id()) :: [sheet()]
+  defdelegate list_all_sheets(project_id), to: Editor
+  @doc "Lists active assets through the Sheet-owned read projection."
+  defdelegate list_assets(project_id, opts \\ []), to: Assets
+  defdelegate list_avatars(sheet_id), to: Editor
+  @doc "Lists all blocks for a sheet, ordered by position.\n"
+  @spec list_blocks(id()) :: [block()]
+  defdelegate list_blocks(sheet_id), to: Editor
   @doc "Lists all non-deleted blocks for the given sheet IDs."
-  defdelegate list_blocks_for_sheet_ids(sheet_ids), to: SheetQueries
+  defdelegate list_blocks_for_sheet_ids(sheet_ids), to: Editor
+  @doc false
+  defdelegate list_context_blocks(project_id, sheet_id, block_ids, limit), to: AI
+  @doc false
+  defdelegate list_context_blocks_by_labels(project_id, sheet_id, labels, limit), to: AI
+  @doc false
+  defdelegate list_context_sheets(project_id, sheet_ids, limit), to: AI
+  @doc "Returns the canonical sheet health findings used by the project dashboard overview."
+  defdelegate list_dashboard_health_findings(project_id, referenced_ids \\ nil), to: Health
+  @doc "Lists dialogue lines spoken by a Sheet for its audio workspace."
+  defdelegate list_dialogue_audio_lines(project_id, sheet_id), to: Editor
+  @doc "Lists bounded formula cells that read one qualified variable reference."
+  defdelegate list_formula_variable_usages(project_id, qualified_ref, opts \\ []), to: Expressions
+  defdelegate list_gallery_images(block_id), to: Editor
+  @doc "Lists all blocks with `scope: \"children\"` for a sheet.\n"
+  defdelegate list_inheritable_blocks(sheet_id), to: Editor
+  @doc "Lists non-mutating inheritance integrity findings for a sheet.\n"
+  defdelegate list_inheritance_health_issues(sheet_id), to: Editor
+  @doc "Lists all inherited instance blocks for a parent block.\n"
+  defdelegate list_inherited_instances(parent_block_id), to: Editor
+  @doc "Lists all leaf sheets (sheets with no children) for a project.\n"
+  @spec list_leaf_sheets(id()) :: [sheet()]
+  defdelegate list_leaf_sheets(project_id), to: Editor
+
+  @doc "Lists all variables (blocks that can be variables) across all sheets in a project.\nUsed for the condition builder to list available variables.\n"
+  @spec list_project_variables(id()) :: [map()]
+  defdelegate list_project_variables(project_id), to: Expressions
+
+  @doc ~s{Returns project sheets as options for reference columns.\nEach option has `"key"` (shortcut) and `"value"` (name).\n}
+  @spec list_reference_options(id()) :: [map()]
+  defdelegate list_reference_options(project_id), to: Expressions
+  @doc "Lists Scene-owned placements that display a Sheet."
+  defdelegate list_scene_appearances(sheet_id), to: References
 
   @doc "Lists brief sheet data (id, name, shortcut) for validator. Opts: [filter_ids: :all | [ids]]."
-  defdelegate list_sheets_brief(project_id, opts \\ []), to: SheetQueries
+  defdelegate list_sheets_brief(project_id, opts \\ []), to: Editor
 
-  @doc "Lists existing sheet shortcuts for a project."
-  defdelegate list_sheet_shortcuts(project_id), to: SheetQueries, as: :list_shortcuts
+  @doc "Lists sheets by IDs with avatar and banner preloaded.\nUsed by the version viewer for speaker data in flow snapshots.\n"
+  @spec list_sheets_by_ids(id(), [id()]) :: [sheet()]
+  defdelegate list_sheets_by_ids(project_id, ids), to: Editor
 
-  @doc "Detects shortcut conflicts between imported sheets and existing ones."
-  defdelegate detect_sheet_shortcut_conflicts(project_id, shortcuts),
-    to: SheetQueries,
-    as: :detect_shortcut_conflicts
-
-  @doc "Soft-deletes existing sheets with the given shortcut (overwrite import strategy)."
-  defdelegate soft_delete_sheet_by_shortcut(project_id, shortcut),
-    to: SheetQueries,
-    as: :soft_delete_by_shortcut
-
-  @doc "Returns stale variable reference data for flow nodes."
-  defdelegate check_stale_flow_node_variable_references(block_id, project_id), to: SheetQueries
-
-  @doc "Returns variable references with current block info for stale repair."
-  defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: SheetQueries
-
-  @doc "Lists stale full variable references for MANY flows, keyed by flow and node."
-  defdelegate list_stale_node_variable_refs_by_flow(flow_ids), to: SheetQueries
-
-  @doc "Lists stale node IDs — regular and table — for MANY flows, keyed by flow."
-  defdelegate list_stale_node_ids_by_flow(flow_ids), to: SheetQueries
-
+  @doc "Lists all sheets for a project as a tree structure.\nReturns root sheets (no parent) with children preloaded recursively.\n"
+  @spec list_sheets_tree(id()) :: [sheet()]
+  defdelegate list_sheets_tree(project_id), to: Editor
+  @doc "Lists sheets using a specific asset as their avatar."
+  defdelegate list_sheets_using_asset_as_avatar(project_id, asset_id), to: References
+  @doc "Lists sheets using a specific asset as their banner."
+  defdelegate list_sheets_using_asset_as_banner(project_id, asset_id), to: References
+  @doc "Returns block IDs with stale tracked sheet/flow entity references."
+  defdelegate list_stale_block_reference_source_ids(project_id, block_ids), to: References
   @doc "Lists stale regular (non-table) node IDs in one flow."
-  defdelegate list_stale_regular_node_ids(flow_id), to: SheetQueries
-
+  defdelegate list_stale_regular_node_ids(flow_id), to: References
   @doc "Lists stale table node IDs in one flow."
-  defdelegate list_stale_table_node_ids(flow_id), to: SheetQueries
+  defdelegate list_stale_table_node_ids(flow_id), to: References
+  defdelegate list_table_columns(block_id), to: Editor
+  defdelegate list_table_rows(block_id), to: Editor
+  @doc "Lists all trashed (soft-deleted) sheets for a project.\n"
+  @spec list_trashed_sheets(id()) :: [sheet()]
+  defdelegate list_trashed_sheets(project_id), to: Editor
+  @doc "Lists sheet IDs referenced through variable_references in a project."
+  defdelegate list_variable_referenced_sheet_ids(project_id), to: References
+  @doc "Returns variable references with current block info for stale repair."
+  defdelegate list_variable_refs_with_block_info_for_repair(project_id), to: References
+  @doc "Lists all versions for a sheet, ordered by version number descending.\n"
+  defdelegate list_versions(sheet_id, opts \\ []), to: Versioning
+  @doc false
+  defdelegate load_version_snapshot(version), to: Versioning
+  @doc "Returns the block types that contribute player-facing runtime text."
+  defdelegate localizable_block_types(), to: Localization
+  @doc "Creates a version if enough time has passed since the last version.\n"
+  defdelegate maybe_create_version(sheet, user_id, opts \\ []), to: Versioning
+  @doc "Moves a block down by swapping with the next block.\n"
+  defdelegate move_block_down(block_id, sheet_id), to: Editor
+  @doc "Moves a block up by swapping with the previous block.\n"
+  defdelegate move_block_up(block_id, sheet_id), to: Editor
+  @doc "Moves a sheet to a new parent.\nReturns `{:ok, sheet}` or `{:error, reason}`.\n"
+  @spec move_sheet(sheet(), id() | nil, integer() | nil) ::
+          {:ok, sheet()} | {:error, validation_error() | changeset()}
+  defdelegate move_sheet(sheet, parent_id, position \\ nil), to: Editor
+  @doc "Moves a sheet to a new parent at a specific position, reordering siblings as needed.\n"
+  @spec move_sheet_to_position(sheet(), id() | nil, integer()) ::
+          {:ok, sheet()} | {:error, validation_error() | term()}
+  defdelegate move_sheet_to_position(sheet, new_parent_id, new_position), to: Editor
+  @doc "Parses a string value, clamps to min/max constraints, and formats back to string.\n"
+  defdelegate number_clamp_and_format(value, config), to: Expressions
+  @doc "Parses a constraint value (from form params or config) into a number or nil.\n"
+  defdelegate number_parse_constraint(value), to: Expressions
+  @doc "Parses a table formula expression into an AST."
+  defdelegate parse_formula(expression), to: Expressions
+  @doc "Permanently deletes a block from the database.\n"
+  @spec permanently_delete_block(block()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate permanently_delete_block(block), to: Editor
 
+  @doc "Permanently deletes a sheet and all its descendants.\nUse with caution - this cannot be undone.\n"
+  @spec permanently_delete_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
+  defdelegate permanently_delete_sheet(sheet), to: Editor
+  @doc "Decides whether restore must first warn about unsaved changes."
+  defdelegate prepare_version_restore(sheet, version), to: Versioning
+  @doc "Loads a target Sheet version and builds its restore conflict report."
+  defdelegate prepare_version_restore_conflicts(sheet, version), to: Versioning
+  @doc "Propagates an inheritable block to selected descendant sheets.\n"
+  defdelegate propagate_to_descendants(parent_block, selected_sheet_ids), to: Editor
+  @doc "Re-attaches a previously detached block.\n"
+  defdelegate reattach_block(block), to: Editor
+  @doc "Publishes the product fact for a block created inside a Sheet."
+  defdelegate record_block_created(scope, sheet, block, creation_method, block_scope), to: Editor
+  @doc "Emits the typed Sheet fact that a version comparison was opened."
+  defdelegate record_version_compared(scope, sheet), to: Versioning
+  @doc "Emits the typed Sheet fact that the version panel was opened."
+  defdelegate record_version_panel_opened(scope, sheet), to: Versioning
+  @doc "Returns MapSet of block IDs with at least one variable reference."
+  defdelegate referenced_block_ids_for_project(project_id), to: Health
+  defdelegate remove_avatar(sheet_id, avatar_id), to: Editor
+  defdelegate remove_gallery_image(sheet_id, gallery_image_id), to: Editor
+  defdelegate reorder_avatars(sheet_id, ordered_ids), to: Editor
+  @doc "Reorders blocks within a sheet.\nTakes a list of block IDs in the desired order.\n"
+  @spec reorder_blocks(id(), [id()]) :: {:ok, [block()]} | {:error, term()}
+  defdelegate reorder_blocks(sheet_id, block_ids), to: Editor
+
+  @doc "Reorders blocks with column layout information.\nEach item in the list contains id, column_group_id, and column_index.\n"
+  @spec reorder_blocks_with_columns(id(), [map()]) :: {:ok, [block()]} | {:error, term()}
+  defdelegate reorder_blocks_with_columns(sheet_id, items), to: Editor
+  defdelegate reorder_gallery_images(block_id, ordered_ids), to: Editor
+  @doc "Reorders sheets within a parent container.\n"
+  @spec reorder_sheets(id(), id() | nil, [id()]) :: {:ok, [sheet()]} | {:error, term()}
+  defdelegate reorder_sheets(project_id, parent_id, sheet_ids), to: Editor
+  defdelegate reorder_table_columns(block_id, ids), to: Editor
+  defdelegate reorder_table_rows(block_id, ids), to: Editor
   @doc "Resolves a block ID by sheet shortcut and variable name."
   defdelegate resolve_block_id_by_variable(project_id, sheet_shortcut, variable_name),
-    to: SheetQueries
+    to: References
 
+  @doc "Returns inherited blocks for a sheet, grouped by source sheet.\n"
+  defdelegate resolve_inherited_blocks(sheet_id), to: Editor
   @doc "Resolves a table block ID by sheet shortcut, table name, row slug, and column slug."
   defdelegate resolve_table_block_id_by_variable(
                 project_id,
@@ -1061,87 +380,110 @@ defmodule Storyarn.Sheets do
                 row_slug,
                 column_slug
               ),
-              to: SheetQueries
+              to: References
 
-  @doc "Lists sheet IDs referenced through variable_references in a project."
-  defdelegate list_variable_referenced_sheet_ids(project_id), to: SheetQueries
+  @doc "Resolves current default values for a list of variable references.\nReturns `%{\"ref\" => value}` for each found variable.\n"
+  @spec resolve_variable_values(id(), [String.t()]) :: map()
+  defdelegate resolve_variable_values(project_id, refs), to: Expressions
+  @doc "Restores a soft-deleted block.\n"
+  @spec restore_block(block()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate restore_block(block), to: Editor
+  @doc "Returns whether in-place Sheet version restore is enabled."
+  defdelegate restore_enabled?(), to: Versioning
 
-  @doc "Lists sheets using a specific asset as their avatar."
-  defdelegate list_sheets_using_asset_as_avatar(project_id, asset_id), to: SheetQueries
+  @doc "Restores a soft-deleted sheet from trash.\nNote: Does not automatically restore descendants.\n"
+  @spec restore_sheet(sheet()) :: {:ok, sheet()} | {:error, changeset()}
+  defdelegate restore_sheet(sheet), to: Editor
+  @doc "Restores a Sheet version and emits its Sheet-owned fact on success."
+  defdelegate restore_tracked_version(scope, sheet, version, opts), to: Versioning
+  @doc "Restores a sheet to a specific version.\n"
+  defdelegate restore_version(sheet, version, opts \\ []), to: Versioning
 
-  @doc "Lists sheets using a specific asset as their banner."
-  defdelegate list_sheets_using_asset_as_banner(project_id, asset_id), to: SheetQueries
+  @doc "Searches for sheets and flows that can be referenced.\n\nReturns a list of maps with :type, :id, :name, :shortcut keys.\n"
+  @spec search_referenceable(id(), String.t(), [String.t()]) :: [map()]
+  defdelegate search_referenceable(project_id, query, allowed_types \\ ["sheet", "flow"]),
+    to: References
 
-  @doc "Lists sheet IDs referenced by scene pins in a project."
-  defdelegate list_pin_referenced_sheet_ids(project_id), to: SheetQueries
+  @doc "Searches sheets by name/shortcut with pagination. Options: :limit, :offset."
+  defdelegate search_sheets(project_id, query, opts \\ []), to: Editor
+  @doc "Searches sheet metadata and authored block, table, and gallery content."
+  @spec search_sheets_deep(id(), String.t(), keyword()) :: [sheet()]
+  defdelegate search_sheets_deep(project_id, query, opts \\ []), to: Editor
 
-  @doc "Creates a sheet for import (raw insert, no side effects)."
-  defdelegate import_sheet(project_id, attrs), to: SheetCrud
+  @doc "Cross-project sheet search over a pre-authorized project set (see `Storyarn.Platform.GlobalSearch`)."
+  @spec search_sheets_in_projects([integer()], String.t(), keyword()) :: [sheet()]
+  defdelegate search_sheets_in_projects(project_ids, query, opts \\ []), to: Editor
+  @doc "Searches bounded variable definitions for an authorized project search."
+  defdelegate search_variable_definitions(project_id, filter \\ :all, opts \\ []), to: Expressions
+  @doc "Searches authored variable initial values after applying a typed predicate."
+  defdelegate search_variable_initial_value_matches(
+                project_id,
+                filter,
+                operator,
+                literal,
+                opts \\ []
+              ),
+              to: Expressions
 
-  @doc "Updates a sheet's parent_id after import."
-  defdelegate link_sheet_import_parent(sheet, parent_id), to: SheetCrud, as: :link_import_parent
+  @doc "Serializes a stored Sheet snapshot into the read-only viewer block list."
+  defdelegate serialize_version_snapshot(snapshot), to: Versioning
+  defdelegate set_avatar_default(avatar), to: Editor
+  @doc "Sets the current version for a sheet.\n"
+  defdelegate set_current_version(sheet, version_or_nil), to: Versioning
 
-  @doc "Creates a block for import (raw insert, no side effects)."
-  defdelegate import_block(sheet_id, attrs), to: BlockCrud
-
-  @doc "Creates a table column for import (raw insert, no side effects)."
-  defdelegate import_table_column(block_id, attrs), to: TableCrud, as: :import_column
-
-  @doc "Creates a table row for import (raw insert, no side effects)."
-  defdelegate import_table_row(block_id, attrs), to: TableCrud, as: :import_row
-
-  # =============================================================================
-  # Dashboard Stats
-  # =============================================================================
+  @doc "Returns the canonical health findings for the one sheet open in the editor.\n\nThe Sheets counterpart to the Scene and Flow entity health readers,\nand the same composition point `list_dashboard_health_findings/2` enters: the\neditor and the dashboard cannot feed the checker differently for the same sheet.\n\nExpects the material the editor already holds — `:sheet`, `:project`, `:blocks`,\n`:inherited_groups`, `:table_data`, `:gallery_data`.\n"
+  defdelegate sheet_health_findings(material), to: Health
+  @doc "Returns the checker-ready snapshot behind `sheet_health_findings/1`."
+  defdelegate sheet_health_snapshot(material), to: Health
 
   @doc "Returns per-sheet block and variable counts. %{sheet_id => %{block_count, variable_count}}."
-  defdelegate sheet_stats_for_project(project_id), to: SheetStats
+  defdelegate sheet_stats_for_project(project_id), to: Health
 
   @doc "Returns per-sheet localizable word counts from runtime sheet fields. %{sheet_id => word_count}."
-  defdelegate sheet_word_counts(project_id), to: SheetStats
+  defdelegate sheet_word_counts(project_id), to: Health
+  @doc false
+  defdelegate sync_created_sheet_localization(sheet), to: Editor
 
-  @doc "Returns MapSet of block IDs with at least one variable reference."
-  defdelegate referenced_block_ids_for_project(project_id), to: SheetStats
+  @doc "Soft deletes a sheet and all its descendants (moves to trash).\nAlias for `delete_sheet/1`.\n"
+  @spec trash_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
+  defdelegate trash_sheet(sheet), to: Editor
+  @doc "Unhides an ancestor block for this sheet's children.\n"
+  defdelegate unhide_for_children(sheet, ancestor_block_id), to: Editor
+  defdelegate update_avatar(avatar, attrs), to: Editor
+  @doc "Updates a block.\n"
+  @spec update_block(block(), attrs()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate update_block(block, attrs), to: Editor
+  @doc "Updates only the config of a block.\n"
+  @spec update_block_config(block(), map()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate update_block_config(block, config), to: Editor
+  @doc "Updates only the value of a block.\n"
+  @spec update_block_value(block(), map()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate update_block_value(block, value), to: Editor
+  @doc "Updates the audio asset assigned to one dialogue line spoken by a Sheet."
+  defdelegate update_dialogue_audio(project_id, sheet_id, node_id, audio_asset_id), to: Editor
 
-  @doc "Returns the canonical sheet health findings used by the project dashboard overview."
-  defdelegate list_dashboard_health_findings(project_id, referenced_ids \\ nil), to: SheetStats
+  @doc "Updates references from a flow node.\nCalled after node data is saved to track mentions and references.\n"
+  @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
+  defdelegate update_flow_node_references(node, opts \\ []), to: References
+  defdelegate update_gallery_image(gallery_image, attrs), to: Editor
+  @doc "Updates a sheet.\n"
+  @spec update_sheet(sheet(), attrs()) :: {:ok, sheet()} | {:error, changeset()}
+  defdelegate update_sheet(sheet, attrs), to: Editor
+  defdelegate update_table_cell(row, column_slug, value), to: Editor
+  defdelegate update_table_cells(row, cells_map), to: Editor
+  defdelegate update_table_column(column, attrs), to: Editor
+  defdelegate update_table_row(row, attrs), to: Editor
+  @doc "Updates a block's variable_name directly (user-initiated rename).\n"
+  @spec update_variable_name(block(), String.t()) :: {:ok, block()} | {:error, changeset()}
+  defdelegate update_variable_name(block, variable_name), to: Editor
+  @doc "Updates the name and description of a Sheet version."
+  defdelegate update_version(version, attrs), to: Versioning
 
-  @doc """
-  Returns the canonical health findings for the one sheet open in the editor.
-
-  The sibling of `Scenes.scene_health_findings/3` and `Flows.flow_health_findings/2`,
-  and the same composition point `list_dashboard_health_findings/2` enters: the
-  editor and the dashboard cannot feed the checker differently for the same sheet.
-
-  Expects the material the editor already holds — `:sheet`, `:project`, `:blocks`,
-  `:inherited_groups`, `:table_data`, `:gallery_data`.
-  """
-  defdelegate sheet_health_findings(material), to: HealthSnapshots, as: :findings
-
-  @doc "Returns the checker-ready snapshot behind `sheet_health_findings/1`."
-  defdelegate sheet_health_snapshot(material), to: HealthSnapshots, as: :snapshot
-
-  @doc """
-  Returns `%{variable_reference => block_type}` for the project — the vocabulary
-  both health surfaces type-check formula bindings against.
-  """
-  defdelegate health_variable_types(project_id), to: HealthSnapshots, as: :variable_types
-
-  defp broadcast_block_dashboard_result({:ok, _value} = result, %Block{} = block) do
-    case Repo.get(Sheet, block.sheet_id) do
-      %Sheet{project_id: project_id} -> Collaboration.broadcast_dashboard_change(project_id, :sheets)
-      nil -> :ok
-    end
-
-    result
-  end
-
-  defp broadcast_block_dashboard_result(result, _block), do: result
-
-  defp broadcast_sheet_dashboard_result({:ok, _value} = result, %Sheet{project_id: project_id}) do
-    Collaboration.broadcast_dashboard_change(project_id, :sheets)
-    result
-  end
-
-  defp broadcast_sheet_dashboard_result(result, _sheet), do: result
+  @doc "Validates that a reference target exists and belongs to the project.\nReturns {:ok, target} or {:error, reason}.\n"
+  @spec validate_reference_target(String.t(), id(), id()) ::
+          {:ok, References.reference_target()} | {:error, :not_found | :invalid_type}
+  defdelegate validate_reference_target(target_type, target_id, project_id), to: References
+  @doc "Resolves normalized predicate aliases without exposing field configuration."
+  defdelegate variable_predicate_string_aliases(project_id, definition, operator, literal),
+    to: Expressions
 end

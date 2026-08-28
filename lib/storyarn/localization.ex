@@ -5,33 +5,22 @@ defmodule Storyarn.Localization do
   Manages content localization for projects: languages, translations,
   glossary entries, and translation provider configurations.
 
-  This module serves as a facade, delegating to specialized submodules:
-  - `LanguageCrud` - CRUD operations for project languages
-  - `TextCrud` - CRUD operations and queries for localized texts
-  - `BatchTranslator` - Batch translation orchestrator
+  This module is the bounded-context facade. Its implementation is organized
+  behind capability boundaries; callers must not depend on their internals.
   """
 
-  import Ecto.Query, warn: false
-
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Localization.BatchTranslator
-  alias Storyarn.Localization.ExportImport
-  alias Storyarn.Localization.GlossaryCrud
+  alias Storyarn.Localization.Exchange
+  alias Storyarn.Localization.Glossary
   alias Storyarn.Localization.GlossaryEntry
-  alias Storyarn.Localization.GlossarySync
-  alias Storyarn.Localization.LanguageCrud
   alias Storyarn.Localization.Languages
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Localization.ProjectAccess
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Localization.Providers
-  alias Storyarn.Localization.Reports
-  alias Storyarn.Localization.TextCrud
-  alias Storyarn.Localization.TextExtractor
-  alias Storyarn.Localization.TranslationRunCrud
-  alias Storyarn.Projects.Project
-  alias Storyarn.References.ProjectReferenceIntegrity
-  alias Storyarn.Repo
+  alias Storyarn.Localization.Reporting
+  alias Storyarn.Localization.Texts
+  alias Storyarn.Localization.Translation
 
   # =============================================================================
   # Type Definitions
@@ -44,7 +33,19 @@ defmodule Storyarn.Localization do
   @type id :: integer()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type actor_scope :: %{required(:user) => %{required(:id) => pos_integer()} | nil}
+  @type project_identity :: %{required(:id) => pos_integer()}
   @type language_add_error :: changeset() | {:localization_sync_failed, term()}
+
+  # =============================================================================
+  # Project access read model
+  # =============================================================================
+
+  @doc "Gets an active project visible to the current actor, with its workspace preloaded."
+  defdelegate get_project(actor_scope, project_id), to: ProjectAccess
+
+  @doc "Gets an active project by workspace/project slugs for the current actor."
+  defdelegate get_project_by_slugs(actor_scope, workspace_slug, project_slug), to: ProjectAccess
 
   # =============================================================================
   # Project Languages
@@ -52,86 +53,90 @@ defmodule Storyarn.Localization do
 
   @doc "Lists all languages for a project, ordered by position then name."
   @spec list_languages(id()) :: [project_language()]
-  defdelegate list_languages(project_id), to: LanguageCrud
+  defdelegate list_languages(project_id), to: Languages
 
   @doc "Lists active and archived languages for native backups."
   @spec list_languages_for_backup(id()) :: [project_language()]
-  defdelegate list_languages_for_backup(project_id), to: LanguageCrud
+  defdelegate list_languages_for_backup(project_id), to: Languages
 
   @doc "Gets a single language by ID within a project."
   @spec get_language(id(), id()) :: project_language() | nil
-  defdelegate get_language(project_id, language_id), to: LanguageCrud
+  defdelegate get_language(project_id, language_id), to: Languages
 
   @doc "Gets a language by locale code within a project."
   @spec get_language_by_locale(id(), String.t()) :: project_language() | nil
-  defdelegate get_language_by_locale(project_id, locale_code), to: LanguageCrud
+  defdelegate get_language_by_locale(project_id, locale_code), to: Languages
 
   @doc "Gets the source language for a project."
   @spec get_source_language(id()) :: project_language() | nil
-  defdelegate get_source_language(project_id), to: LanguageCrud
+  defdelegate get_source_language(project_id), to: Languages
 
   @doc "Gets all target (non-source) languages for a project."
   @spec get_target_languages(id()) :: [project_language()]
-  defdelegate get_target_languages(project_id), to: LanguageCrud
+  defdelegate get_target_languages(project_id), to: Languages
 
   @doc "Adds a new language to a project."
-  @spec add_language(Project.t(), attrs()) :: {:ok, project_language()} | {:error, language_add_error()}
-  defdelegate add_language(project, attrs), to: LanguageCrud
-  defdelegate add_language(actor_scope, project, attrs), to: LanguageCrud
+  @spec add_language(project_identity(), attrs()) ::
+          {:ok, project_language()} | {:error, language_add_error()}
+  defdelegate add_language(project, attrs), to: Languages
+  defdelegate add_language(actor_scope, project, attrs), to: Languages
 
   @doc "Adds a language and reports how many localization rows were reconciled."
-  @spec add_language_with_count(Project.t(), attrs()) ::
+  @spec add_language_with_count(project_identity(), attrs()) ::
           {:ok, %{language: project_language(), extracted_count: non_neg_integer()}}
           | {:error, language_add_error()}
-  defdelegate add_language_with_count(project, attrs), to: LanguageCrud
-  defdelegate add_language_with_count(actor_scope, project, attrs), to: LanguageCrud
+  defdelegate add_language_with_count(project, attrs), to: Languages
+  defdelegate add_language_with_count(actor_scope, project, attrs), to: Languages
 
   @doc "Updates a project language."
   @spec update_language(project_language(), attrs()) ::
           {:ok, project_language()} | {:error, changeset()}
-  defdelegate update_language(language, attrs), to: LanguageCrud
+  defdelegate update_language(language, attrs), to: Languages
 
   @doc "Removes a language from a project."
   @spec remove_language(project_language()) ::
           {:ok, project_language()} | {:error, changeset() | :source_language}
-  defdelegate remove_language(language), to: LanguageCrud
-  defdelegate remove_language(actor_scope, language), to: LanguageCrud
+  defdelegate remove_language(language), to: Languages
+  defdelegate remove_language(actor_scope, language), to: Languages
 
   @doc "Sets a language as the source language (unsets any existing source)."
   @spec set_source_language(project_language()) ::
           {:ok, project_language()} | {:error, :translations_exist | :no_source_language}
-  defdelegate set_source_language(language), to: LanguageCrud
+  defdelegate set_source_language(language), to: Languages
 
   @doc "Changes the project source language to the given locale code."
-  @spec change_source_language(Project.t(), String.t()) ::
+  @spec change_source_language(project_identity(), String.t()) ::
           {:ok, project_language()} | {:error, term()}
-  defdelegate change_source_language(project, locale_code), to: LanguageCrud
+  defdelegate change_source_language(project, locale_code), to: Languages
 
   @doc "Changes the source language, optionally resetting all translations."
-  @spec change_source_language(Scope.t(), Project.t(), String.t()) ::
+  @spec change_source_language(actor_scope(), project_identity(), String.t()) ::
           {:ok, project_language()} | {:error, term()}
-  def change_source_language(%Scope{} = actor_scope, %Project{} = project, locale_code) do
-    LanguageCrud.change_source_language(actor_scope, project, locale_code)
+  def change_source_language(%{user: _user} = actor_scope, %{id: project_id} = project, locale_code)
+      when is_integer(project_id) and project_id > 0 do
+    Languages.change_source_language(actor_scope, project, locale_code)
   end
 
-  @spec change_source_language(Project.t(), String.t(), keyword()) ::
+  @spec change_source_language(project_identity(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
-  def change_source_language(%Project{} = project, locale_code, opts) do
-    LanguageCrud.change_source_language(project, locale_code, opts)
+  def change_source_language(%{id: project_id} = project, locale_code, opts)
+      when is_integer(project_id) and project_id > 0 do
+    Languages.change_source_language(project, locale_code, opts)
   end
 
   @doc "Changes the source language for an authorized actor, optionally resetting translations."
-  @spec change_source_language(Scope.t(), Project.t(), String.t(), keyword()) ::
+  @spec change_source_language(actor_scope(), project_identity(), String.t(), keyword()) ::
           {:ok, project_language()} | {:error, term()}
-  defdelegate change_source_language(actor_scope, project, locale_code, opts), to: LanguageCrud
+  defdelegate change_source_language(actor_scope, project, locale_code, opts), to: Languages
 
   @doc "Reorders languages by the given list of IDs."
   @spec reorder_languages(id(), [id()]) :: {:ok, any()}
-  defdelegate reorder_languages(project_id, language_ids), to: LanguageCrud
+  defdelegate reorder_languages(project_id, language_ids), to: Languages
 
   @doc "Ensures a source language exists for the project (auto-creates from workspace if missing)."
-  @spec ensure_source_language(Project.t()) :: {:ok, project_language()} | {:error, changeset()}
-  defdelegate ensure_source_language(project), to: LanguageCrud
+  @spec ensure_source_language(project_identity()) ::
+          {:ok, project_language()} | {:error, changeset()}
+  defdelegate ensure_source_language(project), to: Languages
 
   # =============================================================================
   # Localized Texts
@@ -139,65 +144,64 @@ defmodule Storyarn.Localization do
 
   @doc "Lists localized texts for a project with optional filters."
   @spec list_texts(id(), keyword()) :: [localized_text()]
-  defdelegate list_texts(project_id, opts \\ []), to: TextCrud
+  defdelegate list_texts(project_id, opts \\ []), to: Texts
 
   @doc "Counts localized texts for a project with optional filters."
   @spec count_texts(id(), keyword()) :: non_neg_integer()
-  defdelegate count_texts(project_id, opts \\ []), to: TextCrud
+  defdelegate count_texts(project_id, opts \\ []), to: Texts
 
   @doc "Gets a single localized text by ID, scoped to project."
   @spec get_text(id(), id()) :: localized_text() | nil
-  defdelegate get_text(project_id, id), to: TextCrud
+  defdelegate get_text(project_id, id), to: Texts
 
   @doc "Gets a single localized text by ID (scoped to project), raises if not found."
   @spec get_text!(id(), id()) :: localized_text()
-  defdelegate get_text!(project_id, id), to: TextCrud
+  defdelegate get_text!(project_id, id), to: Texts
 
   @doc "Gets a localized text by its composite source key."
   @spec get_text_by_source(String.t(), id(), String.t(), String.t()) :: localized_text() | nil
-  defdelegate get_text_by_source(source_type, source_id, source_field, locale_code), to: TextCrud
+  defdelegate get_text_by_source(source_type, source_id, source_field, locale_code), to: Texts
 
   @doc "Gets all localized texts for a source entity across all locales."
   @spec get_texts_for_source(String.t(), id()) :: [localized_text()]
-  defdelegate get_texts_for_source(source_type, source_id), to: TextCrud
+  defdelegate get_texts_for_source(source_type, source_id), to: Texts
 
   @doc "Gets source texts including archived rows for lifecycle and restore operations."
-  def list_all_texts(project_id, opts \\ []),
-    do: TextCrud.list_texts(project_id, Keyword.put(opts, :include_archived, true))
+  def list_all_texts(project_id, opts \\ []), do: Texts.list_texts(project_id, Keyword.put(opts, :include_archived, true))
 
   @doc "Gets translation progress stats for a project and locale."
   @spec get_progress(id(), String.t()) :: map()
-  defdelegate get_progress(project_id, locale_code), to: TextCrud
+  defdelegate get_progress(project_id, locale_code), to: Texts
 
   @doc "Returns localization export readiness counts grouped by target locale."
-  defdelegate export_readiness_by_locale(project_id, locale_codes, opts \\ []), to: TextCrud
-  defdelegate export_readiness_by_locale(project_id, locale_codes, opts, flow_node_ids), to: TextCrud
+  defdelegate export_readiness_by_locale(project_id, locale_codes, opts \\ []), to: Texts
+  defdelegate export_readiness_by_locale(project_id, locale_codes, opts, flow_node_ids), to: Texts
 
   @doc "Creates a new localized text."
   @spec create_text(id(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}
-  defdelegate create_text(project_id, attrs), to: TextCrud
+  defdelegate create_text(project_id, attrs), to: Texts
 
   @doc "Updates a localized text."
   @spec update_text(localized_text(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}
-  defdelegate update_text(text, attrs), to: TextCrud
+  defdelegate update_text(text, attrs), to: Texts
 
   @doc "Upserts a localized text by its composite key."
   @spec upsert_text(id(), attrs()) :: {:ok, localized_text()} | {:error, changeset()}
-  defdelegate upsert_text(project_id, attrs), to: TextCrud
+  defdelegate upsert_text(project_id, attrs), to: Texts
 
   @doc "Archives all localized texts for a source entity."
   @spec delete_texts_for_source(String.t(), id()) :: {non_neg_integer(), nil}
-  defdelegate delete_texts_for_source(source_type, source_id), to: TextCrud
+  defdelegate delete_texts_for_source(source_type, source_id), to: Texts
 
   @doc "Archives all localized texts for a specific source field."
   @spec delete_texts_for_source_field(String.t(), id(), String.t()) :: {non_neg_integer(), nil}
-  defdelegate delete_texts_for_source_field(source_type, source_id, source_field), to: TextCrud
+  defdelegate delete_texts_for_source_field(source_type, source_id, source_field), to: Texts
 
   @doc "Permanently deletes all localized texts for a source entity."
-  defdelegate purge_texts_for_source(source_type, source_id), to: TextCrud
+  defdelegate purge_texts_for_source(source_type, source_id), to: Texts
 
   @doc "Permanently deletes localized texts for several source entities."
-  defdelegate purge_texts_for_sources(source_type, source_ids), to: TextCrud
+  defdelegate purge_texts_for_sources(source_type, source_ids), to: Texts
 
   # =============================================================================
   # Text Extraction
@@ -205,65 +209,65 @@ defmodule Storyarn.Localization do
 
   @doc "Reconciles all runtime-localizable texts for a project."
   @spec extract_all(id()) :: {:ok, non_neg_integer()}
-  defdelegate extract_all(project_id), to: TextExtractor
+  defdelegate extract_all(project_id), to: Texts
 
   @doc "Reconciles runtime-localizable texts for one target locale."
   @spec extract_locale(id(), String.t()) :: {:ok, non_neg_integer()} | {:error, term()}
-  defdelegate extract_locale(project_id, locale_code), to: TextExtractor
+  defdelegate extract_locale(project_id, locale_code), to: Texts
 
   @doc "Extracts localizable texts from a flow node after its data is updated."
   @spec extract_flow_node(struct()) :: :ok
-  defdelegate extract_flow_node(node), to: TextExtractor
+  defdelegate extract_flow_node(node), to: Texts
 
   @doc false
-  defdelegate flow_node_texts_current?(node, project_id), to: TextExtractor
+  defdelegate flow_node_texts_current?(node, project_id), to: Texts
 
   @doc false
-  defdelegate flow_node_texts_current_ids(nodes, project_id), to: TextExtractor
+  defdelegate flow_node_texts_current_ids(nodes, project_id), to: Texts
 
   @doc "Extracts localizable runtime text from a block after its value is updated. No-op if nil."
   @spec extract_block(struct() | nil) :: :ok
   def extract_block(nil), do: :ok
-  defdelegate extract_block(block), to: TextExtractor
+  defdelegate extract_block(block), to: Texts
 
   @doc "Extracts runtime texts for every active node in a flow."
   @spec extract_flow_nodes(id()) :: :ok | {:error, term()}
-  defdelegate extract_flow_nodes(flow_id), to: TextExtractor
+  defdelegate extract_flow_nodes(flow_id), to: Texts
 
   @doc "Extracts runtime texts for every active block in a sheet."
   @spec extract_sheet_blocks(id()) :: :ok | {:error, term()}
-  defdelegate extract_sheet_blocks(sheet_id), to: TextExtractor
+  defdelegate extract_sheet_blocks(sheet_id), to: Texts
 
   @doc "Extracts runtime texts for blocks in several sheets under one inventory lock."
   @spec extract_sheet_blocks_for_sheets([id()]) :: :ok | {:error, term()}
-  defdelegate extract_sheet_blocks_for_sheets(sheet_ids), to: TextExtractor
+  defdelegate extract_sheet_blocks_for_sheets(sheet_ids), to: Texts
 
   @doc "Extracts runtime texts for a block definition and its active inherited instances."
   @spec extract_block_tree(id()) :: :ok | {:error, term()}
-  defdelegate extract_block_tree(block_id), to: TextExtractor
+  defdelegate extract_block_tree(block_id), to: Texts
 
   @doc "Synchronizes active sheet names emitted as runtime actors by engine serializers."
-  defdelegate sync_sheet_names(project_id), to: TextExtractor
+  defdelegate sync_sheet_names(project_id), to: Texts
 
   @doc "Archives localized texts when a flow node is deleted."
   @spec delete_flow_node_texts(id()) :: :ok
-  defdelegate delete_flow_node_texts(node_id), to: TextExtractor
+  defdelegate delete_flow_node_texts(node_id), to: Texts
 
   @doc "Archives node texts when one or more flows are deleted."
   @spec delete_flow_node_texts_for_flows([id()]) :: :ok
-  defdelegate delete_flow_node_texts_for_flows(flow_ids), to: TextExtractor
+  defdelegate delete_flow_node_texts_for_flows(flow_ids), to: Texts
 
   @doc "Archives localized texts when a block is deleted."
   @spec delete_block_texts(id()) :: :ok
-  defdelegate delete_block_texts(block_id), to: TextExtractor
+  defdelegate delete_block_texts(block_id), to: Texts
 
   @doc "Archives a block and all inherited instance texts when it is deleted."
   @spec delete_block_tree_texts(id()) :: :ok
-  defdelegate delete_block_tree_texts(block_id), to: TextExtractor
+  defdelegate delete_block_tree_texts(block_id), to: Texts
 
   @doc "Archives block texts when one or more sheets are deleted."
   @spec delete_block_texts_for_sheets([id()]) :: :ok
-  defdelegate delete_block_texts_for_sheets(sheet_ids), to: TextExtractor
+  defdelegate delete_block_texts_for_sheets(sheet_ids), to: Texts
 
   # =============================================================================
   # Translation
@@ -271,30 +275,36 @@ defmodule Storyarn.Localization do
 
   @doc "Translates all pending texts for a project and locale using DeepL."
   @spec translate_batch(id(), String.t(), keyword()) ::
-          {:ok, BatchTranslator.result()} | {:error, term()}
-  defdelegate translate_batch(project_id, target_locale, opts \\ []), to: BatchTranslator
+          {:ok, Translation.result()} | {:error, term()}
+  defdelegate translate_batch(project_id, target_locale, opts \\ []), to: Translation
 
   @doc "Translates a single localized text entry using DeepL."
   @spec translate_single(id(), id()) :: {:ok, localized_text()} | {:error, term()}
-  defdelegate translate_single(project_id, text_id), to: BatchTranslator
+  defdelegate translate_single(project_id, text_id), to: Translation
 
   @doc "Enqueues an asynchronous translation run for a target locale."
   defdelegate enqueue_batch_translation(project_id, target_locale, requested_by_id, opts \\ []),
-    to: TranslationRunCrud,
+    to: Translation,
     as: :enqueue
 
   @doc "Returns the active translation run for a project and locale."
   defdelegate get_active_translation_run(project_id, target_locale),
-    to: TranslationRunCrud,
+    to: Translation,
     as: :get_active
 
   @doc "Returns a project-scoped translation run."
   defdelegate get_translation_run(project_id, run_id),
-    to: TranslationRunCrud,
+    to: Translation,
     as: :get_for_project
 
   @doc "Cancels an active translation run."
-  defdelegate cancel_translation_run(run), to: TranslationRunCrud, as: :cancel
+  defdelegate cancel_translation_run(run), to: Translation, as: :cancel
+
+  @doc "Returns the PubSub topic for Localization translation runs."
+  defdelegate translation_runs_topic(project_id), to: Translation, as: :topic
+
+  @doc false
+  defdelegate perform_translation_run(run_id, attempt, max_attempts), to: Translation, as: :perform
 
   # =============================================================================
   # Export / Import
@@ -302,15 +312,15 @@ defmodule Storyarn.Localization do
 
   @doc "Exports localized texts to Excel (.xlsx) binary."
   @spec export_xlsx(id(), keyword()) :: {:ok, binary()}
-  defdelegate export_xlsx(project_id, opts), to: ExportImport
+  defdelegate export_xlsx(project_id, opts), to: Exchange
 
   @doc "Exports localized texts to CSV string."
   @spec export_csv(id(), keyword()) :: {:ok, String.t()}
-  defdelegate export_csv(project_id, opts), to: ExportImport
+  defdelegate export_csv(project_id, opts), to: Exchange
 
   @doc "Imports translations from CSV content."
   @spec import_csv(id(), String.t()) :: {:ok, map()} | {:error, term()}
-  defdelegate import_csv(project_id, csv_content), to: ExportImport
+  defdelegate import_csv(project_id, csv_content), to: Exchange
 
   # =============================================================================
   # Glossary
@@ -318,40 +328,40 @@ defmodule Storyarn.Localization do
 
   @doc "Lists glossary entries for a project."
   @spec list_glossary_entries(id(), keyword()) :: [glossary_entry()]
-  defdelegate list_glossary_entries(project_id, opts \\ []), to: GlossaryCrud, as: :list_entries
+  defdelegate list_glossary_entries(project_id, opts \\ []), to: Glossary, as: :list_entries
 
   @doc "Gets a single glossary entry, scoped to project."
   @spec get_glossary_entry(id(), id()) :: glossary_entry() | nil
-  defdelegate get_glossary_entry(project_id, id), to: GlossaryCrud, as: :get_entry
+  defdelegate get_glossary_entry(project_id, id), to: Glossary, as: :get_entry
 
   @doc "Gets glossary entries for a language pair as tuples."
   @spec get_glossary_entries_for_pair(id(), String.t(), String.t()) ::
           [{String.t(), String.t()}]
   defdelegate get_glossary_entries_for_pair(project_id, source_locale, target_locale),
-    to: GlossaryCrud,
+    to: Glossary,
     as: :get_entries_for_pair
 
   @doc "Creates a glossary entry."
-  @spec create_glossary_entry(Project.t(), attrs()) ::
+  @spec create_glossary_entry(project_identity(), attrs()) ::
           {:ok, glossary_entry()} | {:error, changeset()}
-  defdelegate create_glossary_entry(project, attrs), to: GlossaryCrud, as: :create_entry
+  defdelegate create_glossary_entry(project, attrs), to: Glossary, as: :create_entry
 
   @doc "Updates a glossary entry."
   @spec update_glossary_entry(glossary_entry(), attrs()) ::
           {:ok, glossary_entry()} | {:error, changeset()}
-  defdelegate update_glossary_entry(entry, attrs), to: GlossaryCrud, as: :update_entry
+  defdelegate update_glossary_entry(entry, attrs), to: Glossary, as: :update_entry
 
   @doc "Deletes a glossary entry."
   @spec delete_glossary_entry(glossary_entry()) :: {:ok, glossary_entry()} | {:error, changeset()}
-  defdelegate delete_glossary_entry(entry), to: GlossaryCrud, as: :delete_entry
+  defdelegate delete_glossary_entry(entry), to: Glossary, as: :delete_entry
 
   @doc "Synchronizes one project glossary pair with DeepL."
   def sync_deepl_glossary(project_id, source_locale, target_locale, opts \\ []) do
-    GlossarySync.sync(project_id, source_locale, target_locale, opts)
+    Glossary.sync(project_id, source_locale, target_locale, opts)
   end
 
   @doc "Returns whether the local glossary pair matches the configured DeepL glossary."
-  defdelegate glossary_synced?(project_id, source_locale, target_locale), to: GlossarySync, as: :synced?
+  defdelegate glossary_synced?(project_id, source_locale, target_locale), to: Glossary, as: :synced?
 
   # =============================================================================
   # Reports
@@ -359,19 +369,19 @@ defmodule Storyarn.Localization do
 
   @doc "Returns translation progress per language."
   @spec progress_by_language(id()) :: [map()]
-  defdelegate progress_by_language(project_id), to: Reports
+  defdelegate progress_by_language(project_id), to: Reporting
 
   @doc "Returns word counts per speaker for a locale."
   @spec word_counts_by_speaker(id(), String.t()) :: [map()]
-  defdelegate word_counts_by_speaker(project_id, locale_code), to: Reports
+  defdelegate word_counts_by_speaker(project_id, locale_code), to: Reporting
 
   @doc "Returns VO progress for a locale."
   @spec vo_progress(id(), String.t()) :: map()
-  defdelegate vo_progress(project_id, locale_code), to: Reports
+  defdelegate vo_progress(project_id, locale_code), to: Reporting
 
   @doc "Returns counts by source type for a locale."
   @spec counts_by_source_type(id(), String.t()) :: map()
-  defdelegate counts_by_source_type(project_id, locale_code), to: Reports
+  defdelegate counts_by_source_type(project_id, locale_code), to: Reporting
 
   # =============================================================================
   # Provider Configuration
@@ -379,67 +389,16 @@ defmodule Storyarn.Localization do
 
   @doc "Gets the translation provider config for a project. Returns nil if not configured."
   @spec get_provider_config(id(), String.t()) :: provider_config() | nil
-  def get_provider_config(project_id, provider \\ "deepl") do
-    Repo.get_by(ProviderConfig, project_id: project_id, provider: provider)
-  end
+  defdelegate get_provider_config(project_id, provider \\ "deepl"), to: Providers, as: :get_config
 
   @doc "Returns true if the project has an active provider with an API key."
   @spec has_active_provider?(id()) :: boolean()
-  def has_active_provider?(project_id) do
-    case get_provider_config(project_id) do
-      %{is_active: true, api_key_encrypted: key} when not is_nil(key) -> true
-      _ -> false
-    end
-  end
+  defdelegate has_active_provider?(project_id), to: Providers, as: :active?
 
   @doc "Creates or updates a provider config for a project."
-  @spec upsert_provider_config(Project.t(), map()) ::
+  @spec upsert_provider_config(project_identity(), map()) ::
           {:ok, provider_config()} | {:error, changeset() | term()}
-  def upsert_provider_config(%Project{} = project, attrs) do
-    Repo.transaction(fn -> upsert_provider_config_transaction(project.id, attrs) end)
-  end
-
-  defp upsert_provider_config_transaction(project_id, attrs) do
-    case ProjectReferenceIntegrity.lock_active_project(project_id, :update) do
-      {:ok, locked_project} ->
-        locked_project.id
-        |> get_locked_provider_config()
-        |> provider_config_changeset(locked_project.id, attrs)
-        |> persist_provider_config()
-
-      {:error, reason} ->
-        Repo.rollback(reason)
-    end
-  end
-
-  defp get_locked_provider_config(project_id) do
-    Repo.one(
-      from(config in ProviderConfig,
-        where:
-          config.project_id == ^project_id and
-            config.provider == "deepl",
-        lock: "FOR UPDATE"
-      )
-    )
-  end
-
-  defp provider_config_changeset(nil, project_id, attrs) do
-    ProviderConfig.changeset(
-      %ProviderConfig{project_id: project_id},
-      Map.put(attrs, "provider", "deepl")
-    )
-  end
-
-  defp provider_config_changeset(%ProviderConfig{} = config, _project_id, attrs) do
-    ProviderConfig.changeset(config, attrs)
-  end
-
-  defp persist_provider_config(changeset) do
-    case Repo.insert_or_update(changeset) do
-      {:ok, config} -> config
-      {:error, reason} -> Repo.rollback(reason)
-    end
-  end
+  defdelegate upsert_provider_config(project, attrs), to: Providers, as: :upsert_config
 
   # =============================================================================
   # Languages (static helpers)
@@ -450,8 +409,20 @@ defmodule Storyarn.Localization do
     LocalizedText.update_changeset(text, attrs)
   end
 
+  @doc "Returns whether a localized text is stale against its source revision."
+  defdelegate text_stale?(text), to: LocalizedText, as: :stale?
+
+  @doc "Extracts runtime placeholders from localized content."
+  defdelegate text_placeholders(text), to: Texts
+
   @doc "Returns the display name for a language code."
   defdelegate language_name(code), to: Languages, as: :name
+
+  @doc "Returns the flag code used to present a language."
+  defdelegate language_flag_code(code), to: Languages, as: :flag_code
+
+  @doc "Returns the compact label used to present a language."
+  defdelegate language_short_label(code), to: Languages, as: :short_label
 
   @doc "Returns language options for select inputs."
   def language_options_for_select(opts \\ []), do: Languages.options_for_select(opts)
@@ -461,41 +432,38 @@ defmodule Storyarn.Localization do
   # =============================================================================
 
   @doc "Returns a changeset for a provider config (for form rendering)."
-  def change_provider_config(config \\ nil) do
-    config = config || %ProviderConfig{api_endpoint: ProviderConfig.default_api_endpoint()}
-    ProviderConfig.changeset(config, %{})
-  end
+  defdelegate change_provider_config(config \\ nil), to: Providers, as: :change_config
 
   @doc "Gets DeepL API usage stats."
-  defdelegate get_deepl_usage(config), to: Providers.DeepL, as: :get_usage
+  defdelegate get_deepl_usage(config), to: Providers, as: :get_usage
 
   # =============================================================================
   # Export / Import helpers
   # =============================================================================
 
   @doc "Lists localized texts for export, filtered by locale codes."
-  defdelegate list_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
+  defdelegate list_texts_for_export(project_id, locale_codes, opts \\ []), to: Exchange
 
   @doc "Lists every active localized-text row for canonical snapshot capture."
   @spec list_texts_for_canonical_snapshot(id()) :: [localized_text()]
-  defdelegate list_texts_for_canonical_snapshot(project_id), to: TextCrud
+  defdelegate list_texts_for_canonical_snapshot(project_id), to: Exchange
 
-  defdelegate texts_for_export_query(project_id, locale_codes, opts \\ []), to: TextCrud
-  defdelegate list_texts_for_backup(project_id, locale_codes), to: TextCrud
-  defdelegate count_texts_for_export(project_id, locale_codes, opts \\ []), to: TextCrud
+  defdelegate texts_for_export_query(project_id, locale_codes, opts \\ []), to: Exchange
+  defdelegate list_texts_for_backup(project_id, locale_codes), to: Exchange
+  defdelegate count_texts_for_export(project_id, locale_codes, opts \\ []), to: Exchange
 
   @doc "Lists target (non-source) locale codes for a project."
-  defdelegate list_target_locale_codes(project_id), to: TextCrud
+  defdelegate list_target_locale_codes(project_id), to: Exchange
 
   @doc "Bulk-inserts localized texts from a list of attr maps."
-  defdelegate bulk_import_texts(attrs_list), to: TextCrud
+  defdelegate bulk_import_texts(attrs_list), to: Exchange
 
   @doc "Lists all glossary entries for a project for export."
-  defdelegate list_glossary_for_export(project_id), to: GlossaryCrud, as: :list_entries_for_export
+  defdelegate list_glossary_for_export(project_id), to: Glossary, as: :list_entries_for_export
 
   @doc "Bulk-inserts glossary entries from a list of attr maps."
-  defdelegate bulk_import_glossary_entries(attrs_list), to: GlossaryCrud, as: :bulk_import_entries
+  defdelegate bulk_import_glossary_entries(attrs_list), to: Glossary, as: :bulk_import_entries
 
   @doc "Creates a language for import (raw insert, no side effects)."
-  defdelegate import_language(project_id, attrs), to: LanguageCrud
+  defdelegate import_language(project_id, attrs), to: Languages
 end

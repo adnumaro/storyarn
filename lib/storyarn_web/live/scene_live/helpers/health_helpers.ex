@@ -12,8 +12,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Scenes
-  alias Storyarn.Shared.StringUtils
   alias StoryarnWeb.SceneLive.Helpers.SceneHelpers
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}
@@ -105,7 +105,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.HealthHelpers do
 
   defp health_label(%{entity_type: "scene"}, context), do: context.scene_name
 
-  # `Storyarn.Scenes.HealthChecker` builds every `details` map with atom keys —
+  # The Scenes health contract builds every `details` map with atom keys —
   # `finding/2` is its only constructor and no caller outside it supplies one —
   # so `details[:zone_id]` is the whole access, not half of it.
   defp health_label(%{entity_type: "collection_item", entity_id: entity_id, details: details}, context) do

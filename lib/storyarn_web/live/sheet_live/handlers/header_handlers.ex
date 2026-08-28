@@ -8,7 +8,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3]
 
-  alias Storyarn.Assets
   alias Storyarn.Sheets
   alias StoryarnWeb.Helpers.Authorize
 
@@ -119,7 +118,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.HeaderHandlers do
     sheet = socket.assigns.sheet
     project = socket.assigns.project
 
-    case Assets.get_asset(project.id, asset_id) do
+    case Sheets.get_asset(project.id, asset_id) do
       nil ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Asset not found."))}
 

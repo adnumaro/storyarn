@@ -1,6 +1,6 @@
 defmodule StoryarnWeb.FlowLive.Helpers.HealthHelpers do
   @moduledoc """
-  Serializes `Storyarn.Flows.HealthChecker` findings for the Vue header popover.
+  Serializes Flow health findings for the Vue header popover.
 
   The sibling of `StoryarnWeb.SheetLive.Helpers.HealthHelpers` and
   `StoryarnWeb.SceneLive.Helpers.HealthHelpers`, and deliberately identical to
@@ -9,14 +9,14 @@ defmodule StoryarnWeb.FlowLive.Helpers.HealthHelpers do
   `flows.health.findings.<code>`. Rendering the sentence here instead is what
   kept flows from reusing the shared popover.
 
-  Both detectors — the per-node editorial checks and the graph-derived structural
-  ones in `Storyarn.Flows.StructuralAnalysis` — already emit through
-  `HealthChecker.finding/2`, so this serializes one flat list.
+  Both detectors — the per-node editorial checks and the graph-derived
+  structural checks — emit the same finding shape, so this serializes one flat
+  list.
   """
 
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Shared.StringUtils
+  alias Storyarn.Platform.Shared.StringUtils
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
 
   @empty_health %{errorItems: [], warningItems: [], infoItems: []}

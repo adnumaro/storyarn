@@ -7,63 +7,6 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
 
   alias Storyarn.Flows
   alias Storyarn.Repo
-  alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
-
-  # ===========================================================================
-  # Unit tests — normalize_form_params/1
-  # ===========================================================================
-
-  describe "normalize_form_params/1" do
-    test "converts empty speaker_sheet_id to nil" do
-      params = %{"speaker_sheet_id" => "", "text" => "Hello"}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result["speaker_sheet_id"] == nil
-      assert result["text"] == "Hello"
-    end
-
-    test "converts empty audio_asset_id to nil" do
-      params = %{"audio_asset_id" => "", "text" => "Hello"}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result["audio_asset_id"] == nil
-    end
-
-    test "converts both empty fields to nil" do
-      params = %{"speaker_sheet_id" => "", "audio_asset_id" => ""}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result["speaker_sheet_id"] == nil
-      assert result["audio_asset_id"] == nil
-    end
-
-    test "preserves non-empty speaker_sheet_id" do
-      params = %{"speaker_sheet_id" => "42", "audio_asset_id" => "7"}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result["speaker_sheet_id"] == "42"
-      assert result["audio_asset_id"] == "7"
-    end
-
-    test "preserves nil values (does not set to nil again)" do
-      params = %{"speaker_sheet_id" => nil, "audio_asset_id" => nil}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result["speaker_sheet_id"] == nil
-      assert result["audio_asset_id"] == nil
-    end
-
-    test "handles params without ID fields" do
-      params = %{"text" => "Hello world", "menu_text" => "Choose"}
-      result = NodeHelpers.normalize_form_params(params)
-
-      assert result == params
-    end
-
-    test "handles empty params" do
-      assert NodeHelpers.normalize_form_params(%{}) == %{}
-    end
-  end
 
   # ===========================================================================
   # Integration tests — node operations through the LiveView

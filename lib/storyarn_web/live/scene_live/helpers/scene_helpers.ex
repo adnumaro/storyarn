@@ -8,8 +8,8 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
 
   import Phoenix.Component, only: [assign: 3]
 
+  alias Storyarn.Platform.Kernel.IntegerParser
   alias Storyarn.Scenes
-  alias Storyarn.Shared.MapUtils
   alias StoryarnWeb.PrivateMedia
 
   @element_icons %{
@@ -96,7 +96,7 @@ defmodule StoryarnWeb.SceneLive.Helpers.SceneHelpers do
   # Parse helpers
   # ---------------------------------------------------------------------------
 
-  defdelegate parse_id(id), to: MapUtils, as: :parse_int
+  defdelegate parse_id(id), to: IntegerParser, as: :parse
 
   def parse_float(val, default \\ 0.85)
   def parse_float("", default), do: default

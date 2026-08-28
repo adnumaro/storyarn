@@ -11,8 +11,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Collaboration
-  alias Storyarn.Projects
+  alias Storyarn.Platform.Collaboration
   alias Storyarn.Sheets
   alias StoryarnWeb.Live.TreeSidebarActions
   alias StoryarnWeb.SheetLive.Helpers.PropsSerializer
@@ -25,7 +24,7 @@ defmodule StoryarnWeb.SheetsSidebarLive do
 
     project =
       if project_id && current_scope do
-        case Projects.get_project(current_scope, project_id) do
+        case Sheets.get_project(current_scope, project_id) do
           {:ok, project, _membership} -> project
           _ -> nil
         end

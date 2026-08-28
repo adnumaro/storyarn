@@ -9,7 +9,7 @@ defmodule StoryarnWeb.Components.AuthLayout do
 
   use StoryarnWeb, :html
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   attr :flash, :map, required: true, doc: "the map of flash messages"

@@ -2,181 +2,147 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-10
+> Last reviewed: 2026-08-27
 >
-> Source of truth: `lib/storyarn/`, `lib/storyarn_web/`, and `lib/mix/tasks/convention_check.ex`
+> Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
+> `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
 
-## Context Facade Pattern
+## Architecture model
 
-Every domain uses the same structure. NEVER bypass the facade.
+Storyarn is a modular monolith: one Phoenix application, one supervision tree,
+one `Storyarn.Repo`, one PostgreSQL schema and nine bounded contexts. A bounded
+context is defined by language, invariants and ownership, not by having a
+directory or a Phoenix-style context module.
 
-```
-lib/storyarn/{context}.ex          # Facade — ONLY entry point for external callers
-lib/storyarn/{context}/
-├── {entity}.ex                    # Ecto schema
-├── {entity}_crud.ex               # CRUD operations
-├── {entity}_queries.ex            # Read-only queries (optional)
-└── {helper}.ex                    # Domain-specific helpers
-```
+The current strategic relationships, ordinary writers and deliberate
+exceptions are documented in the [bounded-context map](context-map.md).
 
-**Rules:**
+### Bounded contexts
 
-- Facade exposes public API via `defdelegate` to submodules
-- LiveViews call `Context.function()`, NEVER `Context.SubModule.function()`
-- Submodules can call each other within the same context
-- Cross-context calls go through the facade: `Sheets.get_sheet/2`, not `Sheets.SheetCrud.get_sheet/2`
+| Bounded context | Public facade           | Owned business capabilities                                                                                                      |
+| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                            |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                        |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                    |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                     |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                               |
+| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
+| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
+| Platform        | `Storyarn.Platform`     | Commercial policy, notifications, product reactions and genuinely platform-wide control-plane behavior                           |
 
-`mix convention.check` enforces this as the `facade_bypass` rule, but only for a
-hardcoded submodule list (`@facade_submodules` in `lib/mix/tasks/convention_check.ex`)
-and only under `lib/storyarn_web/`. The rule above is broader than the linter.
+Platform is an organizational control-plane boundary, not a claim that billing,
+notifications and analytics share one aggregate or ubiquitous language.
+Discovery, realtime collaboration and technical adapters may live physically
+under `platform/` while being classified as application or infrastructure code.
+That does not create another bounded context or make those modules generally
+shareable.
 
-### Contexts and their submodules
+### Public facade rule
 
-| Context          | Facade                      | Key Submodules                                                                                                                                                                                                                                                                                                                                                   |
-| ---------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts         | `Storyarn.Accounts`         | `Users`, `Registration`, `Sessions`, `Emails`, `Passwords`, `Profiles`, `Scope`, `UserNotifier`, `UserToken`                                                                                                                                                                                                                                                     |
-| Workspaces       | `Storyarn.Workspaces`       | `WorkspaceCrud`, `Memberships`, `Invitations` (schemas: `WorkspaceMembership`, `WorkspaceInvitation`)                                                                                                                                                                                                                                                            |
-| Projects         | `Storyarn.Projects`         | `ProjectCrud`, `Memberships`, `Invitations`, `Dashboard`, `ProjectTrash` (schemas: `ProjectMembership`, `ProjectInvitation`)                                                                                                                                                                                                                                     |
-| Sheets           | `Storyarn.Sheets`           | `SheetCrud`, `SheetQueries`, `BlockCrud`, `TableCrud`, `GalleryCrud`, `AvatarCrud`, `PropertyInheritance`, `ReferenceTracker`, `TreeOperations`, `HealthChecker`, `FormulaResolver`                                                                                                                                                                              |
-| Flows            | `Storyarn.Flows`            | `FlowCrud`, `NodeCrud` (-> `NodeCreate`, `NodeUpdate`, `NodeDelete`), `ConnectionCrud`, `SequenceCrud`, `TreeOperations`, `VariableReferenceTracker`, `HubColors`, `HealthChecker`, `StructuralAnalysis`                                                                                                                                                         |
-| Scenes           | `Storyarn.Scenes`           | `SceneCrud`, `LayerCrud`, `ZoneCrud`, `PinCrud`, `ConnectionCrud`, `AnnotationCrud`, `AmbientFlowCrud`, `ExplorationSessionCrud`, `TreeOperations`, `HealthChecker`, `ChangesetHelpers`                                                                                                                                                                          |
-| Localization     | `Storyarn.Localization`     | `LanguageCrud`, `TextCrud`, `TextExtractor`, `BatchTranslator`, `GlossaryCrud`, `Reports`, `ExportImport`, `TranslationRunCrud`, `Providers.*`                                                                                                                                                                                                                   |
-| Collaboration    | `Storyarn.Collaboration`    | `Colors`, `Presence`, `Locks`, `CursorTracker`                                                                                                                                                                                                                                                                                                                   |
-| Assets           | `Storyarn.Assets`           | `Asset` (schema), `Storage` (behaviour), `Storage.Local`, `Storage.R2`, `ImageProcessor`, `BlobStore`, `StorageCompensation`, `StorageCleanupOwnershipReceipt`, `UploadPolicy`                                                                                                                                                                                   |
-| AI               | `Storyarn.AI`               | `Operations`, `Execution`, `Executor`, `Allowance`, `Context`, `Audit`, `IntegrationCrud`, `InferenceProviders`, `ModelCatalog`, `CredentialResolver`                                                                                                                                                                                                            |
-| References       | `Storyarn.References`       | `Backlinks`, `EntityTracker`, `VariableTracker`, `VariableUsage`, `ProjectReferenceIntegrity`, `AvatarIntegrity`                                                                                                                                                                                                                                                 |
-| ProjectTemplates | `Storyarn.ProjectTemplates` | `Installation`, `PortableExport`, `PortableImport`, `PublicationRunner`, `TemplateQueries`, `Deletion`, `Authorization`, `Audit`                                                                                                                                                                                                                                 |
-| Versioning       | `Storyarn.Versioning`       | `EntityVersion`, `VersionCrud`, `SnapshotBuilder`, `SnapshotStorage`, `SnapshotObjectFormat`, `SnapshotArchiveStorage`, `SnapshotObjectPublicationClaim`, `ProjectSnapshotCrud`, `ProjectSnapshotDownload`, `ProjectSnapshotZip`, `ProjectSnapshotReconciliation`, `ProjectSnapshotReconciliationRepair`, `ConflictDetector`, `RestorePolicy`, `ProjectRecovery` |
-| Exports          | `Storyarn.Exports`          | `DataCollector`, `ExportOptions`, `Serializer`, `SerializerRegistry`, `Validator`, `ExpressionTranspiler`, `SizeGuard`, `LocalizationCatalog`                                                                                                                                                                                                                    |
-| Imports          | `Storyarn.Imports`          | `Parser`, `ParserRegistry`, `Parsers.*`, `ImportPlan`, `PlanStorage`, `ErrorDeduplicator`                                                                                                                                                                                                                                                                        |
-| Billing          | `Storyarn.Billing`          | `Plan`, `Subscription`, `SubscriptionCrud`, `Limits`, `StorageAccounting`, `StorageReservation`                                                                                                                                                                                                                                                                  |
-| CommandPalette   | `Storyarn.CommandPalette`   | `Definition`, `Registry`, `Operation`                                                                                                                                                                                                                                                                                                                            |
-| GlobalSearch     | `Storyarn.GlobalSearch`     | `Destinations`                                                                                                                                                                                                                                                                                                                                                   |
-| Onboarding       | `Storyarn.Onboarding`       | `TutorialProgress`                                                                                                                                                                                                                                                                                                                                               |
-| Docs             | `Storyarn.Docs`             | `Guide`, `GuideBuilder`                                                                                                                                                                                                                                                                                                                                          |
-| Blog             | `Storyarn.Blog`             | `Post`, `PostBuilder`                                                                                                                                                                                                                                                                                                                                            |
-| Analytics        | `Storyarn.Analytics`        | `PostHogAdapter`, `NoopAdapter`                                                                                                                                                                                                                                                                                                                                  |
-| RateLimiter      | `Storyarn.RateLimiter`      | `ETSBackend`, `RedisBackend`                                                                                                                                                                                                                                                                                                                                     |
-| Shortcuts        | `Storyarn.Shortcuts`        | Centralized shortcut generation for all entity types (single module, no submodules)                                                                                                                                                                                                                                                                              |
+Code outside a bounded context enters through its root facade:
 
-Snapshot lifecycle submodules under `Storyarn.Versioning` are
-`ProjectSnapshotBuild`, `ProjectSnapshotLifecycle`, `ProjectSnapshotPolicy`,
-`ProjectSnapshotReconciliation` (with immutable run and finding schemas),
-`ProjectSnapshotReconciliationRepair` (with immutable repair action outcomes),
-`ProjectSnapshotDownload`, `ProjectSnapshotZip`, `SnapshotArchiveStorage`, and
-`SnapshotCleanupIntent`.
-
-Facade-less directories — call the module directly, do not invent a facade:
-`lib/storyarn/dashboards/` (`Cache`), `lib/storyarn/emails/` (`Layout`, `Templates`),
-`lib/storyarn/product_metrics/` (`Taxonomy`), `lib/storyarn/publication/`,
-`lib/storyarn/workers/` (Oban workers).
-
-Single-module contexts with no directory: `Storyarn.FeatureFlags`, `Storyarn.Urls`,
-`Storyarn.Vault`, `Storyarn.LiveVueEncoders`.
-
----
-
-## CRUD Module Pattern
-
-All CRUD modules follow the same structure. When creating a new one, follow this template:
-
-```elixir
-defmodule Storyarn.{Context}.{Entity}Crud do
-  import Ecto.Query
-  alias Storyarn.Repo
-  alias Storyarn.{Context}.{Entity}
-  # Each context has its OWN TreeOperations wrapper — alias the local one,
-  # not Storyarn.Shared.TreeOperations:
-  alias Storyarn.{Context}.TreeOperations
-  # Import only what you need — not all CRUD modules use the same set:
-  alias Storyarn.Shared.{MapUtils, ShortcutHelpers, SoftDelete}
-  alias Storyarn.Shared.SearchHelpers  # only if search is needed
-  alias Storyarn.Shortcuts              # centralized shortcut generators
-
-  # ========== Queries ==========
-  def list_{entities}(project_id) do
-    from(e in Entity,
-      where: e.project_id == ^project_id and is_nil(e.deleted_at),
-      order_by: [asc: e.position, asc: e.name]
-    )
-    |> Repo.all()
-  end
-
-  def get_{entity}(project_id, id) do
-    Repo.get_by(Entity, id: id, project_id: project_id)
-  end
-
-  def search_{entities}(project_id, query, opts \\ []) do
-    sanitized = SearchHelpers.sanitize_like_query(query)
-    # ... ILIKE search
-  end
-
-  # ========== Create ==========
-  def create_{entity}(project, attrs) do
-    attrs = attrs
-      |> MapUtils.stringify_keys()
-      |> ShortcutHelpers.maybe_generate_shortcut(project.id, nil, &Shortcuts.generate_{entity}_shortcut/3)
-      # position_fn is called as fn.(project_id, parent_id) — arity 2
-      |> ShortcutHelpers.maybe_assign_position(project.id, parent_id, &TreeOperations.next_position/2)
-
-    %Entity{project_id: project.id}
-    |> Entity.create_changeset(attrs)
-    |> Repo.insert()
-  end
-
-  # ========== Update ==========
-  def update_{entity}(entity, attrs) do
-    attrs = ShortcutHelpers.maybe_generate_shortcut_on_update(
-      entity, attrs, &Shortcuts.generate_{entity}_shortcut/3,
-      check_backlinks_fn: &has_backlinks?/1  # optional
-    )
-
-    entity
-    |> Entity.update_changeset(attrs)
-    |> Repo.update()
-  end
-
-  # ========== Delete (soft) ==========
-  def delete_{entity}(entity) do
-    SoftDelete.soft_delete_children(Entity, entity.project_id, entity.id,
-      pre_delete: &clean_references/1  # optional cleanup callback
-    )
-  end
-end
+```text
+StoryarnWeb.FlowLive      -> Storyarn.Flows
+Storyarn.Workers.Flows.*  -> Storyarn.Flows
+Storyarn.Projects         -> Storyarn.Platform
+Mix.Tasks.Storyarn.*      -> owning root facade
 ```
 
-`Storyarn.Shared.TreeOperations.next_position/3` takes `(schema, project_id, parent_id)`.
-Each context's local `TreeOperations` closes over the schema and exposes `next_position/2`.
+Within one bounded context, capabilities collaborate through their capability
+facades. A capability must not import another capability's private
+`commands/`, `queries/`, `entities/`, `rules/`, `execution/`, `adapters/` or
+`projections/` modules merely because both live below the same context.
 
----
+Root facades are stable integration surfaces, not files where business logic
+belongs. Prefer a clear delegate or a small request/value contract. Do not add
+generic repository behaviours, macros or facade generators just to reduce line
+count.
 
-## Schema Pattern
+### Capability-first, role-second organization
 
-All hierarchical entities share these fields:
+Contexts contain business capabilities first. Each capability uses only the
+responsibility folders it needs:
 
-```elixir
-schema "{entities}" do
-  field :name, :string                    # Required, 1-200 chars
-  field :shortcut, :string                # Unique per project
-  field :description, :string             # Optional rich text
-  field :position, :integer, default: 0   # Order among siblings
-  field :deleted_at, :utc_datetime        # Soft delete
-
-  belongs_to :project, Project
-  belongs_to :parent, __MODULE__            # auto-generates parent_id field
-  has_many :children, __MODULE__, foreign_key: :parent_id
-
-  timestamps(type: :utc_datetime)
-end
+```text
+lib/storyarn/{context}.ex
+lib/storyarn/{context}/README.md
+lib/storyarn/{context}/{capability}/
+├── {capability}.ex       # internal capability facade, when collaboration needs one
+├── commands/             # state-changing use cases and transaction boundaries
+├── queries/              # read-only persistence operations
+├── entities/             # capability-owned mutable state and changesets
+├── rules/                # deterministic policy, validation and interpretation
+├── execution/            # indivisible stateful or multi-step workflows
+├── contracts/            # stable values or behaviours at a deliberate seam
+├── events/               # facts owned by the producing capability
+├── delivery/             # owner-specific delivery intent and copy
+├── projections/          # passive consumer-owned read mappings
+├── records/              # controlled writable mappings or exact reconstitution
+├── reference_data/       # immutable shipped catalogs
+├── tokens/               # context-owned token issue and verification
+├── tasks/                # registered task definitions owned by the capability
+├── compatibility/        # explicit legacy identities while callers migrate
+└── adapters/             # provider, PostgreSQL, OTP, storage or transport translation
 ```
 
-**Changesets:** Always separate by operation: `create_changeset/2`, `update_changeset/2`, `move_changeset/2`, `delete_changeset/1`, `restore_changeset/1`
+This is a navigation and ownership convention, not mandatory hexagonal
+layering. Empty folders are forbidden. A transaction, fencing protocol or lock
+order stays together when splitting it would weaken correctness. A capability
+uses only the roles it actually needs; `delivery/`, `tokens/`, `tasks/` and
+`compatibility/` are specialized roles, not required layers.
 
-**Validation:** Use `Storyarn.Shared.Validations.validate_shortcut/2` for shortcut fields.
+### Persistence shapes
 
-**Do not re-implement the standard changesets** — `Storyarn.Shared.HierarchicalSchema`
-already provides `delete_changeset/1`, `restore_changeset/1`, `move_changeset/2`,
-`validate_core_fields/1`, `validate_description/1`, `deleted?/1`.
+- A `projection` is a consumer-owned, read-only Ecto mapping. It declares only
+  fields, associations and types; it has no `Repo` calls or ordinary changesets.
+- A `record` may participate in controlled writes such as exact import,
+  reconstitution, trash or repair. The owning README must name that authority.
+- `reference_data` has no database identity or external I/O.
+- `Repo` is shared technical infrastructure, not a domain layer.
+- Two contexts may deliberately duplicate a table mapping or business
+  interpretation. Shared SQL does not imply shared Elixir schemas.
+
+ENG-92 protects code ownership. It does not assign one writer per table. That
+separate decision belongs to ENG-103.
+
+### Internal capabilities are not bounded contexts
+
+The following namespaces organize capabilities inside their owner. Their
+existence does not create another domain boundary:
+
+| Owner    | Internal capability examples                                                                  |
+| -------- | --------------------------------------------------------------------------------------------- |
+| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                              |
+| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`                         |
+| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                         |
+
+Workers, Repo, storage transports, mail delivery, PubSub, telemetry and release
+wiring are adapters or application composition. They are not bounded contexts.
+Background jobs are grouped physically under `lib/storyarn/workers/{owner}/`
+and the ratchet assigns each slice to that bounded context. Their flat
+`Storyarn.Workers.*` module names are a stable Oban persistence ABI, not a
+shared domain layer. Workers orchestrate through the public facade of the
+capability owner.
+
+### Architecture ratchet
+
+`mix architecture.check` classifies all backend, Web and operator Mix-task
+paths declared in `config/architecture_boundaries.exs`. All nine bounded
+contexts are sealed. Cross-boundary calls are denied unless they are exact,
+reviewed root-facade or technical contracts.
+
+Migration exceptions are debt, not infrastructure. The current storage calls
+from tools, Web and the OTP root into Projects are registered individually and
+must disappear through ENG-107. New consumers cannot copy that relationship.
+
+The ratchet sees compile/runtime file edges. It cannot detect that two contexts
+write the same table or that a new call was added between two files already
+connected. Review and ENG-103's persistence-ownership policy remain necessary.
+
+Mix tasks are operator adapters. Every task is classified explicitly and may
+call root facades, `Repo` where its startup contract requires it, and technical
+infrastructure. A new task remains unclassified until its ownership is reviewed.
 
 ---
 
@@ -225,7 +191,7 @@ def handle_event("delete", params, socket) do
 end
 ```
 
-### In LiveComponents (check @can_edit assign):
+### Compatibility helper for project editing
 
 ```elixir
 use StoryarnWeb.Helpers.Authorize
@@ -236,6 +202,10 @@ def handle_event("save", params, socket) do
   end)
 end
 ```
+
+`with_edit_authorization/2` is only a compatibility spelling for
+`with_authorization(socket, :edit_content, ...)`. It reauthorizes through
+`Projects` and never trusts the cached `@can_edit` assign.
 
 ### Private helpers with auth (e.g., scene_live/show.ex pattern):
 
@@ -259,7 +229,8 @@ Roles: project = `owner | editor | viewer`; workspace = `owner | admin | member 
 
 ## PubSub Pattern
 
-All real-time features use `Phoenix.PubSub` through the `Collaboration` context.
+All real-time features use `Phoenix.PubSub` through the technical
+`Storyarn.Platform.Collaboration` facade.
 Every editor function takes a **scope tuple** `{type, id}` where type is an atom —
 `{:flow, flow.id}`, `{:sheet, sheet.id}`, `{:scene, scene.id}`, `{:project, project.id}`
 — not a bare id.
@@ -284,12 +255,11 @@ def handle_info({:cursor_leave, user_id}, socket), do: ...
 Topic format: `"{type}:{id}:{channel}"` where channel is `presence`, `changes`,
 `locks`, or `cursors`.
 
-Project-wide channels take a bare `project_id`, not a scope tuple:
+The project-wide dashboard channel takes a bare `project_id`, not a scope tuple:
 
-| Channel    | Subscribe                | Topic                     |
-| ---------- | ------------------------ | ------------------------- |
-| Flow graph | `subscribe_flow_graph/1` | `project:{id}:flow_graph` |
-| Dashboard  | `subscribe_dashboard/1`  | `project:{id}:dashboard`  |
+| Channel   | Subscribe               | Topic                    |
+| --------- | ----------------------- | ------------------------ |
+| Dashboard | `subscribe_dashboard/1` | `project:{id}:dashboard` |
 
 ---
 
@@ -325,7 +295,7 @@ only the `put_flash` case (`put_flash_without_gettext`, web files only).
 `priv/gettext/errors.pot` still exists but **nothing calls `dgettext("errors", …)`**.
 `translate_error/1` was deleted from `core_components.ex`; changeset errors are now
 interpolated raw (`String.replace` over `%{key}` — see `format_changeset_error/1` in
-`lib/storyarn/versioning/builders/sheet_builder.ex:1273`) and ship untranslated.
+`lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex:1135`) and ship untranslated.
 Do not route new error text through that domain expecting translation.
 
 ### After adding, moving or deleting a `dgettext` call
@@ -338,7 +308,7 @@ to keep a feature PR reviewable, extract everything and revert every domain but
 yours.
 
 The merge then leaves work in `priv/gettext/es/LC_MESSAGES/`, and
-`test/storyarn/publication/locales_test.exs` blocks on all of it — across all 19
+`test/storyarn/public/publication/locales_test.exs` blocks on all of it — across all 19
 domains, not just the public ones:
 
 - **Fill every empty `msgstr`.** Informal second person ("Selecciona…", "No tienes
@@ -384,8 +354,8 @@ from(e in Entity, where: ilike(e.name, ^"%#{sanitized}%"))
 
 ### Tree building (in-memory from flat list):
 
-Use `Storyarn.Shared.TreeOperations.build_tree_from_flat_list/1-2` — it groups once
-instead of filtering the full list at every level:
+Use the owning context's `TreeOperations.build_tree_from_flat_list` implementation.
+It should group once instead of filtering the full list at every level:
 
 ```elixir
 def list_tree(project_id) do
@@ -405,23 +375,20 @@ end
 
 ## Storage Pattern (Assets)
 
-```elixir
-# Behaviour + Adapter pattern
-Storyarn.Assets.Storage.upload(key, data, content_type)
-Storyarn.Assets.Storage.delete(key)
-Storyarn.Assets.Storage.get_url(key)
+The current object-store implementation still mixes technical provider behavior
+with Project-specific blob, snapshot, import and cleanup policy under
+`Storyarn.Projects.Assets.Storage`. That is a tracked seam, not the target
+architecture.
 
-# Key generation
-key = Assets.generate_key(project, filename)
-# => "projects/{project_id}/assets/{id}/{sanitized_filename}"
-```
+- Projects may use that policy boundary internally.
+- Existing Flows, Sheets, Scenes, Web and OTP callers are registered as exact
+  ENG-107 migration exceptions.
+- New external callers are forbidden.
+- Do not move the entire module to a shared namespace: recoverable-blob deletion,
+  snapshot/import cleanup grammar and purge authority must remain with Projects.
+- ENG-107 will extract only neutral provider operations, hashing and generic
+  locking while preserving keys, provider configuration, lock identities,
+  errors and external I/O ordering.
 
-Full behaviour: `upload/3`, `put_if_absent/3`, `delete/1`, `get_url/1`, `download/1`,
-`stat/1`, `stream/4`, `presigned_upload_url/3`, `presigned_download_url/3`,
-`copy/2`, `copy_if_absent/2`, `key_from_url/1`.
-
-Adapters: `Storage.Local` (dev) and the legacy-named `Storage.R2` adapter
-(S3-compatible storage; Fly Tigris in production).
-Application code always goes through the `Storage` facade so deletion safety
-checks cannot be bypassed. Direct adapter deletion is reserved for explicit
-test-only helpers that simulate provider-side loss or clean up fixtures.
+Direct provider deletion remains reserved for explicit tests that simulate
+provider-side loss or clean up isolated fixtures.

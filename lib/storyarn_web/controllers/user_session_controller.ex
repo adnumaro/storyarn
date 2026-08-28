@@ -3,9 +3,7 @@ defmodule StoryarnWeb.UserSessionController do
   use Gettext, backend: Storyarn.Gettext
 
   alias Storyarn.Accounts
-  alias Storyarn.Analytics
-  alias Storyarn.RateLimiter
-  alias Storyarn.Shared.TimeHelpers
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias StoryarnWeb.ClientIp
   alias StoryarnWeb.UserAuth
   alias StoryarnWeb.UserLoginToken
@@ -43,7 +41,7 @@ defmodule StoryarnWeb.UserSessionController do
     password = user_params["password"] || ""
     ip_address = ClientIp.from_conn(conn)
 
-    case RateLimiter.check_login(ip_address) do
+    case Accounts.check_login_rate(ip_address) do
       :ok ->
         if user = Accounts.get_user_by_email_and_password(email, password) do
           log_in_authenticated_user(conn, user, user_params, info)
@@ -63,8 +61,7 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   defp log_in_authenticated_user(conn, user, user_params, info) do
-    Analytics.identify_user(user)
-    Analytics.track(user, "user logged in", %{auth_method: "password"})
+    Accounts.user_logged_in(user, "password")
 
     conn
     |> put_flash(:info, info)
@@ -97,7 +94,7 @@ defmodule StoryarnWeb.UserSessionController do
   end
 
   defp authenticated?(conn) do
-    match?(%{current_scope: %{user: %Accounts.User{}}}, conn.assigns)
+    match?(%{current_scope: %{user: %{id: _}}}, conn.assigns)
   end
 
   def confirm_access(conn, %{"sudo_handoff" => sudo_handoff, "return_to" => requested_return_to}) do

@@ -10,7 +10,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   import Phoenix.Component, only: [assign: 3]
 
-  alias Storyarn.Notifications
+  alias Storyarn.Platform
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.Live.Shared.NotificationHelpers
 
@@ -29,7 +29,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
     scope = socket.assigns.current_scope
 
     if Phoenix.LiveView.connected?(socket) do
-      :ok = Notifications.subscribe(scope)
+      :ok = Platform.subscribe_notifications(scope)
     end
 
     socket =
@@ -68,7 +68,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
        when valid_notification_id(notification_id) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
          {:ok, _notification} <-
-           Notifications.mark_read(socket.assigns.current_scope, notification_id) do
+           Platform.mark_notification_read(socket.assigns.current_scope, notification_id) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
@@ -78,7 +78,7 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
 
   defp handle_notification_event("mark_all_notifications_read", %{}, socket) do
     with :ok <- Authorize.authorize(socket, :manage_notifications),
-         {:ok, _count} <- Notifications.mark_all_read(socket.assigns.current_scope) do
+         {:ok, _count} <- Platform.mark_all_notifications_read(socket.assigns.current_scope) do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else

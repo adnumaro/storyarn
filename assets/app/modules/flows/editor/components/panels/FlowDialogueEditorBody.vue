@@ -13,10 +13,10 @@
 import { EditorContent } from "@tiptap/vue-3";
 import { Check, Copy, MessageSquare, RefreshCw, Settings, Volume2 } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
-import AudioAsset from "../../../../../components/forms/assets/AudioAsset.vue";
+import AudioAsset from "../assets/AudioAsset.vue";
 import EntityCombobox from "../../../../../components/forms/fields/EntityCombobox.vue";
-import ExpressionEditor from "../../../../../components/forms/ExpressionEditor.vue";
-import type { Assignment, ConditionData } from "@components/builders/types";
+import ExpressionEditor from "../expression/ExpressionEditor.vue";
+import type { Assignment, ConditionData } from "../expression/builders/types";
 import { Button } from "@components/ui/button";
 import {
   Command,
@@ -31,7 +31,7 @@ import { Label } from "@components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import { useScreenplayEditor } from "../../composables/useScreenplayEditor";
-import type { Variable } from "@shared/domain/variables.ts";
+import type { Variable } from "../../expression/domain/variables";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive.ts";
 import { useRemotePickerSearch } from "@shared/composables/useRemotePickerSearch";

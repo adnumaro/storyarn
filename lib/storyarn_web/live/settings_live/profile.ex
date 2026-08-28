@@ -5,9 +5,8 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias Storyarn.Accounts.Scope
-  alias Storyarn.Localization.Languages
   alias StoryarnWeb.LanguagePickerOption
+  alias StoryarnWeb.PublicLanguageMetadata
   alias StoryarnWeb.UserAuth
 
   on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
@@ -117,7 +116,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
         socket =
           socket
-          |> assign(:current_scope, Scope.for_user(updated_user))
+          |> assign(:current_scope, Accounts.scope_for_user(updated_user))
           |> assign(:profile_form, profile_form)
           |> maybe_apply_locale(updated_user.locale)
 
@@ -148,11 +147,7 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
   defp locale_options do
     Enum.map(Gettext.known_locales(Storyarn.Gettext), fn locale ->
-      label =
-        case Languages.get(locale) do
-          %{native: native} -> native
-          nil -> String.upcase(locale)
-        end
+      label = PublicLanguageMetadata.native_name(locale)
 
       LanguagePickerOption.from_code(locale, label: label)
     end)

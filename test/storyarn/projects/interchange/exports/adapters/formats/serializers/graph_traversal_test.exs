@@ -1,0 +1,877 @@
+defmodule Storyarn.Projects.Exports.Serializers.GraphTraversalTest do
+  use ExUnit.Case, async: true
+
+  alias Storyarn.Projects.Exports.Serializers.GraphTraversal
+
+  # ===========================================================================
+  # Test helpers — build flow structs in memory
+  # ===========================================================================
+
+  defp make_node(id, type, data \\ %{}) do
+    %{id: id, type: type, data: data}
+  end
+
+  defp make_conn(source_id, target_id, source_pin \\ "output", target_pin \\ "input") do
+    %{
+      id: "#{source_id}_#{target_id}_#{source_pin}",
+      source_node_id: source_id,
+      target_node_id: target_id,
+      source_pin: source_pin,
+      target_pin: target_pin
+    }
+  end
+
+  defp make_flow(nodes, connections) do
+    %{nodes: nodes, connections: connections}
+  end
+
+  defp instruction_types(instructions) do
+    Enum.map(instructions, fn
+      {type, _} -> type
+      {type, _, _} -> type
+      {type, _, _, _} -> type
+    end)
+  end
+
+  # ===========================================================================
+  # linearize/1
+  # ===========================================================================
+
+  describe "linearize/1" do
+    test "entry → exit" do
+      flow =
+        make_flow(
+          [make_node(1, "entry"), make_node(2, "exit")],
+          [make_conn(1, 2)]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert instruction_types(instructions) == [:exit]
+      assert hub_sections == []
+    end
+
+    test "entry → dialogue → exit" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{"text" => "Hello!"}),
+            make_node(3, "exit")
+          ],
+          [make_conn(1, 2), make_conn(2, 3)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :exit in types
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3])
+    end
+
+    test "sequence nodes are transparent when encountered" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "sequence", %{"name" => "Act I"}),
+            make_node(3, "dialogue", %{"text" => "Inside the sequence"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :exit in types
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3, 4])
+    end
+
+    test "dialogue with responses generates choices" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "What?",
+              "responses" => [
+                %{"id" => "r1", "text" => "Yes"},
+                %{"id" => "r2", "text" => "No"}
+              ]
+            }),
+            make_node(3, "exit"),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "response_r1"),
+            make_conn(2, 4, "response_r2")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :choices_start in types
+      assert :choice in types
+      assert :choices_end in types
+    end
+
+    test "current response ids preserve their connected branch bodies" do
+      response_id = "response_2d6b0c7d-f3f1-4ac3-bf14-8fc1ad84498f"
+
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "Continue?",
+              "responses" => [%{"id" => response_id, "text" => "Yes"}]
+            }),
+            make_node(3, "dialogue", %{"text" => "Reached"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, response_id)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:dialogue, _dialogue},
+               {:choices, _owner, [{%{"id" => ^response_id}, 0, [{:dialogue, %{data: %{"text" => "Reached"}}}]}]}
+             ] = instructions
+    end
+
+    test "linearize_blocks groups dialogue choice branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "text" => "What?",
+              "responses" => [
+                %{"id" => "r1", "text" => "Yes"},
+                %{"id" => "r2", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "response_r1"),
+            make_conn(2, 4, "response_r2")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:dialogue, _dialogue_node},
+               {:choices, _dialogue,
+                [{%{"text" => "Yes"}, 0, [{:dialogue, _yes}]}, {%{"text" => "No"}, 1, [{:dialogue, _no}]}]}
+             ] = instructions
+    end
+
+    test "reconvergent choice branches each retain their shared tail" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+      [{:dialogue, _}, {:choices, _, branches}] = instructions
+
+      assert Enum.all?(branches, fn {_response, _index, body} ->
+               Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
+                 Enum.any?(body, &match?({:exit, _}, &1))
+             end)
+
+      {split, sections} = GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [
+               {:dialogue, _},
+               {:choices, _, split_branches}
+             ] = split
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert Enum.map(
+               split_branches,
+               fn {_response, _index, [{:dialogue, node}, {:divert, label}]} ->
+                 {node.id, label}
+               end
+             ) == [{3, merge_label}, {4, merge_label}]
+    end
+
+    test "split reconvergences extracts a tail shared by only some choice branches" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"},
+                %{"id" => "leave", "text" => "Leave"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit"),
+            make_node(7, "dialogue", %{"text" => "Leave branch"}),
+            make_node(8, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(2, 7, "leave"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6),
+            make_conn(7, 8)
+          ]
+        )
+
+      {instructions, sections} =
+        GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [{:dialogue, _}, {:choices, _, branches}] = instructions
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert [
+               {_yes, 0, [{:dialogue, %{id: 3}}, {:divert, ^merge_label}]},
+               {_no, 1, [{:dialogue, %{id: 4}}, {:divert, ^merge_label}]},
+               {_leave, 2, [{:dialogue, %{id: 7}}, {:exit, %{id: 8}}]}
+             ] = branches
+    end
+
+    test "split reconvergences processes hubs discovered inside merge sections" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [
+                %{"id" => "yes", "text" => "Yes"},
+                %{"id" => "no", "text" => "No"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "Yes branch"}),
+            make_node(4, "dialogue", %{"text" => "No branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "hub", %{"hub_id" => "after-merge", "label" => "After merge"}),
+            make_node(7, "dialogue", %{"text" => "Inside hub"}),
+            make_node(8, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "yes"),
+            make_conn(2, 4, "no"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6),
+            make_conn(6, 7),
+            make_conn(7, 8)
+          ]
+        )
+
+      {instructions, sections} =
+        GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [{:dialogue, _}, {:choices, _, branches}] = instructions
+
+      assert [
+               {merge_label, [{:dialogue, %{id: 5}}, {:divert, "after_merge"}]},
+               {"after_merge", [{:dialogue, %{id: 7}}, {:exit, %{id: 8}}]}
+             ] = sections
+
+      assert Enum.all?(branches, fn {_response, _index, body} ->
+               List.last(body) == {:divert, merge_label}
+             end)
+
+      assert GraphTraversal.reachable_node_ids(flow, split_reconvergences: true) ==
+               MapSet.new(1..8)
+    end
+
+    test "split reconvergences does not emit unvisited joins behind terminals or stale pins" do
+      for terminal_type <- ["exit", "jump"] do
+        flow =
+          make_flow(
+            [
+              make_node(1, "entry"),
+              make_node(2, terminal_type, %{"target_flow_shortcut" => "elsewhere"}),
+              make_node(3, "dialogue", %{"text" => "Must stay omitted"}),
+              make_node(4, "exit")
+            ],
+            [
+              make_conn(1, 2),
+              make_conn(2, 3, "stale_a"),
+              make_conn(2, 3, "stale_b"),
+              make_conn(3, 4)
+            ]
+          )
+
+        {_instructions, sections} =
+          GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+        assert sections == []
+        assert GraphTraversal.reachable_node_ids(flow, split_reconvergences: true) == MapSet.new([1, 2])
+      end
+
+      stale_pin_flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{
+              "responses" => [%{"id" => "go", "text" => "Go"}]
+            }),
+            make_node(3, "exit"),
+            make_node(4, "dialogue", %{"text" => "Must stay omitted"}),
+            make_node(5, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "go"),
+            make_conn(2, 4, "stale_a"),
+            make_conn(2, 4, "stale_b"),
+            make_conn(4, 5)
+          ]
+        )
+
+      {_instructions, sections} =
+        GraphTraversal.linearize_blocks(stale_pin_flow, split_reconvergences: true)
+
+      assert sections == []
+
+      assert GraphTraversal.reachable_node_ids(stale_pin_flow, split_reconvergences: true) ==
+               MapSet.new([1, 2, 3])
+    end
+
+    test "split reconvergences avoids reserved Yarn node titles" do
+      flow =
+        [
+          make_node(1, "entry"),
+          make_node(2, "dialogue", %{
+            "responses" => [
+              %{"id" => "yes", "text" => "Yes"},
+              %{"id" => "no", "text" => "No"}
+            ]
+          }),
+          make_node(3, "dialogue", %{"text" => "Yes branch"}),
+          make_node(4, "dialogue", %{"text" => "No branch"}),
+          make_node(5, "dialogue", %{"text" => "Shared tail"})
+        ]
+        |> make_flow([
+          make_conn(1, 2),
+          make_conn(2, 3, "yes"),
+          make_conn(2, 4, "no"),
+          make_conn(3, 5),
+          make_conn(4, 5)
+        ])
+        |> Map.put(:id, 42)
+
+      reserved_label = "__storyarn_merge_42_5"
+
+      {_instructions, sections} =
+        GraphTraversal.linearize_blocks(
+          flow,
+          split_reconvergences: true,
+          reserved_section_labels: MapSet.new([reserved_label])
+        )
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}]}] = sections
+      assert merge_label == "#{reserved_label}_2"
+    end
+
+    test "condition branches" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "condition" => %{"logic" => "all", "rules" => []},
+              "cases" => [
+                %{"id" => "true", "label" => "True", "value" => "true"},
+                %{"id" => "false", "label" => "False", "value" => "false"}
+              ]
+            }),
+            make_node(3, "exit"),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :condition_start in types
+      assert :condition_branch in types
+      assert :condition_end in types
+    end
+
+    test "linearize_blocks groups condition branch bodies" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "condition" => %{"logic" => "all", "rules" => []},
+              "cases" => [
+                %{"id" => "true", "label" => "True", "value" => "true"},
+                %{"id" => "false", "label" => "False", "value" => "false"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "True branch"}),
+            make_node(4, "dialogue", %{"text" => "False branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"true", "True", 0, [{:dialogue, _true}]},
+                  {"false", "False", 1, [{:dialogue, _false}]}
+                ]}
+             ] = instructions
+    end
+
+    test "reconvergent condition branches each retain their shared tail" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "cases" => [
+                %{"id" => "true", "label" => "True"},
+                %{"id" => "false", "label" => "False"}
+              ]
+            }),
+            make_node(3, "dialogue", %{"text" => "True branch"}),
+            make_node(4, "dialogue", %{"text" => "False branch"}),
+            make_node(5, "dialogue", %{"text" => "Shared tail"}),
+            make_node(6, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "true"),
+            make_conn(2, 4, "false"),
+            make_conn(3, 5),
+            make_conn(4, 5),
+            make_conn(5, 6)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+      [{:condition, _, branches}] = instructions
+
+      assert Enum.all?(branches, fn {_pin, _label, _index, body} ->
+               Enum.any?(body, &match?({:dialogue, %{data: %{"text" => "Shared tail"}}}, &1)) and
+                 Enum.any?(body, &match?({:exit, _}, &1))
+             end)
+
+      {split, sections} = GraphTraversal.linearize_blocks(flow, split_reconvergences: true)
+
+      assert [
+               {:condition, _, split_branches}
+             ] = split
+
+      assert [{merge_label, [{:dialogue, %{id: 5}}, {:exit, %{id: 6}}]}] = sections
+
+      assert Enum.map(
+               split_branches,
+               fn {_pin, _label, _index, [{:dialogue, node}, {:divert, label}]} ->
+                 {node.id, label}
+               end
+             ) == [{3, merge_label}, {4, merge_label}]
+    end
+
+    test "linearize_blocks derives switch branches from condition blocks" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "switch_mode" => true,
+              "condition" => %{
+                "logic" => "all",
+                "blocks" => [
+                  %{"id" => "case_mage", "type" => "block", "logic" => "all", "label" => "Mage", "rules" => []},
+                  %{"id" => "case_warrior", "type" => "block", "logic" => "all", "label" => "Warrior", "rules" => []}
+                ]
+              }
+            }),
+            make_node(3, "dialogue", %{"text" => "Mage branch"}),
+            make_node(4, "dialogue", %{"text" => "Warrior branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "case_mage"),
+            make_conn(2, 4, "case_warrior")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [
+                  {"case_mage", "Mage", 0, [{:dialogue, _mage}]},
+                  {"case_warrior", "Warrior", 1, [{:dialogue, _warrior}]}
+                ]}
+             ] = instructions
+    end
+
+    test "switch default output is traversed even when there are no configured cases" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "condition", %{
+              "switch_mode" => true,
+              "condition" => %{"logic" => "all", "blocks" => []}
+            }),
+            make_node(3, "dialogue", %{"text" => "Default branch"})
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3, "default")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize_blocks(flow)
+
+      assert [
+               {:condition, _condition,
+                [{"default", "Default", 0, [{:dialogue, %{data: %{"text" => "Default branch"}}}]}]}
+             ] = instructions
+    end
+
+    test "hub + jump emits divert and hub section" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "hub", %{"label" => "meeting_point"}),
+            make_node(3, "dialogue", %{"text" => "At the hub"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :divert in types
+
+      assert [_ | _] = hub_sections
+      {label, section_instructions} = hd(hub_sections)
+      assert label == "meeting_point"
+      assert [_ | _] = section_instructions
+    end
+
+    test "cycle detection via revisited hub" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "hub", %{"label" => "loop"}),
+            make_node(3, "dialogue", %{"text" => "Again"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            # Loop back to hub
+            make_conn(3, 2)
+          ]
+        )
+
+      # Should not hang — cycle detection breaks the loop
+      {_instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert is_list(hub_sections)
+    end
+
+    test "returns empty for flow with no entry node" do
+      flow =
+        make_flow(
+          [make_node(1, "dialogue", %{"text" => "orphan"})],
+          []
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert instructions == []
+      assert hub_sections == []
+    end
+
+    test "instruction node is linearized" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "instruction", %{"assignments" => []}),
+            make_node(3, "exit")
+          ],
+          [make_conn(1, 2), make_conn(2, 3)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :instruction in types
+      assert :exit in types
+    end
+
+    test "subflow node is linearized" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "subflow", %{"flow_shortcut" => "sub.flow"}),
+            make_node(3, "exit")
+          ],
+          [make_conn(1, 2), make_conn(2, 3)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :subflow in types
+    end
+
+    test "cycle detection on non-hub node emits nothing" do
+      # When a non-hub node is revisited, the traversal just stops (no divert emitted).
+      # Create a loop: entry → dialogue → dialogue (back to self via connection).
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{"text" => "Loop"}),
+            make_node(3, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            # dialogue → exit normally
+            make_conn(2, 3),
+            # But also dialogue → dialogue (cycle)
+            make_conn(2, 2, "response_loop")
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      # Should not hang, and should contain the dialogue + exit
+      types = instruction_types(instructions)
+      assert :dialogue in types
+      assert :exit in types
+    end
+
+    test "connection to non-existent node is handled gracefully" do
+      # When a connection points to a node_id not in the flow's node list,
+      # traverse returns state unchanged (L109: nil -> state).
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{"text" => "Hello"})
+          ],
+          [
+            make_conn(1, 2),
+            # Connection to node 999 which doesn't exist
+            make_conn(2, 999)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      assert :dialogue in types
+    end
+
+    test "unknown node type is skipped via catch-all traverse_node" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "unknown_type", %{}),
+            make_node(3, "exit")
+          ],
+          [make_conn(1, 2), make_conn(2, 3)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      # The unknown node is skipped and its traverse_node returns state without
+      # following connections, so exit is not reached. The key point is it doesn't crash.
+      assert is_list(instructions)
+    end
+
+    test "jump with target_flow_shortcut resolves to flow identifier" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{"target_flow_shortcut" => "chapter.two"})
+          ],
+          [make_conn(1, 2)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      assert [{:jump, _node, "chapter_two"}] = instructions
+    end
+
+    test "jump with target_hub_id resolves user hub identifier" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{"target_hub_id" => "safe-house"}),
+            make_node(3, "hub", %{"hub_id" => "safe-house", "label" => "safe_house"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert [{:jump, _node, "safe_house"}] = instructions
+      assert [{"safe_house", [exit: _exit_node]}] = hub_sections
+      assert GraphTraversal.reachable_node_ids(flow) == MapSet.new([1, 2, 3, 4])
+    end
+
+    test "jump without a persisted target does not infer one from an invalid connection" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{}),
+            make_node(3, "hub", %{"label" => "target_hub"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      jump_instruction = Enum.find(instructions, fn {type, _, _} -> type == :jump end)
+      assert {:jump, _node, "unknown"} = jump_instruction
+      assert hub_sections == []
+    end
+
+    test "jump without hub_id or target_flow_shortcut and no connections resolves to unknown" do
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "jump", %{})
+          ],
+          [make_conn(1, 2)]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      assert [{:jump, _node, "unknown"}] = instructions
+    end
+
+    test "hub in queue but missing from nodes map is handled" do
+      # Build a flow where a hub is queued but then removed from the node index.
+      # This tests L259 (hub_state for missing hub_node).
+      # We can achieve this indirectly by having a hub that's visited and queued,
+      # but we craft the flow so that process_hub_queue encounters an edge case.
+      # The simplest way: hub node is present (so it gets queued), then during
+      # process_hub_queue it should still find it. This covers the normal path.
+      # To hit the nil branch we'd need to remove the node, which isn't possible
+      # in normal usage. Let's verify the normal hub queue processing works.
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "hub", %{"label" => "my_hub"}),
+            make_node(3, "dialogue", %{"text" => "After hub"}),
+            make_node(4, "exit")
+          ],
+          [
+            make_conn(1, 2),
+            make_conn(2, 3),
+            make_conn(3, 4)
+          ]
+        )
+
+      {instructions, hub_sections} = GraphTraversal.linearize(flow)
+      assert :divert in instruction_types(instructions)
+      assert length(hub_sections) == 1
+      {label, section_instr} = hd(hub_sections)
+      assert label == "my_hub"
+      section_types = instruction_types(section_instr)
+      assert :dialogue in section_types
+      assert :exit in section_types
+    end
+
+    test "multiple outgoing connections from entry are all traversed" do
+      # When a node has multiple outgoing connections, after traversing the first
+      # target, the rest are also traversed (L237 _ -> traverse_targets(rest, state)).
+      flow =
+        make_flow(
+          [
+            make_node(1, "entry"),
+            make_node(2, "dialogue", %{"text" => "Path A"}),
+            make_node(3, "dialogue", %{"text" => "Path B"}),
+            make_node(4, "exit"),
+            make_node(5, "exit")
+          ],
+          [
+            make_conn(1, 2, "output_a"),
+            make_conn(1, 3, "output_b"),
+            make_conn(2, 4),
+            make_conn(3, 5)
+          ]
+        )
+
+      {instructions, _} = GraphTraversal.linearize(flow)
+      types = instruction_types(instructions)
+      # Both dialogues should be traversed
+      dialogue_count = Enum.count(types, &(&1 == :dialogue))
+      assert dialogue_count == 2
+    end
+  end
+end

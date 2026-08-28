@@ -12,7 +12,7 @@ defmodule StoryarnWeb.Plugs.Locale do
   """
   import Plug.Conn
 
-  alias Storyarn.Publication.Locales, as: PublicLocales
+  alias Storyarn.Public.Publication.Locales, as: PublicLocales
   alias StoryarnWeb.PublicURLs
 
   @locales Gettext.known_locales(Storyarn.Gettext)

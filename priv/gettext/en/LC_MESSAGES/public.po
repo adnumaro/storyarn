@@ -135,7 +135,7 @@ msgstr ""
 msgid "Page language"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:68
+#: lib/storyarn_web/live/landing_live/index.ex:67
 #, elixir-autogen, elixir-format
 msgid "Branching dialogue and narrative flow editor"
 msgstr ""
@@ -145,32 +145,32 @@ msgstr ""
 msgid "Contact Storyarn about the narrative design platform for game writers, narrative designers, and game design teams."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:82
+#: lib/storyarn_web/live/landing_live/index.ex:81
 #, elixir-autogen, elixir-format
 msgid "Debugging and player preview for interactive narrative logic"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:84
+#: lib/storyarn_web/live/landing_live/index.ex:83
 #, elixir-autogen, elixir-format
 msgid "Export for common game engines and narrative runtimes"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:66
+#: lib/storyarn_web/live/landing_live/index.ex:65
 #, elixir-autogen, elixir-format
 msgid "Game design platform features"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:94
+#: lib/storyarn_web/live/landing_live/index.ex:93
 #, elixir-autogen, elixir-format
 msgid "Game engine export"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:79
+#: lib/storyarn_web/live/landing_live/index.ex:78
 #, elixir-autogen, elixir-format
 msgid "Localization workflow for game dialogue and story content"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:91
+#: lib/storyarn_web/live/landing_live/index.ex:90
 #, elixir-autogen, elixir-format
 msgid "Narrative design flows"
 msgstr ""
@@ -185,37 +185,37 @@ msgstr ""
 msgid "Privacy Policy for Storyarn, including account, waitlist, invitation, and product analytics data."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:76
+#: lib/storyarn_web/live/landing_live/index.ex:75
 #, elixir-autogen, elixir-format
 msgid "Scene maps for spatial narrative design and exploration"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:86
+#: lib/storyarn_web/live/landing_live/index.ex:85
 #, elixir-autogen, elixir-format
 msgid "Storyarn documentation"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:26
+#: lib/storyarn_web/live/landing_live/index.ex:25
 #, elixir-autogen, elixir-format
 msgid "Storyarn is a narrative design platform and video game design platform for branching dialogue, worldbuilding, scenes, localization, debugging, and engine-ready export."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:55
+#: lib/storyarn_web/live/landing_live/index.ex:54
 #, elixir-autogen, elixir-format
 msgid "Storyarn is a video game design platform for narrative designers, game designers, writers, and small studios. It connects worldbuilding sheets, branching dialogue flows, scenes, localization, debugging, and export in one production-ready workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:51
+#: lib/storyarn_web/live/landing_live/index.ex:50
 #, elixir-autogen, elixir-format
 msgid "Storyarn overview"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:23
+#: lib/storyarn_web/live/landing_live/index.ex:22
 #, elixir-autogen, elixir-format
 msgid "Storyarn — Narrative Design Platform for Video Games"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:53
+#: lib/storyarn_web/live/landing_live/index.ex:52
 #, elixir-autogen, elixir-format
 msgid "Storyarn: narrative design platform for video games"
 msgstr ""
@@ -230,17 +230,17 @@ msgstr ""
 msgid "Terms of Use for Storyarn, the narrative design platform for game projects."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:61
+#: lib/storyarn_web/live/landing_live/index.ex:60
 #, elixir-autogen, elixir-format
 msgid "Use Storyarn to design interactive stories, test game narrative logic, manage dialogue and variables, map worlds with scenes, localize content, and export to Yarn Spinner, Ink, Godot Dialogic, Unity, and Unreal."
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:88
+#: lib/storyarn_web/live/landing_live/index.ex:87
 #, elixir-autogen, elixir-format
 msgid "What is Storyarn?"
 msgstr ""
 
-#: lib/storyarn_web/live/landing_live/index.ex:70
+#: lib/storyarn_web/live/landing_live/index.ex:69
 #, elixir-autogen, elixir-format
 msgid "Worldbuilding sheets for characters, places, items, factions, and quests"
 msgstr ""

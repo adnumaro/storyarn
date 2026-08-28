@@ -1,18 +1,19 @@
 defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
   @moduledoc """
-  Single source of truth for flow node type definitions.
+  Presentation registry for Flow node types.
 
-  Aggregates per-type modules via a lookup map.
-  Each node type is defined in its own module under `Nodes.{Type}.Node`.
+  `Storyarn.Flows.NodeTypes` owns the domain vocabulary and authored data
+  contract. This module maps those types to Web modules under
+  `Nodes.{Type}.Node` for translated labels, icons and socket behavior.
 
   Consumers:
-  - `NodeDataHelpers` delegates default_data
-  - `FormHelpers` delegates extract_form_data
-  - `NodeHelpers` delegates duplicate_data_cleanup
-  - `NodeEventHandlers` delegates on_select, on_double_click
+  - `Flows` owns default data, form normalization and duplication semantics
+  - Web modules retain only presentation metadata and socket behavior
+  - `NodeEventHandlers` delegates on_select and on_double_click
   """
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows
 
   @node_suffixes %{
     "annotation" => "Annotation",
@@ -26,15 +27,13 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
     "subflow" => "Subflow"
   }
 
-  @types @node_suffixes |> Map.keys() |> Enum.sort()
-
   @doc "All known node types."
   @spec types() :: [String.t()]
-  def types, do: @types
+  defdelegate types(), to: Flows, as: :editor_node_types
 
   @doc "Node types that users can add via the 'Add Node' toolbar (excludes annotation and entry)."
   @spec user_addable_types() :: [String.t()]
-  def user_addable_types, do: @types -- ["annotation", "entry"]
+  defdelegate user_addable_types(), to: Flows, as: :user_addable_node_types
 
   @doc "Returns the node module for a given type."
   @spec node_module(String.t()) :: module() | nil
@@ -74,21 +73,11 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
 
   @doc "Returns the default data map for a given node type."
   @spec default_data(String.t()) :: map()
-  def default_data(type) do
-    case node_module(type) do
-      nil -> %{}
-      mod -> mod.default_data()
-    end
-  end
+  defdelegate default_data(type), to: Flows, as: :default_node_data
 
   @doc "Extracts form-compatible data from a node based on its type."
   @spec extract_form_data(String.t(), map()) :: map()
-  def extract_form_data(type, data) do
-    case node_module(type) do
-      nil -> %{}
-      mod -> mod.extract_form_data(data)
-    end
-  end
+  defdelegate extract_form_data(type, data), to: Flows, as: :node_form_data
 
   @doc "Returns the editing mode for double-click on a node type."
   @spec on_double_click(String.t(), map()) ::
@@ -111,10 +100,5 @@ defmodule StoryarnWeb.FlowLive.NodeTypeRegistry do
 
   @doc "Transforms node data when duplicating (clears unique identifiers)."
   @spec duplicate_data_cleanup(String.t(), map()) :: map()
-  def duplicate_data_cleanup(type, data) do
-    case node_module(type) do
-      nil -> data
-      mod -> mod.duplicate_data_cleanup(data)
-    end
-  end
+  defdelegate duplicate_data_cleanup(type, data), to: Flows, as: :duplicate_node_data
 end

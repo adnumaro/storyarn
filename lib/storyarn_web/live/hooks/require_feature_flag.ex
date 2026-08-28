@@ -17,7 +17,7 @@ defmodule StoryarnWeb.Live.Hooks.RequireFeatureFlag do
   import Phoenix.Component, only: [assign: 3]
   import Phoenix.LiveView, only: [put_flash: 3, redirect: 2]
 
-  alias Storyarn.FeatureFlags
+  alias Storyarn.Platform.FeatureFlags
 
   def on_mount(flag, _params, _session, socket) when is_atom(flag) do
     user = socket.assigns.current_scope.user

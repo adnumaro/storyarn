@@ -7,10 +7,10 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Assets
-  alias Storyarn.Assets.Asset
-  alias Storyarn.Billing
   alias Storyarn.Localization
+  alias Storyarn.Platform.Billing
+  alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo
   alias Storyarn.Sheets.SheetAvatar
 
@@ -633,7 +633,7 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
       project: project
     } do
       asset = image_asset_fixture(project, user, %{filename: "shared.png"})
-      :ok = Storyarn.Collaboration.subscribe_changes({:assets, project.id})
+      :ok = Storyarn.Platform.Collaboration.subscribe_changes({:assets, project.id})
 
       {:ok, view, _html} = live(conn, assets_path(project))
 

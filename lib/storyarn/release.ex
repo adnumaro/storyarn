@@ -1,9 +1,9 @@
-defmodule Storyarn.Release do
+defmodule Storyarn.Platform.Release do
   @moduledoc """
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
-  alias Storyarn.Versioning
+  alias Storyarn.Projects
 
   @app :storyarn
   @snapshot_storage_accounting_migration 20_260_804_120_000
@@ -234,7 +234,7 @@ defmodule Storyarn.Release do
   def start_project_snapshot_reconciliation do
     load_app()
 
-    case Versioning.start_project_snapshot_reconciliation() do
+    case Projects.start_project_snapshot_reconciliation() do
       {:ok, run} ->
         IO.puts("Snapshot reconciliation dry-run ##{run.id}")
         IO.puts("Status: #{run.status}; phase: #{run.phase}; cursor generation: #{run.cursor_generation}")
@@ -260,13 +260,13 @@ defmodule Storyarn.Release do
              limit > 0 do
     load_app()
 
-    case Versioning.get_project_snapshot_reconciliation_run(run_id) do
+    case Projects.get_project_snapshot_reconciliation_run(run_id) do
       nil ->
         raise "Snapshot reconciliation run ##{run_id} was not found"
 
       run ->
         findings =
-          Versioning.list_project_snapshot_reconciliation_findings(run_id,
+          Projects.list_project_snapshot_reconciliation_findings(run_id,
             after_id: after_id,
             limit: min(limit, 500)
           )
@@ -297,9 +297,9 @@ defmodule Storyarn.Release do
       when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
              limit > 0 do
     load_app()
-    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+    limit = min(limit, Projects.project_snapshot_reconciliation_repair_page_limit())
 
-    case Versioning.plan_project_snapshot_reconciliation_repairs(run_id,
+    case Projects.plan_project_snapshot_reconciliation_repairs(run_id,
            after_id: after_id,
            limit: limit
          ) do
@@ -322,14 +322,14 @@ defmodule Storyarn.Release do
       when is_integer(run_id) and run_id > 0 and is_integer(after_id) and after_id >= 0 and is_integer(limit) and
              limit > 0 do
     load_app()
-    limit = min(limit, Versioning.project_snapshot_reconciliation_repair_page_limit())
+    limit = min(limit, Projects.project_snapshot_reconciliation_repair_page_limit())
 
-    if is_nil(Versioning.get_project_snapshot_reconciliation_run(run_id)) do
+    if is_nil(Projects.get_project_snapshot_reconciliation_run(run_id)) do
       raise "Snapshot reconciliation run ##{run_id} was not found"
     end
 
     actions =
-      Versioning.list_project_snapshot_reconciliation_repairs(run_id,
+      Projects.list_project_snapshot_reconciliation_repairs(run_id,
         after_id: after_id,
         limit: limit
       )
@@ -377,8 +377,8 @@ defmodule Storyarn.Release do
   The invitee must click the acceptance link to create their account and join.
 
   Usage from Fly SSH (uses rpc to run inside the live node):
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"project\\", 123, \\"editor\\", \\"es\\", \\"requester@example.com\\")"'
-    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Release.invite_member(\\"user@example.com\\", \\"workspace\\", 456, \\"member\\", \\"en\\", \\"requester@example.com\\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Platform.Release.invite_member(\\"user@example.com\\", \\"project\\", 123, \\"editor\\", \\"es\\", \\"requester@example.com\\")"'
+    fly ssh console -a storyarn-staging -C '/app/bin/storyarn rpc "Storyarn.Platform.Release.invite_member(\\"user@example.com\\", \\"workspace\\", 456, \\"member\\", \\"en\\", \\"requester@example.com\\")"'
   """
   def invite_member(email, type, entity_id, role, locale \\ "en", inviter_name \\ "Storyarn")
       when is_binary(email) and type in ["project", "workspace"] do
@@ -420,12 +420,12 @@ defmodule Storyarn.Release do
 
   Usage from Fly SSH after the bundle is present on the machine:
 
-      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Release.preview_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\")"'
+      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Platform.Release.preview_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\")"'
   """
   def preview_template_bundle(path) when is_binary(path) do
     load_app()
 
-    case Storyarn.ProjectTemplates.preview_portable_template(path) do
+    case Projects.preview_portable_project_template(path) do
       {:ok, manifest} ->
         print_template_bundle_preview(path, manifest, [])
         manifest
@@ -443,16 +443,16 @@ defmodule Storyarn.Release do
 
   Usage from Fly SSH after the bundle is present on the machine:
 
-      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Release.import_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\", %{visibility: \\"public\\", verify_user_id: 123, verify_workspace_id: 456, update_existing: true})"'
+      fly ssh console -a storyarn -C '/app/bin/storyarn rpc "Storyarn.Platform.Release.import_template_bundle(\\"/tmp/veilbreak.storyarn-template.tar.gz\\", %{visibility: \\"public\\", verify_user_id: 123, verify_workspace_id: 456, update_existing: true})"'
   """
   def import_template_bundle(path, opts \\ %{}) when is_binary(path) and is_map(opts) do
     load_app()
 
     with {:ok, keyword_opts} <- template_import_options(opts),
-         {:ok, manifest} <- Storyarn.ProjectTemplates.preview_portable_template(path, keyword_opts) do
+         {:ok, manifest} <- Projects.preview_portable_project_template(path, keyword_opts) do
       print_template_bundle_preview(path, manifest, keyword_opts)
 
-      case Storyarn.ProjectTemplates.import_portable_template(path, keyword_opts) do
+      case Projects.import_portable_project_template(path, keyword_opts) do
         {:ok, template} ->
           IO.puts("Imported template ##{template.id}: #{template.name}")
           IO.puts("Visibility: #{template.visibility}")
@@ -470,7 +470,7 @@ defmodule Storyarn.Release do
   end
 
   defp invitation_config("project", id) do
-    {Storyarn.Projects, Storyarn.Projects.get_project!(id)}
+    {Projects, Projects.get_project!(id)}
   end
 
   defp invitation_config("workspace", id) do
