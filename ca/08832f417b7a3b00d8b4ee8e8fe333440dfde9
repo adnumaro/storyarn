@@ -1,0 +1,29 @@
+assets/app/shared/command-palette/aiCommands.ts
+  s_e9e5a90425bc26::t_00ad020583a55e 1
+assets/app/shared/command-palette/registry.ts
+  s_e9e5a90425bc26::t_00ad020583a55e 4,6
+assets/app/shared/command-palette/commandTypes.ts
+  s_e9e5a90425bc26::t_00ad020583a55e 1-15
+assets/app/modules/flows/editor/services/historyPreset.ts
+  s_e9e5a90425bc26::t_1865fc25ac9f03 18-30,165,168,188,191,213,247,253,287,293,333
+  s_e9e5a90425bc26::t_4aa2122b011974 218
+  s_e9e5a90425bc26::t_a531b6a203a549 17
+assets/app/modules/flows/editor/services/flowSequenceScopes.ts
+  s_e9e5a90425bc26::t_1865fc25ac9f03 18-22,58,168-171,183-186,210
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ca08832f417b7a3b00d8b4ee8e8fe333440dfde9",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
