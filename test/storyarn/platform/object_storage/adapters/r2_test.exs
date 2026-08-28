@@ -1,8 +1,8 @@
-defmodule Storyarn.Projects.Assets.Storage.R2Test do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
   use ExUnit.Case, async: false
 
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.R2
+  alias Storyarn.Platform.ObjectStorage
+  alias Storyarn.Platform.ObjectStorage.Adapters.R2
 
   @copy_result """
   <?xml version="1.0" encoding="UTF-8"?>
@@ -513,9 +513,9 @@ defmodule Storyarn.Projects.Assets.Storage.R2Test do
 
     test "hard-stops a hung UploadPart at the configured wall-clock deadline and aborts its upload id" do
       key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
-      original_policy = Application.get_env(:storyarn, Storage)
-      Application.put_env(:storyarn, Storage, multipart_upload_part_deadline_ms: 50)
-      on_exit(fn -> restore_env(:storyarn, Storage, original_policy) end)
+      original_policy = Application.get_env(:storyarn, ObjectStorage)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 50)
+      on_exit(fn -> restore_env(:storyarn, ObjectStorage, original_policy) end)
 
       Req.Test.expect(__MODULE__, 3, fn conn ->
         conn = Plug.Conn.fetch_query_params(conn)
@@ -696,14 +696,6 @@ defmodule Storyarn.Projects.Assets.Storage.R2Test do
   end
 
   describe "abort_incomplete_multipart_uploads/2" do
-    test "skips keys that the adapter never writes with multipart upload" do
-      assert {:ok, 0} =
-               R2.abort_incomplete_multipart_uploads(
-                 "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/.storyarn-copy/copy-token",
-                 []
-               )
-    end
-
     test "inventories every exact v2 archive key that stream fallback may write" do
       keys =
         for state <- ["staging", "ready"], filename <- ["snapshot.zip", "manifest.json"] do

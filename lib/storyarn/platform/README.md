@@ -13,6 +13,7 @@ technical areas. None of these folders is an additional bounded context.
 | `discovery/`     | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
 | `onboarding/`    | Product-wide tutorial progress and onboarding summaries.                                                                                                      |
 | `delivery/`      | Durable handoff to delivery workers after the producing context has decided intent and content.                                                               |
+| `object_storage/` | Provider-neutral object I/O, hashing, key locks and Local/R2 implementations. Consumer contexts retain every business storage decision.                       |
 | `adapters/`      | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration.                                                     |
 | `kernel/`        | A closed set of small, deterministic, business-neutral primitives used by several contexts.                                                                   |
 
@@ -24,6 +25,31 @@ Accounts.
 
 Rate-limit policy follows the same rule: each consumer owns its bucket names,
 limits and windows. Platform owns only the ETS/Redis counter mechanism.
+
+## Object storage ownership
+
+`Storyarn.Platform.ObjectStorage` is a reviewed technical capability with one
+public facade. It is consumed directly rather than being re-exported through
+the business-oriented `Storyarn.Platform` facade. Its `adapters/`, `Hashing`
+and `KeyLock` modules are private implementation details.
+
+| Platform owns                                  | Consumer contexts own                                                                                   |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Provider selection and runtime configuration   | Key namespaces and key construction                                                                     |
+| Local/R2 I/O and conditional-copy supervision | Authorization, reachability, retention and deletion decisions                                           |
+| Incremental hashing and generic key locks      | Snapshots, imports, durable cleanup, ownership transfer, quota application and provider-error semantics |
+
+Projects therefore keeps its recoverable-blob guard, multipart cleanup grammar,
+compensation and reconstitution policy. Flows, Sheets and Scenes keep their own
+storage adapters and deletion guards. Workspaces consumes the mechanism through
+its Banner storage port. Sharing the provider does not grant one consumer the
+right to interpret or delete another consumer's objects.
+
+Admission to this capability requires provider-neutral behavior, no product
+aggregate or consumer key grammar, and a stable need across multiple contexts.
+Code exits back to a consumer as soon as its language includes a specific
+workflow, ownership rule, lifecycle, retention rule or authorization decision.
+These criteria keep Platform from becoming a generic shared-code drawer.
 
 ## Capability roles
 
@@ -132,6 +158,7 @@ jobs. Important stable entry points include:
 - `EventTracker`, `ProductMetrics`, `Analytics`, and its adapters/contracts
 - `Collaboration`, `Collaboration.Presence`, and `Collaboration.Locks`
 - `CommandPalette`, `GlobalSearch`, `Onboarding`, and `RateLimiter`
+- `Storyarn.Platform.ObjectStorage`; its provider, hashing and lock modules are private
 - `Mailer`, `Vault`, `FeatureFlags`, `Urls`, `Release`, and the remaining
   compatibility-safe technical identities
 - `Storyarn.Workers.DeliverInvitationWorker`
@@ -145,6 +172,8 @@ must use the named `Kernel` or adapter contract instead.
 ## Boundary rules
 
 - Product contexts enter Platform business policy through `Storyarn.Platform`.
+- Product contexts enter provider-neutral object storage only through the exact
+  `Storyarn.Platform.ObjectStorage` contract and their own adapter or port.
 - The root facade is declarative and composes Commercial, Reactions,
   Notifications, Delivery, and Onboarding capability facades.
 - Existing platform-wide application services retain exact public facets while

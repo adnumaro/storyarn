@@ -30,6 +30,8 @@ boundaries = %{
     "lib/storyarn/platform/delivery/",
     "lib/storyarn/platform/notifications/",
     "lib/storyarn/platform/onboarding/",
+    "lib/storyarn/platform/object_storage.ex",
+    "lib/storyarn/platform/object_storage/",
     "lib/storyarn/platform/reactions/reactions.ex",
     "lib/storyarn/platform/reactions/contracts/event_reaction.ex",
     "lib/storyarn/platform/reactions/reference_data/",
@@ -1002,6 +1004,7 @@ platform_capability_private_targets = %{
   ],
   "delivery" => ["adapters/"],
   "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
+  "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
   "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
   "reactions" => ["events/", "execution/", "reference_data/"]
 }
@@ -1027,6 +1030,27 @@ platform_internal_path_denials =
       target_root: "lib/storyarn/platform/#{target_capability}/#{private_target}",
       kinds: ["runtime", "export", "compile"],
       reason: "Platform capabilities may consume another capability only through its facade or stable contracts"
+    }
+  end
+
+# ObjectStorage has a standalone technical facade rather than entering through
+# Storyarn.Platform. Keep that exact facade isolated from the private roles of
+# every other Platform capability just as capability directories are. Its own
+# provider, hashing and lock modules are its implementation and remain allowed.
+object_storage_public_facades = [
+  "lib/storyarn/platform/object_storage.ex"
+]
+
+object_storage_facade_path_denials =
+  for source_root <- object_storage_public_facades,
+      {target_capability, private_targets} <- platform_capability_private_targets,
+      target_capability != "object_storage",
+      private_target <- private_targets do
+    %{
+      source_root: source_root,
+      target_root: "lib/storyarn/platform/#{target_capability}/#{private_target}",
+      kinds: ["runtime", "export", "compile"],
+      reason: "ObjectStorage is an isolated technical capability and cannot enter another Platform capability's internals"
     }
   end
 
@@ -1201,6 +1225,7 @@ policy = %{
       ai_role_dependency_denials ++
       [ai_worker_facade_denial] ++
       platform_internal_path_denials ++
+      object_storage_facade_path_denials ++
       platform_query_role_denials ++
       platform_root_facade_path_denials ++
       platform_worker_facade_denials ++
@@ -1266,6 +1291,10 @@ policy = %{
   # SPI is deliberately public because consumer contexts own their builders.
   additional_durable_contract_targets: [
     %{
+      target: "lib/storyarn/platform/object_storage.ex",
+      reason: "bounded contexts consume the exact public Platform object-storage contract"
+    },
+    %{
       target: "lib/storyarn/ai/context_building/contracts/contract.ex",
       reason: "consumer-owned AI context builders implement the shared AI context contract"
     },
@@ -1318,6 +1347,114 @@ policy = %{
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
     %{
+      source: "lib/storyarn/application.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "The OTP composition root starts ObjectStorage's technical child specifications through its public facade"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/hashing.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Flows implements its storage hashing port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/locks.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Flows implements its storage lock port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/storage/objects.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Flows implements its object operations port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Projects implements its asset hashing adapter through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Projects keeps Project blob identity policy while delegating generic locks through Platform ObjectStorage"
+    },
+    %{
+      source: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Projects keeps deletion and multipart policy while delegating provider I/O through Platform ObjectStorage"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/hashing.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Scenes implements its asset hashing port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/locks.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Scenes implements its asset lock port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/storage/objects.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Scenes implements its asset object port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/scenes/versioning/adapters/storage/objects.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Scenes implements its versioning object port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/hashing.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Sheets implements its asset hashing port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/locks.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Sheets implements its asset lock port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/storage/objects.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Sheets implements its asset object port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/adapters/storage/objects.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "Sheets implements its versioning object port through the public Platform ObjectStorage facade"
+    },
+    %{
+      source: "lib/storyarn_web/private_download.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "The authenticated download adapter streams already-authorized objects through Platform ObjectStorage"
+    },
+    %{
+      source: "lib/storyarn_web/private_media.ex",
+      target: "lib/storyarn/platform/object_storage.ex",
+      kinds: ["runtime"],
+      reason: "The authenticated media adapter resolves already-authorized objects through Platform ObjectStorage"
+    },
+    %{
+      source: "lib/storyarn_web/private_media.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Private media asks the public Projects facade to classify Project-owned media keys"
+    },
+    %{
       source: "lib/mix/tasks/storyarn.ai.diagnose.ex",
       target: "lib/storyarn/accounts.ex",
       kinds: ["runtime"],
@@ -1352,150 +1489,6 @@ policy = %{
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
       reason: "The operator template import enters Projects through its public facade"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/adapters/storage/snapshot_storage.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/assets/adapters/storage/compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/assets/adapters/storage/compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/assets/adapters/storage/hashing.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/assets/adapters/storage/locks.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/assets/adapters/storage/objects.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/versioning/adapters/storage/objects.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/scenes/versioning/adapters/storage/snapshot_storage.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/assets/adapters/storage/compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/assets/adapters/storage/compensation.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/assets/adapters/storage/hashing.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/hash.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/assets/adapters/storage/locks.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/key_lock.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/assets/adapters/storage/objects.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/versioning/adapters/storage/objects.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/sheets/versioning/adapters/storage/snapshot_storage.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn_web/private_download.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn_web/private_media.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/storage.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/application.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/local/conditional_copy_registry.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
-    },
-    %{
-      source: "lib/storyarn/application.ex",
-      target: "lib/storyarn/projects/assets/adapters/storage/local/conditional_copy_sweeper.ex",
-      kinds: ["runtime"],
-      reason: "Existing storage seam pending ENG-107 neutral infrastructure extraction"
     },
     %{
       source: "lib/storyarn/flows/ai/contracts/context_contract.ex",

@@ -104,8 +104,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.References"
     ],
     "test/storyarn/flows/versioning/adapters/storage/snapshot_storage_test.exs" => [
-      "Storyarn.Projects.Assets.Storage",
-      "Storyarn.Projects.Assets.Storage.Local"
+      "Storyarn.Platform.ObjectStorage"
     ],
     "test/storyarn/flows/versioning/execution/flow_snapshot_test.exs" => [
       "Storyarn.Localization",
@@ -132,6 +131,10 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # These are explicit composition seams, not permissions for feature tests to
   # reach into Flows. Keep every exception scoped to one file and one module.
   @integration_exceptions %{
+    "test/storyarn/architecture/object_storage_lock_boundary_test.exs" => [
+      "Storyarn.Flows.Versioning.Adapters.Storage.Locks",
+      "Storyarn.Flows.Versioning.Adapters.Storage.Objects"
+    ],
     "test/storyarn/architecture/flows_internal_structure_test.exs" => [
       "Storyarn.Flows.Versioning"
     ],

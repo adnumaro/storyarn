@@ -2,11 +2,11 @@ defmodule Storyarn.Flows.Versioning.SnapshotStorage do
   @moduledoc """
   Flow-owned storage codec for compressed entity-version snapshots.
 
-  It uses the shared asset storage capability, but owns the Flow snapshot key
+  It uses the Platform object-storage contract, but owns the Flow snapshot key
   contract, size limits, checksum verification, and decoding policy.
   """
 
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Objects, as: Storage
 
   @default_max_compressed_bytes 128 * 1024 * 1024
   @default_max_uncompressed_bytes 128 * 1024 * 1024

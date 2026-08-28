@@ -1,10 +1,10 @@
 defmodule Storyarn.FailingStreamStorage do
   @moduledoc false
 
-  @behaviour Storyarn.Projects.Assets.Storage
+  @behaviour Storyarn.Platform.ObjectStorage
 
   @impl true
-  defdelegate list_prefix(prefix, opts), to: Storyarn.Projects.Assets.Storage.Local
+  defdelegate list_prefix(prefix, opts), to: Storyarn.Platform.ObjectStorage.Adapters.Local
 
   @impl true
   def stat(_key), do: {:ok, %{size: 8, etag: nil, content_type: "application/octet-stream"}}

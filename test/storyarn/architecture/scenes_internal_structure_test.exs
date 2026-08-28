@@ -153,7 +153,7 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
     assert File.read!(Path.join(@root, "README.md")) =~ "## `projections/`"
   end
 
-  test "raw SQL and shared object-storage contracts live only in adapters" do
+  test "raw SQL and Platform object-storage contracts live only in adapters" do
     violations =
       @root
       |> Path.join("**/*.ex")
@@ -161,7 +161,7 @@ defmodule Storyarn.Architecture.ScenesInternalStructureTest do
       |> Enum.reject(&String.contains?(&1, "/adapters/"))
       |> Enum.filter(fn path ->
         Regex.match?(
-          ~r/\bRepo\.query!?\s*\(|\bEcto\.Adapters\.SQL\b|\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b/,
+          ~r/\bRepo\.query!?\s*\(|\bEcto\.Adapters\.SQL\b|\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b|\bStoryarn\.Platform\.ObjectStorage\b/,
           File.read!(path)
         )
       end)

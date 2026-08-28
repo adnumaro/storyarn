@@ -5,8 +5,8 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Platform
+  alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Scenes.Assets.Commands.Assets, as: AssetCommands
@@ -66,7 +66,7 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
     source_key = blob_key(project.id, hash, "png")
 
     assert {:ok, _url, _created?} = Storage.put_if_absent(source_key, content, "image/png")
-    on_exit(fn -> Storage.adapter().delete(source_key) end)
+    on_exit(fn -> Storage.delete(source_key) end)
 
     metadata = %{
       "filename" => "Restored Scene.png",
@@ -188,7 +188,7 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
 
     on_exit(fn ->
       Storage.delete(asset.key)
-      Storage.adapter().delete(source_key)
+      Storage.delete(source_key)
     end)
   end
 

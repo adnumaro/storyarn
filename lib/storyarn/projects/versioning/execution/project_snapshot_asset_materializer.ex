@@ -20,9 +20,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer do
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
-  alias Storyarn.Projects.Assets.StorageHash
   alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.Versioning.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
   alias Storyarn.Repo

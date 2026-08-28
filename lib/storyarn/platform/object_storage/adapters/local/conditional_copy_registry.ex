@@ -1,4 +1,4 @@
-defmodule Storyarn.Projects.Assets.Storage.Local.ConditionalCopyRegistry do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.Local.ConditionalCopyRegistry do
   @moduledoc false
 
   @registry __MODULE__

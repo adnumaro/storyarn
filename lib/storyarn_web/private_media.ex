@@ -8,7 +8,8 @@ defmodule StoryarnWeb.PrivateMedia do
 
   use StoryarnWeb, :verified_routes
 
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Platform.ObjectStorage, as: Storage
+  alias Storyarn.Projects
 
   @spec asset_url(Asset.t() | map() | nil) :: String.t() | nil
   def asset_url(nil), do: nil
@@ -62,42 +63,18 @@ defmodule StoryarnWeb.PrivateMedia do
   @doc false
   @spec project_asset_key?(integer(), String.t()) :: boolean()
   def project_asset_key?(project_id, key) do
-    scoped_project_key?(project_id, key, ["assets"])
+    Projects.project_asset_route_key?(project_id, key)
   end
 
   @doc false
   @spec project_media_key?(integer(), String.t()) :: boolean()
   def project_media_key?(project_id, key) do
-    scoped_project_key?(project_id, key, ["assets", "blobs"])
+    Projects.project_media_route_key?(project_id, key)
   end
 
   @doc false
   @spec valid_storage_key?(term()) :: boolean()
-  def valid_storage_key?(key) when is_binary(key) do
-    key != "" and
-      String.valid?(key) and
-      not String.contains?(key, [<<0>>, "\\"]) and
-      Enum.all?(String.split(key, "/"), &(&1 not in ["", ".", ".."]))
-  end
-
-  def valid_storage_key?(_key), do: false
-
-  defp scoped_project_key?(project_id, key, namespaces) when is_integer(project_id) and is_binary(key) do
-    prefix = "projects/#{project_id}/"
-
-    with true <- valid_storage_key?(key),
-         true <- String.starts_with?(key, prefix),
-         relative_key = String.replace_prefix(key, prefix, ""),
-         [namespace | path_segments] <- String.split(relative_key, "/"),
-         true <- namespace in namespaces,
-         true <- path_segments != [] do
-      true
-    else
-      _ -> false
-    end
-  end
-
-  defp scoped_project_key?(_project_id, _key, _namespaces), do: false
+  def valid_storage_key?(key), do: Projects.canonical_storage_key?(key)
 
   defp project_url_from_key(project_id, key) when is_binary(key) do
     if project_media_key?(project_id, key) do

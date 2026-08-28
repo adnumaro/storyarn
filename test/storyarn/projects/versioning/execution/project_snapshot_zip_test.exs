@@ -1,10 +1,10 @@
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotZipTest do
   use ExUnit.Case, async: false
 
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.Local
   alias Storyarn.Projects.Versioning.ProjectSnapshotZip
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat

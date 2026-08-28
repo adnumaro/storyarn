@@ -3,9 +3,9 @@ defmodule Storyarn.Sheets.Assets.Adapters.Storage.Compensation do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
+  alias Storyarn.Sheets.Assets.Adapters.Storage.Locks, as: StorageKeyLock
+  alias Storyarn.Sheets.Assets.Adapters.Storage.Objects, as: Storage
   alias Storyarn.Sheets.Assets.Entities.AssetRecord
   alias Storyarn.Sheets.Assets.Entities.StorageCleanupRequestRecord
   alias Storyarn.Sheets.Assets.Projections.StorageReservationRecord
@@ -265,9 +265,7 @@ defmodule Storyarn.Sheets.Assets.Adapters.Storage.Compensation do
   end
 
   defp delete_owned_storage_object(storage_key) do
-    with {:ok, _aborted_count} <- Storage.abort_incomplete_multipart_uploads(storage_key) do
-      Storage.adapter().delete(storage_key)
-    end
+    Storage.delete_owned_conditional_copy(storage_key)
   end
 
   defp tracked(reference), do: Process.get(key(reference), [])

@@ -6,7 +6,6 @@ defmodule StoryarnWeb.PrivateMediaController do
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateDownload
-  alias StoryarnWeb.PrivateMedia
 
   def asset(conn, %{"id" => asset_id_param}) do
     with {:ok, asset_id} <- parse_positive_integer(asset_id_param),
@@ -48,7 +47,7 @@ defmodule StoryarnWeb.PrivateMediaController do
 
   defp decode_project_key(encoded_key, project_id) do
     with {:ok, key} <- Base.url_decode64(encoded_key, padding: false),
-         true <- PrivateMedia.project_media_key?(project_id, key) do
+         true <- Projects.project_media_route_key?(project_id, key) do
       {:ok, key}
     else
       _ -> {:error, :invalid_key}

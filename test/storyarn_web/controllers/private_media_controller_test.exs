@@ -178,6 +178,21 @@ defmodule StoryarnWeb.PrivateMediaControllerTest do
       assert_no_external_storage_response(conn)
     end
 
+    test "rejects a matching project and key when the actor cannot access the project", %{conn: conn} do
+      other_user = user_fixture()
+      other_project = project_fixture(other_user)
+      key = "projects/#{other_project.id}/blobs/#{Ecto.UUID.generate()}.png"
+      body = "private project blob"
+      {:ok, _url} = Storage.upload(key, body, "image/png")
+      on_exit(fn -> delete_storage_blob(key) end)
+
+      conn = get(conn, PrivateMedia.project_file_url(other_project.id, key))
+
+      assert conn.status == 404
+      refute conn.resp_body == body
+      assert_no_external_storage_response(conn)
+    end
+
     test "rejects a base64 key that is not valid UTF-8", %{conn: conn, project: project} do
       encoded_key = Base.url_encode64(<<255, 254>>, padding: false)
 

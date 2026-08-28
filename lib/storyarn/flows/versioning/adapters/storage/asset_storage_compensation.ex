@@ -3,10 +3,10 @@ defmodule Storyarn.Flows.Versioning.AssetStorageCompensation do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Locks, as: StorageKeyLock
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Objects, as: Storage
   alias Storyarn.Flows.Versioning.Entities.AssetRecord
   alias Storyarn.Flows.Versioning.Entities.StorageCleanupRequestRecord
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
 
   @tracker_key {__MODULE__, :tracked}

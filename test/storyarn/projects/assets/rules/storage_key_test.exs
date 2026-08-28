@@ -70,4 +70,24 @@ defmodule Storyarn.Projects.Assets.StorageKeyTest do
       end)
     end
   end
+
+  describe "Project media namespaces" do
+    test "accepts only non-empty asset and blob paths scoped to the requested Project" do
+      assert StorageKey.project_asset_route_key?(7, "projects/7/assets/uuid/image.png")
+      refute StorageKey.project_asset_route_key?(7, "projects/7/blobs/hash.png")
+
+      assert StorageKey.project_media_route_key?(7, "projects/7/assets/uuid/image.png")
+      assert StorageKey.project_media_route_key?(7, "projects/7/blobs/hash.png")
+      refute StorageKey.project_media_route_key?(7, "projects/7/assets")
+      refute StorageKey.project_media_route_key?(7, "projects/7/snapshots/project/1.json.gz")
+      refute StorageKey.project_media_route_key?(7, "projects/8/assets/uuid/image.png")
+      refute StorageKey.project_media_route_key?(7, "projects/7/assets/../snapshot.json.gz")
+    end
+
+    test "rejects malformed project identities and keys" do
+      refute StorageKey.project_media_route_key?(nil, "projects/7/assets/image.png")
+      refute StorageKey.project_media_route_key?(7, nil)
+      refute StorageKey.project_media_route_key?(7, <<255>>)
+    end
+  end
 end

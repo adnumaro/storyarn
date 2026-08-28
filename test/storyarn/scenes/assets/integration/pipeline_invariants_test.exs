@@ -5,8 +5,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Platform
+  alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Repo
@@ -125,7 +125,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     assert {:ok, _url, true} =
              Storage.put_if_absent(canonical_key, corrupt, "image/png")
 
-    on_exit(fn -> Storage.adapter().delete(canonical_key) end)
+    on_exit(fn -> Storage.delete(canonical_key) end)
 
     assert {:ok, %AssetRecord{} = asset} =
              AssetCommands.create_generated_asset(
@@ -156,7 +156,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
       send(test_pid, {:scene_storage_io, operation, key})
     end)
 
-    on_exit(fn -> Storage.adapter().delete(canonical_key) end)
+    on_exit(fn -> Storage.delete(canonical_key) end)
 
     assert {:ok, %AssetRecord{} = first_asset} =
              AssetCommands.create_generated_asset(
@@ -206,7 +206,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     SnapshotReadSwitchStorage.override_content_type(canonical_key, "application/pdf")
     SnapshotReadSwitchStorage.set_delete_if_matches_result({:error, :eacces})
 
-    on_exit(fn -> Storage.adapter().delete(canonical_key) end)
+    on_exit(fn -> Storage.delete(canonical_key) end)
 
     assert {:error, :eacces} =
              AssetCommands.create_generated_asset(
@@ -249,7 +249,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
 
     SnapshotReadSwitchStorage.set_put_if_absent_result({:error, :timeout})
 
-    on_exit(fn -> Storage.adapter().delete(canonical_key) end)
+    on_exit(fn -> Storage.delete(canonical_key) end)
 
     assert {:error, :timeout} =
              AssetCommands.create_generated_asset(
@@ -295,8 +295,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
 
     on_exit(fn ->
       Storage.delete(asset.key)
-      Storage.adapter().delete(sanitized_key)
-      Storage.adapter().delete(unsafe_key)
+      Storage.delete(sanitized_key)
+      Storage.delete(unsafe_key)
     end)
 
     refute asset.blob_hash == sha256(unsafe_svg)
@@ -327,15 +327,16 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
              )
 
     on_exit(fn ->
-      Storage.adapter().delete(source_key)
-      Storage.adapter().delete(destination_key)
-      Storage.adapter().delete(pending_cleanup_key)
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
+      Storage.delete(pending_cleanup_key)
     end)
 
     # A content-addressed blob under a committed project is an immutable cache:
     # rollback retains it, and only the temporary copy key becomes unreachable.
     assert {:ok, ^content} = Storage.download(destination_key)
     assert {:error, _reason} = Storage.download(pending_cleanup_key)
+    refute File.exists?(storage_path(pending_cleanup_key))
 
     refute Repo.exists?(
              from(asset in AssetRecord,
@@ -369,13 +370,14 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
              )
 
     on_exit(fn ->
-      Storage.adapter().delete(source_key)
-      Storage.adapter().delete(destination_key)
-      Storage.adapter().delete(pending_cleanup_key)
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
+      Storage.delete(pending_cleanup_key)
     end)
 
     assert {:ok, ^content} = Storage.download(destination_key)
     assert {:error, _reason} = Storage.download(pending_cleanup_key)
+    refute File.exists?(storage_path(pending_cleanup_key))
   end
 
   test "version materialization reports quota exhaustion as a stable two-tuple" do
@@ -401,8 +403,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     assert {:ok, _url, true} = Storage.put_if_absent(source_key, content, "image/png")
 
     on_exit(fn ->
-      Storage.adapter().delete(source_key)
-      Storage.adapter().delete(destination_key)
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
     end)
 
     assert {:error, {:limit_reached, details}} =
@@ -436,8 +438,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     )
 
     on_exit(fn ->
-      Storage.adapter().delete(source_key)
-      Storage.adapter().delete(destination_key)
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
     end)
 
     assert {:error, :project_not_active} =
@@ -465,8 +467,8 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     assert {:ok, _url, true} = Storage.put_if_absent(source_key, content, "image/png")
 
     on_exit(fn ->
-      Storage.adapter().delete(source_key)
-      Storage.adapter().delete(destination_key)
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
     end)
 
     assert {:error, :user_not_found} =
@@ -544,7 +546,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
 
     on_exit(fn ->
       Storage.delete(asset.key)
-      Storage.adapter().delete(canonical_key)
+      Storage.delete(canonical_key)
     end)
   end
 
@@ -576,6 +578,11 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
 
   defp blob_key(project_id, hash, extension) do
     "projects/#{project_id}/blobs/#{hash}.#{extension}"
+  end
+
+  defp storage_path(key) do
+    upload_dir = :storyarn |> Application.fetch_env!(:storage) |> Keyword.fetch!(:upload_dir)
+    Path.join(upload_dir, key)
   end
 
   defp sha256(binary) do

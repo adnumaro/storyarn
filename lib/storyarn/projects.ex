@@ -357,6 +357,15 @@ defmodule Storyarn.Projects do
   defdelegate asset_upload_purpose_supported?(purpose), to: Assets
 
   defdelegate external_project_storage?(), to: Assets
+  @doc false
+  defdelegate canonical_storage_key?(key), to: Assets
+
+  @doc false
+  defdelegate project_asset_route_key?(project_id, key), to: Assets
+
+  @doc false
+  defdelegate project_media_route_key?(project_id, key), to: Assets
+
   # Project exports and imports.
   defdelegate prepare_project_export(scope, project, opts), to: Interchange, as: :prepare_download
   defdelegate validate_project_export(project_id, opts \\ %{}), to: Interchange, as: :validate_project

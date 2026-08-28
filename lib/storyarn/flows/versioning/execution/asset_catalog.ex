@@ -9,6 +9,9 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Hashing, as: StorageHash
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Locks, as: StorageKeyLock
+  alias Storyarn.Flows.Versioning.Adapters.Storage.Objects, as: Storage
   alias Storyarn.Flows.Versioning.AssetStorageCompensation
   alias Storyarn.Flows.Versioning.Entities.AssetRecord
   alias Storyarn.Flows.Versioning.Projections.ProjectRecord
@@ -18,9 +21,6 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   alias Storyarn.Flows.Versioning.Projections.WorkspaceSnapshotImportRecord
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageHash
-  alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
 
   @snapshot_restore_asset_content_types ~w(
@@ -449,7 +449,7 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   defp delete_if_unchanged(storage_key, stat) do
     with {:ok, identity} <- storage_object_identity(storage_key, stat) do
-      case Storage.adapter().delete_if_matches(storage_key, identity) do
+      case Storage.delete_if_matches(storage_key, identity) do
         :ok -> :ok
         {:error, :object_changed} -> {:error, :asset_blob_replacement_pending}
         {:error, reason} -> {:error, reason}

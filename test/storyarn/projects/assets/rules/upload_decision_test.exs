@@ -158,7 +158,7 @@ defmodule Storyarn.Projects.Assets.UploadDecisionTest do
     blob_key = BlobStore.blob_key(project.id, source_hash, BlobStore.ext_from_content_type("image/png"))
     assert {:ok, ^binary} = Storage.download(blob_key)
 
-    Storage.adapter().delete(blob_key)
+    Storyarn.Platform.ObjectStorage.delete(blob_key)
   end
 
   defp insert_filler_asset(project, user, size) do

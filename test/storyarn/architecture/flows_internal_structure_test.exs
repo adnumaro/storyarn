@@ -201,16 +201,21 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
     assert violations == [], "Flow queries must remain read-only: #{inspect(violations)}"
   end
 
-  test "provider-specific SQL execution stays behind capability adapters" do
+  test "provider-specific SQL and Platform object storage stay behind capability adapters" do
     violations =
       @root
       |> Path.join("**/*.ex")
       |> Path.wildcard()
       |> Enum.reject(&String.contains?(&1, "/adapters/"))
-      |> Enum.filter(fn path -> File.read!(path) =~ ~r/\bRepo\.query!?\s*\(/ end)
+      |> Enum.filter(fn path ->
+        Regex.match?(
+          ~r/\bRepo\.query!?\s*\(|\bStoryarn\.Projects\.Assets\.(?:Storage|StorageHash|StorageKeyLock)\b|\bStoryarn\.Platform\.ObjectStorage\b/,
+          File.read!(path)
+        )
+      end)
 
     assert violations == [],
-           "Flow modules must execute raw SQL through capability adapters: #{inspect(violations)}"
+           "Flow SQL and storage integrations must live under adapters/: #{inspect(violations)}"
   end
 
   test "passive roles cannot hide provider-specific query fragments" do

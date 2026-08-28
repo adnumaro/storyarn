@@ -396,8 +396,10 @@ Code may remain outside the nine context directories only when it is an applicat
 adapter and owns no domain model or business rule:
 
 - `StoryarnWeb` is the presentation adapter. It may compose public context facades but never call their internals.
-- `Storyarn.Repo`, storage providers, mail delivery, PubSub/presence, telemetry, rate limiting, feature flags and
-  Oban workers are infrastructure. Workers orchestrate through public facades.
+- `Storyarn.Repo`, mail delivery, PubSub/presence, telemetry, rate limiting, feature flags and Oban workers are
+  infrastructure. The provider-neutral storage mechanism belongs to `Storyarn.Platform.ObjectStorage`; consumers own
+  key namespaces, authorization, reachability, retention, deletion, cleanup and snapshot/import policy. Workers
+  orchestrate through public facades.
 - Global search, command palette and dashboard caches are application/query coordinators. They may own optimized,
   read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
 - `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It

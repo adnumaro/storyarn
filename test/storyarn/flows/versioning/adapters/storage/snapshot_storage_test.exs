@@ -2,8 +2,7 @@ defmodule Storyarn.Flows.Versioning.SnapshotStorageTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.Flows.Versioning.SnapshotStorage
-  alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.Storage.Local
+  alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.SnapshotReadSwitchStorage
 
   setup do
@@ -26,6 +25,11 @@ defmodule Storyarn.Flows.Versioning.SnapshotStorageTest do
     end)
 
     :ok
+  end
+
+  test "never deletes a recoverable Project blob even when its tail is not a canonical hash filename" do
+    assert {:error, :recoverable_blob} =
+             SnapshotStorage.delete("projects/42/blobs/legacy/nested-object")
   end
 
   test "round-trips a Flow snapshot after verifying both streaming passes" do
@@ -134,7 +138,7 @@ defmodule Storyarn.Flows.Versioning.SnapshotStorageTest do
     end)
 
     SnapshotReadSwitchStorage.set_stat_result(fn storage_key ->
-      case Local.stat(storage_key) do
+      case SnapshotReadSwitchStorage.underlying_stat(storage_key) do
         {:ok, stat} -> {:ok, %{stat | etag: "immutable-flow-snapshot"}}
         {:error, _reason} = error -> error
       end
@@ -145,7 +149,7 @@ defmodule Storyarn.Flows.Versioning.SnapshotStorageTest do
       send(parent, {:snapshot_stream_read, read_number, opts})
 
       if read_number == 1 do
-        Local.stream(storage_key, offset, length, opts)
+        SnapshotReadSwitchStorage.underlying_stream(storage_key, offset, length, opts)
       else
         {:ok, [{:ok, replacement}]}
       end

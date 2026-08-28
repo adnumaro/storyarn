@@ -8,7 +8,7 @@ defmodule Storyarn.Sheets.VersioningConcurrencyTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Sheets

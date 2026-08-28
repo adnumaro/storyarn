@@ -1,4 +1,4 @@
-defmodule Storyarn.Projects.Assets.Storage.R2 do
+defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   @moduledoc """
   S3-compatible storage adapter for production.
 
@@ -6,11 +6,11 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
   S3-compatible providers through ExAws.S3.
   """
 
-  @behaviour Storyarn.Projects.Assets.Storage
+  @behaviour Storyarn.Platform.ObjectStorage
 
   import SweetXml, only: [sigil_x: 2]
 
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Platform.ObjectStorage, as: Storage
 
   @conditional_copy_attempts 3
   @stream_chunk_size 1_048_576
@@ -70,7 +70,7 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
   rescue
     error -> {:error, {:multipart_upload_failed, :error, error}}
   catch
-    {:snapshot_stream_error, reason} -> {:error, reason}
+    {:object_stream_error, reason} -> {:error, reason}
     kind, reason -> {:error, {:multipart_upload_failed, kind, reason}}
   end
 
@@ -180,25 +180,17 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
 
   @impl true
   def abort_incomplete_multipart_uploads(key, opts) do
-    if Storage.multipart_cleanup_key?(key) do
-      with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
-           {:ok, max_passes} <- multipart_cleanup_pass_limit(opts) do
-        abort_until_multipart_inventory_empty(key, max_uploads, max_passes, 0)
-      end
-    else
-      {:ok, 0}
+    with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
+         {:ok, max_passes} <- multipart_cleanup_pass_limit(opts) do
+      abort_until_multipart_inventory_empty(key, max_uploads, max_passes, 0)
     end
   end
 
   @impl true
   def incomplete_multipart_upload_count(key, opts) do
-    if Storage.multipart_cleanup_key?(key) do
-      with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
-           {:ok, uploads} <- list_exact_multipart_uploads(key, max_uploads) do
-        {:ok, length(uploads)}
-      end
-    else
-      {:error, :invalid_multipart_inventory_key}
+    with {:ok, max_uploads} <- multipart_cleanup_limit(opts),
+         {:ok, uploads} <- list_exact_multipart_uploads(key, max_uploads) do
+      {:ok, length(uploads)}
     end
   end
 
@@ -700,10 +692,10 @@ defmodule Storyarn.Projects.Assets.Storage.R2 do
           end
 
         {:error, reason}, _state ->
-          throw({:snapshot_stream_error, reason})
+          throw({:object_stream_error, reason})
 
         _unexpected, _state ->
-          throw({:snapshot_stream_error, :unexpected_blob_stream_chunk})
+          throw({:object_stream_error, :unexpected_blob_stream_chunk})
       end,
       fn
         {[], 0} = state -> {[], state}

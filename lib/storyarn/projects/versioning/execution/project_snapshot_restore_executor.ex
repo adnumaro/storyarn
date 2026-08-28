@@ -15,7 +15,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
-  alias Storyarn.Projects.Assets.StorageHash
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
@@ -54,6 +53,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.SheetProjectTrash
   alias Storyarn.Projects.StorageCleanupInventory
   alias Storyarn.Projects.Versioning
+  alias Storyarn.Projects.Versioning.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshot

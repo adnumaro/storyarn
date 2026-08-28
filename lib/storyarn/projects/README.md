@@ -8,7 +8,7 @@ inside one bounded context; none is an independently named bounded context.
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `lifecycle/`   | Project identity, creation, configuration, source language, update, soft deletion and Workspace-owned hard-delete coordination.             |
 | `access/`      | Project memberships, roles, authorization and invitations, including Project-owned invitation intent and copy.                              |
-| `assets/`      | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and storage adapters.                     |
+| `assets/`      | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and Project-owned storage policy.         |
 | `overview/`    | Project-wide dashboards, activity, statistics, health findings and structural analysis. It does not own the shared Project content records. |
 | `trash/`       | Cross-tool Project trash, restore, hard deletion and retention workflows.                                                                   |
 | `references/`  | Project-wide entity and variable reference indexes, integrity, repair and usage queries.                                                    |
@@ -73,7 +73,7 @@ Each capability uses only the roles it needs:
 | `execution/`      | Stateful or multi-step workflows whose transaction, lock or recovery order must remain intact.                                                              |
 | `events/`         | Product facts owned by Projects.                                                                                                                            |
 | `delivery/`       | Project-owned delivery decisions and content, before technical handoff.                                                                                     |
-| `adapters/`       | Translation to storage, archives, images, PostgreSQL locks, Oban, email or another provider.                                                                |
+| `adapters/`       | Translation to Platform object storage, archives, images, PostgreSQL locks, Oban, email or another provider.                                               |
 
 This is a pragmatic functional architecture. A transaction is not split merely
 to make a file fit a diagram, and a pure function does not need a behaviour or
@@ -177,6 +177,17 @@ The large historical entry modules remain stable but are now routing surfaces:
 - Storage paths, archive formats, queues, worker arguments and Ecto module
   identities do not change because a file moved.
 
+## Object storage ownership
+
+Projects owns Project asset keys, blob identity, recoverable-blob retention,
+multipart cleanup eligibility, compensation, snapshots, imports and exact
+reconstitution. Provider selection, Local/R2 I/O, incremental hashing and the
+generic key-lock engine live behind `Storyarn.Platform.ObjectStorage`.
+
+Only the Project-owned adapters call that technical facade. Projects execution
+code never receives a provider module, and other contexts cannot import the
+Project storage policy merely because their objects currently share a bucket.
+
 ## Known transitional seams
 
 - Capability-local code still has inherited direct dependencies on stable
@@ -191,9 +202,5 @@ The large historical entry modules remain stable but are now routing surfaces:
   Projects remains the current writer of AI configuration records. That is an
   explicit ownership decision to revisit, not permission to use AI as a generic
   shared layer.
-- The object-store provider, hashing and locking mechanism is still mixed with
-  Project-specific blob and cleanup policy under `assets/adapters/storage/`.
-  Existing external callers are exact ENG-107 migration exceptions; new callers
-  are forbidden until the neutral technical mechanism is extracted.
 - The shared PostgreSQL schema remains intentional. Code ownership is isolated
   first so schema and database separation can happen independently later.

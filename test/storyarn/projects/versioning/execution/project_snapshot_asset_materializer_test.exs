@@ -826,7 +826,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializerTest do
   end
 
   defp cleanup_fixture_objects(fixture, plan) do
-    storage = Storage.adapter()
+    storage = Storyarn.Platform.ObjectStorage
 
     Enum.each(Map.values(fixture.staging_keys), &storage.delete/1)
     Enum.each(plan.assets, &storage.delete(&1.destination_key))

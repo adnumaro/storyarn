@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   alias Storyarn.Localization
   alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Notifications.Notification
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Assets
@@ -643,7 +644,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
     assert {:ok, _hard_deleted} = Projects.permanently_delete_project(soft_deleted)
 
     Enum.each(original_provider_keys, fn key ->
-      assert :ok = Storage.adapter().delete(key)
+      assert :ok = ObjectStorage.delete(key)
       assert {:error, :enoent} = Storage.stat(key)
     end)
 
@@ -879,8 +880,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
              )
 
     on_exit(fn ->
-      Storage.adapter().delete(asset.key)
-      Storage.adapter().delete(protected_blob_key(asset))
+      ObjectStorage.delete(asset.key)
+      ObjectStorage.delete(protected_blob_key(asset))
     end)
 
     asset

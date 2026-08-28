@@ -5,8 +5,10 @@ defmodule Storyarn.Sheets.Assets.Commands.AssetsTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Platform
-  alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Platform.ObjectStorage, as: Storage
+  alias Storyarn.Repo
   alias Storyarn.Sheets
+  alias Storyarn.Sheets.Assets.Commands.Assets, as: AssetCommands
   alias Storyarn.Sheets.Assets.Entities.AssetRecord
 
   test "binary uploads use the Sheet-owned pipeline and remain project-scoped" do
@@ -76,7 +78,64 @@ defmodule Storyarn.Sheets.Assets.Commands.AssetsTest do
              )
   end
 
+  test "conditional copy failure retains the canonical blob and removes its temporary key" do
+    user = user_fixture()
+    source_project = project_fixture(user)
+    destination_project = project_fixture(user)
+    content = "sheet conditional copy"
+    hash = sha256(content)
+    source_key = blob_key(source_project.id, hash, "png")
+    destination_key = blob_key(destination_project.id, hash, "png")
+
+    assert {:ok, _url, true} = Storage.put_if_absent(source_key, content, "image/png")
+    configure_conditional_copy_remove_failure(:eacces)
+
+    assert {:error, {:conditional_copy_cleanup_required, true, pending_cleanup_key, :eacces}} =
+             AssetCommands.create_version_asset_from_storage(
+               destination_project.id,
+               user.id,
+               hash,
+               source_key,
+               version_metadata("published.png", content)
+             )
+
+    on_exit(fn ->
+      Storage.delete(source_key)
+      Storage.delete(destination_key)
+      Storage.delete(pending_cleanup_key)
+    end)
+
+    assert {:ok, ^content} = Storage.download(destination_key)
+    assert {:error, _reason} = Storage.download(pending_cleanup_key)
+    refute File.exists?(storage_path(pending_cleanup_key))
+
+    refute Repo.get_by(AssetRecord,
+             project_id: destination_project.id,
+             blob_hash: hash
+           )
+  end
+
   defp binary_attrs(filename), do: %{filename: filename, content_type: "image/png"}
+
+  defp version_metadata(filename, content) do
+    %{
+      "filename" => filename,
+      "content_type" => "image/png",
+      "size" => byte_size(content)
+    }
+  end
+
+  defp configure_conditional_copy_remove_failure(reason) do
+    original_storage = Application.get_env(:storyarn, :storage, [])
+
+    Application.put_env(
+      :storyarn,
+      :storage,
+      Keyword.put(original_storage, :conditional_copy_file_rm, fn _path -> {:error, reason} end)
+    )
+
+    on_exit(fn -> Application.put_env(:storyarn, :storage, original_storage) end)
+  end
 
   defp register_storage_cleanup(asset) do
     extension = asset.content_type |> String.split("/") |> List.last()
@@ -84,12 +143,23 @@ defmodule Storyarn.Sheets.Assets.Commands.AssetsTest do
 
     on_exit(fn ->
       Storage.delete(asset.key)
-      Storage.adapter().delete(source_key)
+      Storage.delete(source_key)
     end)
   end
 
   defp blob_key(project_id, hash, "jpeg"), do: "projects/#{project_id}/blobs/#{hash}.jpg"
   defp blob_key(project_id, hash, extension), do: "projects/#{project_id}/blobs/#{hash}.#{extension}"
+
+  defp storage_path(key) do
+    upload_dir = :storyarn |> Application.fetch_env!(:storage) |> Keyword.fetch!(:upload_dir)
+    Path.join(upload_dir, key)
+  end
+
+  defp sha256(binary) do
+    :sha256
+    |> :crypto.hash(binary)
+    |> Base.encode16(case: :lower)
+  end
 
   defp forward_traces(test_pid) do
     receive do

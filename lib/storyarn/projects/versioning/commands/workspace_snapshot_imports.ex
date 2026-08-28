@@ -9,10 +9,10 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
-  alias Storyarn.Projects.Assets.StorageHash
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.Versioning.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer

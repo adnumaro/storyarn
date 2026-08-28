@@ -10,7 +10,7 @@ import Config
 # Keep every object-storage socket phase bounded well below the import-plan
 # reservation lease. The importer also wraps the whole PUT in a wall-clock
 # deadline because a send timeout only limits individual blocked writes.
-alias Storyarn.Projects.Assets.Storage
+alias Storyarn.Platform.ObjectStorage
 alias Storyarn.Workers.TrashRetentionWorker
 
 config :ex_aws, :req_opts,
@@ -169,7 +169,7 @@ config :storyarn, Oban,
 # UploadPart has a hard wall-clock deadline in addition to the socket-phase
 # limits above. Durable multipart cleanup uses this same value as its minimum
 # quiescence window, so one policy bounds both sides of the handoff.
-config :storyarn, Storage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
+config :storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 5 * 60 * 1_000
 config :storyarn, Storyarn.AI.CredentialResolver, Storyarn.AI.CredentialResolver.Unavailable
 config :storyarn, Storyarn.AI.InferenceProviders, providers: %{}
 config :storyarn, Storyarn.AI.RouteOptions, ttl_seconds: 300
@@ -240,10 +240,9 @@ config :storyarn, Storyarn.Workspaces.Banner.Adapters.Cleanup.Queue,
   adapter: Storyarn.Workspaces.Banner.Adapters.Cleanup.Oban
 
 # Composition-root wiring: Workspaces owns the banner lifecycle and consumes
-# object storage only through its technical port. The current implementation is
-# reused while storage providers are still housed in the legacy Projects path;
-# ENG-107 owns extraction of this exact temporary seam.
-config :storyarn, Storyarn.Workspaces.Banner.Adapters.Storage.Port, adapter: Storage
+# object storage only through its technical port. Platform supplies the shared
+# provider mechanism without owning the Workspace key or lifecycle policy.
+config :storyarn, Storyarn.Workspaces.Banner.Adapters.Storage.Port, adapter: ObjectStorage
 
 # This is intentionally independent from Project asset limits: changing one
 # bounded context's upload policy must not silently change the other.

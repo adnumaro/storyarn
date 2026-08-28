@@ -1,9 +1,9 @@
 defmodule Storyarn.SnapshotReadSwitchStorage do
   @moduledoc false
 
-  @behaviour Storyarn.Projects.Assets.Storage
+  @behaviour Storyarn.Platform.ObjectStorage
 
-  alias Storyarn.Projects.Assets.Storage.Local
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
 
   def start_link(replacements) when is_map(replacements) do
     Agent.start_link(
@@ -74,6 +74,9 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   def override_namespace_fingerprint(fingerprint) when is_binary(fingerprint) do
     Agent.update(__MODULE__, &%{&1 | namespace_fingerprint_override: fingerprint})
   end
+
+  def underlying_stat(key), do: Local.stat(key)
+  def underlying_stream(key, offset, length, opts), do: Local.stream(key, offset, length, opts)
 
   @impl true
   defdelegate list_prefix(prefix, opts), to: Local
