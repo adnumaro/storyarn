@@ -10,7 +10,6 @@ defmodule Storyarn.Platform do
   """
 
   alias Storyarn.Platform.Commercial
-  alias Storyarn.Platform.Delivery
   alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Onboarding
   alias Storyarn.Platform.ProjectStorageReservations
@@ -311,8 +310,4 @@ defmodule Storyarn.Platform do
   @doc "Publishes the committed notification outcome to connected recipients."
   @spec publish_notification_delivery(notification_delivery_outcome() | [notification_delivery_outcome()]) :: :ok
   defdelegate publish_notification_delivery(outcome), to: Notifications, as: :publish_committed
-
-  @doc "Persists one already-encrypted invitation delivery request."
-  @spec enqueue_invitation_delivery(map()) :: {:ok, Oban.Job.t()} | {:error, term()}
-  defdelegate enqueue_invitation_delivery(attrs), to: Delivery
 end

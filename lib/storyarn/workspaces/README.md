@@ -18,9 +18,14 @@ folders it actually needs.
 | `events/`, `tokens/` | Narrow, named responsibilities used only where the capability needs them.                                                                  |
 
 For example, `Invitations.Delivery.Handler` decides which invitation is still
-deliverable and prepares its Workspace-owned content. The outbound handoff to
-Platform lives in `Invitations.Adapters.Notifications.PlatformRequest`, while translation to
-Swoosh lives in `Invitations.Adapters.Email.Mailer`.
+deliverable and prepares its Workspace-owned content. The owner-local
+`Invitations.Adapters.Jobs.InvitationQueue` encrypts the bearer token and
+persists `DeliverWorkspaceInvitationWorker` in the invitation transaction,
+while `Invitations.Adapters.Email.Mailer` translates the resulting email to
+Swoosh. After commit, the job adapter wakes the owner queue best-effort so the
+non-transactional Oban notifier cannot add Stager latency. The worker enters
+only through `Storyarn.Workspaces`, so invitation eligibility, cancellation,
+content, retry effects, and job ownership remain in one bounded context.
 
 ## Projections and reference data
 

@@ -130,7 +130,11 @@ config :storyarn, Oban,
     # This queue was introduced together with its worker. Keeping it separate
     # prevents an older node in a rolling deployment from claiming a job whose
     # module and argument contract it does not know yet.
-    workspace_banner_cleanup: 1
+    workspace_banner_cleanup: 1,
+    # Invitation workers are introduced together with this queue. Older nodes
+    # do not poll it, so a rolling deploy cannot claim an unknown worker module.
+    # Ten preserves the former upper bound when these jobs used `:default`.
+    invitation_delivery: 10
   ],
   plugins: [
     {Oban.Plugins.Pruner, max_age: 60 * 60 * 24 * 7},

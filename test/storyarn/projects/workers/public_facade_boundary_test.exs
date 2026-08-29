@@ -7,6 +7,7 @@ defmodule Storyarn.Projects.Workers.PublicFacadeBoundaryTest do
     {Storyarn.Workers.CleanupProjectSnapshotWorker, :storage_cleanup, 10, nil, [:worker, :queue, :args], :infinity},
     {Storyarn.Workers.DeleteProjectTemplateArtifactsWorker, :templates, 5, nil, nil, nil},
     {Storyarn.Workers.DeleteStorageObjectsWorker, :storage_cleanup, 5, nil, nil, nil},
+    {Storyarn.Workers.DeliverProjectInvitationWorker, :invitation_delivery, 5, nil, nil, nil},
     {Storyarn.Workers.ExpireProjectImportsWorker, :imports_maintenance, 3, nil, nil, nil},
     {Storyarn.Workers.ImportProjectSnapshotWorker, :snapshot_imports, 3, nil, [:worker, :args], :infinity},
     {Storyarn.Workers.ImportProjectWorker, :imports, 3, nil, nil, nil},

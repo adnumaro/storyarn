@@ -5,10 +5,9 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
 
   @root "lib/storyarn/platform"
   @areas %{
-    "adapters" => ~w(configuration email rate_limiter security),
+    "adapters" => ~w(configuration email oban rate_limiter security),
     "collaboration" => ~w(adapters rules),
     "commercial" => ~w(commands entities execution projections queries reference_data rules),
-    "delivery" => ~w(adapters),
     "discovery" => ~w(adapters commands entities projections queries reference_data),
     "kernel" => [],
     "notifications" => ~w(adapters entities execution projections queries),
@@ -20,7 +19,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
     "adapters" => ~w(clock.ex rate_limiter.ex),
     "collaboration" => ~w(collaboration.ex),
     "commercial" => ~w(billing.ex commercial.ex project_storage_reservations.ex subscription_crud.ex),
-    "delivery" => ~w(delivery.ex),
     "discovery" => ~w(command_palette.ex dashboard_cache.ex global_search.ex),
     "kernel" => ~w(html_utils.ex integer_parser.ex map_access.ex search_helpers.ex string_utils.ex),
     "notifications" => ~w(notifications.ex),
@@ -41,7 +39,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
       "reference_data/",
       "rules/"
     ],
-    "delivery" => ["adapters/"],
     "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
     "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
     "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
@@ -192,16 +189,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
              ),
              "missing root-facade denial to #{capability}/#{private_path}"
     end
-
-    Enum.each(Map.keys(@private_targets), fn capability ->
-      assert denial?(
-               policy,
-               "lib/storyarn/workers/platform/",
-               "#{@root}/#{capability}/",
-               ["runtime", "export", "compile"]
-             ),
-             "Platform workers must enter #{capability} through Storyarn.Platform"
-    end)
   end
 
   test "Web can use public application facets but not Collaboration or Discovery internals" do

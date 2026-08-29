@@ -12,7 +12,7 @@ defmodule Storyarn.ProjectsFixtures do
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
-  alias Storyarn.Workers.DeliverInvitationWorker
+  alias Storyarn.Workers.DeliverProjectInvitationWorker
   alias Storyarn.WorkspacesFixtures
 
   def unique_project_name, do: "Project #{System.unique_integer([:positive])}"
@@ -107,7 +107,7 @@ defmodule Storyarn.ProjectsFixtures do
 
     case result do
       {:ok, _invitation} ->
-        DeliverInvitationWorker
+        DeliverProjectInvitationWorker
         |> latest_delivery_job()
         |> decrypt_job_token()
 
