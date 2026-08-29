@@ -1,0 +1,14 @@
+docs/reference/context-map.md
+  h_46be6e61f3d9dd 16-27
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6f3d357907d06f6befbf39f010b21d573d5a1732",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
