@@ -601,6 +601,7 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert policy.bounded_contexts == [
              :accounts,
              :workspaces,
+             :commercial,
              :platform,
              :projects,
              :sheets,
@@ -615,6 +616,8 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
     assert "lib/storyarn_web.ex" in policy.boundaries.web_infrastructure
     refute "lib/storyarn/ai.ex" in policy.boundaries.infrastructure
     refute "lib/storyarn/ai/" in policy.boundaries.infrastructure
+    assert policy.boundaries.commercial == ["lib/storyarn/commercial.ex", "lib/storyarn/commercial/"]
+    refute "lib/storyarn/commercial/" in policy.boundaries.platform
   end
 
   test "top-level application modules are covered by explicit technical roots" do

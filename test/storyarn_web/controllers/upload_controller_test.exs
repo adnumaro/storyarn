@@ -7,7 +7,7 @@ defmodule StoryarnWeb.UploadControllerTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Projects.Assets
   alias StoryarnWeb.UploadController
 

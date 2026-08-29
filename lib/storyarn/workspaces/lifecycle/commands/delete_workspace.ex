@@ -1,7 +1,7 @@
 defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace do
   @moduledoc false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Banner
@@ -10,7 +10,7 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace do
   @spec delete(%{id: integer()}) :: {:ok, Workspace.t()} | {:error, term()}
   def delete(%{id: _} = workspace) do
     result =
-      Platform.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+      Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
         with {:ok, workspace} <- get_locked_workspace(locked_workspace.id),
              {:ok, project_cleanup} <- Projects.prepare_workspace_data_hard_delete(locked_workspace.id),
              :ok <- Banner.prepare_hard_delete(workspace),

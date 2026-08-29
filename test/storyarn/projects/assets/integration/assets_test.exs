@@ -12,8 +12,8 @@ defmodule Storyarn.AssetsTest do
 
   alias Phoenix.LiveView.UploadEntry
   alias Storyarn.Accounts.User
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects

@@ -59,6 +59,14 @@ defmodule StoryarnWeb.WorkspaceLive.Invitation do
       {:ok, {:registration_required, registration_token}} ->
         redirect_to_registration(socket, invitation, token, registration_token)
 
+      {:error, :workspace_provisioning_failed} ->
+        {:ok,
+         put_flash(
+           socket,
+           :error,
+           dgettext("workspaces", "We couldn't prepare your account. Please try again.")
+         )}
+
       {:error, _reason} ->
         {:ok, socket}
     end

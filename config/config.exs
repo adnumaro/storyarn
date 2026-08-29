@@ -184,6 +184,15 @@ config :storyarn, Storyarn.AI.Settlement, Storyarn.AI.Settlement.Unavailable
 # configuration provides them. The task list is owned by config/runtime.exs;
 # dev/test override it explicitly.
 config :storyarn, Storyarn.AI.TaskRegistry, tasks: []
+
+config :storyarn, Storyarn.Commercial.Billing.StorageLeasePolicy,
+  download_signed_url_ttl_seconds: 5 * 60,
+  download_max_transfer_seconds: 60 * 60,
+  download_lease_safety_seconds: 60,
+  build_heartbeat_interval_seconds: 60,
+  build_lease_ttl_seconds: 5 * 60,
+  export_lease_retention_seconds: 7 * 24 * 60 * 60
+
 config :storyarn, Storyarn.Flows.Versioning.RestorePolicy, flow_version_restore: false
 
 # Configure Gettext locales
@@ -195,14 +204,6 @@ config :storyarn, Storyarn.Localization.TranslationJobQueue,
   worker: "Storyarn.Workers.LocalizationBatchTranslationWorker",
   queue: :localization,
   max_attempts: 3
-
-config :storyarn, Storyarn.Platform.Billing.StorageLeasePolicy,
-  download_signed_url_ttl_seconds: 5 * 60,
-  download_max_transfer_seconds: 60 * 60,
-  download_lease_safety_seconds: 60,
-  build_heartbeat_interval_seconds: 60,
-  build_lease_ttl_seconds: 5 * 60,
-  export_lease_retention_seconds: 7 * 24 * 60 * 60
 
 # Configures the mailer
 # Development uses Mailpit (SMTP on localhost:1025, UI on localhost:8025)

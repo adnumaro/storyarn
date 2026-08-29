@@ -3,7 +3,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Invitations.Adapters.Jobs.InvitationQueue
@@ -65,7 +65,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
       Repo.transact(fn ->
         with {:ok, locked_workspace} <- lock_workspace(workspace),
              :ok <- ensure_invitation_available(locked_workspace.id, email),
-             :ok <- normalize_limit_result(Platform.can_invite_member?(locked_workspace, email)),
+             :ok <- normalize_limit_result(Commercial.can_invite_member?(locked_workspace, email)),
              :ok <- delete_inactive_invitation(locked_workspace.id, email),
              {:ok, invitation} <- insert_invitation(changeset),
              {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do

@@ -9,6 +9,7 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Flows.Versioning.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Flows.Versioning.Adapters.Storage.Locks, as: StorageKeyLock
   alias Storyarn.Flows.Versioning.Adapters.Storage.Objects, as: Storage
@@ -19,7 +20,6 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   alias Storyarn.Flows.Versioning.Projections.StorageReservationRecord
   alias Storyarn.Flows.Versioning.Projections.WorkspaceRecord
   alias Storyarn.Flows.Versioning.Projections.WorkspaceSnapshotImportRecord
-  alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
 
@@ -829,7 +829,7 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   defp check_storage_capacity(workspace_id, requested_bytes) when is_integer(requested_bytes) and requested_bytes >= 0 do
     used = workspace_storage_bytes(workspace_id)
     reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
-    limit = Platform.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
+    limit = Commercial.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
     available = if is_integer(limit), do: max(limit - used, 0), else: 0
 
     if requested_bytes <= available do

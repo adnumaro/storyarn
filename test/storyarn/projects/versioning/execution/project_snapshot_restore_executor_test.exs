@@ -22,10 +22,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
   import Storyarn.SheetsFixtures
   import Storyarn.VersioningFixtures
 
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
@@ -2027,7 +2027,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     expected_asset_bytes =
       2 * byte_size(shared_bytes) + byte_size(variant_bytes) + byte_size(orphan_bytes)
 
-    assert Storyarn.Platform.Billing.project_storage_usage(project.id).current_assets == %{
+    assert Storyarn.Commercial.Billing.project_storage_usage(project.id).current_assets == %{
              bytes: expected_asset_bytes,
              count: 4
            }

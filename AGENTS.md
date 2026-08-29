@@ -363,17 +363,18 @@ The declared bounded contexts are listed below. The target structure gives each 
 calling `Context.SubModule.fun()` from `storyarn_web` is a `facade_bypass` violation. Legacy namespaces remain
 only while their owning context is being migrated.
 
-| Bounded context | Facade                  | Owned business capabilities                                                                                                                  |
-| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`     | Users, authentication and profiles                                                                                                           |
-| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships and invitations                                                                                                      |
-| Platform        | `Storyarn.Platform`     | Product metrics/event reactions, notification inbox/delivery, commercial catalog, subscriptions, entitlements and truly platform-wide policy |
-| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboards, trash, assets, templates, project import/export, snapshots/reconstitution and AI settings            |
-| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions, usages and Sheet-owned AI behavior                                        |
-| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                              |
-| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                                    |
-| Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                                   |
-| AI              | `Storyarn.AI`           | AI policy, integrations, model/provider selection, execution, audit and future AI product behavior                                           |
+| Bounded context | Facade                  | Owned business capabilities                                                                                                       |
+| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication and profiles                                                                                                |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships and invitations                                                                                           |
+| Commercial      | `Storyarn.Commercial`   | Plan catalog, subscriptions, entitlements, usage limits, storage accounting, reservations and commercial capacity policy          |
+| Platform        | `Storyarn.Platform`     | Product metrics/event reactions, notification inbox/delivery, onboarding and genuinely platform-wide control-plane policy         |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboards, trash, assets, templates, project import/export, snapshots/reconstitution and AI settings |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions, usages and Sheet-owned AI behavior                             |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                   |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                         |
+| Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                        |
+| AI              | `Storyarn.AI`           | AI policy, integrations, model/provider selection, execution, audit and future AI product behavior                                |
 
 AI is a bounded context, not a shared business layer. Projects remains the only writer of the current AI model,
 team and configuration records until that ownership is revisited deliberately. Consuming contexts may own their
@@ -385,14 +386,21 @@ permission to treat AI as a utility layer.
 infrastructure, while each initiating context owns its email intent and copy. Accounts, Workspaces and Projects own
 their resource-specific roles and authorization rules; Platform owns only policies that are genuinely global. The
 notification inbox and delivery lifecycle belong to Platform, while producers retain the semantic decision to notify.
-Platform owns catalog, subscriptions and entitlements; each consumer owns how it applies a quota to its own model.
 Business contexts own the facts and payloads they emit; Platform owns the cross-cutting reaction policy. Product
 analytics is best-effort. Notification and email reactions must use persisted, idempotent delivery with retries rather
 than being added as synchronous callbacks to the event tracker.
 
+`Commercial` is the business boundary for plans, subscriptions, entitlements, usage measurement and storage-capacity
+accounting. Consumers ask `Storyarn.Commercial` whether an operation fits the applicable commercial policy, then retain
+ownership of their own transaction and domain invariants. Provider-neutral object I/O remains the technical
+`Storyarn.Platform.ObjectStorage` capability; owning object bytes and accounting billable capacity are separate
+responsibilities. Commercial's current top-level role folders are a deliberate ENG-112 extraction exception: `Billing`,
+`Entitlements` and `ProjectStorageReservations` are collaboration facets over one cohesive commercial model. Do not use
+that layout as a role-first template for new contexts or reorganize its lock-sensitive workflow mechanically.
+
 ### Application and infrastructure modules
 
-Code may remain outside the nine context directories only when it is an application coordinator or a technical
+Code may remain outside the ten context directories only when it is an application coordinator or a technical
 adapter and owns no domain model or business rule:
 
 - `StoryarnWeb` is the presentation adapter. It may compose public context facades but never call their internals.
@@ -404,14 +412,14 @@ adapter and owns no domain model or business rule:
   read-only projections over the shared tables, but do not own ordinary writes or domain invariants.
 - `Storyarn.Shared` is restricted to small, stable technical primitives or a deliberately agreed shared kernel. It
   must never become a catch-all for business behavior.
-- Historical or stable module identities such as `Storyarn.Projects.Assets`, `Storyarn.Platform.Billing`,
+- Historical or stable module identities such as `Storyarn.Projects.Assets`, `Storyarn.Commercial.Billing`,
   `Storyarn.Platform.Emails`, `Storyarn.Platform.Notifications`, `Storyarn.Projects.References`,
   `Storyarn.Projects.Versioning`, `Storyarn.Projects.Imports`, `Storyarn.Projects.Exports` and
   `Storyarn.Projects.ProjectTemplates` are not additional bounded contexts. Ownership follows the physical capability
-  boundary above, not the namespace name. `Billing` and `Notifications` remain stable identities inside their Platform
-  owners and may contain capability facades; `Emails` remains a technical adapter. Project identities remain owned by
-  Projects. Preserve a stable identity when compatibility requires it, while keeping its files and business decisions
-  inside the owning context.
+  boundary above, not the namespace name. `Billing` remains an internal capability identity inside Commercial;
+  `Notifications` remains inside Platform and may contain its own capability facade. `Emails` remains a technical
+  adapter. Project identities remain owned by Projects. Preserve a stable identity when compatibility requires it,
+  while keeping its files and business decisions inside the owning context.
 
 Background jobs live under `lib/storyarn/workers/{owner}/`. Each owner slice belongs to the corresponding bounded
 context in the architecture ratchet; `Storyarn.Workers.*` is only the stable technical identity persisted by Oban,

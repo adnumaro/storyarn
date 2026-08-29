@@ -115,7 +115,8 @@ defmodule StoryarnWeb.UserLive.Registration do
          |> put_flash(:error, dgettext("identity", "Invalid or expired registration link."))
          |> push_navigate(to: PublicURLs.home_path(socket.assigns.locale))}
 
-      {:error, :workspace_limit_reached} ->
+      {:error, reason}
+      when reason in [:workspace_limit_reached, :workspace_provisioning_failed] ->
         {:noreply,
          put_flash(
            socket,

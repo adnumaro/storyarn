@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Events
@@ -36,7 +36,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
       |> Repo.one()
 
     case workspace do
-      %Workspace{} -> Platform.can_create_project?(workspace)
+      %Workspace{} -> Commercial.can_create_project?(workspace)
       nil -> {:error, :not_found}
     end
   end
@@ -153,7 +153,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
 
       workspace_id ->
         workspace_id
-        |> Platform.transact_with_workspace_lock(fn _workspace ->
+        |> Commercial.transact_with_workspace_lock(fn _workspace ->
           delete_locked_project(project_id, workspace_id, fun)
         end)
         |> normalize_project_deletion_result()

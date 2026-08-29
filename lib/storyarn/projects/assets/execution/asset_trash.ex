@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.StorageCompensation
@@ -166,7 +166,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
   end
 
   defp require_workspace_lock(workspace_id) do
-    if Platform.workspace_lock_held?(workspace_id),
+    if Commercial.workspace_lock_held?(workspace_id),
       do: :ok,
       else: {:error, :storage_accounting_lock_required}
   end

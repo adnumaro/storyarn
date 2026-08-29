@@ -9,7 +9,7 @@ defmodule Storyarn.Scenes.Editor.Commands.ItemCapacity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Repo
   alias Storyarn.Scenes.Editor.Projections.FlowNodeRecord
   alias Storyarn.Scenes.Editor.Projections.FlowRecord
@@ -21,7 +21,7 @@ defmodule Storyarn.Scenes.Editor.Commands.ItemCapacity do
   def can_create_items?(%{id: project_id, workspace_id: workspace_id}, requested)
       when is_integer(project_id) and project_id > 0 and is_integer(workspace_id) and workspace_id > 0 and
              is_integer(requested) and requested > 0 do
-    limit = Platform.entitlement_limit(workspace_id, :items_per_project)
+    limit = Commercial.entitlement_limit(workspace_id, :items_per_project)
     used = count_project_items(project_id)
     check_capacity(used, limit, requested)
   end

@@ -137,13 +137,21 @@ defmodule Storyarn.Workspaces do
 
   The creating user becomes the owner of the workspace.
   """
-  @spec create_workspace(scope(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
+  @spec create_workspace(scope(), attrs()) ::
+          {:ok, workspace()}
+          | {:error, changeset()}
+          | {:error, :workspace_provisioning_failed}
+          | {:error, :limit_reached, map()}
   defdelegate create_workspace(scope, attrs), to: Lifecycle
 
   @doc """
   Creates a workspace with owner membership (for internal use, e.g., registration).
   """
-  @spec create_workspace_with_owner(user(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
+  @spec create_workspace_with_owner(user(), attrs()) ::
+          {:ok, workspace()}
+          | {:error, changeset()}
+          | {:error, :workspace_provisioning_failed}
+          | {:error, :limit_reached, map()}
   defdelegate create_workspace_with_owner(user, attrs), to: Lifecycle
 
   @doc """
@@ -152,8 +160,8 @@ defmodule Storyarn.Workspaces do
   @spec change_workspace(workspace(), attrs()) :: changeset()
   defdelegate change_workspace(workspace, attrs \\ %{}), to: Lifecycle
 
-  @spec change_new_workspace() :: changeset()
-  defdelegate change_new_workspace(), to: Lifecycle
+  @spec change_new_workspace(attrs()) :: changeset()
+  defdelegate change_new_workspace(attrs \\ %{}), to: Lifecycle
 
   @doc """
   Updates a workspace.

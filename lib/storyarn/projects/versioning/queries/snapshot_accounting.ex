@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.SnapshotAccounting do
   @moduledoc false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Versioning
   alias Storyarn.Repo
@@ -28,11 +28,11 @@ defmodule Storyarn.Projects.SnapshotAccounting do
               snapshot_reservations:
                 snapshots
                 |> Enum.map(& &1.id)
-                |> Platform.active_project_snapshot_reservations(),
-              snapshot_slots_used: Platform.project_snapshot_slot_usage(project.id),
-              snapshot_slots_limit: Platform.entitlement_limit(project.workspace_id, :project_snapshots_per_project),
-              storage_usage: Platform.workspace_storage_usage(project.workspace_id),
-              storage_limit: Platform.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
+                |> Commercial.active_project_snapshot_reservations(),
+              snapshot_slots_used: Commercial.project_snapshot_slot_usage(project.id),
+              snapshot_slots_limit: Commercial.entitlement_limit(project.workspace_id, :project_snapshots_per_project),
+              storage_usage: Commercial.workspace_storage_usage(project.workspace_id),
+              storage_limit: Commercial.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
             }
 
           {:error, reason} ->

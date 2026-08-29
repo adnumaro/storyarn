@@ -6,7 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
   import StoryarnWeb.ProjectLive.Components.SettingsComponents,
     only: [serialize_byte_count: 1, serialize_storage_bucket: 1, serialize_storage_usage: 2]
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects
 
   # ===========================================================================
@@ -100,7 +100,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
       socket =
         socket
         |> assign(:current_workspace, project.workspace)
-        |> assign(:usage_limits, Platform.project_limits_usage(project))
+        |> assign(:usage_limits, Commercial.project_limits_usage(project))
 
       {:ok, socket}
     else

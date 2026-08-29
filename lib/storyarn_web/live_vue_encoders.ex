@@ -22,9 +22,6 @@ defmodule StoryarnWeb.LiveVueEncoders do
     except: [:deleted_at, :deleted_by_id, :deleted_by, :deletion_reason, :deletion_generation]
   )
 
-  # Billing
-  Protocol.derive(LiveVue.Encoder, Storyarn.Platform.Billing.Subscription)
-
   # Flows
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.Flow)
   Protocol.derive(LiveVue.Encoder, Storyarn.Flows.FlowConnection)

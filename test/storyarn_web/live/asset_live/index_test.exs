@@ -7,8 +7,8 @@ defmodule StoryarnWeb.AssetLive.IndexTest do
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo

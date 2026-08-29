@@ -16,7 +16,7 @@ defmodule Storyarn.Architecture.PlatformProjectionAssociationsTest do
       "lib/storyarn/platform/notifications/**/*.ex"
       |> Path.wildcard()
       |> Enum.filter(fn path ->
-        File.read!(path) =~ "Storyarn.Platform.Billing.Persistence"
+        File.read!(path) =~ "Storyarn.Commercial.Billing.Persistence"
       end)
 
     assert violations == [],

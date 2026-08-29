@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.SearchHelpers
@@ -296,7 +296,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
 
     with_result =
       with {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Commercial.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.move_locked(
             project_id,
             workspace.id,
@@ -349,7 +349,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
       with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
            :ok <- validate_asset_trash_actor(actor_id),
            {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Commercial.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.restore_locked(
             project_id,
             workspace.id,
@@ -379,7 +379,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
       with :ok <- validate_asset_trash_identity(project_id, asset_id, expected_generation),
            :ok <- validate_asset_trash_actor(actor_id),
            {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Commercial.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.purge_locked(
             project_id,
             workspace.id,
@@ -408,7 +408,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
              (is_nil(actor_id) or (is_integer(actor_id) and actor_id > 0)) do
     with_result =
       with {:ok, workspace_id} <- project_workspace_id(project_id) do
-        Platform.transact_with_workspace_lock(workspace_id, fn workspace ->
+        Commercial.transact_with_workspace_lock(workspace_id, fn workspace ->
           AssetTrash.purge_many_locked(
             project_id,
             workspace.id,
@@ -433,7 +433,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   # transaction. ENG-85 owns durable retirement of rowless project blobs.
   def prepare_parent_hard_delete_locked(workspace_id, project_scope)
       when is_integer(workspace_id) and workspace_id > 0 and (project_scope == :all or is_list(project_scope)) do
-    with true <- Platform.workspace_lock_held?(workspace_id) || {:error, :storage_accounting_lock_required},
+    with true <- Commercial.workspace_lock_held?(workspace_id) || {:error, :storage_accounting_lock_required},
          {:ok, project_ids} <- lock_parent_cleanup_projects(workspace_id, project_scope) do
       assets = lock_parent_cleanup_assets(project_ids)
       persist_parent_asset_cleanup(assets)
@@ -1153,7 +1153,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
 
   defp create_asset_record(%Project{} = project, uploaded_by_id, attrs, upload_kind) do
     project.workspace_id
-    |> Platform.transact_with_workspace_lock(fn workspace ->
+    |> Commercial.transact_with_workspace_lock(fn workspace ->
       create_asset_record_with_lock(workspace, project, uploaded_by_id, attrs, upload_kind)
     end)
     |> normalize_asset_record_result()
@@ -1179,7 +1179,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   end
 
   defp check_asset_record_capacity(%Project{} = project, %{valid?: true} = changeset) do
-    Platform.can_upload_asset_for_project?(project, Ecto.Changeset.get_field(changeset, :size))
+    Commercial.can_upload_asset_for_project?(project, Ecto.Changeset.get_field(changeset, :size))
   end
 
   defp check_asset_record_capacity(_project, _changeset), do: :ok
@@ -1787,7 +1787,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   defp upload_authorized_binary_locked(scope, project_id, binary_data, attrs, user, workspace) do
     with {:ok, current_project, _membership} <-
            Memberships.authorize_locked(scope, project_id, :edit_content),
-         :ok <- Platform.can_upload_asset?(workspace, byte_size(binary_data)) do
+         :ok <- Commercial.can_upload_asset?(workspace, byte_size(binary_data)) do
       do_upload_binary_and_create_asset(binary_data, attrs, current_project, user, :generic)
     end
   end
@@ -1946,7 +1946,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   end
 
   defp capacity_checked_upload(workspace, file_size, fun) do
-    case Platform.can_upload_asset?(workspace, file_size) do
+    case Commercial.can_upload_asset?(workspace, file_size) do
       :ok -> fun.()
       {:error, _reason, _details} = error -> error
     end
@@ -1999,7 +1999,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   end
 
   defp workspace_upload_transaction(project, fun) do
-    Platform.with_storage_accounting_lock(project.workspace_id, fn workspace ->
+    Commercial.with_storage_accounting_lock(project.workspace_id, fn workspace ->
       case fun.(workspace) do
         {:error, _reason} = error -> Repo.rollback({:asset_upload_failed, error})
         {:error, _reason, _details} = error -> Repo.rollback({:asset_upload_failed, error})
@@ -2936,8 +2936,8 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
         when result: term()
   def with_import_capacity(%Project{} = project, total_bytes, fun)
       when is_integer(total_bytes) and total_bytes >= 0 and is_function(fun, 0) do
-    with true <- Platform.workspace_lock_held?(project.workspace_id),
-         :ok <- Platform.can_upload_asset_for_project?(project, total_bytes) do
+    with true <- Commercial.workspace_lock_held?(project.workspace_id),
+         :ok <- Commercial.can_upload_asset_for_project?(project, total_bytes) do
       with_import_capacity_marker(project, total_bytes, fun)
     else
       false -> {:error, :storage_accounting_lock_required}
@@ -3341,7 +3341,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   end
 
   defp validate_import_asset_authorization(project) do
-    if Platform.workspace_lock_held?(project.workspace_id) do
+    if Commercial.workspace_lock_held?(project.workspace_id) do
       case Process.get(@import_capacity_process_key) do
         %{workspace_id: workspace_id, project_id: project_id}
         when workspace_id == project.workspace_id and project_id == project.id ->

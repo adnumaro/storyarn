@@ -3,7 +3,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Accept do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Invitations.Projections.UserRecord
@@ -34,7 +34,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Accept do
            current_invitation.workspace_id
            |> Memberships.get_membership(current_user.id)
            |> Acceptance.ensure_not_member(),
-         :ok <- normalize_limit_result(Platform.can_accept_member?(locked_workspace, current_user.email)),
+         :ok <- normalize_limit_result(Commercial.can_accept_member?(locked_workspace, current_user.email)),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            Memberships.create_membership(

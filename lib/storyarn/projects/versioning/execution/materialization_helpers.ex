@@ -3,7 +3,7 @@ defmodule Storyarn.Projects.Versioning.MaterializationHelpers do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
@@ -42,7 +42,7 @@ defmodule Storyarn.Projects.Versioning.MaterializationHelpers do
     case project_workspace_id(project_id) do
       {:ok, workspace_id} ->
         workspace_id
-        |> Platform.with_storage_accounting_lock(fn _workspace ->
+        |> Commercial.with_storage_accounting_lock(fn _workspace ->
           normalize_project_workspace_callback(fun.())
         end)
         |> normalize_project_workspace_result()

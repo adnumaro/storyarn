@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
+  alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
@@ -41,7 +42,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Persistence.UserRecord, as: User
-  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.References
@@ -154,7 +154,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     case bound_reservation(restore) do
       %StorageReservation{status: "active", storage_started_at: nil} = reservation ->
         release_fun =
-          Keyword.get(opts, :settlement_release_reservation, &PlatformStorageReservations.release/4)
+          Keyword.get(opts, :settlement_release_reservation, &CommercialStorageReservations.release/4)
 
         release_without_writes(reservation, release_fun)
 
@@ -169,7 +169,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
           )
 
         release_fun =
-          Keyword.get(opts, :settlement_release_reservation, &PlatformStorageReservations.release/4)
+          Keyword.get(opts, :settlement_release_reservation, &CommercialStorageReservations.release/4)
 
         release_stored_inventory(reservation, cleanup_keys, persist_fun, release_fun)
 
@@ -479,7 +479,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     cleanup_plan = %{temporary_prefix: reservation.storage_namespace, storage_keys: storage_keys}
 
     with {:ok, reservation} <-
-           PlatformStorageReservations.mark_started(
+           CommercialStorageReservations.mark_started(
              reservation.id,
              reservation.lease_token,
              reservation.generation,
@@ -575,7 +575,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp commit_restore(context, tracker) do
     reservation = context.reservation
 
-    case PlatformStorageReservations.commit_restore(
+    case CommercialStorageReservations.commit_restore(
            reservation.id,
            reservation.lease_token,
            reservation.generation,
@@ -1854,7 +1854,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
             reservation,
             reservation.cleanup_storage_keys,
             &StorageCompensation.persist_planned_cleanup_request/1,
-            &PlatformStorageReservations.release/4
+            &CommercialStorageReservations.release/4
           )
         else
           release_with_cleanup(reservation, context)
@@ -1871,7 +1871,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp release_active_reservation(_restore, _context), do: :ok
 
   defp release_without_writes(reservation) do
-    release_without_writes(reservation, &PlatformStorageReservations.release/4)
+    release_without_writes(reservation, &CommercialStorageReservations.release/4)
   end
 
   defp release_without_writes(reservation, release_fun) when is_function(release_fun, 4) do
@@ -1926,7 +1926,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
            }
          },
          {:ok, _reservation} <-
-           PlatformStorageReservations.release(
+           CommercialStorageReservations.release(
              reservation.id,
              reservation.lease_token,
              reservation.generation,

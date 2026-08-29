@@ -36,7 +36,7 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     "lib/storyarn/sheets",
     "lib/storyarn/localization",
     "lib/storyarn/ai",
-    "lib/storyarn/platform/commercial",
+    "lib/storyarn/commercial",
     "lib/storyarn/platform/notifications",
     "lib/storyarn/platform"
   ]
@@ -119,7 +119,7 @@ defmodule Storyarn.Architecture.ProjectsBoundaryTest do
     config = File.read!("config/architecture_boundaries.exs")
     {policy, _binding} = Code.eval_file("config/architecture_boundaries.exs")
 
-    for context <- ~w(accounts ai flows localization platform projects scenes sheets workspaces) do
+    for context <- ~w(accounts ai commercial flows localization platform projects scenes sheets workspaces) do
       assert config =~ ~r/zero_debt_consumers:[^\]]*:#{context}/s
       assert config =~ ~r/isolated_contexts:[^\]]*:#{context}/s
     end

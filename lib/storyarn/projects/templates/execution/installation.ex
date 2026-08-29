@@ -4,6 +4,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   import Ecto.Query, warn: false
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Commercial
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
@@ -51,7 +52,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
          {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
-         :ok <- Platform.can_create_project?(workspace) do
+         :ok <- Commercial.can_create_project?(workspace) do
       name = install_name(attrs, version)
       source = install_source(attrs)
       idempotency_key = idempotency_key(scope.user.id, workspace.id, version.id, name)
@@ -109,7 +110,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     with :ok <- Authorization.authorize_template_visibility(scope, version.project_template),
          {:ok, workspace, _membership} <- WorkspaceAccess.authorize(scope, workspace.id, :create_project),
-         :ok <- Platform.can_create_project?(workspace),
+         :ok <- Commercial.can_create_project?(workspace),
          {:ok, snapshot, asset_source_keys} <- load_verified_template_snapshot(version) do
       case instantiate_template_transaction(
              scope,
@@ -352,7 +353,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
            ),
          {:ok, _workspace, _membership} <-
            WorkspaceAccess.authorize(scope, install.workspace_id, :create_project) do
-      normalize_worker_authorization(Platform.can_create_project?(install.workspace))
+      normalize_worker_authorization(Commercial.can_create_project?(install.workspace))
     end
   end
 
@@ -484,7 +485,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
     try do
       result =
-        Platform.with_storage_accounting_lock(
+        Commercial.with_storage_accounting_lock(
           workspace.id,
           fn _locked_workspace ->
             project = instantiate_template_under_workspace_lock(scope, version, workspace, attrs, snapshot, opts)

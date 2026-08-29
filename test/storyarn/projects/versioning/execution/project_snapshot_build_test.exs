@@ -9,11 +9,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.VersioningFixtures
 
+  alias Storyarn.Commercial.Billing
+  alias Storyarn.Commercial.Billing.StorageAccounting
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageAccounting
-  alias Storyarn.Platform.Billing.StorageReservation
   alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Platform.Shared.TimeHelpers

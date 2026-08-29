@@ -10,7 +10,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.FlowProjectTrash
@@ -102,7 +102,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
       not Repo.in_transaction?() ->
         {:error, :import_transaction_required}
 
-      not Platform.workspace_lock_held?(project.workspace_id) ->
+      not Commercial.workspace_lock_held?(project.workspace_id) ->
         {:error, :storage_accounting_lock_required}
 
       true ->
@@ -169,7 +169,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
     case Repo.get(Project, attempt_hint.project_id) do
       %Project{deleted_at: nil} = project ->
         result =
-          Platform.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+          Commercial.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
             cleanup_terminal_recovery_snapshot_locked(attempt_hint, project)
           end)
 

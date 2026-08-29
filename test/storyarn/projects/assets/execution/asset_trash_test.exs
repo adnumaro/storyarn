@@ -11,8 +11,8 @@ defmodule Storyarn.Projects.Assets.AssetTrashTest do
 
   alias Ecto.Adapters.SQL
   alias Storyarn.Accounts.User
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset

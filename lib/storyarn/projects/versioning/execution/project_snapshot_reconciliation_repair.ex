@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   import Ecto.Query
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
@@ -474,7 +474,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
          %ProjectSnapshot{} = observed_snapshot <- get_ready_snapshot(finding),
          {:ok, observed_integrity} <- current_integrity(observed_snapshot, finding) do
       finding.workspace_id_snapshot
-      |> Platform.transact_with_workspace_lock(fn _workspace ->
+      |> Commercial.transact_with_workspace_lock(fn _workspace ->
         repair_integrity_locked(
           finding,
           observed_snapshot,
@@ -491,7 +491,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp resolve_missing_integrity_subject(finding) do
     finding.workspace_id_snapshot
-    |> Platform.transact_with_workspace_lock(fn _workspace ->
+    |> Commercial.transact_with_workspace_lock(fn _workspace ->
       {:ok, {"resolved", "integrity_finding_stale", %{}}}
     end)
     |> flatten_repair_result()
@@ -626,7 +626,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp classify_changed_reservation(finding, provider_namespace_fingerprint) do
     finding.workspace_id_snapshot
-    |> Platform.transact_with_workspace_lock(fn _workspace ->
+    |> Commercial.transact_with_workspace_lock(fn _workspace ->
       reservation = lock_reservation(finding.storage_reservation_id_snapshot)
 
       if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do

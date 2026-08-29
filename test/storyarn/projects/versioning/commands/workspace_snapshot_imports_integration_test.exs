@@ -11,9 +11,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers

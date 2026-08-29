@@ -10,13 +10,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   import Ecto.Query
 
   alias Storyarn.Accounts.Scope
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.StorageKeyLock
+  alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
-  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
@@ -252,7 +252,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
     do: {:error, :invalid_project_snapshot_restore_reservation}
 
   defp reserve_and_bind_with_workspace_lock(restore, expected_generation, reservation_attrs, after_reserve) do
-    Platform.transact_with_workspace_lock(restore.workspace_id, fn _workspace ->
+    Commercial.transact_with_workspace_lock(restore.workspace_id, fn _workspace ->
       restore
       |> reserve_and_bind_locked(expected_generation, reservation_attrs, after_reserve)
       |> normalize_reserve_and_bind_result()
@@ -751,7 +751,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   defp broadcast_abandoned_delivery_result(result), do: result
 
   defp request_transaction(workspace_id, project_id, scope, user_id, snapshot_id, idempotency_key) do
-    Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
+    Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
       with %Project{} = project <- lock_active_project(project_id),
            true <- project.workspace_id == workspace_id,
            {:ok, %Project{id: ^project_id, deleted_at: nil}, _membership} <-
@@ -1145,7 +1145,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
          %ProjectSnapshotRestore{} = restore <- lock_restore(restore_hint.id),
          true <- project_id == restore.project_id and restore.workspace_id == restore_hint.workspace_id,
          :ok <- validate_reservation_bind_state(restore, expected_generation, reservation_attrs),
-         {:ok, %StorageReservation{} = reservation} <- PlatformStorageReservations.reserve(reservation_attrs),
+         {:ok, %StorageReservation{} = reservation} <- CommercialStorageReservations.reserve(reservation_attrs),
          :ok <- after_reserve.(restore, reservation),
          {:ok, %ProjectSnapshotRestore{} = bound} <-
            bind_reservation_locked(restore, expected_generation, reservation) do

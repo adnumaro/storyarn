@@ -14,7 +14,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer do
   import Bitwise
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
@@ -157,7 +157,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer do
   defp validate_adoption_scope(project) do
     cond do
       not Repo.in_transaction?() -> {:error, :snapshot_asset_adoption_requires_transaction}
-      not Platform.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
+      not Commercial.workspace_lock_held?(project.workspace_id) -> {:error, :storage_accounting_lock_required}
       true -> :ok
     end
   end

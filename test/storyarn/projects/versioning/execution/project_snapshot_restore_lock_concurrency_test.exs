@@ -8,7 +8,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLockConcurrencyTest
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.User
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore

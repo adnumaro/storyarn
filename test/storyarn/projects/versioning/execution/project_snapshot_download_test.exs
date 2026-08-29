@@ -4,7 +4,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Commercial
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Projects.Versioning
@@ -14,7 +15,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
     user = user_fixture()
     project = project_fixture(user)
     snapshot = build_ready_snapshot(project, user)
-    Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+    Commercial.subscribe_project_snapshot_export_leases(project.id)
     attach_lease_telemetry()
 
     assert :grant_issued =
@@ -37,7 +38,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
     assert DateTime.diff(first_lease.expires_at, first_lease.accounting_measured_at, :second) ==
              Versioning.project_snapshot_download_export_lease_ttl_seconds()
 
-    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert_receive {:commercial_snapshot_export_lease_state_invalidated, snapshot_id}
     assert snapshot_id == snapshot.id
 
     assert_receive {:snapshot_download_lease, %{count: 1},
@@ -66,7 +67,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
                :count
              )
 
-    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert_receive {:commercial_snapshot_export_lease_state_invalidated, snapshot_id}
     assert snapshot_id == snapshot.id
 
     assert_receive {:snapshot_download_lease, %{count: 1},
@@ -80,7 +81,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
     user = user_fixture()
     project = project_fixture(user)
     snapshot = build_ready_snapshot(project, user)
-    Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
+    Commercial.subscribe_project_snapshot_export_leases(project.id)
 
     assert :delivered =
              Versioning.with_project_snapshot_archive(project, snapshot.id, fn _delivery ->
@@ -94,9 +95,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownloadTest do
              cleanup_status: nil
            } = lease_for(snapshot)
 
-    assert_receive {:project_snapshot_updated, snapshot_id}
+    assert_receive {:commercial_snapshot_export_lease_state_invalidated, snapshot_id}
     assert snapshot_id == snapshot.id
-    refute_receive {:project_snapshot_updated, _snapshot_id}
+    refute_receive {:commercial_snapshot_export_lease_state_invalidated, _snapshot_id}
   end
 
   test "retains the shared lease when delivery raises" do

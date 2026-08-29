@@ -10,7 +10,7 @@
 ## Architecture model
 
 Storyarn is a modular monolith: one Phoenix application, one supervision tree,
-one `Storyarn.Repo`, one PostgreSQL schema and nine bounded contexts. A bounded
+one `Storyarn.Repo`, one PostgreSQL schema and ten bounded contexts. A bounded
 context is defined by language, invariants and ownership, not by having a
 directory or a Phoenix-style context module.
 
@@ -19,20 +19,23 @@ exceptions are documented in the [bounded-context map](context-map.md).
 
 ### Bounded contexts
 
-| Bounded context | Public facade           | Owned business capabilities                                                                                                             |
-| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                                   |
-| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                               |
-| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity        |
-| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                           |
-| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                            |
-| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                                      |
-| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                                   |
-| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                                    |
-| Platform        | `Storyarn.Platform`     | Commercial policy, notifications, product reactions, provider-neutral object storage and genuinely platform-wide control-plane behavior |
+| Bounded context | Public facade           | Owned business capabilities                                                                                                      |
+| --------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication, profiles and account lifecycle                                                                            |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships, invitations and workspace policy                                                                        |
+| Commercial      | `Storyarn.Commercial`   | Plan catalog, subscriptions, entitlements, usage limits, storage accounting, reservations and commercial capacity policy         |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboard, assets, templates, imports, exports, snapshots, reconstitution and project-wide integrity |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions/usages and Sheet versioning                                    |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health and Flow versioning                                                     |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene versioning                                               |
+| Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
+| AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
+| Platform        | `Storyarn.Platform`     | Notifications, product reactions, onboarding, provider-neutral object storage and platform-wide control-plane behavior           |
 
-Platform is an organizational control-plane boundary, not a claim that billing,
-notifications and analytics share one aggregate or ubiquitous language.
+Commercial is an independent business boundary because plans, subscriptions,
+entitlements, billable usage and capacity accounting share commercial language,
+policy and lifecycle. Platform remains the supporting control-plane boundary;
+it is not an umbrella for business code that several contexts happen to use.
 Discovery, realtime collaboration and technical adapters may live physically
 under `platform/` while being classified as application or infrastructure code.
 That does not create another bounded context or make those modules generally
@@ -45,6 +48,7 @@ Code outside a bounded context enters through its root facade:
 ```text
 StoryarnWeb.FlowLive      -> Storyarn.Flows
 Storyarn.Workers.Flows.*  -> Storyarn.Flows
+Storyarn.Projects         -> Storyarn.Commercial
 Storyarn.Projects         -> Storyarn.Platform
 Mix.Tasks.Storyarn.*      -> owning root facade
 ```
@@ -92,6 +96,20 @@ order stays together when splitting it would weaken correctness. A capability
 uses only the roles it actually needs; `delivery/`, `tokens/`, `tasks/` and
 `compatibility/` are specialized roles, not required layers.
 
+Commercial is the one deliberate physical-layout exception. ENG-112 promotes a
+single cohesive commercial model from Platform while preserving its
+lock-sensitive storage-accounting workflow; its top-level role folders remain
+grouped around the internal `Billing`, `Entitlements` and
+`ProjectStorageReservations` collaboration facets. This is extraction state,
+not a role-first template. Commercial should move to capability-first folders
+only when distinct commercial capabilities emerge with their own language,
+invariants and workflows—not as a mechanical namespace pass.
+
+Within that exception, `entities`, `projections`, `queries`, `reference_data`
+and `rules` remain non-orchestrating roles: they cannot write directly or call
+effectful Commercial facets. Deterministic `rules` also cannot query
+persistence or read models.
+
 ### Persistence shapes
 
 - A `projection` is a consumer-owned, read-only Ecto mapping. It declares only
@@ -115,11 +133,12 @@ restore/recovery writer explicitly.
 The following namespaces organize capabilities inside their owner. Their
 existence does not create another domain boundary:
 
-| Owner    | Internal capability examples                                                           |
-| -------- | -------------------------------------------------------------------------------------- |
-| Projects | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`                       |
-| Platform | `Commercial`, `Notifications`, `Reactions`, `Onboarding`, `Discovery`, `ObjectStorage` |
-| AI       | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`                  |
+| Owner      | Internal capability examples                                             |
+| ---------- | ------------------------------------------------------------------------ |
+| Projects   | `Assets`, `References`, `Versioning`, `Interchange`, `Templates`         |
+| Commercial | `Billing`, `Entitlements`, `ProjectStorageReservations`                  |
+| Platform   | `Notifications`, `Reactions`, `Onboarding`, `Discovery`, `ObjectStorage` |
+| AI         | `Governance`, `Integrations`, `ManagedSpend`, `Operations`, `Routing`    |
 
 Workers, Repo, mail delivery, PubSub, telemetry and release wiring are adapters
 or application composition. They are not bounded contexts. The provider-neutral
@@ -134,7 +153,7 @@ capability owner.
 ### Architecture ratchet
 
 `mix architecture.check` classifies all backend, Web and operator Mix-task
-paths declared in `config/architecture_boundaries.exs`. All nine bounded
+paths declared in `config/architecture_boundaries.exs`. All ten bounded
 contexts are sealed. Cross-boundary calls are denied unless they are exact,
 reviewed root-facade or technical contracts.
 
@@ -400,6 +419,11 @@ Each consumer owns its storage language and policy:
 - authorization, reachability, retention and deletion decisions;
 - snapshots, imports, durable cleanup and ownership transfer;
 - quota application and consumer-facing error interpretation.
+
+`Storyarn.Commercial` separately owns billable storage measurement, capacity
+reservations and their lease/fencing policy. It reads consumer-local projections
+and exposes decisions through its root facade; it neither performs provider I/O
+nor gains ordinary write authority over the consumer records it measures.
 
 Projects therefore retains its recoverable-blob guard, multipart cleanup
 grammar and compensation/reconstitution workflow. Flows, Sheets and Scenes use

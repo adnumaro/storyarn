@@ -65,6 +65,7 @@ defmodule Storyarn.Accounts.Registration.Commands.Register do
         {:ok, user}
       else
         {:error, :limit_reached, _details} -> {:error, :workspace_limit_reached}
+        {:error, :workspace_provisioning_failed} -> {:error, :workspace_provisioning_failed}
         {:error, _} = error -> error
       end
     end)

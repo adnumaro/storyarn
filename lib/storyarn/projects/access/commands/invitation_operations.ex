@@ -17,7 +17,7 @@ defmodule Storyarn.Projects.InvitationOperations do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Access.Adapters.Jobs.InvitationQueue
   alias Storyarn.Projects.Access.RateLimits
@@ -196,7 +196,7 @@ defmodule Storyarn.Projects.InvitationOperations do
              {:ok, locked_parent} <- lock_available_parent(config, parent, locked_workspace),
              parent_id = Map.fetch!(locked_parent, :id),
              :ok <- ensure_invitation_available(config, parent_id, email),
-             :ok <- normalize_limit_result(Platform.can_invite_member?(locked_parent, email)),
+             :ok <- normalize_limit_result(Commercial.can_invite_member?(locked_parent, email)),
              :ok <- delete_inactive_invitation(config, parent_id, email),
              {:ok, invitation} <- insert_invitation(config, changeset),
              {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
@@ -326,7 +326,7 @@ defmodule Storyarn.Projects.InvitationOperations do
          {:ok, current_invitation} <- lock_invitation(config, invitation),
          {:ok, current_user} <- lock_user(user),
          :ok <- validate_invitation_acceptance(config, current_invitation, current_user),
-         :ok <- normalize_limit_result(Platform.can_accept_member?(locked_parent, current_user.email)),
+         :ok <- normalize_limit_result(Commercial.can_accept_member?(locked_parent, current_user.email)),
          {:ok, _invitation} <- mark_invitation_accepted(current_invitation),
          {:ok, membership} <-
            config.memberships_module.create_membership(

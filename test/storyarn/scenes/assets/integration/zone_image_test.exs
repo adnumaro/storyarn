@@ -28,7 +28,7 @@ defmodule Storyarn.Scenes.Assets.Integration.ZoneImageTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Repo

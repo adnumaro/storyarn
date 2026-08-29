@@ -67,7 +67,7 @@ msgstr ""
 msgid "Role updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:87
+#: lib/storyarn_web/live/workspace_live/invitation.ex:95
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr ""
@@ -113,12 +113,12 @@ msgstr ""
 msgid "You don't have permission to manage this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:96
+#: lib/storyarn_web/live/workspace_live/invitation.ex:104
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:74
+#: lib/storyarn_web/live/workspace_live/invitation.ex:82
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
@@ -192,7 +192,7 @@ msgstr ""
 msgid "just now"
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:121
+#: lib/storyarn_web/live/workspace_live/invitation.ex:129
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr ""
@@ -258,7 +258,7 @@ msgstr ""
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:104
+#: lib/storyarn_web/live/workspace_live/invitation.ex:112
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
@@ -305,4 +305,14 @@ msgstr "Imports"
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:171
 #, elixir-autogen, elixir-format
 msgid "Banner could not be removed."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/new.ex:75
+#, elixir-autogen, elixir-format
+msgid "We couldn't create your workspace. Please try again."
+msgstr ""
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:67
+#, elixir-autogen, elixir-format
+msgid "We couldn't prepare your account. Please try again."
 msgstr ""

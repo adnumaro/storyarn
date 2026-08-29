@@ -7,8 +7,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.VersioningFixtures
 
-  alias Storyarn.Platform.Billing.StorageCleanupInventory
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Commercial.Billing.StorageCleanupInventory
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage

@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.BlobStore
@@ -202,7 +203,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   @doc false
   def prepare_workspace_hard_delete(%{id: workspace_id}) when is_integer(workspace_id) do
-    if Platform.workspace_lock_held?(workspace_id) do
+    if Commercial.workspace_lock_held?(workspace_id) do
       active_import? =
         WorkspaceSnapshotImport
         |> where([import], import.workspace_id == ^workspace_id and import.status in ^@active_statuses)
@@ -264,9 +265,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     do: %{candidate_count: 0, terminalized_count: 0, changed_count: 0, failure_count: 1}
 
   defp insert_upload_owner(scope, workspace, original_filename, archive_size_bytes, enforce_grant_limit?) do
-    Platform.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+    Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
       with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
-           :ok <- normalize_project_capacity(Platform.can_create_project?(locked_workspace)),
+           :ok <- normalize_project_capacity(Commercial.can_create_project?(locked_workspace)),
            :ok <- maybe_enforce_upload_grant_limit(locked_workspace.id, enforce_grant_limit?) do
         token = Ecto.UUID.generate()
         archive_storage_key = archive_key(locked_workspace.id, token)
@@ -379,7 +380,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp admit_preflight(scope, workspace, upload, project_name, preflight) do
     workspace.id
-    |> Platform.transact_with_workspace_lock(fn locked_workspace ->
+    |> Commercial.transact_with_workspace_lock(fn locked_workspace ->
       locked_upload =
         WorkspaceSnapshotImport
         |> where(
@@ -392,9 +393,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
       with %WorkspaceSnapshotImport{} = locked_upload <- locked_upload,
            {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
-           :ok <- normalize_project_capacity(Platform.can_publish_reserved_project?(locked_workspace)),
+           :ok <- normalize_project_capacity(Commercial.can_publish_reserved_project?(locked_workspace)),
            :ok <-
-             normalize_storage_capacity(Platform.can_upload_asset?(locked_workspace, preflight.logical_asset_bytes)),
+             normalize_storage_capacity(Commercial.can_upload_asset?(locked_workspace, preflight.logical_asset_bytes)),
            {:ok, queued} <- persist_admitted_upload(locked_upload, project_name, preflight),
            {:ok, job} <- %{"import_id" => queued.id} |> ImportProjectSnapshotWorker.new() |> Oban.insert(),
            {:ok, bound} <- queued |> WorkspaceSnapshotImport.bind_job_changeset(job.id) |> Repo.update() do
@@ -430,7 +431,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp discard_upload(%{user: _} = scope, %{id: _} = workspace, import_id) do
     result =
-      Platform.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+      Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
         with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
              %WorkspaceSnapshotImport{} = upload <-
                WorkspaceSnapshotImport
@@ -765,7 +766,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     asset_materializer = Keyword.get(opts, :asset_materializer, ProjectSnapshotAssetMaterializer)
 
     result =
-      Platform.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
+      Commercial.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
         locked_import =
           WorkspaceSnapshotImport
           |> where(
@@ -883,12 +884,12 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
 
     result =
-      Platform.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
+      Commercial.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
         with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import),
              %User{} = requester <- Repo.get(User, locked_import.user_id),
              {:ok, _membership} <-
                authorize_locked_import_member(%{user: requester}, locked_workspace),
-             :ok <- normalize_project_capacity(Platform.can_publish_reserved_project?(locked_workspace)),
+             :ok <- normalize_project_capacity(Commercial.can_publish_reserved_project?(locked_workspace)),
              {:ok, unreserved} <- clear_reservation(locked_import),
              {:ok, %Project{} = project} <-
                materialize_fun.(locked_workspace.id, plan.project, requester.id,
@@ -1011,7 +1012,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp reconcile_abandoned_delivery(%{import_id: import_id, workspace_id: workspace_id, stale_before: stale_before}) do
     workspace_id
-    |> Platform.transact_with_workspace_lock(fn _workspace ->
+    |> Commercial.transact_with_workspace_lock(fn _workspace ->
       import_id
       |> lock_reconciliation_import()
       |> reconcile_locked_import(stale_before)
@@ -1118,7 +1119,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp fail_terminal(import, code) do
     result =
-      Platform.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
+      Commercial.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
         case lock_owned_running(import) do
           %WorkspaceSnapshotImport{} = active -> terminalize_import_locked(active, code)
           nil -> {:error, :workspace_snapshot_import_context_changed}

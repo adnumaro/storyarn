@@ -9,7 +9,7 @@ defmodule StoryarnWeb.SceneLive.ShowTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
   alias Storyarn.Scenes

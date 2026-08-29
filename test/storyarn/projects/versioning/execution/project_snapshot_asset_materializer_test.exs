@@ -5,7 +5,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializerTest do
   import Storyarn.AssetsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
