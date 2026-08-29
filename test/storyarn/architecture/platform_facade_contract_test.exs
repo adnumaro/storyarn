@@ -25,7 +25,6 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
     deliver_content_activity: 5,
     deliver_content_activity_by_ids: 5,
     deliver_scoped_async_result: 3,
-    enqueue_invitation_delivery: 1,
     entitlement_limit: 2,
     extend_project_storage_reservation: 4,
     known_product_metric_project_subtype?: 2,
@@ -85,9 +84,9 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
   # deliberately when Onboarding and presentation analytics entered through
   # the root facade. These hashes protect semantic signatures, defaults,
   # documentation, types, and specs.
-  @docs_digest "caa5af230f6d59ae4147734a7a5f32169c9479ccd0411a1b74ff3723833e9594"
+  @docs_digest "371182afb4331fe1b03e884a5717d91dde2727bdf135108c910053dc20459e78"
   @types_digest "63d4a089dc6045025c94c41431311f664aae25f2f5f659db70929324595fa570"
-  @specs_digest "a0aac445f538c5e42d7520814c2cf35c92f798a4e79626c46bab0727ae82ed98"
+  @specs_digest "e59c2f315cc55c9bdf186cc966933d0626fade4121a61258687f15c395dd7c41"
 
   test "the root facade preserves every established function and arity" do
     public_functions =
@@ -114,7 +113,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       |> Enum.uniq()
       |> Enum.sort()
 
-    assert targets == ~w(Commercial Delivery Notifications Onboarding Reactions)
+    assert targets == ~w(Commercial Notifications Onboarding Reactions)
   end
 
   test "the compiled facade preserves docs and semantic default signatures" do
@@ -145,8 +144,8 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 67
-    assert status_counts == %{documented: 39, hidden: 1, none: 27}
+    assert length(function_docs) == 66
+    assert status_counts == %{documented: 38, hidden: 1, none: 27}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -183,7 +182,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 40
+    assert length(normalized_specs) == 39
     assert digest(normalized_specs) == @specs_digest
   end
 

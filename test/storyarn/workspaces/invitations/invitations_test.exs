@@ -451,6 +451,29 @@ defmodule Storyarn.Workspaces.InvitationsTest do
     end
   end
 
+  describe "post-commit delivery wakeup" do
+    test "keeps a committed invitation when the queue signal fails" do
+      %{workspace: workspace} = create_workspace_and_owner()
+      email = "workspace-wakeup-unavailable@example.com"
+      test_process = self()
+
+      assert {:ok, invitation} =
+               Workspaces.create_admin_invitation(
+                 workspace,
+                 email,
+                 "member",
+                 queue_notifier: fn payload ->
+                   send(test_process, {:workspace_wakeup_attempted, payload})
+                   {:error, :notifier_unavailable}
+                 end
+               )
+
+      assert_receive {:workspace_wakeup_attempted, %{queue: "invitation_delivery"}}
+      assert invitation.email == email
+      assert Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
+    end
+  end
+
   describe "get_pending_invitation/1" do
     test "returns pending invitation by ID" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()

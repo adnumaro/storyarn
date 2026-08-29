@@ -1,7 +1,7 @@
 defmodule Storyarn.Architecture.WorkerOwnershipBoundaryTest do
   use ExUnit.Case, async: true
 
-  @sealed_worker_owners ~w(accounts ai localization platform projects workspaces)
+  @sealed_worker_owners ~w(accounts ai localization projects workspaces)
   @recognized_worker_owners ~w(accounts ai flows localization platform projects scenes sheets workspaces)
 
   test "workers are grouped by owner while retaining the stable flat Oban identity" do

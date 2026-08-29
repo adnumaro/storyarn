@@ -6,7 +6,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
-  alias Storyarn.Workspaces.Invitations.Adapters.Notifications.PlatformRequest
+  alias Storyarn.Workspaces.Invitations.Adapters.Jobs.InvitationQueue
   alias Storyarn.Workspaces.Invitations.Queries.Pending
   alias Storyarn.Workspaces.Invitations.RateLimits
   alias Storyarn.Workspaces.Invitations.Rules.Email
@@ -61,16 +61,26 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
   end
 
   defp transact_invitation(workspace, email, changeset, encoded_token, opts) do
-    Repo.transact(fn ->
-      with {:ok, locked_workspace} <- lock_workspace(workspace),
-           :ok <- ensure_invitation_available(locked_workspace.id, email),
-           :ok <- normalize_limit_result(Platform.can_invite_member?(locked_workspace, email)),
-           :ok <- delete_inactive_invitation(locked_workspace.id, email),
-           {:ok, invitation} <- insert_invitation(changeset),
-           {:ok, _job} <- PlatformRequest.enqueue(encoded_token, opts) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, locked_workspace} <- lock_workspace(workspace),
+             :ok <- ensure_invitation_available(locked_workspace.id, email),
+             :ok <- normalize_limit_result(Platform.can_invite_member?(locked_workspace, email)),
+             :ok <- delete_inactive_invitation(locked_workspace.id, email),
+             {:ok, invitation} <- insert_invitation(changeset),
+             {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
+          {:ok, {invitation, job}}
+        end
+      end)
+
+    case result do
+      {:ok, {invitation, job}} ->
+        InvitationQueue.wake_after_commit(job, opts)
         {:ok, invitation}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   defp ensure_invitation_available(workspace_id, email) do

@@ -18,16 +18,14 @@ defmodule Storyarn.Projects.InvitationOperations do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform
-  alias Storyarn.Platform.Shared.EncryptedBinary
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Access.Adapters.Jobs.InvitationQueue
   alias Storyarn.Projects.Access.RateLimits
   alias Storyarn.Projects.InvitationNotifier
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
-
-  require Logger
 
   @doc """
   Lists pending invitations for a parent entity.
@@ -192,18 +190,28 @@ defmodule Storyarn.Projects.InvitationOperations do
   end
 
   defp transact_invitation(config, parent, email, changeset, encoded_token, opts) do
-    Repo.transact(fn ->
-      with {:ok, locked_workspace} <- lock_workspace(parent),
-           {:ok, locked_parent} <- lock_available_parent(config, parent, locked_workspace),
-           parent_id = Map.fetch!(locked_parent, :id),
-           :ok <- ensure_invitation_available(config, parent_id, email),
-           :ok <- normalize_limit_result(Platform.can_invite_member?(locked_parent, email)),
-           :ok <- delete_inactive_invitation(config, parent_id, email),
-           {:ok, invitation} <- insert_invitation(config, changeset),
-           {:ok, _job} <- enqueue_delivery(config, encoded_token, opts) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, locked_workspace} <- lock_workspace(parent),
+             {:ok, locked_parent} <- lock_available_parent(config, parent, locked_workspace),
+             parent_id = Map.fetch!(locked_parent, :id),
+             :ok <- ensure_invitation_available(config, parent_id, email),
+             :ok <- normalize_limit_result(Platform.can_invite_member?(locked_parent, email)),
+             :ok <- delete_inactive_invitation(config, parent_id, email),
+             {:ok, invitation} <- insert_invitation(config, changeset),
+             {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
+          {:ok, {invitation, job}}
+        end
+      end)
+
+    case result do
+      {:ok, {invitation, job}} ->
+        InvitationQueue.wake_after_commit(job, opts)
         {:ok, invitation}
-      end
-    end)
+
+      error ->
+        error
+    end
   end
 
   defp ensure_invitation_available(config, parent_id, email) do
@@ -250,38 +258,6 @@ defmodule Storyarn.Projects.InvitationOperations do
   end
 
   defp restore_limit_error(result), do: result
-
-  defp enqueue_delivery(config, encoded_token, opts) do
-    with {:ok, encrypted_token} <- encrypt_token(encoded_token) do
-      %{
-        context: config.rate_limit_context,
-        encrypted_token: encrypted_token,
-        inviter_name: Keyword.get(opts, :inviter_name),
-        locale: Gettext.get_locale(Storyarn.Gettext)
-      }
-      |> Enum.reject(fn {_key, value} -> is_nil(value) end)
-      |> Map.new()
-      |> Platform.enqueue_invitation_delivery()
-    end
-  end
-
-  defp encrypt_token(encoded_token) do
-    encryptor =
-      Application.get_env(:storyarn, :invitation_token_encryptor, EncryptedBinary)
-
-    case encryptor.dump(encoded_token) do
-      {:ok, encrypted_token} ->
-        {:ok, Base.encode64(encrypted_token)}
-
-      _error ->
-        Logger.error("Invitation token encryption failed")
-        {:error, :encryption_unavailable}
-    end
-  rescue
-    error ->
-      Logger.error("Invitation token encryption failed: #{Exception.message(error)}")
-      {:error, :encryption_unavailable}
-  end
 
   defp normalize_email(email), do: email |> String.trim() |> String.downcase()
 

@@ -27,7 +27,6 @@ boundaries = %{
   platform: [
     "lib/storyarn/platform.ex",
     "lib/storyarn/platform/commercial/",
-    "lib/storyarn/platform/delivery/",
     "lib/storyarn/platform/notifications/",
     "lib/storyarn/platform/onboarding/",
     "lib/storyarn/platform/object_storage.ex",
@@ -36,8 +35,7 @@ boundaries = %{
     "lib/storyarn/platform/reactions/contracts/event_reaction.ex",
     "lib/storyarn/platform/reactions/reference_data/",
     "lib/storyarn/platform/reactions/events/",
-    "lib/storyarn/platform/reactions/execution/",
-    "lib/storyarn/workers/platform/"
+    "lib/storyarn/platform/reactions/execution/"
   ],
   sheets: [
     "lib/storyarn/sheets.ex",
@@ -370,7 +368,7 @@ project_capabilities = ~w(lifecycle access assets overview trash references inte
 
 project_private_role_roots = %{
   "lifecycle" => ~w(commands events projections queries reference_data rules),
-  "access" => ~w(commands delivery queries),
+  "access" => ~w(adapters commands delivery queries),
   "assets" => ~w(adapters commands execution projections queries rules),
   "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
@@ -1002,7 +1000,6 @@ platform_capability_private_targets = %{
     "reference_data/",
     "rules/"
   ],
-  "delivery" => ["adapters/"],
   "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
   "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
   "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
@@ -1075,19 +1072,6 @@ platform_root_facade_path_denials =
       target_root: "lib/storyarn/platform/#{capability}/#{private_target}",
       kinds: kinds,
       reason: "The Storyarn.Platform facade composes capability facades rather than private implementation roles"
-    }
-  end
-
-# Platform workers retain their durable Oban identities but may enter
-# Platform-owned business capabilities only through the root facade. Technical
-# adapters such as encrypted payload decoding remain governed as infrastructure.
-platform_worker_facade_denials =
-  for capability <- Map.keys(platform_capability_private_targets) do
-    %{
-      source_root: "lib/storyarn/workers/platform/",
-      target_root: "lib/storyarn/platform/#{capability}/",
-      kinds: ["runtime", "export", "compile"],
-      reason: "Platform workers must orchestrate Platform capabilities through the Storyarn.Platform facade"
     }
   end
 
@@ -1228,7 +1212,6 @@ policy = %{
       object_storage_facade_path_denials ++
       platform_query_role_denials ++
       platform_root_facade_path_denials ++
-      platform_worker_facade_denials ++
       platform_web_application_private_denials ++
       analytics_transport_caller_denials,
 
@@ -1576,12 +1559,6 @@ policy = %{
       reason: "The shared notification helpers list and count through the public Platform facade"
     },
     %{
-      source: "lib/storyarn/workers/platform/deliver_invitation_worker.ex",
-      target: "lib/storyarn/projects.ex",
-      kinds: ["runtime"],
-      reason: "The durable invitation delivery worker calls back into the public Projects facade to render and send"
-    },
-    %{
       source: "lib/storyarn/application.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
@@ -1732,7 +1709,7 @@ policy = %{
       source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Project invitations enforce seat policy and request durable delivery through the public Platform facade"
+      reason: "Project invitations enforce Platform-owned member seat policy"
     },
     %{
       source: "lib/storyarn/projects/versioning/versioning.ex",
@@ -2074,12 +2051,6 @@ policy = %{
       reason: "Workspace invitation acceptance applies Platform-owned member seat policy"
     },
     %{
-      source: "lib/storyarn/workspaces/invitations/adapters/notifications/platform_request.ex",
-      target: "lib/storyarn/platform.ex",
-      kinds: ["runtime"],
-      reason: "Workspace invitations request durable delivery through the public Platform facade"
-    },
-    %{
       source: "lib/storyarn/workspaces/invitations/delivery/content.ex",
       target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
@@ -2144,12 +2115,6 @@ policy = %{
       target: "lib/storyarn/workspaces.ex",
       kinds: ["runtime"],
       reason: "Release CLI tasks operate on workspaces through the public Workspaces facade"
-    },
-    %{
-      source: "lib/storyarn/workers/platform/deliver_invitation_worker.ex",
-      target: "lib/storyarn/workspaces.ex",
-      kinds: ["runtime"],
-      reason: "The durable invitation delivery worker calls back into the public Workspaces facade to render and send"
     },
     %{
       source: "lib/storyarn_web/controllers/private_media_controller.ex",

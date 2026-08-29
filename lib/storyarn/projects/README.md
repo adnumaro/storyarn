@@ -172,6 +172,12 @@ The large historical entry modules remain stable but are now routing surfaces:
   their persisted `Storyarn.Workers.*` module identity and call only
   `Storyarn.Projects`. Their root-facade entry points are
   hidden from generated documentation but contract-tested.
+- Project invitations use `Access.Adapters.Jobs.InvitationQueue` to encrypt and
+  persist `DeliverProjectInvitationWorker` inside the invitation transaction.
+  After commit, the same adapter wakes the owner queue best-effort so the
+  non-transactional Oban notifier cannot add Stager latency. The worker
+  re-enters only through `Storyarn.Projects`; Platform owns neither this job nor
+  any Project invitation rule or retry effect.
 - `content/`, capability role folders and technical adapters are private to
   Projects.
 - Storage paths, archive formats, queues, worker arguments and Ecto module

@@ -25,6 +25,8 @@ defmodule Storyarn.Application do
         Storyarn.Platform.ObjectStorage.child_specs() ++
         [
           {Oban, Application.fetch_env!(:storyarn, Oban)},
+          {Storyarn.Platform.Adapters.Oban.QueueWakeup,
+           queue: :invitation_delivery, interval: to_timeout(second: 15), repetitions: 20},
           # Start to serve requests, typically the last entry
           StoryarnWeb.Endpoint
         ]

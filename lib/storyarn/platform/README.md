@@ -12,7 +12,6 @@ technical areas. None of these folders is an additional bounded context.
 | `collaboration/`  | Platform-owned realtime coordination: presence, cursors, editing locks, and editor signals. It is not another bounded context.                                |
 | `discovery/`      | Platform-owned application/query coordination for command palette, global search, destinations, and read-only projections. It is not another bounded context. |
 | `onboarding/`     | Product-wide tutorial progress and onboarding summaries.                                                                                                      |
-| `delivery/`       | Durable handoff to delivery workers after the producing context has decided intent and content.                                                               |
 | `object_storage/` | Provider-neutral object I/O, hashing, key locks and Local/R2 implementations. Consumer contexts retain every business storage decision.                       |
 | `adapters/`       | Stable technical mechanisms such as clock, rate-limit counters, security, mail and runtime configuration.                                                     |
 | `kernel/`         | A closed set of small, deterministic, business-neutral primitives used by several contexts.                                                                   |
@@ -117,6 +116,8 @@ The top-level `adapters/` directory is intentionally explicit:
 - `email/` provides mail transport and shared email layout mechanics; the
   producing context still owns semantic intent and copy.
 - `security/` contains encryption, sanitization and token-provider adapters.
+- `oban/` contains policy-neutral runtime helpers for bounded queue signalling;
+  it never creates or interprets a context's jobs.
 - `clock.ex` owns access to the wall clock without pretending Time is a capability.
 - `rate_limiter.ex` and `rate_limiter/` implement the policy-neutral counter mechanism.
 
@@ -161,7 +162,6 @@ jobs. Important stable entry points include:
 - `Storyarn.Platform.ObjectStorage`; its provider, hashing and lock modules are private
 - `Mailer`, `Vault`, `FeatureFlags`, `Urls`, `Release`, and the remaining
   compatibility-safe technical identities
-- `Storyarn.Workers.DeliverInvitationWorker`
 
 Stable identity is a compatibility contract, not permission to call private
 commands, queries, projections, execution modules, events, or adapters.
@@ -175,7 +175,7 @@ must use the named `Kernel` or adapter contract instead.
 - Product contexts enter provider-neutral object storage only through the exact
   `Storyarn.Platform.ObjectStorage` contract and their own adapter or port.
 - The root facade is declarative and composes Commercial, Reactions,
-  Notifications, Delivery, and Onboarding capability facades.
+  Notifications, and Onboarding capability facades.
 - Existing platform-wide application services retain exact public facets while
   their consumers are migrated deliberately; their private role folders remain
   internal.
@@ -184,19 +184,14 @@ must use the named `Kernel` or adapter contract instead.
 - Workers retain their stable `Storyarn.Workers.*` identity and orchestrate
   through public facades.
 - Product contexts own the facts, notification intent, email intent, and quota
-  application they produce. Platform owns cross-cutting reaction, delivery,
-  and commercial policy.
+  application they produce. Platform owns cross-cutting reaction, notification
+  inbox delivery, and commercial policy.
 - `Repo` and SQL tables remain shared in this phase. Code ownership is isolated
   first so schema and database separation can happen independently later.
 
 ## Known transitional seams
 
-- Invitation delivery still forms the inherited runtime path
-  `Platform -> Delivery -> Storyarn.Workers -> Projects -> Platform`. The
-  durable worker identity is preserved in this phase; new capabilities must
-  not copy this dependency shape. Removing it requires a neutral job contract,
-  not another cross-capability call.
 - The root facade temporarily exports the stable reservation receipt/error
-  types and an `Oban.Job` delivery result. These are compatibility contracts,
-  not the target API for extracting Platform. They should become
-  transport-neutral in the later persistence/process separation phase.
+  types. These are compatibility contracts, not the target API for extracting
+  Platform. They should become transport-neutral in the later
+  persistence/process separation phase.

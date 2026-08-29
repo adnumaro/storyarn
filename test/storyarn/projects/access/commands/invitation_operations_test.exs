@@ -34,4 +34,26 @@ defmodule Storyarn.Shared.InvitationOperationsTest do
 
     refute Repo.get_by(ProjectInvitation, project_id: project.id, email: email)
   end
+
+  test "keeps a committed invitation when its post-commit queue wakeup fails" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+    email = "project-wakeup-unavailable@example.com"
+    test_process = self()
+
+    assert {:ok, invitation} =
+             Projects.create_admin_invitation(
+               project,
+               email,
+               "editor",
+               queue_notifier: fn payload ->
+                 send(test_process, {:project_wakeup_attempted, payload})
+                 {:error, :notifier_unavailable}
+               end
+             )
+
+    assert_receive {:project_wakeup_attempted, %{queue: "invitation_delivery"}}
+    assert invitation.email == email
+    assert Repo.get_by(ProjectInvitation, project_id: project.id, email: email)
+  end
 end
