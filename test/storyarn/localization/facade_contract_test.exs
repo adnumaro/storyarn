@@ -72,7 +72,6 @@ defmodule Storyarn.Localization.FacadeContractTest do
     glossary_synced?: 3,
     has_active_provider?: 1,
     import_csv: 2,
-    import_language: 2,
     language_flag_code: 1,
     language_name: 1,
     language_options_for_select: 0,

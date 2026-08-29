@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-28
+> Last reviewed: 2026-08-29
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
 > `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
@@ -103,8 +103,12 @@ uses only the roles it actually needs; `delivery/`, `tokens/`, `tasks/` and
 - Two contexts may deliberately duplicate a table mapping or business
   interpretation. Shared SQL does not imply shared Elixir schemas.
 
-ENG-92 protects code ownership. It does not assign one writer per table. That
-separate decision belongs to ENG-103.
+ENG-92 protects code ownership. ENG-103 assigns persistence authority one
+workflow at a time without requiring schema separation. Its first enforced
+slice, ENG-110, makes Localization the sole ordinary writer of
+`project_languages` and classifies every privileged Project template
+materialization, exact import/reconstitution, or full-project snapshot
+restore/recovery writer explicitly.
 
 ### Internal capabilities are not bounded contexts
 
@@ -140,9 +144,16 @@ migration exceptions: its reviewed consumers terminate at the exact
 internals remain private. A new consumer must add an explicit adapter/port and a
 reviewed durable edge; it cannot make ObjectStorage globally available.
 
-The ratchet sees compile/runtime file edges. It cannot detect that two contexts
-write the same table or that a new call was added between two files already
-connected. Review and ENG-103's persistence-ownership policy remain necessary.
+The xref portion of the ratchet sees compile/runtime file edges and cannot infer
+that two contexts write the same table. ENG-103 therefore adds explicit
+persistence-ownership entries and source-level architecture tests table by
+table. `project_languages` is currently guarded by an inventory of
+`lib/storyarn/**/*.ex`, mutation bans for strict readers, content pins for
+reviewed mixed consumers and named privileged writers. The source analyzer is
+deliberately fail-closed for unresolved raw SQL in ownership-sensitive paths,
+but it does not execute macros or prove arbitrary runtime indirection. This does
+not replace PostgreSQL permissions or runtime authorization; unlisted tables
+still require review rather than being assumed safe.
 
 Mix tasks are operator adapters. Every task is classified explicitly and may
 call root facades, `Repo` where its startup contract requires it, and technical

@@ -36,6 +36,7 @@ defmodule Storyarn.Localization do
   @type actor_scope :: %{required(:user) => %{required(:id) => pos_integer()} | nil}
   @type project_identity :: %{required(:id) => pos_integer()}
   @type language_add_error :: changeset() | {:localization_sync_failed, term()}
+  @type language_ensure_error :: language_add_error() | :project_not_active | :project_not_found
 
   # =============================================================================
   # Project access read model
@@ -135,7 +136,7 @@ defmodule Storyarn.Localization do
 
   @doc "Ensures a source language exists for the project (auto-creates from workspace if missing)."
   @spec ensure_source_language(project_identity()) ::
-          {:ok, project_language()} | {:error, changeset()}
+          {:ok, project_language()} | {:error, language_ensure_error()}
   defdelegate ensure_source_language(project), to: Languages
 
   # =============================================================================
@@ -463,7 +464,4 @@ defmodule Storyarn.Localization do
 
   @doc "Bulk-inserts glossary entries from a list of attr maps."
   defdelegate bulk_import_glossary_entries(attrs_list), to: Glossary, as: :bulk_import_entries
-
-  @doc "Creates a language for import (raw insert, no side effects)."
-  defdelegate import_language(project_id, attrs), to: Languages
 end

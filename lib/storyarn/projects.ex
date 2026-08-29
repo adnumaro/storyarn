@@ -27,22 +27,6 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.Trash
   alias Storyarn.Projects.Versioning
 
-  @doc false
-  defdelegate ensure_source_language(project), to: Lifecycle
-
-  @doc false
-  defdelegate get_source_language(project_id), to: Lifecycle
-
-  @doc false
-  defdelegate change_source_language(actor_scope, project, locale_code, opts),
-    to: Lifecycle
-
-  @doc false
-  defdelegate source_language_options(), to: Lifecycle
-
-  @doc false
-  defdelegate source_language_option(code, label), to: Lifecycle
-
   @doc "Returns the Project-owned classification options used by project forms."
   defdelegate project_classification_options(), to: Lifecycle
 

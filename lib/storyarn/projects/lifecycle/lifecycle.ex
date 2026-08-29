@@ -3,9 +3,6 @@ defmodule Storyarn.Projects.Lifecycle do
 
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Lifecycle.Commands.UniqueSlug
-  alias Storyarn.Projects.LocalizationLanguageCatalog
-  alias Storyarn.Projects.LocalizationReadModel
-  alias Storyarn.Projects.LocalizationSettings
   alias Storyarn.Projects.NameNormalizer
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectClassification
@@ -30,18 +27,6 @@ defmodule Storyarn.Projects.Lifecycle do
   defdelegate list_deleted_projects(workspace_id), to: ProjectCrud
   defdelegate get_deleted_project(workspace_id, project_id), to: ProjectCrud
   defdelegate auto_versioning_enabled?(project_id, entity_type), to: ProjectCrud
-
-  defdelegate ensure_source_language(project), to: LocalizationSettings
-  defdelegate get_source_language(project_id), to: LocalizationReadModel
-
-  defdelegate change_source_language(actor_scope, project, locale_code, opts),
-    to: LocalizationSettings
-
-  defdelegate source_language_options(), to: LocalizationLanguageCatalog, as: :options
-
-  defdelegate source_language_option(code, label \\ nil),
-    to: LocalizationLanguageCatalog,
-    as: :option
 
   defdelegate project_classification_options(), to: ProjectClassification, as: :project_options
 

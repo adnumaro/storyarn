@@ -1,7 +1,14 @@
 defmodule Storyarn.Projects.Persistence.ProjectLanguageRecord do
   @moduledoc """
-  Writable Project content record for source-language configuration and exact
-  reconstitution. It is not a passive consumer projection.
+  Project-owned mapping used for whole-project reads, privileged portable
+  template materialization, and exact reconstitution. Ordinary source-language
+  writes belong to Localization.
+
+  The record remains writable only for portable template materialization, exact
+  Project import/reconstitution (including replacement import), and full-project
+  snapshot restore/recovery workflows named in the persistence-ownership
+  ratchet. It is not a passive projection and does not authorize ordinary
+  Project writes.
   """
 
   use Ecto.Schema
