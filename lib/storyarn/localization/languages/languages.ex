@@ -4,7 +4,6 @@ defmodule Storyarn.Localization.Languages do
   alias Storyarn.Localization.Languages.Commands.Add
   alias Storyarn.Localization.Languages.Commands.ChangeSource
   alias Storyarn.Localization.Languages.Commands.EnsureSource
-  alias Storyarn.Localization.Languages.Commands.Import
   alias Storyarn.Localization.Languages.Commands.Remove
   alias Storyarn.Localization.Languages.Commands.Reorder
   alias Storyarn.Localization.Languages.Commands.Update
@@ -35,8 +34,6 @@ defmodule Storyarn.Localization.Languages do
 
   defdelegate reorder_languages(project_id, language_ids), to: Reorder, as: :run
   defdelegate ensure_source_language(project), to: EnsureSource, as: :run
-  defdelegate import_language(project_id, attrs), to: Import, as: :run
-
   defdelegate all(), to: Catalog
   defdelegate get(code), to: Catalog
   defdelegate name(code), to: Catalog

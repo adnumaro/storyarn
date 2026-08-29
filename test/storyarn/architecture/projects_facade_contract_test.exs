@@ -24,7 +24,6 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     change_new_project: 2,
     change_project: 1,
     change_project: 2,
-    change_source_language: 4,
     check_invitation_rate: 2,
     count_assets: 1,
     count_assets: 2,
@@ -54,7 +53,6 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     effective_role: 2,
     enqueue_project_import: 3,
     enqueue_project_import: 4,
-    ensure_source_language: 1,
     export_portable_project_template: 2,
     export_portable_project_template: 3,
     external_project_storage?: 0,
@@ -74,7 +72,6 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     get_project_template: 3,
     get_scene_brief: 2,
     get_scene_including_deleted: 2,
-    get_source_language: 1,
     get_trashed_sheet: 2,
     import_error_deduplicator_child_spec: 0,
     import_portable_project_template: 1,
@@ -189,8 +186,6 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     save_project_import_review: 3,
     sheet_referenced_block_ids: 1,
     slugify_project_name: 1,
-    source_language_option: 2,
-    source_language_options: 0,
     start_project_snapshot_reconciliation: 0,
     start_project_snapshot_reconciliation: 1,
     subscribe_project_imports: 1,
@@ -269,7 +264,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "31af3acde766f2457218c68031b741f3ad3fd95cfed8276e7bfafc5d59974cba"
+  @docs_digest "27c5576cee32802c9143231991216250e61f58b36f11e3c2a8146f2c88028a1b"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
   @specs_digest "94800341e839c234aca49af0f6669f27c870eba0eb209b717803b9c81734b586"
 
@@ -303,10 +298,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 184
+    assert length(established_docs) == 179
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 74, hidden: 17, none: 93}
+             %{documented: 74, hidden: 12, none: 93}
 
     assert length(worker_docs) == 42
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))

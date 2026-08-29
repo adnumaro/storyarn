@@ -5,8 +5,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
+  alias Storyarn.Localization
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.LanguagePickerOption
 
   require Logger
 
@@ -36,7 +38,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         project-details={serialize_project_details(@project)}
         project-metrics-options={Projects.project_classification_options()}
         source-language={serialize_source_language(@source_language)}
-        source-language-options={Projects.source_language_options()}
+        source-language-options={source_language_options()}
         theme-primary={@theme_primary}
         theme-accent={@theme_accent}
         has-custom-theme={@has_custom_theme}
@@ -65,8 +67,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp serialize_source_language(lang) do
     lang.locale_code
-    |> Projects.source_language_option(lang.name)
+    |> LanguagePickerOption.from_code(label: lang.name || Localization.language_name(lang.locale_code))
     |> Map.put(:localeCode, lang.locale_code)
+  end
+
+  defp source_language_options do
+    Enum.map(Localization.language_options_for_select(), fn {_label, code} ->
+      LanguagePickerOption.from_code(code, label: Localization.language_name(code))
+    end)
   end
 
   # ===========================================================================
@@ -87,7 +95,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         )
       end
 
-      {:ok, source_language} = Projects.ensure_source_language(project)
+      {:ok, source_language} = Localization.ensure_source_language(project)
       project_changeset = Projects.change_project(project)
 
       socket =
@@ -161,7 +169,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
     Authorize.with_authorization(socket, :manage_project, fn socket ->
       opts = if reset_translations?(params), do: [reset_translations: true], else: []
 
-      case Projects.change_source_language(
+      case Localization.change_source_language(
              socket.assigns.current_scope,
              socket.assigns.project,
              locale_code,
@@ -271,7 +279,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
        |> assign(:membership, membership)
        |> assign(:current_workspace, project.workspace)
        |> assign(:project_form, to_form(Projects.change_project(project)))
-       |> assign(:source_language, Projects.get_source_language(project.id))
+       |> assign(:source_language, Localization.get_source_language(project.id))
        |> assign_theme(project)}
     else
       _reason ->

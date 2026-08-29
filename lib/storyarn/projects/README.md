@@ -6,7 +6,7 @@ inside one bounded context; none is an independently named bounded context.
 
 | Capability     | Responsibility                                                                                                                              |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `lifecycle/`   | Project identity, creation, configuration, source language, update, soft deletion and Workspace-owned hard-delete coordination.             |
+| `lifecycle/`   | Project identity, creation, Project-owned configuration, update, soft deletion and Workspace-owned hard-delete coordination.                |
 | `access/`      | Project memberships, roles, authorization and invitations, including Project-owned invitation intent and copy.                              |
 | `assets/`      | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and Project-owned storage policy.         |
 | `overview/`    | Project-wide dashboards, activity, statistics, health findings and structural analysis. It does not own the shared Project content records. |
@@ -126,8 +126,9 @@ and existing callers; there is no physical `persistence/` layer.
 ### Reference data
 
 Reference data is immutable application data with no database identity,
-lifecycle, external I/O or transaction semantics. The lifecycle source-language
-catalog is the current example.
+lifecycle, external I/O or transaction semantics. The Project-classification
+catalog is the current Lifecycle example; the language catalog belongs to
+Localization.
 
 ### Writable records
 
@@ -141,10 +142,16 @@ Project-owned repair commands update those rows. Their historical
 `Storyarn.Projects.References.Persistence.*` module identities remain stable;
 the physical `records/` location states their actual write authority.
 
-Localization records are the most sensitive case. Projects may write them only
-while maintaining derived localization inventory after Project content changes,
-or while exactly reconstituting a Project import/snapshot. Ordinary translation,
-review and provider workflows remain owned by Localization.
+Localization records are the most sensitive case. Localization is the only
+ordinary writer of `project_languages`. Projects may write its duplicated
+`ProjectLanguageRecord` only during template materialization, exact Project
+import/reconstitution (including replacement import), or full-project snapshot
+restore/recovery. The exact writers are allowlisted in
+`config/architecture_boundaries.exs`; no current Project repair
+writes that table. Project content projection and classified repair may still
+maintain derived localized-text inventory, which is a separate authority and
+does not grant language-setting ownership. Ordinary language, translation,
+review, and provider workflows remain owned by Localization.
 
 There is intentionally no generic `data/`, `persistence/` or `shared/` folder.
 
@@ -165,7 +172,9 @@ The large historical entry modules remain stable but are now routing surfaces:
 ## Public and worker boundaries
 
 - `StoryarnWeb`, application coordinators and other bounded contexts enter
-  through `Storyarn.Projects`.
+  Project-owned behavior through `Storyarn.Projects`. The general Project
+  settings surface deliberately composes `Storyarn.Localization` for
+  source-language behavior through a reviewed root-facade contract.
 - The root facade composes the nine capability facades. Stable entity and type
   aliases remain there only as compatibility contracts.
 - Background jobs remain physically grouped under `workers/projects/`, retain

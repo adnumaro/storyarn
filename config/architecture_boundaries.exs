@@ -1,8 +1,202 @@
-# ENG-92 code boundaries. These rules intentionally protect code ownership only:
-# they do not assign database write ownership or change the shared schema.
+# ENG-92 code boundaries plus incremental ENG-103 persistence ownership. The
+# shared schema remains intentional; semantic write authority is added one
+# reviewed table/workflow at a time instead of inferred from Ecto module names.
 
 # These are the bounded contexts sealed by the current ENG-92 ratchet.
 bounded_contexts = [:accounts, :workspaces, :platform, :projects, :sheets, :flows, :scenes, :localization, :ai]
+
+# ENG-110 is the first persistence-ownership slice under ENG-103. Localization
+# owns every ordinary write to `project_languages`. Projects keeps an independent
+# record because template materialization, exact import/reconstitution and
+# snapshot recovery still need to materialize the shared SQL state without
+# importing Localization internals.
+# Every statically identifiable foreign schema, alias consumer and direct SQL
+# reference is classified explicitly. Raw SQL that reaches an ownership-sensitive
+# path but cannot be resolved statically fails closed in the architecture test;
+# this remains a source-level ratchet rather than a database security boundary.
+project_language_persistence_ownership = %{
+  table: "project_languages",
+  ordinary_owner: :localization,
+  owner_paths: ["lib/storyarn/localization.ex", "lib/storyarn/localization/"],
+  ordinary_writers: [
+    %{
+      path: "lib/storyarn/localization/languages/commands/add.ex",
+      role: :command,
+      reason: "adds or reactivates a Project language and reconciles its localized-text inventory",
+      transaction: "runs inside the command's Repo.transaction",
+      locks_or_preconditions: "locks the project and localization inventory before mutation"
+    },
+    %{
+      path: "lib/storyarn/localization/languages/commands/change_source.ex",
+      role: :command,
+      reason: "owns ordinary source-language promotion and optional translation reset",
+      transaction: "runs inside the command's Repo.transaction",
+      locks_or_preconditions: "locks the project and localization inventory before mutation"
+    },
+    %{
+      path: "lib/storyarn/localization/languages/commands/remove.ex",
+      role: :command,
+      reason: "archives an ordinary target language and its localized-text inventory",
+      transaction: "runs inside the command's Repo.transaction",
+      locks_or_preconditions: "locks the project, localization inventory and selected language before mutation"
+    },
+    %{
+      path: "lib/storyarn/localization/languages/commands/reorder.ex",
+      role: :command_orchestrator,
+      reason: "owns ordinary language ordering and delegates the set-based write to the declared adapter",
+      transaction: "runs inside the command's Repo.transaction",
+      locks_or_preconditions: "locks the project and every active language row before delegating the position update"
+    },
+    %{
+      path: "lib/storyarn/localization/languages/commands/update.ex",
+      role: :command,
+      reason: "updates ordinary language metadata",
+      transaction: "runs inside the command's Repo.transaction",
+      locks_or_preconditions: "locks the project, localization inventory and selected language before mutation"
+    },
+    %{
+      path: "lib/storyarn/localization/languages/adapters/positions/postgres.ex",
+      role: :persistence_adapter,
+      reason: "the reorder command delegates its set-based position update to one PostgreSQL adapter",
+      transaction: "called inside Languages.Commands.Reorder's Repo.transaction",
+      locks_or_preconditions:
+        "the reorder command locks the project and every active language row before calling the adapter"
+    }
+  ],
+  foreign_schema_mappings: %{
+    flows: [
+      "lib/storyarn/flows/localization/projections/project_language_record.ex",
+      "lib/storyarn/flows/versioning/projections/project_language_record.ex"
+    ],
+    sheets: [
+      "lib/storyarn/sheets/localization/projections/project_language_record.ex",
+      "lib/storyarn/sheets/versioning/projections/project_language_record.ex"
+    ]
+  },
+  privileged_project_schema_mappings: [
+    "lib/storyarn/projects/content/localization/records/project_language_record.ex"
+  ],
+  foreign_readers: %{
+    projects: [
+      "lib/storyarn/projects/content/localization/queries/read_model.ex",
+      "lib/storyarn/projects/interchange/exports/queries/data_collector.ex",
+      "lib/storyarn/projects/templates/execution/audit.ex"
+    ]
+  },
+  # These consumers read project_languages but also contain already-reviewed
+  # writes to other shared tables. They are not labelled read-only: their
+  # remaining write ownership is explicit ENG-103 debt rather than permission
+  # to write project_languages.
+  reviewed_mixed_foreign_consumers: [
+    %{
+      path: "lib/storyarn/flows/localization/commands/projection.ex",
+      owner: :flows,
+      reason: "reads target locales while maintaining the existing localized_texts projection",
+      reviewed_sha256: "1a7511c20d0aa250eb8bae25ecae999ff1e9edbf18efe04456142be63d0320c4"
+    },
+    %{
+      path: "lib/storyarn/flows/versioning/execution/localization_codec.ex",
+      owner: :flows,
+      reason: "reads the locale inventory while restoring Flow-owned localized_texts",
+      reviewed_sha256: "be39d949a298e3b65e962b424272c349ab6b01279be486fdf8147cbf6b7fc5c5"
+    },
+    %{
+      path: "lib/storyarn/projects/content/localization/commands/flow_projection.ex",
+      owner: :projects,
+      reason: "reads target locales while maintaining Project's derived localized_text inventory",
+      reviewed_sha256: "0d19c72cc1cdc8d8301de010c6ee4267f9f08d256d6fc1a21ecbc491881ab466"
+    },
+    %{
+      path: "lib/storyarn/projects/content/localization/commands/projection.ex",
+      owner: :projects,
+      reason: "reads target locales while maintaining Project's derived localized_text inventory",
+      reviewed_sha256: "a3aff62f8f7437269be0581509d25aa68887e8b5f1f9256eb21552a76661199f"
+    },
+    %{
+      path: "lib/storyarn/projects/versioning/execution/localization_snapshot_codec.ex",
+      owner: :projects,
+      reason: "reads locale identity while restoring snapshot-local localized_text records",
+      reviewed_sha256: "b8bab630fd112d6654900bfb52ae0f91698d52bde7e2f82a10e414e6e616446a"
+    },
+    %{
+      path: "lib/storyarn/sheets/localization/commands/projection.ex",
+      owner: :sheets,
+      reason: "reads target locales while maintaining the existing localized_texts projection",
+      reviewed_sha256: "7ff2b55117e1257853b558162d2feedd4b6358debb280f7502537531c1b99b26"
+    },
+    %{
+      path: "lib/storyarn/sheets/versioning/execution/localization_codec.ex",
+      owner: :sheets,
+      reason: "reads the locale inventory while restoring Sheet-owned localized_texts",
+      reviewed_sha256: "0bb7786786415f529dd947e716052d866c25ba1daea42355b0bb11f6337b292a"
+    }
+  ],
+  restricted_entrypoints: [
+    %{
+      module: "Storyarn.Localization.Languages.Adapters.Positions.Postgres",
+      path: "lib/storyarn/localization/languages/adapters/positions/postgres.ex",
+      allowed_callers: [
+        "lib/storyarn/localization/languages/commands/reorder.ex"
+      ],
+      reason: "only the locked Localization reorder command may invoke the raw set-based position writer"
+    },
+    %{
+      module: "Storyarn.Projects.LocalizationReconstitution",
+      path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+      allowed_callers: [
+        "lib/storyarn/projects/interchange/imports/execution/materializer.ex"
+      ],
+      reason: "only the validated Project import materializer may invoke exact Localization reconstitution"
+    }
+  ],
+  privileged_project_writers: %{
+    import_reconstitution: %{
+      operation: "exact Project import/reconstitution, including replacement import",
+      writers: [
+        %{
+          path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+          functions: [{:def, :import_language, 2}]
+        },
+        %{
+          path: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+          functions: [{:defp, :archive_active_localization, 1}]
+        }
+      ],
+      reason: "a Project import must materialize the imported language rows without importing Localization internals",
+      transaction: "runs inside the enclosing validated Project import transaction",
+      locks_or_preconditions:
+        "validated import/project identity; materialization requires the workspace lock and an active project row locked FOR UPDATE; replacement also validates and locks its recovery snapshot state"
+    },
+    project_materialization_and_recovery: %{
+      operation: "template materialization, exact snapshot import, full-project snapshot restore and recovery",
+      writers: [
+        %{
+          path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+          functions: [{:defp, :restore_languages, 4}]
+        },
+        %{
+          path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+          functions: [{:defp, :reconcile_localization_before_materialization, 2}]
+        }
+      ],
+      reason:
+        "Project materialization must create or replace the closed Project graph, including its captured language rows",
+      transaction:
+        "ProjectRecovery uses the workspace storage-accounting transaction; snapshot restore uses its enclosing restore transaction",
+      locks_or_preconditions:
+        "ProjectRecovery validates the portable or exact snapshot under the workspace lock; restore validates project/snapshot identity and holds its project, snapshot and materialization locks"
+    },
+    # No current repair writes `project_languages`. A future repair must name its
+    # exact source here and prove its privileged, non-ordinary contract in tests.
+    repair: %{
+      operation: "reserved Project repair exception",
+      writers: [],
+      reason: "no current Project repair is authorized to mutate project_languages",
+      transaction: "must be declared before the first repair path is added",
+      locks_or_preconditions: "must be declared before the first repair path is added"
+    }
+  }
+}
 
 boundaries = %{
   accounts: [
@@ -470,6 +664,17 @@ project_content_root_facade_denial = %{
   target_root: "lib/storyarn/projects/content/",
   kinds: ["runtime", "export", "compile"],
   reason: "Project-owned content models are internal and never part of the root facade contract"
+}
+
+# Project lifecycle previously implemented the ordinary source-language writer.
+# The local record remains available to the explicitly classified Project
+# reconstitution workflows above, but lifecycle must not recreate that writer;
+# the Project settings composition point enters Localization through its facade.
+project_lifecycle_language_record_denial = %{
+  source_root: "lib/storyarn/projects/lifecycle/",
+  target_root: "lib/storyarn/projects/content/localization/records/project_language_record.ex",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Project lifecycle cannot recreate Localization's ordinary project-language writer"
 }
 
 # The roles here are directional responsibilities, not a hexagonal purity
@@ -1149,6 +1354,13 @@ policy = %{
   boundaries: boundaries,
   forbidden_dependencies: forbidden_dependencies,
 
+  # Unlike xref import edges, persistence authority is semantic. Architecture
+  # tests consume this exact allowlist and reject new Project record consumers
+  # or writers until their ownership is reviewed deliberately.
+  persistence_ownership: %{
+    project_languages: project_language_persistence_ownership
+  },
+
   # Code below `Storyarn` is the domain/application side of the system. Even
   # when a StoryarnWeb adapter is classified with the same owning context, the
   # dependency direction must stay domain -> application boundary <- Web.
@@ -1189,7 +1401,7 @@ policy = %{
       [workspace_worker_facade_denial] ++
       project_internal_path_denials ++
       project_root_facade_path_denials ++
-      [project_content_root_facade_denial] ++
+      [project_content_root_facade_denial, project_lifecycle_language_record_denial] ++
       project_role_dependency_denials ++
       [projects_worker_facade_denial] ++
       localization_internal_path_denials ++
@@ -2009,6 +2221,12 @@ policy = %{
       reason: "Invitation acceptance prepares the invited account through the public Accounts facade"
     },
     %{
+      source: "lib/storyarn_web/live/project_settings_live/general.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Project settings delegates ordinary source-language reads and writes to the public Localization facade"
+    },
+    %{
       source: "lib/storyarn/accounts/authentication/delivery/email_change/content.ex",
       target: "lib/storyarn/platform/adapters/email/layout.ex",
       kinds: ["runtime"],
@@ -2177,12 +2395,6 @@ policy = %{
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
       reason: "Scene mutations request durable notification delivery through the public Platform contract"
-    },
-    %{
-      source: "lib/storyarn/projects/lifecycle/commands/localization_settings.ex",
-      target: "lib/storyarn/platform.ex",
-      kinds: ["runtime"],
-      reason: "Project-owned localization settings request durable delivery through the public Platform contract"
     },
     %{
       source: "lib/storyarn/platform/reactions/events/product_metrics.ex",

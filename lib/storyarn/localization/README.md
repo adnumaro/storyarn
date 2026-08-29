@@ -72,6 +72,28 @@ database identity, lifecycle, external I/O, or transaction semantics.
 Every projection documents why its consumer needs it. Neither role is a
 synonym for persistence or a place for generic schemas.
 
+## Source-language write ownership
+
+Localization is the sole ordinary writer of the shared `project_languages`
+table. Project settings reads, ensures, and changes the source language through
+`Storyarn.Localization`; neither `Storyarn.Projects` nor its Lifecycle
+capability republishes those commands.
+
+The shared SQL schema does not make the Localization entity a cross-context
+contract. Projects retains its duplicated `ProjectLanguageRecord` for
+Project-owned reads and privileged closed-graph materialization. Its current
+write exceptions are narrowly classified as:
+
+- template materialization;
+- exact Project import/reconstitution, including replacement import;
+- full-project snapshot restore and recovery.
+
+No current Project repair writes `project_languages`. A future repair must name
+the exact source, lock/transaction contract, and reason in
+`config/architecture_boundaries.exs` before it is permitted. Derived localized
+text inventory repair is a different authority and does not grant permission to
+change Project languages.
+
 ## Stable module identities
 
 Files are grouped by capability without renaming contracts whose module identity
@@ -97,6 +119,9 @@ through `Storyarn.Localization`.
 ## Boundary rules
 
 - `StoryarnWeb`, controllers, and workers call only `Storyarn.Localization`.
+- The Project general-settings surface is a reviewed composition point: its
+  source-language behavior calls this root facade directly, while Project-owned
+  settings continue through `Storyarn.Projects`.
 - Stable schemas and contracts may be named where framework configuration or
   serialization requires their compile-time identity; they do not expose
   commands or queries.

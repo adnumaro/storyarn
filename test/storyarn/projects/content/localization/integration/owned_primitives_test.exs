@@ -2,7 +2,6 @@ defmodule Storyarn.Projects.LocalizationOwnedPrimitivesTest do
   use ExUnit.Case, async: true
 
   alias Storyarn.Projects.LocalizationExportPolicy
-  alias Storyarn.Projects.LocalizationLanguageCatalog
   alias Storyarn.Projects.LocalizationLocaleCode
   alias Storyarn.Projects.LocalizationPlaceholderValidator
   alias Storyarn.Projects.LocalizationRuntimeKey
@@ -73,19 +72,9 @@ defmodule Storyarn.Projects.LocalizationOwnedPrimitivesTest do
     assert LocalizationExportPolicy.text_eligible?(stale, :preview)
   end
 
-  test "locale validation and language picker serialization preserve the public shape" do
+  test "locale validation normalizes safe locale identifiers" do
     assert LocalizationLocaleCode.ensure_safe!("PT-BR") == "pt-br"
     assert_raise ArgumentError, fn -> LocalizationLocaleCode.ensure_safe!("../../etc/passwd") end
-
-    assert LocalizationLanguageCatalog.option("pt-br") == %{
-             value: "pt-br",
-             label: "Portuguese (Brazil)",
-             languageTag: "pt-BR",
-             flagCode: "br",
-             shortLabel: "PT"
-           }
-
-    assert LocalizationLanguageCatalog.option("es-419").shortLabel == "LA"
   end
 
   test "placeholder validation compares multiplicity, not just membership" do
