@@ -6,8 +6,8 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
   alias Ecto.Adapters.SQL.Sandbox
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Flows
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Shared.TimeHelpers

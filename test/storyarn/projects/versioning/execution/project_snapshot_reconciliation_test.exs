@@ -6,8 +6,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   import Storyarn.ProjectsFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Commercial.Billing
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Storage

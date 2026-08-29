@@ -3,7 +3,7 @@ defmodule Storyarn.Scenes.Versioning.Commands.NamedVersionCapacity do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Repo
   alias Storyarn.Scenes.Versioning.EntityVersionRecord
   alias Storyarn.Scenes.Versioning.Projections.ProjectRecord
@@ -52,7 +52,7 @@ defmodule Storyarn.Scenes.Versioning.Commands.NamedVersionCapacity do
   end
 
   defp check_capacity(project_id, workspace_id) do
-    limit = Platform.entitlement_limit(workspace_id, :named_versions_per_project)
+    limit = Commercial.entitlement_limit(workspace_id, :named_versions_per_project)
 
     used =
       Repo.aggregate(

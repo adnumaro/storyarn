@@ -7,7 +7,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
   import Storyarn.WorkspacesFixtures
 
   alias Ecto.Adapters.SQL.Sandbox
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Projects
   alias Storyarn.Projects.ProjectInvitation
   alias Storyarn.Repo

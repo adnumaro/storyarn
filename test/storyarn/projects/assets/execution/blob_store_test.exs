@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.Assets.BlobStoreTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform.Billing
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset

@@ -14,8 +14,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
+  alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
-  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotLifecycle
@@ -1471,7 +1471,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp operation_prefixes_match?(reservation, subject) do
-    case PlatformStorageReservations.object_prefixes(reservation) do
+    case CommercialStorageReservations.object_prefixes(reservation) do
       {:ok, %{staging: staging, ready: ready}} ->
         staging == subject.prefix and ready == subject.ready_prefix
 
@@ -1481,7 +1481,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp operation_prefix_owned?(reservation, prefix) do
-    case PlatformStorageReservations.object_prefixes(reservation) do
+    case CommercialStorageReservations.object_prefixes(reservation) do
       {:ok, prefixes} -> prefix in Map.values(prefixes)
       _invalid -> false
     end

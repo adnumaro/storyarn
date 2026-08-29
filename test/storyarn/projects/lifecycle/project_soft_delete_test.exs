@@ -9,8 +9,8 @@ defmodule Storyarn.Projects.SoftDeleteTest do
   import Storyarn.SheetsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Commercial.Billing.Subscription
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing.Subscription
   alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset

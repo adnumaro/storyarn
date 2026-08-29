@@ -27,7 +27,9 @@ No product code. Owner approves:
 - supported countries/currencies, tax responsibility, invoicing, refunds, chargebacks, and business-customer requirements;
 - whether top-ups are justified. Default recommendation: subscriptions with included allowance first; top-ups deferred.
 
-The existing `Storyarn.Billing` schemas are domain groundwork, not evidence that a payment path already exists.
+The existing `Storyarn.Commercial` model and its internal
+`Storyarn.Commercial.Billing` modules are domain groundwork, not evidence that a
+payment path already exists.
 
 ## Stage B — Subscription billing and entitlements
 
@@ -36,7 +38,9 @@ The existing `Storyarn.Billing` schemas are domain groundwork, not evidence that
 - Storyarn is source of truth for task prices, real-time allowance reservation, operations, technical refunds, and usage.
 - Persist provider customer/subscription ids and an append-only, idempotent webhook inbox.
 - Webhooks verify signatures, tolerate duplication/out-of-order delivery, and reconcile periodically.
-- Subscription state maps to Storyarn plan/entitlements through the Billing facade.
+- Subscription state maps to Storyarn plan/entitlements through the public
+  `Storyarn.Commercial` facade. Payment-provider code implemented inside the
+  Commercial boundary may collaborate with its internal Billing facet.
 - Monthly allowance grant is idempotent per workspace+billing period+pricing version.
 - BYOK operations never consume paid allowance.
 - Purchase/configuration actions require explicit workspace billing permission.
@@ -69,7 +73,11 @@ This is not required for initial commercial launch. Add only with measured deman
 
 ## Existing code to reuse
 
-`Storyarn.Billing.{Plan, Subscription, SubscriptionCrud, Limits}` · Slice-3 allowance ledger and metering · Oban/webhook/mailer/idempotency patterns · dashboard shells · authorization and audit helpers · payment provider SDK/HTTP integration chosen in Stage A.
+`Storyarn.Commercial` and the internal
+`Storyarn.Commercial.Billing.{Plan, Subscription, SubscriptionCrud, Limits}`
+implementation · Slice-3 allowance ledger and metering ·
+Oban/webhook/mailer/idempotency patterns · dashboard shells · authorization and
+audit helpers · payment provider SDK/HTTP integration chosen in Stage A.
 
 ## Non-goals
 

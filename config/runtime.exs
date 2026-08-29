@@ -405,7 +405,7 @@ end
 # Rate limiting with Redis for production (multi-node support)
 # Development and test use ETS backend (started in application.ex)
 if config_env() == :prod do
-  config :storyarn, Storyarn.Platform.Billing.StorageLeasePolicy,
+  config :storyarn, Storyarn.Commercial.Billing.StorageLeasePolicy,
     download_signed_url_ttl_seconds:
       bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),
     download_max_transfer_seconds: positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS", 60 * 60)

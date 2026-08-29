@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.Persistence.StorageReservationRecord do
   @moduledoc """
   Project-owned read model for the storage reservation protocol persisted by
-  Platform Billing.
+  Commercial Billing.
 
   Billing remains the only ordinary writer of
   `workspace_storage_reservations`. Projects duplicates the persisted shape so

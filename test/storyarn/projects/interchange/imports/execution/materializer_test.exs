@@ -8,9 +8,9 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   import Storyarn.ScenesFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Commercial.Billing
   alias Storyarn.Flows
   alias Storyarn.Localization
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset

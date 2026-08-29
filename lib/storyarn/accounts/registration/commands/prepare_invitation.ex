@@ -13,7 +13,7 @@ defmodule Storyarn.Accounts.Registration.Commands.PrepareInvitation do
   Finds an existing user by email, or registers and auto-confirms a new one.
 
   Used for invitation acceptance where the user must be able to log in immediately.
-  Returns `{:ok, user}` or `{:error, changeset}`.
+  Returns `{:ok, user}` or an Accounts registration error.
   """
   def find_or_register_confirmed_user(email) do
     case Repo.get_by(User, email: String.downcase(email)) do

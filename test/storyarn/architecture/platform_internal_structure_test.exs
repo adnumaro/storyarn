@@ -7,7 +7,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
   @areas %{
     "adapters" => ~w(configuration email oban rate_limiter security),
     "collaboration" => ~w(adapters rules),
-    "commercial" => ~w(commands entities execution projections queries reference_data rules),
     "discovery" => ~w(adapters commands entities projections queries reference_data),
     "kernel" => [],
     "notifications" => ~w(adapters entities execution projections queries),
@@ -18,7 +17,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
   @root_files %{
     "adapters" => ~w(clock.ex rate_limiter.ex),
     "collaboration" => ~w(collaboration.ex),
-    "commercial" => ~w(billing.ex commercial.ex project_storage_reservations.ex subscription_crud.ex),
     "discovery" => ~w(command_palette.ex dashboard_cache.ex global_search.ex),
     "kernel" => ~w(html_utils.ex integer_parser.ex map_access.ex search_helpers.ex string_utils.ex),
     "notifications" => ~w(notifications.ex),
@@ -27,18 +25,6 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
     "reactions" => ~w(reactions.ex)
   }
   @private_targets %{
-    "commercial" => [
-      "billing.ex",
-      "project_storage_reservations.ex",
-      "subscription_crud.ex",
-      "commands/",
-      "entities/",
-      "execution/",
-      "projections/",
-      "queries/",
-      "reference_data/",
-      "rules/"
-    ],
     "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
     "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
     "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
@@ -173,19 +159,11 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
 
     for {capability, private_paths} <- @private_targets,
         private_path <- private_paths do
-      kinds =
-        if capability == "commercial" and
-             private_path == "project_storage_reservations.ex" do
-          ["runtime", "compile"]
-        else
-          ["runtime", "export", "compile"]
-        end
-
       assert denial?(
                policy,
                "lib/storyarn/platform.ex",
                "#{@root}/#{capability}/#{private_path}",
-               kinds
+               ["runtime", "export", "compile"]
              ),
              "missing root-facade denial to #{capability}/#{private_path}"
     end

@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotCrud do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Repo
@@ -85,7 +85,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotCrud do
           {:ok, ProjectSnapshot.t()} | {:error, term()}
   def finalize_object_set(snapshot_id, expected_generation, attrs)
       when is_integer(snapshot_id) and snapshot_id > 0 and expected_generation == 0 and is_map(attrs) do
-    if Platform.snapshot_storage_commit_context?(snapshot_id, "snapshot_build") do
+    if Commercial.snapshot_storage_commit_context?(snapshot_id, "snapshot_build") do
       finalize_object_set_locked(snapshot_id, expected_generation, attrs)
     else
       {:error, :snapshot_storage_commit_context_required}
@@ -104,7 +104,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotCrud do
       when valid_accounting_generation(snapshot_id, expected_generation) and is_map(attrs) do
     case snapshot_workspace_id(snapshot_id) do
       workspace_id when is_integer(workspace_id) ->
-        Platform.transact_with_workspace_lock(workspace_id, fn _workspace ->
+        Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
           remeasure_object_set_locked(snapshot_id, expected_generation, attrs)
         end)
 

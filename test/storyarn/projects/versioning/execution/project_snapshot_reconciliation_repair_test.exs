@@ -5,8 +5,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform.Billing
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Commercial.Billing
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest

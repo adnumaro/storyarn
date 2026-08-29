@@ -5,7 +5,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   use StoryarnWeb, :live_view
   use Gettext, backend: Storyarn.Gettext
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects
   alias Storyarn.Workspaces
   alias StoryarnWeb.PrivateMedia
@@ -199,7 +199,7 @@ defmodule StoryarnWeb.WorkspaceLive.Show do
   end
 
   defp can_create_project?(workspace, membership) do
-    Workspaces.can?(membership.role, :create_project) and Platform.can_create_project?(workspace) == :ok
+    Workspaces.can?(membership.role, :create_project) and Commercial.can_create_project?(workspace) == :ok
   end
 
   defp parse_template_id(value) when is_integer(value), do: {:ok, value}

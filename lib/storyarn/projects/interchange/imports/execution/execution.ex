@@ -12,6 +12,7 @@ defmodule Storyarn.Projects.Imports.Execution do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Platform
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -261,7 +262,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   defp tag_started_attempt({:error, reason}), do: {:error, reason}
 
   defp materialize_once(attempt, project, plan, opts) do
-    Platform.transact_with_workspace_lock(
+    Commercial.transact_with_workspace_lock(
       project.workspace_id,
       fn _workspace ->
         with_result =

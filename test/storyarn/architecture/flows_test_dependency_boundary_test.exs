@@ -9,7 +9,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   @foreign_context_modules [
     "Storyarn.Accounts",
     "Storyarn.Projects.Assets",
-    "Storyarn.Platform.Billing",
+    "Storyarn.Commercial.Billing",
     "Storyarn.Platform.Emails",
     "Storyarn.Projects.Exports",
     "Storyarn.Projects.Imports",

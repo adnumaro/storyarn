@@ -3,7 +3,18 @@
 # reviewed table/workflow at a time instead of inferred from Ecto module names.
 
 # These are the bounded contexts sealed by the current ENG-92 ratchet.
-bounded_contexts = [:accounts, :workspaces, :platform, :projects, :sheets, :flows, :scenes, :localization, :ai]
+bounded_contexts = [
+  :accounts,
+  :workspaces,
+  :commercial,
+  :platform,
+  :projects,
+  :sheets,
+  :flows,
+  :scenes,
+  :localization,
+  :ai
+]
 
 # ENG-110 is the first persistence-ownership slice under ENG-103. Localization
 # owns every ordinary write to `project_languages`. Projects keeps an independent
@@ -218,9 +229,12 @@ boundaries = %{
     "lib/storyarn_web/live/settings_live/workspace_imports.ex",
     "lib/storyarn_web/live/settings_live/workspace_members.ex"
   ],
+  commercial: [
+    "lib/storyarn/commercial.ex",
+    "lib/storyarn/commercial/"
+  ],
   platform: [
     "lib/storyarn/platform.ex",
-    "lib/storyarn/platform/commercial/",
     "lib/storyarn/platform/notifications/",
     "lib/storyarn/platform/onboarding/",
     "lib/storyarn/platform/object_storage.ex",
@@ -1187,24 +1201,83 @@ ai_worker_facade_denial = %{
   reason: "AI workers must orchestrate through the Storyarn.AI facade"
 }
 
+# Commercial is an independent business context. Its root facade may compose
+# the stable Billing, Entitlements and ProjectStorageReservations facets, but it
+# must not reach directly into effectful or passive implementation roles.
+commercial_root_private_targets = [
+  "commands/",
+  "entities/",
+  "execution/",
+  "projections/",
+  "queries/storage_cleanup_ownership_receipt_record.ex",
+  "queries/subscriptions.ex",
+  "reference_data/",
+  "rules/",
+  "subscription_crud.ex"
+]
+
+commercial_root_facade_path_denials =
+  for private_target <- commercial_root_private_targets do
+    %{
+      source_root: "lib/storyarn/commercial.ex",
+      target_root: "lib/storyarn/commercial/#{private_target}",
+      kinds: ["runtime", "export", "compile"],
+      reason: "The Storyarn.Commercial facade composes stable capability facets rather than private implementation roles"
+    }
+  end
+
+commercial_passive_roles = ["entities", "projections", "queries", "reference_data", "rules"]
+
+commercial_effectful_targets = [
+  "lib/storyarn/commercial.ex",
+  "lib/storyarn/commercial/billing.ex",
+  "lib/storyarn/commercial/project_storage_reservations.ex",
+  "lib/storyarn/commercial/subscription_crud.ex",
+  "lib/storyarn/commercial/commands/",
+  "lib/storyarn/commercial/execution/"
+]
+
+commercial_passive_effect_denials =
+  for source_role <- commercial_passive_roles,
+      target_root <- commercial_effectful_targets do
+    %{
+      source_root: "lib/storyarn/commercial/#{source_role}/",
+      target_root: target_root,
+      kinds: ["runtime", "export", "compile"],
+      reason: "Commercial passive roles cannot invoke effectful workflows or mixed writer facades"
+    }
+  end
+
+commercial_passive_role_dependency_denials =
+  for {source_role, target_role} <- [
+        {"rules", "queries"},
+        {"projections", "queries"},
+        {"projections", "rules"},
+        {"reference_data", "queries"},
+        {"reference_data", "rules"},
+        {"entities", "queries"}
+      ] do
+    %{
+      source_root: "lib/storyarn/commercial/#{source_role}/",
+      target_root: "lib/storyarn/commercial/#{target_role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Commercial passive roles cannot become hidden readers or policy orchestrators"
+    }
+  end
+
+commercial_rule_persistence_denial = %{
+  source_root: "lib/storyarn/commercial/rules/",
+  target_root: "lib/storyarn/repo.ex",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Commercial rules are deterministic policy and cannot query or orchestrate persistence"
+}
+
 # Platform is one control-plane context split into cohesive capabilities. A
 # capability may consume another capability's facade, but its operational code,
 # data projections, entities, and rules remain private to their owner.
 # Reaction contracts and analytics adapters stay outside this private set: the
 # former are stable event contracts and the latter are technical infrastructure.
 platform_capability_private_targets = %{
-  "commercial" => [
-    "billing.ex",
-    "project_storage_reservations.ex",
-    "subscription_crud.ex",
-    "commands/",
-    "entities/",
-    "execution/",
-    "projections/",
-    "queries/",
-    "reference_data/",
-    "rules/"
-  ],
   "notifications" => ["adapters/", "entities/", "execution/", "projections/", "queries/"],
   "object_storage" => ["adapters/", "hashing.ex", "key_lock.ex"],
   "onboarding" => ["commands/", "entities/", "projections/", "queries/"],
@@ -1256,26 +1329,14 @@ object_storage_facade_path_denials =
     }
   end
 
-# The root facade composes capability facades. Its sole private-facet
-# dependency is the exported receipt/error type contract still owned by the
-# stable ProjectStorageReservations compatibility facet; runtime and
-# compile-time use remain forbidden, as does every kind of dependency on other
-# private capability targets.
+# The root facade composes capability facades rather than their private roles.
 platform_root_facade_path_denials =
   for {capability, private_targets} <- platform_capability_private_targets,
       private_target <- private_targets do
-    kinds =
-      if capability == "commercial" and
-           private_target == "project_storage_reservations.ex" do
-        ["runtime", "compile"]
-      else
-        ["runtime", "export", "compile"]
-      end
-
     %{
       source_root: "lib/storyarn/platform.ex",
       target_root: "lib/storyarn/platform/#{capability}/#{private_target}",
-      kinds: kinds,
+      kinds: ["runtime", "export", "compile"],
       reason: "The Storyarn.Platform facade composes capability facades rather than private implementation roles"
     }
   end
@@ -1420,6 +1481,10 @@ policy = %{
       ai_root_facade_path_denials ++
       ai_role_dependency_denials ++
       [ai_worker_facade_denial] ++
+      commercial_root_facade_path_denials ++
+      commercial_passive_effect_denials ++
+      commercial_passive_role_dependency_denials ++
+      [commercial_rule_persistence_denial] ++
       platform_internal_path_denials ++
       object_storage_facade_path_denials ++
       platform_query_role_denials ++
@@ -1434,6 +1499,7 @@ policy = %{
   zero_debt_consumers: [
     :accounts,
     :ai,
+    :commercial,
     :flows,
     :infrastructure,
     :localization,
@@ -1448,7 +1514,18 @@ policy = %{
   # Every bounded context is sealed in both directions. Durable cross-boundary
   # access to a public facade must use an exact exception; it cannot be
   # accepted by adding an inbound edge to another consumer's debt baseline.
-  isolated_contexts: [:accounts, :ai, :flows, :localization, :platform, :projects, :scenes, :sheets, :workspaces],
+  isolated_contexts: [
+    :accounts,
+    :ai,
+    :commercial,
+    :flows,
+    :localization,
+    :platform,
+    :projects,
+    :scenes,
+    :sheets,
+    :workspaces
+  ],
 
   # These exact leaves are globally consumable technical infrastructure, not
   # bounded-context APIs. They deliberately cover no directory: Repo remains
@@ -1814,28 +1891,33 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/assets/execution/asset_operations.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
+      reason: "Asset lifecycle accounts storage usage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/assets/execution/asset_trash.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
+      reason: "Asset lifecycle accounts storage usage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/assets/execution/blob_store.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Asset lifecycle accounts storage usage through the public Platform facade"
+      reason: "Asset lifecycle accounts storage usage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/execution/execution.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "Project imports enforce storage policy and publish committed notifications through the public Platform facade"
+      reason: "Project imports publish committed notification outcomes through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/interchange/imports/execution/execution.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Project imports enforce storage policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/commands/expiration.ex",
@@ -1845,9 +1927,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project imports enforce storage policy through the public Platform facade"
+      reason: "Project imports enforce storage policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/adapters/notifications/notification_delivery.ex",
@@ -1863,9 +1945,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project replacement imports coordinate storage locks through the public Platform facade"
+      reason: "Project replacement imports coordinate storage locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/interchange/imports/commands/resume.ex",
@@ -1877,33 +1959,38 @@ policy = %{
       source: "lib/storyarn/projects/templates/execution/installation.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "Template installation enforces commercial policy and publishes notification outcomes through the public Platform facade"
+      reason: "Template installation publishes notification outcomes through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/templates/execution/installation.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Template installation enforces policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/templates/execution/publication_runner.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Template publication enforces commercial policy through the public Platform facade"
+      reason: "Template publication enforces commercial policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/lifecycle/commands/project_commands.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project lifecycle enforces commercial policy through the public Platform facade"
+      reason: "Project lifecycle enforces commercial policy through the public Commercial facade"
     },
     %{
-      source: "lib/storyarn/projects/versioning/adapters/platform/storage_reservations.ex",
-      target: "lib/storyarn/platform.ex",
+      source: "lib/storyarn/projects/versioning/adapters/commercial/storage_reservations.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason:
-        "The Projects anti-corruption layer exchanges transport-neutral storage receipts through the public Platform facade"
+        "The Projects anti-corruption layer exchanges transport-neutral storage receipts through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/trash/execution/project_trash.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project lifecycle enforces commercial policy through the public Platform facade"
+      reason: "Project lifecycle enforces commercial policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/access/delivery/invitation_email.ex",
@@ -1919,89 +2006,100 @@ policy = %{
     },
     %{
       source: "lib/storyarn/projects/access/commands/invitation_operations.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project invitations enforce Platform-owned member seat policy"
+      reason: "Project invitations enforce Commercial-owned member seat policy"
     },
     %{
       source: "lib/storyarn/projects/versioning/versioning.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot storage lifecycle accounts usage and locks through the public Platform facade"
+      reason: "Snapshot storage lifecycle accounts usage and locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/materialization_helpers.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot materialization accounts storage through the public Platform facade"
+      reason: "Snapshot materialization accounts storage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project recovery coordinates storage locks through the public Platform facade"
+      reason: "Project recovery coordinates storage locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/rules/project_snapshot_lease_policy.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project snapshot grants consume the lease policy through the public Platform facade"
+      reason: "Project snapshot grants consume the lease policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/project_snapshot_asset_materializer.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot asset materialization accounts storage through the public Platform facade"
+      reason: "Snapshot asset materialization accounts storage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/project_snapshot_build.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason: "Snapshot builds coordinate storage and publish notification outcomes through the public Platform facade"
+      reason: "Snapshot builds publish notification outcomes through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_build.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Snapshot builds coordinate storage accounting through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/commands/project_snapshot_crud.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
+      reason: "Snapshot lifecycle accounts storage and locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/project_snapshot_download.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot downloads acquire storage leases through the public Platform facade"
+      reason: "Snapshot downloads acquire storage leases through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot lifecycle accounts storage and locks through the public Platform facade"
+      reason: "Snapshot lifecycle accounts storage and locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot reconciliation repairs storage accounting through the public Platform facade"
+      reason: "Snapshot reconciliation repairs storage accounting through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Snapshot restore lifecycle accounts storage and locks through the public Platform facade"
+      reason: "Snapshot restore lifecycle accounts storage and locks through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],
-      reason:
-        "Workspace snapshot imports coordinate storage and publish notification outcomes through the public Platform facade"
+      reason: "Workspace snapshot imports publish notification outcomes through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace snapshot imports coordinate storage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/projects/versioning/queries/snapshot_accounting.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason:
-        "Projects consumes neutral storage usage, reservation totals and entitlements through the public Platform facade"
+        "Projects consumes neutral storage usage, reservation totals and entitlements through the public Commercial facade"
     },
     %{
       source: "lib/storyarn_web/live/project_live/invitation.ex",
@@ -2010,16 +2108,22 @@ policy = %{
       reason: "Invitation pages normalize the public locale like the other public-facing pages"
     },
     %{
-      source: "lib/storyarn_web/live/project_settings_live/usage_limits.ex",
-      target: "lib/storyarn/platform.ex",
+      source: "lib/storyarn_web/live/project_settings_live/snapshots.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project settings pages show plan usage through the public Platform facade"
+      reason: "Project snapshot settings subscribe to Commercial-owned export-lease fences through the public facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/project_settings_live/usage_limits.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Project settings pages show plan usage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn_web/live/project_settings_live/version_control.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Project settings pages show plan usage through the public Platform facade"
+      reason: "Project settings pages show plan usage through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/application.ex",
@@ -2071,21 +2175,21 @@ policy = %{
     },
     %{
       source: "lib/storyarn/flows/editor/commands/item_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Flow authoring applies Platform-owned item entitlements"
+      reason: "Flow authoring applies Commercial-owned item entitlements"
     },
     %{
       source: "lib/storyarn/flows/versioning/commands/named_version_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Flow versioning applies Platform-owned named-version entitlements"
+      reason: "Flow versioning applies Commercial-owned named-version entitlements"
     },
     %{
       source: "lib/storyarn/flows/versioning/execution/asset_catalog.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Flow snapshot materialization applies the Platform-owned storage entitlement"
+      reason: "Flow snapshot materialization applies the Commercial-owned storage entitlement"
     },
     %{
       source: "lib/storyarn/localization/languages/adapters/notifications/delivery.ex",
@@ -2101,9 +2205,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/scenes/assets/commands/assets.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Scene asset writes apply the Platform-owned storage entitlement"
+      reason: "Scene asset writes apply the Commercial-owned storage entitlement"
     },
     %{
       source: "lib/storyarn/scenes/assets/events/assets.ex",
@@ -2113,9 +2217,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/scenes/editor/commands/item_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "The Scene editor applies the Platform-owned project item entitlement"
+      reason: "The Scene editor applies the Commercial-owned project item entitlement"
     },
     %{
       source: "lib/storyarn/scenes/exploration/events/exploration_events.ex",
@@ -2125,9 +2229,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/scenes/versioning/commands/named_version_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Scene Versioning applies the Platform-owned named-version entitlement"
+      reason: "Scene Versioning applies the Commercial-owned named-version entitlement"
     },
     %{
       source: "lib/storyarn/scenes/versioning/events/versions.ex",
@@ -2137,9 +2241,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/sheets/assets/commands/assets.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Sheet asset writes apply the Platform-owned storage entitlement"
+      reason: "Sheet asset writes apply the Commercial-owned storage entitlement"
     },
     %{
       source: "lib/storyarn/sheets/assets/events/assets.ex",
@@ -2149,9 +2253,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/sheets/editor/commands/item_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "The Sheet editor applies the Platform-owned project item entitlement"
+      reason: "The Sheet editor applies the Commercial-owned project item entitlement"
     },
     %{
       source: "lib/storyarn/sheets/editor/commands/sheets.ex",
@@ -2167,9 +2271,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn/sheets/versioning/commands/named_version_capacity.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Sheet Versioning applies the Platform-owned named-version entitlement"
+      reason: "Sheet Versioning applies the Commercial-owned named-version entitlement"
     },
     %{
       source: "lib/storyarn/sheets/versioning/events/versions.ex",
@@ -2179,15 +2283,15 @@ policy = %{
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace creation applies commercial limits and subscriptions through the public Platform facade"
+      reason: "Workspace creation applies commercial limits and subscriptions through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace hard-delete executes under the Platform-owned workspace lifecycle lock"
+      reason: "Workspace hard-delete executes under the Commercial-owned workspace lifecycle lock"
     },
     %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
@@ -2258,15 +2362,15 @@ policy = %{
     },
     %{
       source: "lib/storyarn/workspaces/invitations/commands/create.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitation creation applies Platform-owned member seat policy"
+      reason: "Workspace invitation creation applies Commercial-owned member seat policy"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/commands/accept.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "Workspace invitation acceptance applies Platform-owned member seat policy"
+      reason: "Workspace invitation acceptance applies Commercial-owned member seat policy"
     },
     %{
       source: "lib/storyarn/workspaces/invitations/delivery/content.ex",
@@ -2428,9 +2532,9 @@ policy = %{
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/show.ex",
-      target: "lib/storyarn/platform.ex",
+      target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
-      reason: "The workspace home reads plan policy through the public Platform facade"
+      reason: "The workspace home reads plan policy through the public Commercial facade"
     },
     %{
       source: "lib/storyarn/platform/adapters/configuration/urls.ex",

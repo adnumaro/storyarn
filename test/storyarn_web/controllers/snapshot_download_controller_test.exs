@@ -8,7 +8,7 @@ defmodule StoryarnWeb.SnapshotDownloadControllerTest do
   import Storyarn.WorkspacesFixtures
   import StoryarnWeb.PrivateDownloadAssertions
 
-  alias Storyarn.Platform.Billing.StorageReservation
+  alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Versioning

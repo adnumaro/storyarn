@@ -62,6 +62,20 @@ defmodule StoryarnWeb.WorkspaceLive.New do
          )
          |> push_navigate(to: ~p"/workspaces")}
 
+      {:error, :workspace_provisioning_failed} ->
+        changeset =
+          workspace_params
+          |> Workspaces.change_new_workspace()
+          |> Map.put(:action, :insert)
+
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("workspaces", "We couldn't create your workspace. Please try again.")
+         )
+         |> assign(:form, to_form(changeset))}
+
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
     end

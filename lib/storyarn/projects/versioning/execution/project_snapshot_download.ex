@@ -9,10 +9,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownload do
   invalidate a concurrent provider grant or local transfer.
   """
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.Memberships
-  alias Storyarn.Projects.PlatformStorageReservations
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotCrud
@@ -78,7 +78,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownload do
 
   defp prepare_authorized_download(%Project{} = initially_authorized_project, scope, snapshot_id) do
     result =
-      Platform.transact_with_workspace_lock(initially_authorized_project.workspace_id, fn _workspace ->
+      Commercial.transact_with_workspace_lock(initially_authorized_project.workspace_id, fn _workspace ->
         with {:ok, project, _membership} <-
                Memberships.authorize_locked(scope, initially_authorized_project.id, :manage_project),
              true <- project.workspace_id == initially_authorized_project.workspace_id,
@@ -224,7 +224,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotDownload do
   end
 
   defp reserve_read_lease(project, snapshot) do
-    PlatformStorageReservations.acquire_snapshot_export_lease(%{
+    CommercialStorageReservations.acquire_snapshot_export_lease(%{
       workspace_id: project.workspace_id,
       project_id: project.id,
       project_snapshot_id: snapshot.id

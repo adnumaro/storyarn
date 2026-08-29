@@ -1,8 +1,8 @@
 defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Platform.Billing.StorageCleanupInventory, as: PlatformCleanupInventory
-  alias Storyarn.Platform.Billing.StorageReservation, as: PlatformStorageReservation
+  alias Storyarn.Commercial.Billing.StorageCleanupInventory, as: CommercialCleanupInventory
+  alias Storyarn.Commercial.Billing.StorageReservation, as: CommercialStorageReservation
   alias Storyarn.Projects.Persistence.StorageReservationRecord, as: ProjectStorageReservation
   alias Storyarn.Projects.StorageCleanupInventory, as: ProjectCleanupInventory
 
@@ -19,10 +19,10 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
     storage_reservation_object_prefixes
   )
 
-  test "Projects does not compile against Platform Billing reservation implementations" do
+  test "Projects does not compile against Commercial reservation implementations" do
     forbidden = [
-      [:Storyarn, :Platform, :Billing, :StorageReservation],
-      [:Storyarn, :Platform, :Billing, :StorageCleanupInventory]
+      [:Storyarn, :Commercial, :Billing, :StorageReservation],
+      [:Storyarn, :Commercial, :Billing, :StorageCleanupInventory]
     ]
 
     violations =
@@ -51,7 +51,7 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
 
     assert violations == [], """
     Projects must use its own reservation read model and cleanup digest. Billing
-    writes cross only as neutral receipts through Storyarn.Platform:
+    writes cross only as neutral receipts through Storyarn.Commercial:
 
     #{Enum.join(violations, "\n")}
     """
@@ -59,21 +59,21 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
 
   test "the duplicated reservation schemas keep the shared SQL contract aligned" do
     assert ProjectStorageReservation.__schema__(:source) ==
-             PlatformStorageReservation.__schema__(:source)
+             CommercialStorageReservation.__schema__(:source)
 
     assert MapSet.new(ProjectStorageReservation.__schema__(:fields)) ==
-             MapSet.new(PlatformStorageReservation.__schema__(:fields))
+             MapSet.new(CommercialStorageReservation.__schema__(:fields))
 
     for field <- ProjectStorageReservation.__schema__(:fields) do
       assert ProjectStorageReservation.__schema__(:type, field) ==
-               PlatformStorageReservation.__schema__(:type, field),
+               CommercialStorageReservation.__schema__(:type, field),
              "storage reservation field #{inspect(field)} has drifted between contexts"
     end
   end
 
   test "Projects cannot bypass the neutral storage-reservation anti-corruption layer" do
     writer_pattern =
-      ~r/\b(?:Billing|Storyarn\.Platform\.Billing)\.(?:#{Enum.join(@raw_billing_writers, "|")})\s*\(/
+      ~r/\b(?:Billing|Storyarn\.Commercial\.Billing)\.(?:#{Enum.join(@raw_billing_writers, "|")})\s*\(/
 
     violations =
       @projects_sources
@@ -91,8 +91,8 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
       |> Enum.sort()
 
     assert violations == [], """
-    Project reservation writes must cross Storyarn.Platform as neutral receipts
-    through Storyarn.Projects.PlatformStorageReservations:
+    Project reservation writes must cross Storyarn.Commercial as neutral receipts
+    through Storyarn.Projects.CommercialStorageReservations:
 
     #{Enum.join(violations, "\n")}
     """
@@ -108,7 +108,7 @@ defmodule Storyarn.Architecture.ProjectStorageReservationBoundaryTest do
 
     for inventory <- inventories do
       assert ProjectCleanupInventory.digest(inventory) ==
-               PlatformCleanupInventory.digest(inventory)
+               CommercialCleanupInventory.digest(inventory)
     end
   end
 

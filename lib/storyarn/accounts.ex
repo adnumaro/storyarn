@@ -26,6 +26,9 @@ defmodule Storyarn.Accounts do
   @type user_token :: UserToken.t()
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
+  @type registration_error ::
+          {:error, changeset()}
+          | {:error, :workspace_limit_reached | :workspace_provisioning_failed}
 
   # Authentication and registration own their abuse-prevention policy; the
   # presentation adapter enters through this bounded-context facade.
@@ -85,13 +88,17 @@ defmodule Storyarn.Accounts do
 
   The default workspace is named "{name}'s workspace" (localized).
   """
-  @spec register_user(attrs()) :: {:ok, user()} | {:error, changeset()}
+  @spec register_user(attrs()) ::
+          {:ok, user()}
+          | registration_error()
   defdelegate register_user(attrs), to: Registration
 
   @doc """
   Registers a public user with a password and creates a default workspace.
   """
-  @spec register_user_with_password(attrs()) :: {:ok, user()} | {:error, changeset()}
+  @spec register_user_with_password(attrs()) ::
+          {:ok, user()}
+          | registration_error()
   defdelegate register_user_with_password(attrs), to: Registration
 
   @doc "Publishes the product fact for a completed login."
@@ -285,6 +292,7 @@ defmodule Storyarn.Accounts do
   Finds an existing user by email, or registers and auto-confirms a new one.
   Used for invitation acceptance.
   """
+  @spec find_or_register_confirmed_user(String.t()) :: {:ok, user()} | registration_error()
   defdelegate find_or_register_confirmed_user(email), to: Registration
 
   @doc """
@@ -293,5 +301,8 @@ defmodule Storyarn.Accounts do
   Password users can accept immediately. New or passwordless users receive a
   registration token and must set a password first.
   """
+  @spec prepare_invitation_user(String.t()) ::
+          {:ok, {:ready, user()} | {:registration_required, String.t()}}
+          | registration_error()
   defdelegate prepare_invitation_user(email), to: Registration
 end

@@ -67,7 +67,7 @@ msgstr "Proyecto creado exitosamente."
 msgid "Role updated successfully."
 msgstr "Rol actualizado exitosamente."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:87
+#: lib/storyarn_web/live/workspace_live/invitation.ex:95
 #, elixir-autogen, elixir-format
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
@@ -113,12 +113,12 @@ msgstr "Espacio de trabajo actualizado exitosamente."
 msgid "You don't have permission to manage this workspace."
 msgstr "No tienes permiso para gestionar este espacio de trabajo."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:96
+#: lib/storyarn_web/live/workspace_live/invitation.ex:104
 #, elixir-autogen, elixir-format
 msgid "You're already a member of this workspace."
 msgstr "Ya eres miembro de este espacio de trabajo."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:74
+#: lib/storyarn_web/live/workspace_live/invitation.ex:82
 #, elixir-autogen, elixir-format
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
@@ -192,7 +192,7 @@ msgstr "por %{email}"
 msgid "just now"
 msgstr "ahora mismo"
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:121
+#: lib/storyarn_web/live/workspace_live/invitation.ex:129
 #, elixir-autogen, elixir-format
 msgid "Create a password for %{email} to accept your invitation."
 msgstr "Crea una contraseña para %{email} y acepta tu invitación."
@@ -258,7 +258,7 @@ msgstr "Esta persona ya es miembro de este espacio de trabajo."
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
 
-#: lib/storyarn_web/live/workspace_live/invitation.ex:104
+#: lib/storyarn_web/live/workspace_live/invitation.ex:112
 #, elixir-autogen, elixir-format
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr "Esta invitación no se puede aceptar mientras el espacio de trabajo esté en su límite de miembros. Pide a un propietario o administrador que libere una plaza y vuelve a intentarlo con esta invitación."
@@ -306,3 +306,13 @@ msgstr "Importaciones"
 #, elixir-autogen, elixir-format
 msgid "Banner could not be removed."
 msgstr "No se pudo eliminar el banner."
+
+#: lib/storyarn_web/live/workspace_live/new.ex:75
+#, elixir-autogen, elixir-format
+msgid "We couldn't create your workspace. Please try again."
+msgstr "No hemos podido crear tu espacio de trabajo. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/workspace_live/invitation.ex:67
+#, elixir-autogen, elixir-format
+msgid "We couldn't prepare your account. Please try again."
+msgstr "No hemos podido preparar tu cuenta. Inténtalo de nuevo."

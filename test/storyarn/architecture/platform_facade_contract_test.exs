@@ -4,89 +4,44 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
   alias Storyarn.Platform
 
   @public_contract [
-    acquire_project_snapshot_export_lease: 1,
-    active_project_snapshot_reservations: 1,
     analytics_frontend_config: 1,
-    can_accept_member?: 2,
-    can_create_project?: 1,
-    can_create_project_template?: 1,
-    can_create_project_template_version?: 1,
-    can_create_workspace?: 1,
-    can_invite_member?: 2,
-    can_publish_reserved_project?: 1,
-    can_upload_asset?: 2,
-    can_upload_asset_for_project?: 2,
     cast_onboarding_tutorial: 1,
-    commit_project_snapshot_restore_storage_reservation: 6,
-    commit_project_storage_reservation: 5,
     complete_onboarding_tutorial: 2,
-    create_subscription: 1,
     deliver_async_result: 3,
     deliver_content_activity: 5,
     deliver_content_activity_by_ids: 5,
     deliver_scoped_async_result: 3,
-    entitlement_limit: 2,
-    extend_project_storage_reservation: 4,
     known_product_metric_project_subtype?: 2,
     known_product_metric_project_type?: 1,
     list_notifications: 1,
     list_notifications: 2,
     mark_all_notifications_read: 1,
     mark_notification_read: 2,
-    mark_project_storage_reservation_started: 4,
     onboarding_pending?: 2,
     onboarding_summary: 1,
     onboarding_tutorials: 0,
-    plan_retention_hours: 1,
-    plans_for_workspace_ids: 1,
     product_metric_project_options: 0,
     product_metric_project_subtypes: 0,
     product_metric_project_subtypes: 1,
     product_metric_project_types: 0,
-    project_limits_usage: 1,
-    project_snapshot_slot_usage: 1,
-    project_storage_reservation_object_prefixes: 1,
-    project_usage: 2,
     publish_notification_delivery: 1,
-    purge_released_snapshot_export_leases: 1,
-    purge_released_snapshot_export_leases: 2,
     react_to_event: 4,
-    recover_expired_snapshot_export_leases: 1,
-    recover_expired_snapshot_export_leases: 2,
-    release_project_storage_reservation: 4,
-    renew_project_storage_reservation: 3,
     restart_all_onboarding_tutorials: 1,
     restart_onboarding_tutorial: 2,
-    reserve_project_storage: 1,
-    settle_expired_snapshot_export_leases_locked: 2,
-    snapshot_build_heartbeat_interval_ms: 0,
-    snapshot_build_lease_ttl_seconds: 0,
-    snapshot_download_export_lease_ttl_seconds: 0,
-    snapshot_download_max_transfer_seconds: 0,
-    snapshot_download_signed_url_ttl_seconds: 0,
-    snapshot_export_lease_retention_seconds: 0,
-    snapshot_storage_commit_context?: 2,
     subscribe_notifications: 1,
     track_analytics: 2,
     track_analytics: 3,
-    transact_with_workspace_lock: 2,
-    transact_with_workspace_lock: 3,
-    unread_notification_count: 1,
-    with_storage_accounting_lock: 2,
-    with_storage_accounting_lock: 3,
-    workspace_lock_held?: 1,
-    workspace_storage_usage: 1
+    unread_notification_count: 1
   ]
 
-  @public_types ~w(notification_delivery_outcome onboarding_summary storage_reservation_receipt storage_reservation_write_error)a
+  @public_types ~w(notification_delivery_outcome onboarding_summary)a
 
-  # Frozen before reorganizing Platform by internal capability, then advanced
-  # deliberately when Onboarding and presentation analytics entered through
-  # the root facade. These hashes protect semantic signatures, defaults,
-  # documentation, types, and specs.
-  @docs_digest "371182afb4331fe1b03e884a5717d91dde2727bdf135108c910053dc20459e78"
-  @types_digest "63d4a089dc6045025c94c41431311f664aae25f2f5f659db70929324595fa570"
-  @specs_digest "e59c2f315cc55c9bdf186cc966933d0626fade4121a61258687f15c395dd7c41"
+  # Advanced deliberately when ENG-112 moved the complete commercial contract
+  # into Storyarn.Commercial. These hashes protect Platform's remaining
+  # semantic signatures, defaults, documentation, types, and specs.
+  @docs_digest "4089846cb21bfe7a6e320041d6a0675c6a4f8340752a3619b903df7e2d3c6652"
+  @types_digest "b16240403430379604117214f246a929a2c9493712e2244ac7020191167c00f0"
+  @specs_digest "44e9f2fa16d6e3fd7429fb9a04b3f1965ead40c89edf3258626724cbd066264c"
 
   test "the root facade preserves every established function and arity" do
     public_functions =
@@ -113,7 +68,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       |> Enum.uniq()
       |> Enum.sort()
 
-    assert targets == ~w(Commercial Notifications Onboarding Reactions)
+    assert targets == ~w(Notifications Onboarding Reactions)
   end
 
   test "the compiled facade preserves docs and semantic default signatures" do
@@ -144,8 +99,8 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 66
-    assert status_counts == %{documented: 38, hidden: 1, none: 27}
+    assert length(function_docs) == 26
+    assert status_counts == %{documented: 26}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -182,7 +137,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 39
+    assert length(normalized_specs) == 26
     assert digest(normalized_specs) == @specs_digest
   end
 

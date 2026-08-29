@@ -5,6 +5,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   import StoryarnWeb.ProjectLive.Components.SettingsComponents
 
+  alias Storyarn.Commercial
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
@@ -248,13 +249,16 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     %{project: project, membership: membership} = socket.assigns
 
     if Projects.can?(membership.role, :manage_project) do
-      accounting = snapshot_storage_accounting(socket.assigns.current_scope, project)
-      restores = Projects.list_project_snapshot_restores(project.id)
-
       if connected?(socket) do
+        # Subscribe before the initial reads so a committed lease change cannot
+        # fall into a read/subscribe gap and leave deletion affordances stale.
+        Commercial.subscribe_project_snapshot_export_leases(project.id)
         Projects.subscribe_project_snapshots(project.id)
         Projects.subscribe_project_snapshot_restores(project.id)
       end
+
+      accounting = snapshot_storage_accounting(socket.assigns.current_scope, project)
+      restores = Projects.list_project_snapshot_restores(project.id)
 
       socket =
         socket
@@ -430,6 +434,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   @impl true
   def handle_info({:project_snapshot_updated, _snapshot_id}, socket) do
+    {:noreply, refresh_snapshot_state(socket)}
+  end
+
+  @impl true
+  def handle_info({:commercial_snapshot_export_lease_state_invalidated, _snapshot_id}, socket) do
     {:noreply, refresh_snapshot_state(socket)}
   end
 

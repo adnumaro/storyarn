@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicyTest do
   use ExUnit.Case, async: false
 
-  alias Storyarn.Platform.Billing.StorageLeasePolicy
+  alias Storyarn.Commercial.Billing.StorageLeasePolicy
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
 

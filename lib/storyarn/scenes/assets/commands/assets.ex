@@ -9,7 +9,7 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
@@ -856,7 +856,7 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
     with {:ok, workspace_id} <- project_workspace_id(project_id) do
       used = workspace_storage_bytes(workspace_id)
       reserved = workspace_reservation_bytes(workspace_id) + workspace_import_reservation_bytes(workspace_id)
-      limit = Platform.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
+      limit = Commercial.entitlement_limit(workspace_id, :storage_bytes_per_workspace)
       available = if is_integer(limit), do: max(limit - used, 0), else: 0
 
       if requested_bytes <= available do

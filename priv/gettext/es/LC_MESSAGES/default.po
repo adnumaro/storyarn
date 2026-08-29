@@ -110,7 +110,7 @@ msgstr "La exportación es demasiado grande"
 msgid "Invalid localization policy"
 msgstr "Política de localización no válida"
 
-#: lib/storyarn_web/controllers/private_media_controller.ex:68
+#: lib/storyarn_web/controllers/private_media_controller.ex:67
 #, elixir-autogen, elixir-format
 msgid "Media not found"
 msgstr "Archivo multimedia no encontrado"

@@ -3,11 +3,11 @@ defmodule Storyarn.Flows.Editor.Commands.ItemCapacity do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Commercial
   alias Storyarn.Flows.Editor.Projections.SceneRecord
   alias Storyarn.Flows.Editor.Projections.SheetRecord
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
-  alias Storyarn.Platform
   alias Storyarn.Repo
 
   @spec can_create_item?(map()) :: :ok | {:error, :limit_reached, map()}
@@ -17,7 +17,7 @@ defmodule Storyarn.Flows.Editor.Commands.ItemCapacity do
   def can_create_items?(%{id: project_id, workspace_id: workspace_id}, requested)
       when is_integer(project_id) and project_id > 0 and is_integer(workspace_id) and workspace_id > 0 and
              is_integer(requested) and requested > 0 do
-    limit = Platform.entitlement_limit(workspace_id, :items_per_project)
+    limit = Commercial.entitlement_limit(workspace_id, :items_per_project)
     used = count_project_items(project_id)
 
     check_capacity(used, limit, requested)

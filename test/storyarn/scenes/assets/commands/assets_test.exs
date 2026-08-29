@@ -4,7 +4,7 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
@@ -116,7 +116,7 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
   test "version materialization exposes quota failures as the resolver's two-tuple error contract" do
     user = user_fixture()
     project = project_fixture(user)
-    limit = Platform.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
+    limit = Commercial.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
     now = TimeHelpers.now()
 
     Repo.insert!(%AssetRecord{

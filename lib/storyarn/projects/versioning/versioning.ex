@@ -11,7 +11,7 @@ defmodule Storyarn.Projects.Versioning do
   public application boundary remains `Storyarn.Projects`.
   """
 
-  alias Storyarn.Platform
+  alias Storyarn.Commercial
   alias Storyarn.Projects.Access
   alias Storyarn.Projects.SnapshotAccounting
   alias Storyarn.Projects.Versioning.AssetMaterializationScope
@@ -388,12 +388,12 @@ defmodule Storyarn.Projects.Versioning do
 
   @doc false
   defdelegate recover_expired_project_snapshot_export_leases(now, opts \\ []),
-    to: Platform,
+    to: Commercial,
     as: :recover_expired_snapshot_export_leases
 
   @doc false
   defdelegate purge_released_project_snapshot_export_leases(cutoff, opts \\ []),
-    to: Platform,
+    to: Commercial,
     as: :purge_released_snapshot_export_leases
 
   @doc false

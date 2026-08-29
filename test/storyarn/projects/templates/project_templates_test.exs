@@ -4,10 +4,10 @@ defmodule Storyarn.ProjectTemplatesTest do
 
   alias Storyarn.AccountsFixtures
   alias Storyarn.AssetsFixtures
+  alias Storyarn.Commercial.Billing
   alias Storyarn.FlowsFixtures
   alias Storyarn.Localization
   alias Storyarn.LocalizationFixtures
-  alias Storyarn.Platform.Billing
   alias Storyarn.Platform.Notifications
   alias Storyarn.Platform.Notifications.Notification
   alias Storyarn.Projects.Assets

@@ -2,7 +2,7 @@ defmodule Storyarn.Architecture.WorkerOwnershipBoundaryTest do
   use ExUnit.Case, async: true
 
   @sealed_worker_owners ~w(accounts ai localization projects workspaces)
-  @recognized_worker_owners ~w(accounts ai flows localization platform projects scenes sheets workspaces)
+  @recognized_worker_owners ~w(accounts ai commercial flows localization platform projects scenes sheets workspaces)
 
   test "workers are grouped by owner while retaining the stable flat Oban identity" do
     worker_files = Path.wildcard("lib/storyarn/workers/**/*.ex")

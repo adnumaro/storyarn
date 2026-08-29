@@ -2,7 +2,7 @@ defmodule Storyarn.Projects.StorageCleanupInventory do
   @moduledoc """
   Project-owned canonical digest for an exact snapshot cleanup inventory.
 
-  This pure protocol rule is deliberately duplicated from Platform Billing.
+  This pure protocol rule is deliberately duplicated from Commercial Billing.
   Both contexts persist and verify the same digest without sharing business
   implementation code.
   """

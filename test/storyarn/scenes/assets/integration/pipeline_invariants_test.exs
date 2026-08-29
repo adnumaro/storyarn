@@ -4,6 +4,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Commercial
   alias Storyarn.Platform
   alias Storyarn.Platform.ObjectStorage, as: Storage
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -388,7 +389,7 @@ defmodule Storyarn.Scenes.Assets.Integration.PipelineInvariantsTest do
     hash = sha256(content)
     source_key = blob_key(source_project.id, hash, "png")
     destination_key = blob_key(project.id, hash, "png")
-    limit = Platform.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
+    limit = Commercial.entitlement_limit(project.workspace_id, :storage_bytes_per_workspace)
 
     Repo.insert!(%AssetRecord{
       project_id: project.id,
