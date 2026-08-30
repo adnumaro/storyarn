@@ -30,9 +30,9 @@ defmodule StoryarnWeb.Helpers.SaveStatusTimerTest do
 
     test "does not send message before timeout" do
       socket = %Socket{assigns: %{__changed__: %{}}}
-      SaveStatusTimer.schedule_reset(socket, 200)
+      SaveStatusTimer.schedule_reset(socket, 60_000)
 
-      refute_receive {:reset_save_status, _token}, 50
+      refute_receive {:reset_save_status, _token}, 10
     end
   end
 end

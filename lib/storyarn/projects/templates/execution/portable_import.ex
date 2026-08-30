@@ -14,12 +14,12 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.ProjectCrud
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.ProjectTemplates.Artifact
   alias Storyarn.Projects.ProjectTemplates.Audit
   alias Storyarn.Projects.ProjectTemplates.PortableBundle
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplate
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
-  alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.SnapshotStorage
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
@@ -1144,7 +1144,7 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   defp authorize_locked_source_manager("public", %User{}), do: {:error, :public_template_source_requires_super_admin}
 
   defp materialize_source_project(plan, imported, tracker) do
-    ProjectRecovery.materialize_template(
+    ProjectReconstitution.materialize_template(
       plan.verify_workspace_id,
       imported.snapshot,
       plan.source_user_id,

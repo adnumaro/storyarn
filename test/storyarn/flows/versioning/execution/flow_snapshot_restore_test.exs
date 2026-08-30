@@ -22,6 +22,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
   alias Storyarn.Flows.Versioning.LocalizationCodec
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.BlobStore
@@ -691,20 +692,30 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
       assert restored.name == flow.name
     end
 
-    test "rolls back a restore when transactional localization extraction raises", %{
+    test "rolls back a copied asset row and object when later localization extraction raises", %{
+      user: user,
       project: project,
       flow: flow
     } do
+      audio = uploaded_asset(project, user, "rollback-after-copy.mp3", "rollback after copy", "audio/mpeg")
+
       node =
         node_fixture(flow, %{
           type: "dialogue",
-          data: %{"speaker" => "Narrator", "text" => "Hello", "responses" => []}
+          data: %{
+            "speaker" => "Narrator",
+            "text" => "Hello",
+            "responses" => [],
+            "audio_asset_id" => audio.id
+          }
         })
 
       snapshot = FlowSnapshot.build_snapshot(flow)
       {:ok, modified_flow} = Flows.update_flow(flow, %{name: "Keep this name"})
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
       constraint_name = "localized_texts_restore_#{System.unique_integer([:positive])}"
+      asset_count_before = project_blob_asset_count(project.id, audio.blob_hash)
+      object_keys_before = project_asset_keys(project.id)
 
       Repo.query!(
         "ALTER TABLE localized_texts ADD CONSTRAINT #{constraint_name} " <>
@@ -712,11 +723,16 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
       )
 
       assert_raise Postgrex.Error, ~r/#{constraint_name}/, fn ->
-        FlowSnapshot.restore_snapshot(modified_flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+        FlowSnapshot.restore_snapshot(modified_flow, snapshot,
+          asset_mode: :copy,
+          restore_action: {:entity_version_restore, "flow"}
+        )
       end
 
       assert Repo.reload!(modified_flow).name == "Keep this name"
       assert Repo.get!(FlowNode, node.id).flow_id == modified_flow.id
+      assert project_blob_asset_count(project.id, audio.blob_hash) == asset_count_before
+      assert project_asset_keys(project.id) == object_keys_before
     end
 
     test "round-trips nested sequence resources", %{user: user, project: project, flow: flow} do
@@ -2673,5 +2689,21 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
     end)
 
     asset
+  end
+
+  defp project_blob_asset_count(project_id, blob_hash) do
+    Repo.aggregate(
+      from(asset in Asset,
+        where: asset.project_id == ^project_id and asset.blob_hash == ^blob_hash
+      ),
+      :count
+    )
+  end
+
+  defp project_asset_keys(project_id) do
+    assert {:ok, %{objects: objects, cursor: nil}} =
+             ObjectStorage.list_prefix("projects/#{project_id}/assets/", limit: 10_000)
+
+    objects |> Enum.map(& &1.key) |> Enum.sort()
   end
 end

@@ -180,6 +180,46 @@ defmodule Storyarn.Scenes.Assets.Commands.AssetsTest do
              end)
   end
 
+  test "a failure after Project registration rolls back the asset row and compensates its object" do
+    user = user_fixture()
+    project = project_fixture(user)
+    content = "scene rollback after registration"
+    hash = sha256(content)
+    source_key = blob_key(project.id, hash, "png")
+
+    assert {:ok, _url, true} = Storage.put_if_absent(source_key, content, "image/png")
+    on_exit(fn -> Storage.delete(source_key) end)
+
+    metadata = %{
+      "filename" => "scene-rollback.png",
+      "content_type" => "image/png",
+      "size" => byte_size(content)
+    }
+
+    assert {:error, :forced_after_asset_insert} =
+             AssetCommands.run_asset_materialization_scope([], fn opts ->
+               AssetCommands.with_project_storage_lock(project.id, fn ->
+                 with {:ok, %AssetRecord{} = asset} <-
+                        AssetCommands.create_version_asset_from_storage(
+                          project.id,
+                          user.id,
+                          hash,
+                          source_key,
+                          metadata,
+                          opts
+                        ) do
+                   assert Repo.get(AssetRecord, asset.id)
+                   send(self(), {:scene_asset_registered_before_rollback, asset})
+                   {:error, :forced_after_asset_insert}
+                 end
+               end)
+             end)
+
+    assert_receive {:scene_asset_registered_before_rollback, asset}
+    refute Repo.get(AssetRecord, asset.id)
+    assert {:error, _reason} = Storage.download(asset.key)
+  end
+
   defp binary_attrs(filename), do: %{filename: filename, content_type: "image/png"}
 
   defp register_storage_cleanup(asset) do

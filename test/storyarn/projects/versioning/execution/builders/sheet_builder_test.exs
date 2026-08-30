@@ -1037,8 +1037,9 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
       project: project,
       sheet: sheet
     } do
-      avatar_asset = uploaded_image_asset(project, user, "copied-avatar.png", "copied avatar")
-      broken_avatar_asset = uploaded_image_asset(project, user, "broken-avatar.png", "broken avatar")
+      run_id = Ecto.UUID.generate()
+      avatar_asset = uploaded_image_asset(project, user, "copied-avatar-#{run_id}.png", "copied avatar")
+      broken_avatar_asset = uploaded_image_asset(project, user, "broken-avatar-#{run_id}.png", "broken avatar")
 
       {:ok, _avatar} = Sheets.add_avatar(sheet, avatar_asset.id, %{name: "Default"})
       {:ok, _broken_avatar} = Sheets.add_avatar(sheet, broken_avatar_asset.id, %{name: "Broken"})

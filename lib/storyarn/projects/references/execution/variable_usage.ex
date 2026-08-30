@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.References.VariableUsage do
   alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
+  alias Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepair
   alias Storyarn.Projects.References.FlowCondition
   alias Storyarn.Projects.References.FormulaUsageReadModel
   alias Storyarn.Projects.References.Persistence.FlowNodeRecord
@@ -34,7 +35,7 @@ defmodule Storyarn.Projects.References.VariableUsage do
   def check_stale_variable_references(block_id, project_id),
     do: VariableReferenceTracker.check_stale_references(block_id, project_id)
 
-  def repair_stale_variable_references(project_id), do: VariableReferenceTracker.repair_stale_references(project_id)
+  def repair_stale_variable_references(project_id), do: StaleVariableReferenceRepair.repair_project(project_id)
 
   defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
 

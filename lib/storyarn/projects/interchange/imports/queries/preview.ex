@@ -8,7 +8,7 @@ defmodule Storyarn.Projects.Imports.Preview do
   """
 
   alias Storyarn.Projects.Imports.ImportPlan
-  alias Storyarn.Projects.Imports.Materializer
+  alias Storyarn.Projects.ProjectReconstitution
 
   @doc """
   Preview what an import would do without executing it.
@@ -22,7 +22,7 @@ defmodule Storyarn.Projects.Imports.Preview do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      case Materializer.preview(project_id, parsed_data) do
+      case ProjectReconstitution.preview_import(project_id, parsed_data) do
         {:ok, preview} ->
           {:ok, Map.put(preview, :issue_summary, import_issue_summary(plan))}
 

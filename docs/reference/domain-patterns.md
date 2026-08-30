@@ -128,6 +128,50 @@ slice, ENG-110, makes Localization the sole ordinary writer of
 materialization, exact import/reconstitution, or full-project snapshot
 restore/recovery writer explicitly.
 
+ENG-103 also applies source-owned authority to the shared reference indexes:
+Sheets owns block sources, Flows owns Flow-node sources, and Scenes owns Scene
+pin, zone and ambient-flow sources. Whole-Project import, template
+materialization, recovery and exact restore remain privileged coordinators
+rather than ordinary alternative writers; Project trash/restore is a separately
+classified lifecycle exception. Entity snapshot restore remains inside each
+tool's versioning use case and its callable writer surface is sealed to that use
+case.
+
+Every production entry into the whole-Project import, template, recovery and
+exact-restore materializers passes through the internal
+`Storyarn.Projects.ProjectReconstitution` boundary. The boundary does not open
+transactions, acquire locks, translate errors or filter callback options; those
+responsibilities remain with the initiating lifecycle and the existing
+materialization engines.
+
+The Sheet dialogue-audio workspace is the current synchronous command-port
+example. Sheets owns its UI and read projection; its exact adapter calls
+`Storyarn.Flows.assign_dialogue_audio/4`, which owns the locks, validation and
+`flow_nodes` mutation and returns a transport-neutral receipt containing the
+committed node snapshot required by Sheets' local read model. Cross-context
+ports are added for real product workflows, not in anticipation of a future
+feature.
+
+Projects owns the shared asset rows. Flow, Sheet and Scene workflows continue to
+own storage I/O, quota checks, compensation and their semantic events, but send
+registration and variant-link intent through sealed local adapters to
+`Storyarn.Projects`. Localization likewise owns ordinary `localized_texts`
+writes; tool versioning retains snapshot orchestration and calls narrow
+transaction-participating restore adapters.
+
+Transaction-participating does not mean that every caller may reuse every lock
+port. Flow snapshot build already locks Project `FOR SHARE` and then its Flow
+`FOR UPDATE`; its sealed localization chain therefore acquires only the advisory
+inventory lock and preserves that established order. Ordinary Localization
+commands use the stronger Project `FOR UPDATE` -> advisory-lock path. Both entry
+chains are explicit; the advisory-only function is not a general shortcut.
+
+The storage-cleanup table is the explicit shared-protocol exception. Tool
+contexts are insert-only producers of `storage_compensation` handoffs, while
+Projects is the lifecycle owner that retries, rotates, updates and consumes
+them. The persistence ratchet inventories every writer and operation rather than
+mistaking this protocol for unrestricted shared ownership.
+
 ### Internal capabilities are not bounded contexts
 
 The following namespaces organize capabilities inside their owner. Their
@@ -166,13 +210,16 @@ reviewed durable edge; it cannot make ObjectStorage globally available.
 The xref portion of the ratchet sees compile/runtime file edges and cannot infer
 that two contexts write the same table. ENG-103 therefore adds explicit
 persistence-ownership entries and source-level architecture tests table by
-table. `project_languages` is currently guarded by an inventory of
-`lib/storyarn/**/*.ex`, mutation bans for strict readers, content pins for
-reviewed mixed consumers and named privileged writers. The source analyzer is
-deliberately fail-closed for unresolved raw SQL in ownership-sensitive paths,
-but it does not execute macros or prove arbitrary runtime indirection. This does
-not replace PostgreSQL permissions or runtime authorization; unlisted tables
-still require review rather than being assumed safe.
+table. The sensitive `project_languages`, `localized_texts`, `assets`,
+reference-index and storage-cleanup tables are guarded by reviewed source-effect
+inventories over `lib/storyarn/**/*.ex`, mutation bans for passive projections
+and named privileged writers. For a candidate file already associated with an
+inventoried table, the analyzer fails closed when raw SQL cannot be resolved.
+Its interprocedural propagation is file-local and limited to reviewed AST forms;
+runtime-built SQL without a table marker, custom macros, database triggers and
+arbitrary runtime indirection remain outside the proof. This does not replace
+PostgreSQL permissions or runtime authorization; unlisted tables still require
+review rather than being assumed safe.
 
 Mix tasks are operator adapters. Every task is classified explicitly and may
 call root facades, `Repo` where its startup contract requires it, and technical

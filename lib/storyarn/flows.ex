@@ -41,6 +41,21 @@ defmodule Storyarn.Flows do
           {:ok, map()}
           | {:error, :limit_reached, term()}
           | {:error, atom(), term(), map()}
+  @type dialogue_audio_receipt :: %{
+          required(:node_id) => pos_integer(),
+          required(:audio_asset_id) => pos_integer() | nil,
+          required(:node_snapshot) => map()
+        }
+  @type dialogue_audio_error ::
+          :not_found | :update_failed | {:invalid_project_reference, :audio_asset_id, term()}
+  @type variable_reference_repair_failure :: {pos_integer(), term()}
+  @type variable_reference_repair_error ::
+          :not_found
+          | {:partial_variable_reference_repair,
+             %{
+               required(:repaired_count) => non_neg_integer(),
+               required(:failures) => [variable_reference_repair_failure()]
+             }}
 
   # =============================================================================
   # Node Types
@@ -533,6 +548,12 @@ defmodule Storyarn.Flows do
   @doc "Applies a typed editor operation after locking the latest node state."
   defdelegate edit_node(flow_id, node_id, operation, payload), to: Editor
 
+  @doc "Assigns or clears the audio asset for a dialogue spoken by a Sheet."
+  @spec assign_dialogue_audio(pos_integer(), pos_integer(), pos_integer(), pos_integer() | nil) ::
+          {:ok, dialogue_audio_receipt()} | {:error, dialogue_audio_error()}
+  defdelegate assign_dialogue_audio(project_id, speaker_sheet_id, node_id, audio_asset_id),
+    to: Editor
+
   @doc false
   @spec node_data_and_derivatives_current?(flow_node(), map(), integer()) :: boolean()
   defdelegate node_data_and_derivatives_current?(node, data, project_id), to: Editor
@@ -658,6 +679,11 @@ defmodule Storyarn.Flows do
   @doc "Returns Flow-node IDs with stale variable references."
   @spec list_stale_node_ids(integer()) :: MapSet.t(integer())
   defdelegate list_stale_node_ids(flow_id), to: References
+
+  @doc "Repairs stale Sheet variable identities in Flow-owned node data."
+  @spec repair_stale_variable_references(term()) ::
+          {:ok, non_neg_integer()} | {:error, variable_reference_repair_error()}
+  defdelegate repair_stale_variable_references(project_id), to: References
 
   # =============================================================================
   # Connections - CRUD Operations

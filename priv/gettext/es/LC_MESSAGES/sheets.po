@@ -76,17 +76,17 @@ msgstr "No se pudieron reordenar los bloques."
 msgid "Could not save shortcut."
 msgstr "No se pudo guardar el atajo."
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:65
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:71
 #, elixir-autogen, elixir-format
 msgid "Could not update audio."
-msgstr "No se pudo actualizar el bloque."
+msgstr "No se pudo actualizar el audio."
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:90
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:119
 #, elixir-autogen, elixir-format
 msgid "Could not upload audio file."
-msgstr "No se pudo subir el banner."
+msgstr "No se pudo subir el archivo de audio."
 
-#: lib/storyarn_web/live/sheet_live/handlers/audio_handlers.ex:48
+#: lib/storyarn_web/live/sheet_live/handlers/audio_handlers.ex:58
 #: lib/storyarn_web/live/sheet_live/handlers/gallery_handlers.ex:90
 #: lib/storyarn_web/live/sheet_live/handlers/header_handlers.ex:162
 #, elixir-autogen, elixir-format
@@ -119,7 +119,7 @@ msgstr "Ficha no encontrada."
 msgid "Shortcut %{error}"
 msgstr "Atajo %{error}"
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:79
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:108
 #, elixir-autogen, elixir-format
 msgid "Unsupported file type."
 msgstr "Tipo de archivo no compatible."
@@ -283,7 +283,7 @@ msgstr "Bloque %{type} eliminado"
 msgid "Removed %{type} block \"%{name}\""
 msgstr "Bloque %{type} \"%{name}\" eliminado"
 
-#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:86
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:115
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr "Límite de almacenamiento alcanzado. Mejora tu plan."
@@ -442,3 +442,18 @@ msgstr "Bloque #%{n} — destino de referencia"
 #, elixir-autogen, elixir-format
 msgid "Block #%{n} — rich-text mention"
 msgstr "Bloque #%{n} — mención de texto enriquecido"
+
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:100
+#, elixir-autogen, elixir-format
+msgid "Audio uploaded, but it could not be attached to the dialogue. It remains available in your assets."
+msgstr "El audio se ha subido, pero no se ha podido adjuntar al diálogo. Sigue disponible entre los recursos del proyecto."
+
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:79
+#, elixir-autogen, elixir-format
+msgid "The selected audio is no longer available."
+msgstr "El audio seleccionado ya no está disponible."
+
+#: lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex:64
+#, elixir-autogen, elixir-format
+msgid "This dialogue line is no longer available. Refresh and try again."
+msgstr "Esta línea de diálogo ya no está disponible. Actualiza la página e inténtalo de nuevo."

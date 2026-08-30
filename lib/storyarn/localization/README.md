@@ -94,6 +94,27 @@ the exact source, lock/transaction contract, and reason in
 text inventory repair is a different authority and does not grant permission to
 change Project languages.
 
+## Localized-text write ownership
+
+Localization is the sole ordinary writer of `localized_texts`, including
+runtime extraction and Flow/Sheet entity-version restoration. Flows and Sheets
+keep their own snapshot formats, ID maps and transaction orchestration, but
+enter the owner through sealed adapters that expose only the exact restore
+commands. Their duplicated Ecto mappings are read-only projections.
+
+Projects retains four privileged closed-graph writers: validated import,
+replacement archive, Project recovery and exact full-project snapshot restore.
+These exceptions are inventoried by exact function and do not authorize an
+ordinary Project feature to update translations or extracted source text.
+
+The advisory-only inventory lock is a separate, sealed coordination port. Flow
+snapshot build already holds Project `FOR SHARE` and then Flow `FOR UPDATE`, so
+relocking Project inside Localization would change the historical order. The
+reviewed Flow -> Localization facade -> Texts -> Extract chain therefore takes
+only the advisory lock after the caller-owned Project lock. Ordinary
+Localization commands must use `lock_inventory!/1`, which acquires Project
+`FOR UPDATE` first.
+
 ## Stable module identities
 
 Files are grouped by capability without renaming contracts whose module identity

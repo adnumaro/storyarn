@@ -25,16 +25,12 @@ defmodule Storyarn.Sheets.References.Commands.EntityProjection do
   alias Storyarn.Sheets.Block
   alias Storyarn.Sheets.References.Commands.ProjectIntegrity
   alias Storyarn.Sheets.References.Entities.EntityReferenceRecord
-  alias Storyarn.Sheets.References.Projections.FlowNodeRecord
   alias Storyarn.Sheets.References.Projections.FlowRecord
   alias Storyarn.Sheets.References.Projections.SceneRecord
   alias Storyarn.Sheets.References.Rules.RichTextMentions
   alias Storyarn.Sheets.Sheet
 
-  @project_target_types %{
-    "block" => ~w(sheet flow),
-    "flow_node" => ~w(sheet flow)
-  }
+  @project_target_types %{"block" => ~w(sheet flow)}
 
   @doc """
   Updates references from a block.
@@ -200,30 +196,6 @@ defmodule Storyarn.Sheets.References.Commands.EntityProjection do
   end
 
   @doc """
-  Updates references for a flow node based on its data.
-  Extracts mentions from rich text fields and speaker references.
-  """
-  @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
-  def update_flow_node_references(node, opts \\ [])
-
-  def update_flow_node_references(%{id: node_id, data: data}, opts) when is_map(data) do
-    with :ok <- validate_project_id_option(opts) do
-      run_reference_update(fn -> replace_flow_node_references(node_id, opts) end)
-    end
-  end
-
-  def update_flow_node_references(_node, _opts), do: :ok
-
-  @doc """
-  Deletes all references from a flow node.
-  Called when a node is deleted.
-  """
-  @spec delete_flow_node_references(any()) :: {integer(), nil}
-  def delete_flow_node_references(node_id) do
-    Repo.delete_all(from(r in EntityReferenceRecord, where: r.source_type == "flow_node" and r.source_id == ^node_id))
-  end
-
-  @doc """
   Deletes Sheet-owned block references pointing to a target unless they
   originate from a live block. Foreign source projections are retained for
   their owning contexts to reconcile or report as dangling.
@@ -298,105 +270,6 @@ defmodule Storyarn.Sheets.References.Commands.EntityProjection do
     if entries != [], do: Repo.insert_all(EntityReferenceRecord, entries, on_conflict: :nothing)
 
     :ok
-  end
-
-  defp validate_project_id_option(opts) do
-    case Keyword.fetch(opts, :project_id) do
-      :error -> :ok
-      {:ok, project_id} when is_integer(project_id) and project_id > 0 -> :ok
-      {:ok, project_id} -> {:error, {:invalid_project_id, project_id}}
-    end
-  end
-
-  defp resolve_flow_node_project(node_id, requested_project_id) when is_integer(node_id) do
-    source_identity =
-      Repo.one(
-        from node in FlowNodeRecord,
-          join: flow in FlowRecord,
-          on: flow.id == node.flow_id,
-          where: node.id == ^node_id,
-          select: {node.flow_id, flow.project_id}
-      )
-
-    case source_identity do
-      {flow_id, project_id}
-      when is_nil(requested_project_id) or project_id == requested_project_id ->
-        lock_active_flow_node(node_id, flow_id, project_id, requested_project_id)
-
-      _missing_or_mismatched ->
-        flow_node_project_mismatch(node_id, requested_project_id)
-    end
-  end
-
-  defp resolve_flow_node_project(node_id, requested_project_id),
-    do: flow_node_project_mismatch(node_id, requested_project_id)
-
-  defp lock_active_flow_node(node_id, flow_id, project_id, requested_project_id) do
-    with {:ok, _project} <- ProjectIntegrity.lock_active_project(project_id),
-         %FlowRecord{} <-
-           Repo.one(
-             from flow in FlowRecord,
-               where:
-                 flow.id == ^flow_id and flow.project_id == ^project_id and
-                   is_nil(flow.deleted_at),
-               lock: "FOR SHARE"
-           ),
-         %FlowNodeRecord{} = node <-
-           Repo.one(
-             from current_node in FlowNodeRecord,
-               where:
-                 current_node.id == ^node_id and current_node.flow_id == ^flow_id and
-                   is_nil(current_node.deleted_at),
-               lock: "FOR SHARE"
-           ) do
-      {:ok, {node, project_id}}
-    else
-      _inactive_or_missing -> flow_node_project_mismatch(node_id, requested_project_id)
-    end
-  end
-
-  defp flow_node_project_mismatch(node_id, requested_project_id),
-    do: {:error, {:flow_node_project_mismatch, node_id, requested_project_id}}
-
-  defp do_replace_flow_node_references(node_id, data, opts) do
-    delete_flow_node_references(node_id)
-    references = extract_flow_node_refs(data)
-    batch_insert_references("flow_node", node_id, references, opts)
-  end
-
-  defp replace_flow_node_references(node_id, opts) do
-    requested_project_id = Keyword.get(opts, :project_id)
-
-    with {:ok, {%FlowNodeRecord{data: data}, project_id}} <-
-           resolve_flow_node_project(node_id, requested_project_id) do
-      do_replace_flow_node_references(
-        node_id,
-        data,
-        Keyword.put(opts, :project_id, project_id)
-      )
-    end
-  end
-
-  defp run_reference_update(operation) do
-    if Repo.in_transaction?() do
-      operation.()
-    else
-      run_reference_update_transaction(operation)
-    end
-  end
-
-  defp run_reference_update_transaction(operation) do
-    case Repo.transaction(fn -> execute_reference_update!(operation) end) do
-      {:ok, :ok} -> :ok
-      {:error, reason} -> {:error, reason}
-    end
-  end
-
-  defp execute_reference_update!(operation) do
-    case operation.() do
-      :ok -> :ok
-      {:error, reason} -> Repo.rollback(reason)
-    end
   end
 
   defp filter_project_targets(entries, _source_type, nil), do: entries
@@ -542,33 +415,4 @@ defmodule Storyarn.Sheets.References.Commands.EntityProjection do
   defp mention_reference_spec(%{type: "sheet", id: id}), do: {:sheet, {:block, :content, "sheet"}, id}
 
   defp mention_reference_spec(%{type: "flow", id: id}), do: {:flow, {:block, :content, "flow"}, id}
-
-  defp extract_flow_node_refs(data) do
-    refs = []
-
-    # Extract speaker reference (stored as speaker_sheet_id integer)
-    refs = maybe_add_sheet_ref(refs, data["speaker_sheet_id"], "speaker")
-
-    # Extract location reference (stored as location_sheet_id integer)
-    refs = maybe_add_sheet_ref(refs, data["location_sheet_id"], "location")
-
-    # Mentions are supported anywhere in persisted node JSON (dialogue text,
-    # response text, and future nested rich-text fields). Keep this scope in
-    # lockstep with Flow reference validation so every accepted mention gets a
-    # corresponding entity_references row.
-    mention_refs =
-      data
-      |> RichTextMentions.html_candidates()
-      |> Enum.flat_map(&extract_mentions_from_html/1)
-      |> Enum.map(&Map.put(&1, :context, "dialogue"))
-
-    mention_refs ++ refs
-  end
-
-  defp maybe_add_sheet_ref(refs, nil, _context), do: refs
-  defp maybe_add_sheet_ref(refs, "", _context), do: refs
-
-  defp maybe_add_sheet_ref(refs, sheet_id, context) do
-    [%{type: "sheet", id: sheet_id, context: context} | refs]
-  end
 end

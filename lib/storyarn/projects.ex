@@ -284,6 +284,18 @@ defmodule Storyarn.Projects do
   defdelegate create_sanitized_svg_asset(project_id, binary, attrs, uploaded_by_id \\ nil),
     to: Assets
 
+  @doc false
+  defdelegate register_uploaded_asset(project_id, uploaded_by_id, attrs, upload_kind),
+    to: Assets
+
+  @doc false
+  defdelegate register_materialized_asset(project_id, uploaded_by_id, attrs),
+    to: Assets
+
+  @doc false
+  defdelegate link_asset_variant(project_id, original_asset_id, variant_asset_id),
+    to: Assets
+
   @doc "Reconstitutes a Project asset from canonical blob content."
   defdelegate create_asset_from_blob(
                 project_id,

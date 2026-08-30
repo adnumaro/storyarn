@@ -204,6 +204,19 @@ defmodule Storyarn.Localization do
   @doc "Permanently deletes localized texts for several source entities."
   defdelegate purge_texts_for_sources(source_type, source_ids), to: Texts
 
+  @doc false
+  defdelegate purge_flow_node_texts(node_ids), to: Texts
+
+  @doc false
+  defdelegate purge_sheet_texts(source_type, source_ids), to: Texts
+
+  @doc false
+  defdelegate archive_sheet_texts(source_type, source_ids, reason), to: Texts
+
+  @doc false
+  defdelegate archive_sheet_active_target_texts(project_id, source_type, source_ids, reason),
+    to: Texts
+
   # =============================================================================
   # Text Extraction
   # =============================================================================
@@ -216,8 +229,14 @@ defmodule Storyarn.Localization do
   @spec extract_locale(id(), String.t()) :: {:ok, non_neg_integer()} | {:error, term()}
   defdelegate extract_locale(project_id, locale_code), to: Texts
 
+  @doc false
+  defdelegate lock_inventory!(project_id), to: Texts
+
+  @doc false
+  defdelegate lock_inventory_after_project_lock!(project_id), to: Texts
+
   @doc "Extracts localizable texts from a flow node after its data is updated."
-  @spec extract_flow_node(struct()) :: :ok
+  @spec extract_flow_node(map() | struct()) :: :ok | {:error, term()}
   defdelegate extract_flow_node(node), to: Texts
 
   @doc false
@@ -227,7 +246,7 @@ defmodule Storyarn.Localization do
   defdelegate flow_node_texts_current_ids(nodes, project_id), to: Texts
 
   @doc "Extracts localizable runtime text from a block after its value is updated. No-op if nil."
-  @spec extract_block(struct() | nil) :: :ok
+  @spec extract_block(map() | struct() | nil) :: :ok | {:error, term()}
   def extract_block(nil), do: :ok
   defdelegate extract_block(block), to: Texts
 
@@ -269,6 +288,16 @@ defmodule Storyarn.Localization do
   @doc "Archives block texts when one or more sheets are deleted."
   @spec delete_block_texts_for_sheets([id()]) :: :ok
   defdelegate delete_block_texts_for_sheets(sheet_ids), to: Texts
+
+  @doc false
+  defdelegate prepare_flow_version_texts(project_id, deleted_node_ids, target_node_ids),
+    to: Texts
+
+  @doc false
+  defdelegate restore_flow_version_texts(project_id, rows, id_maps), to: Texts
+
+  @doc false
+  defdelegate restore_sheet_version_texts(project_id, rows, id_maps), to: Texts
 
   # =============================================================================
   # Translation

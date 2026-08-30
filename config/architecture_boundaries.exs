@@ -1,6 +1,7 @@
 # ENG-92 code boundaries plus incremental ENG-103 persistence ownership. The
 # shared schema remains intentional; semantic write authority is added one
 # reviewed table/workflow at a time instead of inferred from Ecto module names.
+# PostgreSQL roles and schema separation remain a later ENG-106 concern.
 
 # These are the bounded contexts sealed by the current ENG-92 ratchet.
 bounded_contexts = [
@@ -76,11 +77,9 @@ project_language_persistence_ownership = %{
   ],
   foreign_schema_mappings: %{
     flows: [
-      "lib/storyarn/flows/localization/projections/project_language_record.ex",
       "lib/storyarn/flows/versioning/projections/project_language_record.ex"
     ],
     sheets: [
-      "lib/storyarn/sheets/localization/projections/project_language_record.ex",
       "lib/storyarn/sheets/versioning/projections/project_language_record.ex"
     ]
   },
@@ -88,60 +87,23 @@ project_language_persistence_ownership = %{
     "lib/storyarn/projects/content/localization/records/project_language_record.ex"
   ],
   foreign_readers: %{
+    flows: [
+      "lib/storyarn/flows/versioning/execution/localization_codec.ex"
+    ],
     projects: [
       "lib/storyarn/projects/content/localization/queries/read_model.ex",
       "lib/storyarn/projects/interchange/exports/queries/data_collector.ex",
-      "lib/storyarn/projects/templates/execution/audit.ex"
+      "lib/storyarn/projects/templates/execution/audit.ex",
+      "lib/storyarn/projects/versioning/execution/localization_snapshot_codec.ex"
+    ],
+    sheets: [
+      "lib/storyarn/sheets/versioning/execution/localization_codec.ex"
     ]
   },
-  # These consumers read project_languages but also contain already-reviewed
-  # writes to other shared tables. They are not labelled read-only: their
-  # remaining write ownership is explicit ENG-103 debt rather than permission
-  # to write project_languages.
-  reviewed_mixed_foreign_consumers: [
-    %{
-      path: "lib/storyarn/flows/localization/commands/projection.ex",
-      owner: :flows,
-      reason: "reads target locales while maintaining the existing localized_texts projection",
-      reviewed_sha256: "1a7511c20d0aa250eb8bae25ecae999ff1e9edbf18efe04456142be63d0320c4"
-    },
-    %{
-      path: "lib/storyarn/flows/versioning/execution/localization_codec.ex",
-      owner: :flows,
-      reason: "reads the locale inventory while restoring Flow-owned localized_texts",
-      reviewed_sha256: "be39d949a298e3b65e962b424272c349ab6b01279be486fdf8147cbf6b7fc5c5"
-    },
-    %{
-      path: "lib/storyarn/projects/content/localization/commands/flow_projection.ex",
-      owner: :projects,
-      reason: "reads target locales while maintaining Project's derived localized_text inventory",
-      reviewed_sha256: "0d19c72cc1cdc8d8301de010c6ee4267f9f08d256d6fc1a21ecbc491881ab466"
-    },
-    %{
-      path: "lib/storyarn/projects/content/localization/commands/projection.ex",
-      owner: :projects,
-      reason: "reads target locales while maintaining Project's derived localized_text inventory",
-      reviewed_sha256: "a3aff62f8f7437269be0581509d25aa68887e8b5f1f9256eb21552a76661199f"
-    },
-    %{
-      path: "lib/storyarn/projects/versioning/execution/localization_snapshot_codec.ex",
-      owner: :projects,
-      reason: "reads locale identity while restoring snapshot-local localized_text records",
-      reviewed_sha256: "b8bab630fd112d6654900bfb52ae0f91698d52bde7e2f82a10e414e6e616446a"
-    },
-    %{
-      path: "lib/storyarn/sheets/localization/commands/projection.ex",
-      owner: :sheets,
-      reason: "reads target locales while maintaining the existing localized_texts projection",
-      reviewed_sha256: "7ff2b55117e1257853b558162d2feedd4b6358debb280f7502537531c1b99b26"
-    },
-    %{
-      path: "lib/storyarn/sheets/versioning/execution/localization_codec.ex",
-      owner: :sheets,
-      reason: "reads the locale inventory while restoring Sheet-owned localized_texts",
-      reviewed_sha256: "0bb7786786415f529dd947e716052d866c25ba1daea42355b0bb11f6337b292a"
-    }
-  ],
+  # ENG-103 moved every localized-text write out of these consumers. Keeping
+  # this field explicit makes a future mixed reader/writer fail the inventory
+  # until its exact source and content fingerprint are reviewed.
+  reviewed_mixed_foreign_consumers: [],
   restricted_entrypoints: [
     %{
       module: "Storyarn.Localization.Languages.Adapters.Positions.Postgres",
@@ -207,6 +169,381 @@ project_language_persistence_ownership = %{
       locks_or_preconditions: "must be declared before the first repair path is added"
     }
   }
+}
+
+# The ENG-103 table inventories below use one conservative source analyzer.
+# It is intentionally a source-level ratchet, not a database security boundary.
+persistence_write_analyzer = %{
+  scanner: "Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest.table_mutations/4",
+  scope: "Elixir sources under lib/**/*.ex, including Web, workers and operator Mix tasks",
+  detects:
+    "Repo and Ecto.Multi writes through aliases, imports and pipes, plus statically resolved Repo apply/3 calls; table targets propagate through discovered schemas, query/changeset builders, local helper returns and selected Enum/Stream callbacks; Repo and Ecto.Adapters.SQL raw SQL resolves from literals, binary module attributes, local bindings and static concatenation",
+  limits: [
+    "unresolved raw SQL fails closed only in a candidate source file selected for an inventoried table; SQL assembled through runtime helpers may not expose the table marker needed to select that file",
+    "dynamic module/function dispatch is not resolved except for statically identifiable Repo apply/3 calls",
+    "target propagation is limited to local functions in one source file and a reviewed set of Repo, Ecto, Map, Enum and Stream forms; external helper returns, custom macros and unmodelled callbacks may be missed",
+    "source-wide alias collection and name-based taint are conservative and may flag unrelated aliases or same-named variables in nested scopes",
+    "database triggers are not inspected",
+    "row predicates and inserted source_type values are reviewed metadata; the scanner identifies table effects, not row-level ownership",
+    "multiple call sites with the same path, function and operation collapse into one writer identity",
+    "migrations, tests and runtime-generated code are outside this inventory"
+  ]
+}
+
+entity_reference_persistence_ownership = %{
+  table: "entity_references",
+  source_owners: %{
+    "block" => :sheets,
+    "flow_node" => :flows,
+    "scene_pin" => :scenes,
+    "scene_zone" => :scenes
+  },
+  ordinary_writers: [
+    %{
+      context: :flows,
+      source_types: ["flow_node"],
+      path: "lib/storyarn/flows/references/commands/entity_reference_tracker.ex",
+      functions: [
+        %{identity: "def delete_references/1", operations: [:delete_all]},
+        %{identity: "defp insert_references/3", operations: [:insert_all]}
+      ],
+      reason: "Flows maintains the entity-reference rows derived from Flow node data"
+    },
+    %{
+      context: :scenes,
+      source_types: ["scene_pin", "scene_zone"],
+      path: "lib/storyarn/scenes/references/commands/entity_projection.ex",
+      functions: [
+        %{identity: "def delete_pin_references/1", operations: [:delete_all]},
+        %{identity: "def delete_zone_references/1", operations: [:delete_all]},
+        %{identity: "defp insert_references/3", operations: [:insert_all]},
+        %{identity: "defp replace_references/4", operations: [:delete_all]}
+      ],
+      reason: "Scenes maintains the entity-reference rows derived from pins and zones"
+    },
+    %{
+      context: :sheets,
+      source_types: ["block"],
+      path: "lib/storyarn/sheets/references/commands/entity_projection.ex",
+      functions: [
+        %{identity: "def delete_block_references/1", operations: [:delete_all]},
+        %{identity: "def delete_block_references_for_sources/1", operations: [:delete_all]},
+        %{identity: "def delete_target_references/2", operations: [:delete_all]},
+        %{identity: "def update_block_references/2", operations: [:delete_all]},
+        %{identity: "defp batch_insert_references/4", operations: [:insert_all]}
+      ],
+      reason: "Sheets maintains the entity-reference rows derived from Sheet blocks"
+    }
+  ],
+  privileged_writers: [
+    %{
+      context: :projects,
+      source_types: ["block", "flow_node"],
+      exception: :project_reconstitution_recovery_and_trash,
+      path: "lib/storyarn/projects/references/commands/entity_reference_projection.ex",
+      functions: [
+        %{identity: "def delete_block_references/1", operations: [:delete_all]},
+        %{identity: "def delete_flow_node_references/1", operations: [:delete_all]},
+        %{identity: "def delete_target_references/2", operations: [:delete_all]},
+        %{identity: "def update_block_references/2", operations: [:delete_all]},
+        %{identity: "defp batch_insert_references/4", operations: [:insert_all]}
+      ],
+      reason: "Projects reconstructs or removes its closed Project graph without borrowing ordinary Flow or Sheet writers"
+    },
+    %{
+      context: :projects,
+      source_types: ["scene_pin", "scene_zone"],
+      exception: :project_reconstitution_and_recovery,
+      path: "lib/storyarn/projects/references/commands/scene_entity_reference_tracker.ex",
+      functions: [
+        %{identity: "defp insert_references/3", operations: [:insert_all]},
+        %{identity: "defp replace_references/4", operations: [:delete_all]}
+      ],
+      reason: "Projects reconstructs Scene-derived references inside privileged Project materialization"
+    }
+  ],
+  analyzer: persistence_write_analyzer
+}
+
+variable_reference_persistence_ownership = %{
+  table: "variable_references",
+  source_owners: %{
+    "flow_node" => :flows,
+    "scene_ambient_flow" => :scenes,
+    "scene_pin" => :scenes,
+    "scene_zone" => :scenes
+  },
+  ordinary_writers: [
+    %{
+      context: :flows,
+      source_types: ["flow_node"],
+      path: "lib/storyarn/flows/references/commands/variable_reference_tracker.ex",
+      functions: [
+        %{identity: "def delete_references/1", operations: [:delete_all]},
+        %{identity: "defp replace_references/2", operations: [:insert_all]}
+      ],
+      reason: "Flows maintains the variable-reference rows derived from Flow node data"
+    },
+    %{
+      context: :scenes,
+      source_types: ["scene_ambient_flow", "scene_pin", "scene_zone"],
+      path: "lib/storyarn/scenes/references/commands/variable_projection.ex",
+      functions: [
+        %{identity: "defp delete_references/2", operations: [:delete_all]},
+        %{identity: "defp insert_references/3", operations: [:insert_all]}
+      ],
+      reason: "Scenes maintains the variable-reference rows derived from its pins, zones and ambient flows"
+    }
+  ],
+  privileged_writers: [
+    %{
+      context: :projects,
+      source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
+      exception: :project_reconstitution_recovery_and_trash,
+      path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+      functions: [
+        %{identity: "defp insert_missing_references/4", operations: [:insert_all]},
+        %{identity: "defp insert_reference_entries/1", operations: [:insert_all]},
+        %{identity: "defp replace_references/4", operations: [:delete_all]}
+      ],
+      reason:
+        "Projects reconstructs its closed Project graph and restores Flow trash through its independently owned tracker"
+    },
+    %{
+      context: :projects,
+      source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
+      exception: :exact_project_snapshot_restore,
+      path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      functions: [
+        %{identity: "defp delete_active_variable_references/1", operations: [:delete_all]}
+      ],
+      reason: "exact Project restore clears the active closed graph before rebuilding every captured reference"
+    },
+    %{
+      context: :sheets,
+      source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
+      exception: :sheet_snapshot_additive_reconciliation,
+      path: "lib/storyarn/sheets/references/commands/variable_projection.ex",
+      functions: [
+        %{identity: "defp insert_missing_references/4", operations: [:insert_all]}
+      ],
+      reason:
+        "Sheet restore additively restores missing usages of Sheet-owned variables without deleting source-owner rows"
+    }
+  ],
+  analyzer: persistence_write_analyzer
+}
+
+# Assets are a Projects-owned aggregate even when another tool owns the upload
+# or restore use case that requests registration. Consumer contexts retain
+# storage transfer, quota accounting, compensation and their local read model;
+# only these Projects writers may mutate the shared `assets` rows.
+asset_persistence_ownership = %{
+  table: "assets",
+  ownership_model: :single_context_writer,
+  ordinary_owner: :projects,
+  ordinary_writers: [
+    %{
+      context: :projects,
+      path: "lib/storyarn/projects/assets/commands/asset_registration.ex",
+      functions: [
+        %{identity: "defp insert_asset/4", operations: [:insert]},
+        %{identity: "defp update_variant_link/2", operations: [:update]}
+      ],
+      reason:
+        "Projects validates and registers assets requested by Sheet, Scene and Flow use cases inside their existing transactions"
+    },
+    %{
+      context: :projects,
+      path: "lib/storyarn/projects/assets/execution/asset_operations.ex",
+      functions: [
+        %{identity: "def import_asset/2", operations: [:insert]},
+        %{identity: "def import_snapshot_asset/3", operations: [:insert]},
+        %{identity: "def update_imported_snapshot_asset_locked/3", operations: [:update]},
+        %{identity: "defp create_asset_record_with_lock/5", operations: [:insert]},
+        %{identity: "defp insert_snapshot_asset_batches/1", operations: [:insert_all]},
+        %{identity: "defp update_asset_in_transaction/2", operations: [:update]},
+        %{identity: "defp upsert_snapshot_asset_batches/1", operations: [:insert_all]}
+      ],
+      reason: "Projects owns ordinary asset lifecycle plus validated import and snapshot materialization"
+    },
+    %{
+      context: :projects,
+      path: "lib/storyarn/projects/assets/execution/asset_trash.ex",
+      functions: [
+        %{identity: "defp delete_asset_rows/1", operations: [:delete]},
+        %{identity: "defp restore_assets/1", operations: [:update]},
+        %{identity: "defp trash_assets/3", operations: [:update]}
+      ],
+      reason: "Projects owns asset trash and restoration as part of the Project asset lifecycle"
+    },
+    %{
+      context: :projects,
+      path: "lib/storyarn/projects/assets/execution/blob_store.ex",
+      functions: [%{identity: "defp copy_and_insert_asset/5", operations: [:insert]}],
+      reason: "Projects owns the asset row inserted after a guarded canonical blob copy"
+    }
+  ],
+  privileged_writers: [],
+  analyzer: persistence_write_analyzer
+}
+
+# Localization owns ordinary localized-text persistence. Projects retains four
+# explicit closed-graph exceptions for import/replacement/recovery/exact restore;
+# those are reconstitution responsibilities, never permission for ordinary
+# Project features to write Localization state.
+localized_text_persistence_ownership = %{
+  table: "localized_texts",
+  ownership_model: :single_context_writer_with_project_reconstitution,
+  ordinary_owner: :localization,
+  ordinary_writers: [
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/adapters/upserts/postgres.ex",
+      functions: [%{identity: "def upsert_chunk/1", operations: [:insert]}],
+      reason: "Localization owns the set-based PostgreSQL upsert used by ordinary extraction"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/create.ex",
+      functions: [%{identity: "def create_text/2", operations: [:insert]}],
+      reason: "Localization owns ordinary localized-text creation"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/lifecycle.ex",
+      functions: [
+        %{identity: "def archive_texts_for_active_target_locales/4", operations: [:update_all]},
+        %{identity: "def archive_texts_for_sources/3", operations: [:update_all]},
+        %{identity: "def delete_texts_for_source_field/3", operations: [:update_all]},
+        %{identity: "def purge_texts_for_sources/2", operations: [:delete_all]},
+        %{identity: "def reset_project_texts/1", operations: [:delete_all]}
+      ],
+      reason: "Localization owns archive, purge and reset transitions for its text inventory"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/reconcile.ex",
+      functions: [
+        %{identity: "def bulk_import_texts/1", operations: [:insert_all]},
+        %{identity: "defp archive_obsolete_project_texts/2", operations: [:update_all]}
+      ],
+      reason: "Localization owns ordinary import and reconciliation of localized text rows"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/update.ex",
+      functions: [%{identity: "defp update_text_in_transaction/2", operations: [:update]}],
+      reason: "Localization owns ordinary translation and review updates"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/upsert.ex",
+      functions: [
+        %{identity: "defp do_upsert_text/3", operations: [:insert]},
+        %{identity: "defp update_source_text/2", operations: [:update]}
+      ],
+      reason: "Localization owns idempotent source-text upsert"
+    },
+    %{
+      context: :localization,
+      path: "lib/storyarn/localization/texts/commands/version_restore.ex",
+      functions: [
+        %{identity: "defp archive_active_target_flow_nodes/4", operations: [:update_all]},
+        %{identity: "defp archive_flow_nodes/4", operations: [:update_all]},
+        %{identity: "defp insert_restore_entries/1", operations: [:insert_all]}
+      ],
+      reason: "Localization persists exact Flow and Sheet version state inside the caller-owned restore transaction"
+    }
+  ],
+  privileged_writers: [
+    %{
+      context: :projects,
+      exception: :project_import_reconstitution,
+      path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+      functions: [%{identity: "def bulk_import_texts/1", operations: [:insert_all]}],
+      reason: "validated Project import materializes the captured localization graph"
+    },
+    %{
+      context: :projects,
+      exception: :project_replacement,
+      path: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+      functions: [%{identity: "defp archive_active_localization/1", operations: [:update_all]}],
+      reason: "replacement import archives the current closed Project graph before materialization"
+    },
+    %{
+      context: :projects,
+      exception: :project_recovery,
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp insert_recovery_text_chunk/1", operations: [:insert_all]}],
+      reason: "Project recovery reconstructs exact snapshot-owned localized text rows"
+    },
+    %{
+      context: :projects,
+      exception: :exact_project_snapshot_restore,
+      path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      functions: [
+        %{identity: "defp reconcile_localization_before_materialization/2", operations: [:update_all]}
+      ],
+      reason: "exact Project restore clears the active localization graph before rebuilding the snapshot"
+    }
+  ],
+  analyzer: persistence_write_analyzer
+}
+
+# Cleanup handoff rows form a deliberately shared technical protocol. Tool
+# contexts may only append storage-compensation requests through their exact
+# adapter. Projects owns retries, rotation, deferral and every lifecycle update.
+storage_cleanup_persistence_ownership = %{
+  table: "storage_cleanup_requests",
+  ownership_model: :append_only_consumer_requests_projects_lifecycle,
+  request_owners: [:flows, :scenes, :sheets],
+  lifecycle_owner: :projects,
+  ordinary_writers: [
+    %{
+      context: :flows,
+      write_authority: :append_storage_compensation_request,
+      path: "lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex",
+      request_record_path: "lib/storyarn/flows/versioning/entities/storage_cleanup_request_record.ex",
+      request_changeset: :flow_restore_changeset,
+      functions: [%{identity: "defp persist_cleanup_request/1", operations: [:insert]}],
+      reason: "Flow restore may durably hand off cleanup when immediate object deletion fails"
+    },
+    %{
+      context: :projects,
+      write_authority: :full_lifecycle,
+      path: "lib/storyarn/projects/assets/execution/storage_compensation.ex",
+      functions: [
+        %{identity: "defp consume_multipart_cleanup_receipt/1", operations: [:delete]},
+        %{identity: "defp defer_planned_cleanup/2", operations: [:update]},
+        %{identity: "defp insert_cleanup_request/3", operations: [:insert]},
+        %{identity: "defp persist_reset_multipart_quiescence/2", operations: [:update]},
+        %{identity: "defp retry_persisted_cleanup_request/2", operations: [:delete]},
+        %{identity: "defp rotate_persisted_cleanup_request/2", operations: [:delete, :insert]}
+      ],
+      reason: "Projects owns durable cleanup creation, retry, rotation and lifecycle transitions"
+    },
+    %{
+      context: :scenes,
+      write_authority: :append_storage_compensation_request,
+      path: "lib/storyarn/scenes/assets/adapters/storage/compensation.ex",
+      request_record_path: "lib/storyarn/scenes/assets/entities/storage_cleanup_request_record.ex",
+      request_changeset: :scene_restore_changeset,
+      functions: [%{identity: "defp persist_cleanup_request/1", operations: [:insert]}],
+      reason: "Scene restore may durably hand off cleanup when immediate object deletion fails"
+    },
+    %{
+      context: :sheets,
+      write_authority: :append_storage_compensation_request,
+      path: "lib/storyarn/sheets/assets/adapters/storage/compensation.ex",
+      request_record_path: "lib/storyarn/sheets/assets/entities/storage_cleanup_request_record.ex",
+      request_changeset: :sheet_restore_changeset,
+      functions: [%{identity: "defp persist_cleanup_request/1", operations: [:insert]}],
+      reason: "Sheet restore may durably hand off cleanup when immediate object deletion fails"
+    }
+  ],
+  privileged_writers: [],
+  analyzer: persistence_write_analyzer
 }
 
 boundaries = %{
@@ -580,7 +917,7 @@ project_private_role_roots = %{
   "assets" => ~w(adapters commands execution projections queries rules),
   "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
-  "references" => ~w(commands execution projections queries records reference_data rules),
+  "references" => ~w(adapters commands execution projections queries records reference_data rules),
   "interchange" => ~w(
     imports/adapters imports/commands imports/execution imports/queries imports/rules
     exports/adapters exports/queries exports/rules
@@ -1385,6 +1722,632 @@ analytics_transport_caller_denials =
     }
   end)
 
+# These modules are deliberately more powerful than an ordinary context facade:
+# they can materialize, replace, repair or reconcile state owned by several
+# bounded contexts, or expose a narrower transaction/lock authority. Keep their
+# caller set exact so a new import, recovery, restore, repair or pre-locked path
+# cannot bypass the reviewed coordinator accidentally.
+# Module-scoped entries also fail closed when a module is passed as a runtime
+# dependency; function-scoped entries leave unrelated capability functions
+# available to their context.
+privileged_entrypoints = [
+  %{
+    module: "Storyarn.Projects.Imports.Materializer",
+    path: "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/reconstitution/project_reconstitution.ex"
+    ],
+    reason: "the import materializer is internal to the exact Project reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Projects.FlowImportPersistence",
+    path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex"
+    ],
+    reason: "only the validated Project import materializer may write imported Flow state"
+  },
+  %{
+    module: "Storyarn.Projects.SheetImportPersistence",
+    path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex"
+    ],
+    reason: "only the validated Project import materializer may write imported Sheet state"
+  },
+  %{
+    module: "Storyarn.Projects.SceneImportPersistence",
+    path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex"
+    ],
+    reason: "only the validated Project import materializer may write imported Scene state"
+  },
+  %{
+    module: "Storyarn.Projects.LocalizationReconstitution",
+    path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex"
+    ],
+    reason: "only the validated Project import materializer may write imported Localization state"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.FlowBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason: "Flow graph capture and materialization belong to the reviewed whole-Project coordinators"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.SheetBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason: "Sheet graph capture and materialization belong to the reviewed whole-Project coordinators"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.SceneBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason: "Scene graph capture and materialization belong to the reviewed whole-Project coordinators"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.ProjectRecovery",
+    path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason: "whole-Project materialization is internal to ProjectReconstitution and its injected exact-restore engine"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor",
+    path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+    functions: :all,
+    allowed_callers: [
+      "lib/storyarn/projects/reconstitution/project_reconstitution.ex"
+    ],
+    reason: "the restore executor is internal to the exact Project reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [preview_import: 2],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/queries/preview.ex"
+    ],
+    reason: "only the validated import preview may request a read-only reconstitution preview"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [execute_import: 2, execute_import: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/import_lifecycle.ex"
+    ],
+    reason: "only the immediate import lifecycle may enter the transaction-owning import materializer"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [
+      materialize_locked_import_in_transaction: 2,
+      materialize_locked_import_in_transaction: 3
+    ],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/execution.ex"
+    ],
+    reason: "only the durable import execution lifecycle may materialize under its existing locks"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [materialize_template: 3, materialize_template: 4],
+    allowed_callers: [
+      "lib/storyarn/projects/templates/execution/audit.ex",
+      "lib/storyarn/projects/templates/execution/installation.ex",
+      "lib/storyarn/projects/templates/execution/portable_import.ex"
+    ],
+    reason: "only the reviewed template workflows may materialize a portable Project graph"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [
+      validate_snapshot_import: 1,
+      materialize_snapshot_import: 3,
+      materialize_snapshot_import: 4
+    ],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex"
+    ],
+    reason: "only the verified workspace snapshot-import lifecycle may validate and materialize its exact Project archive"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [execute_snapshot_restore: 2],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex"
+    ],
+    reason: "only the persisted restore lifecycle may execute an exact in-place Project restore"
+  },
+  %{
+    module: "Storyarn.Projects.ProjectReconstitution",
+    path: "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+    functions: [
+      settle_snapshot_restore_reservation: 1,
+      settle_snapshot_restore_reservation: 2
+    ],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex"
+    ],
+    reason: "only the persisted restore lifecycle may settle storage ownership after restore execution"
+  },
+  %{
+    module: "Storyarn.Sheets.Editor.Adapters.Flows.DialogueAudio",
+    path: "lib/storyarn/sheets/editor/adapters/flows/dialogue_audio.ex",
+    functions: [assign: 4],
+    allowed_callers: [
+      "lib/storyarn/sheets/editor/editor.ex"
+    ],
+    reason: "only the Sheet audio use case may enter Sheets' narrow Flow command adapter"
+  },
+  %{
+    module: "Storyarn.Flows",
+    path: "lib/storyarn/flows.ex",
+    functions: [assign_dialogue_audio: 4],
+    allowed_callers: [
+      "lib/storyarn/sheets/editor/adapters/flows/dialogue_audio.ex"
+    ],
+    reason: "only the reviewed Sheet adapter may request the Flow-owned audio mutation"
+  },
+  %{
+    module: "Storyarn.Flows.Editor",
+    path: "lib/storyarn/flows/editor/editor.ex",
+    functions: [assign_dialogue_audio: 4],
+    allowed_callers: [
+      "lib/storyarn/flows.ex"
+    ],
+    reason: "the dialogue-audio command remains behind the public Flows facade"
+  },
+  %{
+    module: "Storyarn.Flows.Editor.Commands.DialogueAudio",
+    path: "lib/storyarn/flows/editor/commands/dialogue_audio.ex",
+    functions: [assign: 4],
+    allowed_callers: [
+      "lib/storyarn/flows/editor/editor.ex"
+    ],
+    reason: "the Flows Editor capability is the only route to the transaction-owning dialogue-audio writer"
+  },
+  %{
+    module: "Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepair",
+    path: "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex",
+    functions: [repair_project: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/references/execution/variable_usage.ex"
+    ],
+    reason: "only the Projects stale-variable use case may enter its narrow Flow repair adapter"
+  },
+  %{
+    module: "Storyarn.Flows",
+    path: "lib/storyarn/flows.ex",
+    functions: [repair_stale_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex"
+    ],
+    reason: "only the reviewed Projects adapter may request Flow-owned stale-variable repair"
+  },
+  %{
+    module: "Storyarn.Flows.References",
+    path: "lib/storyarn/flows/references/references.ex",
+    functions: [repair_stale_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/flows.ex"
+    ],
+    reason: "the stale-variable repair command remains behind the public Flows facade"
+  },
+  %{
+    module: "Storyarn.Flows.References.Commands.StaleVariableReferenceRepair",
+    path: "lib/storyarn/flows/references/commands/stale_variable_reference_repair.ex",
+    functions: [repair_project: 1],
+    allowed_callers: [
+      "lib/storyarn/flows/references/references.ex"
+    ],
+    reason: "the Flows References capability is the only route to its transaction-owning repair writer"
+  },
+  %{
+    module: "Storyarn.Flows.Versioning.Adapters.Projects.AssetRegistration",
+    path: "lib/storyarn/flows/versioning/adapters/projects/asset_registration.ex",
+    functions: [register_materialized_asset: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/execution/asset_catalog.ex"
+    ],
+    reason: "only Flow snapshot materialization may enter Flow's narrow Projects asset adapter"
+  },
+  %{
+    module: "Storyarn.Scenes.Assets.Adapters.Projects.AssetRegistration",
+    path: "lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex",
+    functions: [register_uploaded_asset: 4, register_materialized_asset: 3, link_asset_variant: 3],
+    allowed_callers: [
+      "lib/storyarn/scenes/assets/commands/assets.ex"
+    ],
+    reason: "only the Scene asset use case may enter Scene's narrow Projects asset adapter"
+  },
+  %{
+    module: "Storyarn.Sheets.Assets.Adapters.Projects.AssetRegistration",
+    path: "lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex",
+    functions: [register_uploaded_asset: 4, register_materialized_asset: 3, link_asset_variant: 3],
+    allowed_callers: [
+      "lib/storyarn/sheets/assets/commands/assets.ex"
+    ],
+    reason: "only the Sheet asset use case may enter Sheet's narrow Projects asset adapter"
+  },
+  %{
+    module: "Storyarn.Projects",
+    path: "lib/storyarn/projects.ex",
+    functions: [register_uploaded_asset: 4],
+    allowed_callers: [
+      "lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex",
+      "lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex"
+    ],
+    reason: "only the reviewed Sheet and Scene upload adapters may request Projects-owned asset registration"
+  },
+  %{
+    module: "Storyarn.Projects",
+    path: "lib/storyarn/projects.ex",
+    functions: [register_materialized_asset: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/adapters/projects/asset_registration.ex",
+      "lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex",
+      "lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex"
+    ],
+    reason: "only reviewed tool restore adapters may request Projects-owned asset materialization"
+  },
+  %{
+    module: "Storyarn.Projects",
+    path: "lib/storyarn/projects.ex",
+    functions: [link_asset_variant: 3],
+    allowed_callers: [
+      "lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex",
+      "lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex"
+    ],
+    reason: "only reviewed Sheet and Scene variant workflows may request the Projects-owned relationship write"
+  },
+  %{
+    module: "Storyarn.Projects.Assets",
+    path: "lib/storyarn/projects/assets/assets.ex",
+    functions: [register_uploaded_asset: 4, register_materialized_asset: 3, link_asset_variant: 3],
+    allowed_callers: [
+      "lib/storyarn/projects.ex"
+    ],
+    reason: "asset-registration commands remain behind the public Projects facade"
+  },
+  %{
+    module: "Storyarn.Projects.Assets.Commands.AssetRegistration",
+    path: "lib/storyarn/projects/assets/commands/asset_registration.ex",
+    functions: [register_uploaded_asset: 4, register_materialized_asset: 3, link_asset_variant: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/assets/assets.ex"
+    ],
+    reason: "the Projects Assets capability is the only route to the transaction-bound asset writer"
+  },
+  %{
+    module: "Storyarn.Flows.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/flows/versioning/adapters/localization/version_restore.ex",
+    functions: [prepare: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/execution/flow_snapshot.ex"
+    ],
+    reason: "only exact Flow snapshot restore may archive its current localization inventory"
+  },
+  %{
+    module: "Storyarn.Flows.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/flows/versioning/adapters/localization/version_restore.ex",
+    functions: [restore: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/execution/flow_snapshot.ex",
+      "lib/storyarn/flows/versioning/execution/localization_codec.ex"
+    ],
+    reason: "only the reviewed Flow restore paths may enter Flow's Localization version adapter"
+  },
+  %{
+    module: "Storyarn.Sheets.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/sheets/versioning/adapters/localization/version_restore.ex",
+    functions: [restore: 3],
+    allowed_callers: [
+      "lib/storyarn/sheets/versioning/execution/localization_codec.ex",
+      "lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex"
+    ],
+    reason: "only the reviewed Sheet restore paths may enter Sheet's Localization version adapter"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+    functions: [lock_inventory!: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex"
+    ],
+    reason: "only Project Flow and Sheet materializers may acquire the Localization inventory lock through this adapter"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+    functions: [extract_flow: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex"
+    ],
+    reason: "only Project Flow materialization may request post-restore Flow text extraction"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+    functions: [extract_sheet: 1, sync_sheet_names: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex"
+    ],
+    reason: "only Project Sheet materialization may request post-restore Sheet text reconciliation"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+    functions: [restore_flow: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex"
+    ],
+    reason: "only Project Flow materialization may request exact Flow localization restoration"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore",
+    path: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+    functions: [restore_sheet: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex"
+    ],
+    reason: "only Project Sheet materialization may request exact Sheet localization restoration"
+  },
+  %{
+    module: "Storyarn.Flows.Localization",
+    path: "lib/storyarn/flows/localization/localization.ex",
+    functions: [lock_inventory!: 1],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/execution/flow_snapshot.ex"
+    ],
+    reason:
+      "only Flow snapshot build/restore may use the narrow inventory lock that preserves its existing Project-then-Flow lock order"
+  },
+  %{
+    module: "Storyarn.Localization",
+    path: "lib/storyarn/localization.ex",
+    functions: [lock_inventory_after_project_lock!: 1],
+    allowed_callers: [
+      "lib/storyarn/flows/localization/localization.ex"
+    ],
+    reason:
+      "only the sealed Flow localization boundary may request the advisory lock after its caller has already locked Project"
+  },
+  %{
+    module: "Storyarn.Localization.Texts",
+    path: "lib/storyarn/localization/texts/texts.ex",
+    functions: [lock_inventory_after_project_lock!: 1],
+    allowed_callers: [
+      "lib/storyarn/localization.ex"
+    ],
+    reason: "the pre-locked inventory port remains behind the public Localization facade"
+  },
+  %{
+    module: "Storyarn.Localization.Texts.Commands.Extract",
+    path: "lib/storyarn/localization/texts/commands/extract.ex",
+    functions: [lock_inventory_after_project_lock!: 1],
+    allowed_callers: [
+      "lib/storyarn/localization/texts/texts.ex"
+    ],
+    reason: "only the Localization Texts capability may acquire the advisory inventory lock without relocking Project"
+  },
+  %{
+    module: "Storyarn.Localization",
+    path: "lib/storyarn/localization.ex",
+    functions: [prepare_flow_version_texts: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/adapters/localization/version_restore.ex"
+    ],
+    reason: "Flow's narrow version adapter is the only caller of the public prepare command"
+  },
+  %{
+    module: "Storyarn.Localization",
+    path: "lib/storyarn/localization.ex",
+    functions: [restore_flow_version_texts: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/adapters/localization/version_restore.ex",
+      "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex"
+    ],
+    reason: "only reviewed Flow and Project materializers may request exact Flow localization writes"
+  },
+  %{
+    module: "Storyarn.Localization",
+    path: "lib/storyarn/localization.ex",
+    functions: [restore_sheet_version_texts: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+      "lib/storyarn/sheets/versioning/adapters/localization/version_restore.ex"
+    ],
+    reason: "only reviewed Sheet and Project materializers may request exact Sheet localization writes"
+  },
+  %{
+    module: "Storyarn.Localization.Texts",
+    path: "lib/storyarn/localization/texts/texts.ex",
+    functions: [
+      prepare_flow_version_texts: 3,
+      restore_flow_version_texts: 3,
+      restore_sheet_version_texts: 3
+    ],
+    allowed_callers: [
+      "lib/storyarn/localization.ex"
+    ],
+    reason: "version writers remain behind the public Localization facade"
+  },
+  %{
+    module: "Storyarn.Localization.Texts.Commands.VersionRestore",
+    path: "lib/storyarn/localization/texts/commands/version_restore.ex",
+    functions: [prepare_flow: 3, restore_flow: 3, restore_sheet: 3],
+    allowed_callers: [
+      "lib/storyarn/localization/texts/texts.ex"
+    ],
+    reason: "the Localization Texts capability is the only route to exact transaction-participating version writes"
+  },
+  %{
+    module: "Storyarn.Projects.References.EntityTracker",
+    path: "lib/storyarn/projects/references/commands/entity_tracker.ex",
+    functions: [rebuild_project_entity_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/references/references.ex"
+    ],
+    reason: "the Project-wide entity-reference rebuild stays behind the Projects References capability"
+  },
+  %{
+    module: "Storyarn.Projects.References.VariableReferenceTracker",
+    path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+    functions: [rebuild_project_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/references/commands/variable_tracker.ex"
+    ],
+    reason: "the Project-wide variable-reference rebuild stays behind its internal Projects adapter"
+  },
+  %{
+    module: "Storyarn.Projects.References.VariableTracker",
+    path: "lib/storyarn/projects/references/commands/variable_tracker.ex",
+    functions: [rebuild_project_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/references/references.ex"
+    ],
+    reason: "the internal Project-wide variable-reference adapter stays behind the Projects References capability"
+  },
+  %{
+    module: "Storyarn.Projects.References",
+    path: "lib/storyarn/projects/references/references.ex",
+    functions: [rebuild_project_entity_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason: "Project-wide entity-reference rebuild is reserved for validated import, recovery and exact restore"
+  },
+  %{
+    module: "Storyarn.Projects.References",
+    path: "lib/storyarn/projects/references/references.ex",
+    functions: [rebuild_project_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
+      "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason:
+      "Project-wide variable-reference rebuild is reserved for validated import, materialization, recovery and exact restore"
+  },
+  %{
+    module: "Storyarn.Sheets.References.Commands.VariableProjection",
+    path: "lib/storyarn/sheets/references/commands/variable_projection.ex",
+    functions: [rebuild_project: 1],
+    allowed_callers: [
+      "lib/storyarn/sheets/references/references.ex"
+    ],
+    reason: "the additive Sheet-owned reference reconciliation stays behind the Sheets References capability"
+  },
+  %{
+    module: "Storyarn.Sheets.References",
+    path: "lib/storyarn/sheets/references/references.ex",
+    functions: [rebuild_project_variable_references: 1],
+    allowed_callers: [
+      "lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex"
+    ],
+    reason:
+      "only Sheet snapshot materialization and restore may request additive cross-tool variable-reference reconciliation"
+  },
+  %{
+    module: "Storyarn.Projects.FlowProjectTrash",
+    path: "lib/storyarn/projects/trash/execution/flow_project_trash.ex",
+    functions: [delete_subtree_in_transaction: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason: "transaction-internal Flow subtree deletion is reserved for exact Project replacement and restore"
+  },
+  %{
+    module: "Storyarn.Projects.SheetProjectTrash",
+    path: "lib/storyarn/projects/trash/execution/sheet_project_trash.ex",
+    functions: [delete_subtree_in_transaction: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason: "transaction-internal Sheet subtree deletion is reserved for exact Project replacement and restore"
+  },
+  %{
+    module: "Storyarn.Projects.SceneProjectTrash",
+    path: "lib/storyarn/projects/trash/execution/scene_project_trash.ex",
+    functions: [delete_subtree_in_transaction: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+      "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
+    ],
+    reason: "transaction-internal Scene subtree deletion is reserved for exact Project replacement and restore"
+  },
+  %{
+    module: "Storyarn.Flows.Versioning.FlowSnapshot",
+    path: "lib/storyarn/flows/versioning/execution/flow_snapshot.ex",
+    functions: [restore: 2, restore: 3, restore_snapshot: 2, restore_snapshot: 3],
+    allowed_callers: [
+      "lib/storyarn/flows/versioning/execution/restore.ex"
+    ],
+    reason: "only the Flow restore use case may enter the exact Flow snapshot writer"
+  },
+  %{
+    module: "Storyarn.Sheets.Versioning.SheetSnapshot",
+    path: "lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex",
+    functions: [restore: 2, restore: 3, restore_snapshot: 2, restore_snapshot: 3],
+    allowed_callers: [
+      "lib/storyarn/sheets/versioning/execution/restore.ex"
+    ],
+    reason: "only the Sheet restore use case may enter the exact Sheet snapshot writer"
+  },
+  %{
+    module: "Storyarn.Sheets.Versioning.SheetSnapshot",
+    path: "lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex",
+    functions: [instantiate_snapshot: 2, instantiate_snapshot: 3],
+    allowed_callers: [],
+    reason: "the unused public Sheet materializer remains sealed until a reviewed owner use case needs it"
+  },
+  %{
+    module: "Storyarn.Scenes.Versioning.SceneSnapshot",
+    path: "lib/storyarn/scenes/versioning/execution/scene_snapshot.ex",
+    functions: [restore: 2, restore: 3, restore_snapshot: 2, restore_snapshot: 3],
+    allowed_callers: [
+      "lib/storyarn/scenes/versioning/execution/restore.ex"
+    ],
+    reason: "only the Scene restore use case may enter the exact Scene snapshot writer"
+  }
+]
+
 # Every bounded context is isolated from every other bounded context. Contexts
 # may reach only explicitly allowlisted technical leaves in infrastructure. Infrastructure
 # and shared Web code cannot bridge back into a bounded context.
@@ -1416,11 +2379,17 @@ policy = %{
   forbidden_dependencies: forbidden_dependencies,
 
   # Unlike xref import edges, persistence authority is semantic. Architecture
-  # tests consume this exact allowlist and reject new Project record consumers
-  # or writers until their ownership is reviewed deliberately.
+  # tests consume these per-table contracts and reject new writers until source
+  # ownership or a privileged exception is reviewed deliberately.
   persistence_ownership: %{
-    project_languages: project_language_persistence_ownership
+    assets: asset_persistence_ownership,
+    entity_references: entity_reference_persistence_ownership,
+    localized_texts: localized_text_persistence_ownership,
+    project_languages: project_language_persistence_ownership,
+    storage_cleanup_requests: storage_cleanup_persistence_ownership,
+    variable_references: variable_reference_persistence_ownership
   },
+  privileged_entrypoints: privileged_entrypoints,
 
   # Code below `Storyarn` is the domain/application side of the system. Even
   # when a StoryarnWeb adapter is classified with the same owning context, the
@@ -2486,6 +3455,86 @@ policy = %{
       kinds: ["runtime"],
       reason:
         "Global variable search is technical infrastructure over the Sheet-owned variable catalog; the predicate engine reads through the public Sheets facade rather than duplicating the 1000-line catalog"
+    },
+    %{
+      source: "lib/storyarn/sheets/editor/adapters/flows/dialogue_audio.ex",
+      target: "lib/storyarn/flows.ex",
+      kinds: ["runtime"],
+      reason:
+        "The Sheet audio workspace sends one explicit command to the Flow-owned node writer; the adapter exposes no Flow records or internals"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/projects/asset_registration.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "Flow snapshot materialization requests Projects-owned asset persistence through one narrow transaction-bound adapter"
+    },
+    %{
+      source: "lib/storyarn/flows/localization/localization.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason:
+        "Flow mutations request ordinary localized-text extraction and lifecycle through the public Localization owner"
+    },
+    %{
+      source: "lib/storyarn/flows/versioning/adapters/localization/version_restore.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Flow restore enters exact Localization persistence through one sealed transaction-participating adapter"
+    },
+    %{
+      source: "lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "Scene upload and restore workflows request Projects-owned asset persistence through one narrow transaction-bound adapter"
+    },
+    %{
+      source: "lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "Sheet upload and restore workflows request Projects-owned asset persistence through one narrow transaction-bound adapter"
+    },
+    %{
+      source: "lib/storyarn/projects/trash/execution/flow_project_trash.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Project Flow trash restoration asks Localization to rebuild its owned derived text inventory"
+    },
+    %{
+      source: "lib/storyarn/projects/trash/execution/sheet_project_trash.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Project Sheet trash restoration asks Localization to rebuild its owned derived text inventory"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/adapters/localization/version_restore.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason:
+        "Project reconstitution enters exact Localization persistence through one sealed transaction-participating adapter"
+    },
+    %{
+      source: "lib/storyarn/sheets/localization/localization.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason:
+        "Sheet mutations request ordinary localized-text extraction and lifecycle through the public Localization owner"
+    },
+    %{
+      source: "lib/storyarn/sheets/versioning/adapters/localization/version_restore.ex",
+      target: "lib/storyarn/localization.ex",
+      kinds: ["runtime"],
+      reason: "Sheet restore enters exact Localization persistence through one sealed transaction-participating adapter"
+    },
+    %{
+      source: "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex",
+      target: "lib/storyarn/flows.ex",
+      kinds: ["runtime"],
+      reason:
+        "Project settings preserve the aggregate repair workflow through one exact command adapter while Flows owns candidate interpretation, node data and derivative writes"
     },
     %{
       source: "lib/storyarn_web/live/hooks/palette.ex",

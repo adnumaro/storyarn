@@ -11,7 +11,7 @@ additional bounded contexts:
 | `references/`   | Entity and variable projections, target validation, trash/restore integrity, avatars, assets, and rich-text mentions.      |
 | `runtime/`      | Evaluation, player sessions, dialogue preview, debugging, runtime graphs, navigation history, and ephemeral process state. |
 | `health/`       | Canonical structural analysis, health flags, statistics, findings, severity, and dashboard/export parity.                  |
-| `localization/` | Flow-localizable content vocabulary, extraction projection, and player-facing word counts.                                 |
+| `localization/` | Flow-localizable content vocabulary, player-facing word counts, and commands into the Localization owner.                  |
 | `ai/`           | Flow context construction, neighborhood reads, source locking, and Flow-owned AI contracts.                                |
 | `versioning/`   | Flow version history, snapshot capture, validation, comparison, asset materialization, and restore.                        |
 
@@ -26,6 +26,16 @@ Flow entities and contracts retain their established module identity, while
 private commands, queries, projections, execution modules, events, and adapters
 remain behind their owning capability.
 
+The dialogue-audio assignment used by the Sheet audio workspace is a Flow
+command because it mutates `flow_nodes`. It validates and locks the active
+Project and Flow node, requires an active same-Project speaker Sheet and an
+active same-Project asset with an `audio/*` content type, changes only
+`audio_asset_id` within node data, recomputes the node's derivative fingerprint,
+and exposes a transport-neutral snapshot of the committed node through
+`Storyarn.Flows`. Sheets may request that intent through its exact adapter and
+materialize its own local projection from the receipt, but never uses its Flow
+projection as a write model or performs a second post-commit read.
+
 ## Responsibility folders
 
 Each capability uses only the roles it actually needs:
@@ -39,7 +49,7 @@ Each capability uses only the roles it actually needs:
 | `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful.                                       |
 | `rules/`          | Deterministic validation, normalization, formula, graph, and health decisions.                                                                   |
 | `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                                                            |
-| `records/`        | Controlled writable mappings for derived indexes, localization inventory, or exact reconstitution.                                               |
+| `records/`        | Controlled writable mappings for Flow-owned derived indexes.                                                                                     |
 | `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                                                              |
 | `execution/`      | Stateful or multi-step runtime orchestration such as evaluation, debugging, and snapshot materialization.                                        |
 | `events/`         | Business facts owned by the capability that produced them.                                                                                       |
@@ -69,8 +79,9 @@ capability's or bounded context's model:
 - `Health.Projections.*` may map the same Flow tables independently when project-wide
   analysis needs a purpose-built projection.
 - `AI.Projections.*` is bounded to the evidence needed to build a Flow AI package.
-- `Localization.Projections.*` maps the active-language facts needed by Flow
-  extraction.
+- `Localization.Contracts.*` defines the Flow-owned localizable-content
+  vocabulary; inventory reads and writes enter the Localization owner through
+  its public facade.
 - `Versioning.Projections.*` is independently shaped for capture, validation,
   materialization, and exact restore.
 
@@ -87,13 +98,32 @@ workflow.
 
 ## `records/`
 
-Records are equally consumer-owned, but they are deliberate write targets. Flow
-localization reconciliation writes its inventory record, References rebuilds
-its derived entity-reference index, and Versioning writes localized text only
-during exact restore. Keeping these mappings out of `projections/` makes write
-authority visible without importing another bounded context's schema. Their
-established `*.Projections.*` module names remain temporarily stable; the
-physical folder is the authority classification.
+Records are capability-local mappings with explicitly reviewed write authority.
+Within Flows, References maintains the Flow-node-sourced entity- and
+variable-reference indexes. Localized text mappings now live under
+`projections/`: ordinary extraction and exact version restore enter the
+Localization owner through public commands and a sealed Versioning adapter. A
+historical `*.Projections.*` module identity does not grant write authority; the
+physical role and persistence inventory are authoritative.
+
+Stale-variable repair also enters through the Flow owner. Each candidate node
+uses its own transaction and deliberately takes Project `FOR UPDATE` before the
+Flow and node locks. The previous implementation ultimately acquired the same
+strong Project lock during localization reconciliation, but acquired it late;
+taking it first avoids a lock upgrade after holding Flow state and prevents
+deadlocks between repairs of sibling Flows. The tradeoff is explicit
+per-node serialization against concurrent Project edits.
+
+Flow versioning owns snapshot asset transfer, quota checks and compensation,
+but requests Projects-owned asset-row registration through its exact local
+adapter and reloads the result through Flow's read model.
+
+Flow snapshot build already holds Project `FOR SHARE` before Flow `FOR UPDATE`.
+Its sealed `Localization.lock_inventory!/1` chain therefore takes only the
+Localization advisory lock and preserves the established lock order. The
+source-level ratchet permits only `FlowSnapshot` to call that port; ordinary
+Localization commands use their own Project `FOR UPDATE` -> advisory-lock
+contract.
 
 ## `reference_data/`
 

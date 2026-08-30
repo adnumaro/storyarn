@@ -7,9 +7,9 @@ defmodule Storyarn.Sheets.Editor do
   private commands, queries, data projections, and rules remain internal.
   """
 
+  alias Storyarn.Sheets.Editor.Adapters.Flows.DialogueAudio, as: DialogueAudioWriter
   alias Storyarn.Sheets.Editor.Commands.Avatars
   alias Storyarn.Sheets.Editor.Commands.Blocks
-  alias Storyarn.Sheets.Editor.Commands.DialogueAudio
   alias Storyarn.Sheets.Editor.Commands.Galleries
   alias Storyarn.Sheets.Editor.Commands.Inheritance
   alias Storyarn.Sheets.Editor.Commands.InheritanceWorkflows
@@ -18,16 +18,57 @@ defmodule Storyarn.Sheets.Editor do
   alias Storyarn.Sheets.Editor.Commands.Tables
   alias Storyarn.Sheets.Editor.Commands.Tree
   alias Storyarn.Sheets.Editor.Events
+  alias Storyarn.Sheets.Editor.Projections.FlowNodeRecord
   alias Storyarn.Sheets.Editor.Queries.Avatars, as: AvatarQueries
   alias Storyarn.Sheets.Editor.Queries.DefaultImage
+  alias Storyarn.Sheets.Editor.Queries.DialogueAudio
   alias Storyarn.Sheets.Editor.Queries.Galleries, as: GalleryQueries
   alias Storyarn.Sheets.Editor.Queries.Sheets, as: SheetQueries
 
   defdelegate list_dialogue_audio_lines(project_id, sheet_id), to: DialogueAudio, as: :list_lines
 
-  defdelegate update_dialogue_audio(project_id, sheet_id, node_id, audio_asset_id),
-    to: DialogueAudio,
-    as: :update_audio
+  @dialogue_audio_node_fields [
+    :id,
+    :type,
+    :position_x,
+    :position_y,
+    :data,
+    :word_count,
+    :derivatives_fingerprint,
+    :deleted_at,
+    :flow_id,
+    :parent_id,
+    :inserted_at,
+    :updated_at
+  ]
+
+  # Keep the established Sheets facade result while the write itself crosses
+  # the boundary through a transport-neutral Flow receipt. Materializing the
+  # committed snapshot locally avoids a second, non-atomic database read while
+  # still preventing a Flow schema from crossing into Sheets.
+  def update_dialogue_audio(project_id, sheet_id, node_id, audio_asset_id) do
+    with {:ok, receipt} <-
+           DialogueAudioWriter.assign(project_id, sheet_id, node_id, audio_asset_id),
+         {:ok, %FlowNodeRecord{} = node} <- local_dialogue_audio_node(receipt) do
+      {:ok, node}
+    end
+  end
+
+  defp local_dialogue_audio_node(%{
+         node_id: node_id,
+         audio_asset_id: audio_asset_id,
+         node_snapshot: %{id: node_id, data: data} = snapshot
+       })
+       when is_integer(node_id) and node_id > 0 and is_map(data) do
+    if Map.get(data, "audio_asset_id") == audio_asset_id do
+      node = struct(FlowNodeRecord, Map.take(snapshot, @dialogue_audio_node_fields))
+      {:ok, Ecto.put_meta(node, state: :loaded)}
+    else
+      {:error, :invalid_dialogue_audio_receipt}
+    end
+  end
+
+  defp local_dialogue_audio_node(_receipt), do: {:error, :invalid_dialogue_audio_receipt}
 
   defdelegate list_sheets_tree(project_id), to: SheetQueries
   defdelegate search_sheets(project_id, query, opts \\ []), to: SheetQueries

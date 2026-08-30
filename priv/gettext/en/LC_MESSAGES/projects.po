@@ -16,7 +16,7 @@ msgstr ""
 msgid "All variable references are up to date."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:282
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:301
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr ""
@@ -36,7 +36,7 @@ msgstr ""
 msgid "Failed to delete project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:158
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:177
 #, elixir-autogen, elixir-format
 msgid "Failed to repair variable references."
 msgstr ""
@@ -46,12 +46,12 @@ msgstr ""
 msgid "Localization"
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:286
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:305
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:273
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:292
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr ""
@@ -809,47 +809,47 @@ msgstr "The import could not be completed. No project content was changed."
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:219
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:238
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:237
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:256
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:189
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:208
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:202
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:221
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr "Invitation queued for delivery."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:251
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:270
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr "Invitation revoked."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:254
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:273
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr "Invitation not found."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:233
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:252
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:210
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:229
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:228
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:247
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr ""
@@ -1262,3 +1262,10 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "We couldn't prepare your account. Please try again."
 msgstr ""
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:131
+#, elixir-autogen, elixir-format
+msgid "No nodes could be repaired; %{count} node failed. Try again."
+msgid_plural "No nodes could be repaired; %{count} nodes failed. Try again."
+msgstr[0] ""
+msgstr[1] ""

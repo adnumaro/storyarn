@@ -10,6 +10,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     analyze_loaded_flow_structure/1
     analyze_serialized_flow_structure/2
     append_dialogue_response/2
+    assign_dialogue_audio/4
     batch_update_positions/2
     broadcast_flow_refreshes/1
     build_player_outcome/2
@@ -239,6 +240,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     record_version_panel_opened/2
     remove_dialogue_response/2
     remove_exit_outcome_tag/2
+    repair_stale_variable_references/1
     reorder_flows/3
     reset_debug_session/3
     resolve_hub_color/1
@@ -315,13 +317,13 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     wrap_selection_in_sequence/3
   )
 
-  @public_types ~w(attrs changeset connection flow flow_node linked_flow_result project_identity sequence)a
+  @public_types ~w(attrs changeset connection dialogue_audio_error dialogue_audio_receipt flow flow_node linked_flow_result project_identity sequence variable_reference_repair_error variable_reference_repair_failure)a
 
   # Frozen immediately before the capability reorganization. These hashes
   # cover semantic signatures, docs/defaults, public types, and specs.
-  @docs_digest "11dc1ccdb0580e48daa15a70fd72e5cf8b2230789fd613b0a0e769d0485648d1"
-  @types_digest "c5f6543104c1c8c6217b9602e14104f38e5ce39dad98cb3ff65ebd96473ce565"
-  @specs_digest "ae27397ef9d5445cf9cf7f0bc268bec0be391cf67e0ef70c10bef76de27cf709"
+  @docs_digest "43e7f24ce4b5ccf59c87932f1b444468b4ed6112f87e4b567e32e965dd02c992"
+  @types_digest "952c2f55383458b827ce9b8489d505409f3c6429238278f982523efae4bf6565"
+  @specs_digest "97a10f581e6994e362bf59befd0bcc3588c3ba3173702d8ce030965bd368246e"
 
   test "the root facade preserves every established function and arity" do
     public_functions =
@@ -369,13 +371,13 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 287
-    assert status_counts == %{documented: 217, hidden: 19, none: 51}
+    assert length(function_docs) == 289
+    assert status_counts == %{documented: 219, hidden: 19, none: 51}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
 
-  test "the compiled facade preserves the eight stable public types without exposing data projections" do
+  test "the compiled facade preserves its public types without exposing data projections" do
     assert {:ok, types} = Code.Typespec.fetch_types(Flows)
 
     type_names =
@@ -408,7 +410,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 94
+    assert length(normalized_specs) == 96
     assert digest(normalized_specs) == @specs_digest
     refute Enum.any?(normalized_specs, fn {_name, _arity, spec} -> spec =~ ".Data." end)
   end

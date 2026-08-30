@@ -11,7 +11,7 @@ additional bounded contexts:
 | `assets/`       | Asset catalog, uploads, image processing, storage compensation, and asset events used by Sheets. |
 | `editor/`       | Sheet hierarchy, blocks, tables, galleries, avatars, inheritance, and dialogue-audio authoring.  |
 | `expressions/`  | Variables, formulas, constraints, binding rewrites, and namespace resolution.                    |
-| `localization/` | Sheet-localizable content vocabulary, word counts, and extraction projection.                    |
+| `localization/` | Sheet-localizable content vocabulary, word counts, and commands into the Localization owner.     |
 | `references/`   | Entity and variable reference projection, backlinks, integrity, and foreign appearances.         |
 | `health/`       | Canonical Sheet health rules, snapshots, and project dashboard findings.                         |
 | `versioning/`   | Sheet version history, snapshot capture, conflict preview, materialization, and restore.         |
@@ -34,7 +34,7 @@ Each capability uses only the roles it actually needs:
 | `compatibility/`  | Deprecated public identities that delegate to the canonical capability without making contracts effectful. |
 | `rules/`          | Pure validation, normalization, policy, formula, and health decisions.                                     |
 | `projections/`    | Passive consumer-local SQL projections; never changesets, policy, or persistence I/O.                      |
-| `records/`        | Controlled writable mappings for derived indexes, localization inventory, or exact reconstitution.         |
+| `records/`        | Controlled writable mappings for Sheet-owned derived indexes and classified reconciliation.                |
 | `reference_data/` | Immutable compiled catalogs with no database identity or lifecycle.                                        |
 | `execution/`      | Stateful or multi-step runtime orchestration such as AI context and snapshot materialization.              |
 | `events/`         | Business facts owned by the capability that produced them.                                                 |
@@ -54,8 +54,6 @@ capability's or bounded context's model:
   by the Sheet-owned dialogue-audio workspace.
 - `Health.Projections.*` contains only the authored facts needed to evaluate Sheet
   health without importing editor internals.
-- `References.Entities.EntityReferenceRecord` is the write model for the
-  reference index maintained by the reference capability.
 - `Versioning.Projections.SheetRecord` is independently shaped for snapshot
   materialization and repairs; it does not reuse the editor entity merely
   because both currently map to `sheets`.
@@ -69,16 +67,26 @@ events, performs external I/O, or decides policy.
 
 ## `records/`
 
-Records make narrow write authority explicit. Sheet localization reconciliation
-writes its localization inventory record, References repairs the derived
-variable-reference index, and Versioning writes localized text only during exact
-restore. Their established `*.Projections.*` module names remain temporarily
-stable; their physical `records/` location is authoritative.
+Records and mutable entities make narrow write authority explicit. References
+owns `Entities.EntityReferenceRecord` for the block-sourced entity index and
+coordinates the classified additive variable-reference reconciliation used by
+Sheet restore; that exception does not grant ownership of foreign source rows.
+Localized text mappings now live under `projections/`: ordinary extraction and
+exact version restore enter the Localization owner through public commands and
+a sealed Versioning adapter.
 
-`Editor.Projections.FlowNodeRecord` is the sole transitional exception: the
-dialogue-audio workflow still writes a Flow node directly. It remains visibly a
-projection until ENG-103 decides the cross-context write contract; moving it to
-`records/` now would incorrectly normalize that ownership leak.
+`Editor.Projections.FlowNodeRecord` is read-only. The dialogue-audio workspace
+keeps its Sheet-facing UI and query model, but sends mutations through the
+narrow `Editor.Adapters.Flows.DialogueAudio` command adapter to the public
+`Storyarn.Flows` owner. The adapter exchanges IDs and a neutral committed
+snapshot that Sheets materializes into its own projection; it does not expose a
+Flow schema, perform a racy post-commit reload, or grant Sheets general write
+access to Flow data.
+
+Sheet upload and version workflows retain storage transfer, quota checks,
+compensation and Sheet-facing events. They request Projects-owned asset-row
+registration or variant linking through the exact local Projects adapter and
+reload the result through the Sheet read model.
 
 ## `reference_data/`
 
@@ -116,6 +124,9 @@ commands, queries, projections, or adapters.
   owning command, rule, event, or execution workflow.
 - `Repo` and SQL tables remain shared in this phase. Code ownership is isolated
   first so schema and database separation can happen independently later.
-- Localization extraction still writes the shared localization inventory during
-  this code-only phase. Its write ownership is deliberately deferred to the
-  later read/write-separation decision instead of being changed implicitly here.
+- A Sheet-owned workflow may request a foreign mutation only through an exact,
+  reviewed adapter to the owner's root facade. It must not reuse the foreign
+  projection as a write model or return the owner's Ecto schema.
+- Localization owns ordinary extraction and all Flow/Sheet entity-version text
+  writes. Sheet commands retain source intent and transaction orchestration but
+  never persist `localized_texts` through their duplicated projections.

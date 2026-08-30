@@ -115,6 +115,40 @@ defmodule Storyarn.Sheets.Assets.Commands.AssetsTest do
            )
   end
 
+  test "a failure after Project registration rolls back the asset row and compensates its object" do
+    user = user_fixture()
+    project = project_fixture(user)
+    content = "sheet rollback after registration"
+    hash = sha256(content)
+    source_key = blob_key(project.id, hash, "png")
+
+    assert {:ok, _url, true} = Storage.put_if_absent(source_key, content, "image/png")
+    on_exit(fn -> Storage.delete(source_key) end)
+
+    assert {:error, :forced_after_asset_insert} =
+             AssetCommands.run_asset_materialization_scope([], fn opts ->
+               AssetCommands.with_project_storage_lock(project.id, fn ->
+                 with {:ok, %AssetRecord{} = asset} <-
+                        AssetCommands.create_version_asset_from_storage(
+                          project.id,
+                          user.id,
+                          hash,
+                          source_key,
+                          version_metadata("sheet-rollback.png", content),
+                          opts
+                        ) do
+                   assert Repo.get(AssetRecord, asset.id)
+                   send(self(), {:sheet_asset_registered_before_rollback, asset})
+                   {:error, :forced_after_asset_insert}
+                 end
+               end)
+             end)
+
+    assert_receive {:sheet_asset_registered_before_rollback, asset}
+    refute Repo.get(AssetRecord, asset.id)
+    assert {:error, _reason} = Storage.download(asset.key)
+  end
+
   defp binary_attrs(filename), do: %{filename: filename, content_type: "image/png"}
 
   defp version_metadata(filename, content) do

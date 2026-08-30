@@ -2,10 +2,18 @@ defmodule Storyarn.Sheets.References.Commands.VariableProjection do
   @moduledoc """
   Rebuilds the variable-reference projection needed after a Sheet restore.
 
-  This is a Sheet-owned consumer of the shared persistence tables. It deliberately
-  duplicates the extraction rules needed by Sheet restoration instead of calling
-  another bounded context's writer. Rebuilds are additive so stale rows remain
-  available to the existing repair workflow.
+  This is a privileged Sheet-restore consumer of the shared persistence tables.
+  It deliberately duplicates the extraction rules needed by Sheet restoration
+  instead of calling another bounded context's ordinary writer. Rebuilds only
+  insert missing rows, so stale rows remain available to the existing repair
+  workflow.
+
+  `Storyarn.Sheets.Versioning.SheetSnapshot` is the only production coordinator
+  allowed to enter through `Storyarn.Sheets.References`. It invokes this command
+  inside the snapshot transaction while holding the Workspace and Project update
+  locks. This module intentionally does not create an independent transaction;
+  broadening its caller set or adding destructive projection writes requires a
+  fresh ownership and atomicity review.
   """
 
   import Ecto.Query

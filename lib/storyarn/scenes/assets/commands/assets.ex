@@ -2,9 +2,9 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   @moduledoc """
   Scene-owned asset writes and version materialization.
 
-  Scenes intentionally reads and writes the shared asset tables through local
-  projections. Storage is a technical adapter; Project asset commands and
-  Project domain models are not part of this boundary.
+  Scenes reads shared asset data through its local model and delegates asset
+  row writes to narrow, transaction-bound Projects commands. Storage, quota,
+  compensation and Scene-owned events remain local to this workflow.
   """
 
   import Ecto.Query, warn: false
@@ -14,6 +14,7 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Scenes.Assets.Adapters.Images.Processor, as: ImageProcessor
+  alias Storyarn.Scenes.Assets.Adapters.Projects.AssetRegistration, as: ProjectAssetRegistration
   alias Storyarn.Scenes.Assets.Adapters.Storage.Compensation, as: AssetStorageCompensation
   alias Storyarn.Scenes.Assets.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Scenes.Assets.Adapters.Storage.Locks, as: StorageKeyLock
@@ -452,16 +453,27 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   defp insert_asset(attrs, project_id, uploaded_by_id, upload_kind) do
     now = TimeHelpers.now()
 
-    asset = %AssetRecord{
-      project_id: project_id,
-      uploaded_by_id: uploaded_by_id,
-      inserted_at: now,
-      updated_at: now
-    }
+    changeset =
+      asset_changeset(
+        %AssetRecord{
+          project_id: project_id,
+          uploaded_by_id: uploaded_by_id,
+          inserted_at: now,
+          updated_at: now
+        },
+        attrs,
+        upload_kind
+      )
 
-    asset
-    |> asset_changeset(attrs, upload_kind)
-    |> Repo.insert()
+    with true <- changeset.valid?,
+         {:ok, %{asset_id: asset_id, project_id: ^project_id}} <-
+           ProjectAssetRegistration.register_uploaded_asset(project_id, uploaded_by_id, attrs, upload_kind) do
+      load_registered_asset(project_id, asset_id)
+    else
+      false -> {:error, changeset}
+      {:error, _reason} = error -> error
+      _invalid_receipt -> {:error, :invalid_asset_registration_receipt}
+    end
   end
 
   defp after_asset_created(
@@ -568,32 +580,10 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   end
 
   defp link_background_variant_under_lock(original_id, variant_id, project_id) do
-    asset_ids = Enum.sort([original_id, variant_id])
-
-    assets =
-      Repo.all(
-        from(asset in AssetRecord,
-          where:
-            asset.id in ^asset_ids and asset.project_id == ^project_id and
-              is_nil(asset.deleted_at),
-          order_by: [asc: asset.id],
-          lock: "FOR UPDATE"
-        )
-      )
-
-    with %AssetRecord{} = original <- Enum.find(assets, &(&1.id == original_id)),
-         %AssetRecord{} = variant <- Enum.find(assets, &(&1.id == variant_id)) do
-      metadata =
-        Map.merge(original.metadata || %{}, %{
-          "web_url" => variant.url,
-          "web_asset_id" => variant.id
-        })
-
-      original
-      |> AssetRecord.update_metadata_changeset(metadata)
-      |> Repo.update()
-    else
-      nil -> {:error, :asset_variant_link_target_not_found}
+    case ProjectAssetRegistration.link_asset_variant(project_id, original_id, variant_id) do
+      {:ok, %{asset_id: ^original_id, project_id: ^project_id}} -> load_registered_asset(project_id, original_id)
+      {:error, _reason} = error -> error
+      _invalid_receipt -> {:error, :invalid_asset_variant_link_receipt}
     end
   end
 
@@ -790,7 +780,7 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
 
   defp handle_materialized_asset_copy({:ok, true}, copy) do
     copy.changeset
-    |> Repo.insert()
+    |> register_materialized_asset()
     |> retain_materialized_asset_storage(copy)
   end
 
@@ -827,6 +817,36 @@ defmodule Storyarn.Scenes.Assets.Commands.Assets do
   end
 
   defp retain_materialized_asset_storage({:error, _reason} = error, _copy), do: error
+
+  defp register_materialized_asset(changeset) do
+    asset = Ecto.Changeset.apply_changes(changeset)
+
+    attrs = %{
+      filename: asset.filename,
+      content_type: asset.content_type,
+      size: asset.size,
+      key: asset.key,
+      url: asset.url,
+      metadata: asset.metadata,
+      blob_hash: asset.blob_hash
+    }
+
+    with {:ok, %{asset_id: asset_id, project_id: project_id}} <-
+           ProjectAssetRegistration.register_materialized_asset(asset.project_id, asset.uploaded_by_id, attrs),
+         true <- project_id == asset.project_id do
+      load_registered_asset(project_id, asset_id)
+    else
+      {:error, _reason} = error -> error
+      _invalid_receipt -> {:error, :invalid_asset_registration_receipt}
+    end
+  end
+
+  defp load_registered_asset(project_id, asset_id) do
+    case Repo.get_by(AssetRecord, id: asset_id, project_id: project_id) do
+      %AssetRecord{} = asset -> {:ok, asset}
+      nil -> {:error, :asset_registration_not_visible}
+    end
+  end
 
   defp validate_version_request(blob_hash, source_key, metadata) do
     content_type = metadata["content_type"]

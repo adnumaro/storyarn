@@ -85,9 +85,6 @@ defmodule Storyarn.Sheets do
   @doc "Soft-deletes a block by setting deleted_at timestamp.\n"
   @spec delete_block(block()) :: {:ok, block()} | {:error, changeset()}
   defdelegate delete_block(block), to: Editor
-  @doc "Deletes all references from a flow node.\nCalled when a node is deleted.\n"
-  @spec delete_flow_node_references(integer()) :: {integer(), nil}
-  defdelegate delete_flow_node_references(node_id), to: References
   @doc "Soft deletes a sheet (moves to trash).\nAlso soft deletes all descendant sheets.\n"
   @spec delete_sheet(sheet()) :: {:ok, sheet()} | {:error, term()}
   defdelegate delete_sheet(sheet), to: Editor
@@ -462,9 +459,6 @@ defmodule Storyarn.Sheets do
   @doc "Updates the audio asset assigned to one dialogue line spoken by a Sheet."
   defdelegate update_dialogue_audio(project_id, sheet_id, node_id, audio_asset_id), to: Editor
 
-  @doc "Updates references from a flow node.\nCalled after node data is saved to track mentions and references.\n"
-  @spec update_flow_node_references(map(), keyword()) :: :ok | {:error, term()}
-  defdelegate update_flow_node_references(node, opts \\ []), to: References
   defdelegate update_gallery_image(gallery_image, attrs), to: Editor
   @doc "Updates a sheet.\n"
   @spec update_sheet(sheet(), attrs()) :: {:ok, sheet()} | {:error, changeset()}

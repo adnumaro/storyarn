@@ -10,10 +10,10 @@ defmodule Storyarn.Architecture.SheetsInternalStructureTest do
     "assets" => ~w(adapters commands entities events projections queries),
     "editor" => ~w(adapters commands projections entities events queries rules),
     "health" => ~w(contracts projections queries rules),
-    "localization" => ~w(adapters commands contracts projections records rules),
+    "localization" => ~w(contracts rules),
     "expressions" => ~w(compatibility execution projections queries rules),
     "references" => ~w(commands entities projections queries records rules),
-    "versioning" => ~w(adapters commands contracts projections records entities events execution queries rules)
+    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
   @private_roles ~w(adapters commands compatibility queries rules projections records execution events)
   @passive_roles ~w(rules contracts entities projections)

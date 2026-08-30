@@ -18,9 +18,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.Versioning.ProjectSnapshot
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestore
-  alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor
   alias Storyarn.Projects.Versioning.RestorePolicy
   alias Storyarn.Repo
   alias Storyarn.Workers.RestoreProjectSnapshotWorker
@@ -461,7 +461,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
       Keyword.get(
         opts,
         :settle_bound_reservation,
-        &ProjectSnapshotRestoreExecutor.settle_bound_reservation/2
+        &ProjectReconstitution.settle_snapshot_restore_reservation/2
       )
 
     settlement_opts = Keyword.drop(opts, [:settle_bound_reservation, :session_lock_timeout_ms])
@@ -968,7 +968,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
       Keyword.get(
         opts,
         :settle_bound_reservation,
-        &ProjectSnapshotRestoreExecutor.settle_bound_reservation/2
+        &ProjectReconstitution.settle_snapshot_restore_reservation/2
       )
 
     settlement_opts = Keyword.delete(opts, :settle_bound_reservation)
@@ -1348,7 +1348,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   end
 
   defp executor(opts) do
-    candidate = Keyword.get(opts, :executor, &ProjectSnapshotRestoreExecutor.execute/2)
+    candidate = Keyword.get(opts, :executor, &ProjectReconstitution.execute_snapshot_restore/2)
     if is_function(candidate, 2), do: {:ok, candidate}, else: {:error, :invalid_project_snapshot_restore_executor}
   end
 

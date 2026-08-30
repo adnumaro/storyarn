@@ -38,7 +38,7 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
 
     Repo.delete!(archived_text)
 
-    assert :ok = LocalizationSnapshotCodec.restore(project.id, [row], %{node: %{node.id => node.id}})
+    assert :ok = restore_flow_rows(project.id, [row], %{node: %{node.id => node.id}})
 
     assert [%{archived_at: restored_at, archive_reason: "source_deleted"}] =
              project.id
@@ -84,7 +84,7 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
       })
 
     assert :ok =
-             LocalizationSnapshotCodec.restore(
+             restore_flow_rows(
                project.id,
                [snapshot_row],
                %{node: %{node.id => node.id}}
@@ -116,11 +116,38 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
     rows = LocalizationSnapshotCodec.capture(project.id, %{"flow_node" => [source_a.id, source_b.id]})
 
     assert :ok =
-             LocalizationSnapshotCodec.restore(project.id, rows, %{
+             restore_flow_rows(project.id, rows, %{
                node: %{source_a.id => target.id, source_b.id => target.id}
              })
 
     assert [_one_text] = Localization.get_texts_for_source("flow_node", target.id)
+  end
+
+  test "restore joins a caller-owned transaction and rolls back with it" do
+    project = project_fixture(user_fixture())
+    source_language_fixture(project, %{locale_code: "en", name: "English"})
+    language_fixture(project, %{locale_code: "es", name: "Spanish"})
+    flow = flow_fixture(project)
+    node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Snapshot", "responses" => []}})
+    [row] = LocalizationSnapshotCodec.capture(project.id, %{"flow_node" => [node.id]})
+
+    [current] = Localization.get_texts_for_source("flow_node", node.id)
+    Repo.delete!(current)
+
+    assert {:error, :forced_rollback} =
+             Repo.transaction(fn ->
+               assert :ok =
+                        restore_flow_rows(
+                          project.id,
+                          [row],
+                          %{node: %{node.id => node.id}}
+                        )
+
+               assert [_restored] = Localization.get_texts_for_source("flow_node", node.id)
+               Repo.rollback(:forced_rollback)
+             end)
+
+    assert Localization.get_texts_for_source("flow_node", node.id) == []
   end
 
   test "restore increments lock_version and invalidates an editor's stale changeset" do
@@ -150,7 +177,7 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
     row = Map.put(row, "translated_text", "Snapshot translation")
 
     assert :ok =
-             LocalizationSnapshotCodec.restore(
+             restore_flow_rows(
                project.id,
                [row],
                %{node: %{node.id => node.id}}
@@ -188,7 +215,7 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
     assert {:ok, _deleted_speaker} = Sheets.delete_sheet(speaker)
 
     assert {:error, {:localization_reference_not_materializable, "speaker_sheet_id", speaker_id}} =
-             LocalizationSnapshotCodec.restore(
+             restore_flow_rows(
                project.id,
                [row],
                %{node: %{node.id => node.id}}
@@ -209,7 +236,7 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
 
     for actor_field <- ["translated_by_id", "reviewed_by_id"] do
       assert {:error, {:localization_reference_not_materializable, ^actor_field, ^missing_user_id}} =
-               LocalizationSnapshotCodec.restore(
+               restore_flow_rows(
                  project.id,
                  [Map.put(row, actor_field, missing_user_id)],
                  %{node: %{node.id => node.id}}
@@ -231,6 +258,30 @@ defmodule Storyarn.Projects.Versioning.LocalizationSnapshotCodecTest do
 
     assert [%{"locale_code" => "es"}] = rows
   end
+
+  defp restore_flow_rows(project_id, rows, id_maps) do
+    if Repo.in_transaction?() do
+      Localization.restore_flow_version_texts(project_id, rows, id_maps)
+    else
+      restore_flow_rows_in_transaction(project_id, rows, id_maps)
+    end
+  end
+
+  defp restore_flow_rows_in_transaction(project_id, rows, id_maps) do
+    fn ->
+      project_id
+      |> Localization.restore_flow_version_texts(rows, id_maps)
+      |> rollback_restore_error()
+    end
+    |> Repo.transaction()
+    |> unwrap_restore_transaction()
+  end
+
+  defp rollback_restore_error(:ok), do: :ok
+  defp rollback_restore_error({:error, reason}), do: Repo.rollback(reason)
+
+  defp unwrap_restore_transaction({:ok, :ok}), do: :ok
+  defp unwrap_restore_transaction({:error, reason}), do: {:error, reason}
 
   describe "manifest/1" do
     test "is stable across row order, map order, and a JSON round trip" do

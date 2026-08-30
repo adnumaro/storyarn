@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.AssetTrashLifecycle
   alias Storyarn.Projects.Assets.AssetUploadLifecycle
   alias Storyarn.Projects.Assets.Commands.AssetCommands
+  alias Storyarn.Projects.Assets.Commands.AssetRegistration
   alias Storyarn.Projects.Assets.ImageProcessor
   alias Storyarn.Projects.Assets.Queries.AssetQueries
   alias Storyarn.Projects.Assets.Storage
@@ -46,6 +47,18 @@ defmodule Storyarn.Projects.Assets do
   defdelegate update_asset(asset, attrs), to: AssetCommands
   defdelegate delete_asset(asset), to: AssetCommands
   defdelegate change_asset(asset, attrs \\ %{}), to: AssetCommands
+
+  @doc false
+  defdelegate register_uploaded_asset(project_id, uploaded_by_id, attrs, upload_kind),
+    to: AssetRegistration
+
+  @doc false
+  defdelegate register_materialized_asset(project_id, uploaded_by_id, attrs),
+    to: AssetRegistration
+
+  @doc false
+  defdelegate link_asset_variant(project_id, original_asset_id, variant_asset_id),
+    to: AssetRegistration
 
   defdelegate move_asset_to_trash(project_id, asset_id, actor_id), to: AssetTrashLifecycle
   defdelegate move_assets_to_trash_locked(project_id, actor_id, asset_ids, opts \\ []), to: AssetTrashLifecycle

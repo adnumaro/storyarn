@@ -116,6 +116,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     list_sheet_dashboard_health_findings: 1,
     list_sheet_dashboard_health_findings: 2,
     list_workspace_snapshot_imports: 2,
+    link_asset_variant: 3,
     lock_and_check_workspace_capacity: 1,
     materialize_asset_upload_variant: 3,
     max_sync_project_export_bytes: 0,
@@ -161,6 +162,8 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     ready_project_snapshot_archive_key?: 3,
     recent_activity: 1,
     recent_activity: 2,
+    register_materialized_asset: 3,
+    register_uploaded_asset: 4,
     reload_project: 2,
     remove_member: 1,
     repair_stale_project_variable_references: 1,
@@ -264,7 +267,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "27c5576cee32802c9143231991216250e61f58b36f11e3c2a8146f2c88028a1b"
+  @docs_digest "3c6636193dd0eb8e0927df4648fa9ac81130a8fd781c9364b3f54ec4652735c3"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
   @specs_digest "94800341e839c234aca49af0f6669f27c870eba0eb209b717803b9c81734b586"
 
@@ -298,10 +301,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 179
+    assert length(established_docs) == 182
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 74, hidden: 12, none: 93}
+             %{documented: 74, hidden: 15, none: 93}
 
     assert length(worker_docs) == 42
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
