@@ -1,0 +1,517 @@
+test/storyarn_web/live/sheet_live/handlers/audio_handlers_test.exs
+  s_e9e5a90425bc26::t_aba855a853330b 5,180-218
+  s_e9e5a90425bc26::t_72cb1f1dcb7050 6,83,112-176
+  s_e9e5a90425bc26::t_f36aef7b1fb030 84-111,177-179
+test/storyarn/flows/references/commands/entity_reference_tracker_concurrency_test.exs
+  s_e9e5a90425bc26::t_6ae4411c710a57 1-149
+lib/storyarn/projects/assets/commands/asset_registration.ex
+  s_e9e5a90425bc26::t_e689a758e74e44 23-24,36,40,56,147-149,151-154,156-157,172,174
+  s_e9e5a90425bc26::t_95d92c4bc8be6b 9,75-78,81,88-97,100,103,109,113-115
+  s_e9e5a90425bc26::t_d2e421c5b930f4 82-87
+  s_e9e5a90425bc26::t_4b3218246a69c7 1,6-8,10-11,14-16,19-22,25,28-29,31-35,37,41-52,58-67,70-71,74,101-102,104-108,116-117,120,122-125,128-131,134-139,141-142,146,158,161-162,164-167,170,176,178-181,184-187,191,193-209,213-218,220-226,229,231
+lib/storyarn/projects/reconstitution/project_reconstitution.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 1-10,14-51
+  s_e9e5a90425bc26::t_869d3bb2c67f19 11-13
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_e9e5a90425bc26::t_953c8162c0c628 79,84,89,122,286,445-459
+test/storyarn/architecture/projects_internal_structure_test.exs
+  s_e9e5a90425bc26::t_af3e29261ea8be 158,172-184
+  s_e9e5a90425bc26::t_7f6af6911cdbb3 13,38
+  s_e9e5a90425bc26::t_50c4a7c5f27987 185-186
+lib/storyarn/localization/texts/commands/extract.ex
+  s_e9e5a90425bc26::t_023e3b04477a96 59,77-80
+  s_e9e5a90425bc26::t_2f5f22767095ef 399,411,432,507,664-671
+  s_e9e5a90425bc26::t_ea50d9404072de 57-58,60-76,81-82,500,502-506
+  s_e9e5a90425bc26::t_e7596106e7b4ee 501
+  s_e9e5a90425bc26::t_7b4a20ddd84527 508
+  s_e9e5a90425bc26::t_dd5b81e7fada96 672
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_e9e5a90425bc26::t_c553a86764216a 13
+  s_e9e5a90425bc26::t_4032077ac3cb82 243,320,374-375,413
+  s_e9e5a90425bc26::t_4bfb161ebc2b2e 325
+  s_e9e5a90425bc26::t_5b93277027a86d 380
+  s_e9e5a90425bc26::t_416cc770e370c4 324,326
+lib/storyarn/sheets/references/commands/variable_projection.ex
+  s_e9e5a90425bc26::t_f24d4cf261533d 5-16
+lib/storyarn/flows/references/commands/stale_variable_reference_repair.ex
+  s_e9e5a90425bc26::t_1bcf153468c8f2 101,103-113
+  s_e9e5a90425bc26::t_cd2cc7403756df 218-222
+  s_e9e5a90425bc26::t_ef70f2eb8252ff 36,43,54,56,59,61-62,75-76,86,117,126,130-136,179-196,198-200,213-217
+  s_e9e5a90425bc26::t_1ecccc427223a0 20,27,29-34,40-41
+  s_e9e5a90425bc26::t_a1e5551fb8596c 1,3,5-9,12-17,23-26,28,35,37-39,42,44-53,55,60,63,65-70,77-79,83-85,87-89,91,122-125,127-129,137-141,145-150,154,158,161-167,171-172,178,229-244
+  s_e9e5a90425bc26::t_d2e421c5b930f4 118-121
+  s_e9e5a90425bc26::t_0e98c0f3ca5cd5 71
+  s_e9e5a90425bc26::t_a4200196575470 92,96-100,102,197,201-212
+lib/storyarn/sheets/editor/editor.ex
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 30-44,46-48,50,52,54-65,67,70-71
+  s_e9e5a90425bc26::t_db2993ec58ec35 10
+  s_e9e5a90425bc26::t_917744f421472f 45,49,51,53,66,68-69
+  s_e9e5a90425bc26::t_f77eb8d824de09 24
+  s_e9e5a90425bc26::t_1ea48ca54dd74b 21
+test/storyarn/flows/references/commands/stale_variable_reference_repair_concurrency_test.exs
+  s_e9e5a90425bc26::t_58ea6f83f83098 20,87-137,168-201
+  s_e9e5a90425bc26::t_a4200196575470 144,156-167
+  s_e9e5a90425bc26::t_cc36c8e75a518e 42-46
+  s_e9e5a90425bc26::t_0b28538b814fe8 21,52-60,64-65
+  s_e9e5a90425bc26::t_0401735c375b54 1-19,22-41,47-50,61,67-86,138-143,145-155,202-259
+  s_e9e5a90425bc26::t_bdf9c7c28f1879 62-63,66
+  s_e9e5a90425bc26::t_c96569bbb85d62 51
+lib/storyarn/flows/versioning/execution/asset_catalog.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 14,825
+  s_e9e5a90425bc26::t_9f2c55535e588e 805,811-824,826-839
+  s_e9e5a90425bc26::t_ac1c5b6d38370b 5-8
+  s_e9e5a90425bc26::t_23bae672e57344 840
+test/storyarn/architecture/sheets_facade_contract_test.exs
+  s_e9e5a90425bc26::t_21648b97cfa558 226-234,243,251
+  s_e9e5a90425bc26::t_ae70b6b001336a 258,289-290,328
+  s_e9e5a90425bc26::t_dd52b96e9f8fb4 239,241
+lib/storyarn/flows/localization/localization.ex
+  s_e9e5a90425bc26::t_ea50d9404072de 16-18
+  s_e9e5a90425bc26::t_9c2ae33dfa9127 3,5-7
+  s_e9e5a90425bc26::t_296235cc4aee84 12,19-20,23,25-27
+  s_e9e5a90425bc26::t_d2badcf50407e5 28
+lib/storyarn/scenes/assets/adapters/projects/asset_registration.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 1,3,5-6,9,11-14,17-26
+lib/storyarn/sheets/assets/commands/assets.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 17,470,583,835
+  s_e9e5a90425bc26::t_db10e923a0e879 5-7
+  s_e9e5a90425bc26::t_e689a758e74e44 584
+  s_e9e5a90425bc26::t_9730690bf915c8 456-466,468-469,471-476,585-586,783,821-834,836-849
+  s_e9e5a90425bc26::t_369141107e344b 850
+lib/storyarn/sheets/README.md
+  s_e9e5a90425bc26::t_a4c79ce9a51a68 130-132
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 81-84
+  s_e9e5a90425bc26::t_a663f3b207acea 78-80,127-129
+  s_e9e5a90425bc26::t_182ba2d27cdcb4 86-89
+  s_e9e5a90425bc26::t_9c2ae33dfa9127 14
+  s_e9e5a90425bc26::t_c454a599f12b18 37,70-71
+  s_e9e5a90425bc26::t_4b3a1952412b33 72-76
+  s_e9e5a90425bc26::t_65efc4b47f22c8 77
+  s_e9e5a90425bc26::t_0bb01f9f4f8ba3 85
+lib/storyarn/flows/references/queries/stale_variable_reference_repair.ex
+  s_e9e5a90425bc26::t_c4876a3daa5f9d 1-30,53-81
+  s_e9e5a90425bc26::t_ef70f2eb8252ff 31-52
+test/storyarn_web/live/project_settings_live/settings_components_repair_test.exs
+  s_e9e5a90425bc26::t_34790abfd09c16 71-100
+  s_e9e5a90425bc26::t_aafdc91ca0aa31 30-39
+lib/storyarn/flows/versioning/execution/flow_snapshot.ex
+  s_e9e5a90425bc26::t_6cc473d99e1d20 28,1822,1838
+  s_e9e5a90425bc26::t_57c9734fdc5cf0 1824-1825
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_e9e5a90425bc26::t_04203fe2bf8a0d 568-587,598-607,609,629-637,644,646-656,680-685,687-688,695-716,725-738
+  s_e9e5a90425bc26::t_fb76c548459e79 204-213,247-270,465,719
+  s_e9e5a90425bc26::t_f8fffe4095ecab 588-597,717-718,720-724
+  s_e9e5a90425bc26::t_264ebc3d6a904e 286,289-293,330-340,343,349-350,353,355,359,362,369-370,373-375,378-379,382,384,388,390-391
+  s_e9e5a90425bc26::t_c7780ab3ea1ce1 828-829
+  s_e9e5a90425bc26::t_c7d59c1cee4825 320-326
+  s_e9e5a90425bc26::t_f00f07dd4f5a9d 466,497-498
+  s_e9e5a90425bc26::t_ae471bed9963e4 78-87,172-174,184-187,198-202
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 2
+  s_e9e5a90425bc26::t_2ad79fcf71fc48 505,511-525,531,537-551,608,610-628,638-643,645,657-679,686,689-694
+  s_e9e5a90425bc26::t_a68efc72ff695f 25,49,113-124,277-281,285,287-288,305,311-317,319
+  s_e9e5a90425bc26::t_71849674afdb20 1,3-4,7-9,22-24,26,30,39-48,50-58,65-77,88-112,125-146,171,188-197,203,273-276,282-284,294-304,306-310,318,327-329,341-342,344-348,351-352,354,356-358,360-361,363-368,371-372,376-377,380-381,383,385-387,389,392-421,423-454,488-491,494,496,567,739-802,808-813,833-842
+  s_e9e5a90425bc26::t_6a493780ece154 11-21,62
+  s_e9e5a90425bc26::t_af8452d516b57b 5-6
+  s_e9e5a90425bc26::t_a62bcf6d307eac 422,455-464,467-487,492-493,495,499-502,504,506,510,526-528,530,532,536,552-566
+  s_e9e5a90425bc26::t_b7f5ab50478560 503,507-509,529,533-535
+  s_e9e5a90425bc26::t_f77b50b3fd56e9 827
+  s_e9e5a90425bc26::t_67f48c257b93c4 28-29,803-807,814-825,830-832
+  s_e9e5a90425bc26::t_9d6c3f50990391 10,27,59-61,63-64
+  s_e9e5a90425bc26::t_c775afc22a837b 31-38,147-170,175-183,214-246,271-272
+  s_e9e5a90425bc26::t_0cf0e3e644da49 826
+lib/storyarn/sheets/editor/queries/dialogue_audio.ex
+  s_e9e5a90425bc26::t_f77eb8d824de09 1,3,5-7
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_e9e5a90425bc26::t_5cf724e8125da8 270
+  s_e9e5a90425bc26::t_877b5ba9b87acc 119,165-166,304,307
+test/storyarn/flows/versioning/execution/flow_snapshot_lock_order_concurrency_test.exs
+  s_e9e5a90425bc26::t_fe72d11e064f28 14-18
+  s_e9e5a90425bc26::t_cbc00c936c541c 115-120
+  s_e9e5a90425bc26::t_1d16d3dbbf408a 30,32-48,108,111
+  s_e9e5a90425bc26::t_6d6302f218fdc6 1-2,4-6,8-9,12-13,19-29,31,49-100,102,104-107
+  s_e9e5a90425bc26::t_16e415afe3945d 112-114
+test/storyarn/projects/versioning/execution/localization_snapshot_codec_test.exs
+  s_e9e5a90425bc26::t_0f1d96b3c07f45 262-265,267-268,285
+  s_e9e5a90425bc26::t_e9d3362f977778 126-139,141-152
+  s_e9e5a90425bc26::t_e1043f38b8b86a 266,269-284
+  s_e9e5a90425bc26::t_c60114af2f562e 41,87,119,140,180,218,239
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_e9e5a90425bc26::t_b65da6a963fb6d 124
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 33-42,67-80
+lib/storyarn/projects/versioning/execution/builders/flow_builder.ex
+  s_e9e5a90425bc26::t_6cc473d99e1d20 37,1266
+  s_e9e5a90425bc26::t_dde2adae5c4446 75,96,978,1229
+lib/storyarn/flows/editor/commands/dialogue_audio.ex
+  s_e9e5a90425bc26::t_1d6ae55c547fb6 19-23,50-51
+  s_e9e5a90425bc26::t_5b93277027a86d 15,82,106,110
+  s_e9e5a90425bc26::t_f0a1928d04fdb1 71
+  s_e9e5a90425bc26::t_1ff443e2a3eba4 44-45,160
+  s_e9e5a90425bc26::t_75e17346690dfd 77-81
+  s_e9e5a90425bc26::t_f71c95391fb961 7-10
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 24-43,57-63
+  s_e9e5a90425bc26::t_db2993ec58ec35 102,109,111-115,132-133,151-152
+  s_e9e5a90425bc26::t_223cd697d025d7 148-149
+  s_e9e5a90425bc26::t_e86b57723e3fbd 150
+  s_e9e5a90425bc26::t_197553e6c86b05 154-155,157-158
+  s_e9e5a90425bc26::t_bf9ad7364942be 1-6,11-14,16-18,46-47,49,52-56,64-70,72,75-76,83-98,100-101,103-105,107-108,116-131,134-147,153,156,159,161
+  s_e9e5a90425bc26::t_b8583a1c1c18d5 48,73-74,99
+test/storyarn/architecture/passive_projection_boundary_test.exs
+  s_e9e5a90425bc26::t_751d36a4660238 218,254,527,531,535-536
+  s_e9e5a90425bc26::t_486c6f942dd891 242-249
+  s_e9e5a90425bc26::t_5b8209a16f33f4 384-389
+  s_e9e5a90425bc26::t_1aa9ab5de7626c 1,6-42,45-50,52,54-57,59-64,66-78,81-91,93-95,97-98,100,102,104-109,111-113,128-156,159-164,166-170,173-177,179-181,183,186-200,203-211,213-214,216,219-221,224-229,239,250-252,255-259,262-270,272-281,285-287,289,291-292,294-300,302-305,308-310,313-315,318-320,323-325,328-330,333-334,337-338,341,343-344,346-350,352-353,355-360,364-365,367-371,373-383,390-398,402-407,409-436,439-440,442-445,447-454,457-461,463-477,480-481,484-492,495-506,509-512,515-516,519-522,525-526,528-530,532-534,537-557,560-566,568-573
+  s_e9e5a90425bc26::t_19217fe4c1adbc 2,4
+  s_e9e5a90425bc26::t_47b16b4cad6411 114-117,119-121,123,125,230-231,233-238
+lib/storyarn/projects/versioning/adapters/localization/version_restore.ex
+  s_e9e5a90425bc26::t_e2ac5d6c21f50d 1-11,24-33
+  s_e9e5a90425bc26::t_dde2adae5c4446 12-14,20-22
+  s_e9e5a90425bc26::t_753602c237b3bc 15-19,23
+lib/storyarn/scenes/README.md
+  s_e9e5a90425bc26::t_3beeb6171b6269 89-93
+lib/storyarn/projects/references/projections/flow_node_record.ex
+  s_e9e5a90425bc26::t_b3e7573e3c953a 3,5-8
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_e9e5a90425bc26::t_953c8162c0c628 79,84,89,122,286,445-448,450-453,455-458
+  s_e9e5a90425bc26::t_05b2ebb6420297 82,87,449,454,459
+lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex
+  s_e9e5a90425bc26::t_f2b1834f6f86fd 1,3,5-7,10,13
+  s_e9e5a90425bc26::t_4a37e2be37cdff 12
+lib/storyarn/sheets/versioning/projections/localized_text_record.ex
+  s_e9e5a90425bc26::t_fcbadf9a1e0785 2-7
+priv/gettext/flows.pot
+  s_e9e5a90425bc26::t_3e829fb288d961 313,334,340,346,420,426,440,458,464,470,476,482
+lib/storyarn/sheets/assets/adapters/projects/asset_registration.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 1-28
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 16,757,874
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_8f59ca41984ddc 251
+  s_e9e5a90425bc26::t_189750539817db 1976-2051
+  s_e9e5a90425bc26::t_182ba2d27cdcb4 4,178,1727-1729
+  s_e9e5a90425bc26::t_c7b8b4b9333d85 374,379-384,400-402,404-405,517,521-522
+  s_e9e5a90425bc26::t_c8a127a8afaca2 3460-3464,3538
+  s_e9e5a90425bc26::t_6a438b6cad50d0 2158,2162
+  s_e9e5a90425bc26::t_b877bc535cc80d 183-186,2127-2157,2159-2161
+  s_e9e5a90425bc26::t_016d28e3e2332d 920
+  s_e9e5a90425bc26::t_82fbd5caf1a20b 1725,1733-1734,1744-1813,1815-1816,2314-2331,2339-2350,2392
+  s_e9e5a90425bc26::t_460b4f3f8d0bc6 3474-3483,3485-3486,3499-3529
+  s_e9e5a90425bc26::t_42added31cb420 507-508,530-531,539-540
+  s_e9e5a90425bc26::t_8cc6abf92b8efa 2263-2264,2282-2283
+  s_e9e5a90425bc26::t_59f116aeb62b53 337-373,375-378,385-399,406-455,457-506,509-516,518-520,523-529,532-538,541-548
+  s_e9e5a90425bc26::t_ae471bed9963e4 1726,1730-1732,1902-1903,2216-2262,2265-2281
+  s_e9e5a90425bc26::t_0877813ff29413 174-176,265,334
+  s_e9e5a90425bc26::t_c22f6f19e02f00 302,309-310
+  s_e9e5a90425bc26::t_42659834dea55b 2199,2209
+  s_e9e5a90425bc26::t_8982c13e4ead47 188
+  s_e9e5a90425bc26::t_03da938211caa5 180
+  s_e9e5a90425bc26::t_8297094a061f11 3465-3466,3533-3537
+  s_e9e5a90425bc26::t_b2ac73977e150d 90-92,96-100,103-106
+  s_e9e5a90425bc26::t_218e2fe0494542 3459,3467-3473,3487-3498,3531-3532
+  s_e9e5a90425bc26::t_13bf1575089a0f 187
+  s_e9e5a90425bc26::t_b51c8c94c4a047 177,179,181,189-250,252-264,266-301,303-308,311-333,335-336,2386,2388,2390
+  s_e9e5a90425bc26::t_d6cc6b850718de 403
+  s_e9e5a90425bc26::t_174a4b30e63543 1735-1738,1740,1742-1743,1818-1822,1898-1900,2284-2313,2332-2338
+  s_e9e5a90425bc26::t_826c29b7e1a3ae 456,3484,3530
+  s_e9e5a90425bc26::t_e8af5acf31b73d 2052-2082,2111-2126,2163-2198,2200-2208,2210-2215
+  s_e9e5a90425bc26::t_1cc1c6cbaba723 2382-2383
+  s_e9e5a90425bc26::t_01cab73f7821d3 2385,2387,2389
+  s_e9e5a90425bc26::t_fc9b55815b803b 182
+  s_e9e5a90425bc26::t_a9036ce83baf0a 2083-2110
+  s_e9e5a90425bc26::t_c2d999dab8dbf4 1739,1741,1814,1817,1823-1897,1901
+  s_e9e5a90425bc26::t_ef5846176f43d6 1904-1975
+lib/storyarn/projects/interchange/imports/execution/execution.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 32,342
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 21,464,971,1351
+test/storyarn/projects/assets/commands/asset_registration_test.exs
+  s_e9e5a90425bc26::t_f0d5c4a093273f 235-237
+  s_e9e5a90425bc26::t_d594e97889166b 4,8-9,12,89-187,202-204,206-234,238-241
+  s_e9e5a90425bc26::t_36199622764128 1-3,5-7,10-11,13-22,24-27,30-66,68-78,80-82,85-86,88,242-257
+  s_e9e5a90425bc26::t_9507c957609435 23,28-29,67,79,83-84,87
+  s_e9e5a90425bc26::t_8666c637b3a30c 188-201,205
+lib/storyarn/projects/interchange/imports/queries/preview.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 11,25
+lib/storyarn/projects/trash/execution/flow_project_trash.ex
+  s_e9e5a90425bc26::t_a92d973b0d3780 6
+  s_e9e5a90425bc26::t_ec43498dbe79f6 38,122,575,592
+test/storyarn/flows/editor/commands/dialogue_audio_concurrency_test.exs
+  s_e9e5a90425bc26::t_2ad79fcf71fc48 181,190-205
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 49-55,58,122-127,132
+  s_e9e5a90425bc26::t_f1901fa2c4b43c 1-21,23-48,56-57,59-67,137-152,154-180,182-189,242-283
+  s_e9e5a90425bc26::t_75e17346690dfd 22,153
+  s_e9e5a90425bc26::t_de7700cee53939 68-121,128-131,133-136,206-221,227,229-241
+  s_e9e5a90425bc26::t_9054517b925361 222-226,228
+docs/reference/domain-patterns.md
+  s_e9e5a90425bc26::t_fc9b55815b803b 214,216-222
+  s_e9e5a90425bc26::t_a663f3b207acea 131-132,139,147-149,154
+  s_e9e5a90425bc26::t_d90b7ac64b8448 155-161,169-174,213,215
+  s_e9e5a90425bc26::t_747503e3ef582b 150-153
+  s_e9e5a90425bc26::t_36e78eaeb2d4f7 146
+  s_e9e5a90425bc26::t_cd61cb02c1ecc7 133-138
+  s_e9e5a90425bc26::t_4b3a1952412b33 140-145
+  s_e9e5a90425bc26::t_c454a599f12b18 162-168
+test/storyarn/sheets/localization/localization_owner_test.exs
+  s_e9e5a90425bc26::t_dc023701300520 1,9,22,43,116,124,134,144,152
+test/storyarn_web/helpers/save_status_timer_test.exs
+  s_e9e5a90425bc26::t_42d875806d21c2 33,35
+lib/storyarn/flows.ex
+  s_e9e5a90425bc26::t_bf9ad7364942be 551,554-556
+  s_e9e5a90425bc26::t_1ecccc427223a0 53-58,684
+  s_e9e5a90425bc26::t_5b93277027a86d 44-45,48-49,552-553
+  s_e9e5a90425bc26::t_1ff443e2a3eba4 50
+  s_e9e5a90425bc26::t_c6b094221ff995 51-52,683,685-686
+  s_e9e5a90425bc26::t_6c53d18aceef62 46-47
+  s_e9e5a90425bc26::t_e09cafa0257b2f 687
+lib/storyarn_web/live/sheet_live/handlers/audio_handlers.ex
+  s_e9e5a90425bc26::t_095437c9eece6e 15-17,22-25,32-36,38,40-47,62-72
+test/storyarn/localization/texts/commands/version_restore_test.exs
+  s_e9e5a90425bc26::t_7a36fcb8aa3a33 8,20-21,23,26-46,130-132,135-139
+  s_e9e5a90425bc26::t_dee6f37baaeb1c 1-7,9-19,22,24-25,47-89,91-129,140-141
+  s_e9e5a90425bc26::t_e76a9c358d8e13 90,133-134
+lib/storyarn/sheets/editor/adapters/flows/dialogue_audio.ex
+  s_e9e5a90425bc26::t_f77eb8d824de09 1-5,8-12,19-23
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 6-7,13-18
+lib/storyarn/projects/interchange/imports/execution/import_lifecycle.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 39,106
+lib/storyarn/sheets/versioning/execution/localization_codec.ex
+  s_e9e5a90425bc26::t_6cc473d99e1d20 8,173,182
+lib/storyarn/flows/versioning/adapters/localization/version_restore.ex
+  s_e9e5a90425bc26::t_e2ac5d6c21f50d 1,3,5-6,9,11-14,16-18
+test/storyarn/sheets/references/integration/entity_references_test.exs
+  s_e9e5a90425bc26::t_db11ea20348efb 282-283
+lib/storyarn/scenes/assets/commands/assets.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 17,470,583,835
+  s_e9e5a90425bc26::t_db10e923a0e879 5-7
+  s_e9e5a90425bc26::t_d3d9a279535cea 456-466,468-469,471-476,585-586,783,821-834,836-849
+  s_e9e5a90425bc26::t_e689a758e74e44 584
+  s_e9e5a90425bc26::t_f39b7fab9915f9 850
+lib/storyarn/flows/versioning/projections/localized_text_record.ex
+  s_e9e5a90425bc26::t_fcbadf9a1e0785 3-6
+test/storyarn/architecture/sheets_variable_projection_boundary_test.exs
+  s_e9e5a90425bc26::t_3a72ae01eb1844 61,169,171
+  s_e9e5a90425bc26::t_f24d4cf261533d 1-22,24-26,29-30,33-41,52-60,62-82,93-102,130,137-168,170,172-185
+  s_e9e5a90425bc26::t_7d85a886debf56 23,31-32,42-51,83-92,120,123-129,131-136
+  s_e9e5a90425bc26::t_a4e51511cf257a 27-28,103-110,112-119,121
+  s_e9e5a90425bc26::t_e86b57723e3fbd 111,122
+test/storyarn/projects/reconstitution/project_reconstitution_test.exs
+  s_e9e5a90425bc26::t_46215eecad4de1 10-11
+  s_e9e5a90425bc26::t_a28c5908e3e264 1-9,12-84
+test/storyarn/localization/facade_contract_test.exs
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 11-12,96-97,99,101-102,108-109
+test/storyarn/flows/references/commands/entity_reference_tracker_test.exs
+  s_e9e5a90425bc26::t_6ae4411c710a57 1-223
+lib/storyarn/projects/templates/execution/audit.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 35,1133
+lib/storyarn/flows/references/references.ex
+  s_e9e5a90425bc26::t_c6b094221ff995 15,130-133
+lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex
+  s_e9e5a90425bc26::t_826c29b7e1a3ae 25
+  s_e9e5a90425bc26::t_6cc473d99e1d20 709,2573
+test/storyarn/flows/editor/commands/dialogue_audio_test.exs
+  s_e9e5a90425bc26::t_7f22a85982362e 49-50,54-55
+  s_e9e5a90425bc26::t_637cfd7e921688 126,163,171,181,191,204
+  s_e9e5a90425bc26::t_d8a6299b52f094 1-15,17-30,32-47,58-63,91-125,127-138,159-162,164-170,172-180,182-188,190,192-203,205-225
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 48,51-53,56-57,64-90
+  s_e9e5a90425bc26::t_7a3bc72b913e9b 16,31,189
+  s_e9e5a90425bc26::t_1d6ae55c547fb6 139-158
+lib/storyarn/projects/templates/execution/portable_import.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 17,1147
+lib/storyarn/flows/references/rules/stale_variable_reference_data.ex
+  s_e9e5a90425bc26::t_0e98c0f3ca5cd5 119,125,226,230
+  s_e9e5a90425bc26::t_72f375bf49a29d 1,3,5-8,12-17,19-25,27-28,32,34,36-37,39-42,44,47-49,51,54-57,59-60,62-64,67,69-72,75,77-78,80-82,85-89,91-93,95-98,100,102-107,109-111,114-118,121-122,126-129,131-133,135-136,140,142-145,148-149,152,154-155,158,160-165,167-170,172,176,178-179,182,184-189,191-197,200-203,206-220,224,227,231-232,234
+  s_e9e5a90425bc26::t_f2b1834f6f86fd 11,35
+test/storyarn/architecture/sheets_flow_node_write_ownership_test.exs
+  s_e9e5a90425bc26::t_04b287bc09735d 1,3,10,13-19,30-31,33-44,46-51,56-76,79-85,91,93-104,106,108,110-114,120,122-123,397-420,658-659,663-668,670-701,704-706,713-714,733-736,738-739,741-744,749-755,786-789,799-804,832,836-838,848-854,1062-1078,1082,1085-1086,1089-1092,1114-1120,1153,1201,1206-1208,1445,1455,1599,1601,1603,1738-1740,1747-1811,1826,1829-1831,1848,1852,1862-1884,1891-1895,1897-1898
+  s_e9e5a90425bc26::t_c231da8300b34d 1896
+  s_e9e5a90425bc26::t_8f5911350ac4d9 951-952
+  s_e9e5a90425bc26::t_19c374daa8815d 1530,1568,1590
+  s_e9e5a90425bc26::t_6a493780ece154 926,1887
+  s_e9e5a90425bc26::t_775fa9035d9f4c 633,635-644
+  s_e9e5a90425bc26::t_43edcd05319c50 32,45,86-90,115-119,421-426,660-662,669,702-703,1212
+  s_e9e5a90425bc26::t_8982c13e4ead47 627
+  s_e9e5a90425bc26::t_219dc961e7d9cf 1571-1584,1593-1598,1600
+  s_e9e5a90425bc26::t_f842571e8a28b0 1612-1614,1726-1737
+  s_e9e5a90425bc26::t_03da938211caa5 20,52-55,256-288,364-373,375-379,518-522,907-909,927-937,940,942-945,947-948,955,964,968-974,1886
+  s_e9e5a90425bc26::t_d0bf3790ea707b 577,580-582
+  s_e9e5a90425bc26::t_e7910a5d25e24c 982,984,997
+  s_e9e5a90425bc26::t_d6df624336da84 1209-1210,1318,1436,1448
+  s_e9e5a90425bc26::t_c8553bbf8e41d5 855,1050-1059,1211,1263,1292,1312,1358,1411
+  s_e9e5a90425bc26::t_b59bd42d5d7f9a 1244,1248-1261,1264-1272,1278,1284,1290-1291,1293-1299,1302-1308,1310,1314,1317,1321-1350
+  s_e9e5a90425bc26::t_f117687a456563 1215-1216,1487-1492
+  s_e9e5a90425bc26::t_c6d4f1f90feb2e 583
+  s_e9e5a90425bc26::t_45813bcae447ae 181-182,188-189,235-239,249-253
+  s_e9e5a90425bc26::t_706c5be3a3c4e0 899-901,910,1660-1662
+  s_e9e5a90425bc26::t_e80b6d60ad6360 4,7-8,11,427-516,591-595,603-625,628-632,634,645-657
+  s_e9e5a90425bc26::t_e886a104ad1ad6 1458-1481,1496-1521,1523-1529,1531-1535,1537-1546,1553-1567,1569-1570,1585-1589,1591-1592,1602,1604-1609,1615-1616,1630-1632,1641,1646-1651,1658,1663,1670-1679,1688-1725
+  s_e9e5a90425bc26::t_790e002a447c6a 9
+  s_e9e5a90425bc26::t_4a7f09b8c5f06a 904-906,911-915,919-925,977-981,991-996,1001,1003-1020
+  s_e9e5a90425bc26::t_d4d597f9425f29 1079,1888-1890
+  s_e9e5a90425bc26::t_f81160250f7db5 77-78,92,105,107,109,121
+  s_e9e5a90425bc26::t_19217fe4c1adbc 2,5-6
+  s_e9e5a90425bc26::t_1e651459f1a105 715-724,729,731,737,740,747,757-766,768-778,790-798,806-815,817-827,839-847
+  s_e9e5a90425bc26::t_6c93dacc62284e 707-712,725-728,730,732,745-746,748,756,767,779-785,805,816,828-831,833-835,1093-1113,1121-1152,1154-1200,1202-1205,1213-1214,1217-1243,1245-1247,1262,1273-1277,1279-1283,1285-1289,1300-1301,1309,1311,1313,1315-1316,1319-1320,1351-1357,1359-1410,1412-1435,1437-1444,1446-1447,1449-1454,1456-1457,1610-1611,1741-1746
+  s_e9e5a90425bc26::t_f8cb614ffbc30b 1885
+  s_e9e5a90425bc26::t_59ef295f2ced50 856-898,902-903,916-918,938-939,941,949-950,965-967,975-976,983,985-990,998-1000,1002,1021-1049,1060-1061
+  s_e9e5a90425bc26::t_abebd583521256 21-29
+  s_e9e5a90425bc26::t_98e006744206bf 12,517,523-576,578-579,584-590,596-602
+  s_e9e5a90425bc26::t_c55d3d51a59950 1522,1536,1617-1629,1633-1640,1642-1645,1652-1657,1659,1664-1669,1680-1687
+  s_e9e5a90425bc26::t_c44affa1a11878 289-325,946,953-954,956-961,1080-1081,1083-1084,1087-1088,1812-1825,1827-1828,1832-1843,1846-1847,1850,1853-1854,1857-1861
+  s_e9e5a90425bc26::t_8a7cec15093a61 1482-1486,1493-1495,1547-1552
+  s_e9e5a90425bc26::t_8f59ca41984ddc 626
+  s_e9e5a90425bc26::t_0684ac9c229e84 962-963
+  s_e9e5a90425bc26::t_c525322a7e3357 326-352,1844-1845,1849,1851,1855-1856
+  s_e9e5a90425bc26::t_a77b1ba543c296 124-180,183-187,190-234,240-248,254-255,353-363,374,380-396
+lib/storyarn/sheets/references/commands/entity_projection.ex
+  s_e9e5a90425bc26::t_2ce86fc14ca40e 33
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_ee380fea1170ba 1270-1271
+  s_e9e5a90425bc26::t_fe76c9c4ee1de2 19,39,49,54,812,817,822,827,832,837,842,847,852,1265-1269
+test/storyarn/sheets/editor/queries/dialogue_audio_test.exs
+  s_e9e5a90425bc26::t_0ce1f2e8e49c57 1-4,6-11,13-47,63-71
+  s_e9e5a90425bc26::t_917744f421472f 5,12,48-62
+lib/storyarn/projects/templates/execution/installation.ex
+  s_e9e5a90425bc26::t_405ab15f41c656 18,657
+lib/storyarn/localization.ex
+  s_e9e5a90425bc26::t_b1021e9c05a348 207-219,232-234,239,249,292-300
+  s_e9e5a90425bc26::t_ea50d9404072de 235-237
+  s_e9e5a90425bc26::t_181a0357576a18 301
+lib/storyarn/flows/versioning/execution/localization_codec.ex
+  s_e9e5a90425bc26::t_6cc473d99e1d20 6,120,128
+  s_e9e5a90425bc26::t_609373828dd4b1 127,129
+lib/storyarn/projects/assets/assets.ex
+  s_e9e5a90425bc26::t_bab5110e3373e8 17,51-61
+  s_e9e5a90425bc26::t_ee877ef82a03e0 62
+lib/storyarn/projects/trash/execution/sheet_project_trash.ex
+  s_e9e5a90425bc26::t_d724409f1f8462 67-68,109-110,145,201,211
+  s_e9e5a90425bc26::t_a92d973b0d3780 14
+lib/storyarn/sheets/localization/localization.ex
+  s_e9e5a90425bc26::t_d2badcf50407e5 28,40,42
+  s_e9e5a90425bc26::t_296235cc4aee84 10,22-27,29-39,41
+lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex
+  s_e9e5a90425bc26::t_6cc473d99e1d20 24,702
+  s_e9e5a90425bc26::t_dde2adae5c4446 62,472,653-654
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_fe76c9c4ee1de2 19,39,49,54,812,817,822,827,832,837,842,847,852,1265-1271
+lib/storyarn/projects.ex
+  s_e9e5a90425bc26::t_bab5110e3373e8 287-298
+test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs
+  s_e9e5a90425bc26::t_40bb9c3a81012b 25,695-696,700-701,705-710,717-718,726-729,734-735,2693-2708
+test/storyarn/flows/localization/localization_lock_test.exs
+  s_e9e5a90425bc26::t_dc023701300520 1,4-5,16-17,20
+test/storyarn/sheets/assets/commands/assets_test.exs
+  s_e9e5a90425bc26::t_7d617266855847 118-151
+test/storyarn/scenes/assets/commands/assets_test.exs
+  s_e9e5a90425bc26::t_7d617266855847 183-222
+lib/storyarn/flows/versioning/adapters/projects/asset_registration.ex
+  s_e9e5a90425bc26::t_4671c3a5a49b1e 1,3,5-6,9,11-14
+docs/reference/context-map.md
+  s_e9e5a90425bc26::t_208a1aa15316b5 78-81
+  s_e9e5a90425bc26::t_a663f3b207acea 31-35,82,89-93
+  s_e9e5a90425bc26::t_fc9b55815b803b 52-59
+  s_e9e5a90425bc26::t_747503e3ef582b 70
+  s_e9e5a90425bc26::t_c454a599f12b18 5,39-51,83-88,125-126,131,138
+  s_e9e5a90425bc26::t_09eb9730969830 61,63-69,71-72
+  s_e9e5a90425bc26::t_1b6d472421b46e 60
+  s_e9e5a90425bc26::t_c6fc41d430db38 62
+  s_e9e5a90425bc26::t_4113daead77dcc 94
+lib/storyarn/localization/texts/commands/version_restore.ex
+  s_e9e5a90425bc26::t_d2badcf50407e5 48,56,85,151,180,184,285,287,289,296,310,312,317
+  s_e9e5a90425bc26::t_08bb928ad55868 319
+  s_e9e5a90425bc26::t_89be45557723be 58,64-65,67
+  s_e9e5a90425bc26::t_828cb9c59c7e99 1,3,5-8,13-19,23-24,26-27,29-36,39-42,44-46,49,52-54,57,60-62,68-69,71-81,86-102,106-110,113-117,119-148,152-153,155-166,168-179,181-183,185-202,205-210,212-218,220-226,228-231,234,245-246,248-254,256-257,260-261,263-271,273-282,286,288,290-295,297-304,308,314,316,321-322,324-325,327-331,334,336-337,339-344,346-348,350,352-353,360,362-364,371-379,383-386
+  s_e9e5a90425bc26::t_4fe16dccd20dcf 235,238-242
+test/storyarn/sheets/versioning/execution/sheet_snapshot_contract_test.exs
+  s_e9e5a90425bc26::t_2e945168609acf 3249-3251
+lib/storyarn/localization/texts/texts.ex
+  s_e9e5a90425bc26::t_d2badcf50407e5 66,68-69
+  s_e9e5a90425bc26::t_ea50d9404072de 113
+  s_e9e5a90425bc26::t_3084753ce6701a 13,49-65,67,70-81
+  s_e9e5a90425bc26::t_812caefef94306 82
+lib/storyarn/projects/references/execution/variable_usage.ex
+  s_e9e5a90425bc26::t_f2b1834f6f86fd 38
+  s_e9e5a90425bc26::t_0e98c0f3ca5cd5 16
+lib/storyarn/sheets/versioning/adapters/localization/version_restore.ex
+  s_e9e5a90425bc26::t_e2ac5d6c21f50d 1,3,5-6,9,11-13
+lib/storyarn/flows/README.md
+  s_e9e5a90425bc26::t_d2e421c5b930f4 31-32,108-115
+  s_e9e5a90425bc26::t_b8bf9bcc04851d 34-37
+  s_e9e5a90425bc26::t_747503e3ef582b 82-84
+  s_e9e5a90425bc26::t_9c2ae33dfa9127 14
+  s_e9e5a90425bc26::t_c454a599f12b18 52,101,120-122
+  s_e9e5a90425bc26::t_a663f3b207acea 29-30,38
+  s_e9e5a90425bc26::t_182ba2d27cdcb4 33,102-107,116-119
+  s_e9e5a90425bc26::t_cd61cb02c1ecc7 123-126
+test/storyarn/flows/references/commands/stale_variable_reference_repair_test.exs
+  s_e9e5a90425bc26::t_0401735c375b54 1-2,4-5,7,9-13
+lib/storyarn_web/live/sheet_live/helpers/audio_data_helpers.ex
+  s_e9e5a90425bc26::t_095437c9eece6e 136-137
+  s_e9e5a90425bc26::t_7987f8a1058d42 54-55,59-68,75-81,89-105,142-162
+  s_e9e5a90425bc26::t_70e4279650402f 138-139
+  s_e9e5a90425bc26::t_f914ad00f41ac1 163
+lib/storyarn/projects/README.md
+  s_e9e5a90425bc26::t_c44affa1a11878 159-160
+  s_e9e5a90425bc26::t_3beeb6171b6269 167-172
+  s_e9e5a90425bc26::t_e5364fbae428e7 189-192
+  s_e9e5a90425bc26::t_4b3a1952412b33 224-225
+  s_e9e5a90425bc26::t_af3e29261ea8be 4-7,53-64
+  s_e9e5a90425bc26::t_747503e3ef582b 155-157
+  s_e9e5a90425bc26::t_182ba2d27cdcb4 226-228
+  s_e9e5a90425bc26::t_866f873c746467 65
+test/storyarn/projects/versioning/execution/builders/sheet_builder_test.exs
+  s_e9e5a90425bc26::t_2e945168609acf 1040-1042
+test/storyarn/projects/assets/commands/asset_registration_concurrency_test.exs
+  s_e9e5a90425bc26::t_df8dcf034271d5 102
+  s_e9e5a90425bc26::t_b60291be3ae5df 83
+  s_e9e5a90425bc26::t_554f17d40861a0 1-19,55,60,63,69,76,79,81,86,89,94,99-101,106-115,119-133,140-173,175-181,185,191-193
+  s_e9e5a90425bc26::t_4fb703d3bdcea4 134-139
+  s_e9e5a90425bc26::t_9c937de805cbff 20-47,50-54,56-59,61-62,64-68,70-75,77-78,80,82,84-85,87-88,90-93,95-98,103-105,116-118,174,182-184,186-190
+  s_e9e5a90425bc26::t_7c521fc39942c6 48-49
+priv/gettext/sheets.pot
+  s_e9e5a90425bc26::t_953c8162c0c628 79,84,89,122,286,445-459
+  s_e9e5a90425bc26::t_3e829fb288d961 15,21,27,107,225,231,238-239,245,251,257,263,269,275,281,318,324,330,336,342,429,435,441
+lib/storyarn_web/live/project_live/components/settings_components.ex
+  s_e9e5a90425bc26::t_34790abfd09c16 130-139,163-169
+  s_e9e5a90425bc26::t_28e0d833fad6cd 170-171
+lib/storyarn/localization/README.md
+  s_e9e5a90425bc26::t_c454a599f12b18 110-117
+  s_e9e5a90425bc26::t_3beeb6171b6269 97-109
+priv/gettext/projects.pot
+  s_e9e5a90425bc26::t_fe76c9c4ee1de2 19,39,49,54,812,817,822,827,832,837,842,847,852,1265-1271
+lib/storyarn/flows/editor/editor.ex
+  s_e9e5a90425bc26::t_bf9ad7364942be 12,74-77
+test/storyarn/projects/references/commands/variable_reference_tracker_test.exs
+  s_e9e5a90425bc26::t_40d52d49a07f5e 3879-3888
+  s_e9e5a90425bc26::t_0401735c375b54 13,990-1011,1303
+  s_e9e5a90425bc26::t_a5f023746c64ed 1305-1322
+  s_e9e5a90425bc26::t_e046db9a595d79 1040,1087,1173,1240,1263,1287,1301,1356,1512,1549,1601,1645,1684,1718-1719,1763,2344,2378,2409-2410,2442,2485
+  s_e9e5a90425bc26::t_9670f285a146e8 1302
+  s_e9e5a90425bc26::t_772e9944d89432 1304
+test/storyarn/architecture/flows_internal_structure_test.exs
+  s_e9e5a90425bc26::t_eefba0fc2a25c3 11,15
+test/storyarn/architecture/sheets_internal_structure_test.exs
+  s_c47395bf388e5b::t_984b9105687204 13,16
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f8fb43fcd132625d138cba6d6616c66e90b29951",
+  "prompts": {},
+  "sessions": {
+    "s_c47395bf388e5b": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a05246-c1e8-7a91-83e8-ea127cc9e3de",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
