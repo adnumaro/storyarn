@@ -17,9 +17,7 @@ defmodule Storyarn.Projects.References do
   @spec update_flow_node_entity_references(map(), keyword()) :: :ok | {:error, term()}
   defdelegate update_flow_node_entity_references(node, opts \\ []), to: EntityTracker
   defdelegate update_scene_pin_entity_references(pin, opts \\ []), to: EntityTracker
-  defdelegate delete_scene_pin_entity_references(pin_id), to: EntityTracker
   defdelegate update_scene_zone_entity_references(zone, opts \\ []), to: EntityTracker
-  defdelegate delete_scene_zone_entity_references(zone_id), to: EntityTracker
   defdelegate delete_target_references(target_type, target_id), to: EntityTracker
 
   @spec rebuild_project_entity_references(integer()) :: :ok | {:error, term()}
@@ -45,16 +43,10 @@ defmodule Storyarn.Projects.References do
   defdelegate validate_entity_snapshot_variable_references(project_id, entity_type, snapshot),
     to: VariableTracker
 
-  defdelegate delete_flow_node_variable_references(node_id), to: VariableTracker
   defdelegate update_scene_pin_variable_references(pin, opts \\ []), to: VariableTracker
-  defdelegate delete_scene_pin_variable_references(pin_id), to: VariableTracker
   defdelegate update_scene_zone_variable_references(zone, opts \\ []), to: VariableTracker
-  defdelegate delete_scene_zone_variable_references(zone_id), to: VariableTracker
 
   defdelegate update_scene_ambient_flow_variable_references(ambient_flow, opts \\ []),
-    to: VariableTracker
-
-  defdelegate delete_scene_ambient_flow_variable_references(ambient_flow_id),
     to: VariableTracker
 
   defdelegate count_variable_usage(block_id), to: VariableUsage

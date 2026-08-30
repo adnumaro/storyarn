@@ -3,11 +3,11 @@ defmodule Storyarn.Projects.FlowProjectTrash do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.FlowEntityTrashReferences
-  alias Storyarn.Projects.FlowLocalizationProjection
   alias Storyarn.Projects.FlowReferenceIntegrity
   alias Storyarn.Projects.Persistence.FlowEntityTrashReferenceRecord
   alias Storyarn.Projects.Persistence.FlowNodeRecord
@@ -35,7 +35,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
   @spec restore(pos_integer(), pos_integer()) :: {:ok, FlowRecord.t()} | {:error, term()}
   def restore(project_id, flow_id)
       when is_integer(project_id) and project_id > 0 and is_integer(flow_id) and flow_id > 0 do
-    restore(project_id, flow_id, &FlowLocalizationProjection.extract_flow_nodes/1)
+    restore(project_id, flow_id, &Localization.extract_flow_nodes/1)
   end
 
   def restore(_project_id, _flow_id), do: {:error, :flow_not_found}
@@ -119,7 +119,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
         ) || Repo.rollback(:flow_not_found)
 
       node_ids = Repo.all(from(node in FlowNodeRecord, where: node.flow_id == ^locked_flow.id, select: node.id))
-      FlowLocalizationProjection.purge_texts_for_sources("flow_node", node_ids)
+      Localization.purge_flow_node_texts(node_ids)
 
       case Repo.delete(locked_flow) do
         {:ok, deleted} -> deleted
@@ -572,7 +572,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
       )
 
     Enum.flat_map(children, fn child ->
-      FlowLocalizationProjection.delete_flow_node_texts_for_flows([child.id])
+      Localization.delete_flow_node_texts_for_flows([child.id])
 
       Repo.update_all(
         from(flow in FlowRecord, where: flow.id == ^child.id and is_nil(flow.deleted_at)),
@@ -589,7 +589,7 @@ defmodule Storyarn.Projects.FlowProjectTrash do
   end
 
   defp soft_delete_locked_without_global_sweep(locked_flow) do
-    FlowLocalizationProjection.delete_flow_node_texts_for_flows([locked_flow.id])
+    Localization.delete_flow_node_texts_for_flows([locked_flow.id])
     deleted = soft_delete!(locked_flow)
     child_ids = soft_delete_descendants(locked_flow.project_id, locked_flow.id)
 

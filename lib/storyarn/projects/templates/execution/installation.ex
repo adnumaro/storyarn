@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectCrud
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.ProjectTemplates.Artifact
   alias Storyarn.Projects.ProjectTemplates.Audit
   alias Storyarn.Projects.ProjectTemplates.Authorization
@@ -22,7 +23,6 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateInstall
   alias Storyarn.Projects.ProjectTemplates.ProjectTemplateVersion
   alias Storyarn.Projects.Versioning.Builders.AssetCopyError
-  alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.SnapshotStorage
   alias Storyarn.Projects.WorkspaceAccess
   alias Storyarn.Repo
@@ -654,7 +654,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
       )
 
     with {:ok, project} <-
-           ProjectRecovery.materialize_template(workspace.id, snapshot, scope.user.id, recovery_opts),
+           ProjectReconstitution.materialize_template(workspace.id, snapshot, scope.user.id, recovery_opts),
          {:ok, project} <- mark_template_origin(project, version),
          {:ok, notification_outcome} <- complete_or_record_install(scope, version, workspace, project, attrs, opts),
          :ok <- run_before_install_transaction_commit(opts) do

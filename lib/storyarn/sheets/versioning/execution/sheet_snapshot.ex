@@ -22,6 +22,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
   alias Storyarn.Sheets.SheetAvatar
   alias Storyarn.Sheets.TableColumn
   alias Storyarn.Sheets.TableRow
+  alias Storyarn.Sheets.Versioning.Adapters.Localization.VersionRestore, as: LocalizationVersionRestore
   alias Storyarn.Sheets.Versioning.Commands.AssetHashResolver
   alias Storyarn.Sheets.Versioning.Commands.DiffHelpers
   alias Storyarn.Sheets.Versioning.Commands.EntityRestoreSafety
@@ -705,7 +706,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
           Map.get(snapshot, "localization", [])
         )
 
-      LocalizationSnapshotCodec.restore(
+      LocalizationVersionRestore.restore(
         project_id,
         localization,
         id_maps
@@ -2569,7 +2570,7 @@ defmodule Storyarn.Sheets.Versioning.SheetSnapshot do
       )
 
     with :ok <-
-           LocalizationSnapshotCodec.restore(
+           LocalizationVersionRestore.restore(
              sheet.project_id,
              localization,
              id_maps

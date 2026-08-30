@@ -53,8 +53,6 @@ defmodule Storyarn.Sheets.References do
   defdelegate extract_block_value_references(type, value), to: EntityProjection
   defdelegate delete_block_references(block_id), to: EntityProjection
   defdelegate delete_block_references_for_sources(block_ids), to: EntityProjection
-  defdelegate update_flow_node_references(node, opts \\ []), to: EntityProjection
-  defdelegate delete_flow_node_references(node_id), to: EntityProjection
   defdelegate delete_target_references(target_type, target_id), to: EntityProjection
 
   defdelegate flow_node_references_current?(node), to: Backlinks

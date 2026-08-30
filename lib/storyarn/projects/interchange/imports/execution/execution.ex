@@ -17,7 +17,6 @@ defmodule Storyarn.Projects.Imports.Execution do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Imports.Error
-  alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.Imports.NotificationDelivery
   alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Projects.Imports.PlanCleanup
@@ -30,6 +29,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Repo
 
   @materialization_timeout 300_000
@@ -339,7 +339,7 @@ defmodule Storyarn.Projects.Imports.Execution do
     with :ok <- Replacement.prepare_project_in_transaction(attempt, project),
          {:ok, prepared_attempt} <- mark_replacement_prepared(attempt),
          {:ok, result} <-
-           Materializer.materialize_locked_project_in_transaction(project, plan,
+           ProjectReconstitution.materialize_locked_import_in_transaction(project, plan,
              conflict_strategy: Shared.strategy_atom(attempt.conflict_strategy)
            ) do
       {:ok, prepared_attempt, result}

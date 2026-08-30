@@ -41,7 +41,6 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
     create_version: 2,
     create_version: 3,
     delete_block: 1,
-    delete_flow_node_references: 1,
     delete_sheet: 1,
     delete_sheet: 2,
     delete_sheet_subtree: 1,
@@ -210,8 +209,6 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
     update_block_config: 2,
     update_block_value: 2,
     update_dialogue_audio: 4,
-    update_flow_node_references: 1,
-    update_flow_node_references: 2,
     update_gallery_image: 2,
     update_sheet: 2,
     update_table_cell: 3,
@@ -226,15 +223,24 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
 
   @public_types ~w(attrs block changeset id sheet sheet_avatar validation_error)a
 
+  # ENG-103 deliberately removed these former cross-context writers. Keeping a
+  # compatibility delegate would continue to present Sheets as an authority
+  # over Flow-owned node data and shared reference indexes.
+  @retired_cross_context_writers [
+    delete_flow_node_references: 1,
+    update_flow_node_references: 1,
+    update_flow_node_references: 2
+  ]
+
   # Compared against the compiled facade at baseline 350f19cf. The new module
   # description and semantic argument name for get_reference_target/3 are
   # intentional. validate_reference_target/3 now names the stable References
   # contract instead of leaking the deleted Persistence.FlowRecord projection.
-  @docs_digest "470188fa4b7e78416af4ef3f85cd3a1e01814ecedf00216263b9a8c44f347de9"
+  @docs_digest "937fa3a6874138e2d037dfce75f43b31fadd97d56b35231f4ae8e48c22916677"
   @types_digest "2c676b07271b72ecc2543ffd1c3193849a9b4a9a2e6905bf48a3456518a0d345"
-  @specs_digest "e96b27f620a750b5c75ec60093c0456c74c562cdbffa17b93dee1377e39a6b9e"
+  @specs_digest "0fc5c8b7047eab55752c5db414c353ce6e55c341ecc0e0e0f9df19dcada704a5"
 
-  test "the root facade preserves every established function and arity" do
+  test "the root facade preserves the reviewed public contract and retired writers stay absent" do
     public_functions =
       :functions
       |> Sheets.__info__()
@@ -242,13 +248,14 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
       |> MapSet.new()
 
     assert public_functions == MapSet.new(@public_contract)
+    assert MapSet.disjoint?(public_functions, MapSet.new(@retired_cross_context_writers))
   end
 
   test "the root facade remains declarative delegation without business logic" do
     source = File.read!("lib/storyarn/sheets.ex")
 
     refute Regex.match?(~r/^\s*def(?:p|macro|macrop)?\s/m, source)
-    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 199
+    assert length(Regex.scan(~r/^\s*defdelegate\s/m, source)) == 197
   end
 
   test "the compiled facade preserves docs and semantic default signatures for every arity" do
@@ -279,8 +286,8 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 199
-    assert status_counts == %{documented: 144, hidden: 10, none: 45}
+    assert length(function_docs) == 197
+    assert status_counts == %{documented: 142, hidden: 10, none: 45}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end
@@ -318,7 +325,7 @@ defmodule Storyarn.Architecture.SheetsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 56
+    assert length(normalized_specs) == 54
     assert digest(normalized_specs) == @specs_digest
     refute Enum.any?(normalized_specs, fn {_name, _arity, spec} -> spec =~ ".Data." end)
   end

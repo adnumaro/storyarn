@@ -10,7 +10,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     "interchange" => ~w(exports imports),
     "lifecycle" => ~w(commands entities events projections queries reference_data rules),
     "overview" => ~w(contracts execution queries rules),
-    "references" => ~w(commands entities execution projections queries records reference_data rules),
+    "references" => ~w(adapters commands entities execution projections queries records reference_data rules),
     "templates" => ~w(adapters commands entities execution queries rules),
     "trash" => ~w(execution),
     "versioning" => ~w(adapters commands contracts entities execution projections queries rules)
@@ -35,7 +35,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     ),
     "lifecycle" => ~w(commands events projections queries reference_data rules),
     "overview" => ~w(execution queries rules),
-    "references" => ~w(commands execution projections queries records reference_data rules),
+    "references" => ~w(adapters commands execution projections queries records reference_data rules),
     "templates" => ~w(adapters commands execution queries rules),
     "trash" => ~w(execution),
     "versioning" => ~w(adapters commands execution projections queries rules)
@@ -155,7 +155,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     assert directories_in(@root) ==
              @capability_roles
              |> Map.keys()
-             |> Kernel.++(["content"])
+             |> Kernel.++(["content", "reconstitution"])
              |> Enum.sort()
 
     Enum.each(@capability_roles, fn {capability, expected_roles} ->
@@ -167,6 +167,21 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
       assert root_files_in(capability_root) ==
                @capability_root_files |> Map.fetch!(capability) |> Enum.sort()
     end)
+  end
+
+  test "reconstitution is a closed internal boundary, not a tenth capability facade" do
+    reconstitution_root = Path.join(@root, "reconstitution")
+
+    assert File.dir?(reconstitution_root)
+    assert directories_in(reconstitution_root) == []
+    assert root_files_in(reconstitution_root) == ["project_reconstitution.ex"]
+    refute File.exists?(Path.join(@root, "reconstitution.ex"))
+    refute File.exists?(Path.join(reconstitution_root, "reconstitution.ex"))
+
+    source = File.read!(Path.join(reconstitution_root, "project_reconstitution.ex"))
+
+    assert source =~ ~r/^defmodule Storyarn\.Projects\.ProjectReconstitution do/m
+    refute File.read!("lib/storyarn/projects.ex") =~ "Storyarn.Projects.ProjectReconstitution"
   end
 
   test "content is a closed internal model, not a capability or public facade" do

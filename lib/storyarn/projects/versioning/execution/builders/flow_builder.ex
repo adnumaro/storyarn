@@ -13,12 +13,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   import Storyarn.Projects.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Storyarn.Platform.Shared.HtmlUtils
-  alias Storyarn.Projects.FlowLocalizationProjection
   alias Storyarn.Projects.FlowReferenceGraph, as: NodeCreate
   alias Storyarn.Projects.FlowWordCount, as: WordCount
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationPlaceholderValidator, as: HtmlHandler
-  alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.LocalizationRuntimeKey, as: RuntimeKey
   alias Storyarn.Projects.LocalizationSourceContract, as: SourceContract
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
@@ -36,6 +34,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.References.EntityReferenceProjection
   alias Storyarn.Projects.References.RichTextMentions
   alias Storyarn.Projects.SheetReadModel
+  alias Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore, as: LocalizationVersionRestore
   alias Storyarn.Projects.Versioning.AssetMaterializationScope
   alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
@@ -73,7 +72,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
         fn ->
           lock_snapshot_project!(flow.project_id)
           locked_flow = lock_flow_for_snapshot!(flow)
-          :ok = LocalizationProjection.lock_inventory!(locked_flow.project_id)
+          :ok = LocalizationVersionRestore.lock_inventory!(locked_flow.project_id)
           do_build_snapshot(locked_flow)
         end,
         isolation: :repeatable_read
@@ -94,7 +93,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
         fn ->
           lock_snapshot_project!(flow.project_id)
           locked_flow = lock_flow_for_snapshot!(flow)
-          :ok = LocalizationProjection.lock_inventory!(locked_flow.project_id)
+          :ok = LocalizationVersionRestore.lock_inventory!(locked_flow.project_id)
           do_build_capture_snapshot(locked_flow)
         end,
         isolation: :repeatable_read
@@ -976,7 +975,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
            lock_flow_external_references(Repo, snapshot, project_id, opts),
          {:ok, external_refs} <-
            materialize_flow_external_references(snapshot, project_id, opts, materialization_mode(opts)),
-         :ok <- LocalizationProjection.lock_inventory!(project_id),
+         :ok <- LocalizationVersionRestore.lock_inventory!(project_id),
          is_main = restorable_main_state(Repo, project_id, nil, snapshot["is_main"], opts),
          :ok <- run_before_main_write_hook(opts),
          {:ok, flow_id} <-
@@ -1227,7 +1226,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp maybe_restore_instantiated_flow_localization(project_id, snapshot, id_maps, opts) do
     if Keyword.get(opts, :restore_localization, true) do
       with :ok <- restore_instantiated_flow_localization(project_id, snapshot, id_maps, opts) do
-        FlowLocalizationProjection.extract_flow_nodes(id_maps.flow[snapshot["original_id"]])
+        LocalizationVersionRestore.extract_flow(id_maps.flow[snapshot["original_id"]])
       end
     else
       :ok
@@ -1264,7 +1263,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
                opts,
                :portable
              ) do
-        LocalizationSnapshotCodec.restore(
+        LocalizationVersionRestore.restore_flow(
           project_id,
           localization,
           id_maps

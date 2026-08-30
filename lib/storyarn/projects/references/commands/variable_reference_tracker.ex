@@ -26,11 +26,9 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
 
   import Ecto.Query
 
-  alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.References.FlowCondition
-  alias Storyarn.Projects.References.FlowNodeRepair
   alias Storyarn.Projects.References.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.References.Persistence.FlowNodeRecord
   alias Storyarn.Projects.References.Persistence.FlowRecord
@@ -1532,16 +1530,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
     {:error, {:invalid_variable_reference_entity_snapshot, project_id, entity_type, snapshot}}
   end
 
-  @doc """
-  Deletes all variable references for a node.
-  Called when a node is deleted (as backup — DB cascade handles this too).
-  """
-  @spec delete_references(integer()) :: :ok
-  def delete_references(node_id) do
-    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "flow_node" and vr.source_id == ^node_id))
-    :ok
-  end
-
   # ---------------------------------------------------------------------------
   # Map zone variable references
   # ---------------------------------------------------------------------------
@@ -1567,15 +1555,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
   end
 
   def update_scene_zone_references(_zone, _opts), do: :ok
-
-  @doc """
-  Deletes all variable references for a map zone.
-  """
-  @spec delete_map_zone_references(integer()) :: :ok
-  def delete_map_zone_references(zone_id) do
-    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "scene_zone" and vr.source_id == ^zone_id))
-    :ok
-  end
 
   # ---------------------------------------------------------------------------
   # Map pin variable references
@@ -1603,15 +1582,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
 
   def update_scene_pin_references(_pin, _opts), do: :ok
 
-  @doc """
-  Deletes all variable references for a map pin.
-  """
-  @spec delete_map_pin_references(integer()) :: :ok
-  def delete_map_pin_references(pin_id) do
-    Repo.delete_all(from(vr in VariableReference, where: vr.source_type == "scene_pin" and vr.source_id == ^pin_id))
-    :ok
-  end
-
   @doc "Updates the read reference for an on-event Scene ambient-flow trigger."
   @spec update_scene_ambient_flow_references(map(), keyword()) :: :ok | {:error, term()}
   def update_scene_ambient_flow_references(ambient_flow, opts \\ [])
@@ -1630,20 +1600,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
   end
 
   def update_scene_ambient_flow_references(_ambient_flow, _opts), do: :ok
-
-  @doc "Deletes all variable references for a Scene ambient-flow link."
-  @spec delete_scene_ambient_flow_references(integer()) :: :ok
-  def delete_scene_ambient_flow_references(ambient_flow_id) do
-    Repo.delete_all(
-      from(reference in VariableReference,
-        where:
-          reference.source_type == "scene_ambient_flow" and
-            reference.source_id == ^ambient_flow_id
-      )
-    )
-
-    :ok
-  end
 
   @doc """
   Returns all variable references for a block, with source info.
@@ -1919,42 +1875,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
   end
 
   @doc """
-  Repairs all stale variable references across a project.
-  Updates node JSON to reflect current sheet shortcut + variable names.
-  Returns `{:ok, count}` where count is the number of repaired nodes,
-  or `{:error, {:partial_variable_reference_repair, details}}` when one or
-  more independent node repairs fail. Successful nodes remain repaired and
-  `details.repaired_count` reports that progress.
-  """
-  @spec repair_stale_references(integer()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def repair_stale_references(project_id) do
-    # Get all variable references for this project with current block info + source fields
-    refs_with_info =
-      project_id
-      |> VariableProjectionQueries.list_variable_refs_with_block_info_for_repair()
-      |> Enum.map(&compute_table_current_variable/1)
-
-    # Group by node_id to batch repairs per node
-    repairs_by_node =
-      refs_with_info
-      |> Enum.group_by(& &1.node_id)
-      |> Enum.reduce(%{}, fn {node_id, refs}, acc ->
-        first = hd(refs)
-        repaired_data = repair_node_data(first.node_type, first.node_data, refs)
-
-        if repaired_data == first.node_data do
-          acc
-        else
-          Map.put(acc, node_id, repaired_data)
-        end
-      end)
-
-    repairs_by_node
-    |> apply_repairs()
-    |> broadcast_repair_result(project_id)
-  end
-
-  @doc """
   Returns a MapSet of node IDs in a flow that have at least one stale reference.
   Uses pure SQL comparison — no JSON scanning in Elixir.
   """
@@ -1972,53 +1892,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
   defp list_stale_table_node_ids(flow_id) do
     VariableProjectionQueries.list_stale_table_node_ids(flow_id)
   end
-
-  defp apply_repairs(repairs_by_node) do
-    {repaired_count, failures} =
-      repairs_by_node
-      |> Enum.sort_by(&elem(&1, 0))
-      |> Enum.reduce({0, []}, &collect_repair_result/2)
-
-    case failures do
-      [] ->
-        {:ok, repaired_count}
-
-      failures ->
-        {:error,
-         {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: Enum.reverse(failures)}}}
-    end
-  end
-
-  defp collect_repair_result({node_id, _data} = repair, {repaired_count, failures}) do
-    case repair_single_node(repair) do
-      {:ok, _node, _meta} -> {repaired_count + 1, failures}
-      :skip -> {repaired_count, failures}
-      {:error, reason} -> {repaired_count, [{node_id, reason} | failures]}
-    end
-  end
-
-  defp repair_single_node({node_id, new_data}) do
-    case Repo.get(FlowNodeRecord, node_id) do
-      nil -> :skip
-      node -> FlowNodeRepair.update_data_without_dashboard_broadcast(node, new_data)
-    end
-  end
-
-  defp broadcast_repair_result({:ok, count} = result, project_id) when count > 0 do
-    Collaboration.broadcast_dashboard_change(project_id, :flows)
-    result
-  end
-
-  defp broadcast_repair_result(
-         {:error, {:partial_variable_reference_repair, %{repaired_count: count}}} = result,
-         project_id
-       )
-       when count > 0 do
-    Collaboration.broadcast_dashboard_change(project_id, :flows)
-    result
-  end
-
-  defp broadcast_repair_result(result, _project_id), do: result
 
   # -- Private --
 
@@ -3097,225 +2970,6 @@ defmodule Storyarn.Projects.References.VariableReferenceTracker do
 
   defp get_project_id(flow_id) do
     Repo.one(from(f in FlowRecord, where: f.id == ^flow_id, select: f.project_id))
-  end
-
-  # Repairs node data by replacing stale shortcut/variable references with current values.
-  # Uses deterministic matching via source_sheet/source_variable stored in the reference.
-  defp repair_node_data("instruction", data, refs) do
-    assignments = data["assignments"] || []
-
-    assignments =
-      assignments
-      |> repair_write_targets(Enum.filter(refs, &(&1.kind == "write")))
-      |> repair_read_sources(Enum.filter(refs, &(&1.kind == "read")))
-
-    Map.put(data, "assignments", assignments)
-  end
-
-  defp repair_node_data("condition", data, refs) do
-    read_refs = Enum.filter(refs, &(&1.kind == "read"))
-    condition = repair_condition(data["condition"], read_refs)
-
-    if condition == data["condition"] do
-      data
-    else
-      Map.put(data, "condition", condition)
-    end
-  end
-
-  defp repair_node_data("dialogue", %{"responses" => responses} = data, refs) when is_list(responses) do
-    read_refs = Enum.filter(refs, &(&1.kind == "read"))
-    write_refs = Enum.filter(refs, &(&1.kind == "write"))
-
-    repaired_responses =
-      Enum.map(responses, &repair_dialogue_response(&1, write_refs, read_refs))
-
-    if repaired_responses == responses,
-      do: data,
-      else: Map.put(data, "responses", repaired_responses)
-  end
-
-  defp repair_node_data("dialogue", data, _refs), do: data
-
-  defp repair_node_data(_, data, _refs), do: data
-
-  defp repair_dialogue_response(%{} = response, write_refs, read_refs) do
-    response
-    |> repair_dialogue_response_condition(read_refs)
-    |> repair_dialogue_response_assignments(write_refs, read_refs)
-  end
-
-  defp repair_dialogue_response(response, _write_refs, _read_refs), do: response
-
-  defp repair_dialogue_response_condition(%{"condition" => %{} = condition} = response, read_refs) do
-    repaired_condition = repair_condition(condition, read_refs)
-
-    if repaired_condition == condition,
-      do: response,
-      else: Map.put(response, "condition", repaired_condition)
-  end
-
-  defp repair_dialogue_response_condition(%{"condition" => condition} = response, read_refs)
-       when is_binary(condition) and condition != "" do
-    case Jason.decode(condition) do
-      {:ok, %{} = decoded_condition} ->
-        repaired_condition = repair_condition(decoded_condition, read_refs)
-
-        if repaired_condition == decoded_condition,
-          do: response,
-          else: Map.put(response, "condition", Jason.encode!(repaired_condition))
-
-      _invalid ->
-        response
-    end
-  end
-
-  defp repair_dialogue_response_condition(response, _read_refs), do: response
-
-  defp repair_dialogue_response_assignments(
-         %{"instruction_assignments" => [_assignment | _rest] = assignments} = response,
-         write_refs,
-         read_refs
-       ) do
-    repaired_assignments = repair_assignments(assignments, write_refs, read_refs)
-
-    if repaired_assignments == assignments,
-      do: response,
-      else: Map.put(response, "instruction_assignments", repaired_assignments)
-  end
-
-  defp repair_dialogue_response_assignments(%{"instruction_assignments" => invalid} = response, _write_refs, _read_refs)
-       when invalid not in [nil, []], do: response
-
-  defp repair_dialogue_response_assignments(response, write_refs, read_refs) do
-    repair_legacy_response_assignments(response, write_refs, read_refs)
-  end
-
-  defp repair_legacy_response_assignments(%{"instruction" => instruction} = response, write_refs, read_refs)
-       when is_binary(instruction) and instruction != "" do
-    case Jason.decode(instruction) do
-      {:ok, assignments} when is_list(assignments) ->
-        repaired_assignments = repair_assignments(assignments, write_refs, read_refs)
-
-        if repaired_assignments == assignments,
-          do: response,
-          else: Map.put(response, "instruction", Jason.encode!(repaired_assignments))
-
-      _invalid ->
-        response
-    end
-  end
-
-  defp repair_legacy_response_assignments(response, _write_refs, _read_refs), do: response
-
-  defp repair_assignments(assignments, write_refs, read_refs) do
-    assignments
-    |> repair_write_targets(write_refs)
-    |> repair_read_sources(read_refs)
-  end
-
-  defp repair_condition(%{"blocks" => blocks} = condition, read_refs) when is_list(blocks) do
-    Map.put(condition, "blocks", Enum.map(blocks, &repair_block(&1, read_refs)))
-  end
-
-  defp repair_condition(condition, _read_refs), do: condition
-
-  # Deterministic repair: match each assignment's sheet+variable to a ref's source_sheet+source_variable.
-  defp repair_write_targets(assignments, write_refs) when is_list(assignments) do
-    Enum.map(assignments, &repair_write_target(&1, write_refs))
-  end
-
-  defp repair_write_targets(assignments, _write_refs), do: assignments
-
-  defp repair_write_target(%{} = assignment, write_refs) do
-    matching_ref =
-      Enum.find(write_refs, fn ref ->
-        ref.source_sheet == assignment["sheet"] and
-          ref.source_variable == assignment["variable"]
-      end)
-
-    if matching_ref do
-      assignment
-      |> Map.put("sheet", matching_ref.current_shortcut)
-      |> Map.put("variable", matching_ref.current_variable)
-    else
-      assignment
-    end
-  end
-
-  defp repair_write_target(assignment, _write_refs), do: assignment
-
-  # Deterministic repair for variable_ref read sources in instruction assignments.
-  defp repair_read_sources(assignments, read_refs) when is_list(assignments) do
-    Enum.map(assignments, &repair_read_source(&1, read_refs))
-  end
-
-  defp repair_read_sources(assignments, _read_refs), do: assignments
-
-  defp repair_read_source(%{"value_type" => "variable_ref"} = assignment, read_refs) do
-    matching_ref =
-      Enum.find(read_refs, fn ref ->
-        ref.source_sheet == assignment["value_sheet"] and
-          ref.source_variable == assignment["value"]
-      end)
-
-    if matching_ref do
-      assignment
-      |> Map.put("value_sheet", matching_ref.current_shortcut)
-      |> Map.put("value", matching_ref.current_variable)
-    else
-      assignment
-    end
-  end
-
-  defp repair_read_source(assignment, _read_refs), do: assignment
-
-  # Deterministic repair for condition rules.
-  defp repair_condition_rules(rules, read_refs) when is_list(rules) do
-    Enum.map(rules, &repair_condition_rule(&1, read_refs))
-  end
-
-  defp repair_condition_rules(rules, _read_refs), do: rules
-
-  defp repair_condition_rule(%{} = rule, read_refs) do
-    matching_ref =
-      Enum.find(read_refs, fn ref ->
-        ref.source_sheet == rule["sheet"] and
-          ref.source_variable == rule["variable"]
-      end)
-
-    if matching_ref do
-      rule
-      |> Map.put("sheet", matching_ref.current_shortcut)
-      |> Map.put("variable", matching_ref.current_variable)
-    else
-      rule
-    end
-  end
-
-  defp repair_condition_rule(rule, _read_refs), do: rule
-
-  defp repair_block(%{"type" => "block", "rules" => rules} = block, read_refs) when is_list(rules) do
-    Map.put(block, "rules", repair_condition_rules(rules, read_refs))
-  end
-
-  defp repair_block(%{"type" => "group", "blocks" => inner_blocks} = group, read_refs) when is_list(inner_blocks) do
-    Map.put(group, "blocks", Enum.map(inner_blocks, &repair_block(&1, read_refs)))
-  end
-
-  defp repair_block(block, _read_refs), do: block
-
-  # For table blocks, the repair query returns current_variable = b.variable_name (e.g. "attributes")
-  # but the source_variable is a composite path (e.g. "attributes.strength.value").
-  # We reconstruct the full path using the current table name + the original row/col slugs.
-  defp compute_table_current_variable(%{source_variable: sv, current_variable: cv} = ref) do
-    case String.split(sv, ".", parts: 3) do
-      [_old_table, row_slug, col_slug] ->
-        %{ref | current_variable: "#{cv}.#{row_slug}.#{col_slug}"}
-
-      _ ->
-        ref
-    end
   end
 
   defp extract_zone_variable_refs(zone, project_id), do: extract_scene_element_variable_refs(zone, project_id)

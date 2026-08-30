@@ -32,8 +32,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
-  alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Repo
 
   require Logger
@@ -1130,7 +1130,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
       fn ->
         result =
           with {:ok, recovered_project} <-
-                 ProjectRecovery.materialize_template(workspace_id, snapshot, user_id, recovery_opts) do
+                 ProjectReconstitution.materialize_template(workspace_id, snapshot, user_id, recovery_opts) do
             {:ok, materialized_entity_counts(recovered_project.id), materialized_project_errors(recovered_project.id)}
           end
 

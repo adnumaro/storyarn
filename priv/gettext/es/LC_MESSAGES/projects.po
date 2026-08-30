@@ -16,7 +16,7 @@ msgstr ""
 msgid "All variable references are up to date."
 msgstr "Todas las referencias de variables están actualizadas."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:282
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:301
 #, elixir-autogen, elixir-format
 msgid "Cannot remove the project owner."
 msgstr "No se puede eliminar al propietario del proyecto."
@@ -36,7 +36,7 @@ msgstr "Crear proyecto"
 msgid "Failed to delete project."
 msgstr "Error al eliminar el proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:158
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:177
 #, elixir-autogen, elixir-format
 msgid "Failed to repair variable references."
 msgstr "Error al reparar las referencias de variables."
@@ -46,12 +46,12 @@ msgstr "Error al reparar las referencias de variables."
 msgid "Localization"
 msgstr "Localización"
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:286
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:305
 #, elixir-autogen, elixir-format
 msgid "Member not found."
 msgstr "Miembro no encontrado."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:273
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:292
 #, elixir-autogen, elixir-format
 msgid "Member removed."
 msgstr "Miembro eliminado."
@@ -809,47 +809,47 @@ msgstr "No se pudo completar la importación. No se modificó el contenido del p
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:219
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:238
 #, elixir-autogen, elixir-format
 msgid "An invitation has already been sent to this email."
 msgstr "Ya se ha enviado una invitación a este correo."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:237
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:256
 #, elixir-autogen, elixir-format
 msgid "Could not send invitation."
 msgstr "No se ha podido enviar la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:189
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:208
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address and role."
 msgstr "Introduce una dirección de correo y un rol válidos."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:202
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:221
 #, elixir-autogen, elixir-format
 msgid "Invitation queued for delivery."
 msgstr "Invitación en cola para su envío."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:251
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:270
 #, elixir-autogen, elixir-format
 msgid "Invitation revoked."
 msgstr "Invitación revocada."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:254
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:273
 #, elixir-autogen, elixir-format
 msgid "Invitation not found."
 msgstr "No se ha encontrado la invitación."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:233
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:252
 #, elixir-autogen, elixir-format
 msgid "Member limit reached for your plan."
 msgstr "Has alcanzado el límite de miembros de tu plan."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:210
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:229
 #, elixir-autogen, elixir-format
 msgid "This person is already a member of this project."
 msgstr "Esta persona ya es miembro de este proyecto."
 
-#: lib/storyarn_web/live/project_live/components/settings_components.ex:228
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:247
 #, elixir-autogen, elixir-format
 msgid "Too many invitations have been sent. Try again later."
 msgstr "Se han enviado demasiadas invitaciones. Inténtalo de nuevo más tarde."
@@ -1262,3 +1262,10 @@ msgstr "No tienes permiso para descargar esta snapshot."
 #, elixir-autogen, elixir-format
 msgid "We couldn't prepare your account. Please try again."
 msgstr "No hemos podido preparar tu cuenta. Inténtalo de nuevo."
+
+#: lib/storyarn_web/live/project_live/components/settings_components.ex:131
+#, elixir-autogen, elixir-format
+msgid "No nodes could be repaired; %{count} node failed. Try again."
+msgid_plural "No nodes could be repaired; %{count} nodes failed. Try again."
+msgstr[0] "No se pudo reparar ningún nodo; falló %{count} nodo. Inténtalo de nuevo."
+msgstr[1] "No se pudo reparar ningún nodo; fallaron %{count} nodos. Inténtalo de nuevo."

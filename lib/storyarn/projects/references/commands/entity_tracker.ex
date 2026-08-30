@@ -41,12 +41,8 @@ defmodule Storyarn.Projects.References.EntityTracker do
   def update_scene_pin_entity_references(pin, opts \\ []),
     do: SceneEntityReferenceTracker.update_pin_references(pin, opts)
 
-  def delete_scene_pin_entity_references(pin_id), do: SceneEntityReferenceTracker.delete_pin_references(pin_id)
-
   def update_scene_zone_entity_references(zone, opts \\ []),
     do: SceneEntityReferenceTracker.update_zone_references(zone, opts)
-
-  def delete_scene_zone_entity_references(zone_id), do: SceneEntityReferenceTracker.delete_zone_references(zone_id)
 
   @spec rebuild_project_entity_references(integer()) :: :ok | {:error, term()}
   def rebuild_project_entity_references(project_id) when is_integer(project_id) and project_id > 0 do

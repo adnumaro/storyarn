@@ -10,6 +10,7 @@ defmodule Storyarn.Localization.Texts do
   alias Storyarn.Localization.Texts.Commands.Reconcile
   alias Storyarn.Localization.Texts.Commands.Update
   alias Storyarn.Localization.Texts.Commands.Upsert
+  alias Storyarn.Localization.Texts.Commands.VersionRestore
   alias Storyarn.Localization.Texts.Queries.BatchTranslation
   alias Storyarn.Localization.Texts.Queries.ExportInventory
   alias Storyarn.Localization.Texts.Queries.RuntimeInventory
@@ -45,6 +46,40 @@ defmodule Storyarn.Localization.Texts do
   defdelegate purge_texts_for_sources(source_type, source_ids), to: Lifecycle
   defdelegate reset_project_texts(project_id), to: Lifecycle
 
+  def archive_sheet_texts(source_type, source_ids, reason)
+      when source_type in ~w(block sheet) and is_list(source_ids) and
+             reason in ~w(source_deleted source_field_removed source_not_runtime version_replaced) do
+    Lifecycle.archive_texts_for_sources(source_type, source_ids, reason)
+  end
+
+  def archive_sheet_active_target_texts(project_id, source_type, source_ids, reason)
+      when source_type in ~w(block sheet) and is_list(source_ids) and
+             reason in ~w(source_deleted source_field_removed source_not_runtime version_replaced) do
+    Lifecycle.archive_texts_for_active_target_locales(
+      project_id,
+      source_type,
+      source_ids,
+      reason
+    )
+  end
+
+  def purge_flow_node_texts(node_ids) when is_list(node_ids), do: Lifecycle.purge_texts_for_sources("flow_node", node_ids)
+
+  def purge_sheet_texts(source_type, source_ids) when source_type in ~w(block sheet) and is_list(source_ids),
+    do: Lifecycle.purge_texts_for_sources(source_type, source_ids)
+
+  defdelegate prepare_flow_version_texts(project_id, deleted_node_ids, target_node_ids),
+    to: VersionRestore,
+    as: :prepare_flow
+
+  defdelegate restore_flow_version_texts(project_id, rows, id_maps),
+    to: VersionRestore,
+    as: :restore_flow
+
+  defdelegate restore_sheet_version_texts(project_id, rows, id_maps),
+    to: VersionRestore,
+    as: :restore_sheet
+
   defdelegate batch_upsert_texts(project_id, entries), to: Reconcile
   defdelegate reconcile_project_texts(project_id, entries, source_keys), to: Reconcile
   defdelegate bulk_import_texts(attrs_list), to: Reconcile
@@ -75,6 +110,7 @@ defmodule Storyarn.Localization.Texts do
   defdelegate extract_all(project_id), to: Extract
   defdelegate extract_locale(project_id, locale_code), to: Extract
   defdelegate lock_inventory!(project_id), to: Extract
+  defdelegate lock_inventory_after_project_lock!(project_id), to: Extract
   defdelegate extract_flow_node(node), to: Extract
   defdelegate flow_node_texts_current?(node, project_id), to: Extract
   defdelegate flow_node_texts_current_ids(nodes, project_id), to: Extract

@@ -1432,33 +1432,6 @@ defmodule Storyarn.SheetsTest do
     end
   end
 
-  describe "update_flow_node_references/1" do
-    alias Storyarn.Sheets.References
-
-    test "creates references from flow node with speaker_sheet_id" do
-      user = user_fixture()
-      project = project_fixture(user)
-      target_sheet = sheet_fixture(project, %{name: "Speaker"})
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
-        })
-
-      References.update_flow_node_references(node)
-
-      backlinks = References.get_backlinks("sheet", target_sheet.id)
-      assert backlinks != []
-      assert Enum.any?(backlinks, &(&1.source_type == "flow_node"))
-    end
-
-    test "returns :ok for node without data map" do
-      assert References.update_flow_node_references(%{id: 1, data: nil}) == :ok
-    end
-  end
-
   # ===========================================================================
   # Additional facade delegate coverage
   # ===========================================================================

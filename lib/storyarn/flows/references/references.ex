@@ -12,6 +12,7 @@ defmodule Storyarn.Flows.References do
   alias Storyarn.Flows.EntityTrashRefs
   alias Storyarn.Flows.ProjectReferenceIntegrity
   alias Storyarn.Flows.ReferenceIntegrity
+  alias Storyarn.Flows.References.Commands.StaleVariableReferenceRepair
   alias Storyarn.Flows.RichTextMentions
   alias Storyarn.Flows.VariableReferenceTracker
 
@@ -126,4 +127,8 @@ defmodule Storyarn.Flows.References do
   defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
   defdelegate list_stale_node_ids_by_flow(flow_ids), to: VariableReferenceTracker
   defdelegate list_referenced_sheet_ids(project_id), to: VariableReferenceTracker
+
+  defdelegate repair_stale_variable_references(project_id),
+    to: StaleVariableReferenceRepair,
+    as: :repair_project
 end

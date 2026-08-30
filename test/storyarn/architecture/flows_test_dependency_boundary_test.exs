@@ -30,6 +30,16 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
   # an integration contract. This exact inventory makes those seams visible
   # and prevents an innocent-looking test helper from reintroducing coupling.
   @flow_owned_integration_contracts %{
+    "test/storyarn/flows/editor/commands/dialogue_audio_concurrency_test.exs" => [
+      "Storyarn.Accounts.User",
+      "Storyarn.Projects.Assets",
+      "Storyarn.Projects.Assets.Asset",
+      "Storyarn.Projects.Project",
+      "Storyarn.Workspaces.Workspace"
+    ],
+    "test/storyarn/flows/editor/commands/dialogue_audio_test.exs" => [
+      "Storyarn.Projects.Assets"
+    ],
     "test/storyarn/flows/references/commands/avatar_integrity_test.exs" => [
       "Storyarn.Sheets"
     ],
@@ -53,6 +63,20 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     ],
     "test/storyarn/flows/references/commands/entity_trash_refs_test.exs" => [
       "Storyarn.Sheets"
+    ],
+    "test/storyarn/flows/references/commands/entity_reference_tracker_concurrency_test.exs" => [
+      "Storyarn.Accounts.User",
+      "Storyarn.Sheets",
+      "Storyarn.Workspaces.Workspace"
+    ],
+    "test/storyarn/flows/references/commands/stale_variable_reference_repair_concurrency_test.exs" => [
+      "Storyarn.Accounts.User",
+      "Storyarn.Projects.Project",
+      "Storyarn.Sheets",
+      "Storyarn.Workspaces.Workspace"
+    ],
+    "test/storyarn/flows/references/commands/stale_variable_reference_repair_test.exs" => [
+      "Storyarn.Projects"
     ],
     "test/storyarn/flows/editor/queries/exit_target_scenes_test.exs" => [
       "Storyarn.Scenes"
@@ -97,6 +121,7 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn/flows/versioning/execution/flow_snapshot_restore_test.exs" => [
       "Storyarn.Localization",
       "Storyarn.Localization.LocalizedText",
+      "Storyarn.Platform.ObjectStorage",
       "Storyarn.Projects.Assets",
       "Storyarn.Projects.Assets.Asset",
       "Storyarn.Projects.Assets.BlobStore",

@@ -25,13 +25,13 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
+  alias Storyarn.Flows.Versioning.Adapters.Localization.VersionRestore, as: LocalizationVersionRestore
   alias Storyarn.Flows.Versioning.AssetCatalog
   alias Storyarn.Flows.Versioning.Entities.AssetRecord
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.FlowSnapshotDiff
   alias Storyarn.Flows.Versioning.FlowSnapshotValidator
   alias Storyarn.Flows.Versioning.LocalizationCodec
-  alias Storyarn.Flows.Versioning.Projections.LocalizedTextRecord
   alias Storyarn.Flows.Versioning.Projections.SheetAvatarRecord
   alias Storyarn.Flows.Versioning.Projections.SheetRecord
   alias Storyarn.Flows.Versioning.RestorePolicy
@@ -1819,46 +1819,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   end
 
   defp archive_restore_localization(flow, deleted_node_ids, target_node_ids) do
-    now = TimeHelpers.now()
-    archive_deleted_localization(flow.project_id, deleted_node_ids, now)
-
-    archive_target_localization(
+    LocalizationVersionRestore.prepare(
       flow.project_id,
-      target_node_ids,
-      LocalizationCodec.active_target_locales(flow.project_id),
-      now
-    )
-
-    :ok
-  end
-
-  defp archive_deleted_localization(_project_id, [], _now), do: :ok
-
-  defp archive_deleted_localization(project_id, deleted_node_ids, now) do
-    Repo.update_all(
-      from(text in LocalizedTextRecord,
-        where:
-          text.project_id == ^project_id and text.source_type == "flow_node" and
-            text.source_id in ^deleted_node_ids and is_nil(text.archived_at)
-      ),
-      set: [archived_at: now, archive_reason: "source_deleted", updated_at: now],
-      inc: [lock_version: 1]
-    )
-  end
-
-  defp archive_target_localization(_project_id, [], _active_target_locales, _now), do: :ok
-  defp archive_target_localization(_project_id, _target_node_ids, [], _now), do: :ok
-
-  defp archive_target_localization(project_id, target_node_ids, active_target_locales, now) do
-    Repo.update_all(
-      from(text in LocalizedTextRecord,
-        where:
-          text.project_id == ^project_id and text.source_type == "flow_node" and
-            text.source_id in ^target_node_ids and text.locale_code in ^active_target_locales and
-            is_nil(text.archived_at)
-      ),
-      set: [archived_at: now, archive_reason: "version_replaced", updated_at: now],
-      inc: [lock_version: 1]
+      deleted_node_ids,
+      target_node_ids
     )
   end
 
@@ -1871,7 +1835,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
 
     with {:ok, rows} <- materialize_localization_assets(rows, snapshot, flow.project_id, opts),
          :ok <-
-           LocalizationCodec.restore(
+           LocalizationVersionRestore.restore(
              flow.project_id,
              rows,
              %{node: Map.new(restored, fn {id, node} -> {id, node.id} end)}

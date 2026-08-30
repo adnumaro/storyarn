@@ -35,16 +35,6 @@ defmodule Storyarn.Projects.SceneEntityReferenceTracker do
 
   def update_pin_references(_pin, _opts), do: :ok
 
-  @spec delete_pin_references(integer()) :: {non_neg_integer(), nil}
-  def delete_pin_references(pin_id) when is_integer(pin_id) do
-    Repo.delete_all(
-      from reference in EntityReferenceRecord,
-        where:
-          reference.source_type == "scene_pin" and
-            reference.source_id == ^pin_id
-    )
-  end
-
   @spec update_zone_references(map(), keyword()) :: :ok | {:error, term()}
   def update_zone_references(zone, opts \\ [])
 
@@ -53,16 +43,6 @@ defmodule Storyarn.Projects.SceneEntityReferenceTracker do
   end
 
   def update_zone_references(_zone, _opts), do: :ok
-
-  @spec delete_zone_references(integer()) :: {non_neg_integer(), nil}
-  def delete_zone_references(zone_id) when is_integer(zone_id) do
-    Repo.delete_all(
-      from reference in EntityReferenceRecord,
-        where:
-          reference.source_type == "scene_zone" and
-            reference.source_id == ^zone_id
-    )
-  end
 
   defp replace_references(source_type, source_id, references, opts) do
     project_id = Keyword.get(opts, :project_id)

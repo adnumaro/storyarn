@@ -9,6 +9,7 @@ defmodule Storyarn.Flows.Editor do
   """
 
   alias Storyarn.Flows.ConnectionCrud
+  alias Storyarn.Flows.Editor.Commands.DialogueAudio
   alias Storyarn.Flows.Editor.Commands.ItemCapacity
   alias Storyarn.Flows.Editor.Commands.NodeRestore
   alias Storyarn.Flows.Editor.Commands.Tracked
@@ -70,6 +71,10 @@ defmodule Storyarn.Flows.Editor do
   defdelegate valid_input_pin?(type, target_pin), to: NodeConnectionRules
 
   # Node editor operations
+  defdelegate assign_dialogue_audio(project_id, speaker_sheet_id, node_id, audio_asset_id),
+    to: DialogueAudio,
+    as: :assign
+
   defdelegate apply_node_operation(node, flow, project_id, operation, payload),
     to: NodeEditor,
     as: :apply_operation

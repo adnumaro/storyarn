@@ -1,25 +1,29 @@
 defmodule Storyarn.Flows.Localization do
   @moduledoc """
-  Capability boundary for Flow-localizable content and its inventory projection.
+  Capability boundary for Flow-localizable content and Localization commands.
 
-  Flows owns the source vocabulary and extraction semantics. The shared SQL
-  inventory remains an implementation detail during this code-isolation phase.
+  Flows owns the source vocabulary and word-count semantics. The Localization
+  context owns extraction and the shared inventory; this boundary exposes only
+  the commands required by Flow workflows.
   """
 
   alias Storyarn.Flows.ContentContract
-  alias Storyarn.Flows.LocalizationProjection
   alias Storyarn.Flows.WordCount
+  alias Storyarn.Localization, as: LocalizationOwner
 
   defdelegate localizable_node_types(), to: ContentContract
   defdelegate node_word_count(type, data), to: WordCount, as: :for_node_data
-  defdelegate lock_inventory!(project_id), to: LocalizationProjection
-  defdelegate extract_flow_node(node), to: LocalizationProjection
-  defdelegate extract_flow_nodes(flow_id), to: LocalizationProjection
+  # Flow snapshot build already owns a Project row lock. Preserve its historical
+  # SHARE -> Flow -> advisory order instead of upgrading Project after Flow.
+  def lock_inventory!(project_id), do: LocalizationOwner.lock_inventory_after_project_lock!(project_id)
+  defdelegate extract_flow_node(node), to: LocalizationOwner
+  defdelegate extract_flow_nodes(flow_id), to: LocalizationOwner
 
   defdelegate flow_node_texts_current_ids(nodes, project_id),
-    to: LocalizationProjection
+    to: LocalizationOwner
 
-  defdelegate delete_flow_node_texts(node_id), to: LocalizationProjection
-  defdelegate delete_flow_node_texts_for_flows(flow_ids), to: LocalizationProjection
-  defdelegate purge_texts_for_sources(source_type, source_ids), to: LocalizationProjection
+  defdelegate delete_flow_node_texts(node_id), to: LocalizationOwner
+  defdelegate delete_flow_node_texts_for_flows(flow_ids), to: LocalizationOwner
+
+  def purge_texts_for_sources("flow_node", source_ids), do: LocalizationOwner.purge_flow_node_texts(source_ids)
 end

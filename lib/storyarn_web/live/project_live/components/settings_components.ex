@@ -127,6 +127,16 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     )
   end
 
+  def failed_repair_message(failed_count) do
+    dngettext(
+      "projects",
+      "No nodes could be repaired; %{count} node failed. Try again.",
+      "No nodes could be repaired; %{count} nodes failed. Try again.",
+      failed_count,
+      count: failed_count
+    )
+  end
+
   # ---------------------------------------------------------------------------
   # Action helpers (called from handle_event)
   # ---------------------------------------------------------------------------
@@ -148,6 +158,15 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
            socket,
            :error,
            partial_repair_message(repaired_count, length(failures))
+         )}
+
+      {:error, {:partial_variable_reference_repair, %{repaired_count: 0, failures: failures}}}
+      when is_list(failures) and failures != [] ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           failed_repair_message(length(failures))
          )}
 
       {:error, _reason} ->

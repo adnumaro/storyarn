@@ -1,8 +1,10 @@
 # Projects internal organization
 
 `Storyarn.Projects` is the bounded-context facade. Its first level is organized
-by Project-owned business capabilities. These folders are implementation slices
-inside one bounded context; none is an independently named bounded context.
+by Project-owned business capabilities plus the closed `content/` model and the
+closed `reconstitution/` entry boundary. The capability folders are
+implementation slices inside one bounded context; none is an independently
+named bounded context.
 
 | Capability     | Responsibility                                                                                                                              |
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -47,6 +49,19 @@ Admission to `content/` is narrow:
 The Flow and Scene conditions, instructions and variable rules remain separate
 even where they look similar. Their duplication is intentional and they must
 not be merged merely to reduce line count.
+
+## Closed Project reconstitution boundary
+
+`reconstitution/` is not a tenth capability or another bounded context. It is a
+closed routing boundary that makes every privileged whole-Project import,
+template and snapshot materialization enter through one reviewed module. It is
+deliberately absent from the public `Storyarn.Projects` facade.
+
+The boundary owns no authorization, transaction, lock, compensation, delivery
+or error policy. Those remain in the initiating Interchange, Templates or
+Versioning lifecycle; the boundary forwards the exact arguments, callbacks,
+options and return values to their existing engines. Its caller set and each
+callable function are sealed by the privileged-entrypoint architecture guard.
 
 The SQL models shared by several Project capabilities live under
 `content/{flows,sheets,scenes,localization}/records/`. They are records rather
@@ -137,21 +152,24 @@ writes. The closed content records are used by exact import/snapshot
 reconstitution, trash, repair and Project-wide integrity workflows. They are not
 presented as ordinary read projections.
 
-References also keeps its `FlowNodeRecord` and `TableRowRecord` here because
-Project-owned repair commands update those rows. Their historical
+References keeps its `FlowNodeRecord` as a read model for Project-wide
+coordination and its writable `TableRowRecord` for the remaining Project-owned
+repair workflow. Their historical
 `Storyarn.Projects.References.Persistence.*` module identities remain stable;
-the physical `records/` location states their actual write authority.
+`FlowNodeRecord` lives physically in `projections/`, while `TableRowRecord`
+remains in `records/` because it participates in that controlled write path.
 
 Localization records are the most sensitive case. Localization is the only
 ordinary writer of `project_languages`. Projects may write its duplicated
 `ProjectLanguageRecord` only during template materialization, exact Project
 import/reconstitution (including replacement import), or full-project snapshot
 restore/recovery. The exact writers are allowlisted in
-`config/architecture_boundaries.exs`; no current Project repair
-writes that table. Project content projection and classified repair may still
-maintain derived localized-text inventory, which is a separate authority and
-does not grant language-setting ownership. Ordinary language, translation,
-review, and provider workflows remain owned by Localization.
+`config/architecture_boundaries.exs`; no current Project repair writes that
+table. Localization is also the sole ordinary writer of `localized_texts`;
+Projects retains only the four classified closed-graph exceptions for import,
+replacement, recovery and exact snapshot restore. Ordinary language,
+extraction, translation, review, and provider workflows remain owned by
+Localization.
 
 There is intentionally no generic `data/`, `persistence/` or `shared/` folder.
 
@@ -168,6 +186,10 @@ The large historical entry modules remain stable but are now routing surfaces:
 - `Imports` routes preparation, review, queue/cancellation and attempt lookup
   through role-specific modules. Its plan reservation and cleanup workflow stays
   together under `execution/` for the same transactional reason.
+- `ProjectReconstitution` is the single internal entry boundary for privileged
+  whole-Project materialization. It forwards inputs, options and results
+  unchanged; the initiating lifecycle keeps authorization, transactions, lock
+  order, compensation and delivery ownership.
 
 ## Public and worker boundaries
 
@@ -198,6 +220,11 @@ Projects owns Project asset keys, blob identity, recoverable-blob retention,
 multipart cleanup eligibility, compensation, snapshots, imports and exact
 reconstitution. Provider selection, Local/R2 I/O, incremental hashing and the
 generic key-lock engine live behind `Storyarn.Platform.ObjectStorage`.
+
+Projects also owns the shared asset rows. Flow versioning and Sheet/Scene upload
+or version workflows keep their storage transfer, quota and compensation logic,
+but register the row or link a variant through sealed local adapters to the
+public Projects facade.
 
 Only the Project-owned adapters call that technical facade. Projects execution
 code never receives a provider module, and other contexts cannot import the

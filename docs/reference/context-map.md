@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-29
+> Last reviewed: 2026-08-30
 >
 > Scope: current modular monolith over one Repo and PostgreSQL schema
 
@@ -28,46 +28,69 @@ names semantic ownership, write authority and transitional relationships.
 | Projects and Workspaces          | Owner-specific invitation workers                             | Each context encrypts and queues its own invitation payload; its worker executes through the same context's root facade | Owner-local durable workflow; ENG-109 complete                   |
 | Localization                     | Project settings                                              | Source-language reads and ordinary changes enter `Storyarn.Localization`; Projects has no settings writer               | Reviewed public contract; ENG-110 complete                       |
 
-No direct code relationship is allowed among Flows, Sheets and Scenes. Shared
-facts are read through consumer-local mappings. A matching table name or payload
-shape does not grant permission to import another tool's schema, parser or rule.
+Flows, Sheets and Scenes may not import one another's schemas, commands, parsers
+or rules. Shared facts are read through consumer-local mappings. An ordinary
+cross-tool mutation must enter the owning context through an exact reviewed
+command adapter to its root facade and exchange a transport-neutral contract.
+A matching table name or payload shape never grants write authority.
 
 ## Ordinary write ownership
 
-The following is the intended ordinary product ownership. It is not yet fully
-enforced at database-permission level; ENG-103 owns that enforcement. ENG-110 is
-the first source-level table ratchet: Localization is the sole ordinary writer
-of `project_languages`, while exact Project exceptions are allowlisted by source
-and mutating function. Operation, transaction contract, locks/preconditions and
-reason are mandatory review metadata; the source analyzer does not prove those
-runtime guarantees. Caller restrictions apply only to entrypoints explicitly
-listed under `restricted_entrypoints`.
+The following table records intended ordinary product ownership. ENG-103
+enforces that authority at source level for the sensitive tables already listed
+in the architecture ratchet; it neither covers every table yet nor installs
+PostgreSQL roles, runtime ACLs or separate schemas. Those physical database
+boundaries remain ENG-106. ENG-110 was the first source-level table slice:
+Localization is the sole ordinary writer of `project_languages`, while exact
+Project exceptions are allowlisted by source and mutating function. Operation,
+transaction contract, locks/preconditions and reason are mandatory review
+metadata; the source analyzer does not prove those runtime guarantees.
 
-For this table, the guard inventories duplicated schemas, their statically
-identifiable foreign alias consumers and direct SQL references across
-`lib/storyarn`. Strict readers reject direct, statically recognizable
-Repo/Ecto.Multi mutations; unresolved raw SQL in an ownership-sensitive path
-fails closed. Mixed files that legitimately write another table are
-content-pinned, so any edit forces a fresh ownership review. This is a CI
-architecture guard, not a PostgreSQL role or runtime ACL, and it cannot prove
-the target of arbitrary runtime indirection.
+For `project_languages`, the guard also inventories duplicated schemas, their
+statically identifiable foreign consumers and direct SQL references across
+`lib/storyarn`. The ENG-103 table inventories detect reviewed Repo/Ecto.Multi
+forms and statically resolvable SQL. Unresolved raw SQL fails closed once a
+source file has been selected as a candidate for an inventoried table;
+runtime-built SQL that exposes no table marker remains outside that static
+proof. Passive projections have a separate mutation ban. A future mixed foreign
+consumer must be content-pinned, so any edit forces a fresh ownership review.
+These are CI architecture guards, not database permissions or runtime
+authorization, and they cannot prove the target of arbitrary runtime
+indirection.
 
-| Context      | Ordinary writes it owns                                                                                  | Explicit non-ordinary exceptions                                                                                                                                                                                                                       |
-| ------------ | -------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Accounts     | Users, authentication credentials/tokens, account profile and lifecycle                                  | Administrative or recovery operations must enter Accounts                                                                                                                                                                                              |
-| Workspaces   | Workspaces, memberships, invitations and workspace lifecycle                                             | Initial provisioning may be coordinated from registration                                                                                                                                                                                              |
-| Commercial   | Subscriptions, storage reservations and Commercial-owned accounting state                                | Usage and entitlement decisions may read consumer-local projections over tables owned by other contexts; consumers keep their own writes and invariants                                                                                                |
-| Projects     | Project identity, access, assets, templates, project import/export, snapshots and project-wide lifecycle | Exact reconstitution, repair and trash may write closed Project content records                                                                                                                                                                        |
-| Sheets       | Sheets, blocks, tables, galleries, formulas and variable definitions                                     | Current Flow-related writers/rebuilds remain tracked by ENG-103 and are not expanded                                                                                                                                                                   |
-| Flows        | Flows, nodes, connections, sequences, runtime state and Flow versions                                    | Current Sheet/Localization side effects remain tracked by ENG-103                                                                                                                                                                                      |
-| Scenes       | Scenes, layers, zones, pins, connections and Scene versions                                              | Project restore/reconstitution may materialize exact Scene records                                                                                                                                                                                     |
-| Localization | Languages, localized texts, glossary, translation runs and reviews                                       | Projects may write `project_languages` only while materializing a template, importing/reconstituting an exact Project graph, or restoring/recovering a full-project snapshot; classified inventory repair may write other derived localization records |
-| AI           | AI policy, integrations, routing, operations, audit and managed-spend state                              | Projects remains the current writer of selected AI configuration records until deliberately changed                                                                                                                                                    |
-| Platform     | Product reactions, notification inbox/delivery state and onboarding progress                             | Producers retain semantic event, notification and email intent                                                                                                                                                                                         |
+| Context      | Ordinary writes it owns                                                                                  | Explicit non-ordinary exceptions                                                                                                                                                                                                                                      |
+| ------------ | -------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts     | Users, authentication credentials/tokens, account profile and lifecycle                                  | Administrative or recovery operations must enter Accounts                                                                                                                                                                                                             |
+| Workspaces   | Workspaces, memberships, invitations and workspace lifecycle                                             | Initial provisioning may be coordinated from registration                                                                                                                                                                                                             |
+| Commercial   | Subscriptions, storage reservations and Commercial-owned accounting state                                | Usage and entitlement decisions may read consumer-local projections over tables owned by other contexts; consumers keep their own writes and invariants                                                                                                               |
+| Projects     | Project identity, access, assets, templates, project import/export, snapshots and project-wide lifecycle | Tool-owned upload/restore workflows request asset-row registration through sealed adapters; exact reconstitution, repair and trash may write closed Project content records                                                                                           |
+| Sheets       | Sheets, blocks, tables, galleries, formulas and variable definitions; block-sourced reference rows       | Sheet restore may run the classified additive project-wide variable-reference reconciliation until that projection is partitioned                                                                                                                                     |
+| Flows        | Flows, nodes, connections, sequences, runtime state and Flow versions; Flow-node-sourced reference rows  | The Sheet audio workspace requests `audio_asset_id` changes through an exact command port; Project restore/reconstitution may materialize exact Flow records                                                                                                          |
+| Scenes       | Scenes, layers, zones, pins, connections and Scene versions; Scene-sourced reference rows                | Project restore/reconstitution may materialize exact Scene records                                                                                                                                                                                                    |
+| Localization | Languages, localized texts, glossary, extraction, translation runs and reviews                           | Projects retains exact classified `project_languages` and `localized_texts` writers only for template materialization, import, replacement, recovery and full-project snapshot restoration; Flow/Sheet versioning enters Localization through sealed command adapters |
+| AI           | AI policy, integrations, routing, operations, audit and managed-spend state                              | Projects remains the current writer of selected AI configuration records until deliberately changed                                                                                                                                                                   |
+| Platform     | Product reactions, notification inbox/delivery state and onboarding progress                             | Producers retain semantic event, notification and email intent                                                                                                                                                                                                        |
 
 An exception must name the operation, paths, reason, transaction boundary and
 locks or preconditions. A generic `records/` folder or a local Ecto schema does
 not itself authorize writes.
+
+`storage_cleanup_requests` is a deliberate shared technical handoff rather than
+a domain table with competing owners. Flows, Sheets and Scenes may only append a
+`storage_compensation` request through their exact adapters; Projects owns retry,
+rotation, deferral and deletion of the durable cleanup lifecycle.
+
+Flow snapshot build keeps its established Project `FOR SHARE` -> Flow
+`FOR UPDATE` -> Localization advisory-lock order. It reaches the advisory-only
+lock through a four-layer sealed call chain; the port assumes Project is already
+locked and must not be used by ordinary Localization commands. Those commands
+continue to acquire Project `FOR UPDATE` before the advisory inventory lock.
+
+ENG-103 does not add a speculative Flow-to-Sheets creation port. No production
+Flow workflow currently creates a Sheet or variable definition. If that product
+behavior is introduced, Flows will request the intent through a narrow
+`Storyarn.Sheets` command contract (or an explicit higher-level use case), and
+Sheets will retain its validation, quota and transaction rules.
 
 ## Application coordinators
 
@@ -99,17 +122,17 @@ A context is code-extractable when:
 6. Technical providers do not live under another domain's ownership.
 
 Code extraction does not require PostgreSQL separation in the same change.
-Database/schema extraction is a later concern once code and write ownership are
-stable.
+Database roles, schema extraction and removal of shared-table coupling remain a
+later ENG-106 concern once code and source-level write ownership are stable.
 
 ## Tracked transitions
 
 - [ENG-92](https://linear.app/sunset/issue/ENG-92/decouple-bounded-contexts-at-code-level-over-the-shared-database): code boundaries and ratchet.
-- [ENG-103](https://linear.app/sunset/issue/ENG-103/separate-reads-from-writes-and-enforce-bounded-context-ownership): ordinary write ownership, including the deferred Sheet/Flow paths.
+- [ENG-103](https://linear.app/sunset/issue/ENG-103/separate-reads-from-writes-and-enforce-bounded-context-ownership): source-level ordinary write ownership and classified exceptions for the reviewed sensitive tables, including the Sheet/Flow paths.
 - [ENG-107](https://linear.app/sunset/issue/ENG-107/extract-neutral-object-storage-infrastructure-from-projects-ownership): neutral object-store mechanism completed on 2026-08-28.
 - [ENG-108](https://linear.app/sunset/issue/ENG-108/add-transactional-owner-transfer-workflows-for-workspaces-and-projects): explicit owner transfer after defensive guards.
 - [ENG-109](https://linear.app/sunset/issue/ENG-109/remove-the-platform-invitation-delivery-runtime-cycle): the concrete invitation-delivery dependency cycle was removed with owner-specific queue adapters and workers; a database ingress router, routing fence and bounded queue wakeup protect its controlled forward-only cutover. See [the deployment contract](invitation-delivery-cutover.md).
 - [ENG-110](https://linear.app/sunset/issue/ENG-110/make-localization-the-ordinary-writer-for-source-language-changes): Localization is the enforced ordinary `project_languages` writer; Project settings uses its public facade, and template materialization, exact Project import/reconstitution, and full-project snapshot restore/recovery remain classified exceptions in the ratchet.
 - [ENG-111](https://linear.app/sunset/issue/ENG-111/reduce-projects-coordinator-hotspots-by-complete-use-case): incremental Projects hotspot reduction.
 - [ENG-112](https://linear.app/sunset/issue/ENG-112/extract-commercial-from-platform-into-its-own-bounded-context): Commercial owns catalog, subscriptions, entitlements, usage and storage-capacity accounting behind `Storyarn.Commercial`; Platform no longer exposes or owns commercial policy.
-- [ENG-106](https://linear.app/sunset/issue/ENG-106/remove-postgresql-coupling-between-bounded-contexts): later PostgreSQL separation.
+- [ENG-106](https://linear.app/sunset/issue/ENG-106/remove-postgresql-coupling-between-bounded-contexts): later PostgreSQL roles/schema separation and removal of shared-table coupling.

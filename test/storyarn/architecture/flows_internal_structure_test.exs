@@ -8,11 +8,11 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
     "ai" => ~w(commands contracts projections execution queries),
     "editor" => ~w(adapters commands contracts projections entities events queries rules),
     "health" => ~w(adapters projections execution queries rules),
-    "localization" => ~w(adapters commands contracts projections records rules),
+    "localization" => ~w(contracts rules),
     "expressions" => ~w(compatibility contracts projections queries rules),
     "references" => ~w(commands projections records entities queries rules),
     "runtime" => ~w(adapters projections entities events execution queries rules),
-    "versioning" => ~w(adapters commands contracts projections records entities events execution queries rules)
+    "versioning" => ~w(adapters commands contracts projections entities events execution queries rules)
   }
   @private_roles ~w(adapters commands compatibility queries rules projections records execution events)
   @passive_roles ~w(projections entities contracts rules)

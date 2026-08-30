@@ -13,8 +13,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Project
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.Versioning.Adapters.Storage.Hashing, as: StorageHash
-  alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader
   alias Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
@@ -754,7 +754,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
          true <- is_map(project_descriptor) and project_descriptor["sha256"] == import.project_checksum,
          true <- plan.logical_asset_bytes == import.reserved_bytes,
          true <- planned_keys_from_plan(import, plan) == Enum.sort(import.staging_storage_keys),
-         :ok <- ProjectRecovery.validate_snapshot_import(plan.project) do
+         :ok <- ProjectReconstitution.validate_snapshot_import(plan.project) do
       :ok
     else
       false -> {:error, :snapshot_import_identity_mismatch}
@@ -871,7 +871,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   end
 
   defp materialize(import, plan, asset_plan, tracker, opts) do
-    materialize_fun = Keyword.get(opts, :materialize_fun, &ProjectRecovery.materialize_snapshot_import/4)
+    materialize_fun = Keyword.get(opts, :materialize_fun, &ProjectReconstitution.materialize_snapshot_import/4)
     asset_materializer = Keyword.get(opts, :asset_materializer, ProjectSnapshotAssetMaterializer)
 
     catalog_fun = fn project, _snapshot_data, user_id, scoped_opts ->

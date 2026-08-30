@@ -12,7 +12,6 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
   import Ecto.Query, warn: false
   import Storyarn.Projects.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
-  alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.Persistence.BlockGalleryImageRecord, as: BlockGalleryImage
   alias Storyarn.Projects.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
@@ -22,6 +21,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References
   alias Storyarn.Projects.References.EntityReferenceProjection
+  alias Storyarn.Projects.Versioning.Adapters.Localization.VersionRestore, as: LocalizationVersionRestore
   alias Storyarn.Projects.Versioning.AssetMaterializationScope
   alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
   alias Storyarn.Projects.Versioning.DiffHelpers
@@ -59,7 +59,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
           :ok = lock_sheet_project_for_snapshot!(sheet.project_id)
           locked_sheet = lock_sheet_for_snapshot!(sheet)
 
-          :ok = LocalizationProjection.lock_inventory!(locked_sheet.project_id)
+          :ok = LocalizationVersionRestore.lock_inventory!(locked_sheet.project_id)
           do_build_snapshot(locked_sheet, mode)
         end,
         isolation: :repeatable_read
@@ -469,7 +469,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
              locked_external_block_ids,
              opts
            ),
-         :ok <- LocalizationProjection.lock_inventory!(project_id),
+         :ok <- LocalizationVersionRestore.lock_inventory!(project_id),
          avatar_entries = build_avatar_entries(snapshot, project_id, now, opts),
          {:ok, sheet_id} <-
            MaterializationHelpers.insert_one_returning_id(
@@ -650,8 +650,8 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
 
   defp complete_sheet_instantiation_with_localization(sheet, project_id, snapshot, id_maps, opts) do
     with :ok <- restore_instantiated_sheet_localization(project_id, snapshot, id_maps, opts),
-         :ok <- LocalizationProjection.extract_sheet_blocks(sheet.id),
-         :ok <- LocalizationProjection.sync_sheet_names(project_id) do
+         :ok <- LocalizationVersionRestore.extract_sheet(sheet.id),
+         :ok <- LocalizationVersionRestore.sync_sheet_names(project_id) do
       finish_sheet_instantiation(sheet, id_maps, project_id, opts)
     else
       {:error, reason} -> Repo.rollback(reason)
@@ -699,7 +699,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilder do
           Map.get(snapshot, "localization", [])
         )
 
-      LocalizationSnapshotCodec.restore(
+      LocalizationVersionRestore.restore_sheet(
         project_id,
         localization,
         id_maps

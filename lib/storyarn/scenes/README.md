@@ -86,6 +86,11 @@ indexes it rebuilds from Scene content. Their established
 `References.Projections.*` module identities remain temporarily stable, while
 the physical `records/` folder declares their write authority.
 
+Scene upload and version workflows own storage transfer, quota checks,
+compensation and Scene-facing events. The shared asset row remains
+Projects-owned: a narrow Scene adapter sends registration or variant-link intent
+to `Storyarn.Projects` and reloads the result through Scene's local projection.
+
 ## Stable module identities
 
 Files are grouped by capability without renaming established contracts consumed

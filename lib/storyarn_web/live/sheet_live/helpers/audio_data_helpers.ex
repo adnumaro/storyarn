@@ -51,19 +51,32 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   end
 
   def update_node_audio(socket, node_id_str, audio_asset_id) do
-    {node_id, ""} = Integer.parse(to_string(node_id_str))
-    project_id = socket.assigns.project.id
-
-    case Sheets.update_dialogue_audio(project_id, socket.assigns.sheet.id, node_id, audio_asset_id) do
-      {:ok, _updated_node} ->
+    case assign_node_audio(socket, node_id_str, audio_asset_id) do
+      {:ok, _receipt} ->
         {:noreply, load_audio_data(socket)}
 
       {:error, :not_found} ->
-        {:noreply, socket}
+        {:noreply,
+         socket
+         |> load_audio_data()
+         |> put_flash(
+           :error,
+           dgettext("sheets", "This dialogue line is no longer available. Refresh and try again.")
+         )}
+
+      {:error, {:invalid_project_reference, :audio_asset_id, _value}} ->
+        invalid_audio_selection(socket)
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Could not update audio."))}
     end
+  end
+
+  def invalid_audio_selection(socket) do
+    {:noreply,
+     socket
+     |> load_audio_data()
+     |> put_flash(:error, dgettext("sheets", "The selected audio is no longer available."))}
   end
 
   def process_audio_upload(socket, node_id, filename, content_type, binary_data) do
@@ -73,7 +86,23 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
     with :ok <- validate_audio_content_type(content_type),
          {:ok, asset} <- upload_audio_asset(binary_data, filename, content_type, project, user) do
       Collaboration.broadcast_change({:assets, project.id}, :asset_created, %{})
-      update_node_audio(socket, node_id, asset.id)
+
+      case assign_node_audio(socket, node_id, asset.id) do
+        {:ok, _receipt} ->
+          {:noreply, load_audio_data(socket)}
+
+        {:error, _reason} ->
+          {:noreply,
+           socket
+           |> load_audio_data()
+           |> put_flash(
+             :error,
+             dgettext(
+               "sheets",
+               "Audio uploaded, but it could not be attached to the dialogue. It remains available in your assets."
+             )
+           )}
+      end
     else
       {:error, :unsupported_file_type} ->
         {:noreply, put_flash(socket, :error, dgettext("sheets", "Unsupported file type."))}
@@ -104,10 +133,33 @@ defmodule StoryarnWeb.SheetLive.Helpers.AudioDataHelpers do
   end
 
   defp validate_audio_content_type(content_type) do
-    if Sheets.allowed_asset_content_type?(content_type),
-      do: :ok,
-      else: {:error, :unsupported_file_type}
+    if is_binary(content_type) and String.starts_with?(content_type, "audio/") and
+         Sheets.allowed_asset_content_type?(content_type),
+       do: :ok,
+       else: {:error, :unsupported_file_type}
   end
+
+  defp assign_node_audio(socket, node_id, audio_asset_id) do
+    with {:ok, normalized_node_id} <- parse_positive_id(node_id) do
+      Sheets.update_dialogue_audio(
+        socket.assigns.project.id,
+        socket.assigns.sheet.id,
+        normalized_node_id,
+        audio_asset_id
+      )
+    end
+  end
+
+  defp parse_positive_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+
+  defp parse_positive_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {parsed, ""} when parsed > 0 -> {:ok, parsed}
+      _invalid -> {:error, :not_found}
+    end
+  end
+
+  defp parse_positive_id(_value), do: {:error, :not_found}
 
   defp upload_audio_asset(binary_data, filename, content_type, project, user) do
     Sheets.create_binary_asset(

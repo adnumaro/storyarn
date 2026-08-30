@@ -6,8 +6,6 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Ecto.Multi
-  alias Storyarn.Flows
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -281,34 +279,8 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
     end
   end
 
-  # =============================================================================
-  # Flow node references
-  # =============================================================================
-
-  describe "update_flow_node_references/1" do
-    test "creates speaker reference from dialogue node" do
-      %{project: project} = setup_project()
-      target_sheet = sheet_fixture(project, %{name: "Speaker"})
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
-        })
-
-      References.update_flow_node_references(node)
-
-      backlinks = References.get_backlinks("sheet", target_sheet.id)
-      assert backlinks != []
-
-      speaker_ref = Enum.find(backlinks, &(&1.context == "speaker"))
-      assert speaker_ref
-      assert speaker_ref.source_type == "flow_node"
-      assert speaker_ref.source_id == node.id
-    end
-
-    test "resolves flow-node backlinks through the Sheets-owned read models" do
+  describe "Flow-owned entity-reference projection reads" do
+    test "resolves Flow-node backlinks through the Sheets-owned read models" do
       %{project: project} = setup_project()
       target_sheet = sheet_fixture(project, %{name: "Speaker"})
       flow = flow_fixture(project, %{name: "Local projection", shortcut: "local-projection"})
@@ -318,11 +290,6 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
           type: "dialogue",
           data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
         })
-
-      assert :ok =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
 
       assert [backlink] =
                References.get_backlinks_with_sources(
@@ -341,263 +308,6 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
                flow_shortcut: "local-projection",
                node_type: "dialogue"
              }
-    end
-
-    test "creates mention references from dialogue text" do
-      %{project: project} = setup_project()
-      target_sheet = sheet_fixture(project, %{name: "Mentioned"})
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      mention_html =
-        ~s(<p>Meet <span class="mention" data-type="sheet" data-id="#{target_sheet.id}">Mentioned</span></p>)
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => mention_html}
-        })
-
-      References.update_flow_node_references(node)
-
-      backlinks = References.get_backlinks("sheet", target_sheet.id)
-      assert backlinks != []
-
-      dialogue_ref = Enum.find(backlinks, &(&1.context == "dialogue"))
-      assert dialogue_ref
-    end
-
-    test "indexes valid mentions nested outside the top-level dialogue text" do
-      %{project: project} = setup_project()
-      target_sheet = sheet_fixture(project, %{name: "Nested mention"})
-      flow = flow_fixture(project, %{name: "Nested rich text"})
-
-      mention_html =
-        ~s(<p><span class="mention" data-type="sheet" data-id="#{target_sheet.id}">Nested</span></p>)
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{
-            "text" => "Top-level text",
-            "responses" => [%{"id" => "response_nested", "text" => mention_html}]
-          }
-        })
-
-      assert :ok = References.update_flow_node_references(node)
-
-      assert Enum.any?(
-               References.get_backlinks("sheet", target_sheet.id),
-               &(&1.source_type == "flow_node" and &1.source_id == node.id and
-                   &1.context == "dialogue")
-             )
-    end
-
-    test "infers the source project and rejects cross-project targets without opts" do
-      %{user: user, project: project} = setup_project()
-      other_project = project_fixture(user)
-      foreign_target = sheet_fixture(other_project, %{name: "Foreign target"})
-      flow = flow_fixture(project, %{name: "Implicit project scope"})
-
-      valid_node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Do not cross projects"}
-        })
-
-      node =
-        Repo.update!(
-          Ecto.Changeset.change(valid_node,
-            data: %{
-              "speaker_sheet_id" => foreign_target.id,
-              "text" => "Do not cross projects"
-            }
-          )
-        )
-
-      assert :ok = References.update_flow_node_references(node)
-      assert References.count_backlinks("sheet", foreign_target.id) == 0
-    end
-
-    test "returns :ok for node without data map" do
-      assert :ok == References.update_flow_node_references(%{id: 999, data: nil})
-    end
-
-    test "returns :ok for non-map input" do
-      assert :ok == References.update_flow_node_references("not a map")
-    end
-
-    test "returns a tagged error for an invalid project-scoped write" do
-      %{project: project} = setup_project()
-      flow = flow_fixture(project, %{name: "Invalid project scope"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"text" => "Hello"}
-        })
-
-      assert {:error, {:invalid_project_id, :invalid}} =
-               References.update_flow_node_references(node,
-                 project_id: :invalid
-               )
-    end
-
-    test "rolls back replacement when the project does not own the flow node" do
-      %{project: project} = setup_project()
-      other_project = project_fixture()
-      target_sheet = sheet_fixture(project, %{name: "Existing target"})
-      flow = flow_fixture(project, %{name: "Project scope rollback"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
-        })
-
-      assert :ok =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
-
-      existing_references = References.get_backlinks("sheet", target_sheet.id)
-      assert Enum.any?(existing_references, &(&1.source_id == node.id))
-
-      assert {:error, {:flow_node_project_mismatch, node_id, project_id}} =
-               References.update_flow_node_references(node,
-                 project_id: other_project.id
-               )
-
-      assert node_id == node.id
-      assert project_id == other_project.id
-      assert References.get_backlinks("sheet", target_sheet.id) == existing_references
-    end
-
-    test "rejects a deleted flow node when rebuilding references directly" do
-      %{project: project} = setup_project()
-      target_sheet = sheet_fixture(project, %{name: "Deleted node target"})
-      flow = flow_fixture(project, %{name: "Deleted node source"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => target_sheet.id, "text" => "Hello"}
-        })
-
-      assert :ok =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
-
-      assert References.count_backlinks("sheet", target_sheet.id) == 1
-      assert {:ok, _deleted_node, _meta} = Flows.delete_node(node)
-      assert References.count_backlinks("sheet", target_sheet.id) == 0
-
-      assert {:error, {:flow_node_project_mismatch, node_id, project_id}} =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
-
-      assert node_id == node.id
-      assert project_id == project.id
-      assert References.count_backlinks("sheet", target_sheet.id) == 0
-    end
-
-    test "rejects a node whose owning flow is in trash when rebuilding references directly" do
-      %{project: project} = setup_project()
-      original_target = sheet_fixture(project, %{name: "Deleted flow original target"})
-      replacement_target = sheet_fixture(project, %{name: "Deleted flow replacement target"})
-      flow = flow_fixture(project, %{name: "Deleted flow source"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => original_target.id, "text" => "Hello"}
-        })
-
-      assert :ok =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
-
-      assert References.count_backlinks("sheet", original_target.id) == 1
-      assert {:ok, _deleted_flow} = Flows.delete_flow(flow)
-      assert References.count_backlinks("sheet", original_target.id) == 1
-
-      node =
-        Repo.update!(
-          Ecto.Changeset.change(node,
-            data: %{
-              "speaker_sheet_id" => replacement_target.id,
-              "text" => "Changed while in trash"
-            }
-          )
-        )
-
-      assert {:error, {:flow_node_project_mismatch, node_id, project_id}} =
-               References.update_flow_node_references(node,
-                 project_id: project.id
-               )
-
-      assert node_id == node.id
-      assert project_id == project.id
-      assert References.count_backlinks("sheet", original_target.id) == 1
-      assert References.count_backlinks("sheet", replacement_target.id) == 0
-    end
-
-    test "returns an error from Ecto.Multi and rolls back preceding operations" do
-      %{project: project} = setup_project()
-      other_project = project_fixture()
-      target_sheet = sheet_fixture(project, %{name: "Original name"})
-      flow = flow_fixture(project, %{name: "Outer transaction rollback"})
-      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
-
-      result =
-        Multi.new()
-        |> Multi.update(
-          :rename_target,
-          Ecto.Changeset.change(target_sheet, name: "Sentinel name")
-        )
-        |> Multi.run(:rebuild_references, fn _repo, _changes ->
-          References.update_flow_node_references(node,
-            project_id: other_project.id
-          )
-        end)
-        |> Repo.transaction()
-
-      assert {:error, :rebuild_references, {:flow_node_project_mismatch, node_id, project_id},
-              %{rename_target: _renamed_sheet}} = result
-
-      assert node_id == node.id
-      assert project_id == other_project.id
-      assert Repo.reload!(target_sheet).name == "Original name"
-    end
-
-    test "lets an outer transaction explicitly propagate a project ownership error" do
-      %{project: project} = setup_project()
-      other_project = project_fixture()
-      target_sheet = sheet_fixture(project, %{name: "Original name"})
-      flow = flow_fixture(project, %{name: "Explicit outer rollback"})
-      node = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Hello"}})
-
-      result =
-        Repo.transaction(fn ->
-          Repo.update!(Ecto.Changeset.change(target_sheet, name: "Sentinel name"))
-
-          case References.update_flow_node_references(node,
-                 project_id: other_project.id
-               ) do
-            :ok ->
-              :ok
-
-            {:error, reason} ->
-              Repo.rollback(reason)
-          end
-        end)
-
-      assert {:error, {:flow_node_project_mismatch, node_id, project_id}} = result
-      assert node_id == node.id
-      assert project_id == other_project.id
-      assert Repo.reload!(target_sheet).name == "Original name"
     end
   end
 
@@ -831,31 +541,6 @@ defmodule Storyarn.Sheets.References.Integration.EntityReferencesTest do
       References.update_block_references(block)
 
       assert References.count_backlinks("sheet", 0) == 0
-    end
-  end
-
-  # =============================================================================
-  # Flow node with empty speaker_sheet_id
-  # =============================================================================
-
-  describe "update_flow_node_references/1 with empty speaker" do
-    test "ignores empty string speaker_sheet_id" do
-      %{project: project} = setup_project()
-      flow = flow_fixture(project, %{name: "Test Flow"})
-
-      node =
-        node_fixture(flow, %{
-          type: "dialogue",
-          data: %{"speaker_sheet_id" => "", "text" => "Hello"}
-        })
-
-      # This exercises the maybe_add_sheet_ref(refs, "", _context) clause
-      References.update_flow_node_references(node)
-
-      # No speaker reference should be created
-      # (empty string should be treated like nil)
-      refs = References.get_backlinks("sheet", 0)
-      assert refs == []
     end
   end
 

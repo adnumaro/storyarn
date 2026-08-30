@@ -54,14 +54,32 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
   @doc false
   @spec lock_inventory!(integer()) :: :ok
   def lock_inventory!(project_id) do
-    if Repo.in_transaction?() do
-      lock_active_project!(project_id)
-      Postgres.lock_exclusive!(@inventory_lock_namespace, project_id)
-      :ok
-    else
-      raise ArgumentError,
-            "localization inventory locks require an explicit database transaction"
-    end
+    ensure_inventory_lock_transaction!()
+    lock_active_project!(project_id)
+    lock_advisory_inventory!(project_id)
+  end
+
+  @doc """
+  Acquires only the inventory advisory lock after the caller has locked Project.
+
+  This is a narrow transaction-participating port for aggregate coordinators
+  whose existing lock contract cannot be strengthened. In particular, a Flow
+  snapshot holds Project `FOR SHARE` before locking its Flow; trying to upgrade
+  that row here would change its concurrency semantics and can invert the lock
+  order of a concurrent Project writer.
+
+  Ordinary Localization commands must use `lock_inventory!/1`, which acquires
+  Project `FOR UPDATE` before this advisory lock.
+  """
+  @spec lock_inventory_after_project_lock!(integer()) :: :ok
+  def lock_inventory_after_project_lock!(project_id) do
+    ensure_inventory_lock_transaction!()
+    lock_advisory_inventory!(project_id)
+  end
+
+  defp lock_advisory_inventory!(project_id) do
+    Postgres.lock_exclusive!(@inventory_lock_namespace, project_id)
+    :ok
   end
 
   defp reconcile_current_inventory(project_id) do
@@ -378,7 +396,7 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
   # Private — Runtime Source Contract
   # =============================================================================
 
-  defp flow_node_source_fields(%{type: "dialogue", data: data}) do
+  defp flow_node_source_fields(%{type: "dialogue", data: data}) when is_map(data) do
     speaker_sheet_id = data["speaker_sheet_id"]
 
     optional_field("text", data["text"], "dialogue",
@@ -390,7 +408,7 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
       indexed_response_fields(list_value(data["responses"]), speaker_sheet_id)
   end
 
-  defp flow_node_source_fields(%{type: "exit", data: data}) do
+  defp flow_node_source_fields(%{type: "exit", data: data}) when is_map(data) do
     optional_field("label", data["label"], "exit")
   end
 
@@ -411,7 +429,7 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
 
   defp block_source_fields(%BlockRecord{value: value} = block) do
     if SourceContract.localizable_block?(block) do
-      optional_field("value.content", value["content"], "runtime_value")
+      optional_field("value.content", field(value, "content", :content), "runtime_value")
     else
       []
     end
@@ -477,6 +495,15 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
       lock_inventory!(project_id)
       fun.()
     end)
+  end
+
+  defp ensure_inventory_lock_transaction! do
+    if !Repo.in_transaction?() do
+      raise ArgumentError,
+            "localization inventory locks require an explicit database transaction"
+    end
+
+    :ok
   end
 
   defp with_source_lock(project_id, source_namespace, source_id, fun) when is_function(fun, 0) do
@@ -633,6 +660,15 @@ defmodule Storyarn.Localization.Texts.Commands.Extract do
 
   defp list_value(values) when is_list(values), do: values
   defp list_value(_values), do: []
+
+  defp field(map, string_key, atom_key) when is_map(map) do
+    case Map.fetch(map, string_key) do
+      {:ok, value} -> value
+      :error -> Map.get(map, atom_key)
+    end
+  end
+
+  defp field(_map, _string_key, _atom_key), do: nil
 
   defp hash(text) when is_binary(text) do
     :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)

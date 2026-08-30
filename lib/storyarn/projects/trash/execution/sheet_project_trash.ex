@@ -11,10 +11,10 @@ defmodule Storyarn.Projects.SheetProjectTrash do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Localization
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
-  alias Storyarn.Projects.LocalizationProjection
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.EntityVersionRecord
   alias Storyarn.Projects.Persistence.SheetRecord
@@ -64,8 +64,8 @@ defmodule Storyarn.Projects.SheetProjectTrash do
         :ok = verify_restored_sheet_inheritance!(restored_sheet)
         active_blocks = reconcile_active_blocks_for_sheet(restored_sheet)
 
-        with :ok <- LocalizationProjection.extract_sheet_blocks(restored_sheet.id),
-             :ok <- LocalizationProjection.sync_sheet_names(restored_sheet.project_id) do
+        with :ok <- Localization.extract_sheet_blocks(restored_sheet.id),
+             :ok <- Localization.sync_sheet_names(restored_sheet.project_id) do
           %{
             sheet: restored_sheet,
             active_blocks: length(active_blocks)
@@ -106,8 +106,8 @@ defmodule Storyarn.Projects.SheetProjectTrash do
 
       # Delete references where this sheet is the target
       References.delete_target_references("sheet", sheet.id)
-      LocalizationProjection.purge_texts_for_sources("block", block_ids)
-      LocalizationProjection.purge_texts_for_source("sheet", sheet.id)
+      Localization.purge_sheet_texts("block", block_ids)
+      Localization.purge_sheet_texts("sheet", [sheet.id])
 
       # Delete the sheet (blocks cascade via FK)
       case Repo.delete(sheet) do
@@ -142,7 +142,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
 
     Enum.each(
       [sheet.id | descendant_ids],
-      &LocalizationProjection.archive_texts_for_sources("sheet", [&1], "source_deleted")
+      &Localization.archive_sheet_texts("sheet", [&1], "source_deleted")
     )
 
     # Soft delete the sheet itself
@@ -198,7 +198,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
   end
 
   defp archive_block_texts_for_sheets(project_id, sheet_ids) do
-    :ok = LocalizationProjection.lock_inventory!(project_id)
+    :ok = Localization.lock_inventory!(project_id)
 
     block_ids =
       Repo.all(
@@ -208,7 +208,7 @@ defmodule Storyarn.Projects.SheetProjectTrash do
         )
       )
 
-    LocalizationProjection.archive_texts_for_sources("block", block_ids, "source_deleted")
+    Localization.archive_sheet_texts("block", block_ids, "source_deleted")
     :ok
   end
 

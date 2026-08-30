@@ -309,40 +309,6 @@ defmodule Storyarn.Projects.References.VariableProjectionQueries do
     )
   end
 
-  @spec list_variable_refs_with_block_info_for_repair(integer()) :: [map()]
-  def list_variable_refs_with_block_info_for_repair(project_id) do
-    Repo.all(
-      from(reference in VariableReference,
-        join: node in FlowNodeRecord,
-        on:
-          reference.source_type == "flow_node" and
-            node.id == reference.source_id,
-        join: flow in FlowRecord,
-        on: flow.id == node.flow_id,
-        join: block in BlockRecord,
-        on: block.id == reference.block_id,
-        join: sheet in SheetRecord,
-        on: sheet.id == block.sheet_id,
-        where: flow.project_id == ^project_id,
-        where: is_nil(flow.deleted_at),
-        where: is_nil(sheet.deleted_at),
-        where: is_nil(block.deleted_at),
-        where: VariableNamespaceResolver.authoritative_namespace_owner?(sheet),
-        select: %{
-          node_id: node.id,
-          node_type: node.type,
-          node_data: node.data,
-          kind: reference.kind,
-          block_id: reference.block_id,
-          current_shortcut: coalesce(sheet.shortcut, fragment("CAST(? AS TEXT)", sheet.id)),
-          current_variable: block.variable_name,
-          source_sheet: reference.source_sheet,
-          source_variable: reference.source_variable
-        }
-      )
-    )
-  end
-
   @spec list_stale_regular_node_ids(integer()) :: MapSet.t(integer())
   def list_stale_regular_node_ids(flow_id) do
     [flow_id]

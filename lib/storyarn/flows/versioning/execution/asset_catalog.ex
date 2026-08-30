@@ -2,14 +2,16 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   @moduledoc """
   Flow-owned capture and materialization of asset references in Flow snapshots.
 
-  The shared SQL tables and storage adapters are implementation details. Flow
-  snapshot semantics, validation, restore identity, and quota checks live here
-  so the Flow domain does not depend on the Projects-owned asset capability.
+  Flow snapshot semantics, storage, validation, restore identity and quota
+  checks live here. Asset row creation crosses the boundary only through a
+  narrow, transaction-bound Projects command and is read back through Flow's
+  local model.
   """
 
   import Ecto.Query, warn: false
 
   alias Storyarn.Commercial
+  alias Storyarn.Flows.Versioning.Adapters.Projects.AssetRegistration, as: ProjectAssetRegistration
   alias Storyarn.Flows.Versioning.Adapters.Storage.Hashing, as: StorageHash
   alias Storyarn.Flows.Versioning.Adapters.Storage.Locks, as: StorageKeyLock
   alias Storyarn.Flows.Versioning.Adapters.Storage.Objects, as: Storage
@@ -800,9 +802,39 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
              entry.metadata["content_type"]
            ),
          :ok <- Storage.copy(entry.source_key, destination_key),
-         {:ok, asset} <- Repo.insert(changeset) do
+         {:ok, asset} <- register_snapshot_asset(changeset) do
       AssetStorageCompensation.retain_after_commit(scope, destination_key)
       {:ok, asset}
+    end
+  end
+
+  defp register_snapshot_asset(changeset) do
+    asset = Ecto.Changeset.apply_changes(changeset)
+
+    attrs = %{
+      filename: asset.filename,
+      content_type: asset.content_type,
+      size: asset.size,
+      key: asset.key,
+      url: asset.url,
+      metadata: asset.metadata,
+      blob_hash: asset.blob_hash
+    }
+
+    with {:ok, %{asset_id: asset_id, project_id: project_id}} <-
+           ProjectAssetRegistration.register_materialized_asset(asset.project_id, asset.uploaded_by_id, attrs),
+         true <- project_id == asset.project_id do
+      load_registered_asset(project_id, asset_id)
+    else
+      {:error, _reason} = error -> error
+      _invalid_receipt -> {:error, :invalid_asset_registration_receipt}
+    end
+  end
+
+  defp load_registered_asset(project_id, asset_id) do
+    case Repo.get_by(AssetRecord, id: asset_id, project_id: project_id) do
+      %AssetRecord{} = asset -> {:ok, asset}
+      nil -> {:error, :asset_registration_not_visible}
     end
   end
 

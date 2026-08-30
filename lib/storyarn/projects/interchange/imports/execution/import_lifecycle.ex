@@ -20,7 +20,6 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   alias Storyarn.Projects.Imports.Execution
   alias Storyarn.Projects.Imports.Expiration
   alias Storyarn.Projects.Imports.ImportPlan
-  alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.Imports.ParserRegistry
   alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Projects.Imports.PlanCleanup
@@ -37,6 +36,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
+  alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Repo
   alias Storyarn.Workers.ImportProjectWorker
 
@@ -103,7 +103,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
         {:error, :invalid_import_review}
 
       true ->
-        Materializer.execute(project, plan, opts)
+        ProjectReconstitution.execute_import(project, plan, opts)
     end
   end
 
