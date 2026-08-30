@@ -170,7 +170,7 @@ defmodule Storyarn.ProjectsFixturesTest do
 
       token =
         extract_invitation_token(fn ->
-          Storyarn.Projects.create_invitation(project, owner, email, "editor")
+          Storyarn.Projects.create_invitation(user_scope_fixture(owner), project.id, email, "editor")
         end)
 
       assert {:ok, invitation} = Storyarn.Projects.get_invitation_by_token(token)

@@ -21,6 +21,7 @@ defmodule Storyarn.Workspaces.Banner do
   @type banner_error ::
           :not_found
           | :unauthorized
+          | :ownership_invariant_violation
           | :invalid_banner_upload
           | {:workspace_banner_cleanup_enqueue_failed, term()}
           | {:workspace_banner_cleanup_deferred, term(), term()}

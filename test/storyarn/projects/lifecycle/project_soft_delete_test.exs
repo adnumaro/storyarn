@@ -25,7 +25,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       user = user_fixture()
       project = project_fixture(user)
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       assert deleted.deleted_at
       assert deleted.deleted_by_id == user.id
     end
@@ -35,7 +35,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       scope = user_scope_fixture(user)
       project = project_fixture(user)
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert Projects.list_projects(scope) == []
     end
@@ -45,7 +45,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       scope = user_scope_fixture(user)
       project = project_fixture(user)
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:error, :not_found} = Projects.get_project(scope, project.id)
     end
@@ -56,7 +56,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert Projects.list_projects_for_workspace(workspace.id, scope) == []
     end
@@ -68,7 +68,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       deleted = Projects.list_deleted_projects(workspace.id)
       assert length(deleted) == 1
@@ -89,7 +89,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       [deleted] = Projects.list_deleted_projects(workspace.id)
       assert deleted.deleted_by.id == user.id
@@ -102,7 +102,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       deleted = Projects.get_deleted_project(workspace.id, project.id)
       assert deleted
@@ -235,7 +235,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       assert {:ok, _deleted_sheet} = Sheets.delete_sheet(sheet)
       assert [_item] = Projects.list_deleted_items_for_retention()
 
-      assert {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+      assert {:ok, _deleted_project} = Projects.delete_project(user_scope_fixture(user), project.id)
       assert Projects.list_deleted_items_for_retention() == []
       assert Projects.deleted_items_retention_cutoff() == nil
     end
@@ -294,7 +294,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
       user = user_fixture()
       project = project_fixture(user)
 
-      {:ok, _} = Projects.delete_project(project, user.id)
+      {:ok, _} = Projects.delete_project(user_scope_fixture(user), project.id)
       deleted = Repo.get(Projects.Project, project.id)
 
       assert {:ok, _} = Projects.permanently_delete_project(deleted)
@@ -313,7 +313,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
                  vo_status: "recorded"
                })
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       assert {:ok, _project} = Projects.permanently_delete_project(deleted)
 
       refute Repo.get(Projects.Project, project.id)
@@ -331,7 +331,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
 
       trashed = image_asset_fixture(project, user)
       assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, trashed.id, user.id)
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:ok, _project} = Projects.permanently_delete_project(deleted)
 
@@ -360,7 +360,7 @@ defmodule Storyarn.Projects.SoftDeleteTest do
         ]
       )
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:error, :asset_cleanup_not_authorized} =
                Projects.permanently_delete_project(deleted)

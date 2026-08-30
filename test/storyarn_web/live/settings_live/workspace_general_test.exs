@@ -8,6 +8,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
   alias Storyarn.AI
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Repo
   alias Storyarn.Workers.DeleteWorkspaceBannerWorker
   alias Storyarn.Workspaces
 
@@ -77,6 +78,53 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
       vue = get_general_vue(view)
       assert vue.props["is-owner"] == false
+    end
+
+    test "derives owner controls from the workspace owner id, not a stale role", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      stale_owner = user_fixture()
+
+      workspace
+      |> workspace_membership_fixture(stale_owner, "admin")
+      |> Ecto.Changeset.change(role: "owner")
+      |> Repo.update!()
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(stale_owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      vue = get_general_vue(view)
+      refute vue.props["is-owner"]
+      refute vue.props["can-edit-workspace"]
+      assert Repo.reload!(workspace).owner_id == owner.id
+    end
+
+    test "an open owner tab becomes read-only after ownership is transferred", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      receiver = user_fixture()
+      receiver_workspace = workspace_fixture(receiver)
+
+      assert {:ok, _deleted_workspace} =
+               Workspaces.delete_workspace(user_scope_fixture(receiver), receiver_workspace.id)
+
+      _receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      assert {:ok, _receipt} =
+               Workspaces.transfer_owner(user_scope_fixture(owner), workspace.id, receiver.id)
+
+      refute_redirected(view)
+      vue = get_general_vue(view)
+      refute vue.props["is-owner"]
+      refute vue.props["can-edit-workspace"]
+      assert Repo.reload!(workspace).owner_id == receiver.id
     end
 
     test "renders read-only general settings for a member", %{conn: conn} do

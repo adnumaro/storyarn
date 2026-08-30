@@ -425,10 +425,10 @@ defmodule Storyarn.Localization do
   @spec has_active_provider?(id()) :: boolean()
   defdelegate has_active_provider?(project_id), to: Providers, as: :active?
 
-  @doc "Creates or updates a provider config for a project."
-  @spec upsert_provider_config(project_identity(), map()) ::
+  @doc "Creates or updates a provider config for a project owner."
+  @spec upsert_provider_config(actor_scope(), project_identity(), map()) ::
           {:ok, provider_config()} | {:error, changeset() | term()}
-  defdelegate upsert_provider_config(project, attrs), to: Providers, as: :upsert_config
+  defdelegate upsert_provider_config(actor_scope, project, attrs), to: Providers, as: :upsert_config
 
   # =============================================================================
   # Languages (static helpers)

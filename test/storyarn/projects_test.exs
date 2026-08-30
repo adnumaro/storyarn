@@ -11,6 +11,8 @@ defmodule Storyarn.ProjectsTest do
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
 
+  @outside_pg_bigint 9_223_372_036_854_775_808
+
   describe "projects" do
     test "list_projects/1 returns projects user has access to" do
       user = user_fixture()
@@ -205,36 +207,37 @@ defmodule Storyarn.ProjectsTest do
       refute Repo.get_by(Project, workspace_id: workspace.id, name: "Over Capacity")
     end
 
-    test "update_project/2 updates the project" do
+    test "update_project/3 updates the project" do
       user = user_fixture()
+      scope = user_scope_fixture(user)
       project = project_fixture(user)
 
-      assert {:ok, updated} = Projects.update_project(project, %{name: "Updated Name"})
+      assert {:ok, updated} = Projects.update_project(scope, project.id, %{name: "Updated Name"})
       assert updated.name == "Updated Name"
     end
 
     test "delete_project/2 soft-deletes the project" do
       user = user_fixture()
+      scope = user_scope_fixture(user)
       project = project_fixture(user)
 
       assert {:ok, invitation} =
-               Projects.create_invitation(project, user, "pending-before-delete@example.com", "editor")
+               Projects.create_invitation(scope, project.id, "pending-before-delete@example.com", "editor")
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(scope, project.id)
       assert deleted.deleted_at
       assert deleted.deleted_by_id == user.id
       refute Repo.get(ProjectInvitation, invitation.id)
 
       assert {:error, :not_found} =
                Projects.create_invitation(
-                 deleted,
-                 user,
+                 scope,
+                 deleted.id,
                  "after-delete@example.com",
                  "editor"
                )
 
       # Project still exists in DB but is filtered from normal queries
-      scope = Storyarn.Accounts.Scope.for_user(user)
       assert {:error, :not_found} = Projects.get_project(scope, project.id)
     end
 
@@ -287,53 +290,73 @@ defmodule Storyarn.ProjectsTest do
       assert Projects.get_membership(project.id, new_member.id) == nil
     end
 
-    test "update_member_role/2 updates the role" do
+    test "update_member_role/4 updates the role" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       member = user_fixture()
       project = project_fixture(owner)
       membership = membership_fixture(project, member, "editor")
 
-      assert {:ok, updated} = Projects.update_member_role(membership, "viewer")
+      assert {:ok, updated} = Projects.update_member_role(scope, project.id, membership.id, "viewer")
       assert updated.role == "viewer"
     end
 
-    test "update_member_role/2 cannot change owner role" do
+    test "update_member_role/4 cannot change owner role" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       membership = Projects.get_membership(project.id, owner.id)
 
       assert {:error, :cannot_change_owner_role} =
-               Projects.update_member_role(membership, "editor")
+               Projects.update_member_role(scope, project.id, membership.id, "editor")
     end
 
-    test "update_member_role/2 cannot promote a member to owner" do
+    test "update_member_role/4 cannot promote a member to owner" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       member = user_fixture()
       project = project_fixture(owner)
       membership = membership_fixture(project, member, "editor")
 
       assert {:error, :cannot_assign_owner_role} =
-               Projects.update_member_role(membership, "owner")
+               Projects.update_member_role(scope, project.id, membership.id, "owner")
 
       assert %{role: "editor"} = Projects.get_membership(project.id, member.id)
     end
 
-    test "remove_member/1 removes the member" do
+    test "remove_member/3 removes the member" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       member = user_fixture()
       project = project_fixture(owner)
       membership = membership_fixture(project, member, "editor")
 
-      assert {:ok, _} = Projects.remove_member(membership)
+      assert {:ok, _} = Projects.remove_member(scope, project.id, membership.id)
       assert Projects.get_membership(project.id, member.id) == nil
     end
 
-    test "remove_member/1 cannot remove owner" do
+    test "remove_member/3 cannot remove owner" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       membership = Projects.get_membership(project.id, owner.id)
 
-      assert {:error, :cannot_remove_owner} = Projects.remove_member(membership)
+      assert {:error, :cannot_remove_owner} = Projects.remove_member(scope, project.id, membership.id)
+    end
+
+    test "actor-aware membership writes reject ids outside PostgreSQL bigint" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+
+      assert {:error, :not_found} =
+               Projects.update_member_role(scope, project.id, @outside_pg_bigint, "viewer")
+
+      assert {:error, :not_found} =
+               Projects.remove_member(scope, project.id, @outside_pg_bigint)
+
+      assert {:error, :not_found} =
+               Projects.remove_member(scope, @outside_pg_bigint, 1)
     end
   end
 
@@ -349,38 +372,41 @@ defmodule Storyarn.ProjectsTest do
 
     test "create_invitation/4 creates an invitation and queues delivery" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       email = unique_user_email()
 
-      assert {:ok, invitation} = Projects.create_invitation(project, owner, email, "editor")
+      assert {:ok, invitation} = Projects.create_invitation(scope, project.id, email, "editor")
       assert invitation.email == String.downcase(email)
       assert invitation.role == "editor"
       assert invitation.project_id == project.id
     end
 
-    test "create_invitation/3 uses default role of editor" do
+    test "create_invitation/3 preserves the editor default" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       email = unique_user_email()
 
-      # Call with 3 args to exercise the default role argument (line 33)
-      assert {:ok, invitation} = Projects.create_invitation(project, owner, email)
+      assert {:ok, invitation} = Projects.create_invitation(scope, project.id, email)
       assert invitation.role == "editor"
     end
 
     test "create_invitation/4 reserves the remaining plan seat while pending" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
 
       assert {:ok, _invitation} =
-               Projects.create_invitation(project, owner, "first@example.com", "editor")
+               Projects.create_invitation(scope, project.id, "first@example.com", "editor")
 
       assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
-               Projects.create_invitation(project, owner, "second@example.com", "viewer")
+               Projects.create_invitation(scope, project.id, "second@example.com", "viewer")
     end
 
     test "the same email can join another project without consuming another workspace seat" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       first_project = project_fixture(owner, %{workspace: workspace})
       second_project = project_fixture(owner, %{workspace: workspace})
@@ -388,12 +414,12 @@ defmodule Storyarn.ProjectsTest do
       invitee = user_fixture(%{email: email})
 
       assert {:ok, first_invitation} =
-               Projects.create_invitation(first_project, owner, email, "editor")
+               Projects.create_invitation(scope, first_project.id, email, "editor")
 
       assert {:ok, _membership} = Projects.accept_invitation(first_invitation, invitee)
 
       assert {:ok, second_invitation} =
-               Projects.create_invitation(second_project, owner, String.upcase(email), "viewer")
+               Projects.create_invitation(scope, second_project.id, String.upcase(email), "viewer")
 
       assert {:ok, second_membership} =
                Projects.accept_invitation(second_invitation, invitee)
@@ -402,8 +428,8 @@ defmodule Storyarn.ProjectsTest do
 
       assert {:error, :limit_reached, %{used: 2, limit: 2}} =
                Projects.create_invitation(
-                 second_project,
-                 owner,
+                 scope,
+                 second_project.id,
                  "different-collaborator@example.com",
                  "viewer"
                )
@@ -411,6 +437,7 @@ defmodule Storyarn.ProjectsTest do
 
     test "renews an expired project invitation with a new identity" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       email = "renew-project-expired@example.com"
       {old_token, invitation} = ProjectInvitation.build_invitation(project, owner, email)
@@ -421,7 +448,7 @@ defmodule Storyarn.ProjectsTest do
         |> Repo.insert!()
 
       assert {:ok, renewed_invitation} =
-               Projects.create_invitation(project, owner, email, "viewer")
+               Projects.create_invitation(scope, project.id, email, "viewer")
 
       refute renewed_invitation.id == expired_invitation.id
       assert renewed_invitation.role == "viewer"
@@ -431,17 +458,18 @@ defmodule Storyarn.ProjectsTest do
 
     test "renews an accepted project invitation after membership removal" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       invitee = user_fixture()
       project = project_fixture(owner)
 
       assert {:ok, invitation} =
-               Projects.create_invitation(project, owner, invitee.email, "editor")
+               Projects.create_invitation(scope, project.id, invitee.email, "editor")
 
       assert {:ok, membership} = Projects.accept_invitation(invitation, invitee)
       Repo.delete!(membership)
 
       assert {:ok, renewed_invitation} =
-               Projects.create_invitation(project, owner, invitee.email, "viewer")
+               Projects.create_invitation(scope, project.id, invitee.email, "viewer")
 
       refute renewed_invitation.id == invitation.id
       assert renewed_invitation.role == "viewer"
@@ -455,12 +483,13 @@ defmodule Storyarn.ProjectsTest do
 
     test "rejects invalid invitation data in context calls" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
 
       assert {:error, email_changeset} =
                Projects.create_invitation(
-                 project,
-                 owner,
+                 scope,
+                 project.id,
                  "invalid email #{System.unique_integer()}@example.com",
                  "editor"
                )
@@ -469,8 +498,8 @@ defmodule Storyarn.ProjectsTest do
 
       assert {:error, role_changeset} =
                Projects.create_invitation(
-                 project,
-                 owner,
+                 scope,
+                 project.id,
                  "valid@example.com",
                  "owner"
                )
@@ -480,29 +509,31 @@ defmodule Storyarn.ProjectsTest do
       too_long_email = String.duplicate("a", 149) <> "@example.com"
 
       assert {:error, length_changeset} =
-               Projects.create_invitation(project, owner, too_long_email, "editor")
+               Projects.create_invitation(scope, project.id, too_long_email, "editor")
 
       assert errors_on(length_changeset).email
     end
 
     test "create_invitation/4 returns error for existing member" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       member = user_fixture()
       project = project_fixture(owner)
       _membership = membership_fixture(project, member, "editor")
 
       assert {:error, :already_member} =
-               Projects.create_invitation(project, owner, member.email, "editor")
+               Projects.create_invitation(scope, project.id, member.email, "editor")
     end
 
     test "create_invitation/4 returns error for existing pending invitation" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       email = unique_user_email()
       _invitation = invitation_fixture(project, owner, email)
 
       assert {:error, :already_invited} =
-               Projects.create_invitation(project, owner, email, "editor")
+               Projects.create_invitation(scope, project.id, email, "editor")
     end
 
     test "get_invitation_by_token/1 returns valid invitation" do
@@ -522,10 +553,11 @@ defmodule Storyarn.ProjectsTest do
 
     test "accept_invitation/2 creates membership" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       invitee = user_fixture()
 
-      {:ok, invitation} = Projects.create_invitation(project, owner, invitee.email, "editor")
+      {:ok, invitation} = Projects.create_invitation(scope, project.id, invitee.email, "editor")
 
       assert {:ok, membership} = Projects.accept_invitation(invitation, invitee)
       assert membership.user_id == invitee.id
@@ -535,22 +567,24 @@ defmodule Storyarn.ProjectsTest do
 
     test "accept_invitation/2 returns error for email mismatch" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       wrong_user = user_fixture()
 
       {:ok, invitation} =
-        Projects.create_invitation(project, owner, "other@example.com", "editor")
+        Projects.create_invitation(scope, project.id, "other@example.com", "editor")
 
       assert {:error, :email_mismatch} = Projects.accept_invitation(invitation, wrong_user)
     end
 
     test "accept_invitation/2 rechecks a stale user's current email" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       invitee = user_fixture()
 
       {:ok, invitation} =
-        Projects.create_invitation(project, owner, invitee.email, "editor")
+        Projects.create_invitation(scope, project.id, invitee.email, "editor")
 
       stale_invitee = invitee
 
@@ -581,13 +615,26 @@ defmodule Storyarn.ProjectsTest do
       assert {:error, :already_member} = Projects.accept_invitation(invitation, member)
     end
 
-    test "revoke_invitation/1 deletes the invitation" do
+    test "revoke_invitation/3 deletes the invitation" do
       owner = user_fixture()
+      scope = user_scope_fixture(owner)
       project = project_fixture(owner)
       invitation = invitation_fixture(project, owner)
 
-      assert {:ok, _} = Projects.revoke_invitation(invitation)
+      assert {:ok, _} = Projects.revoke_invitation(scope, project.id, invitation.id)
       assert Projects.list_pending_invitations(project.id) == []
+    end
+
+    test "revoke_invitation/3 rejects ids outside PostgreSQL bigint" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+
+      assert {:error, :not_found} =
+               Projects.revoke_invitation(scope, project.id, @outside_pg_bigint)
+
+      assert {:error, :not_found} =
+               Projects.revoke_invitation(scope, @outside_pg_bigint, 1)
     end
   end
 

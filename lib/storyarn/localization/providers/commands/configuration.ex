@@ -7,19 +7,28 @@ defmodule Storyarn.Localization.Providers.Commands.Configuration do
   alias Storyarn.Localization.ProviderConfig
   alias Storyarn.Repo
 
-  @spec upsert(%{required(:id) => pos_integer()}, map()) ::
+  @spec upsert(map(), %{required(:id) => pos_integer()}, map()) ::
           {:ok, ProviderConfig.t()} | {:error, Ecto.Changeset.t() | term()}
-  def upsert(%{id: project_id}, attrs) when is_integer(project_id) and project_id > 0 do
-    Repo.transaction(fn -> upsert_transaction(project_id, attrs) end)
+  def upsert(%{user: %{id: actor_id}} = actor_scope, %{id: project_id}, attrs)
+      when is_integer(actor_id) and actor_id > 0 and is_integer(project_id) and project_id > 0 and is_map(attrs) do
+    Repo.transaction(fn -> upsert_transaction(actor_scope, project_id, attrs) end)
   end
 
-  defp upsert_transaction(project_id, attrs) do
+  def upsert(_actor_scope, _project, _attrs), do: {:error, :unauthorized}
+
+  defp upsert_transaction(actor_scope, project_id, attrs) do
     case ProjectAccess.lock_active_project(project_id, :update) do
       {:ok, locked_project} ->
-        locked_project.id
-        |> get_locked_config()
-        |> config_changeset(locked_project.id, attrs)
-        |> persist_config()
+        case ProjectAccess.authorize_locked_owner(actor_scope, locked_project) do
+          :ok ->
+            locked_project.id
+            |> get_locked_config()
+            |> config_changeset(locked_project.id, attrs)
+            |> persist_config()
+
+          {:error, reason} ->
+            Repo.rollback(reason)
+        end
 
       {:error, reason} ->
         Repo.rollback(reason)

@@ -13,11 +13,11 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
                                    {"Storyarn.Flows.Editor", [assign_dialogue_audio: 4]},
                                    {"Storyarn.Flows.Editor.Commands.DialogueAudio", [assign: 4]},
                                    {"Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepair",
-                                    [repair_project: 1]},
-                                   {"Storyarn.Flows", [repair_stale_variable_references: 1]},
-                                   {"Storyarn.Flows.References", [repair_stale_variable_references: 1]},
+                                    [repair_project: 2]},
+                                   {"Storyarn.Flows", [repair_stale_variable_references: 2]},
+                                   {"Storyarn.Flows.References", [repair_stale_variable_references: 2]},
                                    {"Storyarn.Flows.References.Commands.StaleVariableReferenceRepair",
-                                    [repair_project: 1]}
+                                    [repair_project: 2]}
                                  ])
 
   test "privileged materialization and restore entrypoints keep their exact reviewed callers" do

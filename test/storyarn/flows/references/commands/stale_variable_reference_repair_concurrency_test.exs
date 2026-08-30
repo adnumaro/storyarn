@@ -19,6 +19,7 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.VariableReference
+  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -26,11 +27,116 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
 
   @timeout 15_000
 
+  test "a direct project editor cannot run the owner-only repair" do
+    Sandbox.unboxed_run(Repo, fn ->
+      owner = concurrency_user_fixture()
+      project = project_fixture(owner)
+      editor = user_without_workspace()
+      _editor_membership = membership_fixture(project, editor, "editor")
+
+      try do
+        assert {:error, :unauthorized} =
+                 Flows.repair_stale_variable_references(user_scope_fixture(editor), project.id)
+      after
+        cleanup_project(project, [owner.id, editor.id])
+      end
+    end)
+  end
+
+  test "a repair by the former owner waits for ownership transfer and then fails closed" do
+    Sandbox.unboxed_run(Repo, fn ->
+      owner = concurrency_user_fixture()
+      owner_scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+      receiver = user_without_workspace()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      on_exit(fn ->
+        Sandbox.unboxed_run(Repo, fn -> cleanup_project(project, [owner.id, receiver.id]) end)
+      end)
+
+      parent = self()
+      barrier = make_ref()
+
+      lock_holder =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transaction(fn ->
+              _locked_project =
+                Repo.one!(
+                  from(candidate in Project,
+                    where: candidate.id == ^project.id,
+                    lock: "FOR UPDATE"
+                  )
+                )
+
+              send(parent, {barrier, :project_lock_held, self()})
+
+              receive do
+                {^barrier, :release_project_lock} ->
+                  :released
+              after
+                @timeout -> exit(:project_lock_release_timeout)
+              end
+            end)
+          end)
+        end)
+
+      assert_receive {^barrier, :project_lock_held, lock_holder_pid}, @timeout
+
+      transfer_task =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+            send(parent, {barrier, :transfer_ready, self(), backend_pid})
+
+            receive do
+              {^barrier, :start_transfer} ->
+                Projects.transfer_owner(owner_scope, project.id, receiver.id)
+            after
+              @timeout -> exit(:ownership_transfer_start_timeout)
+            end
+          end)
+        end)
+
+      assert_receive {^barrier, :transfer_ready, transfer_pid, transfer_backend_pid}, @timeout
+      send(transfer_pid, {barrier, :start_transfer})
+      assert :waiting_for_lock = wait_for_lock_or_completion(transfer_task, transfer_backend_pid)
+
+      repair_task =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+            send(parent, {barrier, :repair_ready, self(), backend_pid})
+
+            receive do
+              {^barrier, :start_repair} ->
+                Flows.repair_stale_variable_references(owner_scope, project.id)
+            after
+              @timeout ->
+                exit(:stale_variable_reference_repair_start_timeout)
+            end
+          end)
+        end)
+
+      assert_receive {^barrier, :repair_ready, repair_pid, backend_pid}, @timeout
+      send(repair_pid, {barrier, :start_repair})
+      assert :waiting_for_lock = wait_for_lock_or_completion(repair_task, backend_pid)
+
+      send(lock_holder_pid, {barrier, :release_project_lock})
+
+      assert {:ok, :released} = Task.await(lock_holder, @timeout)
+      assert {:ok, %Project{owner_id: receiver_id}} = Task.await(transfer_task, @timeout)
+      assert receiver_id == receiver.id
+      assert {:error, :unauthorized} = Task.await(repair_task, @timeout)
+    end)
+  end
+
   test "an ordinary node edit and stale-reference repair preserve both changes" do
     unboxed_scenario(fn state ->
       [repair_result, edit_result] =
         run_concurrently([
-          fn -> Flows.repair_stale_variable_references(state.project.id) end,
+          fn -> Flows.repair_stale_variable_references(state.scope, state.project.id) end,
           fn ->
             Flows.edit_node(state.flow.id, state.node.id, :put_field, %{
               field: "description",
@@ -39,11 +145,10 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
           end
         ])
 
-      # If the ordinary edit acquires the lock first, its regular reference
-      # normalization fixes the stale identity and the explicit repair becomes
-      # a no-op. If repair wins first it reports one. Both serializations must
-      # preserve the edited field and the repaired variable identity.
-      assert repair_result in [{:ok, 0}, {:ok, 1}]
+      # An unrelated edit preserves the stale row as recovery evidence, so the
+      # explicit repair finds and fixes the authored identity in either lock
+      # serialization while both user-visible changes survive.
+      assert {:ok, 1} = repair_result
       assert {:ok, %{node: edited_node}} = edit_result
       assert edited_node.id == state.node.id
 
@@ -72,8 +177,8 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
     unboxed_scenario(fn state ->
       results =
         run_concurrently([
-          fn -> Flows.repair_stale_variable_references(state.project.id) end,
-          fn -> Flows.repair_stale_variable_references(state.project.id) end
+          fn -> Flows.repair_stale_variable_references(state.scope, state.project.id) end,
+          fn -> Flows.repair_stale_variable_references(state.scope, state.project.id) end
         ])
 
       assert Enum.sort(results) == [{:ok, 0}, {:ok, 1}]
@@ -120,7 +225,7 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
           Sandbox.unboxed_run(Repo, fn ->
             %{rows: [[backend_pid]]} = Repo.query!("SELECT pg_backend_pid()")
             send(parent, {:repair_backend, backend_pid})
-            Flows.repair_stale_variable_references(state.project.id)
+            Flows.repair_stale_variable_references(state.scope, state.project.id)
           end)
         end)
 
@@ -243,6 +348,7 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
       try do
         test_fun.(%{
           user: user,
+          scope: user_scope_fixture(user),
           project: project,
           flow: flow,
           node: node,
@@ -250,10 +356,29 @@ defmodule Storyarn.Flows.StaleVariableReferenceRepairConcurrencyTest do
           renamed_shortcut: renamed_shortcut
         })
       after
-        Repo.delete_all(from(current in Project, where: current.id == ^project.id))
-        Repo.delete_all(from(workspace in Workspace, where: workspace.id == ^project.workspace_id))
-        Repo.delete_all(from(current in User, where: current.id == ^user.id))
+        cleanup_project(project, [user.id])
       end
     end)
+  end
+
+  defp user_without_workspace do
+    %User{}
+    |> User.email_changeset(%{
+      email: "flow-variable-repair-member-#{Ecto.UUID.generate()}@example.com"
+    })
+    |> User.confirm_changeset()
+    |> Repo.insert!()
+  end
+
+  defp concurrency_user_fixture do
+    user_fixture(%{
+      email: "flow-variable-repair-owner-#{Ecto.UUID.generate()}@example.com"
+    })
+  end
+
+  defp cleanup_project(project, user_ids) do
+    Repo.delete_all(from(current in Project, where: current.id == ^project.id))
+    Repo.delete_all(from(workspace in Workspace, where: workspace.id == ^project.workspace_id))
+    Repo.delete_all(from(current in User, where: current.id in ^user_ids))
   end
 end

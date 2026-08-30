@@ -13,6 +13,7 @@ defmodule Storyarn.WorkspacesTest do
   alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Repo
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Workspace
 
   describe "workspaces" do
     test "list_workspaces/1 returns workspaces user has access to" do
@@ -111,24 +112,75 @@ defmodule Storyarn.WorkspacesTest do
                })
     end
 
-    test "update_workspace/2 updates the workspace" do
+    test "update_workspace/3 updates the workspace" do
       user = user_fixture()
+      scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
 
-      assert {:ok, updated} = Workspaces.update_workspace(workspace, %{name: "Updated Name"})
+      assert {:ok, updated} = Workspaces.update_workspace(scope, workspace.id, %{name: "Updated Name"})
       assert updated.name == "Updated Name"
     end
 
-    test "delete_workspace/1 deletes the workspace" do
+    test "update_workspace/3 rejects drift between canonical owner records" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      replacement = user_fixture()
+
+      workspace
+      |> Ecto.Changeset.change(owner_id: replacement.id)
+      |> Repo.update!()
+
+      assert {:error, :ownership_invariant_violation} =
+               Workspaces.update_workspace(scope, workspace.id, %{name: "Unauthorized rename"})
+
+      assert Repo.get!(Workspace, workspace.id).name == workspace.name
+    end
+
+    test "delete_workspace/2 deletes the workspace" do
       user = user_fixture()
+      scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
 
-      assert {:ok, _} = Workspaces.delete_workspace(workspace)
+      assert {:ok, _} = Workspaces.delete_workspace(scope, workspace.id)
       assert_raise Ecto.NoResultsError, fn -> Workspaces.get_workspace!(workspace.id) end
     end
 
-    test "delete_workspace/1 hands off asset keys before cascading projects" do
+    test "delete_workspace/2 rejects a missing canonical owner membership" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+
+      workspace.id
+      |> Workspaces.get_membership(owner.id)
+      |> Ecto.Changeset.change(role: "admin")
+      |> Repo.update!()
+
+      assert {:error, :ownership_invariant_violation} =
+               Workspaces.delete_workspace(scope, workspace.id)
+
+      assert Repo.get!(Workspace, workspace.id)
+    end
+
+    test "lifecycle mutations reject ambiguous owner memberships" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      duplicate_owner = user_fixture()
+      _duplicate_membership = workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+      assert {:error, :ownership_invariant_violation} =
+               Workspaces.update_workspace(scope, workspace.id, %{name: "Ambiguous rename"})
+
+      assert {:error, :ownership_invariant_violation} =
+               Workspaces.delete_workspace(scope, workspace.id)
+
+      assert Repo.get!(Workspace, workspace.id).name == workspace.name
+    end
+
+    test "delete_workspace/2 hands off asset keys before cascading projects" do
       user = user_fixture()
+      scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
 
@@ -141,7 +193,7 @@ defmodule Storyarn.WorkspacesTest do
       trashed = image_asset_fixture(project, user)
       assert {:ok, _trashed} = Assets.move_asset_to_trash(project.id, trashed.id, user.id)
 
-      assert {:ok, _workspace} = Workspaces.delete_workspace(workspace)
+      assert {:ok, _workspace} = Workspaces.delete_workspace(scope, workspace.id)
 
       assert Repo.aggregate(from(asset in Asset, where: asset.project_id == ^project.id), :count) == 0
       assert [request] = Repo.all(StorageCleanupRequest)
@@ -214,53 +266,71 @@ defmodule Storyarn.WorkspacesTest do
       assert Workspaces.get_membership(workspace.id, new_member.id) == nil
     end
 
-    test "update_member_role/2 updates the role" do
+    test "update_member_role/4 updates the role" do
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       member = user_fixture()
       membership = workspace_membership_fixture(workspace, member, "member")
 
-      assert {:ok, updated} = Workspaces.update_member_role(membership, "admin")
+      assert {:ok, updated} =
+               Workspaces.update_member_role(owner_scope, workspace.id, membership.id, "admin")
+
       assert updated.role == "admin"
     end
 
-    test "update_member_role/2 cannot change owner role" do
+    test "update_member_role/4 cannot change owner role" do
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       owner_membership = Workspaces.get_membership(workspace.id, owner.id)
 
       assert {:error, :cannot_change_owner_role} =
-               Workspaces.update_member_role(owner_membership, "admin")
+               Workspaces.update_member_role(
+                 owner_scope,
+                 workspace.id,
+                 owner_membership.id,
+                 "admin"
+               )
     end
 
-    test "update_member_role/2 cannot promote a member to owner" do
+    test "update_member_role/4 cannot promote a member to owner" do
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       member = user_fixture()
       membership = workspace_membership_fixture(workspace, member, "member")
 
       assert {:error, :cannot_assign_owner_role} =
-               Workspaces.update_member_role(membership, "owner")
+               Workspaces.update_member_role(
+                 owner_scope,
+                 workspace.id,
+                 membership.id,
+                 "owner"
+               )
 
       assert %{role: "member"} = Workspaces.get_membership(workspace.id, member.id)
     end
 
-    test "remove_member/1 removes the member" do
+    test "remove_member/3 removes the member" do
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       member = user_fixture()
       membership = workspace_membership_fixture(workspace, member, "member")
 
-      assert {:ok, _} = Workspaces.remove_member(membership)
+      assert {:ok, _} = Workspaces.remove_member(owner_scope, workspace.id, membership.id)
       assert Workspaces.get_membership(workspace.id, member.id) == nil
     end
 
-    test "remove_member/1 cannot remove owner" do
+    test "remove_member/3 cannot remove owner" do
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       owner_membership = Workspaces.get_membership(workspace.id, owner.id)
 
-      assert {:error, :cannot_remove_owner} = Workspaces.remove_member(owner_membership)
+      assert {:error, :cannot_remove_owner} =
+               Workspaces.remove_member(owner_scope, workspace.id, owner_membership.id)
     end
   end
 
@@ -280,6 +350,7 @@ defmodule Storyarn.WorkspacesTest do
 
       %{
         owner: owner,
+        owner_scope: user_scope_fixture(owner),
         workspace: workspace,
         project: project,
         invitee: invitee,
@@ -347,7 +418,7 @@ defmodule Storyarn.WorkspacesTest do
     end
 
     test "soft-deleting the only project revokes project-derived workspace access", ctx do
-      assert {:ok, _deleted} = Storyarn.Projects.delete_project(ctx.project, ctx.owner.id)
+      assert {:ok, _deleted} = Storyarn.Projects.delete_project(ctx.owner_scope, ctx.project.id)
 
       refute Enum.any?(Workspaces.list_workspaces(ctx.invitee_scope), fn entry ->
                entry.workspace.id == ctx.workspace.id
@@ -361,8 +432,9 @@ defmodule Storyarn.WorkspacesTest do
     test "get_default_workspace falls back to workspace via ProjectMembership" do
       # Create a user with NO workspace membership (delete the auto-created one)
       invitee = user_fixture()
+      invitee_scope = user_scope_fixture(invitee)
       default_ws = Workspaces.get_default_workspace(invitee)
-      {:ok, _} = Workspaces.delete_workspace(default_ws)
+      {:ok, _} = Workspaces.delete_workspace(invitee_scope, default_ws.id)
 
       # Create a workspace with a project and give the invitee project membership only
       owner = user_fixture()

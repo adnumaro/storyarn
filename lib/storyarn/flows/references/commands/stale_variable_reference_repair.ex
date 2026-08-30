@@ -12,6 +12,7 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Localization
   alias Storyarn.Flows.References
+  alias Storyarn.Flows.References.Commands.OwnerAuthority
   alias Storyarn.Flows.References.Queries.StaleVariableReferenceRepair, as: RepairQuery
   alias Storyarn.Flows.References.Rules.StaleVariableReferenceData, as: RepairData
   alias Storyarn.Platform.Collaboration
@@ -24,21 +25,44 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
   @type partial_error ::
           {:partial_variable_reference_repair,
            %{required(:repaired_count) => non_neg_integer(), required(:failures) => [failure()]}}
-  @type error :: :not_found | partial_error()
+  @type error :: :not_found | :unauthorized | :ownership_invariant_violation | partial_error()
 
   defguardp valid_project_id(project_id)
             when is_integer(project_id) and project_id > 0 and
                    project_id <= @max_postgres_bigint
 
-  @spec repair_project(term()) :: {:ok, non_neg_integer()} | {:error, error()}
-  def repair_project(project_id) when valid_project_id(project_id) do
-    project_id
-    |> candidate_repairs()
-    |> apply_repairs(project_id)
-    |> broadcast_repair_result(project_id)
+  @spec repair_project(map(), term()) :: {:ok, non_neg_integer()} | {:error, error()}
+  def repair_project(%{user: %{id: actor_id}} = scope, project_id)
+      when is_integer(actor_id) and actor_id > 0 and valid_project_id(project_id) do
+    with :ok <- authorize_project_owner(scope, project_id) do
+      project_id
+      |> candidate_repairs()
+      |> apply_repairs(scope, project_id)
+      |> broadcast_repair_result(project_id)
+    end
   end
 
-  def repair_project(_project_id), do: {:error, :not_found}
+  def repair_project(%{user: %{id: actor_id}}, _project_id) when is_integer(actor_id) and actor_id > 0,
+    do: {:error, :not_found}
+
+  def repair_project(_scope, _project_id), do: {:error, :unauthorized}
+
+  defp authorize_project_owner(scope, project_id) do
+    result =
+      Repo.transact(fn ->
+        with {:ok, project} <- References.lock_active_project(project_id, :update),
+             :ok <- OwnerAuthority.authorize_locked(scope, project) do
+          {:ok, :authorized}
+        else
+          {:error, reason} -> {:error, normalize_project_error(reason)}
+        end
+      end)
+
+    case result do
+      {:ok, :authorized} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
 
   defp candidate_repairs(project_id) do
     project_id
@@ -56,24 +80,17 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
     |> Enum.sort_by(&elem(&1, 0))
   end
 
-  defp apply_repairs(repairs, project_id) do
+  defp apply_repairs(repairs, scope, project_id) do
     {repaired_count, failures} =
       Enum.reduce(repairs, {0, []}, fn repair, acc ->
-        collect_repair_result(repair, project_id, acc)
+        collect_repair_result(repair, scope, project_id, acc)
       end)
 
-    case failures do
-      [] ->
-        {:ok, repaired_count}
-
-      failures ->
-        {:error,
-         {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: Enum.reverse(failures)}}}
-    end
+    aggregate_repair_result(repaired_count, Enum.reverse(failures))
   end
 
-  defp collect_repair_result({node_id, discovery_references}, project_id, {repaired_count, failures}) do
-    case repair_single_node(project_id, node_id, discovery_references) do
+  defp collect_repair_result({node_id, discovery_references}, scope, project_id, {repaired_count, failures}) do
+    case repair_single_node(scope, project_id, node_id, discovery_references) do
       {:ok, _node} -> {repaired_count + 1, failures}
       :skip -> {repaired_count, failures}
       {:error, reason} -> {repaired_count, [{node_id, reason} | failures]}
@@ -83,19 +100,19 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
   # Preserve the established hard-delete race contract: a candidate that no
   # longer exists is skipped, while a soft-deleted or otherwise inactive node
   # remains a visible partial failure.
-  defp repair_single_node(project_id, node_id, discovery_references) do
+  defp repair_single_node(scope, project_id, node_id, discovery_references) do
     case Repo.get(FlowNode, node_id) do
       nil ->
         :skip
 
       %FlowNode{} ->
-        run_repair_transaction(project_id, node_id, discovery_references)
+        run_repair_transaction(scope, project_id, node_id, discovery_references)
     end
   end
 
-  defp run_repair_transaction(project_id, node_id, discovery_references) do
+  defp run_repair_transaction(scope, project_id, node_id, discovery_references) do
     case Repo.transaction(fn ->
-           repair_single_node_transaction(project_id, node_id, discovery_references)
+           repair_single_node_transaction(scope, project_id, node_id, discovery_references)
          end) do
       {:ok, result} -> result
       {:error, :node_not_found} -> classify_missing_node_after_lock(node_id)
@@ -114,12 +131,14 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
     end
   end
 
-  defp repair_single_node_transaction(project_id, node_id, discovery_references) do
-    # Localization reconciliation below ultimately requires Project UPDATE.
-    # Acquire it before Flow and node locks instead of upgrading from KEY SHARE
-    # after holding them. The lock is scoped to this one candidate node; the
-    # outer repair intentionally remains partially successful across nodes.
-    with {:ok, %{project_id: locked_project_id, flow: flow, node: node}} <-
+  defp repair_single_node_transaction(scope, project_id, node_id, discovery_references) do
+    # Acquire and authorize the Project before Flow and node locks. A mounted
+    # owner can lose authority while this maintenance command is running; each
+    # independently committed node must therefore reauthorize under the same
+    # Project lock that serializes ownership transfer.
+    with {:ok, project} <- References.lock_active_project(project_id, :update),
+         :ok <- OwnerAuthority.authorize_locked(scope, project),
+         {:ok, %{project_id: locked_project_id, flow: flow, node: node}} <-
            References.lock_active_node_for_write(node_id, :update),
          :ok <- ensure_project(locked_project_id, project_id),
          {:ok, _parent_id} <- References.lock_node_parent(flow.id, node.parent_id, node.id) do
@@ -175,14 +194,34 @@ defmodule Storyarn.Flows.References.Commands.StaleVariableReferenceRepair do
 
   defp normalize_projection_result(result), do: {:error, {:unexpected_reference_write_result, result}}
 
+  defp aggregate_repair_result(repaired_count, []) do
+    {:ok, repaired_count}
+  end
+
+  defp aggregate_repair_result(0, failures) do
+    case failures |> Enum.map(&elem(&1, 1)) |> Enum.uniq() do
+      [:unauthorized] -> {:error, :unauthorized}
+      [:ownership_invariant_violation] -> {:error, :ownership_invariant_violation}
+      _mixed_failures -> partial_repair_error(0, failures)
+    end
+  end
+
+  defp aggregate_repair_result(repaired_count, failures), do: partial_repair_error(repaired_count, failures)
+
+  defp partial_repair_error(repaired_count, failures) do
+    {:error, {:partial_variable_reference_repair, %{repaired_count: repaired_count, failures: failures}}}
+  end
+
+  defp normalize_project_error(reason) when reason in [:project_not_found, :project_not_active], do: :not_found
+  defp normalize_project_error(reason), do: reason
+
   defp normalize_references(references), do: Enum.map(references, &RepairData.normalize_reference/1)
 
-  # An ordinary concurrent Flow edit refreshes its derivative projection. If a
-  # Sheet identity is already stale, that refresh cannot resolve the old JSON
-  # and legitimately removes the projection row. Preserve only the discovery
-  # evidence whose target block is still active under the Project lock. A
-  # current row for the same authored identity always wins, so a concurrent
-  # change that now resolves to another block is never overwritten.
+  # Revalidate discovery evidence in case another maintenance path changed the
+  # projection after candidate discovery. Preserve only evidence whose target
+  # block is still active under the Project lock. A current row for the same
+  # authored identity always wins, so a concurrent change that now resolves to
+  # another block is never overwritten.
   defp merge_revalidated_discovery_references(project_id, current_references, discovery_references) do
     current_identities = MapSet.new(current_references, &reference_identity/1)
 

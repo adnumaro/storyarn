@@ -19,6 +19,7 @@
       }
     },
     "general": {
+      "owner_controls_unavailable": "Solo la persona propietaria actual puede editar los detalles, el idioma de origen, el tema, el mantenimiento o la eliminación del proyecto. Todavía puedes publicar templates y cambiar tu apariencia.",
       "project_name": "Nombre del proyecto",
       "project_type": "Tipo de proyecto",
       "project_type_placeholder": "Selecciona un tipo",
@@ -89,7 +90,16 @@
       "pending_title": "Invitaciones pendientes",
       "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
       "expires": "Caduca el {date}",
-      "revoke": "Revocar"
+      "revoke": "Revocar",
+      "transfer": {
+        "action": "Transferir propiedad",
+        "title": "¿Transferir la propiedad del proyecto?",
+        "description": "{name} pasará a ser la persona propietaria del proyecto y tú pasarás a ser editor. Perderás el acceso a los ajustes del proyecto y a la gestión de miembros. Las operaciones activas reservadas a la persona propietaria pueden detenerse o fallar tras la transferencia; revísalas con la nueva persona propietaria y vuelve a iniciarlas si es necesario.",
+        "confirm": "Transferir propiedad",
+        "pending": "Transfiriendo la propiedad del proyecto…",
+        "cancel": "Cancelar",
+        "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+      }
     },
     "localization": {
       "provider_title": "Proveedor de traducción (DeepL)",

@@ -82,6 +82,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
 
   setup do
     user = user_fixture()
+    scope = user_scope_fixture(user)
     workspace = workspace_fixture(user)
 
     project =
@@ -96,13 +97,13 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
       })
 
     {:ok, project} =
-      Projects.update_project(project, %{
+      Projects.update_project(scope, project.id, %{
         auto_version_flows: false,
         auto_version_scenes: true,
         auto_version_sheets: false
       })
 
-    %{user: user, scope: user_scope_fixture(user), workspace: workspace, project: project}
+    %{user: user, scope: scope, workspace: workspace, project: project}
   end
 
   test "quota rejection is synchronous and creates no operation, job, reservation or notification", context do
@@ -640,7 +641,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
       protected_blob_key(unreferenced_asset)
     ]
 
-    assert {:ok, soft_deleted} = Projects.delete_project(source_project, context.user.id)
+    assert {:ok, soft_deleted} = Projects.delete_project(context.scope, source_project.id)
     assert {:ok, _hard_deleted} = Projects.permanently_delete_project(soft_deleted)
 
     Enum.each(original_provider_keys, fn key ->
@@ -766,7 +767,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
     assert notification.project_id == recovered.id
     assert notification.dedupe_key == "workspace_snapshot_import:#{accepted.id}:success"
 
-    assert {:ok, deleted_recovered} = Projects.delete_project(recovered, context.user.id)
+    assert {:ok, deleted_recovered} = Projects.delete_project(context.scope, recovered.id)
     assert {:ok, _hard_deleted_recovered} = Projects.permanently_delete_project(deleted_recovered)
 
     historical_import = Repo.get!(WorkspaceSnapshotImport, accepted.id)

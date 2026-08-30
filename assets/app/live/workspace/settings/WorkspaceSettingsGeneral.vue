@@ -55,8 +55,8 @@ const {
   workspaceBannerUrl = "",
   sourceLocale = "",
   languageOptions = [],
-  isOwner = false,
-  canEditWorkspace = true,
+  isOwner,
+  canEditWorkspace,
   ai = {},
 } = defineProps<{
   workspaceName?: string;
@@ -64,8 +64,8 @@ const {
   workspaceBannerUrl?: string;
   sourceLocale?: string;
   languageOptions?: LanguagePickerOption[];
-  isOwner?: boolean;
-  canEditWorkspace?: boolean;
+  isOwner: boolean;
+  canEditWorkspace: boolean;
   ai?: AiSettings;
 }>();
 
@@ -117,6 +117,8 @@ function saveWorkspace() {
 
 // Banner upload
 function triggerBannerUpload() {
+  if (!canEditWorkspace) return;
+
   const input = document.createElement("input");
   input.type = "file";
   input.accept = "image/*";
@@ -125,9 +127,12 @@ function triggerBannerUpload() {
 }
 
 function uploadBanner(file: File) {
-  if (!file) return;
+  if (!canEditWorkspace || !file) return;
+
   const reader = new FileReader();
   reader.onload = () => {
+    if (!canEditWorkspace) return;
+
     live.pushEvent("upload_workspace_banner", {
       filename: file.name,
       content_type: file.type,
@@ -138,6 +143,8 @@ function uploadBanner(file: File) {
 }
 
 function removeBanner() {
+  if (!canEditWorkspace) return;
+
   localBannerUrl.value = "";
   live.pushEvent("remove_workspace_banner", {});
 }
@@ -146,9 +153,21 @@ function removeBanner() {
 const showDeleteConfirm = ref(false);
 
 function confirmDeleteWorkspace() {
+  if (!isOwner) {
+    showDeleteConfirm.value = false;
+    return;
+  }
+
   showDeleteConfirm.value = false;
   live.pushEvent("delete", {});
 }
+
+watch(
+  () => isOwner,
+  (owner) => {
+    if (!owner) showDeleteConfirm.value = false;
+  },
+);
 
 function updateManagedAiPolicy(enabled: boolean) {
   if (!isOwner) return;
@@ -203,6 +222,7 @@ function updatePersonalAiMembersPolicy(enabled: boolean) {
             </div>
             <div v-if="canEditWorkspace" class="flex gap-2">
               <Button
+                id="change-workspace-banner"
                 type="button"
                 variant="outline"
                 class="flex-1 h-8 text-xs"
@@ -425,16 +445,20 @@ function updatePersonalAiMembersPolicy(enabled: boolean) {
             {{ $t("settings.workspace.danger_zone.delete_description") }}
           </p>
           <div class="flex justify-end gap-3">
-            <Button variant="destructive" @click="showDeleteConfirm = true" type="button">{{
-              $t("settings.workspace.danger_zone.delete_button")
-            }}</Button>
+            <Button
+              id="delete-workspace-button"
+              variant="destructive"
+              @click="showDeleteConfirm = true"
+              type="button"
+              >{{ $t("settings.workspace.danger_zone.delete_button") }}</Button
+            >
           </div>
         </div>
       </section>
     </template>
 
     <!-- Delete Confirm Dialog -->
-    <Dialog v-model:open="showDeleteConfirm">
+    <Dialog v-if="isOwner" v-model:open="showDeleteConfirm">
       <DialogContent>
         <DialogHeader>
           <div class="flex items-center gap-2">
@@ -449,9 +473,12 @@ function updatePersonalAiMembersPolicy(enabled: boolean) {
           <Button variant="outline" @click="showDeleteConfirm = false">{{
             $t("settings.workspace.delete_modal.cancel")
           }}</Button>
-          <Button variant="destructive" @click="confirmDeleteWorkspace">{{
-            $t("settings.workspace.delete_modal.delete")
-          }}</Button>
+          <Button
+            id="confirm-delete-workspace"
+            variant="destructive"
+            @click="confirmDeleteWorkspace"
+            >{{ $t("settings.workspace.delete_modal.delete") }}</Button
+          >
         </DialogFooter>
       </DialogContent>
     </Dialog>

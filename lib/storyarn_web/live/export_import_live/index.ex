@@ -169,18 +169,44 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project} = socket.assigns
+    stale_project = socket.assigns.project
+
+    if connected?(socket) do
+      :ok = Projects.subscribe_project_ownership_changes(stale_project.id)
+    end
+
+    case Projects.reload_project(socket.assigns.current_scope, stale_project.id) do
+      {:ok, project, membership} ->
+        mount_project(socket, project, membership)
+
+      {:error, _reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, dgettext("projects", "You don't have access to this project."))
+         |> redirect(to: ~p"/workspaces/#{stale_project.workspace.slug}")}
+    end
+  end
+
+  defp mount_project(socket, project, membership) do
+    current_user_id = socket.assigns.current_scope.user.id
 
     # Import rewrites project content wholesale, so it is owner-only. `can_edit`
     # is `:edit_content` and would have shown an editor a working file picker
     # that every import handler then rejects.
-    can_import? = Authorize.authorize(socket, :manage_project) == :ok
+    can_import? =
+      project.owner_id == current_user_id and
+        Projects.can?(membership.role, :manage_project)
+
     formats = visible_export_formats()
     default_format = List.first(formats)
     default_sections = default_format.sections
 
     socket =
       socket
+      |> assign(:project, project)
+      |> assign(:workspace, project.workspace)
+      |> assign(:membership, membership)
+      |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
       |> assign(:current_path, "")
       # Export state
       |> assign(:formats, formats)
@@ -203,6 +229,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       # upload and are never written under their client-provided filename.
       |> assign(:import_state, empty_import_state())
       |> assign(:can_import, can_import?)
+      |> assign(:imports_subscribed?, false)
       |> allow_upload(:import_file,
         accept: [".yarn", ".zip"],
         max_entries: 1,
@@ -210,9 +237,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       )
 
     socket =
-      if connected?(socket) do
-        :ok = Projects.subscribe_project_imports(project)
-        recover_latest_import(socket)
+      if connected?(socket) and can_import? do
+        socket
+        |> ensure_project_import_subscription(project)
+        |> recover_latest_import()
       else
         socket
       end
@@ -461,7 +489,48 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   @impl true
+  def handle_info(
+        {:project_ownership_transferred, %{project_id: project_id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    case Projects.reload_project(socket.assigns.current_scope, project_id) do
+      {:ok, project, membership} ->
+        can_import? =
+          project.owner_id == socket.assigns.current_scope.user.id and
+            Projects.can?(membership.role, :manage_project)
+
+        socket =
+          socket
+          |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
+          |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
+          |> assign(:can_import, can_import?)
+
+        socket =
+          if can_import? do
+            socket
+            |> ensure_project_import_subscription(project)
+            |> recover_latest_import()
+          else
+            assign(socket, :import_state, empty_import_state())
+          end
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, dgettext("projects", "Project not found."))
+         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}")}
+    end
+  end
+
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
+  def handle_info({:project_import_updated, _attempt}, %{assigns: %{can_import: false}} = socket) do
+    {:noreply, socket}
+  end
 
   def handle_info({:project_import_updated, %{id: _id} = attempt}, socket) do
     if socket.assigns.import_state.attempt_id == attempt.id do
@@ -479,6 +548,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     else
       {:noreply, socket}
     end
+  end
+
+  defp ensure_project_import_subscription(%{assigns: %{imports_subscribed?: true}} = socket, _project), do: socket
+
+  defp ensure_project_import_subscription(socket, project) do
+    :ok = Projects.subscribe_project_imports(project)
+    assign(socket, :imports_subscribed?, true)
   end
 
   # ===========================================================================

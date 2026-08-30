@@ -13,25 +13,37 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{workspace: workspace, membership: membership} = socket.assigns
+    stale_workspace = socket.assigns.workspace
 
-    if Workspaces.can?(membership.role, :access_workspace_general_settings) do
-      changeset = Workspaces.change_workspace(workspace)
+    if connected?(socket) do
+      :ok = Workspaces.subscribe_workspace_ownership_changes(stale_workspace.id)
+    end
 
-      {:ok,
-       socket
-       |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
-       |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/general")
-       |> assign(:form, to_form(changeset))
-       |> assign_ai_settings()}
-    else
-      {:ok,
-       socket
-       |> put_flash(
-         :error,
-         dgettext("workspaces", "You don't have permission to manage this workspace.")
-       )
-       |> push_navigate(to: ~p"/users/settings")}
+    case Workspaces.authorize(
+           socket.assigns.current_scope,
+           stale_workspace.id,
+           :access_workspace_general_settings
+         ) do
+      {:ok, workspace, membership} ->
+        changeset = Workspaces.change_workspace(workspace)
+
+        {:ok,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:membership, membership)
+         |> assign(:page_title, dgettext("workspaces", "Workspace Settings"))
+         |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+         |> assign(:form, to_form(changeset))
+         |> assign_ai_settings()}
+
+      {:error, _reason} ->
+        {:ok,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("workspaces", "You don't have permission to manage this workspace.")
+         )
+         |> push_navigate(to: ~p"/users/settings")}
     end
   end
 
@@ -57,8 +69,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         workspace-banner-url={PrivateMedia.workspace_banner_url(@workspace) || ""}
         source-locale={@workspace.source_locale || ""}
         language-options={source_locale_options()}
-        is-owner={@membership.role == "owner"}
-        can-edit-workspace={Workspaces.can?(@membership.role, :manage_workspace)}
+        is-owner={@workspace.owner_id == @current_scope.user.id}
+        can-edit-workspace={
+          @workspace.owner_id == @current_scope.user.id and
+            Workspaces.can?(@membership.role, :manage_workspace)
+        }
         ai={serialize_ai_settings(assigns)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
@@ -103,7 +118,11 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   @impl true
   def handle_event("save", %{"workspace" => workspace_params}, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.update_workspace(socket.assigns.workspace, workspace_params) do
+      case Workspaces.update_workspace(
+             socket.assigns.current_scope,
+             socket.assigns.workspace.id,
+             workspace_params
+           ) do
         {:ok, workspace} ->
           {:noreply,
            socket
@@ -113,6 +132,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
         {:error, %Ecto.Changeset{} = changeset} ->
           {:noreply, assign(socket, :form, to_form(changeset))}
+
+        {:error, reason} when reason in [:unauthorized, :ownership_invariant_violation] ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             dgettext("workspaces", "Only the current workspace owner can update this workspace.")
+           )}
       end
     end)
   end
@@ -177,7 +204,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
   @impl true
   def handle_event("delete", _params, socket) do
     Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.delete_workspace(socket.assigns.workspace) do
+      case Workspaces.delete_workspace(
+             socket.assigns.current_scope,
+             socket.assigns.workspace.id
+           ) do
         {:ok, _} ->
           {:noreply,
            socket
@@ -190,10 +220,59 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
     end)
   end
 
+  @impl true
+  def handle_info(
+        {:workspace_ownership_transferred, %{workspace_id: workspace_id}},
+        %{assigns: %{workspace: %{id: workspace_id}}} = socket
+      ) do
+    case Workspaces.authorize(
+           socket.assigns.current_scope,
+           workspace_id,
+           :access_workspace_general_settings
+         ) do
+      {:ok, workspace, membership} ->
+        {:noreply,
+         socket
+         |> assign(:workspace, workspace)
+         |> assign(:membership, membership)
+         |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+         |> refresh_workspace_navigation()
+         |> assign_ai_settings()}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("workspaces", "You don't have permission to manage this workspace.")
+         )
+         |> push_navigate(to: ~p"/users/settings")}
+    end
+  end
+
   defp source_locale_options do
     Enum.map(Workspaces.source_locale_options(), fn locale ->
       LanguagePickerOption.from_code(locale.code, label: locale.name)
     end)
+  end
+
+  defp refresh_workspace_navigation(socket) do
+    workspace_data = Workspaces.list_workspaces(socket.assigns.current_scope)
+
+    managed_slugs =
+      workspace_data
+      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_settings))
+      |> MapSet.new(& &1.workspace.slug)
+
+    general_slugs =
+      workspace_data
+      |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
+      |> MapSet.new(& &1.workspace.slug)
+
+    socket
+    |> assign(:workspaces, Enum.map(workspace_data, & &1.workspace))
+    |> assign(:managed_workspace_slugs, managed_slugs)
+    |> assign(:general_workspace_slugs, general_slugs)
   end
 
   defp assign_ai_settings(socket) do

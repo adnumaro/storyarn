@@ -23,7 +23,7 @@ defmodule Storyarn.Projects.ProjectDeletionStorageLockConcurrencyTest do
 
     assert {:ok, %Project{deleted_at: %DateTime{}}} =
              delete_while_workspace_locked(workspace.id, fn ->
-               Projects.delete_project(stale_project, user.id)
+               Projects.delete_project(user_scope_fixture(user), stale_project.id)
              end)
 
     assert %Project{deleted_at: %DateTime{}} =

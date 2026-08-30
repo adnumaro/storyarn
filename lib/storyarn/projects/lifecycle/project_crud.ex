@@ -19,8 +19,8 @@ defmodule Storyarn.Projects.ProjectCrud do
   defdelegate change_project(project, attrs \\ %{}), to: ProjectCommands
   defdelegate change_new_project(), to: ProjectCommands
   defdelegate change_new_project(project, attrs \\ %{}), to: ProjectCommands
-  defdelegate update_project(project, attrs), to: ProjectCommands
+  defdelegate update_project(scope, project_id, attrs), to: ProjectCommands
   defdelegate touch_project(project_id, at \\ nil), to: ProjectCommands
-  defdelegate delete_project(project, user_id), to: ProjectCommands
+  defdelegate delete_project(scope, project_id), to: ProjectCommands
   defdelegate permanently_delete_project(project), to: ProjectCommands
 end

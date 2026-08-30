@@ -30,6 +30,12 @@ defmodule Storyarn.Workspaces do
   @type changeset :: Ecto.Changeset.t()
   @type attrs :: map()
   @type role :: String.t()
+  @type ownership_transfer_receipt :: %{
+          workspace_id: pos_integer(),
+          previous_owner_id: pos_integer(),
+          new_owner_id: pos_integer(),
+          changed?: boolean()
+        }
   @type action ::
           :manage_workspace
           | :access_workspace_general_settings
@@ -166,14 +172,16 @@ defmodule Storyarn.Workspaces do
   @doc """
   Updates a workspace.
   """
-  @spec update_workspace(workspace(), attrs()) :: {:ok, workspace()} | {:error, changeset()}
-  defdelegate update_workspace(workspace, attrs), to: Lifecycle
+  @spec update_workspace(scope(), pos_integer(), attrs()) ::
+          {:ok, workspace()}
+          | {:error, changeset() | :ownership_invariant_violation | :unauthorized}
+  defdelegate update_workspace(scope, workspace_id, attrs), to: Lifecycle
 
   @doc """
   Deletes a workspace.
   """
-  @spec delete_workspace(%{id: integer()}) :: {:ok, map()} | {:error, term()}
-  defdelegate delete_workspace(workspace), to: Lifecycle
+  @spec delete_workspace(scope(), pos_integer()) :: {:ok, map()} | {:error, term()}
+  defdelegate delete_workspace(scope, workspace_id), to: Lifecycle
 
   # =============================================================================
   # Memberships
@@ -215,19 +223,52 @@ defmodule Storyarn.Workspaces do
   Cannot change the owner's role.
   Cannot promote an ordinary membership to owner.
   """
-  @spec update_member_role(membership(), role()) ::
+  @spec update_member_role(scope(), pos_integer(), pos_integer(), role()) ::
           {:ok, membership()}
-          | {:error, changeset() | :cannot_assign_owner_role | :cannot_change_owner_role}
-  defdelegate update_member_role(membership, role), to: Memberships
+          | {:error,
+             changeset()
+             | :cannot_assign_owner_role
+             | :cannot_change_owner_role
+             | :not_found
+             | :ownership_invariant_violation
+             | :unauthorized}
+  defdelegate update_member_role(scope, workspace_id, membership_id, role), to: Memberships
 
   @doc """
   Removes a member from a workspace.
 
   Cannot remove the owner.
   """
-  @spec remove_member(membership()) ::
-          {:ok, membership()} | {:error, changeset() | :cannot_remove_owner}
-  defdelegate remove_member(membership), to: Memberships
+  @spec remove_member(scope(), pos_integer(), pos_integer()) ::
+          {:ok, membership()}
+          | {:error,
+             changeset()
+             | :cannot_remove_owner
+             | :not_found
+             | :ownership_invariant_violation
+             | :unauthorized}
+  defdelegate remove_member(scope, workspace_id, membership_id), to: Memberships
+
+  @doc "Transfers canonical workspace ownership to an existing direct member."
+  @spec transfer_owner(scope(), pos_integer(), pos_integer()) ::
+          {:ok, ownership_transfer_receipt()}
+          | {:error,
+             changeset()
+             | :not_found
+             | :unauthorized
+             | :target_not_member
+             | :ownership_invariant_violation
+             | :ownership_transfer_requires_top_level_transaction
+             | :ownership_transfer_failed}
+          | {:error, :limit_reached, map()}
+  defdelegate transfer_owner(scope, workspace_id, target_user_id), to: Memberships
+
+  @doc "Subscribes the caller to committed ownership changes for a workspace."
+  @spec subscribe_workspace_ownership_changes(pos_integer()) ::
+          :ok | {:error, :invalid_workspace_id}
+  defdelegate subscribe_workspace_ownership_changes(workspace_id),
+    to: Memberships,
+    as: :subscribe_ownership_changes
 
   @doc """
   Authorizes a user action on a workspace.
@@ -237,7 +278,9 @@ defmodule Storyarn.Workspaces do
   ## Actions
 
   - `:manage_workspace` - update settings, delete workspace (owner only)
-  - `:manage_members` - invite/remove members, change roles (owner, admin)
+  - `:manage_members` - invite and revoke invitations (owner, admin). Removing
+    members, changing roles, and transferring ownership are separate actor-aware
+    commands restricted to the canonical owner.
   - `:create_project` - create new projects (owner, admin, member)
   - `:view` - view workspace content (all roles)
   """
@@ -275,11 +318,18 @@ defmodule Storyarn.Workspaces do
   Returns `{:error, :limit_reached, details}` if the plan has no free member seats.
   Returns `{:error, :not_found}` if the workspace no longer exists.
   """
-  @spec create_invitation(workspace(), user(), String.t(), role()) ::
+  @spec create_invitation(scope(), pos_integer(), String.t(), role()) ::
           {:ok, invitation()}
-          | {:error, :already_member | :already_invited | :rate_limited | :not_found | changeset()}
+          | {:error,
+             :already_member
+             | :already_invited
+             | :rate_limited
+             | :not_found
+             | :unauthorized
+             | :ownership_invariant_violation
+             | changeset()}
           | {:error, :limit_reached, map()}
-  defdelegate create_invitation(workspace, invited_by, email, role \\ "member"), to: Invitations
+  defdelegate create_invitation(scope, workspace_id, email, role \\ "member"), to: Invitations
 
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
@@ -324,8 +374,10 @@ defmodule Storyarn.Workspaces do
   @doc """
   Revokes a pending invitation.
   """
-  @spec revoke_invitation(invitation()) :: {:ok, invitation()} | {:error, changeset()}
-  defdelegate revoke_invitation(invitation), to: Invitations
+  @spec revoke_invitation(scope(), pos_integer(), pos_integer()) ::
+          {:ok, invitation()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | changeset()}
+  defdelegate revoke_invitation(scope, workspace_id, invitation_id), to: Invitations
 
   @doc false
   defdelegate deliver_invitation_email(encoded_token, opts \\ []), to: Invitations

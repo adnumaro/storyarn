@@ -285,6 +285,25 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert second_reservation.status == "released"
   end
 
+  test "exact commit fails closed when direct project ownership drifts", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    second_owner = user_fixture()
+    _second_owner_membership = membership_fixture(project, second_owner, "owner")
+
+    assert {:retry, :ownership_invariant_violation} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+    reservation = Repo.get!(StorageReservation, restore.storage_reservation_id)
+
+    assert restore.status == "running"
+    assert reservation.status == "released"
+  end
+
   test "failure to establish cleanup/release ownership snoozes even on a final delivery", context do
     assert {:snooze, 30} =
              ProjectSnapshotRestoreExecutor.execute(context.restore,

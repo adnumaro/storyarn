@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Clock3, Loader2, Trash2, X } from "@lucide/vue";
+import { Clock3, Crown, Loader2, Trash2, X } from "@lucide/vue";
+import { ref, watch } from "vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -15,6 +17,7 @@ import { useMemberInvitations } from "@shared/composables/useMemberInvitations";
 
 interface ProjectMember {
   id: number;
+  user_id: string;
   display_name?: string;
   email: string;
   role: string;
@@ -31,11 +34,19 @@ const {
   members = [],
   pendingInvitations = [],
   currentUserId = null,
+  canTransferOwnership = false,
 } = defineProps<{
   members?: ProjectMember[];
   pendingInvitations?: PendingInvitation[];
-  currentUserId?: number | null;
+  currentUserId?: string | null;
+  canTransferOwnership?: boolean;
 }>();
+
+const transferTarget = ref<ProjectMember | null>(null);
+const transferDialogOpen = ref(false);
+const transferPending = ref(false);
+const transferTransportFailed = ref(false);
+let transferAttempt = 0;
 
 const {
   live,
@@ -51,6 +62,56 @@ const {
 function removeMember(id: number) {
   live.pushEvent("remove_member", { id: String(id) });
 }
+
+function requestOwnershipTransfer(member: ProjectMember) {
+  if (!canTransferOwnership) return;
+
+  transferTarget.value = member;
+  transferTransportFailed.value = false;
+  transferDialogOpen.value = true;
+}
+
+function transferOwnership() {
+  if (!canTransferOwnership || !transferTarget.value || transferPending.value) return;
+
+  const targetUserId = transferTarget.value.user_id;
+  const attempt = ++transferAttempt;
+  transferPending.value = true;
+  transferTransportFailed.value = false;
+
+  live.pushEvent(
+    "transfer_owner",
+    { "user-id": String(targetUserId) },
+    () => {
+      if (attempt === transferAttempt) resetOwnershipTransfer();
+    },
+    () => {
+      if (attempt !== transferAttempt) return;
+
+      transferPending.value = false;
+      transferTransportFailed.value = true;
+    },
+  );
+}
+
+function cancelOwnershipTransfer() {
+  resetOwnershipTransfer();
+}
+
+function resetOwnershipTransfer() {
+  transferAttempt += 1;
+  transferTarget.value = null;
+  transferDialogOpen.value = false;
+  transferPending.value = false;
+  transferTransportFailed.value = false;
+}
+
+watch(
+  () => canTransferOwnership,
+  (canTransfer) => {
+    if (!canTransfer) resetOwnershipTransfer();
+  },
+);
 
 function memberDisplayName(member: ProjectMember) {
   return member.display_name || member.email;
@@ -76,27 +137,40 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
       <div
         v-for="member in members"
         :key="member.id"
-        class="flex items-center justify-between p-3 rounded-lg border border-border"
+        class="flex flex-col gap-3 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
       >
-        <div class="flex items-center gap-3">
+        <div class="flex min-w-0 items-center gap-3">
           <div
-            class="size-9 rounded-full bg-muted flex items-center justify-center text-xs font-medium"
+            class="flex size-9 shrink-0 items-center justify-center rounded-full bg-muted text-xs font-medium"
           >
             {{ memberInitials(member) }}
           </div>
-          <div>
-            <p class="font-medium">{{ memberDisplayName(member) }}</p>
-            <p v-if="member.display_name" class="text-sm text-muted-foreground">
+          <div class="min-w-0">
+            <p class="truncate font-medium">{{ memberDisplayName(member) }}</p>
+            <p v-if="member.display_name" class="truncate text-sm text-muted-foreground">
               {{ member.email }}
             </p>
           </div>
         </div>
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2 sm:justify-end">
           <Badge :variant="roleBadgeVariant[member.role] || 'outline'">
             {{ member.role }}
           </Badge>
           <Button
-            v-if="member.role !== 'owner' && member.id !== currentUserId"
+            v-if="
+              canTransferOwnership && member.role !== 'owner' && member.user_id !== currentUserId
+            "
+            :id="`transfer-project-ownership-${member.user_id}`"
+            variant="outline"
+            size="sm"
+            class="gap-1.5"
+            @click="requestOwnershipTransfer(member)"
+          >
+            <Crown class="size-3.5" aria-hidden="true" />
+            {{ $t("project_settings.members.transfer.action") }}
+          </Button>
+          <Button
+            v-if="member.role !== 'owner' && member.user_id !== currentUserId"
             variant="ghost"
             size="sm"
             class="text-destructive hover:text-destructive"
@@ -205,5 +279,29 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
         </Button>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="transferDialogOpen"
+      :title="$t('project_settings.members.transfer.title')"
+      :description="
+        $t('project_settings.members.transfer.description', {
+          name: transferTarget ? memberDisplayName(transferTarget) : '',
+        })
+      "
+      :confirm-text="$t('project_settings.members.transfer.confirm')"
+      :cancel-text="$t('project_settings.members.transfer.cancel')"
+      :pending="transferPending"
+      :pending-text="$t('project_settings.members.transfer.pending')"
+      :close-on-confirm="false"
+      :error="
+        transferTransportFailed
+          ? $t('project_settings.members.transfer.connection_unconfirmed')
+          : undefined
+      "
+      variant="warning"
+      :icon="Crown"
+      @confirm="transferOwnership"
+      @cancel="cancelOwnershipTransfer"
+    />
   </div>
 </template>

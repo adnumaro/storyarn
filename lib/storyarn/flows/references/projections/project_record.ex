@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.References.Projections.ProjectRecord do
   @type t :: %__MODULE__{}
 
   schema "projects" do
+    field :owner_id, :id
     field :name, :string
     field :slug, :string
     field :settings, :map, default: %{}

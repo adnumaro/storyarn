@@ -76,6 +76,7 @@ const {
   hasCustomTheme = false,
   projectTemplates = [],
   projectTemplatePublications = [],
+  canManageProject,
 } = defineProps<{
   projectDetails?: ProjectDetails;
   projectMetricsOptions?: ProjectMetricsOptions;
@@ -86,6 +87,7 @@ const {
   hasCustomTheme?: boolean;
   projectTemplates?: ProjectTemplatePublication[];
   projectTemplatePublications?: ProjectTemplatePublicationStatus[];
+  canManageProject: boolean;
 }>();
 
 const live = useLive();
@@ -93,11 +95,15 @@ const sourceChangeDialogOpen = ref(false);
 const pendingSourceLanguage = ref<LanguagePickerOption | null>(null);
 
 function requestSourceLanguage(option: LanguagePickerOption): void {
+  if (!canManageProject) return;
+
   pendingSourceLanguage.value = option;
   sourceChangeDialogOpen.value = true;
 }
 
 function confirmSourceLanguage(): void {
+  if (!canManageProject) return;
+
   if (pendingSourceLanguage.value) {
     live.pushEvent("change_source_language", {
       locale_code: pendingSourceLanguage.value.value,
@@ -155,6 +161,8 @@ function projectMetricLabel(group: string, value: string) {
 }
 
 function saveProject() {
+  if (!canManageProject) return;
+
   live.pushEvent("update_project", {
     project: {
       name: projectNameLocal.value,
@@ -167,6 +175,8 @@ function saveProject() {
 }
 
 function validateProject() {
+  if (!canManageProject) return;
+
   live.pushEvent("validate_project", {
     project: {
       name: projectNameLocal.value,
@@ -297,20 +307,26 @@ watch(
 );
 
 function onPrimaryChange(hex: string) {
+  if (!canManageProject) return;
+
   localPrimary.value = hex;
   live.pushEvent("update_theme_primary", { color: hex });
 }
 
 function onAccentChange(hex: string) {
+  if (!canManageProject) return;
+
   localAccent.value = hex;
   live.pushEvent("update_theme_accent", { color: hex });
 }
 
 function saveTheme() {
+  if (!canManageProject) return;
   live.pushEvent("save_theme", {});
 }
 
 function resetTheme() {
+  if (!canManageProject) return;
   live.pushEvent("reset_theme", {});
 }
 
@@ -318,6 +334,8 @@ function resetTheme() {
 const showRepairConfirm = ref(false);
 
 function confirmRepair() {
+  if (!canManageProject) return;
+
   showRepairConfirm.value = false;
   live.pushEvent("repair_variable_references", {});
 }
@@ -326,15 +344,38 @@ function confirmRepair() {
 const showDeleteConfirm = ref(false);
 
 function confirmDeleteProject() {
+  if (!canManageProject) return;
+
   showDeleteConfirm.value = false;
   live.pushEvent("delete_project", {});
 }
+
+watch(
+  () => canManageProject,
+  (canManage) => {
+    if (canManage) return;
+
+    sourceChangeDialogOpen.value = false;
+    pendingSourceLanguage.value = null;
+    showRepairConfirm.value = false;
+    showDeleteConfirm.value = false;
+  },
+);
 </script>
 
 <template>
   <div class="space-y-8">
+    <div
+      v-if="!canManageProject"
+      data-testid="project-owner-controls-unavailable"
+      role="status"
+      class="rounded-lg border border-border bg-muted/40 px-4 py-3 text-sm text-muted-foreground"
+    >
+      {{ $t("project_settings.general.owner_controls_unavailable") }}
+    </div>
+
     <!-- Project Details -->
-    <section>
+    <section v-if="canManageProject">
       <form @submit.prevent="saveProject" class="space-y-4">
         <div class="space-y-1.5">
           <Label for="project-name">{{ $t("project_settings.general.project_name") }}</Label>
@@ -419,7 +460,7 @@ function confirmDeleteProject() {
       </form>
     </section>
 
-    <Separator />
+    <Separator v-if="canManageProject" />
 
     <!-- Templates -->
     <section>
@@ -470,7 +511,7 @@ function confirmDeleteProject() {
     <Separator />
 
     <!-- Source Language -->
-    <section class="space-y-4" v-if="sourceLanguage">
+    <section v-if="canManageProject && sourceLanguage" class="space-y-4">
       <div>
         <h3 class="text-lg font-semibold mb-1">
           {{ $t("project_settings.general.source_language") }}
@@ -501,7 +542,7 @@ function confirmDeleteProject() {
       </div>
     </section>
 
-    <Separator />
+    <Separator v-if="canManageProject && sourceLanguage" />
 
     <!-- Appearance -->
     <section>
@@ -515,10 +556,10 @@ function confirmDeleteProject() {
       />
     </section>
 
-    <Separator />
+    <Separator v-if="canManageProject" />
 
     <!-- Theme -->
-    <section>
+    <section v-if="canManageProject">
       <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.project_theme") }}</h3>
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <div class="flex gap-8 items-start">
@@ -546,17 +587,17 @@ function confirmDeleteProject() {
       </div>
     </section>
 
-    <Separator />
+    <Separator v-if="canManageProject" />
 
     <!-- Maintenance -->
-    <section>
+    <section v-if="canManageProject">
       <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.general.maintenance") }}</h3>
       <div class="rounded-lg border border-border bg-muted/30 p-4">
         <p class="text-sm text-muted-foreground mb-3">
           {{ $t("project_settings.general.repair_description") }}
         </p>
         <div class="flex justify-end gap-3">
-          <Button @click="showRepairConfirm = true">
+          <Button data-testid="open-project-repair-dialog" @click="showRepairConfirm = true">
             <Wrench class="size-4 mr-1.5" />
             {{ $t("project_settings.general.repair_button") }}
           </Button>
@@ -564,10 +605,10 @@ function confirmDeleteProject() {
       </div>
     </section>
 
-    <Separator />
+    <Separator v-if="canManageProject" />
 
     <!-- Danger Zone -->
-    <section>
+    <section v-if="canManageProject">
       <h3 class="text-lg font-semibold mb-4 text-destructive">
         {{ $t("project_settings.general.danger_zone") }}
       </h3>
@@ -576,9 +617,12 @@ function confirmDeleteProject() {
           {{ $t("project_settings.general.delete_description") }}
         </p>
         <div class="flex justify-end gap-3">
-          <Button variant="destructive" @click="showDeleteConfirm = true">{{
-            $t("project_settings.general.delete_button")
-          }}</Button>
+          <Button
+            data-testid="open-project-delete-dialog"
+            variant="destructive"
+            @click="showDeleteConfirm = true"
+            >{{ $t("project_settings.general.delete_button") }}</Button
+          >
         </div>
       </div>
     </section>
@@ -699,7 +743,11 @@ function confirmDeleteProject() {
     </Dialog>
 
     <!-- Repair Confirm Dialog -->
-    <Dialog v-model:open="showRepairConfirm">
+    <Dialog
+      v-if="canManageProject"
+      v-model:open="showRepairConfirm"
+      data-testid="project-repair-confirm-dialog"
+    >
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{{ $t("project_settings.general.repair_confirm_title") }}</DialogTitle>
@@ -717,6 +765,7 @@ function confirmDeleteProject() {
     </Dialog>
 
     <ConfirmDialog
+      v-if="canManageProject"
       v-model:open="sourceChangeDialogOpen"
       :title="$t('localization.sidebar.source_change_confirm_title')"
       :description="
@@ -731,7 +780,11 @@ function confirmDeleteProject() {
     />
 
     <!-- Delete Confirm Dialog -->
-    <Dialog v-model:open="showDeleteConfirm">
+    <Dialog
+      v-if="canManageProject"
+      v-model:open="showDeleteConfirm"
+      data-testid="project-delete-confirm-dialog"
+    >
       <DialogContent>
         <DialogHeader>
           <div class="flex items-center gap-2">

@@ -10,7 +10,7 @@ defmodule Storyarn.Localization.Providers do
   defdelegate get_config(project_id, provider \\ "deepl"), to: ConfigurationQueries, as: :get
   defdelegate fetch_active_config(project_id, provider \\ "deepl"), to: ConfigurationQueries, as: :fetch_active
   defdelegate active?(project_id, provider \\ "deepl"), to: ConfigurationQueries
-  defdelegate upsert_config(project, attrs), to: Configuration, as: :upsert
+  defdelegate upsert_config(actor_scope, project, attrs), to: Configuration, as: :upsert
 
   def change_config(config \\ nil) do
     config = config || %ProviderConfig{api_endpoint: ProviderConfig.default_api_endpoint()}

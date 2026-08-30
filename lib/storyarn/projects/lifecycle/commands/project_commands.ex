@@ -8,6 +8,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Lifecycle.Commands.UniqueSlug
+  alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
@@ -48,7 +49,19 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
     Project.create_form_changeset(project, attrs)
   end
 
-  def update_project(%Project{} = project, attrs) do
+  def update_project(%{user: %{id: user_id}} = scope, project_id, attrs)
+      when is_integer(user_id) and user_id > 0 and is_integer(project_id) and project_id > 0 and is_map(attrs) do
+    Repo.transact(fn ->
+      with {:ok, %Project{} = project, _membership} <-
+             Memberships.authorize_locked(scope, project_id, :manage_project, :update) do
+        persist_project_update(project, attrs)
+      end
+    end)
+  end
+
+  def update_project(_scope, _project_id, _attrs), do: {:error, :unauthorized}
+
+  defp persist_project_update(project, attrs) do
     project
     |> Project.update_changeset(attrs)
     |> Ecto.Changeset.put_change(:last_activity_at, TimeHelpers.now())
@@ -66,28 +79,14 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
     :ok
   end
 
-  def delete_project(%Project{} = project, user_id) do
-    with_project_deletion_lock(project.id, fn locked_project ->
-      locked_project
-      |> Project.soft_delete_changeset(%{
-        deleted_at: TimeHelpers.now(),
-        deleted_by_id: user_id
-      })
-      |> Repo.update()
-      |> case do
-        {:ok, deleted_project} ->
-          ProjectInvitation
-          |> where([invitation], invitation.project_id == ^project.id)
-          |> where([invitation], is_nil(invitation.accepted_at))
-          |> Repo.delete_all()
-
-          {:ok, deleted_project}
-
-        error ->
-          error
-      end
+  def delete_project(%{user: %{id: user_id}} = scope, project_id)
+      when is_integer(user_id) and user_id > 0 and is_integer(project_id) and project_id > 0 do
+    with_authorized_project_deletion_lock(scope, project_id, fn locked_project ->
+      soft_delete_locked_project(locked_project, user_id)
     end)
   end
+
+  def delete_project(_scope, _project_id), do: {:error, :unauthorized}
 
   def permanently_delete_project(%Project{} = project) do
     result =
@@ -160,6 +159,31 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
     end
   end
 
+  defp with_authorized_project_deletion_lock(scope, project_id, fun) do
+    case persisted_project_workspace_id(project_id) do
+      nil ->
+        {:error, :not_found}
+
+      workspace_id ->
+        workspace_id
+        |> Commercial.transact_with_workspace_lock(fn _workspace ->
+          delete_authorized_project_locked(scope, project_id, workspace_id, fun)
+        end)
+        |> normalize_project_deletion_result()
+    end
+  end
+
+  defp delete_authorized_project_locked(scope, project_id, workspace_id, fun) do
+    with %Project{} = locked_project <- lock_active_project(project_id, workspace_id),
+         {:ok, %Project{id: ^project_id}, _membership} <-
+           Memberships.authorize_locked(scope, project_id, :manage_project, :update) do
+      fun.(locked_project)
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
   defp delete_locked_project(project_id, workspace_id, fun) do
     case lock_project(project_id, workspace_id) do
       %Project{} = locked_project -> fun.(locked_project)
@@ -183,6 +207,38 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
         lock: "FOR UPDATE"
       )
     )
+  end
+
+  defp lock_active_project(project_id, workspace_id) do
+    Repo.one(
+      from(candidate in Project,
+        where:
+          candidate.id == ^project_id and candidate.workspace_id == ^workspace_id and
+            is_nil(candidate.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp soft_delete_locked_project(locked_project, user_id) do
+    locked_project
+    |> Project.soft_delete_changeset(%{
+      deleted_at: TimeHelpers.now(),
+      deleted_by_id: user_id
+    })
+    |> Repo.update()
+    |> case do
+      {:ok, deleted_project} ->
+        ProjectInvitation
+        |> where([invitation], invitation.project_id == ^locked_project.id)
+        |> where([invitation], is_nil(invitation.accepted_at))
+        |> Repo.delete_all()
+
+        {:ok, deleted_project}
+
+      error ->
+        error
+    end
   end
 
   defp normalize_project_deletion_result({:error, :workspace_not_found}), do: {:error, :not_found}

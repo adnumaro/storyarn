@@ -70,7 +70,7 @@ defmodule Storyarn.Scenes.Access.Queries.ProjectsTest do
     project = project_fixture(owner, %{workspace: workspace})
     scope = user_scope_fixture(owner)
 
-    assert {:ok, _deleted_project} = Projects.delete_project(project, owner.id)
+    assert {:ok, _deleted_project} = Projects.delete_project(user_scope_fixture(owner), project.id)
 
     assert {:error, :not_found} = Scenes.get_project(scope, project.id)
 

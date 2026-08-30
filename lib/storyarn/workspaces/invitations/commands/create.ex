@@ -11,20 +11,43 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
   alias Storyarn.Workspaces.Invitations.RateLimits
   alias Storyarn.Workspaces.Invitations.Rules.Email
   alias Storyarn.Workspaces.Invitations.Tokens.Issuer
+  alias Storyarn.Workspaces.Memberships
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @preload_after_insert [:workspace, :invited_by]
+  @max_pg_bigint 9_223_372_036_854_775_807
 
-  def execute(%Workspace{} = workspace, invited_by, email, role \\ "member") do
-    with :ok <- check_invitation_rate_limit(workspace.id, invited_by.id) do
-      create_serialized_invitation(workspace, invited_by, Email.normalize(email), role)
-    end
+  defguardp valid_id(id)
+            when is_integer(id) and id > 0 and id <= @max_pg_bigint
+
+  def execute(scope, workspace_id, email, role \\ "member")
+
+  def execute(%{user: %{id: actor_id} = actor} = scope, workspace_id, email, role)
+      when valid_id(actor_id) and valid_id(workspace_id) and is_binary(email) do
+    normalized_email = Email.normalize(email)
+
+    scope
+    |> Memberships.transact_manage_members(workspace_id, fn %{workspace: workspace} ->
+      with :ok <- check_invitation_rate_limit(workspace.id, actor.id) do
+        persist_locked_invitation(workspace, actor, normalized_email, role, [])
+      end
+    end)
+    |> finalize_invitation([])
   end
 
+  def execute(_scope, _workspace_id, _email, _role), do: {:error, :unauthorized}
+
   def execute_admin(%Workspace{} = workspace, email, role, opts \\ []) do
-    create_serialized_invitation(workspace, nil, Email.normalize(email), role, opts)
+    result =
+      Repo.transact(fn ->
+        with {:ok, locked_workspace} <- lock_workspace(workspace.id) do
+          persist_locked_invitation(locked_workspace, nil, Email.normalize(email), role, opts)
+        end
+      end)
+
+    finalize_invitation(result, opts)
   end
 
   defp check_invitation_rate_limit(workspace_id, user_id) do
@@ -41,7 +64,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     )
   end
 
-  defp create_serialized_invitation(workspace, invited_by, email, role, opts \\ []) do
+  defp persist_locked_invitation(workspace, invited_by, email, role, opts) do
     {encoded_token, invitation} = Issuer.issue(workspace, invited_by, email, role)
 
     changeset =
@@ -52,28 +75,20 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
       )
 
     if changeset.valid? do
-      workspace
-      |> transact_invitation(email, changeset, encoded_token, opts)
-      |> restore_limit_error()
+      with :ok <- ensure_invitation_available(workspace.id, email),
+           :ok <- normalize_limit_result(Commercial.can_invite_member?(workspace, email)),
+           :ok <- delete_inactive_invitation(workspace.id, email),
+           {:ok, invitation} <- insert_invitation(changeset),
+           {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
+        {:ok, {invitation, job}}
+      end
     else
       {:error, changeset}
     end
   end
 
-  defp transact_invitation(workspace, email, changeset, encoded_token, opts) do
-    result =
-      Repo.transact(fn ->
-        with {:ok, locked_workspace} <- lock_workspace(workspace),
-             :ok <- ensure_invitation_available(locked_workspace.id, email),
-             :ok <- normalize_limit_result(Commercial.can_invite_member?(locked_workspace, email)),
-             :ok <- delete_inactive_invitation(locked_workspace.id, email),
-             {:ok, invitation} <- insert_invitation(changeset),
-             {:ok, job} <- InvitationQueue.enqueue(encoded_token, opts) do
-          {:ok, {invitation, job}}
-        end
-      end)
-
-    case result do
+  defp finalize_invitation(result, opts) do
+    case restore_limit_error(result) do
       {:ok, {invitation, job}} ->
         InvitationQueue.wake_after_commit(job, opts)
         {:ok, invitation}
@@ -145,7 +160,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.Create do
     |> Ecto.Changeset.put_change(:expires_at, invitation.expires_at)
   end
 
-  defp lock_workspace(%Workspace{id: workspace_id}) do
+  defp lock_workspace(workspace_id) do
     case Repo.one(
            from(workspace in Workspace,
              where: workspace.id == ^workspace_id,

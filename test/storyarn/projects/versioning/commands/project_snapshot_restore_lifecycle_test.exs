@@ -132,6 +132,19 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycleTest do
                )
     end
 
+    test "fails closed when direct project ownership is ambiguous", context do
+      second_owner = user_fixture()
+      _second_owner_membership = membership_fixture(context.project, second_owner, "owner")
+
+      assert {:error, :ownership_invariant_violation} =
+               request(context, Ecto.UUID.generate())
+
+      refute Repo.exists?(
+               from restore in ProjectSnapshotRestore,
+                 where: restore.project_id == ^context.project.id
+             )
+    end
+
     test "returns clean conflicts for a reused key or another active restore", context do
       key = Ecto.UUID.generate()
       assert {:ok, _restore} = request(context, key)

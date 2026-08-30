@@ -75,27 +75,29 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project, membership: membership} = socket.assigns
+    stale_project = socket.assigns.project
 
-    if Projects.can?(membership.role, :manage_project) do
-      socket =
-        socket
-        |> assign(:current_workspace, project.workspace)
-        |> assign(
-          :version_control_form,
-          to_form(version_control_changeset(project), as: "version_control")
-        )
-        |> assign(:version_usage, Commercial.project_usage(project.id, project.workspace_id))
+    if connected?(socket) do
+      :ok = Projects.subscribe_project_ownership_changes(stale_project.id)
+    end
 
-      {:ok, socket}
-    else
-      {:ok,
-       socket
-       |> put_flash(
-         :error,
-         dgettext("projects", "You don't have permission to manage this project.")
-       )
-       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+    case reload_project_owner(socket, stale_project.id) do
+      {:ok, project, membership} ->
+        socket =
+          socket
+          |> assign(:project, project)
+          |> assign(:membership, membership)
+          |> assign(:current_workspace, project.workspace)
+          |> assign(
+            :version_control_form,
+            to_form(version_control_changeset(project), as: "version_control")
+          )
+          |> assign(:version_usage, Commercial.project_usage(project.id, project.workspace_id))
+
+        {:ok, socket}
+
+      _lost_access ->
+        mount_access_denied(socket, stale_project)
     end
   end
 
@@ -124,7 +126,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         auto_version_sheets: params["auto_version_sheets"] == "true"
       }
 
-      case Projects.update_project(socket.assigns.project, attrs) do
+      case Projects.update_project(
+             socket.assigns.current_scope,
+             socket.assigns.project.id,
+             attrs
+           ) do
         {:ok, project} ->
           track_version_control_settings(socket, project, attrs)
 
@@ -147,9 +153,63 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
     Projects.version_control_settings_updated(socket.assigns.current_scope, project, attrs)
   end
 
+  @impl true
+  def handle_info(
+        {:project_ownership_transferred, %{project_id: project_id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, project_id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project) do
+      {:noreply,
+       socket
+       |> assign(:project, project)
+       |> assign(:membership, membership)
+       |> assign(:current_workspace, project.workspace)
+       |> assign(
+         :version_control_form,
+         to_form(version_control_changeset(project), as: "version_control")
+       )
+       |> assign(:version_usage, Commercial.project_usage(project.id, project.workspace_id))}
+    else
+      _lost_access ->
+        project = socket.assigns.project
+
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("projects", "You don't have permission to manage this project.")
+         )
+         |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+    end
+  end
+
   # ===========================================================================
   # Private
   # ===========================================================================
+
+  defp reload_project_owner(socket, project_id) do
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, project_id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project) do
+      {:ok, project, membership}
+    else
+      _lost_access -> {:error, :unauthorized}
+    end
+  end
+
+  defp mount_access_denied(socket, project) do
+    {:ok,
+     socket
+     |> put_flash(
+       :error,
+       dgettext("projects", "You don't have permission to manage this project.")
+     )
+     |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+  end
 
   defp version_control_changeset(project) do
     types = %{

@@ -120,10 +120,12 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     workspace = workspace_fixture(owner)
 
     assert {:ok, invitation} =
-             Workspaces.create_invitation(workspace, owner, "revoked-workspace@example.com", "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, "revoked-workspace@example.com", "member")
 
     job = latest_job()
-    assert {:ok, _invitation} = Workspaces.revoke_invitation(invitation)
+
+    assert {:ok, _invitation} =
+             Workspaces.revoke_invitation(%{user: owner}, workspace.id, invitation.id)
 
     assert {:cancel, :invitation_unavailable} =
              DeliverWorkspaceInvitationWorker.perform(%Oban.Job{
@@ -140,7 +142,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     workspace = workspace_fixture(owner)
 
     assert {:ok, invitation} =
-             Workspaces.create_invitation(workspace, owner, "delayed@example.com", "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, "delayed@example.com", "member")
 
     job = latest_job()
 
@@ -159,7 +161,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     workspace = workspace_fixture(owner)
 
     assert {:ok, invitation} =
-             Workspaces.create_invitation(workspace, owner, "transient@example.com", "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, "transient@example.com", "member")
 
     job = latest_job()
     Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
@@ -176,8 +178,8 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
 
     assert {:error, :limit_reached, %{used: 2, limit: 2}} =
              Workspaces.create_invitation(
-               workspace,
-               owner,
+               %{user: owner},
+               workspace.id,
                "another-person@example.com",
                "member"
              )
@@ -188,7 +190,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     workspace = workspace_fixture(owner)
 
     assert {:ok, _invitation} =
-             Workspaces.create_invitation(workspace, owner, "retry@example.com", "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, "retry@example.com", "member")
 
     job = latest_job()
     Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
@@ -205,7 +207,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     Application.put_env(:storyarn, Mailer, adapter: Swoosh.Adapters.Test)
 
     assert {:ok, _invitation} =
-             Workspaces.create_invitation(workspace, owner, "retry@example.com", "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, "retry@example.com", "member")
   end
 
   test "rolls back Workspace invitation creation when token encryption is unavailable" do
@@ -220,7 +222,7 @@ defmodule Storyarn.Workers.DeliverWorkspaceInvitationWorkerTest do
     )
 
     assert {:error, :encryption_unavailable} =
-             Workspaces.create_invitation(workspace, owner, email, "member")
+             Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
 
     refute Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
 

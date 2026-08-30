@@ -20,8 +20,12 @@ defmodule Storyarn.Projects.Invitations do
 
   def list_pending_invitations(project_id), do: InvitationOperations.list_pending_invitations(@config, project_id)
 
-  def create_invitation(%Project{} = project, invited_by, email, role \\ "editor"),
-    do: InvitationOperations.create_invitation(@config, project, invited_by, email, role)
+  def create_invitation(scope, project_id, email, role \\ "editor")
+
+  def create_invitation(%{user: _} = scope, project_id, email, role) when is_integer(project_id),
+    do: InvitationOperations.create_authorized_invitation(@config, scope, project_id, email, role)
+
+  def create_invitation(_scope, _project_id, _email, _role), do: {:error, :unauthorized}
 
   def create_admin_invitation(%Project{} = project, email, role, opts \\ []),
     do: InvitationOperations.create_admin_invitation(@config, project, email, role, opts)
@@ -37,7 +41,8 @@ defmodule Storyarn.Projects.Invitations do
   def accept_invitation(%ProjectInvitation{} = invitation, user),
     do: InvitationOperations.accept_invitation(@config, invitation, user)
 
-  def revoke_invitation(%ProjectInvitation{} = invitation), do: InvitationOperations.revoke_invitation(invitation)
+  def revoke_invitation(scope, project_id, invitation_id),
+    do: InvitationOperations.revoke_authorized_invitation(@config, scope, project_id, invitation_id)
 
   def get_pending_invitation(id), do: InvitationOperations.get_pending_invitation(@config, id)
 end

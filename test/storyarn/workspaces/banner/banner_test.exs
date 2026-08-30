@@ -1,7 +1,6 @@
 defmodule Storyarn.Workspaces.BannerTest do
   use Storyarn.DataCase, async: true
 
-  import Ecto.Query
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
@@ -11,7 +10,6 @@ defmodule Storyarn.Workspaces.BannerTest do
   alias Storyarn.WorkspaceBannerStorageStub, as: StorageStub
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace
-  alias Storyarn.Workspaces.WorkspaceMembership
 
   setup do
     StorageStub.reset()
@@ -105,14 +103,7 @@ defmodule Storyarn.Workspaces.BannerTest do
 
   test "reauthorizes under lock and compensates the uploaded object when persistence is denied", ctx do
     image = File.read!("test/fixtures/images/test_image.jpg")
-    membership = Workspaces.get_membership(ctx.workspace, ctx.owner)
-
-    StorageStub.after_upload(fn ->
-      Repo.update_all(
-        from(current in WorkspaceMembership, where: current.id == ^membership.id),
-        set: [role: "admin"]
-      )
-    end)
+    schedule_owner_replacement_after_upload(ctx)
 
     assert {:error, :unauthorized} =
              Workspaces.upload_workspace_banner(
@@ -129,14 +120,7 @@ defmodule Storyarn.Workspaces.BannerTest do
 
   test "persists deferred cleanup when update compensation cannot delete the object", ctx do
     image = File.read!("test/fixtures/images/test_image.jpg")
-    membership = Workspaces.get_membership(ctx.workspace, ctx.owner)
-
-    StorageStub.after_upload(fn ->
-      Repo.update_all(
-        from(current in WorkspaceMembership, where: current.id == ^membership.id),
-        set: [role: "admin"]
-      )
-    end)
+    schedule_owner_replacement_after_upload(ctx)
 
     StorageStub.respond(:delete, {:error, :storage_unavailable})
 
@@ -156,14 +140,7 @@ defmodule Storyarn.Workspaces.BannerTest do
 
   test "reports the exact orphan only when delete and durable enqueue both fail", ctx do
     image = File.read!("test/fixtures/images/test_image.jpg")
-    membership = Workspaces.get_membership(ctx.workspace, ctx.owner)
-
-    StorageStub.after_upload(fn ->
-      Repo.update_all(
-        from(current in WorkspaceMembership, where: current.id == ^membership.id),
-        set: [role: "admin"]
-      )
-    end)
+    schedule_owner_replacement_after_upload(ctx)
 
     StorageStub.respond(:delete, {:error, :storage_unavailable})
     CleanupQueueStub.respond({:error, :queue_unavailable})
@@ -257,6 +234,17 @@ defmodule Storyarn.Workspaces.BannerTest do
     assert StorageStub.calls(:delete) == []
   end
 
+  test "fails closed when workspace ownership is ambiguous", ctx do
+    conflicting_owner = user_fixture()
+    _conflicting_membership = workspace_membership_fixture(ctx.workspace, conflicting_owner, "owner")
+
+    assert {:error, :ownership_invariant_violation} =
+             Workspaces.remove_workspace_banner(ctx.scope, ctx.workspace.id, ctx.storage_opts)
+
+    assert Workspaces.get_workspace!(ctx.workspace.id).banner_url == nil
+    assert CleanupQueueStub.calls() == []
+  end
+
   defp upload_attrs(filename, content_type, binary) do
     %{
       filename: filename,
@@ -269,5 +257,25 @@ defmodule Storyarn.Workspaces.BannerTest do
     workspace
     |> Workspace.banner_changeset(%{banner_url: url})
     |> Repo.update!()
+  end
+
+  defp schedule_owner_replacement_after_upload(ctx) do
+    previous_owner_membership = Workspaces.get_membership(ctx.workspace, ctx.owner)
+    replacement = user_fixture()
+    replacement_membership = workspace_membership_fixture(ctx.workspace, replacement, "admin")
+
+    StorageStub.after_upload(fn ->
+      previous_owner_membership
+      |> Ecto.Changeset.change(role: "admin")
+      |> Repo.update!()
+
+      replacement_membership
+      |> Ecto.Changeset.change(role: "owner")
+      |> Repo.update!()
+
+      ctx.workspace
+      |> Ecto.Changeset.change(owner_id: replacement.id)
+      |> Repo.update!()
+    end)
   end
 end

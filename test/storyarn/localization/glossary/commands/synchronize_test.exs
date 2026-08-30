@@ -19,10 +19,11 @@ defmodule Storyarn.Localization.Glossary.Commands.SynchronizeTest do
 
     on_exit(fn -> Application.delete_env(:storyarn, :deepl_req_options) end)
 
-    project = project_fixture(user_fixture())
+    owner = user_fixture()
+    project = project_fixture(owner)
 
     {:ok, _config} =
-      Localization.upsert_provider_config(project, %{
+      Localization.upsert_provider_config(user_scope_fixture(owner), project, %{
         "api_key_encrypted" => "secret",
         "api_endpoint" => "https://api-free.deepl.com",
         "is_active" => true

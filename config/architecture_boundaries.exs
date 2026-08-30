@@ -280,7 +280,8 @@ variable_reference_persistence_ownership = %{
       path: "lib/storyarn/flows/references/commands/variable_reference_tracker.ex",
       functions: [
         %{identity: "def delete_references/1", operations: [:delete_all]},
-        %{identity: "defp replace_references/2", operations: [:insert_all]}
+        %{identity: "defp delete_replaced_references/2", operations: [:delete_all]},
+        %{identity: "defp replace_references/3", operations: [:insert_all]}
       ],
       reason: "Flows maintains the variable-reference rows derived from Flow node data"
     },
@@ -913,7 +914,7 @@ project_capabilities = ~w(lifecycle access assets overview trash references inte
 
 project_private_role_roots = %{
   "lifecycle" => ~w(commands events projections queries reference_data rules),
-  "access" => ~w(adapters commands delivery queries),
+  "access" => ~w(adapters commands delivery queries rules),
   "assets" => ~w(adapters commands execution projections queries rules),
   "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
@@ -1939,7 +1940,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepair",
     path: "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex",
-    functions: [repair_project: 1],
+    functions: [repair_project: 2],
     allowed_callers: [
       "lib/storyarn/projects/references/execution/variable_usage.ex"
     ],
@@ -1948,7 +1949,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows",
     path: "lib/storyarn/flows.ex",
-    functions: [repair_stale_variable_references: 1],
+    functions: [repair_stale_variable_references: 2],
     allowed_callers: [
       "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex"
     ],
@@ -1957,7 +1958,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows.References",
     path: "lib/storyarn/flows/references/references.ex",
-    functions: [repair_stale_variable_references: 1],
+    functions: [repair_stale_variable_references: 2],
     allowed_callers: [
       "lib/storyarn/flows.ex"
     ],
@@ -1966,7 +1967,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows.References.Commands.StaleVariableReferenceRepair",
     path: "lib/storyarn/flows/references/commands/stale_variable_reference_repair.ex",
-    functions: [repair_project: 1],
+    functions: [repair_project: 2],
     allowed_callers: [
       "lib/storyarn/flows/references/references.ex"
     ],
@@ -3257,6 +3258,13 @@ policy = %{
       reason: "Workspace creation applies commercial limits and subscriptions through the public Commercial facade"
     },
     %{
+      source: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason:
+        "Workspace ownership transfer applies the receiver's Commercial-owned workspace entitlement while holding its user lock"
+    },
+    %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
@@ -3298,6 +3306,13 @@ policy = %{
       target: "lib/storyarn/localization.ex",
       kinds: ["runtime"],
       reason: "Project settings delegates ordinary source-language reads and writes to the public Localization facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/project_settings_live/localization.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The Localization-owned project settings adapter subscribes to committed Project ownership changes and refreshes access through the public Projects facade"
     },
     %{
       source: "lib/storyarn/accounts/authentication/delivery/email_change/content.ex",

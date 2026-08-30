@@ -240,7 +240,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     record_version_panel_opened/2
     remove_dialogue_response/2
     remove_exit_outcome_tag/2
-    repair_stale_variable_references/1
+    repair_stale_variable_references/2
     reorder_flows/3
     reset_debug_session/3
     resolve_hub_color/1
@@ -321,9 +321,9 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
 
   # Frozen immediately before the capability reorganization. These hashes
   # cover semantic signatures, docs/defaults, public types, and specs.
-  @docs_digest "43e7f24ce4b5ccf59c87932f1b444468b4ed6112f87e4b567e32e965dd02c992"
-  @types_digest "952c2f55383458b827ce9b8489d505409f3c6429238278f982523efae4bf6565"
-  @specs_digest "97a10f581e6994e362bf59befd0bcc3588c3ba3173702d8ce030965bd368246e"
+  @docs_digest "3564f8b1a699425de2548920a674f4454e491cafe7b2ada7f705bc40b8e94a6d"
+  @types_digest "185b2bf999eed11bd7b86968d880d33cccdc414a7f9f5b23921412d98bc03805"
+  @specs_digest "c01ed8ba241c0ab1a5717cc1ca8f1147a6f0fa96b86bcabf26c07e4fc9937e02"
 
   test "the root facade preserves every established function and arity" do
     public_functions =

@@ -5,7 +5,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
 
   @root "lib/storyarn/projects"
   @capability_roles %{
-    "access" => ~w(adapters commands delivery entities queries),
+    "access" => ~w(adapters commands delivery entities queries rules),
     "assets" => ~w(adapters commands contracts entities execution projections queries rules),
     "interchange" => ~w(exports imports),
     "lifecycle" => ~w(commands entities events projections queries reference_data rules),
@@ -27,7 +27,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     "versioning" => ~w(versioning.ex)
   }
   @private_role_roots %{
-    "access" => ~w(adapters commands delivery queries),
+    "access" => ~w(adapters commands delivery queries rules),
     "assets" => ~w(adapters commands execution projections queries rules),
     "interchange" => ~w(
       imports/adapters imports/commands imports/execution imports/queries imports/rules

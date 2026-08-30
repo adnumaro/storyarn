@@ -1,16 +1,16 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import WorkspaceSettingsMembers from "../../../../live/workspace/settings/WorkspaceSettingsMembers.vue";
-import { createMockLive } from "../../../setup";
+import { createMockLive, createPromiseMockLive, setTestLocale } from "../../../setup";
 
-function mountMembers(props = {}) {
-  const live = createMockLive();
+function mountMembers(props = {}, live = createMockLive()) {
   const wrapper = mount(WorkspaceSettingsMembers, {
     props: {
       members: [],
       pendingInvitations: [],
-      currentUserId: 1,
+      currentUserId: "1",
       canInvite: true,
       canManage: false,
       ...props,
@@ -24,6 +24,8 @@ function mountMembers(props = {}) {
 }
 
 describe("WorkspaceSettingsMembers", () => {
+  afterEach(() => setTestLocale("en"));
+
   it("shows the invite form to an admin without exposing owner-only controls", () => {
     const { wrapper } = mountMembers({
       members: [
@@ -105,5 +107,173 @@ describe("WorkspaceSettingsMembers", () => {
     expect(event).toBe("revoke_invitation");
     expect(payload).toEqual({ id: "84" });
     expect(complete).toEqual(expect.any(Function));
+  });
+
+  it("confirms ownership transfer using the member user id", async () => {
+    const { live, wrapper } = mountMembers({
+      canManage: true,
+      canTransferOwnership: true,
+      members: [
+        {
+          id: 82,
+          user_id: "9007199254740993",
+          display_name: "New owner",
+          email: "new-owner@example.com",
+          role: "member",
+        },
+      ],
+    });
+
+    await wrapper.get("#transfer-workspace-ownership-9007199254740993").trigger("click");
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("description")).toContain("New owner");
+    expect(confirmation.props("pendingText")).toBe("Transferring workspace ownership…");
+
+    confirmation.vm.$emit("confirm");
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+    const [event, payload, complete] = vi.mocked(live.pushEvent).mock.calls[0];
+    expect(event).toBe("transfer_owner");
+    expect(payload).toEqual({ "user-id": "9007199254740993" });
+    expect(complete).toEqual(expect.any(Function));
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("pending")).toBe(true);
+
+    complete?.({});
+    await nextTick();
+
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("pending")).toBe(false);
+  });
+
+  it("announces the pending transfer in Spanish", async () => {
+    setTestLocale("es");
+    const { wrapper } = mountMembers({
+      canManage: true,
+      canTransferOwnership: true,
+      members: [
+        {
+          id: 82,
+          user_id: "41",
+          display_name: "Nueva propietaria",
+          email: "new-owner@example.com",
+          role: "member",
+        },
+      ],
+    });
+
+    await wrapper.get("#transfer-workspace-ownership-41").trigger("click");
+
+    expect(wrapper.getComponent(ConfirmDialog).props("pendingText")).toBe(
+      "Transfiriendo la propiedad del espacio…",
+    );
+  });
+
+  it("keeps an unconfirmed transfer visible when the connection fails", async () => {
+    let rejectPush!: (reason?: unknown) => void;
+    const pushEvent = vi.fn(
+      () =>
+        new Promise<Record<string, unknown>>((_resolve, reject) => {
+          rejectPush = reject;
+        }),
+    );
+    const live = createPromiseMockLive({}, pushEvent);
+    const { wrapper } = mountMembers(
+      {
+        canManage: true,
+        canTransferOwnership: true,
+        members: [
+          {
+            id: 82,
+            user_id: "41",
+            display_name: "New owner",
+            email: "new-owner@example.com",
+            role: "member",
+          },
+        ],
+      },
+      live,
+    );
+
+    await wrapper.get("#transfer-workspace-ownership-41").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+
+    expect(confirmation.props("pending")).toBe(true);
+    expect(confirmation.props("open")).toBe(true);
+
+    rejectPush(new Error("disconnected"));
+    await flushPromises();
+
+    expect(confirmation.props("pending")).toBe(false);
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("error")).toContain("could not confirm the result");
+  });
+
+  it("does not expose ownership transfer to workspace admins", () => {
+    const { wrapper } = mountMembers({
+      canManage: false,
+      canTransferOwnership: false,
+      members: [
+        {
+          id: 82,
+          user_id: "41",
+          email: "member@example.com",
+          role: "member",
+        },
+      ],
+    });
+
+    expect(wrapper.find("#transfer-workspace-ownership-41").exists()).toBe(false);
+  });
+
+  it("invalidates an in-flight transfer when ownership capability is revoked", async () => {
+    let rejectPush!: (reason?: unknown) => void;
+    const pushEvent = vi.fn(
+      () =>
+        new Promise<Record<string, unknown>>((_resolve, reject) => {
+          rejectPush = reject;
+        }),
+    );
+    const live = createPromiseMockLive({}, pushEvent);
+    const { wrapper } = mountMembers(
+      {
+        canManage: true,
+        canTransferOwnership: true,
+        members: [
+          {
+            id: 82,
+            user_id: "41",
+            display_name: "New owner",
+            email: "new-owner@example.com",
+            role: "member",
+          },
+        ],
+      },
+      live,
+    );
+
+    await wrapper.get("#transfer-workspace-ownership-41").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+    expect(confirmation.props("pending")).toBe(true);
+
+    await wrapper.setProps({ canTransferOwnership: false });
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("pending")).toBe(false);
+
+    rejectPush(new Error("late disconnect"));
+    await flushPromises();
+    await wrapper.setProps({ canTransferOwnership: true });
+
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("error")).toBeUndefined();
+    expect(confirmation.props("description")).not.toContain("New owner");
   });
 });

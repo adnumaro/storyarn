@@ -1,16 +1,16 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import ProjectSettingsMembers from "../../../../live/project/settings/ProjectSettingsMembers.vue";
-import { createMockLive } from "../../../setup";
+import { createMockLive, createPromiseMockLive, setTestLocale } from "../../../setup";
 
-function mountMembers(props = {}) {
-  const live = createMockLive();
+function mountMembers(props = {}, live = createMockLive()) {
   const wrapper = mount(ProjectSettingsMembers, {
     props: {
       members: [],
       pendingInvitations: [],
-      currentUserId: 1,
+      currentUserId: "1",
       ...props,
     },
     global: {
@@ -22,6 +22,8 @@ function mountMembers(props = {}) {
 }
 
 describe("ProjectSettingsMembers", () => {
+  afterEach(() => setTestLocale("en"));
+
   it("keeps the form value on errors and clears it only after success", async () => {
     const { live, wrapper } = mountMembers();
 
@@ -85,5 +87,170 @@ describe("ProjectSettingsMembers", () => {
     expect(event).toBe("revoke_invitation");
     expect(payload).toEqual({ id: "42" });
     expect(complete).toEqual(expect.any(Function));
+  });
+
+  it("confirms ownership transfer using the member user id", async () => {
+    const { live, wrapper } = mountMembers({
+      canTransferOwnership: true,
+      members: [
+        {
+          id: 72,
+          user_id: "9007199254740993",
+          display_name: "New owner",
+          email: "new-owner@example.com",
+          role: "editor",
+        },
+      ],
+    });
+
+    await wrapper.get("#transfer-project-ownership-9007199254740993").trigger("click");
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("description")).toContain("New owner");
+    expect(confirmation.props("description")).toContain("owner-only operations may stop or fail");
+    expect(confirmation.props("pendingText")).toBe("Transferring project ownership…");
+
+    confirmation.vm.$emit("confirm");
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+    const [event, payload, complete] = vi.mocked(live.pushEvent).mock.calls[0];
+    expect(event).toBe("transfer_owner");
+    expect(payload).toEqual({ "user-id": "9007199254740993" });
+    expect(complete).toEqual(expect.any(Function));
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("pending")).toBe(true);
+
+    complete?.({});
+    await nextTick();
+
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("pending")).toBe(false);
+  });
+
+  it("explains the active-operation risk in Spanish", async () => {
+    setTestLocale("es");
+    const { wrapper } = mountMembers({
+      canTransferOwnership: true,
+      members: [
+        {
+          id: 72,
+          user_id: "31",
+          display_name: "Nueva propietaria",
+          email: "new-owner@example.com",
+          role: "editor",
+        },
+      ],
+    });
+
+    await wrapper.get("#transfer-project-ownership-31").trigger("click");
+
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    expect(confirmation.props("description")).toContain("pueden detenerse o fallar");
+    expect(confirmation.props("description")).toContain("vuelve a iniciarlas");
+    expect(confirmation.props("pendingText")).toBe("Transfiriendo la propiedad del proyecto…");
+  });
+
+  it("keeps an unconfirmed transfer visible when the connection fails", async () => {
+    let rejectPush!: (reason?: unknown) => void;
+    const pushEvent = vi.fn(
+      () =>
+        new Promise<Record<string, unknown>>((_resolve, reject) => {
+          rejectPush = reject;
+        }),
+    );
+    const live = createPromiseMockLive({}, pushEvent);
+    const { wrapper } = mountMembers(
+      {
+        canTransferOwnership: true,
+        members: [
+          {
+            id: 72,
+            user_id: "31",
+            display_name: "New owner",
+            email: "new-owner@example.com",
+            role: "editor",
+          },
+        ],
+      },
+      live,
+    );
+
+    await wrapper.get("#transfer-project-ownership-31").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+
+    expect(confirmation.props("pending")).toBe(true);
+    expect(confirmation.props("open")).toBe(true);
+
+    rejectPush(new Error("disconnected"));
+    await flushPromises();
+
+    expect(confirmation.props("pending")).toBe(false);
+    expect(confirmation.props("open")).toBe(true);
+    expect(confirmation.props("error")).toContain("could not confirm the result");
+  });
+
+  it("does not expose ownership transfer when the server denies it", () => {
+    const { wrapper } = mountMembers({
+      canTransferOwnership: false,
+      members: [
+        {
+          id: 72,
+          user_id: "31",
+          email: "member@example.com",
+          role: "editor",
+        },
+      ],
+    });
+
+    expect(wrapper.find("#transfer-project-ownership-31").exists()).toBe(false);
+  });
+
+  it("invalidates an in-flight transfer when ownership capability is revoked", async () => {
+    let rejectPush!: (reason?: unknown) => void;
+    const pushEvent = vi.fn(
+      () =>
+        new Promise<Record<string, unknown>>((_resolve, reject) => {
+          rejectPush = reject;
+        }),
+    );
+    const live = createPromiseMockLive({}, pushEvent);
+    const { wrapper } = mountMembers(
+      {
+        canTransferOwnership: true,
+        members: [
+          {
+            id: 72,
+            user_id: "31",
+            display_name: "New owner",
+            email: "new-owner@example.com",
+            role: "editor",
+          },
+        ],
+      },
+      live,
+    );
+
+    await wrapper.get("#transfer-project-ownership-31").trigger("click");
+    const confirmation = wrapper.getComponent(ConfirmDialog);
+    confirmation.vm.$emit("confirm");
+    await nextTick();
+    expect(confirmation.props("pending")).toBe(true);
+
+    await wrapper.setProps({ canTransferOwnership: false });
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("pending")).toBe(false);
+
+    rejectPush(new Error("late disconnect"));
+    await flushPromises();
+    await wrapper.setProps({ canTransferOwnership: true });
+
+    expect(confirmation.props("open")).toBe(false);
+    expect(confirmation.props("error")).toBeUndefined();
+    expect(confirmation.props("description")).not.toContain("New owner");
   });
 });

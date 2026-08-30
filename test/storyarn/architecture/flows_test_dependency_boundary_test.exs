@@ -71,6 +71,10 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     ],
     "test/storyarn/flows/references/commands/stale_variable_reference_repair_concurrency_test.exs" => [
       "Storyarn.Accounts.User",
+      # Public ownership-transfer facade: this integration test pins the
+      # transfer-versus-Flow-repair concurrency contract. No Projects internals
+      # are allowed through this seam.
+      "Storyarn.Projects",
       "Storyarn.Projects.Project",
       "Storyarn.Sheets",
       "Storyarn.Workspaces.Workspace"

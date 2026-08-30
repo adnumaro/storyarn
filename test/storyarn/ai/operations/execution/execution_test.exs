@@ -557,7 +557,7 @@ defmodule Storyarn.AI.ExecutionTest do
     {operation, _intent} = execute_success!(ctx, "temporary project content")
     assert Repo.get_by(Result, operation_id: operation.id)
 
-    assert {:ok, deleted_project} = Projects.delete_project(ctx.project, ctx.user.id)
+    assert {:ok, deleted_project} = Projects.delete_project(user_scope_fixture(ctx.user), ctx.project.id)
     refute Repo.get_by(Result, operation_id: operation.id)
     assert Repo.get!(Operation, operation.id).project_id == ctx.project.id
     assert Repo.get_by(UsageEvent, operation_id: operation.id)
@@ -573,7 +573,7 @@ defmodule Storyarn.AI.ExecutionTest do
     {operation, _intent} = execute_success!(ctx, "temporary workspace content")
     audit = Repo.get_by!(WorkspacePolicyAudit, workspace_id: ctx.workspace.id)
 
-    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.workspace)
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.scope, ctx.workspace.id)
     refute Repo.get_by(Result, operation_id: operation.id)
 
     retained = Repo.get!(Operation, operation.id)

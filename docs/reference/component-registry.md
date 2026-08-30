@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-27
+> Last reviewed: 2026-08-30
 >
 > Source of truth: `lib/storyarn_web/components/`, `lib/storyarn_web.ex`, and `assets/app/`
 
@@ -144,17 +144,21 @@ shared component living outside `components/`.
 
 `ConfirmDialog.vue` (`assets/app/components/ConfirmDialog.vue`):
 
-| Prop / event  | Type                                      |
-| ------------- | ----------------------------------------- |
-| `open`        | `v-model`, `boolean`, **required**        |
-| `title`       | `string`, **required**                    |
-| `description` | `string?`                                 |
-| `confirmText` | `string?` (default `"Confirm"`)           |
-| `cancelText`  | `string?` (default `"Cancel"`)            |
-| `variant`     | `"default" \| "destructive" \| "warning"` |
-| `icon`        | `Component?` (an `@lucide/vue` icon)      |
-| `@confirm`    | emitted, then `open` is set to `false`    |
-| `@cancel`     | emitted                                   |
+| Prop / event     | Type                                                                  |
+| ---------------- | --------------------------------------------------------------------- |
+| `open`           | `v-model`, `boolean`, **required**                                    |
+| `title`          | `string`, **required**                                                |
+| `description`    | `string?`                                                             |
+| `confirmText`    | `string?` (default `"Confirm"`)                                       |
+| `cancelText`     | `string?` (default `"Cancel"`)                                        |
+| `variant`        | `"default" \| "destructive" \| "warning"`                             |
+| `icon`           | `Component?` (an `@lucide/vue` icon)                                  |
+| `pending`        | `boolean?`; disables dismissal and marks its action group `aria-busy` |
+| `pendingText`    | `string?`; localized status announced once outside that busy region   |
+| `closeOnConfirm` | `boolean?` (default `true`)                                           |
+| `error`          | `string?`; rendered as an alert                                       |
+| `@confirm`       | emitted unless pending; closes only when `closeOnConfirm` is `true`   |
+| `@cancel`        | emitted and closes unless pending                                     |
 
 NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 

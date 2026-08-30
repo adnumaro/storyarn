@@ -752,16 +752,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
 
   defp request_transaction(workspace_id, project_id, scope, user_id, snapshot_id, idempotency_key) do
     Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
-      with %Project{} = project <- lock_active_project(project_id),
+      with {:ok, %Project{id: ^project_id, deleted_at: nil} = project, _membership} <-
+             Memberships.authorize_locked(scope, project_id, :manage_project, :update),
            true <- project.workspace_id == workspace_id,
-           {:ok, %Project{id: ^project_id, deleted_at: nil}, _membership} <-
-             Memberships.authorize(scope, project_id, :manage_project),
            true <- project.workspace_id > 0 do
         request_locked(project, user_id, snapshot_id, idempotency_key)
       else
-        nil -> {:error, :unauthorized}
         false -> {:error, :invalid_project_snapshot_restore_request}
         {:error, reason} when reason in [:not_found, :unauthorized] -> {:error, :unauthorized}
+        {:error, reason} -> {:error, reason}
       end
     end)
   end

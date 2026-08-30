@@ -1998,12 +1998,16 @@ defmodule Storyarn.AssetsTest do
     end
 
     test "the public upload capability refuses a revoked editor before storage is written", %{
-      project: project
+      project: project,
+      user: owner
     } do
       editor = user_fixture()
       membership = membership_fixture(project, editor, "editor")
       scope = user_scope_fixture(editor)
-      {:ok, _membership} = Projects.update_member_role(membership, "viewer")
+
+      {:ok, _membership} =
+        Projects.update_member_role(user_scope_fixture(owner), project.id, membership.id, "viewer")
+
       content = "revoked-upload"
       blob_key = blob_key_for(project, content, "application/pdf")
 

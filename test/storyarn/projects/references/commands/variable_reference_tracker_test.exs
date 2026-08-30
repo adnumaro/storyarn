@@ -47,6 +47,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       })
 
     %{
+      scope: user_scope_fixture(user),
       project: project,
       flow: flow,
       sheet: sheet,
@@ -1002,7 +1003,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
                Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
       assert {:ok, 1} =
-               Projects.repair_stale_project_variable_references(ctx.project.id)
+               Projects.repair_stale_project_variable_references(ctx.scope, ctx.project.id)
 
       persisted = Repo.get!(FlowNode, node.id)
       assert hd(persisted.data["assignments"])["sheet"] == "mc.renamed"
@@ -1037,7 +1038,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       assert hd(refs).stale == true
 
       # Repair
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       # Verify no longer stale
@@ -1084,7 +1085,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       # Rename the sheet shortcut
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       # Verify node data was updated
@@ -1170,7 +1171,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       Repo.update!(Ecto.Changeset.change(ctx.quest_block, variable_name: "quest_complete"))
       Repo.update!(Ecto.Changeset.change(legacy_block, variable_name: "legacy_total"))
 
-      assert {:ok, 1} = Flows.repair_stale_variable_references(ctx.project.id)
+      assert {:ok, 1} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
 
       updated_node = Repo.get!(FlowNode, node.id)
 
@@ -1237,7 +1238,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
                  {"text", "Choose"}
                ])
 
-      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.project.id)
+      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
     end
 
     test "returns 0 when nothing is stale", ctx do
@@ -1260,7 +1261,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
 
       VariableReferenceTracker.update_references(node)
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 0
     end
 
@@ -1284,7 +1285,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       {:ok, _sheet} = Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
       :ok = Collaboration.subscribe_dashboard(ctx.project.id)
 
-      assert {:ok, 2} = Flows.repair_stale_variable_references(ctx.project.id)
+      assert {:ok, 2} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert_receive {:dashboard_invalidate, :flows}
       refute_receive {:dashboard_invalidate, :flows}, 10
 
@@ -1298,7 +1299,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
     test "does not broadcast when the repair is a no-op", ctx do
       :ok = Collaboration.subscribe_dashboard(ctx.project.id)
 
-      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.project.id)
+      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       refute_receive {:dashboard_invalidate, :flows}, 10
     end
 
@@ -1319,7 +1320,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       Repo.delete!(node)
       :ok = Collaboration.subscribe_dashboard(ctx.project.id)
 
-      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.project.id)
+      assert {:ok, 0} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       refute_receive {:dashboard_invalidate, :flows}, 10
     end
 
@@ -1353,7 +1354,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       :ok = Collaboration.subscribe_dashboard(ctx.project.id)
 
       assert {:error, {:partial_variable_reference_repair, %{repaired_count: 1, failures: [{failing_id, _reason}]}}} =
-               Flows.repair_stale_variable_references(ctx.project.id)
+               Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
 
       assert failing_id == failing_node.id
       assert_receive {:dashboard_invalidate, :flows}
@@ -1509,7 +1510,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       # Rename only mc.jaime → mc.renamed
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -1546,7 +1547,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       # Rename the source sheet
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -1598,7 +1599,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       # Rename only mc.jaime → mc.renamed
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -1642,7 +1643,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       assert hd(refs).stale == true
 
       # Repair
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -1681,7 +1682,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       # Rename only mc.jaime
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, 1} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, 1} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
 
       updated_node = Repo.get!(FlowNode, node.id)
       [a1, a2] = updated_node.data["assignments"]
@@ -1715,8 +1716,8 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(node)
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, 1} = Flows.repair_stale_variable_references(ctx.project.id)
-      {:ok, 0} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, 1} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
+      {:ok, 0} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
     end
 
     test "two assignments to two different sheets — both repaired correctly after rename", ctx do
@@ -1760,7 +1761,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
       Storyarn.Sheets.update_sheet(sheet3, %{shortcut: "inventory"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -2341,7 +2342,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(node)
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -2375,7 +2376,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       |> Ecto.Changeset.change(%{variable_name: "stats"})
       |> Storyarn.Repo.update!()
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -2406,8 +2407,8 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(node)
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, 1} = Flows.repair_stale_variable_references(ctx.project.id)
-      {:ok, 0} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, 1} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
+      {:ok, 0} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
     end
 
     test "mixed regular + table refs repaired correctly", ctx do
@@ -2439,7 +2440,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(node)
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)
@@ -2482,7 +2483,7 @@ defmodule Storyarn.Projects.References.VariableReferenceTrackerTest do
       VariableReferenceTracker.update_references(node)
       Storyarn.Sheets.update_sheet(ctx.sheet, %{shortcut: "mc.renamed"})
 
-      {:ok, count} = Flows.repair_stale_variable_references(ctx.project.id)
+      {:ok, count} = Flows.repair_stale_variable_references(ctx.scope, ctx.project.id)
       assert count == 1
 
       updated_node = Repo.get!(FlowNode, node.id)

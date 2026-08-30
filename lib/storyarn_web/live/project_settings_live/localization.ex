@@ -4,6 +4,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Localization
+  alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
   # ===========================================================================
@@ -65,33 +66,35 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project} = socket.assigns
+    stale_project = socket.assigns.project
 
-    if Authorize.authorize(socket, :manage_project) == :ok do
-      provider_config = get_provider_config(project.id)
+    if connected?(socket) do
+      :ok = Projects.subscribe_project_ownership_changes(stale_project.id)
+    end
 
-      socket =
-        socket
-        |> assign(:current_workspace, project.workspace)
-        |> assign(
-          :provider_form,
-          to_form(provider_changeset(provider_config), as: "provider")
-        )
-        |> assign(
-          :has_api_key,
-          provider_config != nil && provider_config.api_key_encrypted != nil
-        )
-        |> assign(:provider_usage, nil)
+    case reload_project_owner(socket, stale_project.id) do
+      {:ok, project, membership} ->
+        provider_config = get_provider_config(project.id)
 
-      {:ok, socket}
-    else
-      {:ok,
-       socket
-       |> put_flash(
-         :error,
-         dgettext("projects", "You don't have permission to manage this project.")
-       )
-       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+        socket =
+          socket
+          |> assign(:project, project)
+          |> assign(:membership, membership)
+          |> assign(:current_workspace, project.workspace)
+          |> assign(
+            :provider_form,
+            to_form(provider_changeset(provider_config), as: "provider")
+          )
+          |> assign(
+            :has_api_key,
+            provider_config != nil && provider_config.api_key_encrypted != nil
+          )
+          |> assign(:provider_usage, nil)
+
+        {:ok, socket}
+
+      _lost_access ->
+        mount_access_denied(socket, stale_project)
     end
   end
 
@@ -124,6 +127,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
     end)
   end
 
+  @impl true
+  def handle_info(
+        {:project_ownership_transferred, %{project_id: project_id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    reauthorize_project_owner(socket)
+  end
+
   defp save_provider_config(socket, params) do
     params =
       if String.trim(params["api_key_encrypted"] || "") == "" do
@@ -132,7 +143,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
         Map.update!(params, "api_key_encrypted", &String.trim/1)
       end
 
-    case Localization.upsert_provider_config(socket.assigns.project, params) do
+    case Localization.upsert_provider_config(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           params
+         ) do
       {:ok, config} ->
         socket =
           socket
@@ -143,7 +158,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
         {:reply, %{ok: true}, socket}
 
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         socket =
           assign(
             socket,
@@ -152,6 +167,19 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
           )
 
         {:reply, %{ok: false, errors: changeset_errors(changeset)}, socket}
+
+      {:error, reason} when reason in [:unauthorized, :ownership_invariant_violation] ->
+        message =
+          dgettext(
+            "projects",
+            "Provider settings could not be saved because project ownership changed."
+          )
+
+        {:reply, %{ok: false, errors: %{authorization: message}}, put_flash(socket, :error, message)}
+
+      {:error, _reason} ->
+        message = dgettext("projects", "Provider settings could not be saved.")
+        {:reply, %{ok: false, errors: %{provider: message}}, put_flash(socket, :error, message)}
     end
   end
 
@@ -189,4 +217,49 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   defp get_provider_config(project_id), do: Localization.get_provider_config(project_id)
   defp provider_changeset(config), do: Localization.change_provider_config(config)
+
+  defp reload_project_owner(socket, project_id) do
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, project_id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project) do
+      {:ok, project, membership}
+    else
+      _lost_access -> {:error, :unauthorized}
+    end
+  end
+
+  defp mount_access_denied(socket, project) do
+    {:ok,
+     socket
+     |> put_flash(
+       :error,
+       dgettext("projects", "You don't have permission to manage this project.")
+     )
+     |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+  end
+
+  defp reauthorize_project_owner(socket) do
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, socket.assigns.project.id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project) do
+      {:noreply,
+       socket
+       |> assign(:project, project)
+       |> assign(:membership, membership)
+       |> assign(:current_workspace, project.workspace)}
+    else
+      _lost_access ->
+        project = socket.assigns.project
+
+        {:noreply,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("projects", "You don't have permission to manage this project.")
+         )
+         |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+    end
+  end
 end

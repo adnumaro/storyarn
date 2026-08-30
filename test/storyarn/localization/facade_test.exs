@@ -1034,7 +1034,7 @@ defmodule Storyarn.Localization.FacadeTest do
       refute Localization.has_active_provider?(project.id)
     end
 
-    test "upsert_provider_config/2 creates config when none exists" do
+    test "upsert_provider_config/3 creates config when none exists" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -1043,21 +1043,43 @@ defmodule Storyarn.Localization.FacadeTest do
         "api_endpoint" => "https://api-free.deepl.com"
       }
 
-      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert {:ok, config} =
+               Localization.upsert_provider_config(user_scope_fixture(user), project, attrs)
+
       assert config.project_id == project.id
       assert config.provider == "deepl"
       assert config.is_active == true
     end
 
-    test "upsert_provider_config/2 rejects a stale project struct in trash" do
-      project = project_fixture(user_fixture())
+    test "upsert_provider_config/3 rejects a non-owner without writing" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      editor = user_fixture()
+      membership_fixture(project, editor, "editor")
+
+      assert {:error, :unauthorized} =
+               Localization.upsert_provider_config(
+                 user_scope_fixture(editor),
+                 project,
+                 %{
+                   "is_active" => true,
+                   "api_endpoint" => "https://api-free.deepl.com"
+                 }
+               )
+
+      assert Localization.get_provider_config(project.id) == nil
+    end
+
+    test "upsert_provider_config/3 rejects a stale project struct in trash" do
+      user = user_fixture()
+      project = project_fixture(user)
 
       project
       |> Ecto.Changeset.change(deleted_at: DateTime.utc_now(:second))
       |> Repo.update!()
 
       assert {:error, :project_not_active} =
-               Localization.upsert_provider_config(project, %{
+               Localization.upsert_provider_config(user_scope_fixture(user), project, %{
                  "is_active" => true,
                  "api_endpoint" => "https://api-free.deepl.com"
                })
@@ -1065,7 +1087,7 @@ defmodule Storyarn.Localization.FacadeTest do
       assert Localization.get_provider_config(project.id) == nil
     end
 
-    test "upsert_provider_config/2 rejects non-DeepL API endpoints" do
+    test "upsert_provider_config/3 rejects non-DeepL API endpoints" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -1074,12 +1096,14 @@ defmodule Storyarn.Localization.FacadeTest do
         "api_endpoint" => "https://attacker.example"
       }
 
-      assert {:error, changeset} = Localization.upsert_provider_config(project, attrs)
+      assert {:error, changeset} =
+               Localization.upsert_provider_config(user_scope_fixture(user), project, attrs)
+
       assert "must be a supported DeepL API endpoint" in errors_on(changeset).api_endpoint
       assert Localization.get_provider_config(project.id) == nil
     end
 
-    test "upsert_provider_config/2 accepts DeepL Pro endpoint" do
+    test "upsert_provider_config/3 accepts DeepL Pro endpoint" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -1088,11 +1112,13 @@ defmodule Storyarn.Localization.FacadeTest do
         "api_endpoint" => "https://api.deepl.com"
       }
 
-      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert {:ok, config} =
+               Localization.upsert_provider_config(user_scope_fixture(user), project, attrs)
+
       assert config.api_endpoint == "https://api.deepl.com"
     end
 
-    test "upsert_provider_config/2 normalizes supported DeepL endpoints" do
+    test "upsert_provider_config/3 normalizes supported DeepL endpoints" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -1101,11 +1127,13 @@ defmodule Storyarn.Localization.FacadeTest do
         "api_endpoint" => " https://api.deepl.com/ "
       }
 
-      assert {:ok, config} = Localization.upsert_provider_config(project, attrs)
+      assert {:ok, config} =
+               Localization.upsert_provider_config(user_scope_fixture(user), project, attrs)
+
       assert config.api_endpoint == "https://api.deepl.com"
     end
 
-    test "upsert_provider_config/2 rejects updates when stored endpoint is unsupported" do
+    test "upsert_provider_config/3 rejects updates when stored endpoint is unsupported" do
       user = user_fixture()
       project = project_fixture(user)
 
@@ -1115,23 +1143,27 @@ defmodule Storyarn.Localization.FacadeTest do
       })
 
       assert {:error, changeset} =
-               Localization.upsert_provider_config(project, %{"is_active" => false})
+               Localization.upsert_provider_config(
+                 user_scope_fixture(user),
+                 project,
+                 %{"is_active" => false}
+               )
 
       assert "must be a supported DeepL API endpoint" in errors_on(changeset).api_endpoint
     end
 
-    test "upsert_provider_config/2 updates existing config" do
+    test "upsert_provider_config/3 updates existing config" do
       user = user_fixture()
       project = project_fixture(user)
 
       {:ok, _config} =
-        Localization.upsert_provider_config(project, %{
+        Localization.upsert_provider_config(user_scope_fixture(user), project, %{
           "is_active" => true,
           "api_endpoint" => "https://api-free.deepl.com"
         })
 
       {:ok, updated} =
-        Localization.upsert_provider_config(project, %{
+        Localization.upsert_provider_config(user_scope_fixture(user), project, %{
           "is_active" => false
         })
 
@@ -1148,7 +1180,7 @@ defmodule Storyarn.Localization.FacadeTest do
       project = project_fixture(user)
 
       {:ok, config} =
-        Localization.upsert_provider_config(project, %{
+        Localization.upsert_provider_config(user_scope_fixture(user), project, %{
           "is_active" => true,
           "api_endpoint" => "https://api-free.deepl.com"
         })

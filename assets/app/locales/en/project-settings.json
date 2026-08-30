@@ -19,6 +19,7 @@
       }
     },
     "general": {
+      "owner_controls_unavailable": "Only the current project owner can edit project details, source language, project theme, maintenance, or deletion. You can still publish templates and change your appearance.",
       "project_name": "Project Name",
       "project_type": "Project type",
       "project_type_placeholder": "Select a type",
@@ -89,7 +90,16 @@
       "pending_title": "Pending invitations",
       "pending_description": "Pending invitations reserve a member seat until accepted, revoked, or expired.",
       "expires": "Expires {date}",
-      "revoke": "Revoke"
+      "revoke": "Revoke",
+      "transfer": {
+        "action": "Transfer ownership",
+        "title": "Transfer project ownership?",
+        "description": "{name} will become the project owner and you will become an editor. You will lose access to project settings and member management. Active owner-only operations may stop or fail after the transfer; review them with the new owner and restart them if needed.",
+        "confirm": "Transfer ownership",
+        "pending": "Transferring project ownership…",
+        "cancel": "Cancel",
+        "connection_unconfirmed": "The connection was interrupted, so Storyarn could not confirm the result. Reconnect and refresh this page before trying again."
+      }
     },
     "localization": {
       "provider_title": "Translation Provider (DeepL)",

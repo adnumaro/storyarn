@@ -1,12 +1,14 @@
 defmodule Storyarn.Localization.ProjectAccess do
   @moduledoc false
 
+  alias Storyarn.Localization.ProjectAccess.Commands.OwnerAuthority
   alias Storyarn.Localization.ProjectAccess.Commands.ProjectReferenceIntegrity
   alias Storyarn.Localization.ProjectAccess.Queries.Projects
 
   defdelegate get_project(actor_scope, project_id), to: Projects
   defdelegate get_project_by_slugs(actor_scope, workspace_slug, project_slug), to: Projects
   defdelegate get_effective_membership(project_id, user_id, workspace_id), to: Projects
+  defdelegate authorize_locked_owner(actor_scope, project), to: OwnerAuthority, as: :authorize_locked
 
   defdelegate lock_active_project(project_id, lock_mode \\ :share),
     to: ProjectReferenceIntegrity

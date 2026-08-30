@@ -91,13 +91,25 @@ defmodule StoryarnWeb.ProjectLive.Form do
   end
 
   defp update_project(socket, project_params) do
-    case Projects.update_project(socket.assigns.project, project_params) do
+    case Projects.update_project(
+           socket.assigns.current_scope,
+           socket.assigns.project.id,
+           project_params
+         ) do
       {:ok, project} ->
         notify_parent({:saved, project})
         {:noreply, socket}
 
-      {:error, changeset} ->
+      {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
+
+      {:error, _reason} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Only the current project owner can update this project.")
+         )}
     end
   end
 

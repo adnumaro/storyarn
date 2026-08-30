@@ -47,11 +47,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.SettingsComponentsRepairTest do
       assigns: %{
         __changed__: %{},
         flash: %{},
+        current_scope: user_scope_fixture(user),
         project: project
       }
     }
 
-    repair_fun = fn project_id ->
+    repair_fun = fn scope, project_id ->
+      assert scope.user.id == user.id
       assert project_id == project.id
 
       {:error,
@@ -77,11 +79,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.SettingsComponentsRepairTest do
       assigns: %{
         __changed__: %{},
         flash: %{},
+        current_scope: user_scope_fixture(user),
         project: project
       }
     }
 
-    repair_fun = fn project_id ->
+    repair_fun = fn scope, project_id ->
+      assert scope.user.id == user.id
       assert project_id == project.id
 
       {:error,

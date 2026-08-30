@@ -21,6 +21,7 @@ const { exportConfig, canEdit, canImport, resumeStorageKey, importState, uploadC
 <template>
   <div class="space-y-10">
     <ImportPanel
+      :key="canImport ? 'import-enabled' : 'import-disabled'"
       :can-import="canImport"
       :resume-storage-key="resumeStorageKey"
       :import-state="importState"

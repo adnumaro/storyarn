@@ -11,6 +11,7 @@ defmodule Storyarn.Localization.ProjectAccess.Projections.ProjectRecord do
           id: integer() | nil,
           name: String.t() | nil,
           slug: String.t() | nil,
+          owner_id: integer() | nil,
           workspace_id: integer() | nil,
           workspace: WorkspaceRecord.t() | Ecto.Association.NotLoaded.t() | nil,
           deleted_at: DateTime.t() | nil
@@ -19,6 +20,7 @@ defmodule Storyarn.Localization.ProjectAccess.Projections.ProjectRecord do
   schema "projects" do
     field :name, :string
     field :slug, :string
+    field :owner_id, :id
     field :deleted_at, :utc_datetime
 
     belongs_to :workspace, WorkspaceRecord

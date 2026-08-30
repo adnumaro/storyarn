@@ -13,6 +13,7 @@ defmodule Storyarn.AI.Governance.PolicyTest do
   alias Storyarn.AI.WorkspacePolicy
   alias Storyarn.AI.WorkspacePolicyAudit
   alias Storyarn.Repo
+  alias Storyarn.Workspaces
   alias StoryarnTest.AI.ContractTask
 
   setup do
@@ -76,6 +77,57 @@ defmodule Storyarn.AI.Governance.PolicyTest do
 
     assert {:error, :invalid_policy} =
              Governance.update_workspace_policy(scope, workspace.id, ["unknown"])
+  end
+
+  test "policy mutations reject drift between canonical workspace owner records",
+       %{owner: owner, scope: scope, workspace: workspace} do
+    replacement = user_fixture()
+
+    workspace
+    |> Ecto.Changeset.change(owner_id: replacement.id)
+    |> Repo.update!()
+
+    assert {:error, :ownership_invariant_violation} =
+             Governance.update_workspace_policy(scope, workspace.id, ["managed"])
+
+    workspace
+    |> Ecto.Changeset.change(owner_id: owner.id)
+    |> Repo.update!()
+
+    workspace.id
+    |> Workspaces.get_membership(owner.id)
+    |> Ecto.Changeset.change(role: "admin")
+    |> Repo.update!()
+
+    assert {:error, :ownership_invariant_violation} =
+             Governance.update_workspace_policy(scope, workspace.id, ["managed"])
+
+    refute Repo.get_by(WorkspacePolicy, workspace_id: workspace.id)
+
+    assert Repo.aggregate(
+             from(audit in WorkspacePolicyAudit,
+               where: audit.workspace_id_snapshot == ^workspace.id
+             ),
+             :count
+           ) == 0
+  end
+
+  test "policy mutations reject ambiguous owner memberships",
+       %{scope: scope, workspace: workspace} do
+    duplicate_owner = user_fixture()
+    _duplicate_membership = workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+    assert {:error, :ownership_invariant_violation} =
+             Governance.update_workspace_policy(scope, workspace.id, ["managed"])
+
+    refute Repo.get_by(WorkspacePolicy, workspace_id: workspace.id)
+
+    assert Repo.aggregate(
+             from(audit in WorkspacePolicyAudit,
+               where: audit.workspace_id_snapshot == ^workspace.id
+             ),
+             :count
+           ) == 0
   end
 
   test "AI permissions have explicit project and workspace matrices" do

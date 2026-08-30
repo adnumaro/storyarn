@@ -11,6 +11,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
   alias Storyarn.Accounts.Scope
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.PlanStorage
   alias Storyarn.Projects.Imports.ProjectImportAttempt
@@ -104,16 +105,20 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
                )
 
       other_owner = user_fixture()
-      membership_fixture(project, other_owner, "owner")
+      other_scope = Scope.for_user(other_owner)
+      membership_fixture(project, other_owner, "editor")
+
+      assert {:ok, _project} = Projects.transfer_owner(scope, project.id, other_owner.id)
 
       assert {:ok, other_attempt, _preview} =
                Imports.prepare_import(
-                 Scope.for_user(other_owner),
+                 other_scope,
                  project,
                  "other-owner.yarn",
                  "title: OtherOwnerImport\n---\nHello\n===\n"
                )
 
+      assert {:ok, _project} = Projects.transfer_owner(other_scope, project.id, user.id)
       assert other_attempt.id > expected.id
 
       {:ok, view, _html} = live(conn, export_url(project))
@@ -1408,6 +1413,63 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
 
       assert render(view)
       assert import_state(view)["step"] == "upload"
+    end
+
+    test "does not duplicate the import subscription after ownership leaves and returns", %{
+      conn: conn,
+      project: project,
+      user: owner
+    } do
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(owner),
+                 project,
+                 "ownership-round-trip.yarn",
+                 "title: OwnershipRoundTrip\n---\nHello\n===\n"
+               )
+
+      {:ok, view, _html} = live(conn, export_url(project))
+      assert get_export_vue(view).props["can-import"]
+      assert import_state(view)["attemptId"] == ready.id
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(Scope.for_user(owner), project.id, receiver.id)
+
+      refute get_export_vue(view).props["can-import"]
+      assert import_state(view)["step"] == "upload"
+
+      send(view.pid, {:project_import_updated, ready})
+      assert render(view)
+      assert import_state(view)["step"] == "upload"
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(Scope.for_user(receiver), project.id, owner.id)
+
+      assert get_export_vue(view).props["can-import"]
+      assert import_state(view)["attemptId"] == ready.id
+
+      probe = {:project_import_updated, %{id: -1}}
+      :ok = :sys.suspend(view.pid)
+
+      try do
+        :ok =
+          Phoenix.PubSub.broadcast(
+            Storyarn.PubSub,
+            "project_imports:project:#{project.id}",
+            probe
+          )
+
+        assert {:messages, messages} = Process.info(view.pid, :messages)
+        assert Enum.count(messages, &(&1 == probe)) == 1
+      after
+        :ok = :sys.resume(view.pid)
+      end
+
+      assert render(view)
+      assert Process.alive?(view.pid)
     end
 
     test "shows materialized counts and ignores stale import broadcasts", %{

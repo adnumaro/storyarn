@@ -292,7 +292,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
     assert {:ok, operation} = execute(ctx, "retained", "retained-operation")
     entry_ids = Repo.all(from(entry in AllowanceLedgerEntry, select: entry.id))
 
-    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.workspace)
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.scope, ctx.workspace.id)
 
     assert Repo.get!(Operation, operation.id).workspace_id == nil
 
@@ -316,7 +316,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
     assert queued.execution_status == "queued"
     assert queued.settlement_status == "reserved"
 
-    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.workspace)
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.scope, ctx.workspace.id)
     assert :ok = Operations.fail_queued_after_retries(queued.id, :workspace_deleted)
 
     failed = Repo.get!(Operation, queued.id)

@@ -17,7 +17,8 @@ defmodule Storyarn.Flows.VariableReference do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.References.Projections.BlockRecord
 
-  # What `VariableReferenceTracker.replace_references/4` actually writes.
+  # What `Storyarn.Projects.References.Commands.VariableReferenceTracker.replace_references/4`
+  # actually writes.
   # `"map_zone"` was here from before the Maps→Scenes rename and matches no row;
   # the mismatch is invisible today only because the write path is
   # `Repo.insert_all/3` and never builds this changeset.

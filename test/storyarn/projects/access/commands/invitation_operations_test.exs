@@ -27,10 +27,11 @@ defmodule Storyarn.Shared.InvitationOperationsTest do
 
     owner = user_fixture()
     project = project_fixture(owner)
+    scope = user_scope_fixture(owner)
     email = "encryption-unavailable@example.com"
 
     assert {:error, :encryption_unavailable} =
-             Projects.create_invitation(project, owner, email, "editor")
+             Projects.create_invitation(scope, project.id, email, "editor")
 
     refute Repo.get_by(ProjectInvitation, project_id: project.id, email: email)
   end

@@ -748,7 +748,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
     }
 
     assert {:ok, _configured_project} =
-             Projects.update_project(ctx.project, %{settings: preserved_settings})
+             Projects.update_project(ctx.scope, ctx.project.id, %{settings: preserved_settings})
 
     member = user_fixture()
     membership = membership_fixture(ctx.project, member, "editor")

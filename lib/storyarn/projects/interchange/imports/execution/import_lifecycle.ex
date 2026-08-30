@@ -35,7 +35,6 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   alias Storyarn.Projects.Imports.Telemetry
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Repo
   alias Storyarn.Workers.ImportProjectWorker
@@ -807,25 +806,16 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   defp normalize_existing_ready_attempt({:ok, attempt}), do: {:existing, attempt}
   defp normalize_existing_ready_attempt(error), do: error
 
-  defp authorize_import_locked(repo, project_id, user_id) do
-    with %Project{} <-
-           Project
-           |> where([project], project.id == ^project_id and is_nil(project.deleted_at))
-           |> lock("FOR SHARE")
-           |> repo.one(),
-         %ProjectMembership{} = membership <-
-           ProjectMembership
-           |> where(
-             [candidate],
-             candidate.project_id == ^project_id and candidate.user_id == ^user_id
-           )
-           |> lock("FOR SHARE")
-           |> repo.one(),
-         true <- ProjectMembership.can?(membership.role, @import_action) do
-      {:ok, :authorized}
-    else
-      nil -> {:error, :unauthorized}
-      false -> {:error, :unauthorized}
+  defp authorize_import_locked(_repo, project_id, user_id) do
+    case Memberships.authorize_locked(
+           %{user: %{id: user_id}},
+           project_id,
+           @import_action,
+           :share
+         ) do
+      {:ok, %Project{}, _membership} -> {:ok, :authorized}
+      {:error, :not_found} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 

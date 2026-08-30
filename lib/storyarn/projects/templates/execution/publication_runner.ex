@@ -28,9 +28,11 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     with :ok <- Authorization.ensure_private_visibility(attrs),
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Commercial.can_create_project_template?(source_project) do
-      source_project
-      |> new_template_publication_changeset(scope, attrs)
-      |> insert_publication_and_enqueue()
+      transact_authorized_publication_request(
+        scope,
+        source_project.id,
+        &build_new_template_publication_request(&1, &2, attrs)
+      )
     end
   end
 
@@ -45,9 +47,11 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
          {:ok, source_project} <- Authorization.authorize_source_project(scope, source_project),
          :ok <- Authorization.ensure_template_source(template, source_project),
          :ok <- Commercial.can_create_project_template_version?(template) do
-      template
-      |> template_version_publication_changeset(scope, source_project, attrs)
-      |> insert_publication_and_enqueue()
+      transact_authorized_publication_request(
+        scope,
+        source_project.id,
+        &build_template_version_publication_request(&1, &2, template.id, attrs)
+      )
     end
   end
 
@@ -161,19 +165,13 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     end
   end
 
-  defp insert_publication_and_enqueue(changeset) do
+  defp transact_authorized_publication_request(scope, source_project_id, build_changeset) do
     result =
       Repo.transact(fn ->
-        with {:ok, publication} <- Repo.insert(changeset),
-             {:ok, job} <-
-               %{"publication_id" => publication.id}
-               |> PublishProjectTemplateWorker.new()
-               |> Oban.insert(),
-             {:ok, publication} <-
-               publication
-               |> ProjectTemplatePublication.job_changeset(job.id)
-               |> Repo.update() do
-          {:ok, preload_publication(publication)}
+        with {:ok, locked_scope, locked_source_project} <-
+               lock_publication_request_context(scope, source_project_id),
+             {:ok, changeset} <- build_changeset.(locked_scope, locked_source_project) do
+          insert_publication_and_enqueue_locked(changeset)
         end
       end)
 
@@ -181,6 +179,80 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
       {:ok, publication} -> {:ok, publication}
       {:error, %Ecto.Changeset{} = changeset} -> normalize_publication_changeset_error(changeset)
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp build_new_template_publication_request(locked_scope, locked_source_project, attrs) do
+    with {:ok, locked_source_project} <-
+           Authorization.authorize_source_project(locked_scope, locked_source_project) do
+      {:ok, new_template_publication_changeset(locked_source_project, locked_scope, attrs)}
+    end
+  end
+
+  defp build_template_version_publication_request(locked_scope, locked_source_project, template_id, attrs) do
+    with %ProjectTemplate{} = locked_template <- lock_publication_request_template(template_id),
+         :ok <- Authorization.authorize_template_manager(locked_scope, locked_template),
+         {:ok, locked_source_project} <-
+           Authorization.authorize_source_project(locked_scope, locked_source_project),
+         :ok <- Authorization.ensure_template_source(locked_template, locked_source_project) do
+      {:ok,
+       template_version_publication_changeset(
+         locked_template,
+         locked_scope,
+         locked_source_project,
+         attrs
+       )}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp lock_publication_request_context(%{user: %{id: user_id}} = scope, source_project_id)
+       when is_integer(user_id) and user_id > 0 and is_integer(source_project_id) and source_project_id > 0 do
+    with {:ok, workspace_id} <- publication_request_workspace_id(source_project_id),
+         %Workspace{} <- lock_source_workspace(workspace_id),
+         %User{} = user <- lock_publication_user(user_id),
+         %Project{} = source_project <- lock_source_project(source_project_id, workspace_id),
+         :ok <- lock_source_authorization_memberships(source_project, user) do
+      {:ok, Map.put(scope, :user, user), source_project}
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp lock_publication_request_context(_scope, _source_project_id), do: {:error, :unauthorized}
+
+  defp publication_request_workspace_id(source_project_id) do
+    case Repo.one(
+           from project in Project,
+             where: project.id == ^source_project_id and is_nil(project.deleted_at),
+             select: project.workspace_id
+         ) do
+      workspace_id when is_integer(workspace_id) -> {:ok, workspace_id}
+      nil -> {:error, :not_found}
+    end
+  end
+
+  defp lock_publication_request_template(template_id) do
+    ProjectTemplate
+    |> where([template], template.id == ^template_id)
+    |> lock("FOR SHARE")
+    |> Repo.one()
+  end
+
+  defp insert_publication_and_enqueue_locked(changeset) do
+    with {:ok, publication} <- Repo.insert(changeset),
+         {:ok, job} <-
+           %{"publication_id" => publication.id}
+           |> PublishProjectTemplateWorker.new()
+           |> Oban.insert(),
+         {:ok, publication} <-
+           publication
+           |> ProjectTemplatePublication.job_changeset(job.id)
+           |> Repo.update() do
+      {:ok, preload_publication(publication)}
     end
   end
 
@@ -428,9 +500,12 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRunner do
     with %ProjectTemplatePublication{} = candidate <-
            Repo.get(ProjectTemplatePublication, publication_id),
          true <- candidate.source_project_id == expected_source_project_id,
-         %User{} = user <- lock_publication_user(candidate.requested_by_id),
          {:ok, workspace_id} <- source_workspace_id(expected_source_project_id),
          %Workspace{} <- lock_source_workspace(workspace_id),
+         # Workspace is the canonical first lock for workflows that can race
+         # ownership transfer. Taking the requester first creates a real
+         # user -> workspace / workspace -> user deadlock cycle.
+         %User{} = user <- lock_publication_user(candidate.requested_by_id),
          %Project{} = source_project <-
            lock_source_project(expected_source_project_id, workspace_id),
          :ok <- lock_source_authorization_memberships(source_project, user),

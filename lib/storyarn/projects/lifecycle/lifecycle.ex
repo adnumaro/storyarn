@@ -20,9 +20,9 @@ defmodule Storyarn.Projects.Lifecycle do
   defdelegate change_project(project, attrs \\ %{}), to: ProjectCrud
   defdelegate change_new_project(), to: ProjectCrud
   defdelegate change_new_project(project, attrs \\ %{}), to: ProjectCrud
-  defdelegate update_project(project, attrs), to: ProjectCrud
+  defdelegate update_project(scope, project_id, attrs), to: ProjectCrud
   defdelegate touch_project(project_id, at \\ nil), to: ProjectCrud
-  defdelegate delete_project(project, user_id), to: ProjectCrud
+  defdelegate delete_project(scope, project_id), to: ProjectCrud
   defdelegate permanently_delete_project(project), to: ProjectCrud
   defdelegate list_deleted_projects(workspace_id), to: ProjectCrud
   defdelegate get_deleted_project(workspace_id, project_id), to: ProjectCrud

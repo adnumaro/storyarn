@@ -27,6 +27,11 @@ defmodule Storyarn.Projects.InvitationOperations do
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_id(id)
+            when is_integer(id) and id > 0 and id <= @max_pg_bigint
+
   @doc """
   Lists pending invitations for a parent entity.
   """
@@ -41,16 +46,24 @@ defmodule Storyarn.Projects.InvitationOperations do
     |> Repo.all()
   end
 
-  @doc """
-  Creates an invitation and queues the invitation email for durable delivery.
-  """
-  def create_invitation(config, parent, invited_by, email, role) do
-    parent_id = Map.fetch!(parent, :id)
-
-    with :ok <- check_invitation_rate_limit(config, parent_id, invited_by.id) do
-      create_serialized_invitation(config, parent, invited_by, normalize_email(email), role)
+  @doc false
+  def create_authorized_invitation(config, %{user: %{id: user_id}} = scope, parent_id, email, role)
+      when valid_id(user_id) and valid_id(parent_id) do
+    with {:ok, parent, _membership} <- config.memberships_module.authorize(scope, parent_id, :manage_members),
+         :ok <- check_invitation_rate_limit(config, parent_id, user_id) do
+      create_serialized_invitation(
+        config,
+        parent,
+        scope.user,
+        normalize_email(email),
+        role,
+        [],
+        {:actor, scope}
+      )
     end
   end
+
+  def create_authorized_invitation(_config, _scope, _parent_id, _email, _role), do: {:error, :unauthorized}
 
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
@@ -129,6 +142,24 @@ defmodule Storyarn.Projects.InvitationOperations do
     end
   end
 
+  @doc false
+  def revoke_authorized_invitation(config, scope, parent_id, invitation_id)
+      when valid_id(parent_id) and valid_id(invitation_id) do
+    Repo.transact(fn ->
+      with {:ok, _parent, _membership} <-
+             config.memberships_module.authorize_locked(scope, parent_id, :manage_members, :update),
+           invitation when not is_nil(invitation) <-
+             lock_pending_invitation(config, parent_id, invitation_id) do
+        Repo.delete(invitation)
+      else
+        nil -> {:error, :not_found}
+        {:error, reason} -> {:error, reason}
+      end
+    end)
+  end
+
+  def revoke_authorized_invitation(_config, _scope, _parent_id, _invitation_id), do: {:error, :not_found}
+
   @doc """
   Gets a pending invitation by ID.
   """
@@ -169,7 +200,11 @@ defmodule Storyarn.Projects.InvitationOperations do
     )
   end
 
-  defp create_serialized_invitation(config, parent, invited_by, email, role, opts \\ []) do
+  defp create_serialized_invitation(config, parent, invited_by, email, role, opts) do
+    create_serialized_invitation(config, parent, invited_by, email, role, opts, :trusted)
+  end
+
+  defp create_serialized_invitation(config, parent, invited_by, email, role, opts, authorization) do
     {encoded_token, invitation} =
       config.invitation_schema.build_invitation(parent, invited_by, email, role)
 
@@ -182,19 +217,20 @@ defmodule Storyarn.Projects.InvitationOperations do
 
     if changeset.valid? do
       config
-      |> transact_invitation(parent, email, changeset, encoded_token, opts)
+      |> transact_invitation(parent, email, changeset, encoded_token, opts, authorization)
       |> restore_limit_error()
     else
       {:error, changeset}
     end
   end
 
-  defp transact_invitation(config, parent, email, changeset, encoded_token, opts) do
+  defp transact_invitation(config, parent, email, changeset, encoded_token, opts, authorization) do
     result =
       Repo.transact(fn ->
         with {:ok, locked_workspace} <- lock_workspace(parent),
              {:ok, locked_parent} <- lock_available_parent(config, parent, locked_workspace),
              parent_id = Map.fetch!(locked_parent, :id),
+             :ok <- authorize_inviter_locked(config, authorization, parent_id),
              :ok <- ensure_invitation_available(config, parent_id, email),
              :ok <- normalize_limit_result(Commercial.can_invite_member?(locked_parent, email)),
              :ok <- delete_inactive_invitation(config, parent_id, email),
@@ -212,6 +248,25 @@ defmodule Storyarn.Projects.InvitationOperations do
       error ->
         error
     end
+  end
+
+  defp authorize_inviter_locked(_config, :trusted, _parent_id), do: :ok
+
+  defp authorize_inviter_locked(config, {:actor, scope}, parent_id) do
+    case config.memberships_module.authorize_locked(scope, parent_id, :manage_members, :update) do
+      {:ok, _parent, _membership} -> :ok
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp lock_pending_invitation(config, parent_id, invitation_id) do
+    config.invitation_schema
+    |> where([invitation], invitation.id == ^invitation_id)
+    |> where([invitation], field(invitation, ^config.parent_key) == ^parent_id)
+    |> where([invitation], is_nil(invitation.accepted_at))
+    |> where([invitation], invitation.expires_at > ^TimeHelpers.now())
+    |> lock("FOR UPDATE")
+    |> Repo.one()
   end
 
   defp ensure_invitation_available(config, parent_id, email) do

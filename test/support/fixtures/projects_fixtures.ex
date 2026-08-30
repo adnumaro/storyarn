@@ -67,9 +67,10 @@ defmodule Storyarn.ProjectsFixtures do
   """
   def invitation_fixture(project, invited_by, email \\ nil, role \\ "editor") do
     email = email || AccountsFixtures.unique_user_email()
+    scope = AccountsFixtures.user_scope_fixture(invited_by)
 
     {:ok, invitation} =
-      Projects.create_invitation(project, invited_by, email, role)
+      Projects.create_invitation(scope, project.id, email, role)
 
     invitation
   end
@@ -99,7 +100,7 @@ defmodule Storyarn.ProjectsFixtures do
   ## Example
 
       token = extract_invitation_token(fn ->
-        Projects.create_invitation(project, owner, email, "editor")
+        Projects.create_invitation(user_scope_fixture(owner), project.id, email, "editor")
       end)
   """
   def extract_invitation_token(fun) do
