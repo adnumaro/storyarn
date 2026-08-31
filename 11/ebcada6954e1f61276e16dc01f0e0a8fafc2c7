@@ -1,0 +1,47 @@
+test/storyarn_web/live/project_live/settings_test.exs
+  s_e9e5a90425bc26::t_7254b246b19bc1 32,643-647,694-697,702-726
+  s_e9e5a90425bc26::t_f2ee12b0aa7e3a 727-728
+lib/storyarn_web/live/project_live/form.ex
+  s_e9e5a90425bc26::t_7254b246b19bc1 106-116
+test/storyarn/ai/governance/authorization_lock_order_test.exs
+  s_e9e5a90425bc26::t_e2d0d492d71c74 38-44
+test/storyarn/projects/templates/integration/publication_request_ownership_concurrency_test.exs
+  s_e9e5a90425bc26::t_c09c445af1e52f 38,40-41,43-44,46-51
+  s_e9e5a90425bc26::t_5aedcd7e8ef0ea 113-114
+priv/gettext/projects.pot
+  s_e9e5a90425bc26::t_edd66b690afc47 182-184,1301,1306,1312,1318-1319,1325,1330,1345,1385
+test/storyarn/workspaces/invitations/commands/authorization_concurrency_test.exs
+  s_e9e5a90425bc26::t_2c059195a403ad 77-96,98-104,178-183
+  s_e9e5a90425bc26::t_5e66d428c9331e 62,74
+  s_e9e5a90425bc26::t_5aedcd7e8ef0ea 97
+  s_e9e5a90425bc26::t_4706f5b144b874 184-185
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_e9e5a90425bc26::t_7254b246b19bc1 143,151,159-178
+  s_e9e5a90425bc26::t_22907df9aeda04 179
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_edd66b690afc47 182-184,1301,1306,1312,1318-1319,1325,1330,1345,1385
+test/storyarn/projects/access/commands/transfer_ownership_concurrency_test.exs
+  s_e9e5a90425bc26::t_5aedcd7e8ef0ea 120
+  s_e9e5a90425bc26::t_073d9f07afa160 65-77,79-80,83-84,86-90,92-96,98-119,121-130,179-184
+  s_e9e5a90425bc26::t_5c888e8f1634b0 185-186
+test/storyarn/ai/operations/commands/operation_authorization_lock_order_test.exs
+  s_e9e5a90425bc26::t_c23145cf6d4acd 480,482-484,486-492,494,500
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_e9e5a90425bc26::t_edd66b690afc47 182-184,1301,1306,1312,1318-1319,1325,1330,1345,1385
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "11ebcada6954e1f61276e16dc01f0e0a8fafc2c7",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
