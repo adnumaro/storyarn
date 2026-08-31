@@ -251,11 +251,11 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   defp provider_changeset(config), do: Localization.change_provider_config(config)
 
   defp reload_project_owner(socket, project_id) do
-    with {:ok, project, membership} <-
-           Projects.reload_project(socket.assigns.current_scope, project_id),
-         true <- project.owner_id == socket.assigns.current_scope.user.id,
-         true <- Projects.can?(membership.role, :manage_project) do
-      {:ok, project, membership}
+    scope = socket.assigns.current_scope
+
+    with {:ok, reloaded_project, _membership} <- Projects.reload_project(scope, project_id),
+         {:ok, project, membership} <- Projects.authorize(scope, project_id, :manage_project) do
+      {:ok, %{project | workspace: reloaded_project.workspace}, membership}
     else
       _lost_access -> {:error, :unauthorized}
     end
@@ -272,16 +272,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
   end
 
   defp reauthorize_project_owner(socket) do
-    with {:ok, project, membership} <-
-           Projects.reload_project(socket.assigns.current_scope, socket.assigns.project.id),
-         true <- project.owner_id == socket.assigns.current_scope.user.id,
-         true <- Projects.can?(membership.role, :manage_project) do
-      {:noreply,
-       socket
-       |> assign(:project, project)
-       |> assign(:membership, membership)
-       |> assign(:current_workspace, project.workspace)}
-    else
+    case reload_project_owner(socket, socket.assigns.project.id) do
+      {:ok, project, membership} ->
+        {:noreply,
+         socket
+         |> assign(:project, project)
+         |> assign(:membership, membership)
+         |> assign(:current_workspace, project.workspace)}
+
       _lost_access ->
         project = socket.assigns.project
 

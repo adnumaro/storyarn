@@ -4,11 +4,10 @@ defmodule Storyarn.Flows.VariableReferenceTest do
   `"flow_node"`, `"scene_zone"` and `"scene_pin"` — `"map_zone"` is a name from
   before the Maps→Scenes rename and matches no row.
 
-  Nothing was corrupted, because the only write path is
-  `Storyarn.Projects.References.Commands.VariableReferenceTracker.replace_references/4`
-  → `Repo.insert_all/3`, which builds no changeset. The trap is for whoever adds
-  a fourth source and reaches for `changeset/2`: every scene reference would
-  start being rejected.
+  Nothing was corrupted, because the Projects reference tracker writes through
+  `Repo.insert_all/3`, which builds no changeset. The trap is for whoever adds a
+  fourth source and reaches for `changeset/2`: every scene reference would start
+  being rejected.
   """
   use Storyarn.DataCase, async: true
 

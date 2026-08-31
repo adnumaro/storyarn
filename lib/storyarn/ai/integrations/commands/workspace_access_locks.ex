@@ -19,6 +19,11 @@ defmodule Storyarn.AI.Integrations.Commands.WorkspaceAccessLocks do
   alias Storyarn.AI.Integrations.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.Repo
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_id(id)
+            when is_integer(id) and id > 0 and id <= @max_pg_bigint
+
   @type scope :: %{
           required(:user) => %{required(:id) => integer(), optional(atom()) => term()},
           optional(atom()) => term()
@@ -26,8 +31,7 @@ defmodule Storyarn.AI.Integrations.Commands.WorkspaceAccessLocks do
 
   @spec lock(scope(), pos_integer()) ::
           {:ok, Workspace.t(), WorkspaceMembership.t()} | {:error, :workspace_unavailable}
-  def lock(%{user: %{id: user_id}}, workspace_id)
-      when is_integer(user_id) and is_integer(workspace_id) and workspace_id > 0 do
+  def lock(%{user: %{id: user_id}}, workspace_id) when valid_id(user_id) and valid_id(workspace_id) do
     workspace =
       Repo.one(
         from(workspace in Workspace,

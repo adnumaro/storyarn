@@ -59,6 +59,16 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
   end
 
+  defp introduce_project_owner_drift(project, owner, :missing) do
+    project.id
+    |> Projects.get_membership(owner.id)
+    |> Repo.delete!()
+  end
+
+  defp introduce_project_owner_drift(project, _owner, :duplicate) do
+    membership_fixture(project, user_fixture(), "owner")
+  end
+
   defp connected_project_settings_socket(user, project, membership) do
     %Socket{
       endpoint: StoryarnWeb.Endpoint,
@@ -1537,6 +1547,43 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert unchanged.auto_version_flows
       assert unchanged.auto_version_scenes
       assert unchanged.auto_version_sheets
+    end
+  end
+
+  describe "Localization owner authorization" do
+    setup :register_and_log_in_user
+
+    for drift <- [:missing, :duplicate] do
+      test "mount rejects #{drift} canonical owner membership", %{conn: conn, user: owner} do
+        project = owner |> project_fixture() |> Repo.preload(:workspace)
+        introduce_project_owner_drift(project, owner, unquote(drift))
+
+        assert {:error, {:redirect, %{to: path, flash: flash}}} =
+                 live(conn, settings_path(project, "localization"))
+
+        assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        assert flash["error"] == "You don't have permission to manage this project."
+      end
+
+      test "ownership refresh rejects #{drift} canonical owner membership", %{
+        conn: conn,
+        user: owner
+      } do
+        project = owner |> project_fixture() |> Repo.preload(:workspace)
+        {:ok, view, _html} = live(conn, settings_path(project, "localization"))
+
+        introduce_project_owner_drift(project, owner, unquote(drift))
+
+        send(
+          view.pid,
+          {:project_ownership_transferred, %{project_id: project.id}}
+        )
+
+        {path, flash} = assert_redirect(view)
+
+        assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        assert flash["error"] == "You don't have permission to manage this project."
+      end
     end
   end
 

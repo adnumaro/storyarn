@@ -178,7 +178,7 @@ msgstr "Algunos elementos no se pudieron eliminar."
 #: lib/storyarn_web/live/project_settings_live/general.ex:322
 #: lib/storyarn_web/live/project_settings_live/general.ex:353
 #: lib/storyarn_web/live/project_settings_live/localization.ex:269
-#: lib/storyarn_web/live/project_settings_live/localization.ex:292
+#: lib/storyarn_web/live/project_settings_live/localization.ex:290
 #: lib/storyarn_web/live/project_settings_live/members.ex:167
 #: lib/storyarn_web/live/project_settings_live/members.ex:189
 #: lib/storyarn_web/live/project_settings_live/members.ex:293

@@ -10,9 +10,13 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace do
   alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_id(id)
+            when is_integer(id) and id > 0 and id <= @max_pg_bigint
+
   @spec delete(map(), pos_integer()) :: {:ok, Workspace.t()} | {:error, term()}
-  def delete(%{user: %{id: user_id}}, workspace_id)
-      when is_integer(user_id) and user_id > 0 and is_integer(workspace_id) and workspace_id > 0 do
+  def delete(%{user: %{id: user_id}}, workspace_id) when is_integer(user_id) and user_id > 0 and valid_id(workspace_id) do
     result =
       Commercial.transact_with_workspace_lock(workspace_id, fn locked_workspace ->
         with :ok <- lock_and_authorize_owner(locked_workspace, user_id),

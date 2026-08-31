@@ -109,6 +109,8 @@ defmodule Storyarn.AI.Governance.AuthorizationLockOrderTest do
           assert {:ok, %PolicyDecision{actor_id: actor_id}} = Task.await(authorization, @timeout)
           assert actor_id == owner.id
         after
+          send(project_gate.pid, {barrier, :release_project})
+          send(project_membership_gate.pid, {barrier, :release_project_membership})
           finish_task(authorization)
         end
       after

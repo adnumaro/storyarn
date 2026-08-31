@@ -303,12 +303,31 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
   end
 
-  test "recovers the latest active attempt scoped to the current project", ctx do
+  test "recovers the latest active attempt scoped to the current project and user", ctx do
     assert {:ok, _older, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "older.yarn", yarn("Older"))
 
     assert {:ok, expected, expected_preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "latest.yarn", yarn("Latest"))
+
+    other_user = user_fixture()
+    membership_fixture(ctx.project, other_user, "editor")
+
+    assert {:ok, other_user_project} =
+             Projects.transfer_owner(ctx.scope, ctx.project.id, other_user.id)
+
+    other_user_scope = Scope.for_user(other_user)
+
+    assert {:ok, _other_user_attempt, _preview} =
+             Imports.prepare_import(
+               other_user_scope,
+               other_user_project,
+               "other-user.yarn",
+               yarn("Other user")
+             )
+
+    assert {:ok, restored_project} =
+             Projects.transfer_owner(other_user_scope, ctx.project.id, ctx.user.id)
 
     other_project = project_fixture(ctx.user)
 
@@ -321,7 +340,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
              )
 
     assert {:ok, recovered, recovered_preview} =
-             Imports.resume_latest_active_import(ctx.scope, ctx.project)
+             Imports.resume_latest_active_import(ctx.scope, restored_project)
 
     assert recovered.id == expected.id
     assert recovered.user_id == ctx.user.id

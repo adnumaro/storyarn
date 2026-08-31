@@ -20,36 +20,46 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
     Sandbox.unboxed_run(Repo, fn ->
       owner = user_fixture()
       workspace = workspace_fixture(owner)
+      existing_job_ids = invitation_delivery_job_ids()
       admin = user_without_workspace()
       admin_membership = workspace_membership_fixture(workspace, admin, "admin")
       email = "removed-admin-create-#{System.unique_integer([:positive])}@example.com"
 
       try do
         holder = hold_workspace_and_remove_membership(workspace.id, admin_membership.id)
-        assert_receive {:workspace_lock_held, holder_pid}, @timeout
 
-        contender =
-          start_contender(fn ->
-            Workspaces.create_invitation(%{user: admin}, workspace.id, email, "member")
-          end)
+        try do
+          assert_receive {:workspace_lock_held, holder_pid}, @timeout
 
-        assert_receive {:contender_ready, contender_pid, backend_pid}, @timeout
-        send(contender_pid, :start)
-        assert_connection_waiting_on_lock(backend_pid)
+          contender =
+            start_contender(fn ->
+              Workspaces.create_invitation(%{user: admin}, workspace.id, email, "member")
+            end)
 
-        send(holder_pid, :remove_and_commit)
-        assert {:ok, :removed} = Task.await(holder, @timeout)
-        assert {:error, :unauthorized} = Task.await(contender, @timeout)
+          try do
+            assert_receive {:contender_ready, contender_pid, backend_pid}, @timeout
+            send(contender_pid, :start)
+            assert_connection_waiting_on_lock(backend_pid)
 
-        refute Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
+            send(holder_pid, :remove_and_commit)
+            assert {:ok, :removed} = Task.await(holder, @timeout)
+            assert {:error, :unauthorized} = Task.await(contender, @timeout)
 
-        refute Repo.exists?(
-                 from(job in Oban.Job,
-                   where: job.worker == ^inspect(DeliverWorkspaceInvitationWorker)
-                 )
-               )
+            refute Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
+
+            assert invitation_delivery_job_ids() == existing_job_ids
+          after
+            send(holder.pid, :remove_and_commit)
+            send(contender.pid, :start)
+            finish_task(holder)
+            finish_task(contender)
+          end
+        after
+          send(holder.pid, :remove_and_commit)
+          finish_task(holder)
+        end
       after
-        cleanup(workspace.id, [owner.id, admin.id])
+        cleanup(workspace.id, [owner.id, admin.id], existing_job_ids)
       end
     end)
   end
@@ -58,6 +68,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
     Sandbox.unboxed_run(Repo, fn ->
       owner = user_fixture()
       workspace = workspace_fixture(owner)
+      existing_job_ids = invitation_delivery_job_ids()
 
       invitation_result =
         Workspaces.create_invitation(
@@ -103,7 +114,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
           finish_task(holder)
         end
       after
-        cleanup(workspace.id, [owner.id, admin.id])
+        cleanup(workspace.id, [owner.id, admin.id], existing_job_ids)
       end
     end)
   end
@@ -190,8 +201,25 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
     |> Repo.insert!()
   end
 
-  defp cleanup(workspace_id, user_ids) do
-    Repo.delete_all(Oban.Job)
+  defp invitation_delivery_job_ids do
+    worker = inspect(DeliverWorkspaceInvitationWorker)
+
+    Repo.all(
+      from(job in Oban.Job,
+        where: job.worker == ^worker,
+        order_by: [asc: job.id],
+        select: job.id
+      )
+    )
+  end
+
+  defp cleanup(workspace_id, user_ids, existing_job_ids) do
+    leaked_job_ids = invitation_delivery_job_ids() -- existing_job_ids
+
+    if leaked_job_ids != [] do
+      Repo.delete_all(from(job in Oban.Job, where: job.id in ^leaked_job_ids))
+    end
+
     {1, nil} = Repo.delete_all(from(workspace in Workspace, where: workspace.id == ^workspace_id))
     Repo.delete_all(from(user in User, where: user.id in ^user_ids))
   end

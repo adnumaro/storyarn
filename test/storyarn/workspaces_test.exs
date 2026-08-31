@@ -15,6 +15,8 @@ defmodule Storyarn.WorkspacesTest do
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Workspace
 
+  @outside_pg_bigint 9_223_372_036_854_775_808
+
   describe "workspaces" do
     test "list_workspaces/1 returns workspaces user has access to" do
       user = user_fixture()
@@ -160,6 +162,11 @@ defmodule Storyarn.WorkspacesTest do
                Workspaces.delete_workspace(scope, workspace.id)
 
       assert Repo.get!(Workspace, workspace.id)
+    end
+
+    test "delete_workspace/2 rejects a workspace ID outside PostgreSQL bigint without querying" do
+      assert {:error, :unauthorized} =
+               Workspaces.delete_workspace(%{user: %{id: 1}}, @outside_pg_bigint)
     end
 
     test "lifecycle mutations reject ambiguous owner memberships" do
