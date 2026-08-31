@@ -37,6 +37,17 @@ defmodule Storyarn.AI.Governance do
   defdelegate personal_lane_allowed?(policy_or_lanes, workspace_role), to: PolicyLanes, as: :personal_allowed?
 
   defdelegate authorize(intent, task, phase, opts \\ []), to: Authorization
-  defdelegate reauthorize(operation, task, phase, opts \\ []), to: Authorization
+  defdelegate preauthorize_intent(intent, task, phase, opts \\ []), to: Authorization
+
+  defdelegate complete_intent_authorization(intent, task, phase, preauthorization, opts \\ []),
+    to: Authorization
+
+  defdelegate prepare_operation_reauthorization(operation), to: Authorization
+  defdelegate complete_operation_lock_preparation(operation, preparation), to: Authorization
+  defdelegate preauthorize_operation(operation, task, phase, opts \\ []), to: Authorization
+
+  defdelegate complete_operation_reauthorization(operation, task, phase, preauthorization, opts \\ []),
+    to: Authorization
+
   defdelegate decision_to_map(decision), to: PolicyDecision, as: :to_map
 end

@@ -33,6 +33,9 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   @spec set_status(pos_integer(), String.t()) :: {:ok, AllowanceAccount.t()} | {:error, atom()}
   def set_status(workspace_id, status) when status in ~w(active paused) do
     Repo.transaction(fn ->
+      # This path only updates an existing allowance row. It never inserts a
+      # live Workspace FK or asks for an upstream lock after Account, so keeping
+      # it suffix-only cannot close a cycle with workspace hard delete.
       lock_account_key!(workspace_id)
 
       case lock_account(workspace_id) do
@@ -67,16 +70,27 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   @spec refresh_account(pos_integer()) :: AllowanceAccount.t() | nil
   def refresh_account(workspace_id) do
     {:ok, account} =
-      Repo.transaction(fn ->
-        lock_account_key!(workspace_id)
-
-        case lock_account(workspace_id) do
-          nil -> nil
-          account -> expire_account!(account, TimeHelpers.now())
-        end
-      end)
+      Repo.transaction(fn -> refresh_locked_account(workspace_id) end)
 
     account
+  end
+
+  defp refresh_locked_account(workspace_id) do
+    case lock_workspace(workspace_id) do
+      %Workspace{} ->
+        lock_account_key!(workspace_id)
+        expire_refreshed_account(workspace_id)
+
+      nil ->
+        nil
+    end
+  end
+
+  defp expire_refreshed_account(workspace_id) do
+    case lock_account(workspace_id) do
+      nil -> nil
+      account -> expire_account!(account, TimeHelpers.now())
+    end
   end
 
   @doc """
@@ -130,12 +144,18 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   end
 
   defp expire_account(account_id, now) do
-    Repo.transaction(fn -> expire_account_locked(account_id, now) end)
+    case Repo.get(AllowanceAccount, account_id) do
+      %AllowanceAccount{} = snapshot ->
+        Repo.transaction(fn -> expire_account_from_snapshot(snapshot, now) end)
+
+      nil ->
+        {:error, :allowance_unavailable}
+    end
   end
 
   defp grant_locked(workspace_id, actor_id, attrs) do
+    workspace = lock_workspace(workspace_id) || Repo.rollback(:workspace_not_found)
     lock_account_key!(workspace_id)
-    workspace = Repo.get(Workspace, workspace_id) || Repo.rollback(:workspace_not_found)
     account = lock_account(workspace_id) || create_account!(workspace_id)
     now = TimeHelpers.now()
     expire_account!(account, now)
@@ -193,21 +213,30 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
 
   defp reserve_route(operation, %ExecutionRoute{lane: :managed, price_units: units} = route)
        when is_integer(units) and units > 0 do
-    lock_account_key!(operation.workspace_id_snapshot)
+    workspace = lock_workspace(operation.workspace_id_snapshot)
 
-    case lock_reservation(operation.id) do
-      %AllowanceReservation{status: status, units: ^units} when status in ~w(reserved committed) ->
-        :ok
+    if workspace do
+      lock_account_key!(operation.workspace_id_snapshot)
+    end
 
-      %AllowanceReservation{} ->
-        {:error, :allowance_reservation_conflict}
-
-      nil ->
-        create_reservation(operation, route)
+    # Keep every live-workspace reservation path in Workspace -> Account ->
+    # Reservation order, including a replay that already has a reservation.
+    # After hard delete there is no upstream row left to retain, but a durable
+    # reservation must still preserve its historical idempotent/conflict result.
+    case reservation_result(lock_reservation(operation.id), units) do
+      :missing when not is_nil(workspace) -> create_reservation(operation, route)
+      :missing -> {:error, :allowance_unavailable}
+      result -> result
     end
   end
 
   defp reserve_route(_operation, _route), do: {:error, :invalid_managed_price}
+
+  defp reservation_result(%AllowanceReservation{status: status, units: units}, units)
+       when status in ~w(reserved committed), do: :ok
+
+  defp reservation_result(%AllowanceReservation{}, _units), do: {:error, :allowance_reservation_conflict}
+  defp reservation_result(nil, _units), do: :missing
 
   defp create_reservation(operation, route) do
     now = TimeHelpers.now()
@@ -258,6 +287,7 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   end
 
   defp settle(operation, next_status) do
+    operation = retain_settlement_workspace(operation)
     lock_account_key!(operation.workspace_id_snapshot)
 
     case lock_reservation(operation.id) do
@@ -459,18 +489,16 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
   defp grant_active?(%AllowanceGrant{expires_at: expires_at}, now), do: DateTime.after?(expires_at, now)
 
   defp expire_account!(account, now) do
-    expire_account_locked(account.id, now)
+    expire_locked_account!(account, now)
     Repo.get!(AllowanceAccount, account.id)
   end
 
-  defp expire_account_locked(account_id, now) do
-    account = Repo.one!(from(account in AllowanceAccount, where: account.id == ^account_id, lock: "FOR UPDATE"))
-
+  defp expire_locked_account!(account, now) do
     grants =
       Repo.all(
         from(grant in AllowanceGrant,
           where:
-            grant.account_id == ^account_id and grant.remaining_units > 0 and
+            grant.account_id == ^account.id and grant.remaining_units > 0 and
               not is_nil(grant.expires_at) and grant.expires_at <= ^now,
           lock: "FOR UPDATE"
         )
@@ -483,6 +511,30 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
     end
 
     length(grants)
+  end
+
+  defp expire_account_from_snapshot(%AllowanceAccount{} = snapshot, now) do
+    case lock_workspace(snapshot.workspace_id) do
+      %Workspace{} ->
+        lock_account_key!(snapshot.workspace_id)
+        account = lock_account_identity!(snapshot.id, snapshot.workspace_id)
+        expire_locked_account!(account, now)
+
+      nil ->
+        Repo.rollback(:allowance_unavailable)
+    end
+  end
+
+  defp lock_account_identity!(account_id, workspace_id) do
+    case Repo.one(
+           from(account in AllowanceAccount,
+             where: account.id == ^account_id,
+             lock: "FOR UPDATE"
+           )
+         ) do
+      %AllowanceAccount{workspace_id: ^workspace_id} = account -> account
+      _missing_or_changed -> Repo.rollback(:allowance_unavailable)
+    end
   end
 
   defp expire_grant(grant, total) do
@@ -550,6 +602,31 @@ defmodule Storyarn.AI.ManagedSpend.Commands.Allowance do
       value when is_integer(value) and value >= 0 -> value
       _invalid -> default
     end
+  end
+
+  defp lock_workspace(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    Repo.one(
+      from(workspace in Workspace,
+        where: workspace.id == ^workspace_id,
+        lock: "FOR SHARE"
+      )
+    )
+  end
+
+  defp lock_workspace(_workspace_id), do: nil
+
+  defp retain_settlement_workspace(%Operation{} = operation) do
+    # Settlement survives Workspace deletion. Always retain the durable root
+    # identity before locking allowance rows: a concurrent delete makes this
+    # query wait, while a completed delete returns nil and lets the technical
+    # settlement continue without reusing the stale live foreign key.
+    workspace_id =
+      case lock_workspace(operation.workspace_id_snapshot) do
+        %Workspace{id: workspace_id} -> workspace_id
+        nil -> nil
+      end
+
+    %{operation | workspace_id: workspace_id}
   end
 
   defp lock_account_key!(workspace_id) do

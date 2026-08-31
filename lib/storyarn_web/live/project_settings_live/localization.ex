@@ -116,15 +116,21 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
 
   @impl true
   def handle_event("save_provider_config", %{"provider" => params}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      save_provider_config(socket, params)
-    end)
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket -> save_provider_config(socket, params) end,
+      &provider_settings_authorization_error/2
+    )
   end
 
   def handle_event("test_provider_connection", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      test_provider_connection(socket)
-    end)
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket -> test_provider_connection(socket) end,
+      &provider_connection_authorization_error/2
+    )
   end
 
   @impl true
@@ -169,13 +175,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
         {:reply, %{ok: false, errors: changeset_errors(changeset)}, socket}
 
       {:error, reason} when reason in [:unauthorized, :ownership_invariant_violation] ->
-        message =
-          dgettext(
-            "projects",
-            "Provider settings could not be saved because project ownership changed."
-          )
-
-        {:reply, %{ok: false, errors: %{authorization: message}}, put_flash(socket, :error, message)}
+        provider_settings_authorization_error(socket, reason)
 
       {:error, _reason} ->
         message = dgettext("projects", "Provider settings could not be saved.")
@@ -202,6 +202,38 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
           {:reply, %{ok: false, error: provider_connection_error(reason)}, socket}
       end
     end
+  end
+
+  defp provider_settings_authorization_error(socket, :ownership_invariant_violation) do
+    message =
+      dgettext(
+        "projects",
+        "Provider settings could not be saved because project ownership is inconsistent."
+      )
+
+    {:reply, %{ok: false, errors: %{authorization: message}}, put_flash(socket, :error, message)}
+  end
+
+  defp provider_settings_authorization_error(socket, _reason) do
+    message = dgettext("projects", "You don't have permission to manage provider settings for this project.")
+
+    {:reply, %{ok: false, errors: %{authorization: message}}, put_flash(socket, :error, message)}
+  end
+
+  defp provider_connection_authorization_error(socket, :ownership_invariant_violation) do
+    message =
+      dgettext(
+        "projects",
+        "Provider connection could not be tested because project ownership is inconsistent."
+      )
+
+    {:reply, %{ok: false, error: message}, put_flash(socket, :error, message)}
+  end
+
+  defp provider_connection_authorization_error(socket, _reason) do
+    message = dgettext("projects", "You don't have permission to test this project's provider connection.")
+
+    {:reply, %{ok: false, error: message}, put_flash(socket, :error, message)}
   end
 
   defp provider_connection_error({:api_error, status, _body}) when status in [401, 403], do: "invalid_api_key"

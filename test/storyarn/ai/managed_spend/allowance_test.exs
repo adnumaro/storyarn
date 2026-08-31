@@ -11,6 +11,7 @@ defmodule Storyarn.AI.ManagedSpendTest do
   alias Storyarn.AI.AllowanceLedgerEntry
   alias Storyarn.AI.AllowanceReservation
   alias Storyarn.AI.ManagedSpend
+  alias Storyarn.AI.ManagedSpend.Commands.Allowance, as: AllowanceCommands
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Operations
   alias Storyarn.AI.OperatorAlert
@@ -344,6 +345,57 @@ defmodule Storyarn.AI.ManagedSpendTest do
     assert Enum.map(entries, & &1.kind) == ["grant", "reserve", "release", "expiry"]
   end
 
+  test "a stale operation commits its reservation idempotently after workspace deletion", ctx do
+    configure_background_price(2)
+    grant!(ctx, 2, "stale-commit-after-delete")
+
+    assert {:ok, queued} = execute(ctx, "queued", "stale-commit-after-delete-operation")
+    assert queued.workspace_id == ctx.workspace.id
+    assert queued.execution_status == "queued"
+    assert queued.settlement_status == "reserved"
+
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.scope, ctx.workspace.id)
+    assert Repo.get!(Operation, queued.id).workspace_id == nil
+
+    assert {:ok, :ok} = Repo.transaction(fn -> AllowanceCommands.commit(queued) end)
+    assert {:ok, :ok} = Repo.transaction(fn -> AllowanceCommands.commit(queued) end)
+
+    reservation = Repo.get_by!(AllowanceReservation, operation_id: queued.id)
+    assert reservation.status == "committed"
+    assert reservation.workspace_id == nil
+
+    entries = allowance_entries(ctx.workspace.id)
+    assert Enum.map(entries, & &1.kind) == ["grant", "reserve", "commit"]
+    assert Enum.count(entries, &(&1.kind == "commit")) == 1
+    assert Enum.find(entries, &(&1.kind == "commit")).workspace_id == nil
+  end
+
+  test "a stale operation releases its reservation idempotently after workspace deletion", ctx do
+    configure_background_price(2)
+    grant!(ctx, 2, "stale-release-after-delete")
+
+    assert {:ok, queued} = execute(ctx, "queued", "stale-release-after-delete-operation")
+    assert queued.workspace_id == ctx.workspace.id
+    assert queued.execution_status == "queued"
+    assert queued.settlement_status == "reserved"
+
+    assert {:ok, _workspace} = Workspaces.delete_workspace(ctx.scope, ctx.workspace.id)
+    assert Repo.get!(Operation, queued.id).workspace_id == nil
+
+    assert {:ok, :ok} = Repo.transaction(fn -> AllowanceCommands.release(queued) end)
+    assert {:ok, :ok} = Repo.transaction(fn -> AllowanceCommands.release(queued) end)
+
+    reservation = Repo.get_by!(AllowanceReservation, operation_id: queued.id)
+    assert reservation.status == "released"
+    assert reservation.workspace_id == nil
+
+    entries = allowance_entries(ctx.workspace.id)
+    assert Enum.map(entries, & &1.kind) == ["grant", "reserve", "release", "expiry"]
+    assert Enum.count(entries, &(&1.kind == "release")) == 1
+    assert Enum.count(entries, &(&1.kind == "expiry")) == 1
+    assert Enum.all?(Enum.filter(entries, &(&1.kind in ~w(release expiry))), &is_nil(&1.workspace_id))
+  end
+
   describe "projection/1 (preflight)" do
     test "reports spendable units without touching the ledger", ctx do
       grant!(ctx, 3, "projection")
@@ -397,6 +449,14 @@ defmodule Storyarn.AI.ManagedSpendTest do
     Application.put_env(:storyarn, ContractTask,
       scenario: :success,
       execution_mode: :inline,
+      managed_price: %{id: "contract-beta", version: 1, units: units}
+    )
+  end
+
+  defp configure_background_price(units) do
+    Application.put_env(:storyarn, ContractTask,
+      scenario: :success,
+      execution_mode: :background,
       managed_price: %{id: "contract-beta", version: 1, units: units}
     )
   end
@@ -460,6 +520,15 @@ defmodule Storyarn.AI.ManagedSpendTest do
         where: entry.workspace_id_snapshot == ^workspace_id,
         order_by: [asc: entry.id],
         select: entry.kind
+      )
+    )
+  end
+
+  defp allowance_entries(workspace_id) do
+    Repo.all(
+      from(entry in AllowanceLedgerEntry,
+        where: entry.workspace_id_snapshot == ^workspace_id,
+        order_by: [asc: entry.id]
       )
     )
   end

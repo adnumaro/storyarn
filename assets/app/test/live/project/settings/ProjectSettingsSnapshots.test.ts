@@ -520,4 +520,37 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     expect(restoreRequests).toHaveLength(2);
     expect(restoreRequests[1]?.[1]).toEqual(firstRequest);
   });
+
+  it("explains canonical ownership drift from snapshot request and restore events", async () => {
+    const live = createMockLive();
+    const wrapper = mountSnapshots(measuredSnapshot, storageUsage, live);
+    const handlers = vi.mocked(live.handleEvent).mock.calls;
+    const requestFailed = handlers.find(([event]) => event === "snapshot_request_failed")?.[1];
+    const restoreFailed = handlers.find(([event]) => event === "snapshot_restore_failed")?.[1];
+
+    expect(requestFailed).toBeDefined();
+    expect(restoreFailed).toBeDefined();
+
+    requestFailed?.({ reason: "ownership_invariant_violation" });
+    restoreFailed?.({ snapshotId: 21, reason: "ownership_invariant_violation" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="snapshot-request-error"]').text()).toContain(
+      "project ownership is inconsistent",
+    );
+    expect(wrapper.get('[data-testid="snapshot-restore-error"]').text()).toContain(
+      "project ownership is inconsistent",
+    );
+
+    requestFailed?.({ reason: "unauthorized" });
+    restoreFailed?.({ snapshotId: 21, reason: "unauthorized" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="snapshot-request-error"]').text()).toContain(
+      "no longer have permission",
+    );
+    expect(wrapper.get('[data-testid="snapshot-restore-error"]').text()).toContain(
+      "no longer have permission",
+    );
+  });
 });

@@ -37,10 +37,12 @@ defmodule StoryarnWeb.Helpers.Authorize do
   alias Storyarn.Projects
   alias Storyarn.Workspaces
 
+  @type callback_result :: {:noreply, Socket.t()} | {:reply, map(), Socket.t()}
+
   defmacro __using__(_opts) do
     quote do
       import StoryarnWeb.Helpers.Authorize,
-        only: [authorize: 2, with_authorization: 3, with_edit_authorization: 2]
+        only: [authorize: 2, with_authorization: 3, with_authorization: 4, with_edit_authorization: 2]
     end
   end
 
@@ -48,7 +50,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
   Executes a function if authorized, otherwise returns unauthorized flash.
 
   This helper reduces boilerplate for handle_event callbacks that need authorization.
-  The function receives the socket and must return `{:noreply, socket}`.
+  The function receives the socket and must return a valid LiveView event
+  result: either `{:noreply, socket}` or `{:reply, reply, socket}`.
 
   ## Examples
 
@@ -71,8 +74,8 @@ defmodule StoryarnWeb.Helpers.Authorize do
   @spec with_authorization(
           Socket.t(),
           atom(),
-          (Socket.t() -> {:noreply, Socket.t()})
-        ) :: {:noreply, Socket.t()}
+          (Socket.t() -> callback_result())
+        ) :: callback_result()
   def with_authorization(socket, action, success_fn) do
     case authorize(socket, action) do
       :ok ->
@@ -80,6 +83,27 @@ defmodule StoryarnWeb.Helpers.Authorize do
 
       {:error, :unauthorized} ->
         {:noreply, Phoenix.LiveView.put_flash(socket, :error, unauthorized_message())}
+    end
+  end
+
+  @doc """
+  Executes an authorized function while allowing a caller to present a
+  specific, context-owned failure without weakening the authorization check.
+
+  Existing callers should keep using `with_authorization/3`. This variant is
+  reserved for mutations where collapsing an integrity failure into a generic
+  permission error would hide an actionable problem from the user.
+  """
+  @spec with_authorization(
+          Socket.t(),
+          atom(),
+          (Socket.t() -> callback_result()),
+          (Socket.t(), atom() -> callback_result())
+        ) :: callback_result()
+  def with_authorization(socket, action, success_fn, failure_fn) do
+    case authorization_result(socket, action) do
+      :ok -> success_fn.(socket)
+      {:error, reason} -> failure_fn.(socket, reason)
     end
   end
 
@@ -133,42 +157,48 @@ defmodule StoryarnWeb.Helpers.Authorize do
       end
   """
   @spec authorize(Socket.t(), atom()) :: :ok | {:error, :unauthorized}
-  def authorize(socket, action)
+  def authorize(socket, action) do
+    case authorization_result(socket, action) do
+      :ok -> :ok
+      {:error, _reason} -> {:error, :unauthorized}
+    end
+  end
 
   # A mounted socket's membership can become stale after a role change. When
   # the resource identity and scope are available, every mutation re-reads the
   # canonical membership through its owning context. The role-only fallback is
   # reserved for isolated helper/handler tests that intentionally build a
   # minimal socket without a resource.
-  def authorize(%{assigns: assigns}, :edit_content), do: authorize_project(assigns, :edit_content)
+  defp authorization_result(%{assigns: assigns}, :edit_content), do: authorize_project(assigns, :edit_content)
 
   # AI execution: a distinct action because a viewer may read content but must
   # never spend a workspace's AI allowance.
-  def authorize(%{assigns: assigns}, :use_ai), do: authorize_project(assigns, :use_ai)
+  defp authorization_result(%{assigns: assigns}, :use_ai), do: authorize_project(assigns, :use_ai)
 
   # Project management (settings, deletion)
-  def authorize(%{assigns: assigns}, :manage_project), do: authorize_project(assigns, :manage_project)
+  defp authorization_result(%{assigns: assigns}, :manage_project), do: authorize_project(assigns, :manage_project)
 
   # Project member management (invitations, removals)
-  def authorize(%{assigns: assigns}, :manage_members), do: authorize_project(assigns, :manage_members)
+  defp authorization_result(%{assigns: assigns}, :manage_members), do: authorize_project(assigns, :manage_members)
 
   # Workspace management (settings, deletion)
-  def authorize(%{assigns: assigns}, :manage_workspace), do: authorize_workspace(assigns, :manage_workspace)
+  defp authorization_result(%{assigns: assigns}, :manage_workspace), do: authorize_workspace(assigns, :manage_workspace)
 
   # Workspace member management
-  def authorize(%{assigns: assigns}, :manage_workspace_members), do: authorize_workspace(assigns, :manage_members)
+  defp authorization_result(%{assigns: assigns}, :manage_workspace_members),
+    do: authorize_workspace(assigns, :manage_members)
 
   # The context independently scopes notification mutations to this user.
-  def authorize(%{assigns: %{current_scope: %{user: %{id: _}}}}, :manage_notifications), do: :ok
+  defp authorization_result(%{assigns: %{current_scope: %{user: %{id: _}}}}, :manage_notifications), do: :ok
 
   # Catch-all: deny unknown actions
-  def authorize(_socket, _action), do: {:error, :unauthorized}
+  defp authorization_result(_socket, _action), do: {:error, :unauthorized}
 
   defp authorize_project(%{current_scope: %{user: %{id: _}} = scope, project: %{id: project_id}}, action)
        when is_integer(project_id) do
     case Projects.authorize(scope, project_id, action) do
       {:ok, _project, _membership} -> :ok
-      {:error, _reason} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -180,7 +210,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
        when is_integer(project_id) do
     case Projects.authorize(scope, project_id, action) do
       {:ok, _project, _membership} -> :ok
-      {:error, _reason} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -196,7 +226,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
        when is_integer(workspace_id) do
     case Workspaces.authorize(scope, workspace_id, action) do
       {:ok, _workspace, _membership} -> :ok
-      {:error, _reason} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -204,7 +234,7 @@ defmodule StoryarnWeb.Helpers.Authorize do
        when is_integer(workspace_id) do
     case Workspaces.authorize(scope, workspace_id, action) do
       {:ok, _workspace, _membership} -> :ok
-      {:error, _reason} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 

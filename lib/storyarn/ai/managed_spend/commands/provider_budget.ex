@@ -4,6 +4,7 @@ defmodule Storyarn.AI.ManagedSpend.Commands.ProviderBudget do
   import Ecto.Query
 
   alias Storyarn.AI.ExecutionRoute
+  alias Storyarn.AI.ManagedSpend.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.Operation
   alias Storyarn.AI.Operations
   alias Storyarn.AI.ProviderBudgetReservation
@@ -15,16 +16,19 @@ defmodule Storyarn.AI.ManagedSpend.Commands.ProviderBudget do
 
   @spec reserve(Operation.t(), ExecutionRoute.t()) :: :ok | {:error, atom()}
   def reserve(%Operation{} = operation, %ExecutionRoute{} = route) do
+    workspace = lock_workspace(operation.workspace_id_snapshot)
     Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [@budget_lock_namespace, 1])
 
     case lock_reservation(operation.id) do
       %ProviderBudgetReservation{status: status} when status in ~w(reserved settled) -> :ok
-      nil -> create_reservation(operation, route)
+      nil when not is_nil(workspace) -> create_reservation(operation, route)
+      nil -> {:error, :provider_budget_reservation_missing}
     end
   end
 
   @spec settle(Operation.t()) :: :ok | {:error, atom()}
   def settle(%Operation{} = operation) do
+    workspace = lock_workspace(operation.workspace_id_snapshot)
     Repo.query!("SELECT pg_advisory_xact_lock($1, $2)", [@budget_lock_namespace, 1])
 
     case lock_reservation(operation.id) do
@@ -32,6 +36,7 @@ defmodule Storyarn.AI.ManagedSpend.Commands.ProviderBudget do
         :ok
 
       %ProviderBudgetReservation{status: "reserved"} = reservation ->
+        operation = retain_live_workspace(operation, workspace)
         actual_cost = actual_cost(operation, reservation)
 
         reservation
@@ -180,6 +185,22 @@ defmodule Storyarn.AI.ManagedSpend.Commands.ProviderBudget do
       )
     )
   end
+
+  defp lock_workspace(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    Repo.one(
+      from(workspace in Workspace,
+        where: workspace.id == ^workspace_id,
+        lock: "FOR SHARE"
+      )
+    )
+  end
+
+  defp lock_workspace(_workspace_id), do: nil
+
+  defp retain_live_workspace(%Operation{} = operation, %Workspace{id: workspace_id}),
+    do: %{operation | workspace_id: workspace_id}
+
+  defp retain_live_workspace(%Operation{} = operation, nil), do: %{operation | workspace_id: nil}
 
   defp decimal(%Decimal{} = value) do
     if Decimal.compare(value, Decimal.new(0)) in [:gt, :eq], do: {:ok, value}, else: {:error, :invalid_decimal}

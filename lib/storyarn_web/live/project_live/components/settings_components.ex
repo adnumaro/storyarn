@@ -171,6 +171,17 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
            failed_repair_message(length(failures))
          )}
 
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "projects",
+             "Variable references could not be repaired because project ownership is inconsistent."
+           )
+         )}
+
       {:error, _reason} ->
         {:noreply,
          put_flash(
@@ -344,6 +355,17 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
                socket,
                :error,
                dgettext("projects", "Only the current project owner can remove members.")
+             )}
+
+          {:error, :ownership_invariant_violation} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext(
+                 "projects",
+                 "The member could not be removed because project ownership is inconsistent."
+               )
              )}
 
           {:error, _reason} ->

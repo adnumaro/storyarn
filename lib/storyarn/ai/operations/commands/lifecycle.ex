@@ -27,7 +27,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
           | {:cancelled, Operation.t()}
           | {:error, atom()}
   def claim(operation_id) do
-    fn -> claim_locked(operation_id) end
+    fn -> prepare_and_claim(operation_id) end
     |> Repo.transaction()
     |> case do
       {:ok, {:claimed, operation, task, route}} -> {:ok, operation, task, route}
@@ -41,7 +41,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
           | {:cancelled, Operation.t()}
           | {:error, atom()}
   def start_attempt(%Operation{} = operation, task, route) do
-    fn -> operation.id |> lock_operation() |> start_attempt_locked(task, route) end
+    fn -> prepare_and_start_attempt(operation.id, task, route) end
     |> Repo.transaction()
     |> case do
       {:ok, {:started, usage, credential}} ->
@@ -59,57 +59,175 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
     end
   end
 
-  defp claim_locked(operation_id) do
-    case lock_operation(operation_id) do
-      nil -> Repo.rollback(:not_found)
-      %Operation{execution_status: "queued"} = operation -> claim_queued(operation)
-      %Operation{} -> Repo.rollback(:not_queued)
+  defp prepare_and_claim(operation_id) do
+    case Repo.get(Operation, operation_id) do
+      nil ->
+        Repo.rollback(:not_found)
+
+      %Operation{execution_status: "queued"} = snapshot ->
+        preparation = prepare_claim(snapshot)
+        snapshot.id |> lock_operation() |> claim_locked(preparation)
+
+      %Operation{} = snapshot ->
+        case lock_operation(snapshot.id) do
+          nil -> Repo.rollback(:not_found)
+          %Operation{} -> Repo.rollback(:not_queued)
+        end
     end
   end
 
-  defp claim_queued(operation) do
-    with {:ok, task} <- Routing.fetch_task(operation.task_id),
-         true <- operation.task_contract_hash == Task.contract_hash(task) || {:error, :task_contract_changed},
-         {:ok, route} <- ExecutionRoute.from_map(operation.execution_route) do
-      authorize_claim(operation, task, route)
+  defp prepare_claim(snapshot) do
+    lock_preparation = Governance.prepare_operation_reauthorization(snapshot)
+
+    with {:ok, task} <- Routing.fetch_task(snapshot.task_id),
+         :ok <- task_contract_current(snapshot, task),
+         {:ok, route} <- ExecutionRoute.from_map(snapshot.execution_route) do
+      preauthorization =
+        Governance.preauthorize_operation(snapshot, task, :execute,
+          lane: route.lane,
+          preparation: lock_preparation
+        )
+
+      {:prepared, preauthorization}
     else
-      {:error, reason} -> {:cancelled, cancel_locked(operation, reason)}
+      {:error, reason} -> {:denied, reason}
     end
   end
 
-  defp authorize_claim(operation, task, route) do
-    with {:ok, _decision} <-
-           Governance.reauthorize(operation, task, :execute, lane: route.lane, lock_policy: true),
+  defp claim_locked(nil, _preparation), do: Repo.rollback(:not_found)
+
+  defp claim_locked(%Operation{execution_status: status}, _preparation) when status != "queued",
+    do: Repo.rollback(:not_queued)
+
+  defp claim_locked(%Operation{} = operation, {:denied, reason}) do
+    {:cancelled, cancel_locked(operation, reason)}
+  end
+
+  defp claim_locked(%Operation{} = operation, {:prepared, preauthorization}) do
+    with {:ok, task} <- Routing.fetch_task(operation.task_id),
+         :ok <- task_contract_current(operation, task),
+         {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
+         {:ok, _decision} <-
+           Governance.complete_operation_reauthorization(
+             operation,
+             task,
+             :execute,
+             preauthorization,
+             lane: route.lane
+           ),
          {:ok, scope} <- operation_scope(operation),
          :ok <- Context.operation_current?(scope, task, operation) do
       running = transition!(operation, "running", %{started_at: TimeHelpers.now()})
       {:claimed, running, task, route}
     else
+      {:error, :operation_authorization_changed} -> Repo.rollback(:operation_authorization_changed)
       {:error, reason} -> {:cancelled, cancel_locked(operation, reason)}
     end
   end
 
-  defp start_attempt_locked(locked, task, route) do
-    if Repo.exists?(from(event in UsageEvent, where: event.operation_id == ^locked.id)) do
-      Repo.rollback(:duplicate_external_attempt)
-    else
-      start_first_attempt(locked, task, route)
+  defp prepare_and_start_attempt(operation_id, task, route) do
+    snapshot = Repo.get(Operation, operation_id)
+    lock_preparation = prepare_operation_lock(snapshot)
+
+    preauthorization =
+      if attemptable_snapshot?(snapshot) and not attempt_exists?(operation_id) do
+        prepare_attempt(snapshot, task, route, lock_preparation)
+      end
+
+    operation_id
+    |> lock_prepared_operation(lock_preparation)
+    |> start_attempt_locked(preauthorization)
+  end
+
+  defp prepare_attempt(snapshot, supplied_task, supplied_route, lock_preparation) do
+    case attempt_arguments_current(snapshot, supplied_task, supplied_route) do
+      :ok ->
+        with {:ok, task} <- Routing.fetch_task(snapshot.task_id),
+             :ok <- task_contract_current(snapshot, task),
+             {:ok, route} <- ExecutionRoute.from_map(snapshot.execution_route) do
+          {:prepared,
+           Governance.preauthorize_operation(snapshot, task, :execute,
+             lane: route.lane,
+             preparation: lock_preparation
+           )}
+        else
+          {:error, reason} -> {:denied, reason}
+        end
+
+      {:error, reason} ->
+        {:invalid_arguments, reason}
     end
   end
 
-  defp start_first_attempt(locked, task, route) do
+  defp start_attempt_locked(nil, _preauthorization), do: Repo.rollback(:invalid_attempt_state)
+
+  defp start_attempt_locked(locked, preauthorization) do
+    if attempt_exists?(locked.id) do
+      Repo.rollback(:duplicate_external_attempt)
+    else
+      case preauthorization do
+        {:invalid_arguments, reason} -> Repo.rollback(reason)
+        _prepared_or_denied -> start_first_attempt(locked, preauthorization)
+      end
+    end
+  end
+
+  defp start_first_attempt(locked, preauthorization) do
     with %Operation{execution_status: "running", external_attempt_started_at: nil} <- locked,
+         {:ok, task} <- Routing.fetch_task(locked.task_id),
+         :ok <- task_contract_current(locked, task),
+         {:ok, route} <- ExecutionRoute.from_map(locked.execution_route),
          {:ok, _decision} <-
-           Governance.reauthorize(locked, task, :execute, lane: route.lane, lock_policy: true),
+           complete_attempt_reauthorization(locked, task, route, preauthorization),
          {:ok, scope} <- operation_scope(locked),
          :ok <- Context.operation_current?(scope, task, locked),
          {:ok, credential} <-
            CredentialResolver.resolve(route.credential_ref, %{operation: locked, task: task, route: route}) do
       insert_attempt(locked, route, credential)
     else
+      {:error, :operation_authorization_changed} -> Repo.rollback(:operation_authorization_changed)
       {:error, reason} -> {:cancelled, cancel_locked(locked, reason)}
       _invalid -> Repo.rollback(:invalid_attempt_state)
     end
+  end
+
+  defp attemptable_snapshot?(%Operation{execution_status: "running", external_attempt_started_at: nil}), do: true
+  defp attemptable_snapshot?(_operation), do: false
+
+  defp attempt_exists?(operation_id) do
+    Repo.exists?(from(event in UsageEvent, where: event.operation_id == ^operation_id))
+  end
+
+  defp attempt_arguments_current(%Operation{} = operation, %Task{} = task, %ExecutionRoute{} = route) do
+    if operation.task_id == task.id and
+         operation.task_contract_hash == Task.contract_hash(task) and
+         operation.execution_route == ExecutionRoute.to_map(route) do
+      :ok
+    else
+      {:error, :attempt_contract_mismatch}
+    end
+  end
+
+  defp attempt_arguments_current(%Operation{}, _task, _route), do: {:error, :attempt_contract_mismatch}
+
+  defp complete_attempt_reauthorization(%Operation{}, %Task{}, %ExecutionRoute{}, {:denied, reason}), do: {:error, reason}
+
+  defp complete_attempt_reauthorization(%Operation{}, %Task{}, %ExecutionRoute{}, nil),
+    do: {:error, :operation_authorization_changed}
+
+  defp complete_attempt_reauthorization(
+         %Operation{} = operation,
+         %Task{} = task,
+         %ExecutionRoute{} = route,
+         {:prepared, preauthorization}
+       ) do
+    Governance.complete_operation_reauthorization(
+      operation,
+      task,
+      :execute,
+      preauthorization,
+      lane: route.lane
+    )
   end
 
   defp insert_attempt(locked, route, credential) do
@@ -137,7 +255,8 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   @spec fail_before_attempt(Operation.t(), term()) :: :ok | {:error, term()}
   def fail_before_attempt(%Operation{} = operation, reason) do
     fn ->
-      locked = lock_operation(operation.id)
+      lock_preparation = Operation |> Repo.get(operation.id) |> prepare_operation_lock()
+      locked = lock_prepared_operation(operation.id, lock_preparation)
 
       if (locked && locked.execution_status == "running") and is_nil(locked.external_attempt_started_at) do
         locked = release!(locked)
@@ -154,16 +273,19 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   @spec finish_success(Operation.t(), UsageEvent.t(), map() | list(), map()) :: :ok | {:error, term()}
   def finish_success(operation, usage, output, metrics) do
     fn ->
-      locked = lock_running_attempt!(operation.id, usage.id)
-      task = current_task(locked.task_id)
+      snapshot = Repo.get(Operation, operation.id)
+      {lock_preparation, preauthorization} = prepare_delivery_reauthorization(snapshot)
+      locked = lock_running_attempt!(operation.id, usage.id, lock_preparation)
       now = TimeHelpers.now()
 
-      deliver? = deliverable?(locked, task)
+      delivery_contract = current_delivery_contract(locked)
+      deliver? = deliverable?(locked, delivery_contract, preauthorization)
 
       finish_usage!(usage.id, "succeeded", Map.put(metrics, :completed_at, now))
       locked = commit!(locked)
 
       if deliver? do
+        {:ok, task, _route} = delivery_contract
         result = Repo.get_by!(Result, operation_id: locked.id)
         encoded_output = Storyarn.AI.Operations.Rules.CanonicalJSON.encode!(output)
         expires_at = DateTime.add(now, task.result_ttl_seconds, :second)
@@ -185,7 +307,8 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   @spec finish_failure(Operation.t(), UsageEvent.t(), term(), map()) :: :ok | {:error, term()}
   def finish_failure(operation, usage, reason, metrics \\ %{}) do
     fn ->
-      locked = lock_running_attempt!(operation.id, usage.id)
+      lock_preparation = Operation |> Repo.get(operation.id) |> prepare_operation_lock()
+      locked = lock_running_attempt!(operation.id, usage.id, lock_preparation)
       now = TimeHelpers.now()
       classification = classify(reason)
 
@@ -206,7 +329,11 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   @spec finish_unknown(Operation.t(), UsageEvent.t(), term(), map()) :: :ok | {:error, term()}
   def finish_unknown(operation, usage, reason, metrics \\ %{}) do
     result =
-      fn -> finish_unknown_locked(operation.id, usage.id, reason, metrics) end
+      fn ->
+        lock_preparation = Operation |> Repo.get(operation.id) |> prepare_operation_lock()
+        locked = lock_running_attempt!(operation.id, usage.id, lock_preparation)
+        finish_unknown_transition(locked, usage.id, reason, metrics)
+      end
       |> Repo.transaction()
       |> transaction_status()
 
@@ -217,7 +344,10 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   @doc "Recovers a worker interrupted without ever starting a second provider attempt."
   @spec recover_interrupted(pos_integer()) :: :ready | :ok | {:error, term()}
   def recover_interrupted(operation_id) do
-    fn -> operation_id |> lock_operation() |> recover_locked() end
+    fn ->
+      lock_preparation = Operation |> Repo.get(operation_id) |> prepare_operation_lock()
+      operation_id |> lock_prepared_operation(lock_preparation) |> recover_locked()
+    end
     |> Repo.transaction()
     |> case do
       {:ok, :ready} ->
@@ -240,7 +370,9 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   def fail_queued_after_retries(operation_id, reason) do
     result =
       Repo.transaction(fn ->
-        case lock_operation(operation_id) do
+        lock_preparation = Operation |> Repo.get(operation_id) |> prepare_operation_lock()
+
+        case lock_prepared_operation(operation_id, lock_preparation) do
           %Operation{execution_status: "queued"} = operation ->
             operation = release!(operation)
             delete_result(operation.id)
@@ -295,7 +427,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
   defp recover_locked(%Operation{}), do: :terminal
 
   defp recover_started_attempt(%UsageEvent{status: "running"} = usage, operation) do
-    finish_unknown_locked(operation.id, usage.id, :worker_interrupted, %{})
+    finish_unknown_transition(operation, usage.id, :worker_interrupted, %{})
   end
 
   defp recover_started_attempt(_usage, operation) do
@@ -316,13 +448,9 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
           {:ok, Operation.t()} | {:error, atom()}
   def request_cancellation(%{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->
-      operation =
-        Repo.one(
-          from(operation in Operation,
-            where: operation.id == ^operation_id and operation.actor_id == ^actor_id,
-            lock: "FOR UPDATE"
-          )
-        )
+      snapshot = get_actor_operation(operation_id, actor_id)
+      lock_preparation = prepare_operation_lock(snapshot)
+      operation = lock_prepared_operation(operation_id, lock_preparation)
 
       case operation do
         %Operation{execution_status: "queued"} -> cancel_locked(operation, :user_cancelled)
@@ -355,13 +483,9 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
           {:ok, :released | :started | :settled} | {:error, atom()}
   def release_if_unstarted(%{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->
-      operation =
-        Repo.one(
-          from(operation in Operation,
-            where: operation.id == ^operation_id and operation.actor_id == ^actor_id,
-            lock: "FOR UPDATE"
-          )
-        )
+      snapshot = get_actor_operation(operation_id, actor_id)
+      lock_preparation = prepare_operation_lock(snapshot)
+      operation = lock_prepared_operation(operation_id, lock_preparation)
 
       case operation do
         %Operation{execution_status: "queued"} ->
@@ -421,6 +545,35 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
 
   defp ensure_transition!(_operation, _next), do: Repo.rollback(:invalid_transition)
 
+  defp get_actor_operation(operation_id, actor_id) do
+    Repo.one(
+      from(operation in Operation,
+        where: operation.id == ^operation_id and operation.actor_id == ^actor_id
+      )
+    )
+  end
+
+  defp prepare_operation_lock(nil), do: nil
+
+  defp prepare_operation_lock(%Operation{} = snapshot) do
+    Governance.prepare_operation_reauthorization(snapshot)
+  end
+
+  defp lock_prepared_operation(_operation_id, nil), do: nil
+
+  defp lock_prepared_operation(operation_id, preparation) do
+    case lock_operation(operation_id) do
+      nil ->
+        nil
+
+      %Operation{} = operation ->
+        case Governance.complete_operation_lock_preparation(operation, preparation) do
+          :ok -> operation
+          {:error, reason} -> Repo.rollback(reason)
+        end
+    end
+  end
+
   defp lock_operation(id), do: Repo.one(from(operation in Operation, where: operation.id == ^id, lock: "FOR UPDATE"))
 
   defp operation_scope(%Operation{user_id: user_id}) when is_integer(user_id) do
@@ -432,11 +585,11 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
 
   defp operation_scope(%Operation{}), do: {:error, :actor_deleted}
 
-  defp lock_running_attempt!(operation_id, usage_id) do
-    operation = lock_operation(operation_id)
+  defp lock_running_attempt!(operation_id, usage_id, lock_preparation) do
+    operation = lock_prepared_operation(operation_id, lock_preparation) || Repo.rollback(:invalid_transition)
     usage = Repo.one(from(event in UsageEvent, where: event.id == ^usage_id, lock: "FOR UPDATE"))
 
-    if operation && usage && operation.execution_status == "running" &&
+    if usage && operation.execution_status == "running" &&
          not is_nil(operation.external_attempt_started_at) && usage.operation_id == operation.id &&
          usage.status == "running" do
       operation
@@ -452,24 +605,64 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
     |> Repo.update!()
   end
 
-  defp current_task(task_id) do
+  defp current_task(task_id) when is_binary(task_id) do
     case Routing.get_task(task_id) do
       {:ok, task} -> task
       {:error, _reason} -> nil
     end
   end
 
-  defp deliverable?(locked, task) do
-    with %Task{} <- task,
-         true <- locked.task_contract_hash == Task.contract_hash(task),
-         true <- is_nil(locked.cancellation_requested_at),
-         {:ok, _decision} <- Governance.reauthorize(locked, task, :execute, lock_policy: true),
-         {:ok, route} <- ExecutionRoute.from_map(locked.execution_route),
+  defp current_task(_task_id), do: nil
+
+  defp prepare_delivery_reauthorization(%Operation{} = snapshot) do
+    lock_preparation = Governance.prepare_operation_reauthorization(snapshot)
+
+    preauthorization =
+      with {:ok, task, _route} <- current_delivery_contract(snapshot),
+           true <- is_nil(snapshot.cancellation_requested_at) do
+        {:prepared, Governance.preauthorize_operation(snapshot, task, :execute, preparation: lock_preparation)}
+      else
+        _not_deliverable -> nil
+      end
+
+    {lock_preparation, preauthorization}
+  end
+
+  defp prepare_delivery_reauthorization(_snapshot), do: {nil, nil}
+
+  defp current_delivery_contract(%Operation{} = operation) do
+    with %Task{} = task <- current_task(operation.task_id),
+         :ok <- task_contract_current(operation, task),
+         {:ok, route} <- ExecutionRoute.from_map(operation.execution_route) do
+      {:ok, task, route}
+    else
+      nil -> {:error, :unknown_task}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp deliverable?(locked, {:ok, task, route}, preauthorization) do
+    with true <- is_nil(locked.cancellation_requested_at),
+         {:ok, _decision} <- complete_delivery_reauthorization(locked, task, preauthorization),
          :ok <- Integrations.authorize_operation_consent(locked, task, route, lock: true) do
       true
     else
       _unauthorized -> false
     end
+  end
+
+  defp deliverable?(_locked, {:error, _reason}, _preauthorization), do: false
+
+  defp complete_delivery_reauthorization(%Operation{} = operation, %Task{} = task, {:prepared, preauthorization}) do
+    Governance.complete_operation_reauthorization(operation, task, :execute, preauthorization)
+  end
+
+  defp complete_delivery_reauthorization(%Operation{}, %Task{}, nil), do: {:error, :operation_authorization_changed}
+
+  defp task_contract_current(operation, task) do
+    if operation.task_contract_hash == Task.contract_hash(task),
+      do: :ok,
+      else: {:error, :task_contract_changed}
   end
 
   defp commit!(%Operation{settlement_status: "reserved"} = operation) do
@@ -514,8 +707,7 @@ defmodule Storyarn.AI.Operations.Commands.Lifecycle do
     })
   end
 
-  defp finish_unknown_locked(operation_id, usage_id, reason, metrics) do
-    locked = lock_running_attempt!(operation_id, usage_id)
+  defp finish_unknown_transition(locked, usage_id, reason, metrics) do
     now = TimeHelpers.now()
     classification = classify(reason)
 

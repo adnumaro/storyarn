@@ -117,31 +117,34 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
 
   @impl true
   def handle_event("save", %{"workspace" => workspace_params}, socket) do
-    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.update_workspace(
-             socket.assigns.current_scope,
-             socket.assigns.workspace.id,
-             workspace_params
-           ) do
-        {:ok, workspace} ->
-          {:noreply,
-           socket
-           |> assign(:workspace, workspace)
-           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-           |> put_flash(:info, dgettext("workspaces", "Workspace updated successfully."))}
+    Authorize.with_authorization(
+      socket,
+      :manage_workspace,
+      fn socket ->
+        case Workspaces.update_workspace(
+               socket.assigns.current_scope,
+               socket.assigns.workspace.id,
+               workspace_params
+             ) do
+          {:ok, workspace} ->
+            {:noreply,
+             socket
+             |> assign(:workspace, workspace)
+             |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+             |> put_flash(:info, dgettext("workspaces", "Workspace updated successfully."))}
 
-        {:error, %Ecto.Changeset{} = changeset} ->
-          {:noreply, assign(socket, :form, to_form(changeset))}
+          {:error, %Ecto.Changeset{} = changeset} ->
+            {:noreply, assign(socket, :form, to_form(changeset))}
 
-        {:error, reason} when reason in [:unauthorized, :ownership_invariant_violation] ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("workspaces", "Only the current workspace owner can update this workspace.")
-           )}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            workspace_update_ownership_invariant_error(socket)
+
+          {:error, :unauthorized} ->
+            workspace_update_unauthorized_error(socket)
+        end
+      end,
+      &workspace_owner_authorization_failure/2
+    )
   end
 
   @impl true
@@ -150,74 +153,132 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
         %{"filename" => filename, "content_type" => content_type, "data" => data},
         socket
       ) do
-    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      attrs = %{filename: filename, content_type: content_type, data: data}
+    Authorize.with_authorization(
+      socket,
+      :manage_workspace,
+      fn socket ->
+        attrs = %{filename: filename, content_type: content_type, data: data}
 
-      case Workspaces.upload_workspace_banner(
-             socket.assigns.current_scope,
-             socket.assigns.workspace.id,
-             attrs
-           ) do
-        {:ok, workspace} ->
-          {:noreply,
-           socket
-           |> assign(:workspace, workspace)
-           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-           |> put_flash(:info, dgettext("workspaces", "Banner uploaded successfully."))}
+        case Workspaces.upload_workspace_banner(
+               socket.assigns.current_scope,
+               socket.assigns.workspace.id,
+               attrs
+             ) do
+          {:ok, workspace} ->
+            {:noreply,
+             socket
+             |> assign(:workspace, workspace)
+             |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+             |> put_flash(:info, dgettext("workspaces", "Banner uploaded successfully."))}
 
-        {:error, _reason} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("workspaces", "Invalid file data or upload failed.")
-           )}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            workspace_update_ownership_invariant_error(socket)
+
+          {:error, _reason} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("workspaces", "Invalid file data or upload failed.")
+             )}
+        end
+      end,
+      &workspace_owner_authorization_failure/2
+    )
   end
 
   @impl true
   def handle_event("remove_workspace_banner", _params, socket) do
-    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.remove_workspace_banner(
-             socket.assigns.current_scope,
-             socket.assigns.workspace.id
-           ) do
-        {:ok, workspace} ->
-          {:noreply,
-           socket
-           |> assign(:workspace, workspace)
-           |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
-           |> put_flash(:info, dgettext("workspaces", "Banner removed successfully."))}
+    Authorize.with_authorization(
+      socket,
+      :manage_workspace,
+      fn socket ->
+        case Workspaces.remove_workspace_banner(
+               socket.assigns.current_scope,
+               socket.assigns.workspace.id
+             ) do
+          {:ok, workspace} ->
+            {:noreply,
+             socket
+             |> assign(:workspace, workspace)
+             |> assign(:form, to_form(Workspaces.change_workspace(workspace)))
+             |> put_flash(:info, dgettext("workspaces", "Banner removed successfully."))}
 
-        {:error, _reason} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("workspaces", "Banner could not be removed.")
-           )}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            workspace_update_ownership_invariant_error(socket)
+
+          {:error, _reason} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("workspaces", "Banner could not be removed.")
+             )}
+        end
+      end,
+      &workspace_owner_authorization_failure/2
+    )
   end
 
   @impl true
   def handle_event("delete", _params, socket) do
-    Authorize.with_authorization(socket, :manage_workspace, fn socket ->
-      case Workspaces.delete_workspace(
-             socket.assigns.current_scope,
-             socket.assigns.workspace.id
-           ) do
-        {:ok, _} ->
-          {:noreply,
-           socket
-           |> put_flash(:info, dgettext("workspaces", "Workspace deleted."))
-           |> push_navigate(to: ~p"/users/settings")}
+    Authorize.with_authorization(
+      socket,
+      :manage_workspace,
+      fn socket ->
+        case Workspaces.delete_workspace(
+               socket.assigns.current_scope,
+               socket.assigns.workspace.id
+             ) do
+          {:ok, _} ->
+            {:noreply,
+             socket
+             |> put_flash(:info, dgettext("workspaces", "Workspace deleted."))
+             |> push_navigate(to: ~p"/users/settings")}
 
-        {:error, _} ->
-          {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            workspace_update_ownership_invariant_error(socket)
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to delete workspace."))}
+        end
+      end,
+      &workspace_owner_authorization_failure/2
+    )
+  end
+
+  defp workspace_update_ownership_invariant_error(socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext(
+         "workspaces",
+         "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
+       )
+     )}
+  end
+
+  defp workspace_update_unauthorized_error(socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("workspaces", "Only the current workspace owner can update this workspace.")
+     )}
+  end
+
+  defp workspace_owner_authorization_failure(socket, :ownership_invariant_violation) do
+    workspace_update_ownership_invariant_error(socket)
+  end
+
+  defp workspace_owner_authorization_failure(socket, _reason) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       gettext("You don't have permission to perform this action.")
+     )}
   end
 
   @impl true
@@ -322,6 +383,17 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
            dgettext("workspaces", "Only the workspace owner can change Personal AI member policy.")
          )}
 
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "workspaces",
+             "Personal AI member policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
+           )
+         )}
+
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Personal AI member policy could not be updated."))}
     end
@@ -343,6 +415,17 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneral do
       {:error, :unauthorized} ->
         {:noreply,
          put_flash(socket, :error, dgettext("workspaces", "Only the workspace owner can change Storyarn AI policy."))}
+
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "workspaces",
+             "Storyarn AI policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
+           )
+         )}
 
       {:error, _reason} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Storyarn AI policy could not be updated."))}

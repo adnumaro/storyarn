@@ -66,6 +66,84 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
                "Move narrative content into or out of this project."
     end
 
+    test "ownership drift preserves import state and returns explicit action contracts", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      assert {:ok, ready, _preview} =
+               Imports.prepare_import(
+                 Scope.for_user(user),
+                 project,
+                 "ownership-drift.yarn",
+                 "title: OwnershipDrift\n---\nHello\n===\n"
+               )
+
+      durable_attempt_before = Repo.get!(ProjectImportAttempt, ready.id)
+      {:ok, view, _html} = live(conn, export_url(project))
+      initial_state = import_state(view)
+
+      assert initial_state["attemptId"] == ready.id
+      assert initial_state["status"] == "ready"
+
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      html = render_click(view, "parse_import")
+      assert html =~ "project ownership is inconsistent"
+
+      html = render_hook(view, "set_strategy", %{"attempt_id" => ready.id, "strategy" => "skip"})
+      assert html =~ "project ownership is inconsistent"
+
+      html =
+        render_hook(view, "set_import_mode", %{
+          "attempt_id" => ready.id,
+          "import_mode" => "additive"
+        })
+
+      assert html =~ "project ownership is inconsistent"
+
+      render_hook(view, "save_import_review", %{
+        "attempt_id" => ready.id,
+        "review_decisions" => []
+      })
+
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+
+      render_hook(view, "resume_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => "ownership-drift"
+      })
+
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+
+      html = render_hook(view, "reconcile_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+      assert html =~ "project ownership is inconsistent"
+
+      html = render_hook(view, "reset_import", %{"attempt_id" => ready.id})
+      assert_reply(view, %{ok: false, reason: "ownership_invariant_violation"})
+      assert html =~ "project ownership is inconsistent"
+      assert import_state(view) == initial_state
+
+      durable_attempt_after = Repo.get!(ProjectImportAttempt, ready.id)
+      assert durable_attempt_after.status == durable_attempt_before.status
+      assert durable_attempt_after.stage == durable_attempt_before.stage
+      assert durable_attempt_after.plan_storage_key == durable_attempt_before.plan_storage_key
+      assert durable_attempt_after.updated_at == durable_attempt_before.updated_at
+    end
+
     test "exposes a bounded Yarn upload and empty import state to editors", %{
       conn: conn,
       project: project,

@@ -161,6 +161,24 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     def verify_adopted_locked(plan, map), do: EmptyMaterializer.verify_adopted_locked(plan, map)
   end
 
+  defmodule OwnershipDriftMaterializer do
+    @moduledoc false
+    alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest.EmptyMaterializer
+
+    def prepare(project_id, restore_id, manifest, project, prefix, keys) do
+      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys)
+    end
+
+    def stage_destination_objects(plan, tracker) do
+      Process.get({__MODULE__, :before_stage}).()
+      EmptyMaterializer.stage_destination_objects(plan, tracker)
+    end
+
+    def adopt_locked(plan, project, actor, tracker), do: EmptyMaterializer.adopt_locked(plan, project, actor, tracker)
+
+    def verify_adopted_locked(plan, map), do: EmptyMaterializer.verify_adopted_locked(plan, map)
+  end
+
   defmodule PrepareSpyMaterializer do
     @moduledoc false
 
@@ -285,15 +303,38 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert second_reservation.status == "released"
   end
 
-  test "exact commit fails closed when direct project ownership drifts", context do
+  test "preflight fails closed before reserving storage when direct project ownership drifts", context do
     project = Repo.get!(Project, context.restore.project_id)
     second_owner = user_fixture()
     _second_owner_membership = membership_fixture(project, second_owner, "owner")
 
-    assert {:retry, :ownership_invariant_violation} =
+    assert {:error, :ownership_invariant_violation} =
              ProjectSnapshotRestoreExecutor.execute(context.restore,
                archive_reader: EmptyArchiveReader,
                asset_materializer: EmptyMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+
+    assert restore.status == "running"
+    assert is_nil(restore.storage_reservation_id)
+  end
+
+  test "exact commit fails closed when direct project ownership drifts after preflight", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    second_owner = user_fixture()
+
+    Process.put({OwnershipDriftMaterializer, :before_stage}, fn ->
+      membership_fixture(project, second_owner, "owner")
+    end)
+
+    on_exit(fn -> Process.delete({OwnershipDriftMaterializer, :before_stage}) end)
+
+    assert {:retry, :ownership_invariant_violation} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: OwnershipDriftMaterializer,
                project_recovery: AcceptingRecovery
              )
 

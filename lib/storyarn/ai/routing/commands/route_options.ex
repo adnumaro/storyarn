@@ -14,6 +14,39 @@ defmodule Storyarn.AI.RouteOptions do
   alias Storyarn.Repo
 
   @default_ttl_seconds 300
+  @snapshot_fields [
+    :id,
+    :token_hash,
+    :user_id,
+    :actor_id,
+    :workspace_id,
+    :project_id,
+    :task_id,
+    :task_contract_hash,
+    :input_hash,
+    :subject_type,
+    :subject_id,
+    :subject_revision,
+    :context_hash,
+    :context_manifest,
+    :context_subject,
+    :lane,
+    :provider,
+    :model,
+    :credential_ref,
+    :payer,
+    :assignment_source,
+    :consent_basis,
+    :policy_version,
+    :price_id,
+    :price_version,
+    :price_units,
+    :provider_configuration,
+    :expires_at,
+    :consumed_at,
+    :consumed_by_operation_id,
+    :inserted_at
+  ]
 
   @spec issue(ExecutionIntent.t(), Task.t(), ExecutionRoute.t(), nil | map()) ::
           {:ok, map()} | {:error, atom() | Ecto.Changeset.t()}
@@ -69,54 +102,82 @@ defmodule Storyarn.AI.RouteOptions do
     end
   end
 
-  @spec resolve_locked(ExecutionIntent.t(), Task.t()) ::
+  @doc "Reads and validates a route reference without taking its row lock."
+  @spec resolve_snapshot(ExecutionIntent.t(), Task.t()) ::
           {:ok, RouteOption.t(), ExecutionRoute.t()} | {:error, atom()}
-  def resolve_locked(%ExecutionIntent{requested_route_ref: nil}, %Task{}), do: {:error, :route_ref_required}
+  def resolve_snapshot(%ExecutionIntent{requested_route_ref: nil}, %Task{}), do: {:error, :route_ref_required}
 
-  def resolve_locked(%ExecutionIntent{} = intent, %Task{} = task) do
+  def resolve_snapshot(%ExecutionIntent{} = intent, %Task{} = task) do
     option =
       Repo.one(
         from(option in RouteOption,
-          where: option.token_hash == ^token_hash(intent.requested_route_ref),
-          lock: "FOR UPDATE"
+          where: option.token_hash == ^token_hash(intent.requested_route_ref)
         )
       )
 
     with %RouteOption{} <- option,
          :ok <- validate_binding(option, intent, task),
-         {:ok, credential_ref} <- CredentialRef.from_map(option.credential_ref) do
-      {:ok, option,
-       %ExecutionRoute{
-         lane: String.to_existing_atom(option.lane),
-         provider: option.provider,
-         model: option.model,
-         credential_ref: credential_ref,
-         payer: option.payer,
-         assignment_source: option.assignment_source,
-         consent_basis: option.consent_basis,
-         policy_version: option.policy_version,
-         price_id: option.price_id,
-         price_version: option.price_version,
-         price_units: option.price_units,
-         provider_configuration: option.provider_configuration
-       }}
+         {:ok, route} <- execution_route(option) do
+      {:ok, option, route}
     else
       nil -> {:error, :route_ref_invalid}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  @spec consume(RouteOption.t(), pos_integer()) :: {:ok, RouteOption.t()} | {:error, Ecto.Changeset.t()}
-  def consume(%RouteOption{} = option, operation_id) do
+  @doc "Locks and fully revalidates the exact snapshot after parent authorization locks are retained."
+  @spec lock_snapshot(RouteOption.t(), ExecutionIntent.t(), Task.t()) ::
+          {:ok, RouteOption.t(), ExecutionRoute.t()} | {:error, atom()}
+  def lock_snapshot(%RouteOption{} = snapshot, %ExecutionIntent{} = intent, %Task{} = task) do
+    option =
+      Repo.one(
+        from(option in RouteOption,
+          where: option.id == ^snapshot.id and option.token_hash == ^snapshot.token_hash,
+          lock: "FOR UPDATE"
+        )
+      )
+
+    with %RouteOption{} <- option,
+         :ok <- validate_binding(option, intent, task),
+         :ok <- validate_snapshot(option, snapshot),
+         {:ok, route} <- execution_route(option) do
+      {:ok, option, route}
+    else
+      # Preserve the old single-query contract: disappearance always means an
+      # invalid reference, even if the previously observed snapshot expired
+      # while this transaction waited for the row lock.
+      nil -> {:error, :route_ref_invalid}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @doc "Revalidates the locked option against the current lock-free task registry view."
+  @spec revalidate_locked(
+          RouteOption.t(),
+          RouteOption.t(),
+          ExecutionIntent.t(),
+          Task.t()
+        ) :: {:ok, ExecutionRoute.t()} | {:error, atom()}
+  def revalidate_locked(%RouteOption{} = option, %RouteOption{} = snapshot, %ExecutionIntent{} = intent, %Task{} = task) do
+    with :ok <- validate_binding(option, intent, task),
+         :ok <- validate_snapshot(option, snapshot) do
+      execution_route(option)
+    end
+  end
+
+  @doc "Consumes a route option whose row is already locked by the creating transaction."
+  @spec consume_locked(RouteOption.t(), pos_integer()) ::
+          {:ok, RouteOption.t()} | {:error, Ecto.Changeset.t()}
+  def consume_locked(%RouteOption{} = option, operation_id) do
     option
     |> RouteOption.consume_changeset(operation_id, TimeHelpers.now())
     |> Repo.update()
   end
 
   @doc """
-  Whether `route_ref` is the option that `consume/2` bound to `operation_id`.
+  Whether `route_ref` is the option that `consume_locked/2` bound to `operation_id`.
 
-  `consume/2` runs inside the operation-creating transaction and only there, so a
+  `consume_locked/2` runs inside the operation-creating transaction and only there, so a
   surface whose `execute/1` replayed an existing idempotency key still holds an
   unconsumed option. Scoped to the actor so one actor's reference can never
   answer for another's.
@@ -162,6 +223,32 @@ defmodule Storyarn.AI.RouteOptions do
       option.task_contract_hash != Task.contract_hash(task) -> {:error, :route_ref_stale}
       binding_matches?(option, intent, task) -> :ok
       true -> {:error, :route_ref_mismatch}
+    end
+  end
+
+  defp validate_snapshot(option, snapshot) do
+    if Map.take(option, @snapshot_fields) == Map.take(snapshot, @snapshot_fields),
+      do: :ok,
+      else: {:error, :route_ref_stale}
+  end
+
+  defp execution_route(option) do
+    with {:ok, credential_ref} <- CredentialRef.from_map(option.credential_ref) do
+      {:ok,
+       %ExecutionRoute{
+         lane: String.to_existing_atom(option.lane),
+         provider: option.provider,
+         model: option.model,
+         credential_ref: credential_ref,
+         payer: option.payer,
+         assignment_source: option.assignment_source,
+         consent_basis: option.consent_basis,
+         policy_version: option.policy_version,
+         price_id: option.price_id,
+         price_version: option.price_version,
+         price_units: option.price_units,
+         provider_configuration: option.provider_configuration
+       }}
     end
   end
 

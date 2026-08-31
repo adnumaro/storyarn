@@ -809,7 +809,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
-  defp restore_project_fields(project, project_data) do
+  defp restore_project_fields(%Project{} = project, project_data) do
     attrs =
       Map.new(@project_field_keys, fn key ->
         {String.to_existing_atom(key), Map.fetch!(project_data["project"], key)}

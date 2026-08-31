@@ -394,6 +394,26 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       assert result =~ "Role updated successfully."
     end
 
+    test "explains ownership drift and preserves the role when the update fails closed", %{
+      conn: conn,
+      workspace: workspace,
+      membership: membership
+    } do
+      conflicting_owner = user_fixture()
+      _conflicting_membership = workspace_membership_fixture(workspace, conflicting_owner, "owner")
+
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
+
+      result =
+        render_click(view, "change_role", %{
+          "role" => "admin",
+          "member-id" => to_string(membership.id)
+        })
+
+      assert result =~ "could not be updated because workspace ownership is inconsistent"
+      assert Repo.reload!(membership).role == "member"
+    end
+
     test "admin cannot change roles", %{conn: conn, workspace: workspace, membership: membership} do
       admin = user_fixture()
       workspace_membership_fixture(workspace, admin, "admin")
@@ -470,6 +490,22 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembersTest do
       # Member should no longer be listed
       members = Workspaces.list_workspace_members(workspace.id)
       refute Enum.any?(members, fn m -> m.user_id == member.id end)
+    end
+
+    test "explains ownership drift and preserves the member when removal fails closed", %{
+      conn: conn,
+      workspace: workspace,
+      membership: membership
+    } do
+      conflicting_owner = user_fixture()
+      _conflicting_membership = workspace_membership_fixture(workspace, conflicting_owner, "owner")
+
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/members")
+
+      result = render_click(view, "remove_member", %{"id" => to_string(membership.id)})
+
+      assert result =~ "could not be removed because workspace ownership is inconsistent"
+      assert Repo.reload!(membership).role == "member"
     end
 
     test "admin cannot remove members", %{

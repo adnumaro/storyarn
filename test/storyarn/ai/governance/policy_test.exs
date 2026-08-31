@@ -7,6 +7,7 @@ defmodule Storyarn.AI.Governance.PolicyTest do
 
   alias Storyarn.AI.ExecutionIntent
   alias Storyarn.AI.Governance
+  alias Storyarn.AI.Governance.Execution.Authorization
   alias Storyarn.AI.Operation
   alias Storyarn.AI.PolicyDecision
   alias Storyarn.AI.Task
@@ -183,7 +184,7 @@ defmodule Storyarn.AI.Governance.PolicyTest do
     }
 
     assert {:ok, %PolicyDecision{} = rechecked} =
-             Governance.reauthorize(operation, task, :execute, lane: :managed)
+             Authorization.reauthorize(operation, task, :execute, lane: :managed)
 
     assert Governance.decision_to_map(rechecked) == persisted
   end

@@ -65,6 +65,10 @@ defmodule Storyarn.AI.PersonalConsents do
   @spec revoke(scope(), pos_integer()) ::
           {:ok, PersonalConsent.t()} | {:error, :not_found}
   def revoke(%{user: %{id: user_id}}, consent_id) when is_integer(consent_id) and consent_id > 0 do
+    # Consent is the terminal row in the Integrations lock protocol. This
+    # mutation intentionally stays suffix-only so a revoked/missing workspace
+    # never makes a user unable to withdraw consent, and so it cannot invert
+    # the Workspace -> ... -> Consent order used by execution.
     Repo.transaction(fn ->
       consent =
         Repo.one(

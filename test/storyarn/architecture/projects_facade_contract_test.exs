@@ -269,9 +269,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "708a6c8dd094078e04bb3233e52cd965ab0f376b690ad4ab73277abc8da2d191"
+  @docs_digest "8040142c4fab0a6ad751299aa5df90cb81ebd3c3e4e0651999088aade33083cf"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "d251057af5f620c86b42d5b285f8ea9d35f86beeaee2720249c6bcf1580224c5"
+  @specs_digest "0e2ca5f35a9a51106f384b5f633a32ea0bd7c364cea1f4c48b8c5c24f7fa9c94"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract)

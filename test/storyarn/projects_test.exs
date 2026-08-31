@@ -716,7 +716,60 @@ defmodule Storyarn.ProjectsTest do
       assert {:ok, _, _} = Projects.authorize(scope, project.id, :manage_project)
       assert {:ok, _, _} = Projects.authorize(scope, project.id, :manage_members)
       assert {:ok, _, _} = Projects.authorize(scope, project.id, :edit_content)
+      assert {:ok, _, _} = Projects.authorize(scope, project.id, :use_ai)
+      assert {:ok, _, _} = Projects.authorize(scope, project.id, :run_bulk_ai)
       assert {:ok, _, _} = Projects.authorize(scope, project.id, :view)
+    end
+
+    test "authorize/3 fails owner-only actions closed when the owner membership is missing" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+
+      project.id
+      |> Projects.get_membership(owner.id)
+      |> Ecto.Changeset.change(role: "editor")
+      |> Repo.update!()
+
+      for action <- [:manage_project, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Projects.authorize(scope, project.id, action)
+      end
+
+      assert {:ok, _, %{role: "editor"}} = Projects.authorize(scope, project.id, :view)
+    end
+
+    test "authorize/3 fails owner-only actions closed when owner_id and the owner membership disagree" do
+      owner = user_fixture()
+      replacement = user_fixture()
+      scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+
+      project
+      |> Ecto.Changeset.change(owner_id: replacement.id)
+      |> Repo.update!()
+
+      for action <- [:manage_project, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Projects.authorize(scope, project.id, action)
+      end
+
+      assert {:ok, _, %{role: "owner"}} = Projects.authorize(scope, project.id, :view)
+    end
+
+    test "authorize/3 fails owner-only actions closed when owner memberships are ambiguous" do
+      owner = user_fixture()
+      duplicate_owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      project = project_fixture(owner)
+      _duplicate_owner_membership = membership_fixture(project, duplicate_owner, "owner")
+
+      for action <- [:manage_project, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Projects.authorize(scope, project.id, action)
+      end
+
+      assert {:ok, _, %{role: "owner"}} = Projects.authorize(scope, project.id, :view)
     end
 
     test "authorize/3 returns ok for editor on allowed actions" do

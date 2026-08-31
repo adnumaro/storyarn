@@ -3,6 +3,7 @@ defmodule Storyarn.Platform.Release do
   Used for executing DB release tasks when run in production without Mix
   installed.
   """
+  alias Storyarn.Architecture.OwnershipIntegrityAudit
   alias Storyarn.Projects
 
   @app :storyarn
@@ -32,12 +33,7 @@ defmodule Storyarn.Platform.Release do
   end
 
   defp migrate_repo(Storyarn.Repo = repo) do
-    {:ok, _, _} =
-      Ecto.Migrator.with_repo(repo, fn started_repo ->
-        run_project_snapshot_migrations(started_repo, fn ->
-          Ecto.Migrator.run(started_repo, :up, all: true)
-        end)
-      end)
+    {:ok, _, _} = Ecto.Migrator.with_repo(repo, &migrate_storyarn_repo/1)
 
     :ok
   end
@@ -45,6 +41,21 @@ defmodule Storyarn.Platform.Release do
   defp migrate_repo(repo) do
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :up, all: true))
     :ok
+  end
+
+  defp migrate_storyarn_repo(repo) do
+    run_migrations_with_ownership_preflight(repo, fn ->
+      run_project_snapshot_migrations(repo, fn ->
+        Ecto.Migrator.run(repo, :up, all: true)
+      end)
+    end)
+  end
+
+  @doc false
+  def run_migrations_with_ownership_preflight(repo, migrate) when is_atom(repo) and is_function(migrate, 0) do
+    result = migrate.()
+    :ok = OwnershipIntegrityAudit.audit!(repo)
+    result
   end
 
   defp rollback_repo(Storyarn.Repo = repo, version) do

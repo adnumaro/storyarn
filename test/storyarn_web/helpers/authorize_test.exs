@@ -203,6 +203,15 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
       assert {:noreply, %Socket{}} = result
     end
 
+    test "preserves a reply result when authorized" do
+      socket = socket_with_membership("owner")
+
+      assert {:reply, %{ok: true}, ^socket} =
+               Authorize.with_authorization(socket, :edit_content, fn callback_socket ->
+                 {:reply, %{ok: true}, callback_socket}
+               end)
+    end
+
     test "returns unauthorized flash when not authorized" do
       socket = socket_with_membership("viewer")
 
@@ -229,6 +238,52 @@ defmodule StoryarnWeb.Helpers.AuthorizeTest do
         end)
 
       assert message == "No tienes permiso para realizar esta acción."
+    end
+  end
+
+  describe "with_authorization/4" do
+    test "exposes a canonical ownership failure to the explicit failure callback" do
+      owner = user_fixture()
+      project = project_fixture(owner)
+      second_owner = user_fixture()
+      _second_owner_membership = membership_fixture(project, second_owner, "owner")
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          current_scope: Scope.for_user(owner),
+          project: project,
+          membership: %{role: "owner"}
+        }
+      }
+
+      assert {:error, :unauthorized} = Authorize.authorize(socket, :manage_project)
+
+      assert {:noreply, ^socket} =
+               Authorize.with_authorization(
+                 socket,
+                 :manage_project,
+                 fn _socket -> raise "should not be called" end,
+                 fn callback_socket, reason ->
+                   assert reason == :ownership_invariant_violation
+                   {:noreply, callback_socket}
+                 end
+               )
+    end
+
+    test "preserves a reply result from the explicit failure callback" do
+      socket = socket_with_membership("viewer")
+
+      assert {:reply, %{ok: false, reason: :unauthorized}, ^socket} =
+               Authorize.with_authorization(
+                 socket,
+                 :edit_content,
+                 fn _socket -> raise "should not be called" end,
+                 fn callback_socket, reason ->
+                   {:reply, %{ok: false, reason: reason}, callback_socket}
+                 end
+               )
     end
   end
 

@@ -367,6 +367,7 @@ function snapshotRestoreRequestError(payload: Record<string, unknown>) {
     project_snapshot_restore_in_progress: "in_progress",
     project_snapshot_restore_idempotency_conflict: "request_conflict",
     project_snapshot_not_found: "not_found",
+    ownership_invariant_violation: "ownership_invariant",
     unauthorized: "unauthorized",
     invalid_project_snapshot_restore_request: "invalid_request",
     invalid_request: "invalid_request",
@@ -377,6 +378,14 @@ function snapshotRestoreRequestError(payload: Record<string, unknown>) {
 }
 
 function snapshotRequestError(payload: Record<string, unknown>) {
+  if (payload.reason === "ownership_invariant_violation") {
+    return t("project_settings.snapshots.create.ownership_invariant");
+  }
+
+  if (payload.reason === "unauthorized") {
+    return t("project_settings.snapshots.create.unauthorized");
+  }
+
   if (payload.reason === "storage_limit_reached") {
     return t("project_settings.snapshots.create.storage_limit_reached", {
       required: formatReplyBytes(payload.requiredBytes),
@@ -829,6 +838,7 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           <p
             v-if="requestError"
             role="alert"
+            data-testid="snapshot-request-error"
             class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
           >
             {{ requestError }}

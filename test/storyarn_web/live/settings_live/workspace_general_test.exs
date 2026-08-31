@@ -11,6 +11,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   alias Storyarn.Repo
   alias Storyarn.Workers.DeleteWorkspaceBannerWorker
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Workspace
 
   defp get_general_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsGeneral")
@@ -261,6 +262,50 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert get_general_vue(view).props["ai"]["personalMembersAllowed"] == false
     end
 
+    test "managed policy reports ownership drift explicitly and remains unchanged", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      FunWithFlags.enable(:ai_integrations, for_actor: owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      duplicate_owner = user_fixture()
+      workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+      html = render_click(view, "update_managed_ai_policy", %{"enabled" => true})
+
+      assert html =~
+               "Storyarn AI policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
+      assert policy.allowed_lanes == []
+    end
+
+    test "personal policy reports ownership drift explicitly and remains unchanged", %{conn: conn} do
+      owner = user_fixture()
+      workspace = workspace_fixture(owner)
+      FunWithFlags.enable(:ai_integrations, for_actor: owner)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(owner)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      duplicate_owner = user_fixture()
+      workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+      html = render_click(view, "update_personal_ai_members_policy", %{"enabled" => true})
+
+      assert html =~
+               "Personal AI member policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
+
+      assert {:ok, policy} = AI.get_workspace_policy(user_scope_fixture(owner), workspace.id)
+      assert policy.allowed_lanes == []
+    end
+
     test "flagged admin and member can read but cannot change managed policy", %{conn: conn} do
       owner = user_fixture()
       workspace = workspace_fixture(owner)
@@ -399,6 +444,72 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
 
       render_click(view, "save", %{"workspace" => %{"name" => "Admin Updated Name"}})
       assert Workspaces.get_workspace!(workspace.id).name == workspace.name
+    end
+
+    test "ownership drift after mount blocks the update with a specific error", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      duplicate_owner = user_fixture()
+      workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+      html =
+        render_click(view, "save", %{
+          "workspace" => %{"name" => "Must Not Be Persisted"}
+        })
+
+      assert html =~
+               "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
+
+      assert Workspaces.get_workspace!(workspace.id).name == workspace.name
+    end
+
+    test "ownership drift after mount blocks banner and delete mutations", %{
+      conn: conn,
+      workspace: workspace
+    } do
+      {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
+
+      duplicate_owner = user_fixture()
+      workspace_membership_fixture(workspace, duplicate_owner, "owner")
+      image_data = File.read!("test/fixtures/images/test_image.jpg")
+
+      upload_html =
+        render_click(view, "upload_workspace_banner", %{
+          "filename" => "banner.jpg",
+          "content_type" => "image/jpeg",
+          "data" => "data:image/jpeg;base64,#{Base.encode64(image_data)}"
+        })
+
+      assert upload_html =~
+               "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
+
+      assert Workspaces.get_workspace!(workspace.id).banner_url == nil
+
+      persisted_banner_url = "https://example.invalid/#{workspace.slug}/banner.jpg"
+
+      workspace
+      |> Ecto.Changeset.change(banner_url: persisted_banner_url)
+      |> Repo.update!()
+
+      remove_html = render_click(view, "remove_workspace_banner", %{})
+
+      assert remove_html =~
+               "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
+
+      assert Workspaces.get_workspace!(workspace.id).banner_url == persisted_banner_url
+
+      delete_html = render_click(view, "delete", %{})
+
+      assert delete_html =~
+               "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
+
+      assert %Workspace{id: workspace_id} =
+               Workspaces.get_workspace!(workspace.id)
+
+      assert workspace_id == workspace.id
     end
   end
 
@@ -600,7 +711,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
       assert get_general_vue(view).props["is-owner"] == false
 
       render_click(view, "delete", %{})
-      assert %Storyarn.Workspaces.Workspace{id: id} = Workspaces.get_workspace!(workspace.id)
+      assert %Workspace{id: id} = Workspaces.get_workspace!(workspace.id)
       assert id == workspace.id
     end
   end

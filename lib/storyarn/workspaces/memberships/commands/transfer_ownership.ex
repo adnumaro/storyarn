@@ -7,6 +7,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnership do
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Memberships.Commands.OwnerAuthority
   alias Storyarn.Workspaces.Memberships.Projections.UserRecord
+  alias Storyarn.Workspaces.Workspace
   alias Storyarn.Workspaces.WorkspaceMembership
 
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -104,7 +105,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnership do
     |> Repo.update()
   end
 
-  defp change_workspace_owner(workspace, target_user_id) do
+  defp change_workspace_owner(%Workspace{} = workspace, target_user_id) do
     workspace
     |> Ecto.Changeset.change(owner_id: target_user_id)
     |> Repo.update()

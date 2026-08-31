@@ -140,7 +140,9 @@ defmodule Storyarn.AI.Results do
   @spec dismiss(scope(), pos_integer()) :: {:ok, Operation.t()} | {:error, atom()}
   def dismiss(%{user: %{id: actor_id}}, operation_id) do
     Repo.transaction(fn ->
-      operation = lock_actor_operation(operation_id, actor_id)
+      snapshot = get_actor_operation(operation_id, actor_id)
+      lock_preparation = prepare_operation_lock(snapshot)
+      operation = lock_prepared_operation(operation_id, lock_preparation)
 
       case operation do
         %Operation{execution_status: "succeeded", user_disposition: nil} ->
@@ -172,13 +174,15 @@ defmodule Storyarn.AI.Results do
           {:ok, term()} | {:error, term()}
   def apply(%{user: %{id: actor_id}} = scope, operation_id, current_revision, apply_fun) when is_function(apply_fun, 2) do
     Repo.transaction(fn ->
+      snapshot = get_actor_operation(operation_id, actor_id)
+      preauthorization = prepare_apply_reauthorization(snapshot, current_revision)
       operation = lock_actor_operation(operation_id, actor_id)
 
       with %Operation{execution_status: "succeeded", user_disposition: nil} <- operation,
            :ok <- revision_matches(operation, current_revision),
            {:ok, task} <- Routing.get_task(operation.task_id),
            :ok <- task_contract_current(operation, task),
-           {:ok, _decision} <- Governance.reauthorize(operation, task, :apply, lock_policy: true),
+           {:ok, _decision} <- complete_apply_reauthorization(operation, task, preauthorization),
            :ok <- Task.acquire_source_locks(task, operation),
            :ok <- Context.operation_current?(scope, task, operation),
            {:ok, route} <- ExecutionRoute.from_map(operation.execution_route),
@@ -199,6 +203,36 @@ defmodule Storyarn.AI.Results do
       end
     end)
   end
+
+  defp prepare_apply_reauthorization(
+         %Operation{execution_status: "succeeded", user_disposition: nil} = snapshot,
+         current_revision
+       ) do
+    lock_preparation = Governance.prepare_operation_reauthorization(snapshot)
+
+    with :ok <- revision_matches(snapshot, current_revision),
+         {:ok, task} <- Routing.get_task(snapshot.task_id),
+         :ok <- task_contract_current(snapshot, task) do
+      {:prepared, task.id, Governance.preauthorize_operation(snapshot, task, :apply, preparation: lock_preparation)}
+    else
+      {:error, reason} -> {:denied, reason}
+    end
+  end
+
+  defp prepare_apply_reauthorization(_snapshot, _current_revision), do: nil
+
+  defp complete_apply_reauthorization(
+         %Operation{} = operation,
+         %Task{id: task_id} = task,
+         {:prepared, task_id, preauthorization}
+       ) do
+    Governance.complete_operation_reauthorization(operation, task, :apply, preauthorization)
+  end
+
+  defp complete_apply_reauthorization(%Operation{}, %Task{}, {:denied, reason}), do: {:error, reason}
+
+  defp complete_apply_reauthorization(%Operation{}, %Task{}, _missing_or_changed),
+    do: {:error, :operation_authorization_changed}
 
   @spec expire(DateTime.t(), keyword()) ::
           {:ok, %{expired_count: non_neg_integer(), failure_count: non_neg_integer(), more?: boolean()}}
@@ -245,15 +279,22 @@ defmodule Storyarn.AI.Results do
   end
 
   defp expire_locked(operation_id, now) do
-    operation = lock_operation(operation_id)
-    result = Repo.one(from(result in Result, where: result.operation_id == ^operation_id, lock: "FOR UPDATE"))
+    lock_preparation = Operation |> Repo.get(operation_id) |> prepare_operation_lock()
 
-    if result && result.expires_at && DateTime.compare(result.expires_at, now) != :gt do
-      maybe_abandon(operation)
-      Repo.delete!(result)
-      :ok
-    else
-      :missing
+    case lock_prepared_operation(operation_id, lock_preparation) do
+      %Operation{} = operation ->
+        result = Repo.one(from(result in Result, where: result.operation_id == ^operation_id, lock: "FOR UPDATE"))
+
+        if result && result.expires_at && DateTime.compare(result.expires_at, now) != :gt do
+          maybe_abandon(operation)
+          Repo.delete!(result)
+          :ok
+        else
+          :missing
+        end
+
+      nil ->
+        :missing
     end
   end
 
@@ -297,6 +338,35 @@ defmodule Storyarn.AI.Results do
         lock: "FOR UPDATE"
       )
     )
+  end
+
+  defp get_actor_operation(operation_id, actor_id) do
+    Repo.one(
+      from(operation in Operation,
+        where: operation.id == ^operation_id and operation.actor_id == ^actor_id
+      )
+    )
+  end
+
+  defp prepare_operation_lock(nil), do: nil
+
+  defp prepare_operation_lock(%Operation{} = snapshot) do
+    Governance.prepare_operation_reauthorization(snapshot)
+  end
+
+  defp lock_prepared_operation(_operation_id, nil), do: nil
+
+  defp lock_prepared_operation(operation_id, preparation) do
+    case lock_operation(operation_id) do
+      nil ->
+        nil
+
+      %Operation{} = operation ->
+        case Governance.complete_operation_lock_preparation(operation, preparation) do
+          :ok -> operation
+          {:error, reason} -> Repo.rollback(reason)
+        end
+    end
   end
 
   defp lock_operation(operation_id) do

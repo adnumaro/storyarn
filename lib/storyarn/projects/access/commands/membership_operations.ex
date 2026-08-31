@@ -1,17 +1,17 @@
 defmodule Storyarn.Projects.MembershipOperations do
   @moduledoc """
-  Generic membership operations serving the Projects context. The workspace
-  arm moved into `Storyarn.Workspaces.Memberships` during the ENG-92
-  bounded-context migration.
+  Membership operations serving the Projects context. The workspace arm moved
+  into `Storyarn.Workspaces.Memberships` during the ENG-92 bounded-context
+  migration.
 
-  Parameterized by a config map containing:
-  - `membership_schema` — e.g., ProjectMembership or WorkspaceMembership
-  - `parent_schema` — e.g., Project or Workspace
-  - `parent_key` — e.g., :project_id or :workspace_id
+  The config map retains the established query interface, but every writer is
+  explicitly bound to the Project-owned membership schema so persistence
+  ownership remains statically reviewable.
   """
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
 
   @doc """
@@ -39,10 +39,9 @@ defmodule Storyarn.Projects.MembershipOperations do
     {:error, :cannot_assign_owner_role}
   end
 
-  def create_membership(config, parent_id, user_id, role) do
-    config.membership_schema
-    |> struct()
-    |> config.membership_schema.changeset(%{
+  def create_membership(%{membership_schema: ProjectMembership} = config, parent_id, user_id, role) do
+    %ProjectMembership{}
+    |> ProjectMembership.changeset(%{
       config.parent_key => parent_id,
       :user_id => user_id,
       :role => role
@@ -61,20 +60,20 @@ defmodule Storyarn.Projects.MembershipOperations do
     {:error, :cannot_assign_owner_role}
   end
 
-  def update_member_role(config, membership, role) do
+  def update_member_role(%{membership_schema: ProjectMembership}, %ProjectMembership{} = membership, role) do
     membership
-    |> config.membership_schema.changeset(%{role: role})
+    |> ProjectMembership.changeset(%{role: role})
     |> Repo.update()
   end
 
   @doc """
   Removes a member. Cannot remove the owner.
   """
-  def remove_member(%{role: "owner"}) do
+  def remove_member(%ProjectMembership{role: "owner"}) do
     {:error, :cannot_remove_owner}
   end
 
-  def remove_member(membership) do
+  def remove_member(%ProjectMembership{} = membership) do
     Repo.delete(membership)
   end
 

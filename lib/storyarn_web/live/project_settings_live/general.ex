@@ -154,7 +154,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("update_project", %{"project" => project_params}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       case Projects.update_project(
              socket.assigns.current_scope,
              socket.assigns.project.id,
@@ -174,6 +174,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
         {:error, %Ecto.Changeset{} = changeset} ->
           {:noreply, assign(socket, :project_form, to_form(changeset))}
 
+        {:error, :ownership_invariant_violation} ->
+          project_ownership_invariant_error(socket)
+
         {:error, _reason} ->
           {:noreply,
            put_flash(
@@ -186,7 +189,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("change_source_language", %{"locale_code" => locale_code} = params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       opts = if reset_translations?(params), do: [reset_translations: true], else: []
 
       case Localization.change_source_language(
@@ -201,6 +204,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
            |> assign(:source_language, source_language)
            |> put_flash(:info, dgettext("projects", "Source language updated."))}
 
+        {:error, :ownership_invariant_violation} ->
+          project_ownership_invariant_error(socket)
+
         {:error, _reason} ->
           {:noreply,
            put_flash(
@@ -213,13 +219,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("repair_variable_references", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       do_repair_variable_references(socket)
     end)
   end
 
   def handle_event("delete_project", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       workspace = socket.assigns.workspace
 
       case Projects.delete_project(socket.assigns.current_scope, socket.assigns.project.id) do
@@ -228,6 +234,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
            socket
            |> put_flash(:info, dgettext("projects", "Project deleted."))
            |> push_navigate(to: ~p"/workspaces/#{workspace.slug}")}
+
+        {:error, :ownership_invariant_violation} ->
+          project_ownership_invariant_error(socket)
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to delete project."))}
@@ -257,13 +266,13 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
   end
 
   def handle_event("save_theme", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       do_save_theme(socket)
     end)
   end
 
   def handle_event("reset_theme", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_project_owner_authorization(socket, fn socket ->
       project = socket.assigns.project
       settings = Map.delete(project.settings || %{}, "theme")
 
@@ -274,6 +283,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
            |> assign(:project, project)
            |> assign_theme(project)
            |> put_flash(:info, dgettext("projects", "Theme reset to default."))}
+
+        {:error, :ownership_invariant_violation} ->
+          project_ownership_invariant_error(socket)
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to reset theme."))}
@@ -357,6 +369,38 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
 
   defp can_manage_project?(scope, project, membership) do
     project.owner_id == scope.user.id and Projects.can?(membership.role, :manage_project)
+  end
+
+  defp with_project_owner_authorization(socket, success_fn) do
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      success_fn,
+      fn
+        socket, :ownership_invariant_violation ->
+          project_ownership_invariant_error(socket)
+
+        socket, _reason ->
+          {:noreply,
+           put_flash(
+             socket,
+             :error,
+             gettext("You don't have permission to perform this action.")
+           )}
+      end
+    )
+  end
+
+  defp project_ownership_invariant_error(socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext(
+         "projects",
+         "This action could not be completed because project ownership is inconsistent. Contact support before retrying."
+       )
+     )}
   end
 
   defp reset_translations?(%{"reset_translations" => value}) when value in [true, "true"], do: true
@@ -550,6 +594,9 @@ defmodule StoryarnWeb.ProjectSettingsLive.General do
            |> assign(:project, project)
            |> assign(:has_custom_theme, true)
            |> put_flash(:info, dgettext("projects", "Theme saved."))}
+
+        {:error, :ownership_invariant_violation} ->
+          project_ownership_invariant_error(socket)
 
         {:error, _} ->
           {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save theme."))}

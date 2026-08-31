@@ -792,10 +792,13 @@ defmodule Storyarn.Projects do
   - `:manage_project` - update settings, delete project (owner only)
   - `:manage_members` - invite/remove members, change roles (owner only)
   - `:edit_content` - edit flows, entities (owner, editor)
+  - `:use_ai` - run explicitly initiated single-item AI actions (owner, editor)
+  - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
   - `:view` - view project content (all roles)
   """
   @spec authorize(scope(), integer(), action()) ::
-          {:ok, project(), membership()} | {:error, :not_found | :unauthorized}
+          {:ok, project(), membership()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
   defdelegate authorize(scope, project_id, action), to: Access
 
   # =============================================================================

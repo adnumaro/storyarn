@@ -102,4 +102,27 @@ defmodule StoryarnWeb.ProjectSettingsLive.SettingsComponentsRepairTest do
     assert repaired_socket.assigns.flash["error"] ==
              "No nodes could be repaired; 2 nodes failed. Try again."
   end
+
+  test "explains ownership drift without reporting a generic repair failure" do
+    user = user_fixture()
+    project = project_fixture(user)
+
+    socket = %Socket{
+      assigns: %{
+        __changed__: %{},
+        flash: %{},
+        current_scope: user_scope_fixture(user),
+        project: project
+      }
+    }
+
+    assert {:noreply, repaired_socket} =
+             SettingsComponents.do_repair_variable_references(
+               socket,
+               fn _scope, _project_id -> {:error, :ownership_invariant_violation} end
+             )
+
+    assert repaired_socket.assigns.flash["error"] ==
+             "Variable references could not be repaired because project ownership is inconsistent."
+  end
 end

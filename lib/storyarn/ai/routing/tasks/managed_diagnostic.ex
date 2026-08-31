@@ -54,6 +54,9 @@ defmodule Storyarn.AI.Tasks.ManagedDiagnostic do
   end
 
   @impl true
+  def post_operation_authorization_mode, do: :lock_free
+
+  @impl true
   def validate_input(%{"probe" => @probe} = input) when map_size(input) == 1, do: :ok
   def validate_input(_input), do: {:error, :invalid_diagnostic_input}
 

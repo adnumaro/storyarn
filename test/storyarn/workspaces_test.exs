@@ -469,7 +469,60 @@ defmodule Storyarn.WorkspacesTest do
       assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :manage_workspace)
       assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :manage_members)
       assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :create_project)
+      assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :use_ai)
+      assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :run_bulk_ai)
       assert {:ok, _, _} = Workspaces.authorize(scope, workspace.id, :view)
+    end
+
+    test "authorize/3 fails ownership-sensitive actions closed when the owner membership is missing" do
+      owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+
+      workspace.id
+      |> Workspaces.get_membership(owner.id)
+      |> Ecto.Changeset.change(role: "admin")
+      |> Repo.update!()
+
+      for action <- [:manage_workspace, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Workspaces.authorize(scope, workspace.id, action)
+      end
+
+      assert {:ok, _, %{role: "admin"}} = Workspaces.authorize(scope, workspace.id, :view)
+    end
+
+    test "authorize/3 fails ownership-sensitive actions closed when owner_id and the owner membership disagree" do
+      owner = user_fixture()
+      replacement = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+
+      workspace
+      |> Ecto.Changeset.change(owner_id: replacement.id)
+      |> Repo.update!()
+
+      for action <- [:manage_workspace, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Workspaces.authorize(scope, workspace.id, action)
+      end
+
+      assert {:ok, _, %{role: "owner"}} = Workspaces.authorize(scope, workspace.id, :view)
+    end
+
+    test "authorize/3 fails ownership-sensitive actions closed when owner memberships are ambiguous" do
+      owner = user_fixture()
+      duplicate_owner = user_fixture()
+      scope = user_scope_fixture(owner)
+      workspace = workspace_fixture(owner)
+      _duplicate_owner_membership = workspace_membership_fixture(workspace, duplicate_owner, "owner")
+
+      for action <- [:manage_workspace, :manage_members, :run_bulk_ai] do
+        assert {:error, :ownership_invariant_violation} =
+                 Workspaces.authorize(scope, workspace.id, action)
+      end
+
+      assert {:ok, _, %{role: "owner"}} = Workspaces.authorize(scope, workspace.id, :view)
     end
 
     test "authorize/3 allows admin to manage members and create projects" do

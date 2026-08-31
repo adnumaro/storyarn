@@ -56,9 +56,25 @@ defmodule Storyarn.AI.TaskRegistry do
       raise ArgumentError, "AI task #{inspect(module)} does not implement definition/0"
     end
 
+    ensure_lock_free_definition!(module)
+
     case Task.new(module, module.definition()) do
       {:ok, task} -> task
       {:error, errors} -> raise ArgumentError, "invalid AI task #{inspect(module)}: #{inspect(Enum.reverse(errors))}"
+    end
+  end
+
+  # This check deliberately runs before definition/0. TaskRegistry.fetch/1 may
+  # rebuild a task while Operation or RouteOption is already locked, so merely
+  # validating the returned Task afterwards would be too late to protect lock
+  # ordering.
+  defp ensure_lock_free_definition!(module) do
+    if function_exported?(module, :post_operation_authorization_mode, 0) and
+         module.post_operation_authorization_mode() == :lock_free do
+      :ok
+    else
+      raise ArgumentError,
+            "AI task #{inspect(module)} must declare post_operation_authorization_mode/0 as :lock_free"
     end
   end
 

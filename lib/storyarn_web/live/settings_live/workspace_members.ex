@@ -431,6 +431,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
           dgettext("workspaces", "Only the workspace owner can change member roles.")
         )
 
+      {:error, :ownership_invariant_violation} ->
+        workspace_owner_action_error(
+          socket,
+          dgettext(
+            "workspaces",
+            "The member role could not be updated because workspace ownership is inconsistent."
+          )
+        )
+
       {:error, _} ->
         {:noreply, put_flash(socket, :error, dgettext("workspaces", "Failed to update role."))}
     end
@@ -469,6 +478,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
         workspace_owner_action_error(
           socket,
           dgettext("workspaces", "Only the workspace owner can remove members.")
+        )
+
+      {:error, :ownership_invariant_violation} ->
+        workspace_owner_action_error(
+          socket,
+          dgettext(
+            "workspaces",
+            "The member could not be removed because workspace ownership is inconsistent."
+          )
         )
 
       {:error, _reason} ->

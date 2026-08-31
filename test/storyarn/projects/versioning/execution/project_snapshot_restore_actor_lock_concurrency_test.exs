@@ -73,6 +73,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
   defmodule BarrierRecovery do
     @moduledoc false
     @barrier_key {__MODULE__, :barrier}
+    @barrier_timeout 30_000
 
     def arm(parent, barrier), do: :persistent_term.put(@barrier_key, {parent, barrier})
     def clear, do: :persistent_term.erase(@barrier_key)
@@ -98,7 +99,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
           receive do
             {^barrier, :continue} -> :ok
           after
-            15_000 -> exit(:actor_prelock_barrier_timeout)
+            @barrier_timeout -> exit(:actor_prelock_barrier_timeout)
           end
 
         nil ->
@@ -113,7 +114,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
 
     barrier = make_ref()
     BarrierRecovery.arm(self(), barrier)
-    deleter = user_deleter(context.owner.id, self(), barrier)
+    deleter = user_deleter(context.owner.id, context.project.id, self(), barrier)
 
     assert_receive {^barrier, :user_locked, deleter_pid, deleter_backend_pid}, @timeout
 
@@ -130,6 +131,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
 
     assert busy_actor_ids == [context.owner.id]
     send(deleter_pid, {barrier, :delete})
+    assert_receive {^barrier, :project_lock_requested, ^deleter_pid}, @timeout
 
     assert_eventually_blocked_by(deleter_backend_pid, executor_backend_pid)
     refute blocked_by?(executor_backend_pid, deleter_backend_pid)
@@ -163,7 +165,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
 
     barrier = make_ref()
     BarrierRecovery.arm(self(), barrier)
-    deleter = user_deleter(context.reviewer.id, self(), barrier)
+    deleter = user_deleter(context.reviewer.id, context.project.id, self(), barrier)
 
     assert_receive {^barrier, :user_locked, deleter_pid, deleter_backend_pid}, @timeout
 
@@ -180,6 +182,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
 
     assert busy_actor_ids == [context.reviewer.id]
     send(deleter_pid, {barrier, :delete})
+    assert_receive {^barrier, :project_lock_requested, ^deleter_pid}, @timeout
 
     assert_eventually_blocked_by(deleter_backend_pid, executor_backend_pid)
     refute blocked_by?(executor_backend_pid, deleter_backend_pid)
@@ -309,7 +312,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
     restore
   end
 
-  defp user_deleter(user_id, parent, barrier) do
+  defp user_deleter(user_id, project_id, parent, barrier) do
     Task.async(fn ->
       :ok = Sandbox.checkout(Repo, sandbox: false)
 
@@ -320,7 +323,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreActorLockConcurrenc
           send(parent, {barrier, :user_locked, self(), backend_pid})
 
           receive do
-            {^barrier, :delete} -> Repo.delete!(user)
+            {^barrier, :delete} ->
+              # Exercise the inverse User -> Project edge explicitly. Relying
+              # on the order in which PostgreSQL evaluates FK triggers makes
+              # the owner case nondeterministic: a RESTRICT trigger may reject
+              # the delete before it reaches the project row lock.
+              send(parent, {barrier, :project_lock_requested, self()})
+              Repo.one!(from candidate in Project, where: candidate.id == ^project_id, lock: "FOR UPDATE")
+              Repo.delete!(user)
           after
             @timeout -> Repo.rollback(:delete_barrier_timeout)
           end

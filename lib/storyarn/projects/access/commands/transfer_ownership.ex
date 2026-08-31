@@ -57,6 +57,11 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
   defp lock_transfer_users(previous_owner_id, target_user_id) do
     user_ids = Enum.sort([previous_owner_id, target_user_id])
 
+    # Keep this lock at KEY SHARE. Template publication locks the participating
+    # users before it reaches the project, while ownership transfer already
+    # holds the project before reaching the users. Strengthening this to UPDATE
+    # would therefore turn those opposite acquisition paths into a deadlock;
+    # KEY SHARE is sufficient to keep the user rows present for the FK writes.
     users =
       Repo.all(
         from(user in User,
@@ -79,7 +84,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnership do
     |> Repo.update()
   end
 
-  defp change_project_owner(project, target_user_id) do
+  defp change_project_owner(%Project{} = project, target_user_id) do
     project
     |> Ecto.Changeset.change(owner_id: target_user_id)
     |> Repo.update()

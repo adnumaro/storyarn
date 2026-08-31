@@ -60,10 +60,18 @@ defmodule Storyarn.AI.Routing do
   defdelegate route_current?(decision, task, route), to: RouteResolver, as: :current?
 
   @doc false
-  defdelegate resolve_route_option(intent, task), to: RouteOptions, as: :resolve_locked
+  defdelegate snapshot_route_option(intent, task), to: RouteOptions, as: :resolve_snapshot
 
   @doc false
-  defdelegate consume_route_option(option, operation_id), to: RouteOptions, as: :consume
+  defdelegate lock_route_option(snapshot, intent, task), to: RouteOptions, as: :lock_snapshot
+
+  @doc false
+  defdelegate revalidate_route_option(option, snapshot, intent, task),
+    to: RouteOptions,
+    as: :revalidate_locked
+
+  @doc false
+  defdelegate consume_route_option(option, operation_id), to: RouteOptions, as: :consume_locked
 
   @doc false
   defdelegate delete_expired_route_options(), to: RouteOptions, as: :delete_expired

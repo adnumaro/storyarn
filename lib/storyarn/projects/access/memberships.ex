@@ -29,6 +29,8 @@ defmodule Storyarn.Projects.Memberships do
     "viewer" => "viewer"
   }
 
+  @canonical_owner_actions [:manage_project, :manage_members, :run_bulk_ai]
+
   def list_project_members(project_id), do: MembershipOperations.list_members(@config, project_id)
 
   def get_membership(project_id, user_id), do: MembershipOperations.get_membership(@config, project_id, user_id)
@@ -111,13 +113,12 @@ defmodule Storyarn.Projects.Memberships do
   def authorize(%{user: %{id: user_id}}, project_id, action) when valid_id(project_id) and valid_id(user_id) do
     with %Project{} = project <-
            Repo.one(from(project in Project, where: project.id == ^project_id and is_nil(project.deleted_at))),
-         %ProjectMembership{role: role} = membership <-
-           get_effective_membership(project.id, user_id, project.workspace_id),
-         true <- ProjectMembership.can?(role, action) do
+         {:ok, %ProjectMembership{} = membership} <-
+           authorize_membership(project, user_id, action) do
       {:ok, project, membership}
     else
       nil -> {:error, :not_found}
-      false -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
@@ -151,8 +152,7 @@ defmodule Storyarn.Projects.Memberships do
 
   def authorize_locked(_scope, _project_id, _action, _lock_mode), do: {:error, :unauthorized}
 
-  defp authorize_membership_locked(project, user_id, action, lock_mode)
-       when action in [:manage_project, :manage_members] do
+  defp authorize_membership_locked(project, user_id, action, lock_mode) when action in @canonical_owner_actions do
     with :ok <- ensure_canonical_owner_actor(project, user_id),
          memberships = lock_all_project_memberships(project.id, lock_mode),
          {:ok, %ProjectMembership{user_id: ^user_id} = membership} <-
@@ -176,6 +176,40 @@ defmodule Storyarn.Projects.Memberships do
 
   defp ensure_canonical_owner_actor(%Project{owner_id: user_id}, user_id), do: :ok
   defp ensure_canonical_owner_actor(%Project{}, _user_id), do: {:error, :unauthorized}
+
+  defp authorize_membership(project, user_id, action) when action in @canonical_owner_actions do
+    with %ProjectMembership{} = membership <-
+           get_effective_membership(project.id, user_id, project.workspace_id),
+         owner_memberships = list_project_owner_memberships_for_authorization(project.id),
+         {:ok, %ProjectMembership{user_id: ^user_id}} <-
+           OwnershipInvariant.owner(project, owner_memberships) do
+      {:ok, membership}
+    else
+      nil -> {:error, :not_found}
+      {:ok, _different_owner} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp authorize_membership(project, user_id, action) do
+    with %ProjectMembership{role: role} = membership <-
+           get_effective_membership(project.id, user_id, project.workspace_id),
+         true <- ProjectMembership.can?(role, action) do
+      {:ok, membership}
+    else
+      nil -> {:error, :not_found}
+      false -> {:error, :unauthorized}
+    end
+  end
+
+  defp list_project_owner_memberships_for_authorization(project_id) do
+    Repo.all(
+      from(membership in ProjectMembership,
+        where: membership.project_id == ^project_id and membership.role == "owner",
+        order_by: [asc: membership.user_id, asc: membership.id]
+      )
+    )
+  end
 
   defp lock_project(project_id, :share) do
     Repo.one(

@@ -10,6 +10,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
+  alias Storyarn.Workspaces.Workspace
 
   @outside_pg_bigint 9_223_372_036_854_775_808
 
@@ -28,6 +29,7 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipTest do
     assert %{role: "editor"} = Projects.get_membership(project.id, owner.id)
     assert %{role: "owner"} = Repo.reload!(receiver_membership)
     assert Repo.get!(Project, project.id).owner_id == receiver.id
+    assert Repo.get!(Workspace, project.workspace_id).owner_id == owner.id
 
     assert_receive {:project_ownership_transferred,
                     %{
@@ -156,6 +158,21 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipTest do
     assert {:error, :forced_rollback} =
              TransferOwnership.transfer(user_scope_fixture(owner), project.id, receiver.id,
                after_owner_demotion: fn -> {:error, :forced_rollback} end
+             )
+
+    assert_unchanged_owner(project.id, owner.id)
+    assert %{role: "editor"} = Repo.reload!(receiver_membership)
+  end
+
+  test "turns an unexpected internal seam result into a named error and rolls every write back" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+    receiver = user_fixture()
+    receiver_membership = membership_fixture(project, receiver, "editor")
+
+    assert {:error, :ownership_transfer_failed} =
+             TransferOwnership.transfer(user_scope_fixture(owner), project.id, receiver.id,
+               after_owner_demotion: fn -> :unexpected_result end
              )
 
     assert_unchanged_owner(project.id, owner.id)

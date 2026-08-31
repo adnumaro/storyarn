@@ -282,10 +282,13 @@ defmodule Storyarn.Workspaces do
     members, changing roles, and transferring ownership are separate actor-aware
     commands restricted to the canonical owner.
   - `:create_project` - create new projects (owner, admin, member)
+  - `:use_ai` - run explicitly initiated single-item AI actions (owner, admin)
+  - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
   - `:view` - view workspace content (all roles)
   """
   @spec authorize(scope(), integer(), action()) ::
-          {:ok, workspace(), membership()} | {:error, :not_found | :unauthorized}
+          {:ok, workspace(), membership()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
   defdelegate authorize(scope, workspace_id, action), to: Memberships
 
   # =============================================================================

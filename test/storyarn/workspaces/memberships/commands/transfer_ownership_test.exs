@@ -2,10 +2,12 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnershipTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Accounts.User
   alias Storyarn.Commercial.Billing
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Workspaces
   alias Storyarn.Workspaces.Memberships
@@ -20,6 +22,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnershipTest do
     workspace = workspace_fixture(owner)
     receiver = user_without_workspace()
     _receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
+    project = project_fixture(owner, %{workspace: workspace})
     subscription_before = Billing.get_subscription(workspace.id)
     workspace_id = workspace.id
     owner_id = owner.id
@@ -37,6 +40,7 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnershipTest do
     assert %{owner_id: ^receiver_id} = Repo.get!(Workspace, workspace.id)
     assert %{role: "admin"} = Memberships.get_membership(workspace.id, owner.id)
     assert %{role: "owner"} = Memberships.get_membership(workspace.id, receiver.id)
+    assert Repo.get!(Project, project.id).owner_id == owner.id
 
     subscription_after = Billing.get_subscription(workspace.id)
     assert subscription_after.id == subscription_before.id
@@ -141,6 +145,22 @@ defmodule Storyarn.Workspaces.Memberships.Commands.TransferOwnershipTest do
     assert {:error, :forced_rollback} =
              TransferOwnership.transfer(owner_scope, workspace.id, receiver.id,
                after_owner_demotion: fn -> {:error, :forced_rollback} end
+             )
+
+    assert_unchanged_owner(workspace.id, owner.id)
+    assert %{role: "member"} = Repo.reload!(receiver_membership)
+  end
+
+  test "turns an unexpected internal seam result into a named error and rolls every write back" do
+    owner = user_fixture()
+    owner_scope = user_scope_fixture(owner)
+    workspace = workspace_fixture(owner)
+    receiver = user_without_workspace()
+    receiver_membership = workspace_membership_fixture(workspace, receiver, "member")
+
+    assert {:error, :ownership_transfer_failed} =
+             TransferOwnership.transfer(owner_scope, workspace.id, receiver.id,
+               after_owner_demotion: fn -> :unexpected_result end
              )
 
     assert_unchanged_owner(workspace.id, owner.id)

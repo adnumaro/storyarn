@@ -9,6 +9,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
   alias Storyarn.Projects.Events
   alias Storyarn.Projects.Lifecycle.Commands.UniqueSlug
   alias Storyarn.Projects.Memberships
+  alias Storyarn.Projects.Persistence.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.Projects.Persistence.WorkspaceRecord, as: Workspace
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.ProjectInvitation
@@ -18,12 +19,9 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
   alias Storyarn.Repo
 
   def create_project(%{user: user}, attrs) do
-    with {:ok, workspace, membership} <- authorized_workspace_for_create(attrs, user),
-         true <- WorkspaceAccess.can?(membership.role, :create_project) do
-      do_create_project(user, workspace.id, attrs)
-    else
-      false -> {:error, :unauthorized}
-      {:error, reason} -> {:error, reason}
+    case attrs[:workspace_id] || attrs["workspace_id"] do
+      nil -> {:error, :not_found}
+      workspace_id -> do_create_project(user, workspace_id, attrs)
     end
   end
 
@@ -94,7 +92,7 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
         with {:ok, cleanup_intents} <- Versioning.prepare_project_snapshot_hard_delete(locked_project),
              :ok <-
                Assets.prepare_parent_hard_delete_locked(locked_project.workspace_id, [locked_project.id]),
-             {:ok, deleted_project} <- Repo.delete(locked_project) do
+             {:ok, deleted_project} <- delete_locked_project(locked_project) do
           {:ok, {deleted_project, cleanup_intents}}
         end
       end)
@@ -109,20 +107,20 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
     end
   end
 
-  defp authorized_workspace_for_create(attrs, user) do
-    case attrs[:workspace_id] || attrs["workspace_id"] do
-      nil -> {:error, :not_found}
-      workspace_id -> WorkspaceAccess.get_workspace(%{user: user}, workspace_id)
-    end
-  end
+  defp delete_locked_project(%Project{} = project), do: Repo.delete(project)
 
   defp do_create_project(user, workspace_id, attrs) do
     result =
       Repo.transact(fn ->
-        with :ok <- normalize_capacity_result(lock_and_check_workspace_capacity(workspace_id)),
+        with %Workspace{} = workspace <- lock_workspace_for_project_creation(workspace_id),
+             {:ok, _membership} <- authorize_project_creation_locked(workspace, user),
+             :ok <- normalize_capacity_result(Commercial.can_create_project?(workspace)),
              {:ok, project} <- insert_project(user, attrs),
              {:ok, _membership} <- create_owner_membership(project, user) do
           {:ok, project}
+        else
+          nil -> {:error, :not_found}
+          {:error, reason} -> {:error, reason}
         end
       end)
 
@@ -136,6 +134,49 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
 
       error ->
         error
+    end
+  end
+
+  # The membership mutation workflows that can revoke project-creation rights
+  # serialize through this Workspace row before changing their membership.
+  # Holding it through authorization, capacity admission and insert makes this
+  # command linearizable with membership removal and role changes.
+  defp lock_workspace_for_project_creation(workspace_id) do
+    Repo.one(
+      from(workspace in Workspace,
+        where: workspace.id == ^workspace_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp authorize_project_creation_locked(%Workspace{} = workspace, user) do
+    case lock_workspace_membership(workspace.id, user.id) do
+      %WorkspaceMembership{role: role} = membership ->
+        if WorkspaceAccess.can?(role, :create_project),
+          do: {:ok, membership},
+          else: {:error, :unauthorized}
+
+      nil ->
+        missing_direct_membership_error(workspace, user)
+    end
+  end
+
+  defp lock_workspace_membership(workspace_id, user_id) do
+    Repo.one(
+      from(membership in WorkspaceMembership,
+        where: membership.workspace_id == ^workspace_id and membership.user_id == ^user_id,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  # Preserve the established distinction for project-only users: they can see
+  # the Workspace, but their virtual membership never grants project creation.
+  defp missing_direct_membership_error(workspace, user) do
+    case WorkspaceAccess.get_workspace(%{user: user}, workspace.id) do
+      {:ok, _workspace, _virtual_membership} -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 

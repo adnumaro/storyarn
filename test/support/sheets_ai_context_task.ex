@@ -53,6 +53,9 @@ defmodule StoryarnTest.Sheets.AI.ContextTask do
   def authorize_subject(_scope, _intent_or_operation, _phase), do: :ok
 
   @impl true
+  def post_operation_authorization_mode, do: :lock_free
+
+  @impl true
   def context_contract(policy) do
     case Map.get(policy, :scope, Map.get(policy, "scope")) do
       :none -> nil
