@@ -43,7 +43,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Persistence.TableRowRecord, as: TableRow
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.References
   alias Storyarn.Projects.References.EntityReference
   alias Storyarn.Projects.References.RichTextMentions
@@ -672,10 +671,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   defp lock_and_reauthorize(context, preserved_localization_actor_ids) do
     # StorageAccounting owns the lock order and invokes us only after locking
     # workspace -> project -> available localization actors -> restore ->
-    # snapshot -> reservation. The User pass uses SKIP LOCKED: a concurrent
-    # delete can therefore never invert a parent/restore FK wait against this
-    # transaction.
-    with %Project{deleted_at: nil} = project <- Repo.get(Project, context.project.id),
+    # snapshot -> reservation. Canonical owner authorization then re-locks the
+    # already-held project row and locks every direct membership. The exclusive
+    # project lock remains the gate for ownership transfer, so no transfer can
+    # acquire a membership before this transaction reaches that final pass. The
+    # User prelock uses SKIP LOCKED: a concurrent delete can therefore never
+    # invert a parent/restore FK wait against this transaction.
+    with %User{} = actor <- context.actor,
+         {:ok, %Project{deleted_at: nil} = project, _membership} <-
+           Memberships.authorize_locked(%{user: actor}, context.project.id, :manage_project, :update),
          %ProjectSnapshotRestore{status: "running", phase: "verifying"} = restore <-
            Repo.get(ProjectSnapshotRestore, context.restore.id),
          %ProjectSnapshot{} = snapshot <- Repo.get(ProjectSnapshot, context.snapshot.id),
@@ -683,10 +687,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          true <- restore.generation == context.restore.generation,
          true <- restore.storage_reservation_id == context.reservation.id,
          true <- restore.requested_by_id == context.actor.id,
-         true <- MapSet.member?(preserved_localization_actor_ids, context.actor.id),
-         %User{} = actor <- context.actor,
-         %ProjectMembership{} = membership <- lock_project_membership(project.id, actor.id),
-         true <- ProjectMembership.can?(membership.role, :manage_project) do
+         true <- MapSet.member?(preserved_localization_actor_ids, context.actor.id) do
       {:ok, %{project: project, restore: restore, snapshot: snapshot, actor: actor}}
     else
       nil -> {:error, :project_snapshot_restore_target_not_found}
@@ -694,14 +695,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
       {:error, reason} -> {:error, reason}
       _invalid -> {:error, :project_snapshot_restore_fence_mismatch}
     end
-  end
-
-  defp lock_project_membership(project_id, user_id) do
-    Repo.one(
-      from membership in ProjectMembership,
-        where: membership.project_id == ^project_id and membership.user_id == ^user_id,
-        lock: "FOR SHARE"
-    )
   end
 
   defp capture_active_state(project_id) do
@@ -816,7 +809,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     end
   end
 
-  defp restore_project_fields(project, project_data) do
+  defp restore_project_fields(%Project{} = project, project_data) do
     attrs =
       Map.new(@project_field_keys, fn key ->
         {String.to_existing_atom(key), Map.fetch!(project_data["project"], key)}

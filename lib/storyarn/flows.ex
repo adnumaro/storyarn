@@ -51,6 +51,8 @@ defmodule Storyarn.Flows do
   @type variable_reference_repair_failure :: {pos_integer(), term()}
   @type variable_reference_repair_error ::
           :not_found
+          | :unauthorized
+          | :ownership_invariant_violation
           | {:partial_variable_reference_repair,
              %{
                required(:repaired_count) => non_neg_integer(),
@@ -681,9 +683,9 @@ defmodule Storyarn.Flows do
   defdelegate list_stale_node_ids(flow_id), to: References
 
   @doc "Repairs stale Sheet variable identities in Flow-owned node data."
-  @spec repair_stale_variable_references(term()) ::
+  @spec repair_stale_variable_references(map(), term()) ::
           {:ok, non_neg_integer()} | {:error, variable_reference_repair_error()}
-  defdelegate repair_stale_variable_references(project_id), to: References
+  defdelegate repair_stale_variable_references(scope, project_id), to: References
 
   # =============================================================================
   # Connections - CRUD Operations

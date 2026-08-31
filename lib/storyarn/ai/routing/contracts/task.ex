@@ -91,6 +91,13 @@ defmodule Storyarn.AI.Task do
     end
   end
 
+  @doc """
+  Evaluates a dynamic task switch.
+
+  A dynamic function is part of the registry's lock-free contract: callers may
+  evaluate it after locking an Operation, so it must not acquire database locks
+  or call upstream authorization code.
+  """
   @spec enabled?(t()) :: boolean()
   def enabled?(%__MODULE__{enabled?: enabled?}) when is_boolean(enabled?), do: enabled?
   def enabled?(%__MODULE__{enabled?: enabled?}) when is_function(enabled?, 0), do: enabled?.()
@@ -131,6 +138,17 @@ defmodule Storyarn.AI.Task do
   def subject_current?(%__MODULE__{module: module}, operation) do
     not function_exported?(module, :subject_current?, 1) or module.subject_current?(operation) == true
   end
+
+  @doc """
+  Verifies the task's explicit contract for code run after a durable row lock.
+
+  Registry reconstruction invokes `definition/0` and can evaluate `enabled?`
+  after Operation or RouteOption. Registration therefore fails closed for
+  every task unless its owning module deliberately declares the whole task
+  definition lock-free through `post_operation_authorization_mode/0`.
+  """
+  @spec post_operation_authorization_safe?(t()) :: boolean()
+  def post_operation_authorization_safe?(%__MODULE__{module: module}), do: lock_free_post_operation_authorization?(module)
 
   @spec context_subject(t(), ExecutionIntent.t() | Operation.t()) ::
           {:ok, SubjectRef.t()} | {:error, atom()}
@@ -199,6 +217,7 @@ defmodule Storyarn.AI.Task do
       task.data_scope != :entity or function_exported?(task.module, :authorize_subject, 3),
       :missing_subject_authorizer
     )
+    |> require(post_operation_authorization_safe?(task), :unsafe_post_operation_authorization)
     |> require(valid_context_builder?(task), :missing_context_subject_builder)
   end
 
@@ -285,8 +304,14 @@ defmodule Storyarn.AI.Task do
   defp require(errors, false, error), do: [error | errors]
 
   defp declared_context_contract(module, policy) do
-    if function_exported?(module, :context_contract, 1),
-      do: module.context_contract(policy)
+    if function_exported?(module, :context_contract, 1) and
+         lock_free_post_operation_authorization?(module),
+       do: module.context_contract(policy)
+  end
+
+  defp lock_free_post_operation_authorization?(module) do
+    function_exported?(module, :post_operation_authorization_mode, 0) and
+      module.post_operation_authorization_mode() == :lock_free
   end
 
   defp valid_context_contract?(%__MODULE__{context_policy: policy, context_contract: contract}) do

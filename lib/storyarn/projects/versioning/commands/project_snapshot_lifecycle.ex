@@ -127,7 +127,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
       {:ok, %Project{} = authorized_project, _membership} ->
         result =
           Commercial.transact_with_workspace_lock(authorized_project.workspace_id, fn _workspace ->
-            delete_user_snapshot_locked(authorized_project, snapshot_id, user_id)
+            delete_user_snapshot_locked(scope, authorized_project, snapshot_id, user_id)
           end)
 
         publish_deleted_snapshot(result, authorized_project.id, snapshot_id)
@@ -703,8 +703,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     )
   end
 
-  defp delete_user_snapshot_locked(project, snapshot_id, user_id) do
-    with %Project{} <- lock_active_project(project.id, project.workspace_id),
+  defp delete_user_snapshot_locked(scope, project, snapshot_id, user_id) do
+    with {:ok, %Project{} = locked_project, _membership} <-
+           Memberships.authorize_locked(scope, project.id, :manage_project, :update),
+         :ok <- ensure_same_workspace(locked_project, project),
          %ProjectSnapshot{} = snapshot <- lock_snapshot(project.id, snapshot_id),
          true <- snapshot.lifecycle_state in @deletable_user_states,
          :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
@@ -717,6 +719,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
       {:error, reason} -> {:error, reason}
     end
   end
+
+  defp ensure_same_workspace(%Project{workspace_id: workspace_id}, %Project{workspace_id: workspace_id}), do: :ok
+  defp ensure_same_workspace(%Project{}, %Project{}), do: {:error, :unauthorized}
 
   defp prepare_project_hard_delete(%Project{id: project_id, workspace_id: workspace_id}, reason)
        when reason in @hard_delete_reasons and is_integer(project_id) and is_integer(workspace_id) do

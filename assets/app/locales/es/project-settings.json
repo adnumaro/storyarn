@@ -19,6 +19,7 @@
       }
     },
     "general": {
+      "owner_controls_unavailable": "Solo la persona propietaria actual puede editar los detalles, el idioma de origen, el tema, el mantenimiento o la eliminación del proyecto. Todavía puedes publicar plantillas y cambiar tu apariencia.",
       "project_name": "Nombre del proyecto",
       "project_type": "Tipo de proyecto",
       "project_type_placeholder": "Selecciona un tipo",
@@ -89,7 +90,16 @@
       "pending_title": "Invitaciones pendientes",
       "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
       "expires": "Caduca el {date}",
-      "revoke": "Revocar"
+      "revoke": "Revocar",
+      "transfer": {
+        "action": "Transferir propiedad",
+        "title": "¿Transferir la propiedad del proyecto?",
+        "description": "{name} pasará a ser la persona propietaria del proyecto y tú pasarás a ser editor. Perderás el acceso a los ajustes del proyecto y a la gestión de miembros. Las operaciones activas reservadas a la persona propietaria pueden detenerse o fallar tras la transferencia; revísalas con la nueva persona propietaria y vuelve a iniciarlas si es necesario.",
+        "confirm": "Transferir propiedad",
+        "pending": "Transfiriendo la propiedad del proyecto…",
+        "cancel": "Cancelar",
+        "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+      }
     },
     "localization": {
       "provider_title": "Proveedor de traducción (DeepL)",
@@ -174,6 +184,8 @@
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots.",
+        "ownership_invariant": "No se pudo solicitar la snapshot porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo.",
+        "unauthorized": "Ya no tienes permiso para crear snapshots de este proyecto.",
         "request_failed": "No se ha podido solicitar la snapshot.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
         "cancel_failed": "No se ha podido cancelar la snapshot."
@@ -230,6 +242,7 @@
         "in_progress": "Ya hay otra restauración de snapshot del proyecto en curso.",
         "request_conflict": "Esta solicitud entra en conflicto con otra solicitud duradera. Actualiza la página e inténtalo de nuevo.",
         "not_found": "Esta snapshot ya no está disponible.",
+        "ownership_invariant": "No se pudo solicitar la restauración porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo.",
         "unauthorized": "Ya no tienes permiso para restaurar este proyecto.",
         "invalid_request": "La solicitud de restauración no es válida. Actualiza la página e inténtalo de nuevo.",
         "request_failed": "No se ha podido solicitar la restauración del proyecto.",
@@ -446,6 +459,7 @@
       "review_error_save": "No se pudieron guardar tus selecciones.",
       "review_error_stale": "Esta revisión ya no está al día; el estado de la importación ha cambiado.",
       "review_error_unauthorized": "Ya no tienes permiso para importar en este proyecto.",
+      "review_error_ownership_invariant": "Esta acción de importación no puede continuar porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo.",
       "review_validate": "Validar revisión",
       "review_validated": "Esta selección exacta ha sido validada. Ya puedes iniciar la importación.",
       "review_needs_validation": "Valida esta selección completa antes de iniciar la importación.",
@@ -485,6 +499,7 @@
         "expired": "La importación no pudo ejecutarse antes de vencer el plazo de retención. No se modificó ningún contenido del proyecto.",
         "generic": "No se pudo completar la importación. No se modificó ningún contenido del proyecto.",
         "invalid_file": "El proyecto de Yarn seleccionado no es válido o supera los límites de seguridad de la importación.",
+        "ownership_invariant": "La importación no pudo continuar porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo.",
         "preflight_mode_changed": "El modo de importación cambió en otra pestaña. Revisa el modo actual y vuelve a iniciar la importación.",
         "preflight_not_eligible": "Este origen de Yarn no puede reemplazar el proyecto. Elige Añadir a este proyecto para continuar.",
         "preflight_reconfirm": "La confirmación de reemplazo ya no está vigente. Revisa las últimas opciones y vuelve a confirmar el reemplazo.",

@@ -681,7 +681,7 @@ defmodule Storyarn.Flows.WriterReferenceIntegrityTest do
   test "writers reject a source flow after its project is soft-deleted",
        %{user: user, project: project, flow: flow} do
     node = node_fixture(flow, %{data: %{"text" => "Original"}})
-    {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+    {:ok, _deleted_project} = Projects.delete_project(user_scope_fixture(user), project.id)
 
     assert {:error, :flow_not_found} =
              Flows.update_node_data(node, %{"text" => "Not saved"})

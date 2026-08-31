@@ -84,12 +84,7 @@ defmodule Storyarn.Scripts.SeedSkyOfReverie do
 
     case Projects.get_project_by_slugs(scope, workspace.slug, @project_slug) do
       {:ok, project, _membership} ->
-        {:ok, project} =
-          Projects.update_project(project, %{
-            name: attrs.name,
-            description: attrs.description,
-            settings: attrs.settings
-          })
+        project = update_existing_project!(scope, project, attrs)
 
         IO.puts("Using existing project #{@project_slug} (##{project.id})")
         project
@@ -98,6 +93,26 @@ defmodule Storyarn.Scripts.SeedSkyOfReverie do
         {:ok, project} = Projects.create_project(scope, attrs)
         IO.puts("Created project #{@project_slug} (##{project.id})")
         project
+    end
+  end
+
+  defp update_existing_project!(scope, project, attrs) do
+    case Projects.update_project(scope, project.id, %{
+           name: attrs.name,
+           description: attrs.description,
+           settings: attrs.settings
+         }) do
+      {:ok, updated_project} ->
+        updated_project
+
+      {:error, :unauthorized} ->
+        raise """
+        Cannot update the existing #{@project_slug} project because SKY_USER_EMAIL is not its owner.
+        Select the current project owner or seed a workspace where that project does not yet exist.
+        """
+
+      {:error, reason} ->
+        raise "Could not update the existing #{@project_slug} project: #{inspect(reason)}"
     end
   end
 

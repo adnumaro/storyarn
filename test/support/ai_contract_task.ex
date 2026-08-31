@@ -9,7 +9,7 @@ defmodule StoryarnTest.AI.ContractTask do
     %{
       id: "contract.echo",
       capability: Keyword.get(config, :capability, :suggestions),
-      data_scope: :project,
+      data_scope: Keyword.get(config, :data_scope, :project),
       required_domain_permissions: %{execute: :view, apply: :edit_content},
       allowed_lanes: Keyword.get(config, :allowed_lanes, [:managed]),
       input_schema_version: "contract-input-v1",
@@ -26,7 +26,7 @@ defmodule StoryarnTest.AI.ContractTask do
       result_ttl_seconds: Keyword.get(config, :result_ttl_seconds, 86_400),
       personal_byok_allowed?: Keyword.get(config, :personal_byok_allowed?, false),
       personal_cost_class: Keyword.get(config, :personal_cost_class),
-      bulk_allowed?: false,
+      bulk_allowed?: Keyword.get(config, :bulk_allowed?, false),
       scheduled_allowed?: Keyword.get(config, :scheduled_allowed?, false),
       result_visibility: :actor_private,
       managed_price: Keyword.get(config, :managed_price, %{id: "contract-free", version: 1, units: 1}),
@@ -62,6 +62,9 @@ defmodule StoryarnTest.AI.ContractTask do
   @impl true
   def validate_output(%{"echo" => %{"text" => text}}) when is_binary(text), do: :ok
   def validate_output(_output), do: {:error, :invalid_contract_output}
+
+  @impl true
+  def post_operation_authorization_mode, do: :lock_free
 
   @impl true
   def context_contract(policy) do

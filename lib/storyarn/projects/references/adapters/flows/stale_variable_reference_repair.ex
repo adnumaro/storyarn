@@ -9,6 +9,6 @@ defmodule Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepa
 
   alias Storyarn.Flows
 
-  @spec repair_project(term()) :: {:ok, non_neg_integer()} | {:error, term()}
-  def repair_project(project_id), do: Flows.repair_stale_variable_references(project_id)
+  @spec repair_project(map(), term()) :: {:ok, non_neg_integer()} | {:error, term()}
+  def repair_project(scope, project_id), do: Flows.repair_stale_variable_references(scope, project_id)
 end

@@ -122,7 +122,7 @@ defmodule Storyarn.Localization.FacadeContractTest do
     update_glossary_entry: 2,
     update_language: 2,
     update_text: 2,
-    upsert_provider_config: 2,
+    upsert_provider_config: 3,
     upsert_text: 2,
     vo_progress: 2,
     word_counts_by_speaker: 2

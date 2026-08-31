@@ -127,7 +127,11 @@ msgstr "No tienes permiso para exportar este proyecto"
 msgid "No changes detected"
 msgstr "No se detectaron cambios"
 
-#: lib/storyarn_web/helpers/authorize.ex:110
+#: lib/storyarn_web/helpers/authorize.ex:134
+#: lib/storyarn_web/live/project_settings_live/general.ex:388
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:739
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:171
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:280
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."

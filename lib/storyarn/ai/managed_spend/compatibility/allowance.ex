@@ -7,6 +7,7 @@ defmodule Storyarn.AI.Allowance do
   alias Storyarn.AI.ManagedSpend
   alias Storyarn.AI.ManagedSpend.Commands.Allowance, as: AllowanceCommands
   alias Storyarn.AI.Operation
+  alias Storyarn.Repo
 
   @type summary :: ManagedSpend.summary()
   @type scope :: ManagedSpend.scope()
@@ -25,13 +26,13 @@ defmodule Storyarn.AI.Allowance do
   defdelegate set_status(workspace_id, status), to: AllowanceCommands
 
   @spec reserve(Operation.t()) :: :ok | {:error, atom()}
-  defdelegate reserve(operation), to: AllowanceCommands
+  def reserve(operation), do: run_atomically(fn -> AllowanceCommands.reserve(operation) end)
 
   @spec commit(Operation.t()) :: :ok | {:error, atom()}
-  defdelegate commit(operation), to: AllowanceCommands
+  def commit(operation), do: run_atomically(fn -> AllowanceCommands.commit(operation) end)
 
   @spec release(Operation.t()) :: :ok | {:error, atom()}
-  defdelegate release(operation), to: AllowanceCommands
+  def release(operation), do: run_atomically(fn -> AllowanceCommands.release(operation) end)
 
   @spec expire_due() :: map()
   def expire_due, do: AllowanceCommands.expire_due()
@@ -41,4 +42,18 @@ defmodule Storyarn.AI.Allowance do
 
   @spec expire_due(DateTime.t(), keyword()) :: map()
   defdelegate expire_due(now, opts), to: AllowanceCommands
+
+  defp run_atomically(fun) do
+    if Repo.in_transaction?() do
+      fun.()
+    else
+      case Repo.transaction(fn -> rollback_on_error(fun.()) end) do
+        {:ok, result} -> result
+        {:error, reason} -> {:error, reason}
+      end
+    end
+  end
+
+  defp rollback_on_error({:error, reason}), do: Repo.rollback(reason)
+  defp rollback_on_error(result), do: result
 end

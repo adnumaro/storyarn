@@ -36,6 +36,7 @@ defmodule Storyarn.Projects.Imports.Error do
     missing_yarn_endif
     nested_archive_not_allowed
     not_found
+    ownership_invariant_violation
     pre_import_snapshot_capacity_unavailable
     pre_import_snapshot_unavailable
     pre_import_snapshot_verification_failed

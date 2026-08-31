@@ -30,8 +30,8 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
 
   @spec update_references(FlowNode.t()) :: :ok | {:error, term()}
   def update_references(%FlowNode{} = node) do
-    references = extract_references(node)
-    replace_references(node.id, references)
+    {references, authored_identities} = extract_references(node)
+    replace_references(node.id, references, authored_identities)
   end
 
   @doc false
@@ -136,9 +136,12 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
   defp valid_persisted_node?(_node), do: false
 
   defp extract_references(%FlowNode{} = node) do
+    specs = reference_specs(node)
+    authored_identities = MapSet.new(specs, &reference_identity/1)
+
     case flow_project_id(node.flow_id) do
-      nil -> []
-      project_id -> resolve_specs(project_id, reference_specs(node))
+      nil -> {[], MapSet.new()}
+      project_id -> {resolve_specs(project_id, specs), authored_identities}
     end
   end
 
@@ -661,9 +664,18 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
     end)
   end
 
-  defp replace_references(node_id, references) do
+  defp replace_references(node_id, references, authored_identities) do
     operation = fn ->
-      delete_references(node_id)
+      resolved_identities = MapSet.new(references, &reference_identity/1)
+      unresolved_identities = MapSet.difference(authored_identities, resolved_identities)
+      resolved_persistence_keys = MapSet.new(references, &reference_persistence_key/1)
+
+      # An unresolved row is recovery evidence after a Sheet or variable rename.
+      # Keep it only while the node still authors that exact read/write identity;
+      # resolved, removed, and replaced identities must continue to win normally.
+      preserved_ids = preserved_reference_ids(node_id, unresolved_identities, resolved_persistence_keys)
+
+      delete_replaced_references(node_id, preserved_ids)
       now = TimeHelpers.now()
 
       entries =
@@ -701,6 +713,55 @@ defmodule Storyarn.Flows.VariableReferenceTracker do
       :ok -> :ok
       {:error, reason} -> {:error, {:variable_reference_write_failed, "flow_node", node_id, reason}}
     end
+  end
+
+  defp existing_references(node_id) do
+    Repo.all(
+      from reference in VariableReference,
+        where:
+          reference.source_type == "flow_node" and
+            reference.source_id == ^node_id
+    )
+  end
+
+  defp preserved_reference_ids(node_id, unresolved_identities, resolved_persistence_keys) do
+    if MapSet.size(unresolved_identities) == 0 do
+      []
+    else
+      node_id
+      |> existing_references()
+      |> Enum.filter(&preserve_reference?(&1, unresolved_identities, resolved_persistence_keys))
+      |> Enum.map(& &1.id)
+    end
+  end
+
+  defp preserve_reference?(reference, unresolved_identities, resolved_persistence_keys) do
+    MapSet.member?(unresolved_identities, reference_identity(reference)) and
+      not MapSet.member?(resolved_persistence_keys, reference_persistence_key(reference))
+  end
+
+  defp delete_replaced_references(node_id, []) do
+    delete_references(node_id)
+  end
+
+  defp delete_replaced_references(node_id, preserved_ids) do
+    Repo.delete_all(
+      from reference in VariableReference,
+        where:
+          reference.source_type == "flow_node" and
+            reference.source_id == ^node_id and
+            reference.id not in ^preserved_ids
+    )
+
+    :ok
+  end
+
+  defp reference_identity(reference) do
+    {reference.kind, reference.source_sheet, reference.source_variable}
+  end
+
+  defp reference_persistence_key(reference) do
+    {reference.block_id, reference.kind, reference.source_variable}
   end
 
   defp stale_reference_rows(flow_ids) do

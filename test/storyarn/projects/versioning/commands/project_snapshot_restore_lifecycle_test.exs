@@ -132,6 +132,19 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycleTest do
                )
     end
 
+    test "fails closed when direct project ownership is ambiguous", context do
+      second_owner = user_fixture()
+      _second_owner_membership = membership_fixture(context.project, second_owner, "owner")
+
+      assert {:error, :ownership_invariant_violation} =
+               request(context, Ecto.UUID.generate())
+
+      refute Repo.exists?(
+               from restore in ProjectSnapshotRestore,
+                 where: restore.project_id == ^context.project.id
+             )
+    end
+
     test "returns clean conflicts for a reused key or another active restore", context do
       key = Ecto.UUID.generate()
       assert {:ok, _restore} = request(context, key)
@@ -591,6 +604,45 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycleTest do
         assert Repo.get!(ProjectSnapshotRestore, restore.id).status == "running"
         assert Repo.get!(StorageReservation, reservation.id).status == "active"
       end)
+    end
+
+    test "ownership drift releases a bound reservation, terminalizes once, and remains recoverable" do
+      context = restore_context!()
+      {restore, job, reservation} = claimed_restore_with_bound_reservation!(context, 321)
+      second_owner = user_fixture()
+      duplicate_owner = membership_fixture(context.project, second_owner, "owner")
+      parent = self()
+
+      assert :ok = Versioning.subscribe_project_snapshot_restores(context.project.id)
+
+      assert {:discard, :project_snapshot_restore_unauthorized} =
+               Versioning.perform_project_snapshot_restore(restore.id, 1,
+                 job_id: job.id,
+                 attempt: 1,
+                 max_attempts: 5,
+                 executor: fn _claimed, _opts ->
+                   send(parent, :ownership_drift_executor_called)
+                   {:error, :must_not_execute}
+                 end
+               )
+
+      refute_receive :ownership_drift_executor_called
+      assert_receive {:project_snapshot_restore_updated, restore_id}
+      assert restore_id == restore.id
+
+      failed = Repo.get!(ProjectSnapshotRestore, restore.id)
+      assert failed.status == "failed"
+      assert failed.failure_code == "project_snapshot_restore_unauthorized"
+      assert failed.failure_message == "The project snapshot restore could not be completed."
+
+      released = Repo.get!(StorageReservation, reservation.id)
+      assert released.status == "released"
+      assert released.cleanup_status == "not_required"
+      assert Billing.workspace_storage_usage(restore.workspace_id).active_reservations.bytes == 0
+
+      Repo.delete!(duplicate_owner)
+      assert {:ok, replacement} = request(context, Ecto.UUID.generate())
+      assert replacement.status == "queued"
     end
 
     test "keeps retries non-terminal and fences duplicate delivery after completion", context do

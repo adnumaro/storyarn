@@ -13,6 +13,8 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
 
   alias Storyarn.Projects
 
+  @max_pg_bigint 9_223_372_036_854_775_807
+
   # ---------------------------------------------------------------------------
   # Form changesets
   # ---------------------------------------------------------------------------
@@ -142,12 +144,12 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   # ---------------------------------------------------------------------------
 
   def do_repair_variable_references(socket) do
-    do_repair_variable_references(socket, &Projects.repair_stale_project_variable_references/1)
+    do_repair_variable_references(socket, &Projects.repair_stale_project_variable_references/2)
   end
 
   @doc false
-  def do_repair_variable_references(socket, repair_fun) when is_function(repair_fun, 1) do
-    case repair_fun.(socket.assigns.project.id) do
+  def do_repair_variable_references(socket, repair_fun) when is_function(repair_fun, 2) do
+    case repair_fun.(socket.assigns.current_scope, socket.assigns.project.id) do
       {:ok, count} ->
         {:noreply, put_flash(socket, :info, repair_message(count))}
 
@@ -169,6 +171,17 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
            failed_repair_message(length(failures))
          )}
 
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "projects",
+             "Variable references could not be repaired because project ownership is inconsistent."
+           )
+         )}
+
       {:error, _reason} ->
         {:noreply,
          put_flash(
@@ -179,25 +192,16 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     end
   end
 
-  @doc false
-  def snapshot_storage_accounting(scope, project) do
-    case Projects.project_snapshot_accounting(scope, project.id) do
-      {:ok, accounting} -> accounting
-      {:error, reason} -> raise "snapshot accounting read failed: #{inspect(reason)}"
-    end
-  end
-
   def do_send_invitation(socket, invite_params) do
     changeset = invite_changeset(invite_params)
 
     if changeset.valid? do
       project = socket.assigns.project
-      user = socket.assigns.current_scope.user
       email = Ecto.Changeset.get_field(changeset, :email)
       role = Ecto.Changeset.get_field(changeset, :role)
 
-      project
-      |> Projects.create_invitation(user, email, role)
+      socket.assigns.current_scope
+      |> Projects.create_invitation(project.id, email, role)
       |> handle_project_invitation_result(socket)
     else
       {:noreply,
@@ -252,6 +256,24 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
     {:noreply, put_flash(socket, :error, dgettext("projects", "Member limit reached for your plan."))}
   end
 
+  defp handle_project_invitation_result({:error, :unauthorized}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "Only the current project owner can invite members.")
+     )}
+  end
+
+  defp handle_project_invitation_result({:error, :ownership_invariant_violation}, socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext("projects", "The invitation could not be sent because project ownership is inconsistent.")
+     )}
+  end
+
   defp handle_project_invitation_result({:error, _reason}, socket) do
     {:noreply, put_flash(socket, :error, dgettext("projects", "Could not send invitation."))}
   end
@@ -259,9 +281,13 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   def do_revoke_invitation(socket, id) do
     project_id = socket.assigns.project.id
 
-    with {invitation_id, ""} <- Integer.parse(to_string(id)),
-         %{project_id: ^project_id} = invitation <- Projects.get_pending_invitation(invitation_id),
-         {:ok, _invitation} <- Projects.revoke_invitation(invitation) do
+    with {:ok, invitation_id} <- parse_positive_pg_bigint(id),
+         {:ok, _invitation} <-
+           Projects.revoke_invitation(
+             socket.assigns.current_scope,
+             project_id,
+             invitation_id
+           ) do
       pending_invitations = Projects.list_pending_invitations(project_id)
 
       {:noreply,
@@ -269,6 +295,22 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
        |> assign(:pending_invitations, pending_invitations)
        |> put_flash(:info, dgettext("projects", "Invitation revoked."))}
     else
+      {:error, :unauthorized} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "Only the current project owner can revoke invitations.")
+         )}
+
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext("projects", "The invitation could not be revoked because project ownership is inconsistent.")
+         )}
+
       _ ->
         {:noreply, put_flash(socket, :error, dgettext("projects", "Invitation not found."))}
     end
@@ -279,30 +321,70 @@ defmodule StoryarnWeb.ProjectLive.Components.SettingsComponents do
   Shared between ProjectSettingsLive.* and ExportImportLive.Index.
   """
   def do_remove_member(socket, id) do
-    member = Enum.find(socket.assigns.members, &(to_string(&1.id) == id))
+    case parse_positive_pg_bigint(id) do
+      {:ok, membership_id} ->
+        case Projects.remove_member(
+               socket.assigns.current_scope,
+               socket.assigns.project.id,
+               membership_id
+             ) do
+          {:ok, _} ->
+            members = Projects.list_project_members(socket.assigns.project.id)
 
-    if member && member.role != "owner" do
-      case Projects.remove_member(member) do
-        {:ok, _} ->
-          members = Projects.list_project_members(socket.assigns.project.id)
+            socket =
+              socket
+              |> assign(:members, members)
+              |> put_flash(:info, dgettext("projects", "Member removed."))
 
-          socket =
-            socket
-            |> assign(:members, members)
-            |> put_flash(:info, dgettext("projects", "Member removed."))
+            {:noreply, socket}
 
-          {:noreply, socket}
+          {:error, :cannot_remove_owner} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("projects", "Cannot remove the project owner.")
+             )}
 
-        {:error, :cannot_remove_owner} ->
-          {:noreply,
-           put_flash(
-             socket,
-             :error,
-             dgettext("projects", "Cannot remove the project owner.")
-           )}
-      end
-    else
-      {:noreply, put_flash(socket, :error, dgettext("projects", "Member not found."))}
+          {:error, :not_found} ->
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Member not found."))}
+
+          {:error, :unauthorized} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext("projects", "Only the current project owner can remove members.")
+             )}
+
+          {:error, :ownership_invariant_violation} ->
+            {:noreply,
+             put_flash(
+               socket,
+               :error,
+               dgettext(
+                 "projects",
+                 "The member could not be removed because project ownership is inconsistent."
+               )
+             )}
+
+          {:error, _reason} ->
+            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to remove member."))}
+        end
+
+      _ ->
+        {:noreply, put_flash(socket, :error, dgettext("projects", "Member not found."))}
     end
   end
+
+  defp parse_positive_pg_bigint(value) when is_integer(value) and value > 0 and value <= @max_pg_bigint, do: {:ok, value}
+
+  defp parse_positive_pg_bigint(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 and id <= @max_pg_bigint -> {:ok, id}
+      _invalid -> :error
+    end
+  end
+
+  defp parse_positive_pg_bigint(_value), do: :error
 end

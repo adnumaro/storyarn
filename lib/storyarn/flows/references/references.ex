@@ -128,7 +128,7 @@ defmodule Storyarn.Flows.References do
   defdelegate list_stale_node_ids_by_flow(flow_ids), to: VariableReferenceTracker
   defdelegate list_referenced_sheet_ids(project_id), to: VariableReferenceTracker
 
-  defdelegate repair_stale_variable_references(project_id),
+  defdelegate repair_stale_variable_references(scope, project_id),
     to: StaleVariableReferenceRepair,
     as: :repair_project
 end

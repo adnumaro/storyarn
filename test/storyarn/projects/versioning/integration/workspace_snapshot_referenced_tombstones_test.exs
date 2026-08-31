@@ -75,7 +75,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotReferencedTombstonesInte
 
     source_project_id = context.project.id
     original_keys = source_storage_keys(snapshot, [active_asset, trashed_asset])
-    assert {:ok, deleted} = Projects.delete_project(context.project, context.user.id)
+    assert {:ok, deleted} = Projects.delete_project(context.scope, context.project.id)
     assert {:ok, _project} = Projects.permanently_delete_project(deleted)
     refute Repo.get(Project, source_project_id)
     Enum.each(original_keys, fn key -> ObjectStorage.delete(key) end)

@@ -45,6 +45,17 @@ defmodule Storyarn.Commercial do
   # and the current shared-database lock semantics until persistence ownership
   # is migrated separately.
   defdelegate can_create_workspace?(user), to: Billing
+
+  @doc """
+  Checks whether a user can receive ownership of another Workspace.
+
+  The Workspace workflow remains responsible for holding the receiving user's
+  serialization lock across this check and the ownership write.
+  """
+  @spec can_receive_workspace?(%{required(:id) => pos_integer()}) ::
+          :ok | {:error, :limit_reached, map()}
+  defdelegate can_receive_workspace?(user), to: Billing
+
   defdelegate can_create_project?(workspace), to: Billing
   defdelegate can_publish_reserved_project?(workspace), to: Billing
   defdelegate can_create_project_template?(source_project), to: Billing

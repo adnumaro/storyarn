@@ -143,7 +143,16 @@
         "revoke": "Revoke",
         "active_members": "Active Members",
         "no_members": "No members found.",
-        "remove_member": "Remove member"
+        "remove_member": "Remove member",
+        "transfer": {
+          "action": "Transfer ownership",
+          "title": "Transfer workspace ownership?",
+          "description": "{name} will become the workspace owner and you will become an admin. Project ownership will not change. The transfer will fail if the new owner has reached their workspace limit.",
+          "confirm": "Transfer ownership",
+          "pending": "Transferring workspace ownership…",
+          "cancel": "Cancel",
+          "connection_unconfirmed": "The connection was interrupted, so Storyarn could not confirm the result. Reconnect and refresh this page before trying again."
+        }
       },
       "imports": {
         "title": "Imports",

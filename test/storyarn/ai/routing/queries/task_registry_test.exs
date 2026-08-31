@@ -11,6 +11,7 @@ defmodule Storyarn.AI.TaskRegistryTest do
   alias Storyarn.AI.Tasks.ManagedDiagnostic
   alias Storyarn.AI.Telemetry
   alias StoryarnTest.AI.ContractTask
+  alias StoryarnTest.AI.MissingLockFreeMarkerTask
 
   test "loads only registered validated tasks and derives palette ids" do
     assert {:ok, task} = TaskRegistry.fetch("contract.echo")
@@ -20,6 +21,17 @@ defmodule Storyarn.AI.TaskRegistryTest do
     assert TaskRegistry.command_id?("ai.contract.echo")
     refute TaskRegistry.command_id?("ai.forged.command")
     assert {:error, :unknown_task} = TaskRegistry.fetch("missing.task")
+  end
+
+  test "rejects a task without the lock-free marker before evaluating its definition" do
+    original = Application.get_env(:storyarn, TaskRegistry, [])
+    on_exit(fn -> Application.put_env(:storyarn, TaskRegistry, original) end)
+
+    Application.put_env(:storyarn, TaskRegistry, tasks: [MissingLockFreeMarkerTask])
+
+    assert_raise ArgumentError, ~r/must declare post_operation_authorization_mode\/0 as :lock_free/, fn ->
+      TaskRegistry.all()
+    end
   end
 
   test "rejects an incomplete or caller-shaped task definition" do

@@ -34,6 +34,7 @@ function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
       sourceLanguageOptions: [],
       projectTemplates: [],
       projectTemplatePublications: [],
+      canManageProject: true,
       ...props,
     },
     global: {
@@ -42,7 +43,10 @@ function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
         _live_vue: live,
       },
       stubs: {
-        Dialog: { template: "<div><slot /></div>" },
+        Dialog: {
+          props: ["open"],
+          template: '<div :data-open="String(open)"><slot /></div>',
+        },
         DialogContent: { template: "<div><slot /></div>" },
         DialogDescription: { template: "<p><slot /></p>" },
         DialogFooter: { template: "<div><slot /></div>" },
@@ -158,5 +162,86 @@ describe("ProjectSettingsGeneral source language", () => {
       { locale_code: "es", reset_translations: true },
       undefined,
     );
+  });
+});
+
+describe("ProjectSettingsGeneral ownership changes", () => {
+  it("keeps shared controls available but removes owner-only controls", () => {
+    const english = {
+      value: "en",
+      localeCode: "en",
+      label: "English",
+      languageTag: "en",
+      flagCode: "gb",
+      shortLabel: "EN",
+    };
+
+    const wrapper = mountGeneral({
+      canManageProject: false,
+      sourceLanguage: english,
+      sourceLanguageOptions: [english],
+    });
+
+    expect(wrapper.get('[data-testid="project-owner-controls-unavailable"]').text()).toContain(
+      "Only the current project owner",
+    );
+    expect(wrapper.find("#project-name").exists()).toBe(false);
+    expect(wrapper.findComponent(LanguagePicker).exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("Project Theme");
+    expect(wrapper.text()).not.toContain("Maintenance");
+    expect(wrapper.text()).not.toContain("Danger Zone");
+
+    expect(wrapper.find('[data-testid="open-template-publication-dialog"]').exists()).toBe(true);
+    expect(wrapper.text()).toContain("Appearance");
+  });
+
+  it("clears owner-only confirmations instead of reopening stale intent", async () => {
+    const english = {
+      value: "en",
+      localeCode: "en",
+      label: "English",
+      languageTag: "en",
+      flagCode: "gb",
+      shortLabel: "EN",
+    };
+    const spanish = {
+      value: "es",
+      label: "Spanish",
+      languageTag: "es",
+      flagCode: "es",
+      shortLabel: "ES",
+    };
+    const wrapper = mountGeneral({
+      sourceLanguage: english,
+      sourceLanguageOptions: [english, spanish],
+      canManageProject: true,
+    });
+
+    wrapper.findComponent(LanguagePicker).vm.$emit("select", spanish);
+    await wrapper.get('[data-testid="open-project-repair-dialog"]').trigger("click");
+    await wrapper.get('[data-testid="open-project-delete-dialog"]').trigger("click");
+
+    expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(true);
+    expect(
+      wrapper.get('[data-testid="project-repair-confirm-dialog"]').attributes("data-open"),
+    ).toBe("true");
+    expect(
+      wrapper.get('[data-testid="project-delete-confirm-dialog"]').attributes("data-open"),
+    ).toBe("true");
+
+    await wrapper.setProps({ canManageProject: false });
+    expect(wrapper.findComponent(ConfirmDialog).exists()).toBe(false);
+    expect(wrapper.find('[data-testid="project-repair-confirm-dialog"]').exists()).toBe(false);
+    expect(wrapper.find('[data-testid="project-delete-confirm-dialog"]').exists()).toBe(false);
+
+    await wrapper.setProps({ canManageProject: true });
+    expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(false);
+    expect(wrapper.getComponent(ConfirmDialog).props("description")).not.toContain("Spanish");
+    expect(
+      wrapper.get('[data-testid="project-repair-confirm-dialog"]').attributes("data-open"),
+    ).toBe("false");
+    expect(
+      wrapper.get('[data-testid="project-delete-confirm-dialog"]').attributes("data-open"),
+    ).toBe("false");
   });
 });

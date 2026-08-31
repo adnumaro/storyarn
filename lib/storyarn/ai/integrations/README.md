@@ -21,11 +21,11 @@ configuration may refer to them.
 - `events/` owns the append-only integration security audit.
 - `contracts/` defines the configurable provider adapter SPI.
 - `adapters/` implements provider-specific key validation.
-- `data/` contains consumer-owned Ecto projections of Accounts and Workspaces
+- `projections/` contains consumer-owned Ecto projections of Accounts and Workspaces
   tables. They are deliberately small, read-only outside Ecto associations,
   and exist so Integrations does not depend on another context's schema module.
 
-`data/` records do not claim ownership of the shared SQL tables. Integrations
+`projections/` records do not claim ownership of the shared SQL tables. Integrations
 owns writes only to `ai_integrations`, assignments, consents, preferences and
 its audit table.
 
@@ -35,3 +35,11 @@ Integrations consumes AI Governance for workspace access and policy, and AI
 Routing for task/model contracts. Those calls must go through the respective
 capability facades once the surrounding AI migration has stabilized; direct
 legacy module identities are transitional compatibility, not new public API.
+
+Workspace-scoped mutations share one database lock order:
+`Workspace -> WorkspaceMembership -> WorkspacePolicy -> Integration ->
+Assignment -> Consent/Preference`. `WorkspaceAccessLocks` owns the root pair;
+callers that consult policy acquire it immediately afterwards and before any
+Integrations-owned row. Disconnect and consent-revocation paths deliberately
+lock only the downstream suffix so cleanup remains possible after access or
+workspace removal. They must never add an upstream lock after that suffix.

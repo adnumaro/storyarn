@@ -10,6 +10,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   alias Storyarn.AI.Audit
   alias Storyarn.AI.Governance
   alias Storyarn.AI.Integration
+  alias Storyarn.AI.Integrations.Commands.WorkspaceAccessLocks
   alias Storyarn.AI.Integrations.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.AI.PersonalConsent
@@ -146,9 +147,9 @@ defmodule Storyarn.AI.IntegrationAssignments do
   end
 
   defp assign_locked(scope, user_id, integration_id, workspace_id) do
-    with {:ok, workspace, membership} <- workspace_access(scope, workspace_id),
-         %Integration{} = integration <- lock_owned_integration(integration_id, user_id),
+    with {:ok, workspace, membership} <- WorkspaceAccessLocks.lock(scope, workspace_id),
          policy = Governance.lock_effective_policy(workspace.id),
+         %Integration{} = integration <- lock_owned_integration(integration_id, user_id),
          :ok <- eligible(membership.role, policy) do
       lock_assignment!(user_id, workspace.id, integration.provider)
       get_or_insert(integration, workspace.id)
@@ -159,7 +160,7 @@ defmodule Storyarn.AI.IntegrationAssignments do
   end
 
   defp unassign_locked(scope, user_id, integration_id, workspace_id) do
-    with {:ok, _workspace, membership} <- workspace_access(scope, workspace_id),
+    with {:ok, _workspace, membership} <- WorkspaceAccessLocks.lock(scope, workspace_id),
          :ok <- require_workspace_membership(membership.role) do
       case lock_active(user_id, integration_id, workspace_id) do
         %IntegrationWorkspaceAssignment{} = assignment ->
@@ -253,13 +254,6 @@ defmodule Storyarn.AI.IntegrationAssignments do
 
   defp feature_enabled(%{user: user}) do
     if FeatureFlags.enabled?(:ai_integrations, for: user), do: :ok, else: {:error, :feature_disabled}
-  end
-
-  defp workspace_access(scope, workspace_id) do
-    case Governance.get_workspace(scope, workspace_id) do
-      {:ok, workspace, membership} -> {:ok, workspace, membership}
-      _error -> {:error, :workspace_unavailable}
-    end
   end
 
   defp eligible(nil, %WorkspacePolicy{}), do: {:error, :workspace_unavailable}

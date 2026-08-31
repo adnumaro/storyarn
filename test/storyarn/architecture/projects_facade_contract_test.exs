@@ -165,8 +165,8 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     register_materialized_asset: 3,
     register_uploaded_asset: 4,
     reload_project: 2,
-    remove_member: 1,
-    repair_stale_project_variable_references: 1,
+    remove_member: 3,
+    repair_stale_project_variable_references: 2,
     request_full_project_snapshot: 3,
     request_project_snapshot_restore: 4,
     request_project_template_instantiation: 5,
@@ -183,7 +183,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     resume_latest_active_project_import: 3,
     resume_project_import: 3,
     resume_project_import: 4,
-    revoke_invitation: 1,
+    revoke_invitation: 3,
     run_asset_materialization_scope: 2,
     run_snapshot_archive_smoke!: 1,
     save_project_import_review: 3,
@@ -192,6 +192,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     start_project_snapshot_reconciliation: 0,
     start_project_snapshot_reconciliation: 1,
     subscribe_project_imports: 1,
+    subscribe_project_ownership_changes: 1,
     subscribe_project_snapshot_restores: 1,
     subscribe_project_snapshots: 1,
     subscribe_project_template_publications: 1,
@@ -201,9 +202,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     tool_health_summary: 1,
     touch_project: 1,
     touch_project: 2,
+    transfer_owner: 3,
     unarchive_project_template: 2,
-    update_member_role: 2,
-    update_project: 2,
+    update_member_role: 4,
+    update_project: 3,
     update_project_import_mode: 3,
     update_project_import_strategy: 3,
     update_workspace_snapshot_upload_progress: 4,
@@ -267,9 +269,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "3c6636193dd0eb8e0927df4648fa9ac81130a8fd781c9364b3f54ec4652735c3"
+  @docs_digest "8040142c4fab0a6ad751299aa5df90cb81ebd3c3e4e0651999088aade33083cf"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
-  @specs_digest "94800341e839c234aca49af0f6669f27c870eba0eb209b717803b9c81734b586"
+  @specs_digest "0e2ca5f35a9a51106f384b5f633a32ea0bd7c364cea1f4c48b8c5c24f7fa9c94"
 
   test "the root facade preserves every established function and arity" do
     expected = MapSet.new(@public_contract ++ @worker_contract)
@@ -301,10 +303,10 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 182
+    assert length(established_docs) == 184
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 74, hidden: 15, none: 93}
+             %{documented: 76, hidden: 15, none: 93}
 
     assert length(worker_docs) == 42
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
@@ -344,7 +346,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 39
+    assert length(normalized_specs) == 41
     assert digest(normalized_specs) == @specs_digest
   end
 

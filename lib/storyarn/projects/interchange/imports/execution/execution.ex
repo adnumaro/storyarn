@@ -28,7 +28,6 @@ defmodule Storyarn.Projects.Imports.Execution do
   alias Storyarn.Projects.Imports.Telemetry
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
-  alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Repo
 
@@ -368,31 +367,27 @@ defmodule Storyarn.Projects.Imports.Execution do
     end
   end
 
-  # Lock the project exclusively before the requester, membership, and attempt.
+  # Lock the project and canonical ownership exclusively before the requester
+  # notification context and attempt.
   # Besides preventing deletion, this serializes all imports into the same
   # project and avoids acquiring notification FK parent locks after the attempt
   # row is held.
   defp authorize_worker_locked(attempt, user_id) do
-    with %Project{} = project <-
-           Project
-           |> where([candidate], candidate.id == ^attempt.project_id and is_nil(candidate.deleted_at))
-           |> lock("FOR UPDATE")
-           |> Repo.one(),
-         notification_context = NotificationDelivery.lock_context(attempt, project),
-         %ProjectMembership{} = locked_membership <-
-           ProjectMembership
-           |> where(
-             [candidate],
-             candidate.project_id == ^attempt.project_id and candidate.user_id == ^user_id
-           )
-           |> lock("FOR SHARE")
-           |> Repo.one(),
-         true <- ProjectMembership.can?(locked_membership.role, @import_action) do
-      {:ok, project, notification_context}
-    else
-      nil -> {:error, :unauthorized}
-      false -> {:error, :unauthorized}
-      {:error, reason} -> {:error, reason}
+    case Memberships.authorize_locked(
+           %{user: %{id: user_id}},
+           attempt.project_id,
+           @import_action,
+           :update
+         ) do
+      {:ok, %Project{} = project, _membership} ->
+        notification_context = NotificationDelivery.lock_context(attempt, project)
+        {:ok, project, notification_context}
+
+      {:error, :not_found} ->
+        {:error, :unauthorized}
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 

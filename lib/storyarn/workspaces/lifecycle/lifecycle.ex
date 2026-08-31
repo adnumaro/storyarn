@@ -18,8 +18,8 @@ defmodule Storyarn.Workspaces.Lifecycle do
   end
 
   def change_new_workspace(attrs \\ %{}), do: change_workspace(%Workspace{}, attrs)
-  defdelegate update_workspace(workspace, attrs), to: UpdateWorkspace, as: :update
-  defdelegate delete_workspace(workspace), to: DeleteWorkspace, as: :delete
+  defdelegate update_workspace(scope, workspace_id, attrs), to: UpdateWorkspace, as: :update
+  defdelegate delete_workspace(scope, workspace_id), to: DeleteWorkspace, as: :delete
   defdelegate generate_slug(name), to: UniqueSlug, as: :generate
   defdelegate source_locale_options(), to: SourceLocaleCatalog, as: :all
 end

@@ -1311,6 +1311,35 @@ describe("ImportPanel resume state", () => {
     wrapper.unmount();
   });
 
+  it("explains project ownership drift returned by an import review action", async () => {
+    const wrapper = mountPanel(resolvedPreviewState());
+
+    await wrapper.get("#yarn-import-confirm").trigger("click");
+    reviewEventCalls("execute_import")[0]?.[2]?.({
+      ok: false,
+      reason: "ownership_invariant_violation",
+    });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="yarn-import-review-error"]').text()).toContain(
+      "project ownership is inconsistent",
+    );
+
+    wrapper.unmount();
+  });
+
+  it("explains project ownership drift persisted on a failed import", () => {
+    const state = attemptState("failed", "error");
+    state.errorCode = "ownership_invariant_violation";
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.get('[data-testid="yarn-import-terminal-error"]').text()).toContain(
+      "project ownership is inconsistent",
+    );
+
+    wrapper.unmount();
+  });
+
   it("renders snapshot preparation as recoverable background work", () => {
     const state = {
       ...attemptState("queued"),
@@ -1995,6 +2024,24 @@ describe("ImportPanel resume state", () => {
 
     const banner = wrapper.get('[data-testid="yarn-import-review-error"]');
     expect(banner.text().length).toBeGreaterThan(0);
+
+    wrapper.unmount();
+  });
+
+  it("explains ownership drift returned while autosaving the review", async () => {
+    const wrapper = mountPanel(reviewedPreviewState());
+
+    await wrapper.findAll('[data-testid="yarn-import-action-create-sheet"]')[0]!.trigger("click");
+    vi.advanceTimersByTime(500);
+
+    const saveCall = reviewEventCalls("save_import_review")[0];
+    expect(saveCall).toBeDefined();
+    saveCall?.[2]?.({ ok: false, reason: "ownership_invariant_violation" });
+    await wrapper.vm.$nextTick();
+
+    expect(wrapper.get('[data-testid="yarn-import-review-error"]').text()).toContain(
+      "project ownership is inconsistent",
+    );
 
     wrapper.unmount();
   });

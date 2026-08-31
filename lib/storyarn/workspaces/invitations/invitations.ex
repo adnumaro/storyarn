@@ -22,8 +22,8 @@ defmodule Storyarn.Workspaces.Invitations do
 
   defdelegate list_pending_invitations(workspace_id), to: Pending, as: :list
 
-  def create_invitation(workspace, invited_by, email, role \\ "member") do
-    Create.execute(workspace, invited_by, email, role)
+  def create_invitation(scope, workspace_id, email, role \\ "member") do
+    Create.execute(scope, workspace_id, email, role)
   end
 
   def create_admin_invitation(workspace, email, role, opts \\ []) do
@@ -32,7 +32,7 @@ defmodule Storyarn.Workspaces.Invitations do
 
   defdelegate get_invitation_by_token(token), to: ByToken, as: :get
   defdelegate accept_invitation(invitation, user), to: Accept, as: :execute
-  defdelegate revoke_invitation(invitation), to: Revoke, as: :execute
+  defdelegate revoke_invitation(scope, workspace_id, invitation_id), to: Revoke, as: :execute
 
   def deliver_invitation_email(encoded_token, opts \\ []) do
     Handler.deliver(encoded_token, opts)

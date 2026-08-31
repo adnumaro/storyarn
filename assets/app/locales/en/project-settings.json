@@ -19,6 +19,7 @@
       }
     },
     "general": {
+      "owner_controls_unavailable": "Only the current project owner can edit project details, source language, project theme, maintenance, or deletion. You can still publish templates and change your appearance.",
       "project_name": "Project Name",
       "project_type": "Project type",
       "project_type_placeholder": "Select a type",
@@ -89,7 +90,16 @@
       "pending_title": "Pending invitations",
       "pending_description": "Pending invitations reserve a member seat until accepted, revoked, or expired.",
       "expires": "Expires {date}",
-      "revoke": "Revoke"
+      "revoke": "Revoke",
+      "transfer": {
+        "action": "Transfer ownership",
+        "title": "Transfer project ownership?",
+        "description": "{name} will become the project owner and you will become an editor. You will lose access to project settings and member management. Active owner-only operations may stop or fail after the transfer; review them with the new owner and restart them if needed.",
+        "confirm": "Transfer ownership",
+        "pending": "Transferring project ownership…",
+        "cancel": "Cancel",
+        "connection_unconfirmed": "The connection was interrupted, so Storyarn could not confirm the result. Reconnect and refresh this page before trying again."
+      }
     },
     "localization": {
       "provider_title": "Translation Provider (DeepL)",
@@ -174,6 +184,8 @@
         "submitting": "Capturing…",
         "storage_limit_reached": "This snapshot requires {required}, but only {available} is available.",
         "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots.",
+        "ownership_invariant": "The snapshot could not be requested because project ownership is inconsistent. Contact support before retrying.",
+        "unauthorized": "You no longer have permission to create snapshots for this project.",
         "request_failed": "The snapshot could not be requested.",
         "connection_failed": "The connection was interrupted. Retry safely to resume the same request.",
         "cancel_failed": "The snapshot could not be cancelled."
@@ -230,6 +242,7 @@
         "in_progress": "Another project snapshot restore is already in progress.",
         "request_conflict": "This restore request conflicts with an existing durable request. Refresh and try again.",
         "not_found": "This snapshot is no longer available.",
+        "ownership_invariant": "The project restore could not be requested because project ownership is inconsistent. Contact support before retrying.",
         "unauthorized": "You no longer have permission to restore this project.",
         "invalid_request": "The restore request was invalid. Refresh and try again.",
         "request_failed": "The project restore could not be requested.",
@@ -446,6 +459,7 @@
       "review_error_save": "Your selections could not be saved.",
       "review_error_stale": "This review is out of date; the import state has changed.",
       "review_error_unauthorized": "You no longer have permission to import into this project.",
+      "review_error_ownership_invariant": "This import action cannot continue because project ownership is inconsistent. Contact support before retrying.",
       "review_validate": "Validate review",
       "review_validated": "This exact selection has been validated. You can now start the import.",
       "review_needs_validation": "Validate this complete selection before starting the import.",
@@ -485,6 +499,7 @@
         "expired": "The import could not run before its retention deadline. No project content was changed.",
         "generic": "The import could not be completed. No project content was changed.",
         "invalid_file": "The selected Yarn project is invalid or exceeds the import safety limits.",
+        "ownership_invariant": "The import could not continue because project ownership is inconsistent. Contact support before retrying.",
         "preflight_mode_changed": "The import mode changed in another tab. Review the current mode and start the import again.",
         "preflight_not_eligible": "This Yarn source is not eligible to replace the project. Choose Add to this project to continue.",
         "preflight_reconfirm": "The replacement confirmation is no longer current. Review the latest choices and confirm the replacement again.",

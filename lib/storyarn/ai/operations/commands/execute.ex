@@ -61,13 +61,34 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
   end
 
   defp create_operation(intent, task) do
-    with {:ok, route_option, route} <- Routing.resolve_route_option(intent, task),
+    with {:ok, route_option_snapshot, route_snapshot} <- Routing.snapshot_route_option(intent, task),
+         {:ok, intent_preauthorization} <-
+           Governance.preauthorize_intent(intent, task, :execute, lane: route_snapshot.lane),
+         # Authorization retains Workspace -> Project -> memberships/policy.
+         # RouteOption comes afterwards so parent hard-delete can never hold
+         # Workspace while this transaction holds RouteOption in reverse order.
+         {:ok, route_option, _prelocked_route} <-
+           Routing.lock_route_option(route_option_snapshot, intent, task),
+         {:ok, current_task} <- Routing.fetch_task(task.id),
+         {:ok, route} <-
+           Routing.revalidate_route_option(
+             route_option,
+             route_option_snapshot,
+             intent,
+             current_task
+           ),
          {:ok, decision} <-
-           Governance.authorize(intent, task, :execute, lane: route.lane, lock_policy: true),
+           Governance.complete_intent_authorization(
+             intent,
+             current_task,
+             :execute,
+             intent_preauthorization,
+             lane: route.lane
+           ),
          true <- decision.policy_version == route.policy_version || {:error, :route_ref_stale},
-         true <- Routing.route_current?(decision, task, route) || {:error, :route_ref_stale},
-         :ok <- RateLimits.check_execution(intent.scope.user.id, task.id),
-         {:ok, context} <- Context.prepare(intent.scope, task, intent),
+         true <- Routing.route_current?(decision, current_task, route) || {:error, :route_ref_stale},
+         :ok <- RateLimits.check_execution(intent.scope.user.id, current_task.id),
+         {:ok, context} <- Context.prepare(intent.scope, current_task, intent),
          :ok <- context_matches_option(context, route_option),
          {:ok, input} <- context_input(intent.input, context) do
       subject = intent.subject || %{}
@@ -83,9 +104,9 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
           project_id: intent.project_id,
           project_id_snapshot: intent.project_id,
           route_option_id: route_option.id,
-          task_id: task.id,
-          task_contract_hash: Task.contract_hash(task),
-          capability: Atom.to_string(task.capability),
+          task_id: current_task.id,
+          task_contract_hash: route_option.task_contract_hash,
+          capability: Atom.to_string(current_task.capability),
           idempotency_key: intent.idempotency_key,
           execution_status: "queued",
           settlement_status: settlement_status,
@@ -96,12 +117,12 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
           context_manifest: context_manifest(context),
           context_subject: context_subject(context),
           input_hash: intent.input_hash,
-          input_schema_version: task.input_schema_version,
-          output_schema_version: task.output_schema_version,
-          prompt_version: task.prompt_version,
-          context_version: task.context_version,
-          result_type: task.result_type,
-          result_destination: stringify_destination(task.result_destination),
+          input_schema_version: current_task.input_schema_version,
+          output_schema_version: current_task.output_schema_version,
+          prompt_version: current_task.prompt_version,
+          context_version: current_task.context_version,
+          result_type: current_task.result_type,
+          result_destination: stringify_destination(current_task.result_destination),
           policy_decision: Governance.decision_to_map(decision),
           execution_route: ExecutionRoute.to_map(route)
         })
@@ -118,10 +139,10 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
         input_hash: intent.input_hash,
         context_hash: context_hash(context),
         context_manifest: context_manifest(context),
-        task_id: task.id,
-        prompt_version: task.prompt_version,
-        context_version: task.context_version,
-        output_schema_version: task.output_schema_version
+        task_id: current_task.id,
+        prompt_version: current_task.prompt_version,
+        context_version: current_task.context_version,
+        output_schema_version: current_task.output_schema_version
       })
       |> Repo.insert!()
 
@@ -132,7 +153,7 @@ defmodule Storyarn.AI.Operations.Commands.Execute do
         {:error, changeset} -> Repo.rollback(changeset)
       end
 
-      if task.execution_mode == :background do
+      if current_task.execution_mode == :background do
         ExecutionQueue.enqueue!(operation.id)
       end
 

@@ -357,6 +357,10 @@ defmodule Storyarn.AI.IntegrationCrud do
   end
 
   defp revoke_locked!(active, action, now) do
+    # This is the downstream-only suffix of the Integrations lock protocol:
+    # Integration -> Assignment -> Consent. Never acquire Workspace,
+    # WorkspaceMembership or WorkspacePolicy from here; workspace-scoped
+    # writers acquire those roots before reaching Integration.
     {1, _} =
       Repo.update_all(
         from(i in Integration, where: i.id == ^active.id and is_nil(i.revoked_at)),

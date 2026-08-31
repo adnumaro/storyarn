@@ -1,4 +1,4 @@
-defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
+defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
   use ExUnit.Case, async: false
 
   alias Storyarn.Architecture.DependencyPolicy
@@ -10,6 +10,7 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
   @sheets_root "lib/storyarn/sheets"
   @reference_tables [:entity_references, :variable_references]
   @owned_inventory_tables [:assets, :localized_texts, :storage_cleanup_requests]
+  @aggregate_identity_tables [:project_memberships, :projects, :workspace_memberships, :workspaces]
   @repo_write_functions ~w(
     delete delete! delete_all insert insert! insert_all insert_or_update
     insert_or_update! update update! update_all
@@ -153,6 +154,43 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
              {"defp insert_asset/1", :insert},
              {"defp persist_update/1", :update}
            ]
+  end
+
+  test "AST guard requires a declared schema target and ignores unrelated Repo writes" do
+    source = """
+    defmodule Example do
+      alias Storyarn.Projects.ProjectMembership
+      alias Storyarn.Repo
+      alias Storyarn.Workspaces.WorkspaceMembership
+
+      def create(%{membership_schema: ProjectMembership}) do
+        %ProjectMembership{}
+        |> Ecto.Changeset.change(%{})
+        |> Repo.insert()
+      end
+
+      def update(%ProjectMembership{} = membership) do
+        membership
+        |> Ecto.Changeset.change(%{})
+        |> Repo.update()
+      end
+
+      def unrelated(%WorkspaceMembership{} = membership) do
+        membership
+        |> Ecto.Changeset.change(%{})
+        |> Repo.update()
+      end
+    end
+    """
+
+    assert source
+           |> table_mutations(
+             "inline_target_bound_writer.ex",
+             ["Storyarn.Projects.ProjectMembership"],
+             "project_memberships"
+           )
+           |> Enum.map(&{&1.function, &1.operation})
+           |> Enum.sort() == [{"def create/1", :insert}, {"def update/1", :update}]
   end
 
   test "AST guard follows target collections through pipelines and callbacks" do
@@ -447,7 +485,7 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
 
     for {name, contract} <- contracts do
       assert contract.table == Atom.to_string(name)
-      assert contract.analyzer.scanner == "Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest.table_mutations/4"
+      assert contract.analyzer.scanner == "Storyarn.Architecture.PersistenceWriteOwnershipTest.table_mutations/4"
       assert is_binary(contract.analyzer.detects) and contract.analyzer.detects != ""
       assert is_list(contract.analyzer.limits) and contract.analyzer.limits != []
 
@@ -524,7 +562,7 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
 
       assert schemas != [], "the guard must discover at least one schema for #{contract.table}"
       assert is_atom(contract.ownership_model)
-      assert contract.analyzer.scanner == "Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest.table_mutations/4"
+      assert contract.analyzer.scanner == "Storyarn.Architecture.PersistenceWriteOwnershipTest.table_mutations/4"
 
       for role <- [:ordinary_writers, :privileged_writers] do
         writers = Map.fetch!(contract, role)
@@ -588,6 +626,154 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
            end)
   end
 
+  test "aggregate identity and membership tables match their complete ENG-108 writer inventories" do
+    contracts = aggregate_identity_policy()
+
+    assert contracts |> Map.keys() |> Enum.sort() == @aggregate_identity_tables
+
+    for {name, contract} <- contracts do
+      schemas = schema_modules(@storyarn_root, contract.table)
+
+      assert schemas != [], "the guard must discover at least one schema for #{contract.table}"
+      assert contract.table == Atom.to_string(name)
+      assert is_atom(contract.ownership_model)
+      assert contract.ordinary_owner in [:projects, :workspaces]
+      assert contract.writers != [], "#{contract.table} must keep a non-empty writer inventory"
+      assert contract.analyzer.scanner == "Storyarn.Architecture.PersistenceWriteOwnershipTest.table_mutations/4"
+
+      writer_paths = Enum.map(contract.writers, & &1.path)
+      assert writer_paths == Enum.sort(writer_paths)
+      assert writer_paths == Enum.uniq(writer_paths)
+
+      for writer <- contract.writers do
+        assert writer.context == contract.ordinary_owner
+        assert is_atom(writer.authority)
+        assert is_binary(writer.reason) and writer.reason != ""
+        assert File.regular?(writer.path), "declared #{name} writer is missing: #{writer.path}"
+        assert valid_eng108_functions?(writer.functions)
+
+        source = File.read!(writer.path)
+        available_functions = source_function_identities(source, writer.path)
+
+        for function <- writer.functions do
+          assert function.identity in available_functions,
+                 "#{writer.path} no longer defines #{function.identity}"
+
+          actual_operations = source_function_write_operations(source, writer.path, function.identity)
+
+          assert Enum.all?(function.operations, &(&1 in actual_operations)), """
+          #{writer.path} #{function.identity} no longer contains its declared persistence operation.
+
+          Actual operations: #{inspect(actual_operations)}
+          Declared operations: #{inspect(function.operations)}
+          """
+        end
+      end
+
+      for false_positive <- contract.scanner_false_positives do
+        assert File.regular?(false_positive.path)
+        assert is_binary(false_positive.reason) and false_positive.reason != ""
+
+        assert false_positive.function in source_function_identities(File.read!(false_positive.path), false_positive.path)
+      end
+
+      actual = detected_reference_writes(contract.table, schemas)
+      expected = declared_eng108_scanner_writes(contract)
+
+      assert actual == expected, """
+      #{contract.table} acquired, lost or moved a statically visible writer.
+      Review the real table effect and update the complete ENG-108 inventory;
+      conservative false positives must stay classified explicitly.
+
+      Actual: #{inspect(actual, pretty: true)}
+      Expected: #{inspect(expected, pretty: true)}
+
+      Analyzer limits: #{inspect(contract.analyzer.limits, pretty: true)}
+      """
+    end
+  end
+
+  test "canonical owner-membership invariant implementation files stay explicit and non-empty" do
+    contract = ownership_invariant_policy()
+
+    assert is_binary(contract.invariant) and contract.invariant != ""
+    assert contract.implementations != [], "the duplicated invariant contract must never become vacuous"
+
+    assert contract.implementations
+           |> Enum.flat_map(& &1.aggregates)
+           |> Enum.uniq()
+           |> Enum.sort() == [:project, :workspace]
+
+    declared_paths = contract.implementations |> Enum.map(& &1.path) |> Enum.sort()
+    assert declared_paths == Enum.uniq(declared_paths)
+
+    reviewed_non_implementation_paths =
+      contract.discovery.reviewed_non_implementations
+      |> Enum.map(fn candidate ->
+        assert File.regular?(candidate.path)
+        assert is_binary(candidate.reason) and candidate.reason != ""
+        candidate.path
+      end)
+      |> Enum.sort()
+
+    assert reviewed_non_implementation_paths == Enum.uniq(reviewed_non_implementation_paths)
+    assert MapSet.disjoint?(MapSet.new(declared_paths), MapSet.new(reviewed_non_implementation_paths))
+    assert contract.discovery.limits != []
+    assert Enum.all?(contract.discovery.limits, &(is_binary(&1) and &1 != ""))
+
+    for implementation <- contract.implementations do
+      assert implementation.aggregates != []
+      assert implementation.aggregates == implementation.aggregates |> Enum.uniq() |> Enum.sort()
+      assert Enum.all?(implementation.aggregates, &(&1 in [:project, :workspace]))
+      assert is_atom(implementation.context)
+      assert is_atom(implementation.mode)
+      assert File.regular?(implementation.path)
+      assert implementation.functions != []
+      assert implementation.functions == implementation.functions |> Enum.uniq() |> Enum.sort()
+
+      source = File.read!(implementation.path)
+      available_functions = source_function_identities(source, implementation.path)
+
+      assert Enum.all?(implementation.functions, &(&1 in available_functions))
+
+      declared_function_source =
+        source_for_function_identities(source, implementation.path, implementation.functions)
+
+      assert Enum.all?(
+               contract.discovery.required_literals,
+               &String.contains?(declared_function_source, &1)
+             )
+
+      assert String.contains?(declared_function_source, contract.discovery.owner_role_patterns)
+    end
+
+    actual_paths =
+      contract.discovery.root
+      |> Path.join("**/*.ex")
+      |> Path.wildcard()
+      |> Enum.filter(fn path ->
+        source = File.read!(path)
+
+        Enum.all?(contract.discovery.required_literals, &String.contains?(source, &1)) and
+          String.contains?(source, contract.discovery.owner_role_patterns)
+      end)
+      |> Enum.sort()
+
+    assert actual_paths != [], "owner-invariant discovery must never become vacuous"
+
+    expected_discovery_paths = Enum.sort(declared_paths ++ reviewed_non_implementation_paths)
+
+    assert actual_paths == expected_discovery_paths, """
+    Every source file conservatively identified as implementing owner_id +
+    exactly one matching role=owner membership must be reviewed explicitly.
+    Candidates that only delegate the decision must also remain classified.
+    Do not centralize this business rule merely to satisfy the ratchet.
+
+    Actual: #{inspect(actual_paths, pretty: true)}
+    Declared: #{inspect(expected_discovery_paths, pretty: true)}
+    """
+  end
+
   defp reference_ownership_policy do
     @policy_path
     |> DependencyPolicy.load!()
@@ -600,6 +786,91 @@ defmodule Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest do
     |> DependencyPolicy.load!()
     |> Map.fetch!(:persistence_ownership)
     |> Map.take(@owned_inventory_tables)
+  end
+
+  defp aggregate_identity_policy do
+    @policy_path
+    |> DependencyPolicy.load!()
+    |> Map.fetch!(:persistence_ownership)
+    |> Map.take(@aggregate_identity_tables)
+  end
+
+  defp ownership_invariant_policy do
+    @policy_path
+    |> DependencyPolicy.load!()
+    |> Map.fetch!(:canonical_owner_membership_invariant)
+  end
+
+  defp valid_eng108_functions?(functions) do
+    functions != [] and
+      functions == Enum.sort_by(functions, & &1.identity) and
+      Enum.all?(functions, fn function ->
+        is_binary(function.identity) and function.identity != "" and
+          function.detected_by_analyzer == true and
+          function.operations != [] and
+          function.operations == function.operations |> Enum.uniq() |> Enum.sort()
+      end)
+  end
+
+  defp declared_eng108_scanner_writes(contract) do
+    detected_writers =
+      Enum.flat_map(contract.writers, fn writer ->
+        Enum.flat_map(writer.functions, &declared_function_writes(writer.path, &1))
+      end)
+
+    false_positives =
+      Enum.map(contract.scanner_false_positives, fn candidate ->
+        Map.take(candidate, [:path, :function, :operation])
+      end)
+
+    sort_write_inventory(detected_writers ++ false_positives)
+  end
+
+  defp source_function_identities(source, path) do
+    source
+    |> quoted!(path)
+    |> function_clauses()
+    |> Enum.map(& &1.identity)
+    |> Enum.uniq()
+  end
+
+  defp source_for_function_identities(source, path, identities) do
+    source
+    |> quoted!(path)
+    |> function_clauses()
+    |> Enum.filter(&(&1.identity in identities))
+    |> Enum.map_join("\n", fn clause ->
+      Macro.to_string(clause.head) <> "\n" <> Macro.to_string(clause.body)
+    end)
+  end
+
+  defp source_function_write_operations(source, path, identity) do
+    ast = quoted!(source, path)
+    aliases = alias_bindings(ast)
+    imports = imported_modules(ast, aliases)
+
+    ast
+    |> function_clauses()
+    |> Enum.filter(&(&1.identity == identity))
+    |> Enum.flat_map(&function_clause_write_operations(&1, aliases, imports))
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp function_clause_write_operations(clause, aliases, imports) do
+    {_body, operations} =
+      Macro.prewalk(clause.body, [], fn node, operations ->
+        {node, collect_persistence_write_operation(node, operations, aliases, imports)}
+      end)
+
+    operations
+  end
+
+  defp collect_persistence_write_operation(node, operations, aliases, imports) do
+    case persistence_write_call(node, aliases, imports) do
+      {:ok, _kind, operation, _arguments, _meta} -> [operation | operations]
+      :not_a_write -> operations
+    end
   end
 
   defp detected_reference_writes(table, schemas) do

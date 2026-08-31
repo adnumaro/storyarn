@@ -246,43 +246,49 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project, membership: membership} = socket.assigns
+    stale_project = socket.assigns.project
 
-    if Projects.can?(membership.role, :manage_project) do
-      if connected?(socket) do
-        # Subscribe before the initial reads so a committed lease change cannot
-        # fall into a read/subscribe gap and leave deletion affordances stale.
-        Commercial.subscribe_project_snapshot_export_leases(project.id)
-        Projects.subscribe_project_snapshots(project.id)
-        Projects.subscribe_project_snapshot_restores(project.id)
-      end
+    if connected?(socket) do
+      # Ownership must be observed before refreshing access. Otherwise a
+      # transfer committed between the read and the subscription could leave
+      # an old owner mounted indefinitely.
+      Projects.subscribe_project_ownership_changes(stale_project.id)
+    end
 
-      accounting = snapshot_storage_accounting(socket.assigns.current_scope, project)
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, stale_project.id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project),
+         :ok <- subscribe_snapshot_updates(socket, project),
+         {:ok, accounting} <-
+           Projects.project_snapshot_accounting(socket.assigns.current_scope, project.id) do
       restores = Projects.list_project_snapshot_restores(project.id)
 
-      socket =
-        socket
-        |> assign(:current_workspace, project.workspace)
-        |> assign(:snapshots, accounting.snapshots)
-        |> assign(:snapshot_reservations, accounting.snapshot_reservations)
-        |> assign(:snapshot_slots_used, accounting.snapshot_slots_used)
-        |> assign(:snapshot_slots_limit, accounting.snapshot_slots_limit)
-        |> assign(:storage_usage, accounting.storage_usage)
-        |> assign(:storage_limit, accounting.storage_limit)
-        |> assign(:snapshot_restores, restores)
-        |> assign(:snapshot_build_statuses, Projects.project_snapshot_build_statuses(accounting.snapshots))
-        |> assign(:snapshot_build_status_timer, nil)
-        |> schedule_build_status_refresh()
-
-      {:ok, socket}
-    else
       {:ok,
        socket
-       |> put_flash(
-         :error,
-         dgettext("projects", "You don't have permission to manage this project.")
-       )
-       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+       |> assign(:project, project)
+       |> assign(:membership, membership)
+       |> assign(:current_workspace, project.workspace)
+       |> assign(:snapshots, accounting.snapshots)
+       |> assign(:snapshot_reservations, accounting.snapshot_reservations)
+       |> assign(:snapshot_slots_used, accounting.snapshot_slots_used)
+       |> assign(:snapshot_slots_limit, accounting.snapshot_slots_limit)
+       |> assign(:storage_usage, accounting.storage_usage)
+       |> assign(:storage_limit, accounting.storage_limit)
+       |> assign(:snapshot_restores, restores)
+       |> assign(:snapshot_build_statuses, Projects.project_snapshot_build_statuses(accounting.snapshots))
+       |> assign(:snapshot_build_status_timer, nil)
+       |> assign(:snapshot_access_active, true)
+       |> schedule_build_status_refresh()}
+    else
+      _lost_access ->
+        {:ok,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("projects", "You don't have permission to manage this project.")
+         )
+         |> redirect(to: ~p"/workspaces/#{stale_project.workspace.slug}/projects/#{stale_project.slug}")}
     end
   end
 
@@ -304,150 +310,243 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
 
   @impl true
   def handle_event("create_snapshot", params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      attrs = %{
-        mode: "full",
-        idempotency_key: params["idempotency_key"],
-        title: params["title"],
-        description: params["description"]
-      }
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket ->
+        attrs = %{
+          mode: "full",
+          idempotency_key: params["idempotency_key"],
+          title: params["title"],
+          description: params["description"]
+        }
 
-      case Projects.request_full_project_snapshot(
-             socket.assigns.current_scope,
-             socket.assigns.project,
-             attrs
-           ) do
-        {:ok, snapshot} ->
-          {:noreply,
-           socket
-           |> refresh_snapshot_accounting()
-           |> push_event("snapshot_request_accepted", %{snapshotId: snapshot.id})
-           |> put_flash(:info, dgettext("projects", "Snapshot creation started."))}
+        case Projects.request_full_project_snapshot(
+               socket.assigns.current_scope,
+               socket.assigns.project,
+               attrs
+             ) do
+          {:ok, snapshot} ->
+            {:noreply,
+             socket
+             |> refresh_snapshot_accounting()
+             |> push_event("snapshot_request_accepted", %{snapshotId: snapshot.id})
+             |> put_flash(:info, dgettext("projects", "Snapshot creation started."))}
 
-        {:error, :limit_reached, details} ->
-          {:noreply, push_snapshot_request_error(socket, "storage_limit_reached", details)}
+          {:error, :limit_reached, details} ->
+            {:noreply, push_snapshot_request_error(socket, "storage_limit_reached", details)}
 
-        {:error, :snapshot_limit_reached, details} ->
-          {:noreply, push_snapshot_request_error(socket, "snapshot_limit_reached", details)}
+          {:error, :snapshot_limit_reached, details} ->
+            {:noreply, push_snapshot_request_error(socket, "snapshot_limit_reached", details)}
 
-        {:error, _reason} ->
-          {:noreply, push_snapshot_request_error(socket, "request_failed", %{})}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            snapshot_authorization_failure(socket, :create, nil, :ownership_invariant_violation)
+
+          {:error, :unauthorized} ->
+            snapshot_authorization_failure(socket, :create, nil, :unauthorized)
+
+          {:error, _reason} ->
+            {:noreply, push_snapshot_request_error(socket, "request_failed", %{})}
+        end
+      end,
+      &snapshot_authorization_failure(&1, :create, nil, &2)
+    )
   end
 
   @impl true
   def handle_event("cancel_snapshot", params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
-           {:ok, snapshot} <-
-             Projects.cancel_project_snapshot(
-               socket.assigns.current_scope,
-               socket.assigns.project,
-               snapshot_id
-             ) do
-        {:noreply,
-         socket
-         |> refresh_snapshot_accounting()
-         |> push_event("snapshot_cancel_accepted", %{snapshotId: snapshot.id})}
-      else
-        _invalid ->
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket ->
+        with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
+             {:ok, snapshot} <-
+               Projects.cancel_project_snapshot(
+                 socket.assigns.current_scope,
+                 socket.assigns.project,
+                 snapshot_id
+               ) do
           {:noreply,
-           push_event(socket, "snapshot_cancel_failed", %{
-             snapshotId: event_snapshot_id(params["id"]),
-             message: dgettext("projects", "The snapshot could not be cancelled.")
-           })}
-      end
-    end)
+           socket
+           |> refresh_snapshot_accounting()
+           |> push_event("snapshot_cancel_accepted", %{snapshotId: snapshot.id})}
+        else
+          {:error, :ownership_invariant_violation} ->
+            snapshot_authorization_failure(
+              socket,
+              :cancel,
+              event_snapshot_id(params["id"]),
+              :ownership_invariant_violation
+            )
+
+          {:error, :unauthorized} ->
+            snapshot_authorization_failure(
+              socket,
+              :cancel,
+              event_snapshot_id(params["id"]),
+              :unauthorized
+            )
+
+          _invalid ->
+            {:noreply,
+             push_event(socket, "snapshot_cancel_failed", %{
+               snapshotId: event_snapshot_id(params["id"]),
+               message: dgettext("projects", "The snapshot could not be cancelled.")
+             })}
+        end
+      end,
+      &snapshot_authorization_failure(&1, :cancel, event_snapshot_id(params["id"]), &2)
+    )
   end
 
   @impl true
   def handle_event("delete_snapshot", params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
-      with false <- project_restore_active_now?(socket.assigns.project.id),
-           {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
-           {:ok, _intent} <-
-             Projects.delete_project_snapshot(
-               socket.assigns.current_scope,
-               socket.assigns.project,
-               snapshot_id
-             ) do
-        {:noreply,
-         socket
-         |> refresh_snapshot_accounting()
-         |> push_event("snapshot_delete_accepted", %{snapshotId: snapshot_id})
-         |> put_flash(:info, dgettext("projects", "Snapshot deletion started."))}
-      else
-        true ->
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket ->
+        with false <- project_restore_active_now?(socket.assigns.project.id),
+             {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
+             {:ok, _intent} <-
+               Projects.delete_project_snapshot(
+                 socket.assigns.current_scope,
+                 socket.assigns.project,
+                 snapshot_id
+               ) do
           {:noreply,
-           push_event(socket, "snapshot_delete_failed", %{
-             snapshotId: event_snapshot_id(params["id"]),
-             reason: "restore_operation"
-           })}
+           socket
+           |> refresh_snapshot_accounting()
+           |> push_event("snapshot_delete_accepted", %{snapshotId: snapshot_id})
+           |> put_flash(:info, dgettext("projects", "Snapshot deletion started."))}
+        else
+          true ->
+            {:noreply,
+             push_event(socket, "snapshot_delete_failed", %{
+               snapshotId: event_snapshot_id(params["id"]),
+               reason: "restore_operation"
+             })}
 
-        _invalid ->
-          {:noreply,
-           push_event(socket, "snapshot_delete_failed", %{
-             snapshotId: event_snapshot_id(params["id"]),
-             message: dgettext("projects", "The snapshot could not be deleted.")
-           })}
-      end
-    end)
+          {:error, :ownership_invariant_violation} ->
+            snapshot_authorization_failure(
+              socket,
+              :delete,
+              event_snapshot_id(params["id"]),
+              :ownership_invariant_violation
+            )
+
+          {:error, :unauthorized} ->
+            snapshot_authorization_failure(
+              socket,
+              :delete,
+              event_snapshot_id(params["id"]),
+              :unauthorized
+            )
+
+          _invalid ->
+            {:noreply,
+             push_event(socket, "snapshot_delete_failed", %{
+               snapshotId: event_snapshot_id(params["id"]),
+               message: dgettext("projects", "The snapshot could not be deleted.")
+             })}
+        end
+      end,
+      &snapshot_authorization_failure(&1, :delete, event_snapshot_id(params["id"]), &2)
+    )
   end
 
   @impl true
   def handle_event("restore_snapshot", params, socket) do
-    with :ok <- Authorize.authorize(socket, :manage_project),
-         {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
-         {:ok, restore} <-
-           Projects.request_project_snapshot_restore(
-             socket.assigns.current_scope,
-             socket.assigns.project,
-             snapshot_id,
-             %{idempotency_key: params["idempotency_key"]}
-           ) do
-      {:noreply,
-       socket
-       |> refresh_snapshot_state()
-       |> push_event("snapshot_restore_accepted", %{
-         snapshotId: snapshot_id,
-         restoreId: restore.id
-       })}
-    else
-      {:error, reason} ->
-        {:noreply,
-         push_snapshot_restore_error(
-           socket,
-           event_snapshot_id(params["id"]),
-           restore_request_error_reason(reason)
-         )}
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      fn socket ->
+        with {:ok, snapshot_id} <- parse_snapshot_id(params["id"]),
+             {:ok, restore} <-
+               Projects.request_project_snapshot_restore(
+                 socket.assigns.current_scope,
+                 socket.assigns.project,
+                 snapshot_id,
+                 %{idempotency_key: params["idempotency_key"]}
+               ) do
+          {:noreply,
+           socket
+           |> refresh_snapshot_state()
+           |> push_event("snapshot_restore_accepted", %{
+             snapshotId: snapshot_id,
+             restoreId: restore.id
+           })}
+        else
+          {:error, :ownership_invariant_violation} ->
+            snapshot_authorization_failure(
+              socket,
+              :restore,
+              event_snapshot_id(params["id"]),
+              :ownership_invariant_violation
+            )
 
-      :error ->
-        {:noreply,
-         push_snapshot_restore_error(
-           socket,
-           event_snapshot_id(params["id"]),
-           "invalid_request"
-         )}
-    end
+          {:error, reason} ->
+            {:noreply,
+             push_snapshot_restore_error(
+               socket,
+               event_snapshot_id(params["id"]),
+               restore_request_error_reason(reason)
+             )}
+
+          :error ->
+            {:noreply,
+             push_snapshot_restore_error(
+               socket,
+               event_snapshot_id(params["id"]),
+               "invalid_request"
+             )}
+        end
+      end,
+      &snapshot_authorization_failure(&1, :restore, event_snapshot_id(params["id"]), &2)
+    )
   end
 
   @impl true
+  def handle_info(
+        {:project_ownership_transferred, %{project_id: project_id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    {:noreply, refresh_snapshot_state(socket)}
+  end
+
+  def handle_info({:project_snapshot_updated, _snapshot_id}, %{assigns: %{snapshot_access_active: false}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_info({:project_snapshot_updated, _snapshot_id}, socket) do
     {:noreply, refresh_snapshot_state(socket)}
   end
 
   @impl true
+  def handle_info(
+        {:commercial_snapshot_export_lease_state_invalidated, _snapshot_id},
+        %{assigns: %{snapshot_access_active: false}} = socket
+      ) do
+    {:noreply, socket}
+  end
+
   def handle_info({:commercial_snapshot_export_lease_state_invalidated, _snapshot_id}, socket) do
     {:noreply, refresh_snapshot_state(socket)}
   end
 
   @impl true
+  def handle_info({:project_snapshot_restore_updated, _restore_id}, %{assigns: %{snapshot_access_active: false}} = socket) do
+    {:noreply, socket}
+  end
+
   def handle_info({:project_snapshot_restore_updated, _restore_id}, socket) do
     {:noreply, refresh_snapshot_state(socket)}
   end
 
   @impl true
+  def handle_info(:refresh_snapshot_build_statuses, %{assigns: %{snapshot_access_active: false}} = socket) do
+    {:noreply, assign(socket, :snapshot_build_status_timer, nil)}
+  end
+
   def handle_info(:refresh_snapshot_build_statuses, socket) do
     socket =
       socket
@@ -459,17 +558,31 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   defp refresh_snapshot_state(socket) do
-    socket
-    |> refresh_snapshot_accounting()
-    |> assign(
-      :snapshot_restores,
-      Projects.list_project_snapshot_restores(socket.assigns.project.id)
-    )
+    case authorized_snapshot_accounting(socket) do
+      {:ok, authorized_socket, accounting} ->
+        authorized_socket
+        |> assign_snapshot_accounting(accounting)
+        |> assign(
+          :snapshot_restores,
+          Projects.list_project_snapshot_restores(authorized_socket.assigns.project.id)
+        )
+
+      {:error, :access_lost} ->
+        revoke_snapshot_access_and_navigate(socket)
+    end
   end
 
   defp refresh_snapshot_accounting(socket) do
-    accounting = snapshot_storage_accounting(socket.assigns.current_scope, socket.assigns.project)
+    case authorized_snapshot_accounting(socket) do
+      {:ok, authorized_socket, accounting} ->
+        assign_snapshot_accounting(authorized_socket, accounting)
 
+      {:error, :access_lost} ->
+        revoke_snapshot_access_and_navigate(socket)
+    end
+  end
+
+  defp assign_snapshot_accounting(socket, accounting) do
     socket
     |> assign(:snapshots, accounting.snapshots)
     |> assign(:snapshot_reservations, accounting.snapshot_reservations)
@@ -482,22 +595,89 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
   end
 
   defp refresh_snapshot_build_statuses(socket) do
-    assign(
-      socket,
-      :snapshot_build_statuses,
-      Projects.project_snapshot_build_statuses(socket.assigns.snapshots)
-    )
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, socket.assigns.project.id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project) do
+      socket
+      |> assign(:project, project)
+      |> assign(:membership, membership)
+      |> assign(:current_workspace, project.workspace)
+      |> assign(
+        :snapshot_build_statuses,
+        Projects.project_snapshot_build_statuses(socket.assigns.snapshots)
+      )
+    else
+      _lost_access -> revoke_snapshot_access_and_navigate(socket)
+    end
+  end
+
+  defp authorized_snapshot_accounting(socket) do
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, socket.assigns.project.id),
+         true <- project.owner_id == socket.assigns.current_scope.user.id,
+         true <- Projects.can?(membership.role, :manage_project),
+         {:ok, accounting} <-
+           Projects.project_snapshot_accounting(socket.assigns.current_scope, project.id) do
+      authorized_socket =
+        socket
+        |> assign(:project, project)
+        |> assign(:membership, membership)
+        |> assign(:current_workspace, project.workspace)
+        |> assign(:snapshot_access_active, true)
+
+      {:ok, authorized_socket, accounting}
+    else
+      _lost_access -> {:error, :access_lost}
+    end
   end
 
   defp schedule_build_status_refresh(socket) do
     active_build? =
       Enum.any?(socket.assigns.snapshots, &(&1.lifecycle_state in ["pending", "building", "verifying"]))
 
-    if connected?(socket) and active_build? and is_nil(socket.assigns.snapshot_build_status_timer) do
+    if connected?(socket) and socket.assigns.snapshot_access_active and active_build? and
+         is_nil(socket.assigns.snapshot_build_status_timer) do
       timer = Process.send_after(self(), :refresh_snapshot_build_statuses, @build_status_refresh_ms)
       assign(socket, :snapshot_build_status_timer, timer)
     else
       socket
+    end
+  end
+
+  defp revoke_snapshot_access(socket) do
+    case socket.assigns.snapshot_build_status_timer do
+      timer when is_reference(timer) -> Process.cancel_timer(timer)
+      _no_timer -> false
+    end
+
+    socket
+    |> assign(:snapshot_access_active, false)
+    |> assign(:snapshot_build_status_timer, nil)
+  end
+
+  defp revoke_snapshot_access_and_navigate(socket) do
+    project = socket.assigns.project
+
+    socket
+    |> revoke_snapshot_access()
+    |> put_flash(
+      :error,
+      dgettext("projects", "You don't have permission to manage this project.")
+    )
+    |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")
+  end
+
+  defp subscribe_snapshot_updates(socket, project) do
+    if connected?(socket) do
+      # Subscribe before the initial reads so committed snapshot, restore and
+      # lease changes cannot leave the first rendered state stale.
+      with :ok <- Commercial.subscribe_project_snapshot_export_leases(project.id),
+           :ok <- Projects.subscribe_project_snapshots(project.id) do
+        Projects.subscribe_project_snapshot_restores(project.id)
+      end
+    else
+      :ok
     end
   end
 
@@ -518,6 +698,50 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
     })
   end
 
+  defp snapshot_authorization_failure(socket, action, snapshot_id, reason) do
+    message = snapshot_authorization_message(reason)
+
+    socket = put_flash(socket, :error, message)
+
+    case action do
+      :create ->
+        {:noreply, push_snapshot_request_error(socket, snapshot_authorization_reason(reason), %{})}
+
+      :cancel ->
+        {:noreply,
+         push_event(socket, "snapshot_cancel_failed", %{
+           snapshotId: snapshot_id,
+           reason: snapshot_authorization_reason(reason),
+           message: message
+         })}
+
+      :delete ->
+        {:noreply,
+         push_event(socket, "snapshot_delete_failed", %{
+           snapshotId: snapshot_id,
+           reason: snapshot_authorization_reason(reason),
+           message: message
+         })}
+
+      :restore ->
+        {:noreply, push_snapshot_restore_error(socket, snapshot_id, snapshot_authorization_reason(reason))}
+    end
+  end
+
+  defp snapshot_authorization_message(:ownership_invariant_violation) do
+    dgettext(
+      "projects",
+      "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
+    )
+  end
+
+  defp snapshot_authorization_message(_reason) do
+    gettext("You don't have permission to perform this action.")
+  end
+
+  defp snapshot_authorization_reason(:ownership_invariant_violation), do: "ownership_invariant_violation"
+  defp snapshot_authorization_reason(_reason), do: "unauthorized"
+
   defp restore_request_error_reason(reason)
        when reason in [
               :restore_temporarily_disabled,
@@ -525,6 +749,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
               :project_snapshot_restore_in_progress,
               :project_snapshot_restore_idempotency_conflict,
               :project_snapshot_not_found,
+              :ownership_invariant_violation,
               :unauthorized,
               :invalid_project_snapshot_restore_request
             ], do: Atom.to_string(reason)

@@ -141,11 +141,11 @@ defmodule Storyarn.Projects do
   @spec change_new_project(project(), attrs()) :: changeset()
   defdelegate change_new_project(project, attrs \\ %{}), to: Lifecycle
 
-  @doc """
-  Updates a project.
-  """
-  @spec update_project(project(), attrs()) :: {:ok, project()} | {:error, changeset()}
-  defdelegate update_project(project, attrs), to: Lifecycle
+  @doc "Authorizes and updates an active project under its ownership lock."
+  @spec update_project(scope(), integer(), attrs()) ::
+          {:ok, project()}
+          | {:error, changeset() | :not_found | :unauthorized | :ownership_invariant_violation}
+  defdelegate update_project(scope, project_id, attrs), to: Lifecycle
 
   @doc """
   Marks a project as having content activity without changing project metadata.
@@ -156,8 +156,10 @@ defmodule Storyarn.Projects do
   @doc """
   Soft-deletes a project.
   """
-  @spec delete_project(project(), integer()) :: {:ok, project()} | {:error, changeset()}
-  defdelegate delete_project(project, user_id), to: Lifecycle
+  @spec delete_project(scope(), integer()) ::
+          {:ok, project()}
+          | {:error, changeset() | :not_found | :unauthorized | :ownership_invariant_violation}
+  defdelegate delete_project(scope, project_id), to: Lifecycle
 
   @doc """
   Permanently deletes a project (for retention cleanup).
@@ -554,7 +556,7 @@ defmodule Storyarn.Projects do
 
   defdelegate ready_project_snapshot_archive_key?(project_id, prefix, key), to: Versioning
 
-  defdelegate repair_stale_project_variable_references(project_id),
+  defdelegate repair_stale_project_variable_references(scope, project_id),
     to: References,
     as: :repair_stale_variable_references
 
@@ -736,24 +738,49 @@ defmodule Storyarn.Projects do
   defdelegate create_membership(project_id, user_id, role), to: Access
 
   @doc """
-  Updates a member's role.
+  Authorizes and updates a direct project membership under the project lock.
 
-  Cannot change the owner's role.
-  Cannot promote an ordinary membership to owner.
+  Cannot change the owner's role or promote an ordinary membership to owner.
   """
-  @spec update_member_role(membership(), role()) ::
+  @spec update_member_role(scope(), integer(), integer(), role()) ::
           {:ok, membership()}
-          | {:error, changeset() | :cannot_assign_owner_role | :cannot_change_owner_role}
-  defdelegate update_member_role(membership, role), to: Access
+          | {:error,
+             changeset()
+             | :not_found
+             | :unauthorized
+             | :ownership_invariant_violation
+             | :cannot_assign_owner_role
+             | :cannot_change_owner_role}
+  defdelegate update_member_role(scope, project_id, membership_id, role), to: Access
 
   @doc """
-  Removes a member from a project.
+  Authorizes and removes a direct project membership under the project lock.
 
   Cannot remove the owner.
   """
-  @spec remove_member(membership()) ::
-          {:ok, membership()} | {:error, changeset() | :cannot_remove_owner}
-  defdelegate remove_member(membership), to: Access
+  @spec remove_member(scope(), integer(), integer()) ::
+          {:ok, membership()}
+          | {:error, changeset() | :not_found | :unauthorized | :ownership_invariant_violation | :cannot_remove_owner}
+  defdelegate remove_member(scope, project_id, membership_id), to: Access
+
+  @doc "Transfers canonical project ownership to an existing direct member."
+  @spec transfer_owner(scope(), integer(), integer()) ::
+          {:ok, project()}
+          | {:error,
+             changeset()
+             | :not_found
+             | :unauthorized
+             | :target_not_member
+             | :ownership_invariant_violation
+             | :ownership_transfer_requires_top_level_transaction
+             | :ownership_transfer_failed}
+  defdelegate transfer_owner(scope, project_id, target_user_id), to: Access
+
+  @doc "Subscribes the caller to committed ownership changes for a project."
+  @spec subscribe_project_ownership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate subscribe_project_ownership_changes(project_id),
+    to: Access,
+    as: :subscribe_ownership_changes
 
   @doc """
   Authorizes a user action on a project.
@@ -765,10 +792,13 @@ defmodule Storyarn.Projects do
   - `:manage_project` - update settings, delete project (owner only)
   - `:manage_members` - invite/remove members, change roles (owner only)
   - `:edit_content` - edit flows, entities (owner, editor)
+  - `:use_ai` - run explicitly initiated single-item AI actions (owner, editor)
+  - `:run_bulk_ai` - run bulk AI actions (canonical owner only)
   - `:view` - view project content (all roles)
   """
   @spec authorize(scope(), integer(), action()) ::
-          {:ok, project(), membership()} | {:error, :not_found | :unauthorized}
+          {:ok, project(), membership()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
   defdelegate authorize(scope, project_id, action), to: Access
 
   # =============================================================================
@@ -791,11 +821,18 @@ defmodule Storyarn.Projects do
   Returns `{:error, :limit_reached, details}` if the plan has no free member seats.
   Returns `{:error, :not_found}` if the project is no longer active.
   """
-  @spec create_invitation(project(), user(), String.t(), role()) ::
+  @spec create_invitation(scope(), integer(), String.t(), role()) ::
           {:ok, invitation()}
-          | {:error, :already_member | :already_invited | :rate_limited | :not_found | changeset()}
+          | {:error,
+             :already_member
+             | :already_invited
+             | :rate_limited
+             | :not_found
+             | :unauthorized
+             | :ownership_invariant_violation
+             | changeset()}
           | {:error, :limit_reached, map()}
-  defdelegate create_invitation(project, invited_by, email, role \\ "editor"), to: Access
+  defdelegate create_invitation(scope, project_id, email, role \\ "editor"), to: Access
 
   @doc """
   Creates an admin-initiated invitation (no rate limit, no invited_by user).
@@ -843,11 +880,11 @@ defmodule Storyarn.Projects do
           | {:error, :limit_reached, map()}
   defdelegate accept_invitation(invitation, user), to: Access
 
-  @doc """
-  Revokes a pending invitation.
-  """
-  @spec revoke_invitation(invitation()) :: {:ok, invitation()} | {:error, changeset()}
-  defdelegate revoke_invitation(invitation), to: Access
+  @doc "Authorizes and revokes a project invitation under the project lock."
+  @spec revoke_invitation(scope(), integer(), integer()) ::
+          {:ok, invitation()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | changeset()}
+  defdelegate revoke_invitation(scope, project_id, invitation_id), to: Access
 
   @doc """
   Gets a pending invitation by ID.

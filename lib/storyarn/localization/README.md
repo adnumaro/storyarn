@@ -72,6 +72,17 @@ database identity, lifecycle, external I/O, or transaction semantics.
 Every projection documents why its consumer needs it. Neither role is a
 synonym for persistence or a place for generic schemas.
 
+## Provider-configuration authority
+
+Translation-provider configuration is Localization-owned state but changing it
+is an owner-only Project setting. The public writer therefore requires an
+actor scope and revalidates the canonical Project owner inside the same
+transaction after locking Localization's local Project projection. It also
+requires exactly one direct owner membership matching `projects.owner_id`.
+This duplicated authorization model avoids importing Projects internals while
+ensuring a provider update queued before an ownership transfer cannot commit
+with the former owner's stale authority.
+
 ## Source-language write ownership
 
 Localization is the sole ordinary writer of the shared `project_languages`

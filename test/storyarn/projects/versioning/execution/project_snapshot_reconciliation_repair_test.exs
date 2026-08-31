@@ -747,15 +747,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   end
 
   test "workspace deletion resolves stale integrity and expired-build actions" do
-    {_user, project, snapshot} = ready_snapshot!()
+    {user, project, snapshot} = ready_snapshot!()
     assert :ok = Storage.delete(snapshot_payload_key(snapshot))
     integrity_run = completed_run!()
     {_finding, integrity_action} = finding_action!(integrity_run, "ready_object_missing", snapshot.id)
 
     assert {:ok, _workspace} =
-             project.workspace_id
-             |> Workspaces.get_workspace!()
-             |> Workspaces.delete_workspace()
+             Workspaces.delete_workspace(user_scope_fixture(user), project.workspace_id)
 
     assert {:ok, :resolved} =
              Versioning.perform_project_snapshot_reconciliation_repair(integrity_action.id)
@@ -778,10 +776,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
     assert {:ok, %SnapshotCleanupIntent{}} =
              Versioning.delete_expired_project_snapshot_build_candidate(candidate)
 
+    expired_workspace = Workspaces.get_workspace!(expired_workspace_id)
+    expired_owner = Repo.get!(Storyarn.Accounts.User, expired_workspace.owner_id)
+
     assert {:ok, _workspace} =
-             expired_workspace_id
-             |> Workspaces.get_workspace!()
-             |> Workspaces.delete_workspace()
+             Workspaces.delete_workspace(
+               user_scope_fixture(expired_owner),
+               expired_workspace_id
+             )
 
     assert {:ok, :resolved} = Versioning.perform_project_snapshot_reconciliation_repair(expired_action.id)
 

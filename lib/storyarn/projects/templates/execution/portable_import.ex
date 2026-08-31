@@ -1110,9 +1110,12 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
   end
 
   defp lock_source_project_scope(plan) do
-    with %User{} = source_user <- lock_source_user(plan.source_user_id),
+    # Within the ownership-transfer lock domain, acquire the Workspace before
+    # the source User. Transfer takes the same rows in that order, so user-first
+    # here would form a deadlock cycle with a concurrent transfer.
+    with :ok <- ProjectCrud.lock_and_check_workspace_capacity(plan.verify_workspace_id),
+         %User{} = source_user <- lock_source_user(plan.source_user_id),
          :ok <- authorize_locked_source_manager(plan.visibility, source_user),
-         :ok <- ProjectCrud.lock_and_check_workspace_capacity(plan.verify_workspace_id),
          %WorkspaceMembership{role: role} <-
            WorkspaceMembership
            |> where(

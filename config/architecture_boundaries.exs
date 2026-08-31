@@ -174,7 +174,7 @@ project_language_persistence_ownership = %{
 # The ENG-103 table inventories below use one conservative source analyzer.
 # It is intentionally a source-level ratchet, not a database security boundary.
 persistence_write_analyzer = %{
-  scanner: "Storyarn.Architecture.SheetsFlowNodeWriteOwnershipTest.table_mutations/4",
+  scanner: "Storyarn.Architecture.PersistenceWriteOwnershipTest.table_mutations/4",
   scope: "Elixir sources under lib/**/*.ex, including Web, workers and operator Mix tasks",
   detects:
     "Repo and Ecto.Multi writes through aliases, imports and pipes, plus statically resolved Repo apply/3 calls; table targets propagate through discovered schemas, query/changeset builders, local helper returns and selected Enum/Stream callbacks; Repo and Ecto.Adapters.SQL raw SQL resolves from literals, binary module attributes, local bindings and static concatenation",
@@ -280,7 +280,8 @@ variable_reference_persistence_ownership = %{
       path: "lib/storyarn/flows/references/commands/variable_reference_tracker.ex",
       functions: [
         %{identity: "def delete_references/1", operations: [:delete_all]},
-        %{identity: "defp replace_references/2", operations: [:insert_all]}
+        %{identity: "defp delete_replaced_references/2", operations: [:delete_all]},
+        %{identity: "defp replace_references/3", operations: [:insert_all]}
       ],
       reason: "Flows maintains the variable-reference rows derived from Flow node data"
     },
@@ -546,6 +547,326 @@ storage_cleanup_persistence_ownership = %{
   analyzer: persistence_write_analyzer
 }
 
+# ENG-108 seals the four aggregate identity tables touched by owner transfer.
+# These inventories describe direct writes from `lib/`; database cascades are
+# deliberately outside the source ratchet. Every declared writer must be tied
+# statically to the owned schema and detected by the analyzer; when a dynamic
+# writer hides that target, expose it at the writer boundary instead of adding
+# an opaque exemption. `scanner_false_positives` keeps conservative candidates
+# visible without granting them write authority.
+aggregate_identity_persistence_ownership = %{
+  projects: %{
+    table: "projects",
+    ownership_model: :projects_owned_aggregate_identity,
+    ordinary_owner: :projects,
+    writers: [
+      %{
+        context: :projects,
+        authority: :ownership_transfer,
+        path: "lib/storyarn/projects/access/commands/transfer_ownership.ex",
+        functions: [
+          %{identity: "defp change_project_owner/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "the serialized Project transfer changes the canonical owner_id"
+      },
+      %{
+        context: :projects,
+        authority: :ordinary_lifecycle,
+        path: "lib/storyarn/projects/lifecycle/commands/project_commands.ex",
+        functions: [
+          %{identity: "def touch_project/2", operations: [:update_all], detected_by_analyzer: true},
+          %{identity: "defp delete_locked_project/1", operations: [:delete], detected_by_analyzer: true},
+          %{identity: "defp insert_project/2", operations: [:insert], detected_by_analyzer: true},
+          %{identity: "defp persist_project_update/2", operations: [:update], detected_by_analyzer: true},
+          %{identity: "defp soft_delete_locked_project/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "Projects owns create, update, activity, trash and hard-delete lifecycle"
+      },
+      %{
+        context: :projects,
+        authority: :project_reconstitution,
+        path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+        functions: [
+          %{identity: "defp create_project/5", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "validated Project recovery materializes the captured Project identity"
+      },
+      %{
+        context: :projects,
+        authority: :exact_snapshot_restore,
+        path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+        functions: [
+          %{identity: "defp restore_project_fields/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "exact restore replaces the snapshot-owned Project fields"
+      }
+    ],
+    scanner_false_positives: [
+      %{
+        path: "lib/storyarn/projects/templates/execution/publication_runner.ex",
+        function: "defp insert_publication_and_enqueue_locked/1",
+        operation: :insert,
+        reason: "writes project_template_publications after reading a Project"
+      },
+      %{
+        path: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
+        function: "defp clear_reservation/1",
+        operation: :update,
+        reason: "updates a workspace_snapshot_import after reading Project identity"
+      }
+    ],
+    analyzer: persistence_write_analyzer
+  },
+  project_memberships: %{
+    table: "project_memberships",
+    ownership_model: :projects_owned_membership,
+    ordinary_owner: :projects,
+    writers: [
+      %{
+        context: :projects,
+        authority: :ordinary_membership_lifecycle,
+        path: "lib/storyarn/projects/access/commands/membership_operations.ex",
+        functions: [
+          %{identity: "def create_membership/4", operations: [:insert], detected_by_analyzer: true},
+          %{identity: "def remove_member/1", operations: [:delete], detected_by_analyzer: true},
+          %{identity: "def update_member_role/3", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "the Projects membership capability owns ordinary member creation, role changes and removal"
+      },
+      %{
+        context: :projects,
+        authority: :ownership_transfer,
+        path: "lib/storyarn/projects/access/commands/transfer_ownership.ex",
+        functions: [
+          %{identity: "defp change_role/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "the serialized Project transfer atomically demotes and promotes owner memberships"
+      },
+      %{
+        context: :projects,
+        authority: :aggregate_creation,
+        path: "lib/storyarn/projects/lifecycle/commands/project_commands.ex",
+        functions: [
+          %{identity: "defp create_owner_membership/2", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "Project creation creates its matching owner membership in the same transaction"
+      },
+      %{
+        context: :projects,
+        authority: :project_reconstitution,
+        path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+        functions: [
+          %{identity: "defp create_owner_membership/2", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "Project recovery creates the matching owner membership in its materialization transaction"
+      }
+    ],
+    scanner_false_positives: [],
+    analyzer: persistence_write_analyzer
+  },
+  workspaces: %{
+    table: "workspaces",
+    ownership_model: :workspaces_owned_aggregate_identity,
+    ordinary_owner: :workspaces,
+    writers: [
+      %{
+        context: :workspaces,
+        authority: :banner_lifecycle,
+        path: "lib/storyarn/workspaces/banner/commands/change.ex",
+        functions: [
+          %{identity: "defp update_banner_url/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "Workspace banner lifecycle owns the banner_url field"
+      },
+      %{
+        context: :workspaces,
+        authority: :aggregate_creation,
+        path: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
+        functions: [
+          %{identity: "defp insert_workspace/2", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "Workspace lifecycle owns aggregate creation"
+      },
+      %{
+        context: :workspaces,
+        authority: :aggregate_hard_delete,
+        path: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
+        functions: [
+          %{identity: "def delete/2", operations: [:delete], detected_by_analyzer: true}
+        ],
+        reason: "Workspace lifecycle owns coordinated hard deletion"
+      },
+      %{
+        context: :workspaces,
+        authority: :ordinary_lifecycle,
+        path: "lib/storyarn/workspaces/lifecycle/commands/update_workspace.ex",
+        functions: [
+          %{identity: "def update/3", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "Workspace lifecycle owns ordinary metadata updates"
+      },
+      %{
+        context: :workspaces,
+        authority: :ownership_transfer,
+        path: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
+        functions: [
+          %{identity: "defp change_workspace_owner/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "the serialized Workspace transfer changes the canonical owner_id"
+      }
+    ],
+    scanner_false_positives: [],
+    analyzer: persistence_write_analyzer
+  },
+  workspace_memberships: %{
+    table: "workspace_memberships",
+    ownership_model: :workspaces_owned_membership,
+    ordinary_owner: :workspaces,
+    writers: [
+      %{
+        context: :workspaces,
+        authority: :aggregate_creation,
+        path: "lib/storyarn/workspaces/lifecycle/commands/create_workspace.ex",
+        functions: [
+          %{identity: "defp create_owner_membership/2", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "Workspace creation creates its matching owner membership in the same transaction"
+      },
+      %{
+        context: :workspaces,
+        authority: :ordinary_membership_lifecycle,
+        path: "lib/storyarn/workspaces/memberships/commands/change_member_role.ex",
+        functions: [
+          %{identity: "def change/4", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "Workspace memberships owns ordinary role changes"
+      },
+      %{
+        context: :workspaces,
+        authority: :ordinary_membership_lifecycle,
+        path: "lib/storyarn/workspaces/memberships/commands/create_membership.ex",
+        functions: [
+          %{identity: "def create/3", operations: [:insert], detected_by_analyzer: true}
+        ],
+        reason: "Workspace memberships owns ordinary member creation"
+      },
+      %{
+        context: :workspaces,
+        authority: :ordinary_membership_lifecycle,
+        path: "lib/storyarn/workspaces/memberships/commands/remove_member.ex",
+        functions: [
+          %{identity: "def remove/3", operations: [:delete], detected_by_analyzer: true}
+        ],
+        reason: "Workspace memberships owns ordinary member removal"
+      },
+      %{
+        context: :workspaces,
+        authority: :ownership_transfer,
+        path: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
+        functions: [
+          %{identity: "defp change_role/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "the serialized Workspace transfer atomically demotes and promotes owner memberships"
+      }
+    ],
+    scanner_false_positives: [
+      %{
+        path: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
+        function: "defp clear_reservation/1",
+        operation: :update,
+        reason: "updates a workspace_snapshot_import after reading Workspace membership authority"
+      }
+    ],
+    analyzer: persistence_write_analyzer
+  }
+}
+
+# The rule is intentionally implemented inside each consumer that owns its read
+# model. This contract records the conservatively discovered copies and makes
+# the duplicated semantic explicit without centralizing contexts on one shared
+# business helper. Its source-level discovery limits are declared below.
+canonical_owner_membership_invariant = %{
+  invariant: "owner_id must identify the user on exactly one role=owner membership for the same aggregate",
+  implementations: [
+    %{
+      aggregates: [:project, :workspace],
+      context: :ai,
+      path: "lib/storyarn/ai/governance/execution/authorization.ex",
+      functions: [
+        "defp list_project_owner_memberships/1",
+        "defp list_workspace_owner_memberships/1",
+        "defp owner_memberships/3",
+        "defp validate_owner_membership/4"
+      ],
+      mode: :consumer_owned_projection
+    },
+    %{
+      aggregates: [:workspace],
+      context: :ai,
+      path: "lib/storyarn/ai/governance/commands/policies.ex",
+      functions: ["defp lock_and_authorize_owner/2"],
+      mode: :consumer_owned_projection
+    },
+    %{
+      aggregates: [:project],
+      context: :flows,
+      path: "lib/storyarn/flows/references/commands/owner_authority.ex",
+      functions: ["defp authorize_canonical_owner/3", "defp lock_owner_memberships/1"],
+      mode: :consumer_owned_projection
+    },
+    %{
+      aggregates: [:project],
+      context: :localization,
+      path: "lib/storyarn/localization/project_access/commands/owner_authority.ex",
+      functions: ["defp authorize_canonical_owner/3", "defp lock_owner_memberships/1"],
+      mode: :consumer_owned_projection
+    },
+    %{
+      aggregates: [:project],
+      context: :projects,
+      path: "lib/storyarn/projects/access/rules/ownership_invariant.ex",
+      functions: ["def owner/2"],
+      mode: :owner_context_rule
+    },
+    %{
+      aggregates: [:workspace],
+      context: :workspaces,
+      path: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
+      functions: ["defp lock_and_authorize_owner/2"],
+      mode: :owner_context_command
+    },
+    %{
+      aggregates: [:workspace],
+      context: :workspaces,
+      path: "lib/storyarn/workspaces/lifecycle/commands/update_workspace.ex",
+      functions: ["defp lock_and_authorize_owner/2"],
+      mode: :owner_context_command
+    },
+    %{
+      aggregates: [:workspace],
+      context: :workspaces,
+      path: "lib/storyarn/workspaces/memberships/rules/ownership_invariant.ex",
+      functions: ["def owner/2"],
+      mode: :owner_context_rule
+    }
+  ],
+  discovery: %{
+    root: "lib/storyarn",
+    required_literals: [":ownership_invariant_violation", "owner_id"],
+    owner_role_patterns: ["role == \"owner\"", "role: \"owner\""],
+    limits: [
+      "candidate discovery is conservative source matching and can miss semantically equivalent alternative syntax",
+      "a second implementation added inside an already declared source file is not discovered automatically"
+    ],
+    reviewed_non_implementations: [
+      %{
+        path: "lib/storyarn/projects/access/memberships.ex",
+        reason: "loads owner rows but delegates the semantic decision to Projects.Access.Rules.OwnershipInvariant"
+      }
+    ]
+  }
+}
+
 boundaries = %{
   accounts: [
     "lib/storyarn/accounts.ex",
@@ -654,6 +975,7 @@ boundaries = %{
     "lib/mix/tasks/convention_check.ex",
     "lib/mix/tasks/storyarn.ai.diagnose.ex",
     "lib/mix/tasks/storyarn.ai.grant.ex",
+    "lib/mix/tasks/storyarn.ownership.audit.ex",
     "lib/mix/tasks/storyarn.snapshot_archive_smoke.ex",
     "lib/mix/tasks/storyarn.templates.export.ex",
     "lib/mix/tasks/storyarn.templates.import.ex",
@@ -913,7 +1235,7 @@ project_capabilities = ~w(lifecycle access assets overview trash references inte
 
 project_private_role_roots = %{
   "lifecycle" => ~w(commands events projections queries reference_data rules),
-  "access" => ~w(adapters commands delivery queries),
+  "access" => ~w(adapters commands delivery queries rules),
   "assets" => ~w(adapters commands execution projections queries rules),
   "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
@@ -1939,7 +2261,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.References.Adapters.Flows.StaleVariableReferenceRepair",
     path: "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex",
-    functions: [repair_project: 1],
+    functions: [repair_project: 2],
     allowed_callers: [
       "lib/storyarn/projects/references/execution/variable_usage.ex"
     ],
@@ -1948,7 +2270,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows",
     path: "lib/storyarn/flows.ex",
-    functions: [repair_stale_variable_references: 1],
+    functions: [repair_stale_variable_references: 2],
     allowed_callers: [
       "lib/storyarn/projects/references/adapters/flows/stale_variable_reference_repair.ex"
     ],
@@ -1957,7 +2279,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows.References",
     path: "lib/storyarn/flows/references/references.ex",
-    functions: [repair_stale_variable_references: 1],
+    functions: [repair_stale_variable_references: 2],
     allowed_callers: [
       "lib/storyarn/flows.ex"
     ],
@@ -1966,7 +2288,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Flows.References.Commands.StaleVariableReferenceRepair",
     path: "lib/storyarn/flows/references/commands/stale_variable_reference_repair.ex",
-    functions: [repair_project: 1],
+    functions: [repair_project: 2],
     allowed_callers: [
       "lib/storyarn/flows/references/references.ex"
     ],
@@ -2386,9 +2708,14 @@ policy = %{
     entity_references: entity_reference_persistence_ownership,
     localized_texts: localized_text_persistence_ownership,
     project_languages: project_language_persistence_ownership,
+    projects: aggregate_identity_persistence_ownership.projects,
+    project_memberships: aggregate_identity_persistence_ownership.project_memberships,
     storage_cleanup_requests: storage_cleanup_persistence_ownership,
-    variable_references: variable_reference_persistence_ownership
+    variable_references: variable_reference_persistence_ownership,
+    workspaces: aggregate_identity_persistence_ownership.workspaces,
+    workspace_memberships: aggregate_identity_persistence_ownership.workspace_memberships
   },
+  canonical_owner_membership_invariant: canonical_owner_membership_invariant,
   privileged_entrypoints: privileged_entrypoints,
 
   # Code below `Storyarn` is the domain/application side of the system. Even
@@ -3257,6 +3584,13 @@ policy = %{
       reason: "Workspace creation applies commercial limits and subscriptions through the public Commercial facade"
     },
     %{
+      source: "lib/storyarn/workspaces/memberships/commands/transfer_ownership.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason:
+        "Workspace ownership transfer applies the receiver's Commercial-owned workspace entitlement while holding its user lock"
+    },
+    %{
       source: "lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
@@ -3298,6 +3632,13 @@ policy = %{
       target: "lib/storyarn/localization.ex",
       kinds: ["runtime"],
       reason: "Project settings delegates ordinary source-language reads and writes to the public Localization facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/project_settings_live/localization.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The Localization-owned project settings adapter subscribes to committed Project ownership changes and refreshes access through the public Projects facade"
     },
     %{
       source: "lib/storyarn/accounts/authentication/delivery/email_change/content.ex",

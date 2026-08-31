@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
+  alias Storyarn.Flows
   alias Storyarn.Flows.VariableReference
   alias Storyarn.Flows.VariableReferenceTracker
 
@@ -89,6 +90,126 @@ defmodule Storyarn.Flows.VariableReferenceTrackerTest do
 
     assert VariableReferenceTracker.list_stale_node_ids(context.flow.id) ==
              MapSet.new([node.id])
+  end
+
+  test "preserves an unresolved row while its exact authored identity remains", context do
+    node = instruction_node(context)
+    assert :ok = VariableReferenceTracker.update_references(node)
+
+    original_reference =
+      Repo.get_by!(VariableReference,
+        source_type: "flow_node",
+        source_id: node.id
+      )
+
+    context.sheet
+    |> Ecto.Changeset.change(shortcut: "renamed")
+    |> Repo.update!()
+
+    assert {:ok, %{node: edited_node}} =
+             Flows.edit_node(context.flow.id, node.id, :put_field, %{
+               field: "description",
+               value: "Unrelated edit"
+             })
+
+    assert edited_node.data["description"] == "Unrelated edit"
+
+    assert %VariableReference{
+             id: preserved_id,
+             block_id: block_id,
+             kind: "write",
+             source_sheet: "hero",
+             source_variable: "health"
+           } =
+             Repo.get_by!(VariableReference,
+               source_type: "flow_node",
+               source_id: node.id
+             )
+
+    assert preserved_id == original_reference.id
+    assert block_id == context.block.id
+
+    assert VariableReferenceTracker.list_stale_node_ids(context.flow.id) ==
+             MapSet.new([node.id])
+  end
+
+  test "does not preserve stale rows whose authored identity is removed or replaced", context do
+    removed_node = instruction_node(context)
+    replaced_node = instruction_node(context)
+
+    assert :ok = VariableReferenceTracker.update_references(removed_node)
+    assert :ok = VariableReferenceTracker.update_references(replaced_node)
+
+    removed_reference =
+      Repo.get_by!(VariableReference,
+        source_type: "flow_node",
+        source_id: removed_node.id
+      )
+
+    replaced_reference =
+      Repo.get_by!(VariableReference,
+        source_type: "flow_node",
+        source_id: replaced_node.id
+      )
+
+    replacement_sheet = sheet_fixture(context.project, %{name: "Quests", shortcut: "quests"})
+
+    replacement_block =
+      block_fixture(replacement_sheet, %{
+        type: "boolean",
+        config: %{"label" => "Started"}
+      })
+
+    context.sheet
+    |> Ecto.Changeset.change(shortcut: "renamed")
+    |> Repo.update!()
+
+    assert {:ok, %{node: removed}} =
+             Flows.edit_node(context.flow.id, removed_node.id, :put_instruction_assignments, %{
+               assignments: []
+             })
+
+    replacement_assignments = [
+      %{
+        "sheet" => replacement_sheet.shortcut,
+        "variable" => replacement_block.variable_name,
+        "value_type" => "literal",
+        "value" => true
+      }
+    ]
+
+    assert {:ok, %{node: replaced}} =
+             Flows.edit_node(context.flow.id, replaced_node.id, :put_instruction_assignments, %{
+               assignments: replacement_assignments
+             })
+
+    assert removed.data["assignments"] == []
+
+    assert [replaced_assignment] = replaced.data["assignments"]
+    assert replaced_assignment["sheet"] == replacement_sheet.shortcut
+    assert replaced_assignment["variable"] == replacement_block.variable_name
+    assert replaced_assignment["value"] == true
+
+    refute Repo.get(VariableReference, removed_reference.id)
+    refute Repo.get(VariableReference, replaced_reference.id)
+
+    refute Repo.get_by(VariableReference,
+             source_type: "flow_node",
+             source_id: removed_node.id
+           )
+
+    assert %VariableReference{
+             block_id: replacement_block_id,
+             source_sheet: "quests",
+             source_variable: replacement_variable
+           } =
+             Repo.get_by!(VariableReference,
+               source_type: "flow_node",
+               source_id: replaced_node.id
+             )
+
+    assert replacement_block_id == replacement_block.id
+    assert replacement_variable == replacement_block.variable_name
   end
 
   test "validates snapshot targets and fails closed on malformed assignments", context do

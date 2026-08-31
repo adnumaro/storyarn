@@ -5,6 +5,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Workspaces
+  alias Storyarn.Workspaces.Invitations.Commands.Revoke
   alias Storyarn.Workspaces.Invitations.Tokens.Issuer
   alias Storyarn.Workspaces.WorkspaceInvitation
   alias Storyarn.Workspaces.WorkspaceMembership
@@ -42,7 +43,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       {:ok, _invitation} =
-        Workspaces.create_invitation(workspace, owner, "invitee@example.com", "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, "invitee@example.com", "member")
 
       invitations = Workspaces.list_pending_invitations(workspace.id)
       assert length(invitations) == 1
@@ -85,7 +86,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       {:ok, _invitation} =
-        Workspaces.create_invitation(workspace, owner, "invitee@example.com", "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, "invitee@example.com", "member")
 
       [invitation] = Workspaces.list_pending_invitations(workspace.id)
       assert invitation.invited_by.id == owner.id
@@ -95,10 +96,10 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       {:ok, _inv1} =
-        Workspaces.create_invitation(workspace, owner, "first@example.com", "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, "first@example.com", "member")
 
       assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
-               Workspaces.create_invitation(workspace, owner, "second@example.com", "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, "second@example.com", "member")
 
       invitations = Workspaces.list_pending_invitations(workspace.id)
       assert Enum.map(invitations, & &1.email) == ["first@example.com"]
@@ -116,7 +117,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       email = unique_user_email()
 
       assert {:error, :limit_reached, %{resource: :members_per_workspace}} =
-               Workspaces.create_invitation(workspace, owner, email, "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
     end
   end
 
@@ -125,18 +126,66 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      assert {:ok, invitation} = Workspaces.create_invitation(workspace, owner, email, "admin")
+      assert {:ok, invitation} = Workspaces.create_invitation(%{user: owner}, workspace.id, email, "admin")
       assert invitation.email == String.downcase(email)
       assert invitation.role == "admin"
       assert invitation.workspace_id == workspace.id
       assert invitation.invited_by_id == owner.id
     end
 
+    test "allows an admin through authorization and reaches capacity policy" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      admin = user_fixture()
+      _membership = workspace_membership_fixture(workspace, admin, "admin")
+
+      assert {:error, :limit_reached, %{resource: :members_per_workspace, used: 2, limit: 2}} =
+               Workspaces.create_invitation(
+                 %{user: admin},
+                 workspace.id,
+                 unique_user_email(),
+                 "member"
+               )
+
+      assert Workspaces.get_membership(workspace.id, owner.id).role == "owner"
+    end
+
+    test "rejects a current member without manage-members authority" do
+      %{workspace: workspace} = create_workspace_and_owner()
+      member = user_fixture()
+      _membership = workspace_membership_fixture(workspace, member, "member")
+      email = unique_user_email()
+
+      assert {:error, :unauthorized} =
+               Workspaces.create_invitation(%{user: member}, workspace.id, email, "viewer")
+
+      refute Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
+    end
+
+    test "fails closed when canonical workspace ownership is ambiguous" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      duplicate_owner = user_fixture()
+
+      %WorkspaceMembership{}
+      |> WorkspaceMembership.changeset(%{
+        workspace_id: workspace.id,
+        user_id: duplicate_owner.id,
+        role: "owner"
+      })
+      |> Repo.insert!()
+
+      email = unique_user_email()
+
+      assert {:error, :ownership_invariant_violation} =
+               Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
+
+      refute Repo.get_by(WorkspaceInvitation, workspace_id: workspace.id, email: email)
+    end
+
     test "defaults to member role" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      assert {:ok, invitation} = Workspaces.create_invitation(workspace, owner, email)
+      assert {:ok, invitation} = Workspaces.create_invitation(%{user: owner}, workspace.id, email)
       assert invitation.role == "member"
     end
 
@@ -144,7 +193,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       assert {:ok, invitation} =
-               Workspaces.create_invitation(workspace, owner, "UPPER@EXAMPLE.COM", "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, "UPPER@EXAMPLE.COM", "member")
 
       assert invitation.email == "upper@example.com"
     end
@@ -155,7 +204,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       _membership = workspace_membership_fixture(workspace, member, "member")
 
       assert {:error, :already_member} =
-               Workspaces.create_invitation(workspace, owner, member.email, "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, member.email, "member")
     end
 
     test "returns error when email is already a member (case-insensitive)" do
@@ -165,8 +214,8 @@ defmodule Storyarn.Workspaces.InvitationsTest do
 
       assert {:error, :already_member} =
                Workspaces.create_invitation(
-                 workspace,
-                 owner,
+                 %{user: owner},
+                 workspace.id,
                  String.upcase(member.email),
                  "member"
                )
@@ -176,20 +225,20 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      {:ok, _} = Workspaces.create_invitation(workspace, owner, email, "member")
+      {:ok, _} = Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
 
       assert {:error, :already_invited} =
-               Workspaces.create_invitation(workspace, owner, email, "admin")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, email, "admin")
     end
 
     test "returns error when pending invitation already exists (case-insensitive)" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      {:ok, _} = Workspaces.create_invitation(workspace, owner, email, "member")
+      {:ok, _} = Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
 
       assert {:error, :already_invited} =
-               Workspaces.create_invitation(workspace, owner, String.upcase(email), "admin")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, String.upcase(email), "admin")
     end
 
     test "stale revoke and accept calls return errors instead of raising" do
@@ -197,11 +246,13 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       invitee = user_fixture()
 
       assert {:ok, invitation} =
-               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "member")
 
-      assert {:ok, _invitation} = Workspaces.revoke_invitation(invitation)
-      assert {:error, revoke_changeset} = Workspaces.revoke_invitation(invitation)
-      assert errors_on(revoke_changeset).id
+      assert {:ok, _invitation} =
+               Workspaces.revoke_invitation(%{user: owner}, workspace.id, invitation.id)
+
+      assert {:error, :not_found} =
+               Workspaces.revoke_invitation(%{user: owner}, workspace.id, invitation.id)
 
       assert {:error, accept_changeset} =
                Workspaces.accept_invitation(invitation, invitee)
@@ -214,14 +265,14 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       invitee = user_fixture()
 
       assert {:ok, invitation} =
-               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "member")
 
       Repo.delete!(workspace)
 
       assert {:error, :not_found} =
                Workspaces.create_invitation(
-                 workspace,
-                 owner,
+                 %{user: owner},
+                 workspace.id,
                  "after-delete@example.com",
                  "member"
                )
@@ -234,7 +285,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      {:ok, invitation} = Workspaces.create_invitation(workspace, owner, email, "member")
+      {:ok, invitation} = Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
       assert invitation.workspace.id == workspace.id
       assert invitation.invited_by.id == owner.id
     end
@@ -250,7 +301,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       expired_invitation = Repo.insert!(expired_invitation)
 
       assert {:ok, renewed_invitation} =
-               Workspaces.create_invitation(workspace, owner, email, "admin")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, email, "admin")
 
       refute renewed_invitation.id == expired_invitation.id
       assert renewed_invitation.role == "admin"
@@ -265,13 +316,13 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       invitee = user_fixture()
 
       assert {:ok, invitation} =
-               Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "member")
 
       assert {:ok, membership} = Workspaces.accept_invitation(invitation, invitee)
       Repo.delete!(membership)
 
       assert {:ok, renewed_invitation} =
-               Workspaces.create_invitation(workspace, owner, invitee.email, "viewer")
+               Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "viewer")
 
       refute renewed_invitation.id == invitation.id
       assert renewed_invitation.role == "viewer"
@@ -283,8 +334,8 @@ defmodule Storyarn.Workspaces.InvitationsTest do
 
       assert {:ok, invitation} =
                Workspaces.create_invitation(
-                 workspace,
-                 owner,
+                 %{user: owner},
+                 workspace.id,
                  "  MIXED@example.com  ",
                  "member"
                )
@@ -293,8 +344,8 @@ defmodule Storyarn.Workspaces.InvitationsTest do
 
       assert {:error, changeset} =
                Workspaces.create_invitation(
-                 workspace,
-                 owner,
+                 %{user: owner},
+                 workspace.id,
                  "invalid-role@example.com",
                  "owner"
                )
@@ -365,7 +416,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       invitee = user_fixture()
 
       {:ok, invitation} =
-        Workspaces.create_invitation(workspace, owner, invitee.email, "admin")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "admin")
 
       assert {:ok, membership} = Workspaces.accept_invitation(invitation, invitee)
       assert %WorkspaceMembership{} = membership
@@ -379,7 +430,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       invitee = user_fixture()
 
       {:ok, invitation} =
-        Workspaces.create_invitation(workspace, owner, invitee.email, "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, invitee.email, "member")
 
       {:ok, _membership} = Workspaces.accept_invitation(invitation, invitee)
 
@@ -421,7 +472,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       wrong_user = user_fixture()
 
       {:ok, invitation} =
-        Workspaces.create_invitation(workspace, owner, "someone-else@example.com", "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, "someone-else@example.com", "member")
 
       assert {:error, :email_mismatch} = Workspaces.accept_invitation(invitation, wrong_user)
     end
@@ -439,15 +490,74 @@ defmodule Storyarn.Workspaces.InvitationsTest do
     end
   end
 
-  describe "revoke_invitation/1" do
+  describe "revoke_invitation/3" do
     test "deletes the invitation" do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
       email = unique_user_email()
 
-      {:ok, invitation} = Workspaces.create_invitation(workspace, owner, email, "member")
+      {:ok, invitation} = Workspaces.create_invitation(%{user: owner}, workspace.id, email, "member")
 
-      assert {:ok, _deleted} = Workspaces.revoke_invitation(invitation)
+      assert {:ok, _deleted} =
+               Workspaces.revoke_invitation(%{user: owner}, workspace.id, invitation.id)
+
       assert Workspaces.list_pending_invitations(workspace.id) == []
+    end
+
+    test "rejects an actor who no longer has manage-members authority" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+
+      {:ok, invitation} =
+        Workspaces.create_invitation(%{user: owner}, workspace.id, unique_user_email(), "member")
+
+      former_admin = user_fixture()
+      membership = workspace_membership_fixture(workspace, former_admin, "admin")
+
+      Repo.delete!(membership)
+
+      assert {:error, :unauthorized} =
+               Workspaces.revoke_invitation(
+                 %{user: former_admin},
+                 workspace.id,
+                 invitation.id
+               )
+
+      assert Repo.get!(WorkspaceInvitation, invitation.id)
+    end
+
+    test "scopes the invitation identity to the authorized workspace" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+      other_owner = user_fixture()
+      other_workspace = workspace_fixture(other_owner)
+
+      {:ok, invitation} =
+        Workspaces.create_invitation(
+          %{user: other_owner},
+          other_workspace.id,
+          unique_user_email(),
+          "member"
+        )
+
+      assert {:error, :not_found} =
+               Workspaces.revoke_invitation(%{user: owner}, workspace.id, invitation.id)
+
+      assert Repo.get!(WorkspaceInvitation, invitation.id)
+    end
+
+    test "rolls the deletion back when a later revoke step fails" do
+      %{owner: owner, workspace: workspace} = create_workspace_and_owner()
+
+      {:ok, invitation} =
+        Workspaces.create_invitation(%{user: owner}, workspace.id, unique_user_email(), "member")
+
+      assert {:error, :forced_failure} =
+               Revoke.execute(
+                 %{user: owner},
+                 workspace.id,
+                 invitation.id,
+                 after_delete: fn -> {:error, :forced_failure} end
+               )
+
+      assert Repo.get!(WorkspaceInvitation, invitation.id)
     end
   end
 
@@ -479,7 +589,7 @@ defmodule Storyarn.Workspaces.InvitationsTest do
       %{owner: owner, workspace: workspace} = create_workspace_and_owner()
 
       {:ok, invitation} =
-        Workspaces.create_invitation(workspace, owner, unique_user_email(), "member")
+        Workspaces.create_invitation(%{user: owner}, workspace.id, unique_user_email(), "member")
 
       result = Workspaces.get_pending_invitation(invitation.id)
       assert result

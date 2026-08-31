@@ -12,6 +12,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   import Storyarn.VersioningFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Commercial.Billing
   alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Localization
@@ -27,6 +28,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Repo
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
+  alias Storyarn.Workspaces.Workspace
+  alias StoryarnWeb.ProjectLive.Form, as: ProjectForm
+  alias StoryarnWeb.ProjectSettingsLive.Snapshots, as: SnapshotsLive
+
+  @outside_pg_bigint 9_223_372_036_854_775_808
 
   defp settings_path(project, section \\ nil) do
     base = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
@@ -53,6 +59,106 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")
   end
 
+  defp introduce_project_owner_drift(project, owner, :missing) do
+    project.id
+    |> Projects.get_membership(owner.id)
+    |> Repo.delete!()
+  end
+
+  defp introduce_project_owner_drift(project, _owner, :duplicate) do
+    membership_fixture(project, user_fixture(), "owner")
+  end
+
+  defp connected_project_settings_socket(user, project, membership) do
+    %Socket{
+      endpoint: StoryarnWeb.Endpoint,
+      router: StoryarnWeb.Router,
+      root_pid: self(),
+      transport_pid: self(),
+      assigns: %{
+        __changed__: %{},
+        flash: %{},
+        current_scope: user_scope_fixture(user),
+        project: project,
+        membership: membership,
+        workspace: project.workspace
+      }
+    }
+  end
+
+  for {section, live_view} <- [
+        localization: StoryarnWeb.ProjectSettingsLive.Localization,
+        members: StoryarnWeb.ProjectSettingsLive.Members,
+        usage_limits: StoryarnWeb.ProjectSettingsLive.UsageLimits,
+        version_control: StoryarnWeb.ProjectSettingsLive.VersionControl
+      ] do
+    test "#{section} mount reloads ownership and subscribes even when access is already lost" do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      stale_membership = Projects.get_membership(project.id, owner.id)
+      fresh_name = "Fresh mount #{unquote(section)}"
+
+      project
+      |> Ecto.Changeset.change(name: fresh_name)
+      |> Repo.update!()
+
+      socket = connected_project_settings_socket(owner, project, stale_membership)
+      assert {:ok, mounted_socket} = unquote(live_view).mount(%{}, %{}, socket)
+      assert mounted_socket.assigns.project.name == fresh_name
+      assert mounted_socket.assigns.membership.id == stale_membership.id
+
+      ownership_topic = "projects:#{project.id}:ownership"
+      :ok = Phoenix.PubSub.unsubscribe(Storyarn.PubSub, ownership_topic)
+
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      assert {:ok, _transferred_project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      assert {:ok, denied_socket} =
+               unquote(live_view).mount(
+                 %{},
+                 %{},
+                 connected_project_settings_socket(owner, project, stale_membership)
+               )
+
+      assert {:redirect, %{to: path}} = denied_socket.redirected
+
+      assert path ==
+               "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+
+      probe = {:ownership_subscription_probe, project.id, unquote(section)}
+      :ok = Phoenix.PubSub.broadcast(Storyarn.PubSub, ownership_topic, probe)
+      assert_receive ^probe
+    end
+  end
+
+  describe "open owner-only settings after an ownership transfer" do
+    setup :register_and_log_in_user
+
+    for section <- ["localization", "usage-limits", "version-control"] do
+      test "#{section} redirects the former owner when ownership changes", %{
+        conn: conn,
+        user: owner
+      } do
+        project = owner |> project_fixture() |> Repo.preload(:workspace)
+        receiver = user_fixture()
+        _receiver_membership = membership_fixture(project, receiver, "editor")
+
+        {:ok, view, _html} = live(conn, settings_path(project, unquote(section)))
+
+        assert {:ok, _project} =
+                 Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+        assert_redirect(
+          view,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        )
+      end
+    end
+  end
+
   describe "General section" do
     setup :register_and_log_in_user
 
@@ -67,6 +173,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert vue.props["project-details"]["type"] == "game"
       assert vue.props["project-details"]["subtype"] == "rpg"
       assert vue.props["project-metrics-options"]["project_types"] == ["game", "film", "novel", "other"]
+      assert vue.props["can-manage-project"] == true
 
       assert vue.props["source-language"] == %{
                "flagCode" => "gb",
@@ -84,6 +191,48 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "shortLabel" => "EN",
                "value" => "en-us"
              } in vue.props["source-language-options"]
+    end
+
+    test "keeps template publishing available but removes owner controls after a transfer", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      {:ok, view, _html} = live(conn, settings_path(project))
+      assert get_general_vue(view).props["can-manage-project"] == true
+
+      assert {:ok, _transferred_project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      refute_redirected(view)
+      assert get_general_vue(view).props["can-manage-project"] == false
+      assert Repo.reload!(project).owner_id == receiver.id
+    end
+
+    test "enables owner controls in an already open general tab for the new owner", %{
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture()
+      _workspace_admin = workspace_membership_fixture(project.workspace, receiver, "admin")
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      {:ok, receiver_view, _html} =
+        build_conn()
+        |> log_in_user(receiver)
+        |> live(settings_path(project))
+
+      assert get_general_vue(receiver_view).props["can-manage-project"] == false
+
+      assert {:ok, _transferred_project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      refute_redirected(receiver_view)
+      assert get_general_vue(receiver_view).props["can-manage-project"] == true
+      assert Repo.reload!(project).owner_id == receiver.id
     end
 
     test "redirects non-owner", %{conn: conn, user: user} do
@@ -110,6 +259,22 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       vue = get_general_vue(view)
       assert vue.props["project-details"]["name"] == "New Name"
+    end
+
+    test "explains ownership drift and preserves project details", %{conn: conn, user: owner} do
+      project = owner |> project_fixture(%{name: "Stable Name"}) |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project))
+
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      html =
+        render_click(view, "update_project", %{
+          "project" => %{"name" => "Must Not Persist"}
+        })
+
+      assert html =~ "project ownership is inconsistent"
+      assert Repo.reload!(project).name == "Stable Name"
     end
 
     test "survives replacement invalidations and reloads project fields after a snapshot restore", %{
@@ -289,8 +454,14 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
       assert vue.component == "live/project/settings/ProjectSettingsMembers"
       members = vue.props["members"]
+      assert vue.props["current-user-id"] == Integer.to_string(user.id)
       assert Enum.any?(members, fn m -> m["email"] == user.email end)
       assert Enum.any?(members, fn m -> m["email"] == "member@example.com" end)
+
+      assert Enum.find(members, &(&1["email"] == "member@example.com"))["user_id"] ==
+               Integer.to_string(member.id)
+
+      assert vue.props["can-transfer-ownership"] == true
     end
 
     test "sends an invitation directly to the project member", %{conn: conn, user: user} do
@@ -371,8 +542,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert {:ok, other_invitation} =
                Projects.create_invitation(
-                 other_project,
-                 user,
+                 user_scope_fixture(user),
+                 other_project.id,
                  "other-project@example.com",
                  "editor"
                )
@@ -399,15 +570,18 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       })
 
       assert [invitation] = Projects.list_pending_invitations(project.id)
-      assert {:ok, _deleted_project} = Projects.delete_project(project, user.id)
+
+      assert {:ok, _deleted_project} =
+               Projects.delete_project(user_scope_fixture(user), project.id)
+
       refute Repo.get(ProjectInvitation, invitation.id)
 
-      result =
-        render_click(view, "send_invitation", %{
-          "invite" => %{"email" => "after-delete@example.com", "role" => "editor"}
-        })
+      render_click(view, "send_invitation", %{
+        "invite" => %{"email" => "after-delete@example.com", "role" => "editor"}
+      })
 
-      assert result =~ "permission to manage this project"
+      flash = assert_redirect(view, ~p"/workspaces/#{project.workspace.slug}")
+      assert flash["error"] == "Project not found."
       assert Projects.list_pending_invitations(project.id) == []
     end
 
@@ -426,10 +600,356 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       vue = LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsMembers")
       refute Enum.any?(vue.props["members"], fn m -> m["email"] == "removeme@example.com" end)
     end
+
+    test "explains ownership drift and preserves the member when removal fails closed", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      member = user_fixture()
+      membership = membership_fixture(project, member, "editor")
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      result = render_click(view, "remove_member", %{"id" => to_string(membership.id)})
+
+      assert result =~ "could not be removed because project ownership is inconsistent"
+      assert Repo.reload!(membership).role == "editor"
+    end
+
+    test "rejects oversized and structured member-management ids", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      assert render_click(view, "remove_member", %{
+               "id" => Integer.to_string(@outside_pg_bigint)
+             }) =~ "Member not found."
+
+      assert render_click(view, "remove_member", %{"id" => %{"unexpected" => true}}) =~
+               "Member not found."
+
+      assert render_click(view, "revoke_invitation", %{
+               "id" => Integer.to_string(@outside_pg_bigint)
+             }) =~ "Invitation not found."
+
+      assert render_click(view, "revoke_invitation", %{"id" => []}) =~
+               "Invitation not found."
+    end
+
+    test "transfers ownership and sends the former owner out of project settings", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture(%{email: "new-owner@example.com"})
+      receiver_membership = membership_fixture(project, receiver, "viewer")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      render_click(view, "transfer_owner", %{"user-id" => to_string(receiver.id)})
+
+      {path, flash} = assert_redirect(view)
+
+      assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["info"] == "Project ownership transferred."
+      refute Map.has_key?(flash, "error")
+
+      assert Repo.reload!(project).owner_id == receiver.id
+      assert Projects.get_membership(project.id, owner.id).role == "editor"
+      assert Repo.reload!(receiver_membership).role == "owner"
+      assert Repo.get!(Workspace, project.workspace_id).owner_id == owner.id
+    end
+
+    test "rejects an ownership target outside PostgreSQL bigint range", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      result =
+        render_click(view, "transfer_owner", %{
+          "user-id" => Integer.to_string(@outside_pg_bigint)
+        })
+
+      assert result =~ "Project ownership could not be transferred."
+
+      assert render_click(view, "transfer_owner", %{
+               "user-id" => %{"unexpected" => true}
+             }) =~ "Project ownership could not be transferred."
+
+      assert render_click(view, "transfer_owner", %{}) =~
+               "Project ownership could not be transferred."
+
+      refute_redirected(view)
+      assert Repo.reload!(project).owner_id == owner.id
+    end
+
+    test "a stale members tab redirects after ownership is transferred elsewhere", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      {path, flash} = assert_redirect(view)
+
+      assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      refute Map.has_key?(flash, "error")
+
+      assert Projects.get_membership(project.id, owner.id).role == "editor"
+    end
+
+    test "the legacy project form explains ownership invariant failures", %{user: owner} do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _conflicting_owner = membership_fixture(project, user_fixture(), "owner")
+
+      socket = %Socket{
+        endpoint: StoryarnWeb.Endpoint,
+        router: StoryarnWeb.Router,
+        root_pid: self(),
+        transport_pid: self(),
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          action: :edit,
+          current_scope: user_scope_fixture(owner),
+          project: project
+        }
+      }
+
+      assert {:noreply, updated_socket} =
+               ProjectForm.handle_event("save", %{"project" => %{"name" => "Blocked rename"}}, socket)
+
+      assert updated_socket.assigns.flash["error"] ==
+               "This action could not be completed because project ownership is inconsistent. Contact support before retrying."
+
+      assert Repo.reload!(project).name != "Blocked rename"
+    end
+
+    test "a stale members tab cannot transfer ownership after losing authority without receiving PubSub", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture()
+      receiver_membership = membership_fixture(project, receiver, "editor")
+      third_member = user_fixture()
+      _third_membership = membership_fixture(project, third_member, "editor")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      assert {:ok, :ownership_changed_without_broadcast} =
+               Repo.transact(fn ->
+                 project
+                 |> Ecto.Changeset.change(owner_id: receiver.id)
+                 |> Repo.update!()
+
+                 project.id
+                 |> Projects.get_membership(owner.id)
+                 |> Ecto.Changeset.change(role: "editor")
+                 |> Repo.update!()
+
+                 receiver_membership
+                 |> Ecto.Changeset.change(role: "owner")
+                 |> Repo.update!()
+
+                 {:ok, :ownership_changed_without_broadcast}
+               end)
+
+      render_click(view, "transfer_owner", %{"user-id" => to_string(third_member.id)})
+
+      {path, flash} = assert_redirect(view)
+      assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] == "You don't have permission to manage this project."
+
+      assert Repo.reload!(project).owner_id == receiver.id
+      assert Repo.reload!(receiver_membership).role == "owner"
+      assert Projects.get_membership(project.id, third_member.id).role == "editor"
+    end
+
+    test "rejects a workspace-inherited target without a direct project membership", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      inherited_member = user_fixture()
+
+      _workspace_membership =
+        workspace_membership_fixture(project.workspace, inherited_member, "member")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "members"))
+
+      result =
+        render_click(view, "transfer_owner", %{
+          "user-id" => to_string(inherited_member.id)
+        })
+
+      assert result =~ "no longer a direct project member"
+      assert Repo.reload!(project).owner_id == owner.id
+    end
   end
 
   describe "Snapshots section" do
     setup :register_and_log_in_user
+
+    test "stale owner assigns cannot start snapshot reads or refresh timers", %{user: owner} do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      stale_membership = Projects.get_membership(project.id, owner.id)
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          current_scope: user_scope_fixture(owner),
+          project: project,
+          membership: stale_membership
+        }
+      }
+
+      assert {:ok, redirected_socket} = SnapshotsLive.mount(%{}, %{}, socket)
+
+      assert redirected_socket.redirected ==
+               {:redirect, %{to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}", status: 302}}
+
+      refute Map.has_key?(redirected_socket.assigns, :snapshots)
+      refute Map.has_key?(redirected_socket.assigns, :snapshot_restores)
+      refute Map.has_key?(redirected_socket.assigns, :snapshot_build_statuses)
+      refute Map.has_key?(redirected_socket.assigns, :snapshot_build_status_timer)
+      refute Map.has_key?(redirected_socket.assigns, :snapshot_access_active)
+    end
+
+    test "ownership drift fails every snapshot mutation with its existing client contract", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      snapshot = full_project_snapshot_fixture(project)
+      snapshot_id = snapshot.id
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      render_click(view, "create_snapshot", %{"idempotency_key" => "ownership-drift-create"})
+
+      assert_push_event(view, "snapshot_request_failed", %{
+        reason: "ownership_invariant_violation",
+        requiredBytes: nil,
+        availableBytes: nil,
+        used: nil,
+        limit: nil
+      })
+
+      render_click(view, "cancel_snapshot", %{"id" => snapshot_id})
+
+      assert_push_event(view, "snapshot_cancel_failed", %{
+        snapshotId: ^snapshot_id,
+        reason: "ownership_invariant_violation",
+        message:
+          "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
+      })
+
+      render_click(view, "delete_snapshot", %{"id" => snapshot_id})
+
+      assert_push_event(view, "snapshot_delete_failed", %{
+        snapshotId: ^snapshot_id,
+        reason: "ownership_invariant_violation",
+        message:
+          "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
+      })
+
+      html =
+        render_click(view, "restore_snapshot", %{
+          "id" => snapshot_id,
+          "idempotency_key" => "ownership-drift-restore"
+        })
+
+      assert_push_event(view, "snapshot_restore_failed", %{
+        snapshotId: ^snapshot_id,
+        reason: "ownership_invariant_violation"
+      })
+
+      assert html =~ "project ownership is inconsistent"
+      assert Versioning.list_project_snapshot_restores(project.id) == []
+    end
+
+    test "passively revokes an open snapshot tab and stops all later refreshes", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      pending = pending_project_snapshot_fixture(project, %{title: "Visible before transfer"})
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
+
+      state_before = :sys.get_state(view.pid)
+      assert state_before.socket.assigns.snapshot_access_active
+      timer = state_before.socket.assigns.snapshot_build_status_timer
+      assert is_reference(timer)
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      assert_redirect(
+        view,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      )
+
+      refute Process.alive?(view.pid)
+      assert Process.read_timer(timer) == false
+      assert Repo.reload!(pending).title == "Visible before transfer"
+    end
+
+    test "a snapshot update arriving before the ownership event revokes access without crashing", %{
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      pending = pending_project_snapshot_fixture(project, %{title: "Race-safe snapshot"})
+      membership = Projects.get_membership(project.id, owner.id)
+      receiver = user_fixture()
+      _receiver_membership = membership_fixture(project, receiver, "editor")
+
+      assert {:ok, mounted_socket} =
+               SnapshotsLive.mount(
+                 %{},
+                 %{},
+                 connected_project_settings_socket(owner, project, membership)
+               )
+
+      timer = mounted_socket.assigns.snapshot_build_status_timer
+      assert is_reference(timer)
+
+      assert {:ok, _project} =
+               Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
+
+      assert {:noreply, revoked_socket} =
+               SnapshotsLive.handle_info(
+                 {:project_snapshot_updated, pending.id},
+                 mounted_socket
+               )
+
+      refute revoked_socket.assigns.snapshot_access_active
+      assert revoked_socket.assigns.snapshot_build_status_timer == nil
+      assert revoked_socket.redirected
+      assert Process.read_timer(timer) == false
+    end
 
     test "passes canonical accounting measurements and workspace categories to Vue", %{
       conn: conn,
@@ -819,12 +1339,28 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
     } do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       snapshot = full_project_snapshot_fixture(project)
+      receiver = user_fixture()
+      receiver_membership = membership_fixture(project, receiver, "editor")
+      owner_membership = Projects.get_membership(project.id, user.id)
 
       {:ok, view, _html} = live(conn, settings_path(project, "snapshots"))
 
-      project.id
-      |> Projects.get_membership(user.id)
-      |> then(&Repo.update!(Ecto.Changeset.change(&1, role: "editor")))
+      assert {:ok, :ownership_changed_without_broadcast} =
+               Repo.transact(fn ->
+                 project
+                 |> Ecto.Changeset.change(owner_id: receiver.id)
+                 |> Repo.update!()
+
+                 owner_membership
+                 |> Ecto.Changeset.change(role: "editor")
+                 |> Repo.update!()
+
+                 receiver_membership
+                 |> Ecto.Changeset.change(role: "owner")
+                 |> Repo.update!()
+
+                 {:ok, :ownership_changed_without_broadcast}
+               end)
 
       render_click(view, "restore_snapshot", %{
         "id" => snapshot.id,
@@ -977,6 +1513,156 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       refute updated.auto_version_scenes
       refute updated.auto_version_sheets
     end
+
+    test "explains ownership drift and preserves settings when saving fails closed", %{
+      conn: conn,
+      user: owner
+    } do
+      project =
+        owner
+        |> project_fixture(%{
+          auto_version_flows: true,
+          auto_version_scenes: true,
+          auto_version_sheets: true
+        })
+        |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, settings_path(project, "version-control"))
+
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      result =
+        render_click(view, "save_version_control", %{
+          "version_control" => %{
+            "auto_version_flows" => "false",
+            "auto_version_scenes" => "false",
+            "auto_version_sheets" => "false"
+          }
+        })
+
+      assert result =~ "could not be saved because project ownership is inconsistent"
+
+      unchanged = Repo.get!(Project, project.id)
+      assert unchanged.auto_version_flows
+      assert unchanged.auto_version_scenes
+      assert unchanged.auto_version_sheets
+    end
+  end
+
+  describe "Localization owner authorization" do
+    setup :register_and_log_in_user
+
+    for drift <- [:missing, :duplicate] do
+      test "mount rejects #{drift} canonical owner membership", %{conn: conn, user: owner} do
+        project = owner |> project_fixture() |> Repo.preload(:workspace)
+        introduce_project_owner_drift(project, owner, unquote(drift))
+
+        assert {:error, {:redirect, %{to: path, flash: flash}}} =
+                 live(conn, settings_path(project, "localization"))
+
+        assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        assert flash["error"] == "You don't have permission to manage this project."
+      end
+
+      test "ownership refresh rejects #{drift} canonical owner membership", %{
+        conn: conn,
+        user: owner
+      } do
+        project = owner |> project_fixture() |> Repo.preload(:workspace)
+        {:ok, view, _html} = live(conn, settings_path(project, "localization"))
+
+        introduce_project_owner_drift(project, owner, unquote(drift))
+
+        send(
+          view.pid,
+          {:project_ownership_transferred, %{project_id: project.id}}
+        )
+
+        {path, flash} = assert_redirect(view)
+
+        assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        assert flash["error"] == "You don't have permission to manage this project."
+      end
+    end
+  end
+
+  describe "Localization provider settings" do
+    setup :register_and_log_in_user
+
+    test "ownership drift returns explicit replies without changing provider configuration", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      {:ok, view, _html} = live(conn, settings_path(project, "localization"))
+
+      conflicting_owner = user_fixture()
+      _conflicting_membership = membership_fixture(project, conflicting_owner, "owner")
+
+      render_hook(view, "save_provider_config", %{
+        "provider" => %{
+          "api_key_encrypted" => "must-not-persist",
+          "api_endpoint" => "https://api-free.deepl.com"
+        }
+      })
+
+      save_message = "Provider settings could not be saved because project ownership is inconsistent."
+      assert_reply(view, %{ok: false, errors: %{authorization: ^save_message}})
+      assert Localization.get_provider_config(project.id) == nil
+
+      render_hook(view, "test_provider_connection", %{})
+
+      connection_message =
+        "Provider connection could not be tested because project ownership is inconsistent."
+
+      assert_reply(view, %{ok: false, error: ^connection_message})
+      assert Localization.get_provider_config(project.id) == nil
+    end
+
+    test "distinguishes lost authority from inconsistent ownership", %{
+      conn: conn,
+      user: owner
+    } do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      receiver = user_fixture()
+      receiver_membership = membership_fixture(project, receiver, "editor")
+      owner_membership = Projects.get_membership(project.id, owner.id)
+      {:ok, view, _html} = live(conn, settings_path(project, "localization"))
+
+      assert {:ok, :ownership_changed_without_broadcast} =
+               Repo.transact(fn ->
+                 project
+                 |> Ecto.Changeset.change(owner_id: receiver.id)
+                 |> Repo.update!()
+
+                 owner_membership
+                 |> Ecto.Changeset.change(role: "editor")
+                 |> Repo.update!()
+
+                 receiver_membership
+                 |> Ecto.Changeset.change(role: "owner")
+                 |> Repo.update!()
+
+                 {:ok, :ownership_changed_without_broadcast}
+               end)
+
+      render_hook(view, "save_provider_config", %{
+        "provider" => %{
+          "api_key_encrypted" => "must-not-persist",
+          "api_endpoint" => "https://api-free.deepl.com"
+        }
+      })
+
+      save_message = "You don't have permission to manage provider settings for this project."
+      assert_reply(view, %{ok: false, errors: %{authorization: ^save_message}})
+
+      render_hook(view, "test_provider_connection", %{})
+
+      connection_message = "You don't have permission to test this project's provider connection."
+      assert_reply(view, %{ok: false, error: ^connection_message})
+      assert Localization.get_provider_config(project.id) == nil
+    end
   end
 
   describe "Usage limits section" do
@@ -1040,8 +1726,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       assert {:ok, _invitation} =
                Projects.create_invitation(
-                 project,
-                 user,
+                 user_scope_fixture(user),
+                 project.id,
                  "usage-pending@example.com",
                  "editor"
                )

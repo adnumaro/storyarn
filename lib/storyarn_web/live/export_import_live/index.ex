@@ -169,18 +169,44 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    %{project: project} = socket.assigns
+    stale_project = socket.assigns.project
+
+    if connected?(socket) do
+      :ok = Projects.subscribe_project_ownership_changes(stale_project.id)
+    end
+
+    case Projects.reload_project(socket.assigns.current_scope, stale_project.id) do
+      {:ok, project, membership} ->
+        mount_project(socket, project, membership)
+
+      {:error, _reason} ->
+        {:ok,
+         socket
+         |> put_flash(:error, dgettext("projects", "You don't have access to this project."))
+         |> redirect(to: ~p"/workspaces/#{stale_project.workspace.slug}")}
+    end
+  end
+
+  defp mount_project(socket, project, membership) do
+    current_user_id = socket.assigns.current_scope.user.id
 
     # Import rewrites project content wholesale, so it is owner-only. `can_edit`
     # is `:edit_content` and would have shown an editor a working file picker
     # that every import handler then rejects.
-    can_import? = Authorize.authorize(socket, :manage_project) == :ok
+    can_import? =
+      project.owner_id == current_user_id and
+        Projects.can?(membership.role, :manage_project)
+
     formats = visible_export_formats()
     default_format = List.first(formats)
     default_sections = default_format.sections
 
     socket =
       socket
+      |> assign(:project, project)
+      |> assign(:workspace, project.workspace)
+      |> assign(:membership, membership)
+      |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
       |> assign(:current_path, "")
       # Export state
       |> assign(:formats, formats)
@@ -203,6 +229,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       # upload and are never written under their client-provided filename.
       |> assign(:import_state, empty_import_state())
       |> assign(:can_import, can_import?)
+      |> assign(:imports_subscribed?, false)
       |> allow_upload(:import_file,
         accept: [".yarn", ".zip"],
         max_entries: 1,
@@ -210,9 +237,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       )
 
     socket =
-      if connected?(socket) do
-        :ok = Projects.subscribe_project_imports(project)
-        recover_latest_import(socket)
+      if connected?(socket) and can_import? do
+        socket
+        |> ensure_project_import_subscription(project)
+        |> recover_latest_import()
       else
         socket
       end
@@ -322,7 +350,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   def handle_event("validate_upload", _params, socket), do: {:noreply, socket}
 
   def handle_event("parse_import", _params, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_authorization(socket, fn socket ->
       results = consume_import_upload(socket)
       {:noreply, apply_prepare_result(socket, List.first(results))}
     end)
@@ -330,7 +358,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("set_strategy", %{"attempt_id" => attempt_id, "strategy" => strategy}, socket)
       when valid_import_attempt_id(attempt_id) and strategy in ~w(skip overwrite rename) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_authorization(socket, fn socket ->
       case socket.assigns.import_state do
         %{step: "preview", attempt_id: ^attempt_id} ->
           update_import_strategy(socket, attempt_id, strategy)
@@ -345,7 +373,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("set_import_mode", %{"attempt_id" => attempt_id, "import_mode" => import_mode}, socket)
       when valid_import_attempt_id(attempt_id) and import_mode in ~w(additive replace_project) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_authorization(socket, fn socket ->
       case socket.assigns.import_state do
         %{step: "preview", attempt_id: ^attempt_id} ->
           update_import_mode(socket, attempt_id, import_mode)
@@ -360,7 +388,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   def handle_event("save_import_review", %{"attempt_id" => attempt_id, "review_decisions" => decisions}, socket)
       when valid_import_attempt_id(attempt_id) and is_list(decisions) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_reply_authorization(socket, fn socket ->
       case current_import_state(socket, attempt_id) do
         {:ok, state} -> save_import_review_draft(socket, state, decisions)
         :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
@@ -378,7 +406,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         socket
       )
       when valid_import_attempt_id(attempt_id) and is_boolean(acknowledged?) and is_list(decisions) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_reply_authorization(socket, fn socket ->
       case current_import_state(socket, attempt_id) do
         {:ok, state} -> validate_import_review(socket, state, acknowledged?, decisions)
         :stale -> {:reply, %{ok: false, reason: "stale"}, socket}
@@ -425,7 +453,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # must never clear it before the server has actually terminalized the
   # attempt, or a refused reset silently loses the completed-restore path.
   def handle_event("reset_import", %{"attempt_id" => nil}, socket) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_reply_authorization(socket, fn socket ->
       if is_nil(socket.assigns.import_state.attempt_id) do
         {:reply, %{ok: true, attempt_id: nil}, assign(socket, :import_state, empty_import_state())}
       else
@@ -435,7 +463,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   def handle_event("reset_import", %{"attempt_id" => attempt_id}, socket) when valid_import_attempt_id(attempt_id) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_reply_authorization(socket, fn socket ->
       reset_import_attempt(socket, attempt_id)
     end)
   end
@@ -461,7 +489,48 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   @impl true
+  def handle_info(
+        {:project_ownership_transferred, %{project_id: project_id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    case Projects.reload_project(socket.assigns.current_scope, project_id) do
+      {:ok, project, membership} ->
+        can_import? =
+          project.owner_id == socket.assigns.current_scope.user.id and
+            Projects.can?(membership.role, :manage_project)
+
+        socket =
+          socket
+          |> assign(:project, project)
+          |> assign(:workspace, project.workspace)
+          |> assign(:membership, membership)
+          |> assign(:can_edit, Projects.can?(membership.role, :edit_content))
+          |> assign(:can_import, can_import?)
+
+        socket =
+          if can_import? do
+            socket
+            |> ensure_project_import_subscription(project)
+            |> recover_latest_import()
+          else
+            assign(socket, :import_state, empty_import_state())
+          end
+
+        {:noreply, socket}
+
+      {:error, _reason} ->
+        {:noreply,
+         socket
+         |> put_flash(:error, dgettext("projects", "Project not found."))
+         |> push_navigate(to: ~p"/workspaces/#{socket.assigns.workspace.slug}")}
+    end
+  end
+
   def handle_info({:EXIT, _pid, :normal}, socket), do: {:noreply, socket}
+
+  def handle_info({:project_import_updated, _attempt}, %{assigns: %{can_import: false}} = socket) do
+    {:noreply, socket}
+  end
 
   def handle_info({:project_import_updated, %{id: _id} = attempt}, socket) do
     if socket.assigns.import_state.attempt_id == attempt.id do
@@ -479,6 +548,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     else
       {:noreply, socket}
     end
+  end
+
+  defp ensure_project_import_subscription(%{assigns: %{imports_subscribed?: true}} = socket, _project), do: socket
+
+  defp ensure_project_import_subscription(socket, project) do
+    :ok = Projects.subscribe_project_imports(project)
+    assign(socket, :imports_subscribed?, true)
   end
 
   # ===========================================================================
@@ -547,8 +623,56 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # Helpers — Import
   # ===========================================================================
 
+  defp with_import_authorization(socket, success_fn) do
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      success_fn,
+      &import_authorization_failure/2
+    )
+  end
+
+  defp with_import_reply_authorization(socket, success_fn) do
+    Authorize.with_authorization(
+      socket,
+      :manage_project,
+      success_fn,
+      &import_reply_authorization_failure/2
+    )
+  end
+
+  defp import_authorization_failure(socket, reason) do
+    {:noreply, put_import_authorization_flash(socket, reason)}
+  end
+
+  defp import_reply_authorization_failure(socket, reason) do
+    {:reply, %{ok: false, reason: import_authorization_reason(reason)}, put_import_authorization_flash(socket, reason)}
+  end
+
+  defp put_import_authorization_flash(socket, :ownership_invariant_violation) do
+    put_flash(
+      socket,
+      :error,
+      dgettext(
+        "projects",
+        "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
+      )
+    )
+  end
+
+  defp put_import_authorization_flash(socket, _reason) do
+    put_flash(
+      socket,
+      :error,
+      dgettext("projects", "You don't have permission to import into this project.")
+    )
+  end
+
+  defp import_authorization_reason(:ownership_invariant_violation), do: "ownership_invariant_violation"
+  defp import_authorization_reason(_reason), do: "unauthorized"
+
   defp execute_import_event(socket, attempt_id, fingerprint, import_mode, replace_acknowledged?) do
-    Authorize.with_authorization(socket, :manage_project, fn socket ->
+    with_import_reply_authorization(socket, fn socket ->
       case current_import_state(socket, attempt_id) do
         {:ok, state} ->
           execute_ready_import(
@@ -594,6 +718,14 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       :unavailable ->
         import_not_cancellable_reply(socket)
     end
+  end
+
+  defp finish_import_reset(socket, _attempt_id, {:error, :ownership_invariant_violation}) do
+    import_reply_authorization_failure(socket, :ownership_invariant_violation)
+  end
+
+  defp finish_import_reset(socket, _attempt_id, {:error, :unauthorized}) do
+    import_reply_authorization_failure(socket, :unauthorized)
   end
 
   # The queued job could not be cancelled: the import is still live, so the
@@ -644,6 +776,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       {:ok, attempt} ->
         {:noreply, assign_import_attempt(socket, attempt)}
 
+      {:error, :ownership_invariant_violation} ->
+        import_authorization_failure(socket, :ownership_invariant_violation)
+
       {:error, reason} ->
         {:noreply,
          reconcile_failed_import_mutation(socket, attempt_id, fn current_socket ->
@@ -656,6 +791,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     case Projects.update_project_import_mode(socket.assigns.current_scope, attempt_id, import_mode) do
       {:ok, attempt} ->
         {:noreply, assign_import_attempt(socket, attempt)}
+
+      {:error, :ownership_invariant_violation} ->
+        import_authorization_failure(socket, :ownership_invariant_violation)
 
       {:error, _reason} ->
         {:noreply,
@@ -782,6 +920,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:reply, %{ok: false, reason: "stale"},
          reconcile_failed_import_mutation(socket, attempt_id, &Function.identity/1)}
 
+      {:error, :ownership_invariant_violation} ->
+        import_reply_authorization_failure(socket, :ownership_invariant_violation)
+
       {:error, reason} ->
         # Plan storage can fail without changing the durable attempt. Preserve
         # its ready status so Reset still terminalizes it instead of clearing
@@ -802,6 +943,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     case Projects.save_project_import_review(socket.assigns.current_scope, attempt_id, decisions) do
       {:ok, attempt, preview} ->
         {:reply, %{ok: true}, assign_import_attempt(socket, attempt, preview)}
+
+      {:error, :ownership_invariant_violation} ->
+        import_reply_authorization_failure(socket, :ownership_invariant_violation)
 
       {:error, reason} ->
         {:reply, %{ok: false, reason: import_review_failure(reason)},
@@ -825,6 +969,9 @@ defmodule StoryarnWeb.ExportImportLive.Index do
         {:reply, %{ok: true, review_confirmation_fingerprint: fingerprint},
          assign_import_attempt(socket, attempt, preview)}
 
+      {:error, :ownership_invariant_violation} ->
+        import_reply_authorization_failure(socket, :ownership_invariant_violation)
+
       {:error, reason} ->
         {:reply, %{ok: false, reason: import_review_failure(reason)},
          reconcile_failed_import_mutation(socket, attempt_id, &Function.identity/1)}
@@ -846,9 +993,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp import_review_failure(reason) when reason in [:not_found, :import_not_ready, :stale_import_review], do: "stale"
 
   defp import_review_failure(:unauthorized), do: "unauthorized"
+  defp import_review_failure(:ownership_invariant_violation), do: "ownership_invariant_violation"
   defp import_review_failure(_reason), do: "unavailable"
 
   defp apply_prepare_result(socket, {:ok, attempt, preview}), do: assign_import_attempt(socket, attempt, preview)
+
+  defp apply_prepare_result(socket, {:error, :ownership_invariant_violation}) do
+    socket
+    |> assign_import_error(:ownership_invariant_violation)
+    |> put_import_authorization_flash(:ownership_invariant_violation)
+  end
 
   defp apply_prepare_result(socket, {:error, reason}), do: assign_import_error(socket, reason)
   defp apply_prepare_result(socket, nil), do: assign_import_error(socket, :upload_unavailable)
@@ -1003,25 +1157,30 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   end
 
   defp reconcile_import_attempt(socket, attempt_id, opts \\ []) do
+    with_import_reply_authorization(socket, fn socket ->
+      reconcile_authorized_import_attempt(socket, attempt_id, opts)
+    end)
+  end
+
+  defp reconcile_authorized_import_attempt(socket, attempt_id, opts) do
     protect_active? = Keyword.get(opts, :protect_active, false)
     resume_opts = Keyword.delete(opts, :protect_active)
 
-    with :ok <- Authorize.authorize(socket, :manage_project),
-         {:ok, attempt, preview} <-
-           Projects.resume_project_import(
-             socket.assigns.current_scope,
-             socket.assigns.project,
-             attempt_id,
-             resume_opts
-           ) do
-      case protect_active_import(socket, attempt, protect_active?) do
-        {:preserve, protected_socket} ->
-          {:reply, %{ok: false, reason: "superseded"}, protected_socket}
+    case Projects.resume_project_import(
+           socket.assigns.current_scope,
+           socket.assigns.project,
+           attempt_id,
+           resume_opts
+         ) do
+      {:ok, attempt, preview} ->
+        case protect_active_import(socket, attempt, protect_active?) do
+          {:preserve, protected_socket} ->
+            {:reply, %{ok: false, reason: "superseded"}, protected_socket}
 
-        {:replace, replace_socket} ->
-          replace_reconciled_import(replace_socket, attempt, preview, protect_active?)
-      end
-    else
+          {:replace, replace_socket} ->
+            replace_reconciled_import(replace_socket, attempt, preview, protect_active?)
+        end
+
       {:error, reason} ->
         reconcile_import_failure(socket, attempt_id, reason)
 
@@ -1099,6 +1258,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp reconcile_import_failure(socket, attempt_id, reason) do
     failure = import_resume_failure(reason)
+    socket = maybe_put_import_authorization_flash(socket, reason)
 
     socket =
       if failure in ["invalid", "not_found", "unauthorized"] and
@@ -1115,8 +1275,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
        when reason in [:not_found, :import_not_found, :attempt_not_found, :project_mismatch], do: "not_found"
 
   defp import_resume_failure(reason) when reason in [:unauthorized, :forbidden], do: "unauthorized"
+  defp import_resume_failure(:ownership_invariant_violation), do: "ownership_invariant_violation"
   defp import_resume_failure(:invalid_attempt_id), do: "invalid"
   defp import_resume_failure(_reason), do: "unavailable"
+
+  defp maybe_put_import_authorization_flash(socket, reason)
+       when reason in [:ownership_invariant_violation, :unauthorized, :forbidden] do
+    put_import_authorization_flash(socket, reason)
+  end
+
+  defp maybe_put_import_authorization_flash(socket, _reason), do: socket
 
   defp assign_import_error(socket, reason, status \\ "failed") do
     state = %{
@@ -1164,6 +1332,8 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # job) is still live, so reporting success would drop the durable browser
   # reference while the import goes on to materialize.
   defp cancellation_outcome({:error, :import_not_cancellable}), do: {:error, :import_not_cancellable}
+  defp cancellation_outcome({:error, :ownership_invariant_violation}), do: {:error, :ownership_invariant_violation}
+  defp cancellation_outcome({:error, :unauthorized}), do: {:error, :unauthorized}
   defp cancellation_outcome({:ok, _expired}), do: :ok
   defp cancellation_outcome({:error, :not_found}), do: :ok
   defp cancellation_outcome(_failure), do: {:error, :reset_failed}
@@ -1185,6 +1355,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
   defp import_attempt_error(%{error_code: code}) when code in ["duplicate_yarn_node_title", "import_plan_has_errors"] do
     import_error_message(:import_plan_has_errors)
+  end
+
+  defp import_attempt_error(%{error_code: "ownership_invariant_violation"}) do
+    import_error_message(:ownership_invariant_violation)
   end
 
   defp import_attempt_error(%{error_code: code})
@@ -1247,6 +1421,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
     dgettext(
       "projects",
       "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
+    )
+  end
+
+  defp import_error_message(:ownership_invariant_violation) do
+    dgettext(
+      "projects",
+      "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
     )
   end
 

@@ -120,6 +120,43 @@ not a convenience fallback for individual callers. Changing to per-Project
 opt-in access is a separate authorization redesign and must not be achieved by
 bypassing effective membership in one code path.
 
+## Ownership invariant and transfer
+
+A Project has one canonical owner represented by `projects.owner_id` and
+exactly one direct `project_memberships` row with `role = "owner"`. Inherited
+Workspace access is never eligible for ownership transfer. Ordinary membership
+creation and role changes cannot assign the owner role;
+`Storyarn.Projects.transfer_owner/3` is the only ordinary public transition
+that updates both owner facts.
+
+The command locks the active Project, validates and locks its full direct
+membership set, requires the receiver to be an existing direct member, and
+commits both role changes plus `owner_id` atomically. The former owner becomes
+an `editor`. The containing Workspace, its owner, subscriptions, assets and
+Project content are unchanged.
+
+Ownership transfer owns its transaction boundary. Calling the public command
+from an already-open database transaction is rejected before any write; this
+prevents a successful outer commit from bypassing the post-commit ownership
+signal used to reauthorize connected settings surfaces.
+
+Every owner-only writer reauthorizes the canonical owner after acquiring the
+Project lock. This includes Project update/delete, membership and invitation
+mutations, and snapshot request/cancel/delete paths. Consequently an operation
+that authorized before a concurrent transfer cannot continue with stale owner
+authority after that transfer commits. Missing or ambiguous owner facts fail
+closed with `:ownership_invariant_violation`.
+
+This fail-closed boundary is intentionally visible to active workflows: an
+owner-only operation already in progress may stop or fail when ownership
+changes. The former and new owner must review that operation and restart it
+under the new authority when necessary; it never resumes with the former
+owner's stale authorization.
+
+The application transaction is the current enforcement boundary. A persistent
+constraint tying `owner_id` to the unique owner membership requires its own
+reviewed database decision and is deliberately outside ENG-108.
+
 ## Persistence-shaped folders
 
 ### Consumer-local SQL projections

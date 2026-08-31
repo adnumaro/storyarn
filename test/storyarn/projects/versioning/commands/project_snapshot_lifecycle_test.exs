@@ -1181,7 +1181,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       lease = expired_snapshot_export_lease!(project, ready)
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       parent = self()
       handler_id = "snapshot-hard-delete-intent-#{System.unique_integer([:positive])}"
 
@@ -1240,7 +1240,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
         assert {:error, :enoent} = Storage.stat(storage_key)
       end)
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       assert {:ok, _project} = Projects.permanently_delete_project(deleted)
 
       refute Repo.get(ProjectSnapshot, cancelled.id)
@@ -1262,7 +1262,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       workspace = Repo.preload(project, :workspace).workspace
       ready = create_ready_snapshot(user, project)
 
-      assert {:ok, _workspace} = Workspaces.delete_workspace(workspace)
+      assert {:ok, _workspace} =
+               Workspaces.delete_workspace(user_scope_fixture(user), workspace.id)
 
       refute Repo.get(Workspaces.Workspace, workspace.id)
       intent = Repo.get_by!(SnapshotCleanupIntent, project_snapshot_id_snapshot: ready.id)
@@ -1282,7 +1283,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
 
       job = Repo.get!(Oban.Job, restore.oban_job_id)
       assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Projects.permanently_delete_project(deleted)
@@ -1309,7 +1310,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       assert %ProjectSnapshotRestore{status: "queued", storage_reservation_id: nil} = restore
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
-               Workspaces.delete_workspace(workspace)
+               Workspaces.delete_workspace(user_scope_fixture(user), workspace.id)
 
       assert Repo.get!(Workspaces.Workspace, workspace.id)
       assert Repo.get!(Projects.Project, project.id)
@@ -1329,7 +1330,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
                })
 
       assert Repo.get!(Oban.Job, snapshot.build_job_id).state == "available"
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       Phoenix.PubSub.subscribe(Storyarn.PubSub, "project_snapshots:#{project.id}")
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
@@ -1351,7 +1352,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       stale_at = DateTime.add(now, -16 * 60, :second)
       {_building, job, reservation} = stale_executing_build!(snapshot, stale_at)
 
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:error, :snapshot_active_operation_blocks_deletion} =
                Projects.permanently_delete_project(deleted)
@@ -1397,7 +1398,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
                })
 
       assert ready.id < active.id
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
       parent = self()
       handler_id = "snapshot-rollback-intent-#{System.unique_integer([:positive])}"
 
@@ -1427,7 +1428,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       first = create_ready_snapshot(user, project)
       second = create_ready_snapshot(user, project)
-      assert {:ok, deleted} = Projects.delete_project(project, user.id)
+      assert {:ok, deleted} = Projects.delete_project(user_scope_fixture(user), project.id)
 
       assert {:error, :snapshot_parent_cleanup_limit_exceeded} =
                Projects.permanently_delete_project(deleted)
@@ -1448,7 +1449,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       second = create_ready_snapshot(user, second_project)
 
       assert {:error, :snapshot_parent_cleanup_limit_exceeded} =
-               Workspaces.delete_workspace(workspace)
+               Workspaces.delete_workspace(user_scope_fixture(user), workspace.id)
 
       assert Repo.get!(Workspaces.Workspace, workspace.id)
       assert Repo.get!(ProjectSnapshot, first.id)

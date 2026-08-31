@@ -111,6 +111,20 @@ defmodule Storyarn.Projects.MembershipsTest do
     assert {:error, :unauthorized} = Memberships.authorize_locked(scope, -1, :view)
   end
 
+  test "locked bulk AI authorization validates the canonical owner" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+
+    assert {:ok, _project, %{role: "owner"}} =
+             authorize_locked(user_scope_fixture(owner), project.id, :run_bulk_ai)
+
+    duplicate_owner = user_fixture()
+    _duplicate_owner_membership = membership_fixture(project, duplicate_owner, "owner")
+
+    assert {:error, :ownership_invariant_violation} =
+             authorize_locked(user_scope_fixture(owner), project.id, :run_bulk_ai)
+  end
+
   defp authorize_locked(scope, project_id, action) do
     assert {:ok, result} =
              Repo.transaction(fn ->

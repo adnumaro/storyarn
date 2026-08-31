@@ -63,7 +63,7 @@ defmodule Storyarn.Platform.GlobalSearch.DestinationsTest do
       membership_fixture(foreign_project, user, "viewer")
 
       assert Enum.any?(GlobalSearch.destinations(scope, "").workspaces, &(&1.id == foreign_workspace.id))
-      assert {:ok, _deleted} = Projects.delete_project(foreign_project, owner.id)
+      assert {:ok, _deleted} = Projects.delete_project(user_scope_fixture(owner), foreign_project.id)
 
       refute Enum.any?(GlobalSearch.destinations(scope, "").workspaces, &(&1.id == foreign_workspace.id))
     end

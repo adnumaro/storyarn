@@ -15,6 +15,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   alias Storyarn.AI.Governance
   alias Storyarn.AI.Integration
   alias Storyarn.AI.IntegrationAssignments
+  alias Storyarn.AI.Integrations.Commands.WorkspaceAccessLocks
   alias Storyarn.AI.Integrations.Projections.WorkspaceMembershipRecord, as: WorkspaceMembership
   alias Storyarn.AI.Integrations.Projections.WorkspaceRecord, as: Workspace
   alias Storyarn.AI.IntegrationWorkspaceAssignment
@@ -178,7 +179,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   def delete(%{user: _}, _workspace_id, _slot), do: {:error, :preference_not_found}
 
   defp put_locked(scope, user_id, workspace_id, slot, integration_id, model) do
-    with {:ok, workspace, membership} <- workspace_access(scope, workspace_id),
+    with {:ok, workspace, membership} <- WorkspaceAccessLocks.lock(scope, workspace_id),
          policy = Governance.lock_effective_policy(workspace.id),
          :ok <- require_eligible(membership.role, policy),
          {:ok, integration} <- owned_active_integration(user_id, integration_id),
@@ -196,7 +197,7 @@ defmodule Storyarn.AI.PersonalPreferences do
   end
 
   defp delete_locked(scope, user_id, workspace_id, slot) do
-    with {:ok, workspace, membership} <- workspace_access(scope, workspace_id),
+    with {:ok, workspace, membership} <- WorkspaceAccessLocks.lock(scope, workspace_id),
          :ok <- require_workspace_membership(membership.role),
          {:ok, preference} <- locked_preference(user_id, workspace.id, slot),
          {:ok, deleted} <- Repo.delete(preference) do

@@ -7,6 +7,7 @@ defmodule Storyarn.AI.Governance.Projections.ProjectRecord do
 
   schema "projects" do
     field :workspace_id, :id
+    field :owner_id, :id
     field :deleted_at, :utc_datetime
 
     timestamps(type: :utc_datetime)

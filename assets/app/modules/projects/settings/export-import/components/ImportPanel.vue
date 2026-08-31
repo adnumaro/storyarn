@@ -175,15 +175,17 @@ const reviewErrorMessage = computed(() => {
   const failure = review.transportError.value;
   if (!failure) return null;
 
-  if (failure.operation === "save") return t("project_settings.import.review_error_save");
-
   switch (failure.reason) {
     case "stale":
       return t("project_settings.import.review_error_stale");
     case "unauthorized":
       return t("project_settings.import.review_error_unauthorized");
+    case "ownership_invariant_violation":
+      return t("project_settings.import.review_error_ownership_invariant");
     default:
-      return t("project_settings.import.review_error_failed");
+      return failure.operation === "save"
+        ? t("project_settings.import.review_error_save")
+        : t("project_settings.import.review_error_failed");
   }
 });
 
@@ -232,6 +234,7 @@ const TERMINAL_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   project_already_has_main_flow: "project_settings.import.errors.project_has_main_flow",
   duplicate_yarn_node_title: "project_settings.import.errors.unsupported_narrative",
   import_plan_has_errors: "project_settings.import.errors.unsupported_narrative",
+  ownership_invariant_violation: "project_settings.import.errors.ownership_invariant",
   unauthorized: "project_settings.import.errors.unauthorized",
 };
 

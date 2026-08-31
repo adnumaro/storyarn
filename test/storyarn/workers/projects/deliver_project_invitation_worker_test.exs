@@ -114,13 +114,14 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
 
   test "cancels delivery when the invitation was revoked" do
     owner = user_fixture()
+    scope = user_scope_fixture(owner)
     project = project_fixture(owner)
 
     assert {:ok, invitation} =
-             Projects.create_invitation(project, owner, "revoked@example.com", "editor")
+             Projects.create_invitation(scope, project.id, "revoked@example.com", "editor")
 
     job = latest_job()
-    assert {:ok, _invitation} = Projects.revoke_invitation(invitation)
+    assert {:ok, _invitation} = Projects.revoke_invitation(scope, project.id, invitation.id)
 
     assert {:cancel, :invitation_unavailable} =
              DeliverProjectInvitationWorker.perform(%Oban.Job{
@@ -134,13 +135,14 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
 
   test "cancels a queued email after the Project is deleted" do
     owner = user_fixture()
+    scope = user_scope_fixture(owner)
     project = project_fixture(owner)
 
     assert {:ok, invitation} =
-             Projects.create_invitation(project, owner, "deleted-project@example.com", "viewer")
+             Projects.create_invitation(scope, project.id, "deleted-project@example.com", "viewer")
 
     job = latest_job()
-    assert {:ok, _deleted_project} = Projects.delete_project(project, owner.id)
+    assert {:ok, _deleted_project} = Projects.delete_project(scope, project.id)
     refute Repo.get(invitation.__struct__, invitation.id)
 
     assert {:cancel, :invitation_unavailable} =
@@ -155,10 +157,11 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
 
   test "a transient delivery failure keeps the Project invitation and its reserved seat" do
     owner = user_fixture()
+    scope = user_scope_fixture(owner)
     project = project_fixture(owner)
 
     assert {:ok, invitation} =
-             Projects.create_invitation(project, owner, "transient-project@example.com", "editor")
+             Projects.create_invitation(scope, project.id, "transient-project@example.com", "editor")
 
     job = latest_job()
     Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
@@ -175,8 +178,8 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
 
     assert {:error, :limit_reached, %{used: 2, limit: 2}} =
              Projects.create_invitation(
-               project,
-               owner,
+               scope,
+               project.id,
                "another-project-member@example.com",
                "viewer"
              )
@@ -184,10 +187,11 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
 
   test "the final Project delivery failure frees the seat for a new invitation" do
     owner = user_fixture()
+    scope = user_scope_fixture(owner)
     project = project_fixture(owner)
 
     assert {:ok, _invitation} =
-             Projects.create_invitation(project, owner, "retry-project@example.com", "editor")
+             Projects.create_invitation(scope, project.id, "retry-project@example.com", "editor")
 
     job = latest_job()
     Application.put_env(:storyarn, Mailer, adapter: Storyarn.FailingMailerAdapter)
@@ -204,7 +208,7 @@ defmodule Storyarn.Workers.DeliverProjectInvitationWorkerTest do
     Application.put_env(:storyarn, Mailer, adapter: Swoosh.Adapters.Test)
 
     assert {:ok, _invitation} =
-             Projects.create_invitation(project, owner, "retry-project@example.com", "editor")
+             Projects.create_invitation(scope, project.id, "retry-project@example.com", "editor")
   end
 
   defp latest_job do

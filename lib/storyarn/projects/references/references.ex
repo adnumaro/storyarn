@@ -58,7 +58,7 @@ defmodule Storyarn.Projects.References do
     as: :count_stale_references
 
   defdelegate check_stale_variable_references(block_id, project_id), to: VariableUsage
-  defdelegate repair_stale_variable_references(project_id), to: VariableUsage
+  defdelegate repair_stale_variable_references(scope, project_id), to: VariableUsage
   # The batched export sweep reads Project-owned records; the per-tool editors
   # keep their own copies of this rule.
   defdelegate list_stale_node_variable_refs_by_flow(flow_ids),

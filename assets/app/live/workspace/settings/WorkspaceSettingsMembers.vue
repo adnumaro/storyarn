@@ -1,5 +1,7 @@
 <script setup lang="ts">
-import { Clock3, Loader2, Trash2, UserPlus, X } from "@lucide/vue";
+import { Clock3, Crown, Loader2, Trash2, UserPlus, X } from "@lucide/vue";
+import { ref, watch } from "vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
@@ -15,6 +17,7 @@ import { useMemberInvitations } from "@shared/composables/useMemberInvitations";
 
 interface WorkspaceMember {
   id: number;
+  user_id: string;
   display_name?: string;
   email: string;
   role: string;
@@ -33,13 +36,21 @@ const {
   currentUserId = null,
   canInvite = false,
   canManage = false,
+  canTransferOwnership = false,
 } = defineProps<{
   members?: WorkspaceMember[];
   pendingInvitations?: PendingInvitation[];
-  currentUserId?: number | null;
+  currentUserId?: string | null;
   canInvite?: boolean;
   canManage?: boolean;
+  canTransferOwnership?: boolean;
 }>();
+
+const transferTarget = ref<WorkspaceMember | null>(null);
+const transferDialogOpen = ref(false);
+const transferPending = ref(false);
+const transferTransportFailed = ref(false);
+let transferAttempt = 0;
 
 const {
   live,
@@ -59,6 +70,56 @@ function removeMember(id: number) {
 function changeRole(id: number, role: string) {
   live.pushEvent("change_role", { "member-id": String(id), role });
 }
+
+function requestOwnershipTransfer(member: WorkspaceMember) {
+  if (!canTransferOwnership) return;
+
+  transferTarget.value = member;
+  transferTransportFailed.value = false;
+  transferDialogOpen.value = true;
+}
+
+function transferOwnership() {
+  if (!canTransferOwnership || !transferTarget.value || transferPending.value) return;
+
+  const targetUserId = transferTarget.value.user_id;
+  const attempt = ++transferAttempt;
+  transferPending.value = true;
+  transferTransportFailed.value = false;
+
+  live.pushEvent(
+    "transfer_owner",
+    { "user-id": String(targetUserId) },
+    () => {
+      if (attempt === transferAttempt) resetOwnershipTransfer();
+    },
+    () => {
+      if (attempt !== transferAttempt) return;
+
+      transferPending.value = false;
+      transferTransportFailed.value = true;
+    },
+  );
+}
+
+function cancelOwnershipTransfer() {
+  resetOwnershipTransfer();
+}
+
+function resetOwnershipTransfer() {
+  transferAttempt += 1;
+  transferTarget.value = null;
+  transferDialogOpen.value = false;
+  transferPending.value = false;
+  transferTransportFailed.value = false;
+}
+
+watch(
+  () => canTransferOwnership,
+  (canTransfer) => {
+    if (!canTransfer) resetOwnershipTransfer();
+  },
+);
 
 function memberDisplayName(member: WorkspaceMember) {
   return member.display_name || member.email;
@@ -253,8 +314,10 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
             </div>
           </div>
 
-          <div class="flex items-center gap-3 sm:ml-auto">
-            <template v-if="canManage && member.role !== 'owner' && member.id !== currentUserId">
+          <div class="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto sm:justify-end">
+            <template
+              v-if="canManage && member.role !== 'owner' && member.user_id !== currentUserId"
+            >
               <Select
                 :model-value="member.role"
                 @update:model-value="(val) => changeRole(member.id, String(val))"
@@ -285,7 +348,21 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
             </template>
 
             <Button
-              v-if="canManage && member.role !== 'owner' && member.id !== currentUserId"
+              v-if="
+                canTransferOwnership && member.role !== 'owner' && member.user_id !== currentUserId
+              "
+              :id="`transfer-workspace-ownership-${member.user_id}`"
+              variant="outline"
+              size="sm"
+              class="h-8 gap-1.5"
+              @click="requestOwnershipTransfer(member)"
+            >
+              <Crown class="size-3.5" aria-hidden="true" />
+              {{ $t("settings.workspace.members.transfer.action") }}
+            </Button>
+
+            <Button
+              v-if="canManage && member.role !== 'owner' && member.user_id !== currentUserId"
               variant="ghost"
               size="icon"
               class="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
@@ -300,5 +377,29 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
         </div>
       </div>
     </section>
+
+    <ConfirmDialog
+      v-model:open="transferDialogOpen"
+      :title="$t('settings.workspace.members.transfer.title')"
+      :description="
+        $t('settings.workspace.members.transfer.description', {
+          name: transferTarget ? memberDisplayName(transferTarget) : '',
+        })
+      "
+      :confirm-text="$t('settings.workspace.members.transfer.confirm')"
+      :cancel-text="$t('settings.workspace.members.transfer.cancel')"
+      :pending="transferPending"
+      :pending-text="$t('settings.workspace.members.transfer.pending')"
+      :close-on-confirm="false"
+      :error="
+        transferTransportFailed
+          ? $t('settings.workspace.members.transfer.connection_unconfirmed')
+          : undefined
+      "
+      variant="warning"
+      :icon="Crown"
+      @confirm="transferOwnership"
+      @cancel="cancelOwnershipTransfer"
+    />
   </div>
 </template>

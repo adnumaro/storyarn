@@ -19,6 +19,7 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
   test "project and workspace invitations serialize the final member seat" do
     Sandbox.unboxed_run(Repo, fn ->
       owner = user_fixture()
+      owner_scope = user_scope_fixture(owner)
       workspace = workspace_fixture(owner)
       project = project_fixture(owner, %{workspace: workspace})
 
@@ -32,16 +33,16 @@ defmodule Storyarn.Shared.InvitationConcurrencyTest do
         invitation_tasks = [
           concurrent_invitation(parent, fn ->
             Projects.create_invitation(
-              project,
-              owner,
+              owner_scope,
+              project.id,
               "project-race@example.com",
               "editor"
             )
           end),
           concurrent_invitation(parent, fn ->
             Workspaces.create_invitation(
-              workspace,
-              owner,
+              %{user: owner},
+              workspace.id,
               "workspace-race@example.com",
               "member"
             )

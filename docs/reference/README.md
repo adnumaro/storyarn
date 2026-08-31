@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-07-29
+> Last reviewed: 2026-08-30
 >
 > Source of truth: this index
 
@@ -44,3 +44,4 @@ in this directory.
 - [AI operations](ai-operations.md)
 - [Versioning containment](versioning-containment.md)
 - [Entity-version restore integrity](entity-version-restore-integrity.md)
+- [Ownership integrity preflight](ownership-integrity-preflight.md)

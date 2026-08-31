@@ -5,6 +5,7 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Accounts.User
   alias Storyarn.Commercial.Billing
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.ProjectInvitation
@@ -25,7 +26,7 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
     test "allows for a user with no workspaces" do
       # Create a user without the default workspace by inserting directly
       user =
-        %Storyarn.Accounts.User{}
+        %User{}
         |> Ecto.Changeset.change(%{
           email: "nows#{System.unique_integer([:positive])}@test.com",
           confirmed_at: DateTime.utc_now(:second)
@@ -33,6 +34,25 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
         |> Repo.insert!()
 
       assert :ok = Billing.can_create_workspace?(user)
+    end
+  end
+
+  describe "can_receive_workspace?/1" do
+    test "uses the same ownership capacity as workspace creation", %{user: user} do
+      assert {:error, :limit_reached, %{resource: :workspaces_per_user, used: 1, limit: 1}} =
+               Billing.can_receive_workspace?(user)
+    end
+
+    test "allows a user with no owned workspace" do
+      user =
+        %User{}
+        |> Ecto.Changeset.change(%{
+          email: "receiver#{System.unique_integer([:positive])}@test.com",
+          confirmed_at: DateTime.utc_now(:second)
+        })
+        |> Repo.insert!()
+
+      assert :ok = Billing.can_receive_workspace?(user)
     end
   end
 
@@ -102,8 +122,8 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
 
       assert {:ok, _invitation} =
                Storyarn.Projects.create_invitation(
-                 project,
-                 user,
+                 user_scope_fixture(user),
+                 project.id,
                  "pending@example.com",
                  "editor"
                )
@@ -488,8 +508,8 @@ defmodule Storyarn.Commercial.Billing.LimitsTest do
 
       assert {:ok, _invitation} =
                Storyarn.Projects.create_invitation(
-                 project,
-                 user,
+                 user_scope_fixture(user),
+                 project.id,
                  "pending-usage@example.com",
                  "editor"
                )

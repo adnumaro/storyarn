@@ -77,7 +77,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     with {:ok, request} <- normalize_request(attrs),
          {:ok, %Project{} = authorized_project, _membership} <-
            Memberships.authorize(scope, project.id, :manage_project) do
-      run_request_transaction(authorized_project, user_id, request)
+      run_request_transaction(authorized_project, scope, user_id, request)
     else
       {:error, reason} when reason in [:not_found, :unauthorized] -> {:error, :unauthorized}
       {:error, reason} -> {:error, reason}
@@ -938,7 +938,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   def cancel(%{user: _} = scope, %Project{} = project, snapshot_id) when is_integer(snapshot_id) and snapshot_id > 0 do
     case Memberships.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->
-        cancel_authorized(authorized_project, snapshot_id)
+        cancel_authorized(scope, authorized_project, snapshot_id)
 
       {:error, reason} when reason in [:not_found, :unauthorized] ->
         {:error, :unauthorized}
@@ -1029,11 +1029,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     }
   end
 
-  defp run_request_transaction(project, user_id, request) do
+  defp run_request_transaction(project, scope, user_id, request) do
     result =
       Commercial.transact_with_workspace_lock(
         project.workspace_id,
-        fn _workspace -> request_locked(project, user_id, request) end
+        fn _workspace -> request_locked(project, scope, user_id, request) end
       )
 
     case result do
@@ -1080,26 +1080,30 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     :ok
   end
 
-  defp request_locked(project, user_id, request) do
-    case snapshot_by_idempotency(project.id, request.idempotency_key) do
-      %ProjectSnapshot{} = snapshot ->
-        {:ok, snapshot}
+  defp request_locked(project, scope, user_id, request) do
+    with {:ok, %Project{} = locked_project, _membership} <-
+           Memberships.authorize_locked(scope, project.id, :manage_project, :update),
+         true <- locked_project.workspace_id == project.workspace_id do
+      case snapshot_by_idempotency(locked_project.id, request.idempotency_key) do
+        %ProjectSnapshot{} = snapshot ->
+          {:ok, snapshot}
 
-      nil ->
-        create_request_locked(project, user_id, request)
+        nil ->
+          create_request_locked(locked_project, user_id, request)
+      end
+    else
+      false -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 
   defp create_request_locked(project, user_id, request) do
-    with %Project{} <- lock_active_project(project.id, project.workspace_id),
-         {:ok, snapshot} <- insert_queued_snapshot(project, user_id, request),
+    with {:ok, snapshot} <- insert_queued_snapshot(project, user_id, request),
          {:ok, reservation} <- reserve_build(project, snapshot, 1, 1),
          {:ok, job} <- enqueue_build(snapshot.id),
          {:ok, snapshot} <- bind_request(snapshot, reservation.id, job.id) do
       {:ok, snapshot}
     else
-      nil -> Repo.rollback(:project_not_found)
-      %Project{} -> Repo.rollback(:project_not_active)
       {:error, reason} -> Repo.rollback(reason)
       {:error, reason, details} -> Repo.rollback({reason, details})
     end
@@ -2578,12 +2582,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     end
   end
 
-  defp cancel_authorized(project, snapshot_id) do
+  defp cancel_authorized(scope, project, snapshot_id) do
     result =
       case snapshot_workspace_id(project.id, snapshot_id) do
         workspace_id when is_integer(workspace_id) ->
           Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
-            cancel_locked(project.id, snapshot_id)
+            cancel_user_snapshot_locked(scope, project, snapshot_id, workspace_id)
           end)
 
         nil ->
@@ -2597,6 +2601,17 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
 
       other ->
         other
+    end
+  end
+
+  defp cancel_user_snapshot_locked(scope, project, snapshot_id, workspace_id) do
+    with {:ok, %Project{} = locked_project, _membership} <-
+           Memberships.authorize_locked(scope, project.id, :manage_project, :update),
+         true <- locked_project.workspace_id == project.workspace_id and locked_project.workspace_id == workspace_id do
+      cancel_locked(locked_project.id, snapshot_id)
+    else
+      false -> {:error, :unauthorized}
+      {:error, reason} -> {:error, reason}
     end
   end
 

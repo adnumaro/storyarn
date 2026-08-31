@@ -58,6 +58,7 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
 
   test "hard delete commits banner cleanup before the Workspace row disappears" do
     owner = user_fixture()
+    scope = Scope.for_user(owner)
     workspace = workspace_fixture(owner)
     key = "workspaces/#{workspace.slug}/banner/#{Ecto.UUID.generate()}.png"
     {:ok, url} = Storage.upload(key, "workspace banner", "image/png")
@@ -68,7 +69,7 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
       |> Workspace.banner_changeset(%{banner_url: url})
       |> Repo.update!()
 
-    assert {:ok, _deleted_workspace} = Workspaces.delete_workspace(workspace)
+    assert {:ok, _deleted_workspace} = Workspaces.delete_workspace(scope, workspace.id)
     refute Repo.get(Workspace, workspace.id)
 
     assert_enqueued(
@@ -88,9 +89,10 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
 
   test "hard delete without a banner does not enqueue banner cleanup" do
     owner = user_fixture()
+    scope = Scope.for_user(owner)
     workspace = workspace_fixture(owner)
 
-    assert {:ok, _deleted_workspace} = Workspaces.delete_workspace(workspace)
+    assert {:ok, _deleted_workspace} = Workspaces.delete_workspace(scope, workspace.id)
     refute Repo.get(Workspace, workspace.id)
 
     refute_enqueued(worker: DeleteWorkspaceBannerWorker)
@@ -98,6 +100,7 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
 
   test "hard delete rolls back when the banner cleanup intent cannot be persisted" do
     owner = user_fixture()
+    scope = Scope.for_user(owner)
     workspace = workspace_fixture(owner)
     key = "workspaces/#{workspace.slug}/banner/#{Ecto.UUID.generate()}.png"
     {:ok, url} = Storage.upload(key, "workspace banner", "image/png")
@@ -115,7 +118,7 @@ defmodule Storyarn.Workers.DeleteWorkspaceBannerWorkerTest do
     on_exit(fn -> Application.put_env(:storyarn, Queue, original_queue) end)
 
     assert {:error, {:workspace_banner_cleanup_enqueue_failed, :queue_unavailable}} =
-             Workspaces.delete_workspace(workspace)
+             Workspaces.delete_workspace(scope, workspace.id)
 
     assert Repo.get!(Workspace, workspace.id).banner_url == url
     assert {:ok, _stat} = Storage.stat(key)

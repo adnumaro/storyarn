@@ -29,8 +29,11 @@ defmodule Storyarn.Workspaces.Invitations.Delivery.Handler do
 
   def cancel(encoded_token) do
     case ByToken.get(encoded_token) do
-      {:ok, invitation} -> Revoke.execute(invitation)
-      {:error, :invalid_token} -> :ok
+      {:ok, invitation} ->
+        Revoke.execute_delivery_cleanup(invitation.workspace_id, invitation.id)
+
+      {:error, :invalid_token} ->
+        :ok
     end
   end
 

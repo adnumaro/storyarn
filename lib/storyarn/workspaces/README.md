@@ -70,3 +70,35 @@ data has one canonical owner and should not be duplicated here.
 decide permissions, coordinate transactions or locks, emit events, enqueue
 jobs, or call adapters. Code doing those things belongs in `queries/`,
 `commands/`, `rules/`, `entities/`, or `adapters/` according to its role.
+
+## Ownership invariant and transfer
+
+A Workspace has one canonical owner represented by two facts that must agree:
+`workspaces.owner_id` and exactly one direct `workspace_memberships` row with
+`role = "owner"`. Ordinary membership creation and role changes cannot assign
+that role. `Storyarn.Workspaces.transfer_owner/3` is the only ordinary public
+transition that may change both facts.
+
+The transfer command locks and validates the Workspace and its memberships,
+locks the involved users in deterministic order, applies the receiver's
+`workspaces_per_user` admission check while its user lock is held, and commits
+the two role changes plus `owner_id` atomically. The receiver must already be a
+direct Workspace member. A successful transfer makes the former owner an
+`admin`; it does not change ownership of any Project contained by the
+Workspace.
+
+Ownership transfer owns its transaction boundary. Calling the public command
+from an already-open database transaction is rejected before any write; this
+prevents a successful outer commit from bypassing the post-commit ownership
+signal used to reauthorize connected settings surfaces.
+
+Owner-only updates, deletion, banner changes, membership changes, and Workspace
+AI-policy changes reauthorize the canonical owner after acquiring the same
+Workspace serialization lock. This is required because a LiveView or caller
+may have authorized before a concurrent transfer. Missing or ambiguous owner
+facts fail closed with `:ownership_invariant_violation`.
+
+These guarantees currently live at the application/transaction boundary. A
+database-level constraint tying `owner_id` to the unique owner membership is a
+separate reviewed persistence decision and is deliberately not bundled with
+ENG-108.
