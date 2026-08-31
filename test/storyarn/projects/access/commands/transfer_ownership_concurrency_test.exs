@@ -62,59 +62,72 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipConcurrencyTest do
       parent = self()
       barrier = make_ref()
 
-      transfer =
-        Task.async(fn ->
-          Sandbox.unboxed_run(Repo, fn ->
-            TransferOwnership.transfer(owner_scope, project.id, receiver.id,
-              after_owner_demotion: fn ->
-                send(parent, {barrier, :transfer_paused, self()})
+      try do
+        transfer =
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              TransferOwnership.transfer(owner_scope, project.id, receiver.id,
+                after_owner_demotion: fn ->
+                  send(parent, {barrier, :transfer_paused, self()})
+
+                  receive do
+                    {^barrier, :finish_transfer} -> :ok
+                  after
+                    @timeout -> {:error, :transfer_pause_timeout}
+                  end
+                end
+              )
+            end)
+          end)
+
+        try do
+          assert_receive {^barrier, :transfer_paused, transfer_pid}, @timeout
+
+          request =
+            Task.async(fn ->
+              Sandbox.unboxed_run(Repo, fn ->
+                [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+                send(parent, {barrier, :request_ready, self(), backend_pid})
 
                 receive do
-                  {^barrier, :finish_transfer} -> :ok
+                  {^barrier, :start_request} -> :ok
                 after
-                  @timeout -> {:error, :transfer_pause_timeout}
+                  @timeout -> raise "restore request start timeout"
                 end
-              end
-            )
-          end)
-        end)
 
-      assert_receive {^barrier, :transfer_paused, transfer_pid}, @timeout
+                Versioning.request_project_snapshot_restore(owner_scope, project, snapshot, %{
+                  idempotency_key: Ecto.UUID.generate()
+                })
+              end)
+            end)
 
-      request =
-        Task.async(fn ->
-          Sandbox.unboxed_run(Repo, fn ->
-            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
-            send(parent, {barrier, :request_ready, self(), backend_pid})
+          try do
+            assert_receive {^barrier, :request_ready, request_pid, backend_pid}, @timeout
+            send(request_pid, {barrier, :start_request})
+            assert_connection_waiting_on_lock(backend_pid)
 
-            receive do
-              {^barrier, :start_request} -> :ok
-            after
-              @timeout -> raise "restore request start timeout"
-            end
+            send(transfer_pid, {barrier, :finish_transfer})
 
-            Versioning.request_project_snapshot_restore(owner_scope, project, snapshot, %{
-              idempotency_key: Ecto.UUID.generate()
-            })
-          end)
-        end)
+            assert {:ok, %Project{owner_id: receiver_id}} = Task.await(transfer, @timeout)
+            assert receiver_id == receiver.id
+            assert {:error, :unauthorized} = Task.await(request, @timeout)
 
-      assert_receive {^barrier, :request_ready, request_pid, backend_pid}, @timeout
-      send(request_pid, {barrier, :start_request})
-      assert_connection_waiting_on_lock(backend_pid)
-
-      send(transfer_pid, {barrier, :finish_transfer})
-
-      assert {:ok, %Project{owner_id: receiver_id}} = Task.await(transfer, @timeout)
-      assert receiver_id == receiver.id
-      assert {:error, :unauthorized} = Task.await(request, @timeout)
-
-      refute Repo.exists?(
-               from restore in ProjectSnapshotRestore,
-                 where: restore.project_id == ^project.id
-             )
-
-      cleanup(project, [owner.id, receiver.id])
+            refute Repo.exists?(
+                     from restore in ProjectSnapshotRestore,
+                       where: restore.project_id == ^project.id
+                   )
+          after
+            send(request.pid, {barrier, :start_request})
+            send(transfer.pid, {barrier, :finish_transfer})
+            finish_task(request)
+          end
+        after
+          send(transfer.pid, {barrier, :finish_transfer})
+          finish_task(transfer)
+        end
+      after
+        cleanup(project, [owner.id, receiver.id])
+      end
     end)
   end
 
@@ -161,6 +174,14 @@ defmodule Storyarn.Projects.Access.Commands.TransferOwnershipConcurrencyTest do
       Process.sleep(10)
       assert_connection_waiting_on_lock(backend_pid, attempts - 1)
     end
+  end
+
+  defp finish_task(%Task{} = task) do
+    if Process.alive?(task.pid) do
+      Task.yield(task, @timeout) || Task.shutdown(task, :brutal_kill)
+    end
+
+    :ok
   end
 
   defp cleanup(project, user_ids) do

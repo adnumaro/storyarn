@@ -76,18 +76,4 @@ defmodule Storyarn.Projects.MembershipOperations do
   def remove_member(%ProjectMembership{} = membership) do
     Repo.delete(membership)
   end
-
-  @doc """
-  Authorizes a user action on a parent entity.
-  """
-  def authorize(config, %{user: user}, parent_id, action) do
-    with %{} = parent <- Repo.get(config.parent_schema, parent_id),
-         %{role: role} = membership <- get_membership(config, parent_id, user.id),
-         true <- config.membership_schema.can?(role, action) do
-      {:ok, parent, membership}
-    else
-      nil -> {:error, :not_found}
-      false -> {:error, :unauthorized}
-    end
-  end
 end

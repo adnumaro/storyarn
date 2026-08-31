@@ -35,20 +35,21 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRequestOwnershipConcurre
           name: "Publication Ownership Race"
         })
 
-      _project_owner_membership = membership_fixture(project, project_owner, "editor")
-
-      assert {:ok, %Project{owner_id: project_owner_id} = project} =
-               Projects.transfer_owner(Scope.for_user(workspace_owner), project.id, project_owner.id)
-
-      assert project_owner_id == project_owner.id
-
-      _receiver_membership = membership_fixture(project, receiver, "editor")
-      project_owner_scope = Scope.for_user(project_owner)
       existing_job_ids = publication_worker_job_ids()
-      parent = self()
-      barrier = make_ref()
 
       try do
+        _project_owner_membership = membership_fixture(project, project_owner, "editor")
+
+        assert {:ok, %Project{owner_id: project_owner_id} = project} =
+                 Projects.transfer_owner(Scope.for_user(workspace_owner), project.id, project_owner.id)
+
+        assert project_owner_id == project_owner.id
+
+        _receiver_membership = membership_fixture(project, receiver, "editor")
+        project_owner_scope = Scope.for_user(project_owner)
+        parent = self()
+        barrier = make_ref()
+
         transfer =
           Task.async(fn ->
             Sandbox.unboxed_run(Repo, fn ->
@@ -109,6 +110,8 @@ defmodule Storyarn.Projects.ProjectTemplates.PublicationRequestOwnershipConcurre
 
             assert publication_worker_job_ids() == existing_job_ids
           after
+            send(request.pid, {barrier, :start_request})
+            send(transfer.pid, {barrier, :finish_transfer})
             finish_task(request)
           end
         after

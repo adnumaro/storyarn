@@ -103,6 +103,17 @@ defmodule StoryarnWeb.ProjectLive.Form do
       {:error, %Ecto.Changeset{} = changeset} ->
         {:noreply, assign(socket, :form, to_form(changeset))}
 
+      {:error, :ownership_invariant_violation} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           dgettext(
+             "projects",
+             "This action could not be completed because project ownership is inconsistent. Contact support before retrying."
+           )
+         )}
+
       {:error, _reason} ->
         {:noreply,
          put_flash(

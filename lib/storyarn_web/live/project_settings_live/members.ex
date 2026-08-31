@@ -140,7 +140,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
 
   @impl true
   def handle_info(
-        {:project_ownership_transferred, %{project_id: project_id}},
+        {:project_ownership_transferred, %{project_id: project_id} = receipt},
         %{assigns: %{project: %{id: project_id}}} = socket
       ) do
     case refresh_project_access(socket) do
@@ -148,15 +148,33 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
         if current_project_owner?(refreshed_socket) do
           {:noreply, assign_member_data(refreshed_socket)}
         else
-          project_management_lost(
-            refreshed_socket,
-            dgettext("projects", "You don't have permission to manage this project.")
-          )
+          redirect_after_ownership_transfer(refreshed_socket, receipt)
         end
 
       {:error, :not_found} ->
         project_unavailable(socket)
     end
+  end
+
+  defp redirect_after_ownership_transfer(socket, %{previous_owner_id: previous_owner_id})
+       when previous_owner_id == socket.assigns.current_scope.user.id do
+    project_management_lost(socket)
+  end
+
+  defp redirect_after_ownership_transfer(socket, _receipt) do
+    project_management_lost(
+      socket,
+      dgettext("projects", "You don't have permission to manage this project.")
+    )
+  end
+
+  defp project_management_lost(socket) do
+    project = socket.assigns.project
+
+    {:noreply,
+     push_navigate(socket,
+       to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+     )}
   end
 
   defp with_fresh_manage_members_authorization(socket, success_fn) do

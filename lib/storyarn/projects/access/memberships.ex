@@ -17,7 +17,6 @@ defmodule Storyarn.Projects.Memberships do
 
   @config %{
     membership_schema: ProjectMembership,
-    parent_schema: Project,
     parent_key: :project_id
   }
 

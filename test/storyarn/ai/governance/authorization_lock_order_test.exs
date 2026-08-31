@@ -35,6 +35,13 @@ defmodule Storyarn.AI.Governance.AuthorizationLockOrderTest do
       project_membership = Repo.get_by!(ProjectMembership, project_id: project.id, user_id: owner.id)
       workspace_membership = Repo.get_by!(WorkspaceMembership, workspace_id: workspace.id, user_id: owner.id)
 
+      on_exit(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          FunWithFlags.disable(:ai_integrations, for_actor: owner)
+          cleanup(workspace.id, owner.id)
+        end)
+      end)
+
       FunWithFlags.enable(:ai_integrations, for_actor: owner)
 
       %WorkspacePolicy{workspace_id: workspace.id}
@@ -109,8 +116,6 @@ defmodule Storyarn.AI.Governance.AuthorizationLockOrderTest do
         send(project_membership_gate.pid, {barrier, :release_project_membership})
         finish_task(project_gate)
         finish_task(project_membership_gate)
-        FunWithFlags.disable(:ai_integrations, for_actor: owner)
-        cleanup(workspace.id, owner.id)
       end
     end)
   end

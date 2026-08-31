@@ -59,7 +59,7 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
       owner = user_fixture()
       workspace = workspace_fixture(owner)
 
-      {:ok, invitation} =
+      invitation_result =
         Workspaces.create_invitation(
           %{user: owner},
           workspace.id,
@@ -71,23 +71,37 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
       admin_membership = workspace_membership_fixture(workspace, admin, "admin")
 
       try do
+        {:ok, invitation} = invitation_result
         holder = hold_workspace_and_remove_membership(workspace.id, admin_membership.id)
-        assert_receive {:workspace_lock_held, holder_pid}, @timeout
 
-        contender =
-          start_contender(fn ->
-            Workspaces.revoke_invitation(%{user: admin}, workspace.id, invitation.id)
-          end)
+        try do
+          assert_receive {:workspace_lock_held, holder_pid}, @timeout
 
-        assert_receive {:contender_ready, contender_pid, backend_pid}, @timeout
-        send(contender_pid, :start)
-        assert_connection_waiting_on_lock(backend_pid)
+          contender =
+            start_contender(fn ->
+              Workspaces.revoke_invitation(%{user: admin}, workspace.id, invitation.id)
+            end)
 
-        send(holder_pid, :remove_and_commit)
-        assert {:ok, :removed} = Task.await(holder, @timeout)
-        assert {:error, :unauthorized} = Task.await(contender, @timeout)
+          try do
+            assert_receive {:contender_ready, contender_pid, backend_pid}, @timeout
+            send(contender_pid, :start)
+            assert_connection_waiting_on_lock(backend_pid)
 
-        assert Repo.get!(WorkspaceInvitation, invitation.id)
+            send(holder_pid, :remove_and_commit)
+            assert {:ok, :removed} = Task.await(holder, @timeout)
+            assert {:error, :unauthorized} = Task.await(contender, @timeout)
+
+            assert Repo.get!(WorkspaceInvitation, invitation.id)
+          after
+            send(holder.pid, :remove_and_commit)
+            send(contender.pid, :start)
+            finish_task(holder)
+            finish_task(contender)
+          end
+        after
+          send(holder.pid, :remove_and_commit)
+          finish_task(holder)
+        end
       after
         cleanup(workspace.id, [owner.id, admin.id])
       end
@@ -159,6 +173,14 @@ defmodule Storyarn.Workspaces.Invitations.Commands.AuthorizationConcurrencyTest 
       Process.sleep(10)
       assert_connection_waiting_on_lock(backend_pid, attempts - 1)
     end
+  end
+
+  defp finish_task(%Task{} = task) do
+    if Process.alive?(task.pid) do
+      Task.yield(task, @timeout) || Task.shutdown(task, :brutal_kill)
+    end
+
+    :ok
   end
 
   defp user_without_workspace do

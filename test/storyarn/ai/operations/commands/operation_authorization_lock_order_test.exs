@@ -473,31 +473,31 @@ defmodule Storyarn.AI.Operations.Commands.OperationAuthorizationLockOrderTest do
   defp with_queued_operation(test_fun) do
     Sandbox.unboxed_run(Repo, fn ->
       original_config = Application.get_env(:storyarn, ContractTask, [])
-      Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
-
       user = user_fixture()
       scope = user_scope_fixture(user)
       workspace = workspace_fixture(user)
       project = project_fixture(user, %{workspace: workspace})
-
-      FunWithFlags.enable(:ai_integrations, for_actor: user)
-
-      %WorkspacePolicy{workspace_id: workspace.id}
-      |> WorkspacePolicy.changeset(%{
-        allowed_lanes: ["managed"],
-        version: 1,
-        updated_by_id: user.id
-      })
-      |> Repo.insert!()
-
-      ctx = build_operation_fixture(user, scope, workspace, project)
+      cleanup_ctx = %{user: user, workspace: workspace, project: project}
 
       try do
+        Application.put_env(:storyarn, ContractTask, scenario: :success, execution_mode: :background)
+        FunWithFlags.enable(:ai_integrations, for_actor: user)
+
+        %WorkspacePolicy{workspace_id: workspace.id}
+        |> WorkspacePolicy.changeset(%{
+          allowed_lanes: ["managed"],
+          version: 1,
+          updated_by_id: user.id
+        })
+        |> Repo.insert!()
+
+        ctx = build_operation_fixture(user, scope, workspace, project)
+
         test_fun.(ctx)
       after
         Application.put_env(:storyarn, ContractTask, original_config)
         FunWithFlags.disable(:ai_integrations, for_actor: user)
-        cleanup(ctx)
+        cleanup(cleanup_ctx)
       end
     end)
   end

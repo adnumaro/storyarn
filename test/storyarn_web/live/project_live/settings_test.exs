@@ -29,6 +29,7 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
   alias Storyarn.Workers.BuildProjectSnapshotWorker
   alias Storyarn.Workers.ProjectSnapshotRetentionWorker
   alias Storyarn.Workspaces.Workspace
+  alias StoryarnWeb.ProjectLive.Form, as: ProjectForm
   alias StoryarnWeb.ProjectSettingsLive.Snapshots, as: SnapshotsLive
 
   @outside_pg_bigint 9_223_372_036_854_775_808
@@ -639,10 +640,11 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       render_click(view, "transfer_owner", %{"user-id" => to_string(receiver.id)})
 
-      assert_redirect(
-        view,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
-      )
+      {path, flash} = assert_redirect(view)
+
+      assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["info"] == "Project ownership transferred."
+      refute Map.has_key?(flash, "error")
 
       assert Repo.reload!(project).owner_id == receiver.id
       assert Projects.get_membership(project.id, owner.id).role == "editor"
@@ -689,12 +691,39 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
       assert {:ok, _project} =
                Projects.transfer_owner(user_scope_fixture(owner), project.id, receiver.id)
 
-      assert_redirect(
-        view,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
-      )
+      {path, flash} = assert_redirect(view)
+
+      assert path == ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      refute Map.has_key?(flash, "error")
 
       assert Projects.get_membership(project.id, owner.id).role == "editor"
+    end
+
+    test "the legacy project form explains ownership invariant failures", %{user: owner} do
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _conflicting_owner = membership_fixture(project, user_fixture(), "owner")
+
+      socket = %Socket{
+        endpoint: StoryarnWeb.Endpoint,
+        router: StoryarnWeb.Router,
+        root_pid: self(),
+        transport_pid: self(),
+        assigns: %{
+          __changed__: %{},
+          flash: %{},
+          action: :edit,
+          current_scope: user_scope_fixture(owner),
+          project: project
+        }
+      }
+
+      assert {:noreply, updated_socket} =
+               ProjectForm.handle_event("save", %{"project" => %{"name" => "Blocked rename"}}, socket)
+
+      assert updated_socket.assigns.flash["error"] ==
+               "This action could not be completed because project ownership is inconsistent. Contact support before retrying."
+
+      assert Repo.reload!(project).name != "Blocked rename"
     end
 
     test "a stale members tab cannot transfer ownership after losing authority without receiving PubSub", %{
