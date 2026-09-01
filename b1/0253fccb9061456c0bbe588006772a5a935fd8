@@ -1,0 +1,23 @@
+test/storyarn/projects/assets/integration/assets_test.exs
+  s_e9e5a90425bc26::t_f27fb4f1777cb6 775-805
+lib/storyarn/projects/assets/rules/asset_family.ex
+  s_e9e5a90425bc26::t_f27fb4f1777cb6 29
+lib/storyarn/projects/assets/queries/asset_usage_queries.ex
+  s_e9e5a90425bc26::t_f27fb4f1777cb6 122-124
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b10253fccb9061456c0bbe588006772a5a935fd8",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
