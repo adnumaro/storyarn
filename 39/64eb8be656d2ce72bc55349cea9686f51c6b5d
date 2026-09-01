@@ -1,0 +1,19 @@
+test/storyarn/architecture/sheets_web_facade_boundary_test.exs
+  s_e9e5a90425bc26::t_b9b752b08b0b12 77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3964eb8be656d2ce72bc55349cea9686f51c6b5d",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
