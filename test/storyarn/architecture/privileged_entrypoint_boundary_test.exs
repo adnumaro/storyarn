@@ -24,7 +24,7 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     entries = policy().privileged_entrypoints
     sources = parsed_sources()
 
-    assert length(entries) == 65
+    assert length(entries) == 72
     assert Enum.uniq_by(entries, &entry_identity/1) == entries
     assert disjoint_function_scopes?(entries)
 
@@ -40,6 +40,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       assert File.regular?(entry.path), "privileged entrypoint path is missing: #{entry.path}"
       assert byte_size(entry.reason) > 0
       assert valid_function_scope?(entry.functions)
+      assert Map.get(entry, :anchored_dynamic_receiver, false) in [true, false]
+
+      if Map.get(entry, :anchored_dynamic_receiver, false) do
+        assert entry.functions != :all
+      end
+
       assert entry.allowed_callers == entry.allowed_callers |> Enum.uniq() |> Enum.sort()
 
       for caller <- entry.allowed_callers do
@@ -134,6 +140,25 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     assert entrypoint_used?(
              "Kernel.apply(Storyarn.Flows.Versioning.FlowSnapshot, :restore, args)",
              restore_entry
+           )
+
+    assert entrypoint_used?(
+             "Storyarn.Flows.Versioning.FlowSnapshot |> apply(:restore, [flow, snapshot, []])",
+             restore_entry
+           )
+
+    assert entrypoint_used?(
+             "Function.capture(Storyarn.Flows.Versioning.FlowSnapshot, :restore, 3)",
+             restore_entry
+           )
+
+    assert entrypoint_used?(
+             "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+               "def run(opts, flow, snapshot) do\n" <>
+               "  context = %{recovery: Keyword.get(opts, :recovery, FlowSnapshot)}\n" <>
+               "  context.recovery.restore(flow, snapshot, [])\n" <>
+               "end",
+             Map.put(restore_entry, :anchored_dynamic_receiver, true)
            )
 
     assert entrypoint_used?(
@@ -323,23 +348,32 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     # this lib/**/*.ex source ratchet.
     ast_references_module?(ast, entry.module, aliases) and
       (imports_module?(ast, entry.module, aliases) or
-         ast_calls_functions?(ast, entry.module, entry.functions, aliases))
+         ast_calls_functions?(ast, entry, aliases))
   end
 
-  defp ast_calls_functions?(ast, target, functions, aliases) do
-    base_context = receiver_context(ast, target, aliases)
+  defp ast_calls_functions?(ast, entry, aliases) do
+    base_context =
+      receiver_context(
+        ast,
+        entry.module,
+        aliases,
+        nil,
+        Map.get(entry, :anchored_dynamic_receiver, false)
+      )
 
-    restricted_call_in_ast?(ast, target, functions, base_context) or
+    restricted_call_in_ast?(ast, entry.module, entry.functions, base_context) or
       Enum.any?(function_scopes(ast), fn scope ->
-        tainted = tainted_receiver_variables(scope.ast, target, base_context)
+        tainted = tainted_receiver_variables(scope.ast, entry.module, base_context)
         context = %{base_context | tainted: tainted}
-        restricted_call_in_ast?(scope.body, target, functions, context)
+        restricted_call_in_ast?(scope.body, entry.module, entry.functions, context)
       end)
   end
 
   defp restricted_call_in_ast?(ast, target, functions, context) do
     {_ast, found?} =
-      Macro.prewalk(ast, false, fn node, found? ->
+      ast
+      |> normalize_pipeline_calls()
+      |> Macro.prewalk(false, fn node, found? ->
         {node, found? or restricted_call?(node, target, functions, context)}
       end)
 
@@ -375,6 +409,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       apply_matches?(module_ast, function, args, target, functions, context)
   end
 
+  defp restricted_call?({{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]}, target, functions, context) do
+    function_module?(function_ast, context) and
+      target_module?(module_ast, target, context) and
+      function_matches?(functions, literal_atom(function), literal_capture_arity(arity))
+  end
+
   defp restricted_call?(node, target, functions, context) do
     remote_call_matches?(node, target, functions, context, 0)
   end
@@ -397,6 +437,9 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp literal_list_arity(arguments) when is_list(arguments), do: length(arguments)
   defp literal_list_arity(_arguments), do: :dynamic
+
+  defp literal_capture_arity(arity) when is_integer(arity), do: arity
+  defp literal_capture_arity(_arity), do: :dynamic
 
   defp function_matches?(:all, _function, _arity), do: true
   defp function_matches?(_functions, :dynamic, _arity), do: true
@@ -467,6 +510,9 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
   defp direct_target_reference?({:@, _, [{name, _, _arguments}]}, _target, context) when is_atom(name),
     do: MapSet.member?(context.attributes, name)
 
+  defp direct_target_reference?({{:., _, [_receiver, _field]}, _, []}, _target, context),
+    do: context.anchored_dynamic_receiver
+
   defp direct_target_reference?({name, _, variable_context}, _target, context)
        when is_atom(name) and (is_atom(variable_context) or is_nil(variable_context)),
        do: MapSet.member?(context.tainted, name)
@@ -494,8 +540,34 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp kernel_module?(module_ast, context), do: literal_target_module?(module_ast, "Kernel", context.aliases)
 
-  defp receiver_context(ast, target, aliases, self_module \\ nil) do
-    base = %{aliases: aliases, attributes: MapSet.new(), tainted: MapSet.new(), self_module: self_module}
+  defp function_module?(module_ast, context), do: literal_target_module?(module_ast, "Function", context.aliases)
+
+  defp normalize_pipeline_calls(ast) do
+    Macro.postwalk(ast, fn
+      {:|>, pipe_meta, [left, {{:., dot_meta, receiver}, call_meta, arguments}]}
+      when is_list(arguments) ->
+        {{:., dot_meta, receiver}, Keyword.merge(pipe_meta, call_meta), [left | arguments]}
+
+      {:|>, pipe_meta, [left, {function, call_meta, arguments}]}
+      when is_atom(function) and is_list(arguments) ->
+        {function, Keyword.merge(pipe_meta, call_meta), [left | arguments]}
+
+      node ->
+        node
+    end)
+  end
+
+  defp receiver_context(ast, target, aliases, self_module), do: receiver_context(ast, target, aliases, self_module, false)
+
+  defp receiver_context(ast, target, aliases, self_module, anchored_dynamic_receiver) do
+    base = %{
+      aliases: aliases,
+      anchored_dynamic_receiver: anchored_dynamic_receiver and ast_references_module?(ast, target, aliases),
+      attributes: MapSet.new(),
+      tainted: MapSet.new(),
+      self_module: self_module
+    }
+
     %{base | attributes: target_module_attributes(ast, target, base)}
   end
 

@@ -396,8 +396,7 @@ defmodule Storyarn.Flows.SequenceCrud do
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def update_sequence_visual_layer(%SequenceVisualLayer{} = layer, attrs) when is_map(attrs) do
     Repo.transaction(fn ->
-      with {:ok, %{layer: locked_layer, project_id: project_id}} <-
-             lock_visual_layer_for_write(layer),
+      with {:ok, locked_layer, %{project_id: project_id}} <- lock_visual_layer_for_write(layer),
            attrs =
              normalize_visual_layer_update_attrs(
                locked_layer,
@@ -428,7 +427,7 @@ defmodule Storyarn.Flows.SequenceCrud do
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def delete_sequence_visual_layer(%SequenceVisualLayer{} = layer) do
     Repo.transaction(fn ->
-      with {:ok, %{layer: locked_layer}} <- lock_visual_layer_for_write(layer),
+      with {:ok, locked_layer, _project_id} <- lock_visual_layer_for_write(layer),
            {:ok, deleted_layer} <- Repo.delete(locked_layer) do
         deleted_layer
       else
@@ -704,7 +703,7 @@ defmodule Storyarn.Flows.SequenceCrud do
                lock: "FOR UPDATE"
              )
            ) do
-      {:ok, Map.put(context, :layer, layer)}
+      {:ok, layer, context}
     else
       nil -> {:error, :sequence_visual_layer_not_found}
       {:error, _reason} = error -> error

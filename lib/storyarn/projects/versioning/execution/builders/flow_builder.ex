@@ -10,7 +10,6 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   use Gettext, backend: Storyarn.Gettext
 
   import Ecto.Query, warn: false
-  import Storyarn.Projects.Versioning.MaterializationHelpers, only: [exact_materialization?: 1]
 
   alias Storyarn.Platform.Shared.HtmlUtils
   alias Storyarn.Projects.FlowReferenceGraph, as: NodeCreate
@@ -935,7 +934,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp validate_instantiation_snapshot(snapshot, opts) do
-    if exact_materialization?(opts) and is_map(snapshot),
+    if MaterializationHelpers.exact_materialization?(opts) and is_map(snapshot),
       do: :ok,
       else: validate_portable_snapshot(snapshot)
   end
@@ -943,7 +942,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp materialization_mode(opts), do: Keyword.get(opts, :materialization_mode, :portable)
 
   defp maybe_validate_materialized_flow_reference_cycles(flow_id, nodes, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: :ok,
       else: validate_materialized_flow_reference_cycles(flow_id, nodes)
   end
@@ -954,7 +953,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
         instantiate_flow_snapshot(project_id, snapshot, opts)
       end)
 
-    if not exact_materialization?(opts) and retry_main_constraint?(result, opts) do
+    if not MaterializationHelpers.exact_materialization?(opts) and retry_main_constraint?(result, opts) do
       instantiate_flow_snapshot_transaction(
         project_id,
         snapshot,
@@ -2489,7 +2488,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
          opts,
          parent_original_id
        ) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       link_exact_snapshot_node_parent(repo, node_data, count, node_id_map, parent_original_id, project_id)
     else
       link_portable_snapshot_node_parent(
@@ -2614,7 +2613,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp materialize_sequence_resources?(%{"type" => "sequence"}, _opts), do: true
 
   defp materialize_sequence_resources?(node_data, opts) when is_map(node_data) do
-    exact_materialization?(opts) and residual_sequence_snapshot_resources?(node_data)
+    MaterializationHelpers.exact_materialization?(opts) and
+      residual_sequence_snapshot_resources?(node_data)
   end
 
   defp materialize_sequence_resources?(_node_data, _opts), do: false
@@ -2626,7 +2626,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp restore_exact_authored_node_types(repo, nodes_data, node_id_map, opts) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       do_restore_exact_authored_node_types(repo, nodes_data, node_id_map, opts)
     else
       :ok
@@ -2650,7 +2650,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp insert_sequence_config_for_mode(repo, node_id, nil, opts, now) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: {:ok, 0},
       else: insert_sequence_config(repo, node_id, nil, now)
   end
@@ -2860,7 +2860,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp materialized_node_changeset(flow_id, node_data, data, now, opts) do
-    if exact_materialization?(opts) do
+    if MaterializationHelpers.exact_materialization?(opts) do
       Ecto.Changeset.change(
         %FlowNode{flow_id: flow_id, inserted_at: now, updated_at: now},
         type: exact_materialization_node_type(node_data, opts),
@@ -2983,7 +2983,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp resolve_connection_endpoint(repo, connection, endpoint, {index_key, id_key}, _indexed_endpoint, context) do
-    if exact_materialization?(context.opts) do
+    if MaterializationHelpers.exact_materialization?(context.opts) do
       materialize_exact_connection_endpoint(
         repo,
         connection,
@@ -3032,7 +3032,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
       label: connection_data["label"]
     }
 
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: Ecto.Changeset.change(connection, attrs),
       else: FlowConnection.create_changeset(connection, attrs)
   end
@@ -3244,7 +3244,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp maybe_normalize_materialized_node_avatar(project_id, node_type, data, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: {:ok, data},
       else: AvatarIntegrity.lock_and_normalize_node_avatar_for_project(project_id, node_type, data)
   end
@@ -3284,7 +3284,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp materialize_flow_exit_target(_node_type, _node_id, data, _project_id, _opts, _mode), do: {:ok, data}
 
   defp maybe_validate_flow_exit_target_contract(node_id, data, opts) do
-    if exact_materialization?(opts),
+    if MaterializationHelpers.exact_materialization?(opts),
       do: :ok,
       else: validate_flow_exit_target_contract(node_id, data)
   end
@@ -3540,11 +3540,11 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
       |> normalize_materialized_reference_id()
 
     cond do
-      exact_materialization?(opts) and not is_nil(mapped_exit_id) and
+      MaterializationHelpers.exact_materialization?(opts) and not is_nil(mapped_exit_id) and
           materialized_exit_node?(repo, mapped_exit_id, new_referenced_flow_id) ->
         {:ok, "exit_#{mapped_exit_id}"}
 
-      exact_materialization?(opts) ->
+      MaterializationHelpers.exact_materialization?(opts) ->
         {:ok, pin}
 
       is_nil(mapped_exit_id) ->

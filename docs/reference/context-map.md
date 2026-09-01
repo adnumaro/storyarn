@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-31
+> Last reviewed: 2026-09-01
 >
 > Scope: current modular monolith over one Repo and PostgreSQL schema
 
@@ -49,11 +49,12 @@ ten sensitive-table contracts remain the more specific source of truth.
 The guards discover duplicated schemas, statically identifiable foreign
 consumers and direct SQL references across `lib/storyarn`. They detect reviewed
 Repo/Ecto.Multi forms and statically resolvable SQL. Unresolved raw SQL fails
-closed once a source file has been selected as a candidate for an inventoried
-table; runtime-built SQL that exposes no table marker remains outside that
-static proof. These are CI source-level guards, not PostgreSQL roles, runtime
-ACLs, separate schemas or proof of arbitrary runtime indirection. Those
-physical database boundaries remain ENG-106. ENG-110's
+closed globally unless its exact function and module digest are declared in the
+reviewed dynamic-writer inventory; runtime-built table names therefore require
+an explicit reviewed contract even when the source exposes no table marker.
+These are CI source-level guards, not PostgreSQL roles, runtime ACLs, separate
+schemas or proof of arbitrary external runtime indirection. Those physical
+database boundaries remain ENG-106. ENG-110's
 `project_languages` contract remains one of the stricter tables: Localization
 is its sole ordinary writer, while exact Project exceptions are allowlisted by
 source, mutating function and operation with their transaction contract,
@@ -96,6 +97,11 @@ four-layer sealed call chain; the port assumes Project and the source Flow are
 already locked and must not be used by ordinary Localization commands. Those
 commands continue to acquire Project `FOR UPDATE` before the advisory inventory
 lock.
+
+Flow node content commands acquire Project `FOR UPDATE` before source Flow and
+node `FOR UPDATE`, then reconcile Localization derivatives. The up-front
+Project lock avoids upgrading it after Flow state is held, so a snapshot that
+already owns the compatible read chain completes before the writer proceeds.
 
 ENG-103 does not add a speculative Flow-to-Sheets creation port. No production
 Flow workflow currently creates a Sheet or variable definition. If that product

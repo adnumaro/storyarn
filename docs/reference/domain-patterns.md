@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-29
+> Last reviewed: 2026-09-01
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
 > `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
@@ -168,6 +168,12 @@ acquires only the advisory inventory lock. Ordinary Localization commands use
 the stronger Project `FOR UPDATE` -> advisory-lock path. Both entry chains are
 explicit; the advisory-only function is not a general shortcut.
 
+Flow node writes that change authored content also reconcile Localization-owned
+rows, so their lock chain starts with Project `FOR UPDATE`, then source Flow and node
+`FOR UPDATE`, before entering Localization. Acquiring the required Project mode
+at the start prevents a late lock upgrade from cycling with a snapshot that
+already holds Project and its source Flow for reading.
+
 The storage-cleanup table is the explicit shared-protocol exception. Tool
 contexts are insert-only producers of `storage_compensation` handoffs, while
 Projects is the lifecycle owner that retries, rotates, updates and consumes
@@ -215,13 +221,17 @@ persistence-ownership entries and source-level architecture tests table by
 table. The sensitive `project_languages`, `localized_texts`, `assets`,
 reference-index and storage-cleanup tables are guarded by reviewed source-effect
 inventories over `lib/storyarn/**/*.ex`, mutation bans for passive projections
-and named privileged writers. For a candidate file already associated with an
-inventoried table, the analyzer fails closed when raw SQL cannot be resolved.
-Its interprocedural propagation is file-local and limited to reviewed AST forms;
-runtime-built SQL without a table marker, custom macros, database triggers and
-arbitrary runtime indirection remain outside the proof. This does not replace
-PostgreSQL permissions or runtime authorization; unlisted tables still require
-review rather than being assumed safe.
+and named privileged writers. Unresolved raw SQL now fails globally unless its
+exact function is a digest-pinned reviewed dynamic writer; it cannot hide by
+omitting a table marker. Generic schema writers are accepted only when every
+direct private caller in the same file supplies a literal schema or table, and
+constructed binary table attributes still make their source a candidate for
+the resolved table. Repo imports, dynamic dispatch, write captures, runtime
+struct schemas and opaque association writes are rejected. Interprocedural
+propagation remains file-local and limited to reviewed AST forms; custom macros,
+database triggers and arbitrary external runtime indirection remain outside the
+proof. This does not replace PostgreSQL permissions or runtime authorization;
+unlisted tables still require review rather than being assumed safe.
 
 Mix tasks are operator adapters. Every task is classified explicitly and may
 call root facades, `Repo` where its startup contract requires it, and technical

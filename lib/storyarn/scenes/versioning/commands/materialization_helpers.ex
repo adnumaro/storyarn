@@ -81,13 +81,6 @@ defmodule Storyarn.Scenes.Versioning.Commands.MaterializationHelpers do
     end
   end
 
-  def insert_one_returning_id(repo, schema, attrs) do
-    case repo.insert_all(schema, [attrs], returning: [:id]) do
-      {1, [%{id: id}]} -> {:ok, id}
-      other -> {:error, {:insert_failed, schema, other}}
-    end
-  end
-
   def insert_all(_repo, _schema, []), do: :ok
 
   def insert_all(repo, schema, entries) do

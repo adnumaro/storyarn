@@ -14,7 +14,6 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
 
   @timeout 15_000
   @source_locked_event [:storyarn, :flows, :flow_snapshot, :source_locked]
-  @writer_source_locked_event [:storyarn, :flows, :node_update, :source_locked]
 
   test "snapshots of independent flows coexist under the shared project lock" do
     %{user: user, project: project, first_flow: first_flow, second_flow: second_flow} =
@@ -87,71 +86,23 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
     assert second_id == second_flow.id
   end
 
-  test "a snapshot referencing a concurrently edited Flow waits without a deadlock" do
-    %{user: user, project: project, first_flow: snapshot_flow, second_flow: edited_flow} =
+  test "content writers wait at Project before a referencing snapshot and both commit" do
+    %{user: user, project: project, first_flow: snapshot_flow} =
       fixture = setup_fixture()
 
     on_exit(fn -> cleanup_fixture(user.id, project.workspace_id) end)
-    edited_node = add_snapshot_and_writer_cycle(fixture)
+    edited_node = add_snapshot_target(fixture)
 
-    parent = self()
-    barrier = make_ref()
+    for {command, text} <- [
+          {:update_node, "Updated through the full-node command"},
+          {:update_node_data, "Updated through the data command"},
+          {:edit_node, "Updated through the canonical editor command"}
+        ] do
+      assert_snapshot_and_content_write_commit(snapshot_flow, edited_node, command, text)
+    end
 
-    snapshot_handler_id =
-      attach_source_lock_barrier([snapshot_flow.id], parent, barrier)
-
-    writer_handler_id =
-      attach_writer_lock_barrier([edited_node.id], parent, barrier)
-
-    writer =
-      write_node_data(
-        edited_node,
-        %{"referenced_flow_id" => snapshot_flow.id},
-        edited_flow.id
-      )
-
-    snapshot = snapshot(snapshot_flow)
-    tasks = [snapshot, writer]
-    snapshot_flow_id = snapshot_flow.id
-
-    {snapshot_result, writer_result} =
-      try do
-        assert_receive {
-                         ^barrier,
-                         :writer_source_locked,
-                         writer_pid,
-                         writer_backend_pid
-                       },
-                       @timeout
-
-        assert_receive {
-                         ^barrier,
-                         :snapshot_source_locked,
-                         snapshot_pid,
-                         ^snapshot_flow_id,
-                         snapshot_backend_pid
-                       },
-                       @timeout
-
-        send(snapshot_pid, {barrier, :continue})
-        assert_blocked_by!(snapshot_backend_pid, writer_backend_pid)
-        send(writer_pid, {barrier, :continue})
-
-        {Task.await(snapshot, @timeout), Task.await(writer, @timeout)}
-      after
-        :telemetry.detach(snapshot_handler_id)
-        :telemetry.detach(writer_handler_id)
-        release_or_stop_tasks(tasks, barrier)
-      end
-
-    assert {:ok, %{"original_id" => snapshot_flow_id}} = snapshot_result
-    assert snapshot_flow_id == snapshot_flow.id
-    assert {:error, :circular_reference} = writer_result
-
-    persisted_node =
-      Sandbox.unboxed_run(Repo, fn -> Repo.get!(FlowNode, edited_node.id) end)
-
-    assert persisted_node.data["referenced_flow_id"] == nil
+    persisted_node = Sandbox.unboxed_run(Repo, fn -> Repo.get!(FlowNode, edited_node.id) end)
+    assert persisted_node.data["text"] == "Updated through the canonical editor command"
   end
 
   defp setup_fixture do
@@ -192,7 +143,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
     end)
   end
 
-  defp add_snapshot_and_writer_cycle(%{first_flow: snapshot_flow, second_flow: edited_flow}) do
+  defp add_snapshot_target(%{first_flow: snapshot_flow, second_flow: edited_flow}) do
     Sandbox.unboxed_run(Repo, fn ->
       node_fixture(snapshot_flow, %{
         type: "subflow",
@@ -200,8 +151,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
       })
 
       node_fixture(edited_flow, %{
-        type: "subflow",
-        data: %{"referenced_flow_id" => nil}
+        type: "dialogue",
+        data: %{"text" => "Before the concurrent write"}
       })
     end)
   end
@@ -239,38 +190,6 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
     handler_id
   end
 
-  defp attach_writer_lock_barrier(node_ids, parent, barrier) do
-    handler_id = "flow-node-update-source-lock-#{System.unique_integer([:positive])}"
-    node_ids = MapSet.new(node_ids)
-
-    :ok =
-      :telemetry.attach(
-        handler_id,
-        @writer_source_locked_event,
-        fn _event, _measurements, %{node_id: node_id}, {test_pid, ref, expected_node_ids} ->
-          if MapSet.member?(expected_node_ids, node_id) do
-            [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
-
-            send(test_pid, {
-              ref,
-              :writer_source_locked,
-              self(),
-              backend_pid
-            })
-
-            receive do
-              {^ref, :continue} -> :ok
-            after
-              @timeout -> exit(:writer_source_lock_barrier_timeout)
-            end
-          end
-        end,
-        {parent, barrier, node_ids}
-      )
-
-    handler_id
-  end
-
   defp snapshot(flow) do
     Task.async(fn ->
       :ok = Sandbox.checkout(Repo, sandbox: false)
@@ -287,13 +206,17 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
     end)
   end
 
-  defp write_node_data(node, data, expected_flow_id) do
+  defp write_content_node(node, command, text, parent, barrier) do
     Task.async(fn ->
       :ok = Sandbox.checkout(Repo, sandbox: false)
 
       try do
-        true = node.flow_id == expected_flow_id
-        Flows.update_node_data_without_dashboard_broadcast(node, data)
+        [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+        send(parent, {barrier, :writer_backend_ready, self(), backend_pid})
+
+        node
+        |> run_content_write(command, text)
+        |> normalize_content_write_result()
       rescue
         error -> {:raised, error}
       catch
@@ -302,6 +225,77 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
         Sandbox.checkin(Repo)
       end
     end)
+  end
+
+  defp run_content_write(node, :update_node, text) do
+    Flows.update_node_without_dashboard_broadcast(node, %{
+      data: Map.put(node.data, "text", text)
+    })
+  end
+
+  defp run_content_write(node, :update_node_data, text) do
+    Flows.update_node_data_without_dashboard_broadcast(
+      node,
+      Map.put(node.data, "text", text)
+    )
+  end
+
+  defp run_content_write(node, :edit_node, text) do
+    Flows.edit_node(node.flow_id, node.id, :put_field, %{
+      field: "text",
+      value: text
+    })
+  end
+
+  defp normalize_content_write_result({:ok, %FlowNode{} = node}), do: {:ok, node}
+  defp normalize_content_write_result({:ok, %FlowNode{} = node, _meta}), do: {:ok, node}
+  defp normalize_content_write_result({:ok, %{node: %FlowNode{} = node}}), do: {:ok, node}
+  defp normalize_content_write_result(other), do: other
+
+  defp assert_snapshot_and_content_write_commit(snapshot_flow, edited_node, command, text) do
+    parent = self()
+    barrier = make_ref()
+    snapshot_flow_id = snapshot_flow.id
+    handler_id = attach_source_lock_barrier([snapshot_flow_id], parent, barrier)
+    snapshot_task = snapshot(snapshot_flow)
+
+    try do
+      assert_receive {
+                       ^barrier,
+                       :snapshot_source_locked,
+                       snapshot_pid,
+                       ^snapshot_flow_id,
+                       snapshot_backend_pid
+                     },
+                     @timeout
+
+      writer_task = write_content_node(edited_node, command, text, parent, barrier)
+
+      try do
+        assert_receive {
+                         ^barrier,
+                         :writer_backend_ready,
+                         writer_pid,
+                         writer_backend_pid
+                       },
+                       @timeout
+
+        assert writer_pid == writer_task.pid
+        assert_blocked_by!(writer_backend_pid, snapshot_backend_pid)
+        send(snapshot_pid, {barrier, :continue})
+
+        assert {:ok, %{"original_id" => ^snapshot_flow_id}} =
+                 Task.await(snapshot_task, @timeout)
+
+        assert {:ok, %FlowNode{data: %{"text" => ^text}}} =
+                 Task.await(writer_task, @timeout)
+      after
+        release_or_stop_tasks([snapshot_task, writer_task], barrier)
+      end
+    after
+      :telemetry.detach(handler_id)
+      release_or_stop_tasks([snapshot_task], barrier)
+    end
   end
 
   defp receive_source_locks(barrier, tasks) do
@@ -338,7 +332,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotLockOrderConcurrencyTest do
         :ok
 
       System.monotonic_time(:millisecond) >= deadline ->
-        flunk("snapshot backend #{blocked_backend_pid} never waited for writer backend #{blocker_backend_pid}")
+        flunk("backend #{blocked_backend_pid} never waited for backend #{blocker_backend_pid}")
 
       true ->
         Process.sleep(10)

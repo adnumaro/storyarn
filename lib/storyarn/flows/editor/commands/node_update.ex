@@ -20,7 +20,6 @@ defmodule Storyarn.Flows.NodeUpdate do
   # Increment it whenever the canonical derivative contract changes. A nil or
   # mismatched value forces FlowSync through the full reconciliation path.
   @derivatives_fingerprint_version 1
-  @data_source_locked_event [:storyarn, :flows, :node_update, :source_locked]
 
   def update_node(%FlowNode{} = node, attrs) do
     result = update_node_without_dashboard_broadcast(node, attrs)
@@ -36,7 +35,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   defp update_node_transaction(node, attrs) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
-           References.lock_active_node_for_write(node, :key_share),
+           lock_content_node_for_write(node),
          changeset = FlowNode.update_changeset(locked_node, attrs),
          type = Ecto.Changeset.get_field(changeset, :type),
          data = Ecto.Changeset.get_field(changeset, :data) || %{},
@@ -495,8 +494,7 @@ defmodule Storyarn.Flows.NodeUpdate do
 
   defp update_node_data_transaction(node, data) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
-           References.lock_active_node_for_write(node, :key_share),
-         :ok <- emit_data_source_locked(locked_node, project_id),
+           lock_content_node_for_write(node),
          {:ok, _parent_id} <-
            References.lock_node_parent(
              flow.id,
@@ -532,19 +530,9 @@ defmodule Storyarn.Flows.NodeUpdate do
     end
   end
 
-  defp emit_data_source_locked(node, project_id) do
-    :telemetry.execute(@data_source_locked_event, %{count: 1}, %{
-      node_id: node.id,
-      flow_id: node.flow_id,
-      project_id: project_id
-    })
-
-    :ok
-  end
-
   defp edit_node_transaction(identity, operation, payload) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
-           References.lock_active_node_for_write(identity, :key_share),
+           lock_content_node_for_write(identity),
          {:ok, authored_data} <-
            NodeEditor.apply_operation(locked_node, flow, project_id, operation, payload),
          {:ok, _parent_id} <-
@@ -565,6 +553,15 @@ defmodule Storyarn.Flows.NodeUpdate do
     else
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  # Changed content can reconcile Localization-owned derivative rows before it
+  # commits. That path requires Project FOR UPDATE, so acquire the sufficient
+  # mode before the Flow and node rows instead of upgrading Project after
+  # holding Flow state. This preserves one Project -> Flow -> node lock order
+  # against concurrent Flow snapshots and sibling content edits.
+  defp lock_content_node_for_write(node) do
+    References.lock_active_node_for_write(node, :update)
   end
 
   defp persist_authored_node_data(%FlowNode{data: data} = node, data, _project_id) do

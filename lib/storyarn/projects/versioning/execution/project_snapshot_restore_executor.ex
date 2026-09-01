@@ -1528,24 +1528,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     zones = child_ids(SceneZone, :scene_id, ids.scene_ids)
     ambient_flows = child_ids(SceneAmbientFlow, :scene_id, ids.scene_ids)
 
-    Enum.each(
-      %{
-        "flow_node" => ids.node_ids,
-        "scene_pin" => pins,
-        "scene_zone" => zones,
-        "scene_ambient_flow" => ambient_flows
-      },
-      fn
-        {_source_type, []} ->
-          :ok
+    delete_active_variable_references_by_source("flow_node", ids.node_ids)
+    delete_active_variable_references_by_source("scene_pin", pins)
+    delete_active_variable_references_by_source("scene_zone", zones)
+    delete_active_variable_references_by_source("scene_ambient_flow", ambient_flows)
 
-        {source_type, source_ids} ->
-          Repo.delete_all(
-            from(ref in VariableReference,
-              where: ref.source_type == ^source_type and ref.source_id in ^source_ids
-            )
-          )
-      end
+    :ok
+  end
+
+  defp delete_active_variable_references_by_source(_source_type, []), do: :ok
+
+  defp delete_active_variable_references_by_source(source_type, source_ids) do
+    Repo.delete_all(
+      from(ref in VariableReference,
+        where: ref.source_type == ^source_type and ref.source_id in ^source_ids
+      )
     )
 
     :ok

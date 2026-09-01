@@ -127,6 +127,14 @@ the source-level ratchet permits only `FlowSnapshot` to call that port.
 Ordinary Localization commands keep their own Project `FOR UPDATE` ->
 advisory-lock contract.
 
+Flow node content commands follow Project `FOR UPDATE` -> source Flow
+`FOR UPDATE` -> node `FOR UPDATE` before reconciling Localization derivatives.
+They acquire the strong Project lock up front because edits that change authored
+content enter Localization, which requires the same lock. This deliberately
+serializes content edits within a Project, but prevents an unsafe Project-lock
+upgrade after Flow state is held and lets a concurrent snapshot finish before
+the writer proceeds.
+
 ## `reference_data/`
 
 Reference data is immutable application data with no database identity,

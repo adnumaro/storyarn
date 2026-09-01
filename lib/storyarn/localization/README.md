@@ -128,6 +128,11 @@ advisory lock after the caller-owned Project and source Flow locks. Ordinary
 Localization commands must use `lock_inventory!/1`, which acquires Project
 `FOR UPDATE` first.
 
+Flow node content writers also acquire Project `FOR UPDATE` before their Flow
+and node locks. Their nested source extraction therefore reuses the already
+strong Project lock instead of trying to upgrade it after Flow state is held;
+this is required for a stable lock order against concurrent Flow snapshots.
+
 ## Stable module identities
 
 Files are grouped by capability without renaming contracts whose module identity
