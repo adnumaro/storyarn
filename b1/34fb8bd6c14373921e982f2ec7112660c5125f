@@ -1,0 +1,24 @@
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_73f0bcc2dd0987 2924-2925
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_e9e5a90425bc26::t_b970a8f99798e4 194-204
+  s_e9e5a90425bc26::t_2c9b59783c3b43 41-43,45-46,561-562,564,956,958-959,963,965-969,972,982-1004
+  s_e9e5a90425bc26::t_318241c2d0a66e 957,964,981
+  s_e9e5a90425bc26::t_d940f2769ac12d 1005-1006
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b134fb8bd6c14373921e982f2ec7112660c5125f",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
