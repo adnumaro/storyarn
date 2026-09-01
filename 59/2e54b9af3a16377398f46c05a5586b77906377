@@ -1,0 +1,23 @@
+.design-sync/NOTES.md
+  s_1945178adea538::t_b41ceb6589b8c8 1-8
+.design-sync/config.json
+  s_1945178adea538::t_57ad15b1c94784 1-7
+.design-sync/conventions.md
+  s_1945178adea538::t_4d5ee0a580c85c 1-57
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "592e54b9af3a16377398f46c05a5586b77906377",
+  "prompts": {},
+  "sessions": {
+    "s_1945178adea538": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d72a22d7-d47b-4413-9ee1-37c54c0cdb79",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
