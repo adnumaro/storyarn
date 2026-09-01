@@ -119,12 +119,19 @@ These exceptions are inventoried by exact function and do not authorize an
 ordinary Project feature to update translations or extracted source text.
 
 The advisory-only inventory lock is a separate, sealed coordination port. Flow
-snapshot build already holds Project `FOR SHARE` and then Flow `FOR UPDATE`, so
-relocking Project inside Localization would change the historical order. The
-reviewed Flow -> Localization facade -> Texts -> Extract chain therefore takes
-only the advisory lock after the caller-owned Project lock. Ordinary
+snapshot build follows Project `FOR SHARE` -> source Flow `FOR SHARE` ->
+Localization advisory lock -> referenced Flow `FOR SHARE`. The source lock
+still excludes Flow writers, while its compatibility with the referenced Flow
+locks prevents a source/target snapshot cycle. The reviewed Flow ->
+Localization facade -> Texts -> Extract chain therefore takes only the
+advisory lock after the caller-owned Project and source Flow locks. Ordinary
 Localization commands must use `lock_inventory!/1`, which acquires Project
 `FOR UPDATE` first.
+
+Flow node content writers also acquire Project `FOR UPDATE` before their Flow
+and node locks. Their nested source extraction therefore reuses the already
+strong Project lock instead of trying to upgrade it after Flow state is held;
+this is required for a stable lock order against concurrent Flow snapshots.
 
 ## Stable module identities
 

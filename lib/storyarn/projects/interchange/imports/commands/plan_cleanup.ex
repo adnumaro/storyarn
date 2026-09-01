@@ -70,7 +70,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanup do
 
   def mark_plan_cleanup_pending(storage_key), do: mark_plan_cleanup_pending(Repo, storage_key)
 
-  def mark_plan_cleanup_pending(repo, storage_key) do
+  defp mark_plan_cleanup_pending(repo, storage_key) do
     now = TimeHelpers.now()
 
     case repo.update_all(

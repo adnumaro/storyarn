@@ -45,7 +45,7 @@ defmodule Storyarn.Projects.LocalizationReconstitution do
   def bulk_import_glossary_entries(attrs_list) do
     attrs_list
     |> Enum.chunk_every(500)
-    |> Enum.each(&Repo.insert_all(GlossaryEntryRecord, &1))
+    |> Enum.each(fn chunk -> Repo.insert_all(GlossaryEntryRecord, chunk) end)
   end
 
   defp maybe_clear_ineligible_voice(attrs, %{vo_eligible: true}), do: attrs

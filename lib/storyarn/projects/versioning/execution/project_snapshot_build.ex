@@ -2823,11 +2823,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
         opts when is_list(opts) ->
           case Keyword.get(opts, :terminal_state_persist_fun) do
             callback when is_function(callback, 1) -> callback
-            _invalid -> &Repo.update/1
+            _invalid -> &persist_terminal_snapshot_changeset/1
           end
 
         _invalid ->
-          &Repo.update/1
+          &persist_terminal_snapshot_changeset/1
       end
 
     case persist_fun.(changeset) do
@@ -2884,6 +2884,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   end
 
   defp delete_terminal_capture(%ProjectSnapshot{}), do: {:error, :unsupported_snapshot_object_format}
+
+  defp persist_terminal_snapshot_changeset(changeset), do: Repo.update(changeset)
 
   defp lock_active_project(project_id, workspace_id) do
     Repo.one(

@@ -665,7 +665,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   defp maybe_put_asset_source_keys(opts, nil), do: opts
   defp maybe_put_asset_source_keys(opts, source_keys), do: Keyword.put(opts, :asset_source_keys, source_keys)
 
-  defp mark_template_origin(project, version) do
+  defp mark_template_origin(%Project{} = project, version) do
     project
     |> Ecto.Changeset.change(created_from_template_version_id: version.id)
     |> Ecto.Changeset.foreign_key_constraint(:created_from_template_version_id)

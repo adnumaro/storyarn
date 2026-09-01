@@ -550,7 +550,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
              true <- locked.plan_storage_key == attempt.plan_storage_key,
              false <- ready_plan_deadline_reached?(locked, TimeHelpers.now()),
              {:ok, :retained} <- retain_reserved_plan(Repo, cleanup_request.id),
-             :ok <- PlanCleanup.mark_plan_cleanup_pending(Repo, locked.plan_storage_key),
+             :ok <- PlanCleanup.mark_plan_cleanup_pending(locked.plan_storage_key),
              {:ok, revised} <-
                locked
                |> ProjectImportAttempt.reviewed_changeset(%{

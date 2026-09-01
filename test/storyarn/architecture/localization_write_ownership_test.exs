@@ -81,8 +81,14 @@ defmodule Storyarn.Architecture.LocalizationWriteOwnershipTest do
       assert File.regular?(writer.path), "ordinary writer path is missing: #{writer.path}"
       assert_metadata!(writer, [:role, :reason, :transaction, :locks_or_preconditions])
 
-      assert declared_writer_effect?(writer, schema_modules),
-             "declared writer has no reviewed table effect: #{writer.path}"
+      if writer.role == :command_orchestrator do
+        assert writer.functions == []
+
+        assert declared_writer_effect?(writer, schema_modules),
+               "declared writer orchestrator has no reviewed adapter delegation: #{writer.path}"
+      else
+        assert_exact_writer_functions!(writer, schema_modules)
+      end
     end
 
     assert ownership.privileged_project_writers |> Map.keys() |> Enum.sort() ==
@@ -99,13 +105,18 @@ defmodule Storyarn.Architecture.LocalizationWriteOwnershipTest do
           |> File.read!()
           |> project_languages_mutating_functions(schema_modules)
 
-        assert actual == MapSet.new(writer.functions), """
+        expected = MapSet.new(writer.functions, & &1.identity)
+        actual = MapSet.new(actual, &function_identity_string/1)
+
+        assert actual == expected, """
         #{writer.path} may mutate project_languages only inside the exact
         reviewed functions.
 
         Actual: #{actual |> MapSet.to_list() |> Enum.sort() |> inspect()}
-        Expected: #{inspect(Enum.sort(writer.functions))}
+        Expected: #{expected |> MapSet.to_list() |> Enum.sort() |> inspect()}
         """
+
+        assert_valid_function_contracts!(writer.functions)
       end
     end
 
@@ -429,6 +440,39 @@ defmodule Storyarn.Architecture.LocalizationWriteOwnershipTest do
   defp declared_writer_effect?(writer, schema_modules) do
     writer.path |> File.read!() |> project_languages_mutation?(schema_modules)
   end
+
+  defp assert_exact_writer_functions!(writer, schema_modules) do
+    assert_valid_function_contracts!(writer.functions)
+
+    actual =
+      writer.path
+      |> File.read!()
+      |> project_languages_mutating_functions(schema_modules)
+      |> MapSet.new(&function_identity_string/1)
+
+    expected = MapSet.new(writer.functions, & &1.identity)
+
+    assert actual == expected, """
+    #{writer.path} may mutate project_languages only inside the exact reviewed
+    ordinary functions.
+
+    Actual: #{actual |> MapSet.to_list() |> Enum.sort() |> inspect()}
+    Expected: #{expected |> MapSet.to_list() |> Enum.sort() |> inspect()}
+    """
+  end
+
+  defp assert_valid_function_contracts!(functions) do
+    assert functions != []
+    assert Enum.uniq_by(functions, & &1.identity) == functions
+
+    for function <- functions do
+      assert is_binary(function.identity) and function.identity != ""
+      assert function.operations != []
+      assert function.operations == function.operations |> Enum.uniq() |> Enum.sort()
+    end
+  end
+
+  defp function_identity_string({visibility, name, arity}), do: "#{visibility} #{name}/#{arity}"
 
   defp module_consumers(module_name, defining_path) do
     source_paths()

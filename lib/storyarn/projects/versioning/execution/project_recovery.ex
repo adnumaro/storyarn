@@ -1555,13 +1555,43 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     deleted_at = snapshot_import_tombstone_deleted_at!(entry)
     snapshot = entry["snapshot"]
 
-    {kind, schema, attrs} =
-      case entry["entity_type"] do
-        "sheet" -> {:sheet, Sheet, snapshot_import_sheet_tombstone_attrs(snapshot)}
-        "flow" -> {:flow, Flow, snapshot_import_flow_tombstone_attrs(snapshot)}
-        "scene" -> {:scene, Scene, snapshot_import_scene_tombstone_attrs(snapshot)}
-      end
+    case entry["entity_type"] do
+      "sheet" ->
+        insert_snapshot_import_root_tombstone_for_schema(
+          project_id,
+          source_id,
+          deleted_at,
+          now,
+          :sheet,
+          Sheet,
+          snapshot_import_sheet_tombstone_attrs(snapshot)
+        )
 
+      "flow" ->
+        insert_snapshot_import_root_tombstone_for_schema(
+          project_id,
+          source_id,
+          deleted_at,
+          now,
+          :flow,
+          Flow,
+          snapshot_import_flow_tombstone_attrs(snapshot)
+        )
+
+      "scene" ->
+        insert_snapshot_import_root_tombstone_for_schema(
+          project_id,
+          source_id,
+          deleted_at,
+          now,
+          :scene,
+          Scene,
+          snapshot_import_scene_tombstone_attrs(snapshot)
+        )
+    end
+  end
+
+  defp insert_snapshot_import_root_tombstone_for_schema(project_id, source_id, deleted_at, now, kind, schema, attrs) do
     attrs =
       attrs
       |> Map.put(:project_id, project_id)

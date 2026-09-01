@@ -23,8 +23,9 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
   test "privileged materialization and restore entrypoints keep their exact reviewed callers" do
     entries = policy().privileged_entrypoints
     sources = parsed_sources()
+    analyses = privileged_entrypoint_analyses(entries, sources)
 
-    assert length(entries) == 64
+    assert length(entries) == 72
     assert Enum.uniq_by(entries, &entry_identity/1) == entries
     assert disjoint_function_scopes?(entries)
 
@@ -36,17 +37,28 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     private so the reviewed entrypoint remains the only public route.
     """
 
-    for entry <- entries do
+    assert ambiguous_privileged_dispatches(analyses) == [], """
+    A function-scoped privileged entrypoint is invoked through an opaque or
+    ambiguously rebound module receiver. The ratchet cannot prove that receiver
+    is the reviewed module.
+
+    Replace the field dispatch, unsafe rebinding or shadowed variable with a
+    direct call or an explicit callback anchored to the reviewed default module.
+    """
+
+    for {entry, source_analyses} <- analyses do
       assert File.regular?(entry.path), "privileged entrypoint path is missing: #{entry.path}"
       assert byte_size(entry.reason) > 0
       assert valid_function_scope?(entry.functions)
+      refute Map.has_key?(entry, :anchored_dynamic_receiver)
+
       assert entry.allowed_callers == entry.allowed_callers |> Enum.uniq() |> Enum.sort()
 
       for caller <- entry.allowed_callers do
         assert File.regular?(caller), "privileged entrypoint caller is missing: #{caller}"
       end
 
-      actual_callers = entrypoint_callers(entry, sources)
+      actual_callers = entrypoint_callers(entry, source_analyses)
 
       assert actual_callers == entry.allowed_callers, """
       #{entry.module} #{function_scope_label(entry.functions)} may only be reached
@@ -137,6 +149,223 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
            )
 
     assert entrypoint_used?(
+             "Storyarn.Flows.Versioning.FlowSnapshot |> apply(:restore, [flow, snapshot, []])",
+             restore_entry
+           )
+
+    assert entrypoint_used?(
+             "Function.capture(Storyarn.Flows.Versioning.FlowSnapshot, :restore, 3)",
+             restore_entry
+           )
+
+    stable_dynamic_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(opts, flow, snapshot) do\n" <>
+        "  module = Keyword.get(opts, :snapshot_module, FlowSnapshot)\n" <>
+        "  restore = &module.restore/3\n" <>
+        "  restore.(flow, snapshot, [])\n" <>
+        "end"
+
+    assert entrypoint_used?(stable_dynamic_receiver, restore_entry)
+    refute ambiguous_entrypoint_used?(stable_dynamic_receiver, restore_entry)
+
+    field_derived_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(context, flow, snapshot) do\n" <>
+        "  _anchor = FlowSnapshot\n" <>
+        "  module = context.recovery\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(field_derived_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(field_derived_receiver, restore_entry)
+
+    rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = Other\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(rebound_receiver, restore_entry)
+
+    stable_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    assert entrypoint_used?(stable_rebound_receiver, restore_entry)
+    refute ambiguous_entrypoint_used?(stable_rebound_receiver, restore_entry)
+
+    conditional_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flag, flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = if(flag, do: Other, else: module)\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(conditional_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(conditional_rebound_receiver, restore_entry)
+
+    derived_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = normalize(module)\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(derived_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(derived_rebound_receiver, restore_entry)
+
+    laundered_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flag, flow, snapshot) do\n" <>
+        "  candidate = if(flag, do: Other, else: FlowSnapshot)\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = candidate\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(laundered_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(laundered_rebound_receiver, restore_entry)
+
+    conflicting_alias_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot, as: Snapshot\n" <>
+        "alias Storyarn.Other, as: Snapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = Snapshot\n" <>
+        "  module = Snapshot\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(conflicting_alias_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(conflicting_alias_rebound_receiver, restore_entry)
+
+    shadowed_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(modules, flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  Enum.each(modules, fn module -> module.restore(flow, snapshot, []) end)\n" <>
+        "end"
+
+    refute entrypoint_used?(shadowed_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(shadowed_receiver, restore_entry)
+
+    stable_guarded_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flag, value, flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  cond do\n" <>
+        "    flag and module == FlowSnapshot -> module.restore(flow, snapshot, [])\n" <>
+        "    true ->\n" <>
+        "      case value do\n" <>
+        "        ^module -> module.restore(flow, snapshot, [])\n" <>
+        "        _other -> :ok\n" <>
+        "      end\n" <>
+        "  end\n" <>
+        "end"
+
+    assert entrypoint_used?(stable_guarded_receiver, restore_entry)
+    refute ambiguous_entrypoint_used?(stable_guarded_receiver, restore_entry)
+
+    refute entrypoint_used?(
+             "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+               "def run(context, flow, snapshot) do\n" <>
+               "  _anchor = FlowSnapshot\n" <>
+               "  context.unrelated.restore(flow, snapshot, [])\n" <>
+               "end",
+             restore_entry
+           )
+
+    assert ambiguous_entrypoint_used?(
+             "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+               "def run(context, flow, snapshot) do\n" <>
+               "  _anchor = FlowSnapshot\n" <>
+               "  context.unrelated.restore(flow, snapshot, [])\n" <>
+               "end",
+             restore_entry
+           )
+
+    compound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  context = %{snapshot_module: FlowSnapshot, recovery: Other}\n" <>
+        "  context.recovery.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(compound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(compound_receiver, restore_entry)
+
+    access_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(context, flow, snapshot) do\n" <>
+        "  _anchor = FlowSnapshot\n" <>
+        "  context[:recovery].restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(access_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(access_receiver, restore_entry)
+
+    explicit_access_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(context, flow, snapshot) do\n" <>
+        "  _anchor = FlowSnapshot\n" <>
+        "  Access.get(context, :recovery).restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(explicit_access_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(explicit_access_receiver, restore_entry)
+
+    aliased_access_receiver =
+      "alias Access, as: A\n" <>
+        "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(context, flow, snapshot) do\n" <>
+        "  _anchor = FlowSnapshot\n" <>
+        "  A.get(context, :recovery).restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(aliased_access_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(aliased_access_receiver, restore_entry)
+
+    direct_and_opaque_receivers =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(context, flow, snapshot) do\n" <>
+        "  FlowSnapshot.restore(flow, snapshot, [])\n" <>
+        "  context.recovery.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    assert entrypoint_used?(direct_and_opaque_receivers, restore_entry)
+    assert ambiguous_entrypoint_used?(direct_and_opaque_receivers, restore_entry)
+
+    assert ambiguous_entrypoint_used?(
+             "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+               "def run(context, flow, snapshot) do\n" <>
+               "  _anchor = FlowSnapshot\n" <>
+               "  context.recovery.restore(flow, snapshot, [])\n" <>
+               "end",
+             restore_entry
+           )
+
+    refute ambiguous_entrypoint_used?(
+             "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+               "def run(context, flow), do: context.recovery.build(flow)",
+             restore_entry
+           )
+
+    refute ambiguous_entrypoint_used?(
+             "def run(context, flow, snapshot), " <>
+               "do: context.recovery.restore(flow, snapshot, [])",
+             restore_entry
+           )
+
+    assert entrypoint_used?(
              "defdelegate restore(flow, snapshot, opts), " <>
                "to: Storyarn.Flows.Versioning.FlowSnapshot",
              restore_entry
@@ -144,6 +373,17 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
     assert entrypoint_used?(
              "import Storyarn.Flows.Versioning.FlowSnapshot, only: [restore: 3]",
+             restore_entry
+           )
+
+    refute entrypoint_used?(
+             "import Storyarn.Flows.Versioning.FlowSnapshot, only: [build: 1]",
+             restore_entry
+           )
+
+    refute entrypoint_used?(
+             "import Storyarn.Flows.Versioning.FlowSnapshot, " <>
+               "except: [restore: 2, restore: 3]",
              restore_entry
            )
 
@@ -274,12 +514,29 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp policy, do: DependencyPolicy.load!(@policy_path)
 
-  defp entrypoint_callers(entry, sources) do
-    sources
+  defp entrypoint_callers(entry, source_analyses) do
+    source_analyses
     |> Enum.reject(&(&1.path == entry.path))
-    |> Enum.filter(&entrypoint_used_ast?(&1.ast, &1.aliases, entry))
+    |> Enum.filter(& &1.used?)
     |> Enum.map(& &1.path)
     |> Enum.sort()
+  end
+
+  defp privileged_entrypoint_analyses(entries, sources) do
+    Enum.map(entries, fn entry ->
+      source_analyses =
+        Enum.map(sources, fn source ->
+          source.ast
+          |> entrypoint_analysis_ast(
+            source.aliases,
+            entry,
+            MapSet.member?(source.module_references, entry.module)
+          )
+          |> Map.put(:path, source.path)
+        end)
+
+      {entry, source_analyses}
+    end)
   end
 
   defp parsed_sources do
@@ -288,7 +545,14 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp parsed_source(path, source) do
     ast = quoted!(source)
-    %{path: path, ast: ast, aliases: alias_bindings(ast)}
+    aliases = alias_bindings(ast)
+
+    %{
+      path: path,
+      ast: ast,
+      aliases: aliases,
+      module_references: referenced_modules(ast, aliases)
+    }
   end
 
   defp source_paths do
@@ -298,53 +562,153 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     |> Enum.sort()
   end
 
-  defp entrypoint_used?(source, %{functions: :all} = entry) do
-    ast = quoted!(source)
-    aliases = alias_bindings(ast)
-
-    entrypoint_used_ast?(ast, aliases, entry)
-  end
-
   defp entrypoint_used?(source, entry) do
     ast = quoted!(source)
     aliases = alias_bindings(ast)
 
-    entrypoint_used_ast?(ast, aliases, entry)
+    entrypoint_analysis_ast(ast, aliases, entry).used?
   end
 
-  defp entrypoint_used_ast?(ast, aliases, %{functions: :all} = entry) do
-    ast_references_module?(ast, entry.module, aliases)
+  defp ambiguous_entrypoint_used?(source, entry) do
+    ast = quoted!(source)
+    aliases = alias_bindings(ast)
+
+    entrypoint_analysis_ast(ast, aliases, entry).ambiguous?
   end
 
-  defp entrypoint_used_ast?(ast, aliases, entry) do
+  defp entrypoint_analysis_ast(ast, aliases, entry) do
+    entrypoint_analysis_ast(ast, aliases, entry, ast_references_module?(ast, entry.module, aliases))
+  end
+
+  defp entrypoint_analysis_ast(_ast, _aliases, _entry, false), do: empty_call_analysis()
+
+  defp entrypoint_analysis_ast(_ast, _aliases, %{functions: :all}, true) do
+    %{used?: true, ambiguous?: false}
+  end
+
+  defp entrypoint_analysis_ast(ast, aliases, entry, true) do
     # Dynamic receivers can only be resolved statically when this source file
     # anchors them to the target module through a literal, alias, attribute or
     # expression. Runtime-only module values with no such anchor remain outside
     # this lib/**/*.ex source ratchet.
-    ast_references_module?(ast, entry.module, aliases) and
-      (imports_module?(ast, entry.module, aliases) or
-         ast_calls_functions?(ast, entry.module, entry.functions, aliases))
+    analysis = restricted_entrypoint_call_analysis(ast, entry, aliases)
+    %{analysis | used?: imports_module?(ast, entry.module, entry.functions, aliases) or analysis.used?}
   end
 
-  defp ast_calls_functions?(ast, target, functions, aliases) do
-    base_context = receiver_context(ast, target, aliases)
+  defp restricted_entrypoint_call_analysis(ast, entry, aliases) do
+    base_context = receiver_context(ast, entry.module, aliases, nil)
 
-    restricted_call_in_ast?(ast, target, functions, base_context) or
-      Enum.any?(function_scopes(ast), fn scope ->
-        tainted = tainted_receiver_variables(scope.ast, target, base_context)
-        context = %{base_context | tainted: tainted}
-        restricted_call_in_ast?(scope.body, target, functions, context)
-      end)
+    Enum.reduce(
+      function_scopes(ast),
+      restricted_call_analysis_in_ast(ast, entry.module, entry.functions, base_context),
+      fn
+        scope, analysis ->
+          tainted = tainted_receiver_variables(scope.ast, entry.module, base_context)
+          tainted_context = %{base_context | tainted: tainted}
+          ambiguous = suspect_receiver_variables(scope, entry.module, tainted_context)
+
+          context = %{tainted_context | ambiguous: ambiguous}
+
+          merge_call_analysis(
+            analysis,
+            restricted_call_analysis_in_ast(scope.body, entry.module, entry.functions, context)
+          )
+      end
+    )
   end
 
   defp restricted_call_in_ast?(ast, target, functions, context) do
-    {_ast, found?} =
-      Macro.prewalk(ast, false, fn node, found? ->
-        {node, found? or restricted_call?(node, target, functions, context)}
+    restricted_call_analysis_in_ast(ast, target, functions, context).used?
+  end
+
+  defp restricted_call_analysis_in_ast(ast, target, functions, context) do
+    {_ast, analysis} =
+      ast
+      |> normalize_pipeline_calls()
+      |> Macro.prewalk(empty_call_analysis(), fn node, analysis ->
+        used? = restricted_call?(node, target, functions, context)
+        ambiguous? = opaque_restricted_call?(node, functions, context)
+
+        {node,
+         %{
+           used?: analysis.used? or used?,
+           ambiguous?: analysis.ambiguous? or ambiguous?
+         }}
       end)
 
-    found?
+    analysis
   end
+
+  defp empty_call_analysis, do: %{used?: false, ambiguous?: false}
+
+  defp merge_call_analysis(left, right) do
+    %{used?: left.used? or right.used?, ambiguous?: left.ambiguous? or right.ambiguous?}
+  end
+
+  defp opaque_restricted_call?({:|>, _, [_left, right]}, functions, context) do
+    opaque_remote_call_matches?(right, functions, context, 1)
+  end
+
+  defp opaque_restricted_call?({:&, _, [{:/, _, [{{:., _, [module_ast, function]}, _, []}, arity]}]}, functions, context)
+       when is_atom(function) and is_integer(arity) do
+    opaque_receiver?(module_ast, context) and function_matches?(functions, function, arity)
+  end
+
+  defp opaque_restricted_call?({:defdelegate, _, [head, opts]}, functions, context) when is_list(opts) do
+    with {:ok, function, arity} <- delegated_function(head, opts),
+         module_ast when not is_nil(module_ast) <- Keyword.get(opts, :to) do
+      opaque_receiver?(module_ast, context) and function_matches?(functions, function, arity)
+    else
+      _other -> false
+    end
+  end
+
+  defp opaque_restricted_call?({:apply, _, [module_ast, function, args]}, functions, context) do
+    opaque_apply_matches?(module_ast, function, args, functions, context)
+  end
+
+  defp opaque_restricted_call?({{:., _, [kernel_ast, :apply]}, _, [module_ast, function, args]}, functions, context) do
+    kernel_module?(kernel_ast, context) and
+      opaque_apply_matches?(module_ast, function, args, functions, context)
+  end
+
+  defp opaque_restricted_call?({{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]}, functions, context) do
+    function_module?(function_ast, context) and
+      opaque_receiver?(module_ast, context) and
+      function_matches?(functions, literal_atom(function), literal_capture_arity(arity))
+  end
+
+  defp opaque_restricted_call?(node, functions, context) do
+    opaque_remote_call_matches?(node, functions, context, 0)
+  end
+
+  defp opaque_remote_call_matches?({{:., _, [module_ast, function]}, _, arguments}, functions, context, piped_arguments)
+       when is_atom(function) and is_list(arguments) do
+    opaque_receiver?(module_ast, context) and
+      function_matches?(functions, function, length(arguments) + piped_arguments)
+  end
+
+  defp opaque_remote_call_matches?(_node, _functions, _context, _piped_arguments), do: false
+
+  defp opaque_apply_matches?(module_ast, function, args, functions, context) do
+    opaque_receiver?(module_ast, context) and
+      function_matches?(functions, literal_atom(function), literal_list_arity(args))
+  end
+
+  defp opaque_receiver?({name, _, variable_context}, context)
+       when is_atom(name) and (is_atom(variable_context) or is_nil(variable_context)) do
+    MapSet.member?(context.ambiguous, name)
+  end
+
+  defp opaque_receiver?(module_ast, context), do: opaque_field_receiver?(module_ast, context)
+
+  defp opaque_field_receiver?({{:., metadata, [access, :get]}, _, [_container, _key]}, context) when is_list(metadata) do
+    Keyword.get(metadata, :from_brackets, false) or
+      literal_target_module?(access, "Access", context.aliases)
+  end
+
+  defp opaque_field_receiver?({{:., _, [_receiver, field]}, _, []}, _context) when is_atom(field), do: true
+  defp opaque_field_receiver?(_module_ast, _context), do: false
 
   defp restricted_call?({:|>, _, [_left, right]}, target, functions, context) do
     remote_call_matches?(right, target, functions, context, 1)
@@ -375,6 +739,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       apply_matches?(module_ast, function, args, target, functions, context)
   end
 
+  defp restricted_call?({{:., _, [function_ast, :capture]}, _, [module_ast, function, arity]}, target, functions, context) do
+    function_module?(function_ast, context) and
+      target_module?(module_ast, target, context) and
+      function_matches?(functions, literal_atom(function), literal_capture_arity(arity))
+  end
+
   defp restricted_call?(node, target, functions, context) do
     remote_call_matches?(node, target, functions, context, 0)
   end
@@ -398,6 +768,9 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
   defp literal_list_arity(arguments) when is_list(arguments), do: length(arguments)
   defp literal_list_arity(_arguments), do: :dynamic
 
+  defp literal_capture_arity(arity) when is_integer(arity), do: arity
+  defp literal_capture_arity(_arity), do: :dynamic
+
   defp function_matches?(:all, _function, _arity), do: true
   defp function_matches?(_functions, :dynamic, _arity), do: true
 
@@ -415,11 +788,15 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
   defp delegated_function(_head, _opts), do: :error
 
-  defp imports_module?(ast, target, aliases) do
+  defp imports_module?(ast, target, functions, aliases) do
     {_ast, found?} =
       Macro.prewalk(ast, false, fn
-        {:import, _, [module_ast | _opts]} = node, found? ->
-          {node, found? or literal_target_module?(module_ast, target, aliases)}
+        {:import, _, [module_ast | import_args]} = node, found? ->
+          imports_entrypoint? =
+            literal_target_module?(module_ast, target, aliases) and
+              import_includes_entrypoint?(import_args, functions)
+
+          {node, found? or imports_entrypoint?}
 
         node, found? ->
           {node, found?}
@@ -427,6 +804,24 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
     found?
   end
+
+  defp import_includes_entrypoint?([], _functions), do: true
+
+  defp import_includes_entrypoint?([opts], functions) when is_list(opts) do
+    case Keyword.fetch(opts, :only) do
+      {:ok, only} when is_list(only) -> Enum.any?(functions, &(&1 in only))
+      {:ok, _dynamic_only} -> true
+      :error -> import_except_includes_entrypoint?(Keyword.get(opts, :except), functions)
+    end
+  end
+
+  defp import_includes_entrypoint?(_dynamic_args, _functions), do: true
+
+  defp import_except_includes_entrypoint?(except, functions) when is_list(except) do
+    Enum.any?(functions, &(&1 not in except))
+  end
+
+  defp import_except_includes_entrypoint?(_except, _functions), do: true
 
   defp ast_references_module?(ast, target, aliases) do
     target_parts = String.split(target, ".")
@@ -452,9 +847,37 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     found?
   end
 
+  defp referenced_modules(ast, aliases) do
+    initial =
+      aliases
+      |> Map.values()
+      |> Enum.flat_map(& &1)
+      |> MapSet.new(&Enum.join(&1, "."))
+
+    {_ast, modules} =
+      Macro.prewalk(ast, initial, fn
+        {:__aliases__, _, segments} = node, modules ->
+          expanded =
+            segments
+            |> expanded_modules(aliases)
+            |> MapSet.new(&Enum.join(&1, "."))
+
+          {node, MapSet.union(modules, expanded)}
+
+        module, modules when is_atom(module) ->
+          {module, MapSet.put(modules, module_atom_name(module))}
+
+        node, modules ->
+          {node, modules}
+      end)
+
+    modules
+  end
+
   defp target_module?(module_ast, target, context) do
-    direct_target_reference?(module_ast, target, context) or
-      module_expression_references_target?(module_ast, target, context)
+    not opaque_field_receiver?(module_ast, context) and
+      (direct_target_reference?(module_ast, target, context) or
+         module_expression_references_target?(module_ast, target, context))
   end
 
   defp direct_target_reference?({:__aliases__, _, segments}, target, context) do
@@ -468,8 +891,9 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     do: MapSet.member?(context.attributes, name)
 
   defp direct_target_reference?({name, _, variable_context}, _target, context)
-       when is_atom(name) and (is_atom(variable_context) or is_nil(variable_context)),
-       do: MapSet.member?(context.tainted, name)
+       when is_atom(name) and (is_atom(variable_context) or is_nil(variable_context)) do
+    MapSet.member?(context.tainted, name) and not MapSet.member?(context.ambiguous, name)
+  end
 
   defp direct_target_reference?(module, target, _context) when is_atom(module), do: module_atom_name(module) == target
 
@@ -492,10 +916,58 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
   defp literal_target_module?(module, target, _aliases) when is_atom(module), do: module_atom_name(module) == target
   defp literal_target_module?(_module, _target, _aliases), do: false
 
+  defp provable_rebinding_target?({:__aliases__, _, segments}, target, context) do
+    parts = module_parts(segments)
+    target_parts = String.split(target, ".")
+
+    parts == target_parts or
+      case parts do
+        [first | rest] ->
+          context.aliases
+          |> Map.get(first, [])
+          |> Enum.map(&(&1 ++ rest))
+          |> Enum.uniq()
+          |> Kernel.==([target_parts])
+
+        [] ->
+          false
+      end
+  end
+
+  defp provable_rebinding_target?({:__MODULE__, _, _arguments}, target, context), do: context.self_module == target
+
+  defp provable_rebinding_target?(module, target, _context) when is_atom(module), do: module_atom_name(module) == target
+
+  defp provable_rebinding_target?(_module, _target, _context), do: false
+
   defp kernel_module?(module_ast, context), do: literal_target_module?(module_ast, "Kernel", context.aliases)
 
-  defp receiver_context(ast, target, aliases, self_module \\ nil) do
-    base = %{aliases: aliases, attributes: MapSet.new(), tainted: MapSet.new(), self_module: self_module}
+  defp function_module?(module_ast, context), do: literal_target_module?(module_ast, "Function", context.aliases)
+
+  defp normalize_pipeline_calls(ast) do
+    Macro.postwalk(ast, fn
+      {:|>, pipe_meta, [left, {{:., dot_meta, receiver}, call_meta, arguments}]}
+      when is_list(arguments) ->
+        {{:., dot_meta, receiver}, Keyword.merge(pipe_meta, call_meta), [left | arguments]}
+
+      {:|>, pipe_meta, [left, {function, call_meta, arguments}]}
+      when is_atom(function) and is_list(arguments) ->
+        {function, Keyword.merge(pipe_meta, call_meta), [left | arguments]}
+
+      node ->
+        node
+    end)
+  end
+
+  defp receiver_context(ast, target, aliases, self_module) do
+    base = %{
+      aliases: aliases,
+      ambiguous: MapSet.new(),
+      attributes: MapSet.new(),
+      tainted: MapSet.new(),
+      self_module: self_module
+    }
+
     %{base | attributes: target_module_attributes(ast, target, base)}
   end
 
@@ -551,6 +1023,160 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     collected
   end
 
+  defp suspect_receiver_variables(scope, target, context) do
+    unanchored_bindings = unanchored_receiver_bindings(scope, target, context)
+
+    unsafe_rebindings =
+      scope
+      |> receiver_binding_counts()
+      |> Enum.reduce(MapSet.new(), fn
+        {name, count}, names when count > 1 ->
+          if MapSet.member?(unanchored_bindings, name),
+            do: MapSet.put(names, name),
+            else: names
+
+        {_name, _count}, names ->
+          names
+      end)
+
+    Enum.reduce_while(1..6, unsafe_rebindings, fn _pass, suspects ->
+      next_suspects = collect_field_derived_receiver_variables(scope.body, suspects, context)
+
+      if MapSet.equal?(next_suspects, suspects),
+        do: {:halt, next_suspects},
+        else: {:cont, next_suspects}
+    end)
+  end
+
+  defp unanchored_receiver_bindings(scope, target, context) do
+    initial = function_head_bound_names(scope.head)
+
+    {_ast, names} =
+      Macro.prewalk(scope.body, initial, fn
+        {operator, _, [left, right]} = node, acc when operator in [:=, :<-] ->
+          if provable_rebinding_target?(right, target, context),
+            do: {node, acc},
+            else: {node, MapSet.union(acc, bound_pattern_names(left))}
+
+        {:fn, _, clauses} = node, acc when is_list(clauses) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(clauses))}
+
+        {:case, _, [_value, options]} = node, acc when is_list(options) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(Keyword.get(options, :do, [])))}
+
+        {:receive, _, [options]} = node, acc when is_list(options) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(Keyword.get(options, :do, [])))}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    names
+  end
+
+  defp receiver_binding_counts(scope) do
+    scope.head
+    |> function_head_bound_names()
+    |> increment_binding_counts(%{})
+    |> then(fn counts ->
+      {_ast, counts} =
+        Macro.prewalk(scope.body, counts, fn
+          {operator, _, [left, _right]} = node, acc when operator in [:=, :<-] ->
+            {node, increment_binding_counts(bound_pattern_names(left), acc)}
+
+          {:fn, _, clauses} = node, acc when is_list(clauses) ->
+            {node, increment_binding_counts(arrow_clause_bound_names(clauses), acc)}
+
+          {:case, _, [_value, options]} = node, acc when is_list(options) ->
+            {node, increment_binding_counts(arrow_clause_bound_names(Keyword.get(options, :do, [])), acc)}
+
+          {:receive, _, [options]} = node, acc when is_list(options) ->
+            {node, increment_binding_counts(arrow_clause_bound_names(Keyword.get(options, :do, [])), acc)}
+
+          node, acc ->
+            {node, acc}
+        end)
+
+      counts
+    end)
+  end
+
+  defp function_head_bound_names({:when, _, [head | _guards]}), do: function_head_bound_names(head)
+
+  defp function_head_bound_names({_name, _, arguments}) when is_list(arguments) do
+    arguments
+    |> Enum.flat_map(&bound_pattern_names/1)
+    |> MapSet.new()
+  end
+
+  defp function_head_bound_names(_head), do: MapSet.new()
+
+  defp bound_pattern_names({:\\, _, [pattern, _default]}), do: bound_pattern_names(pattern)
+
+  defp bound_pattern_names(pattern) do
+    {_ast, names} =
+      Macro.prewalk(pattern, MapSet.new(), fn
+        {:^, _, [_pinned]}, names ->
+          {nil, names}
+
+        {:when, _, [guarded_pattern | _guards]} = _node, names ->
+          {guarded_pattern, names}
+
+        {name, _, variable_context} = node, names
+        when is_atom(name) and name != :_ and (is_atom(variable_context) or is_nil(variable_context)) ->
+          {node, MapSet.put(names, name)}
+
+        node, names ->
+          {node, names}
+      end)
+
+    names
+  end
+
+  defp arrow_clause_bound_names(clauses) when is_list(clauses) do
+    clauses
+    |> Enum.flat_map(fn
+      {:->, _, [patterns, _body]} when is_list(patterns) -> Enum.flat_map(patterns, &bound_pattern_names/1)
+      _other -> []
+    end)
+    |> MapSet.new()
+  end
+
+  defp arrow_clause_bound_names(_clauses), do: MapSet.new()
+
+  defp increment_binding_counts(names, counts) do
+    Enum.reduce(names, counts, &Map.update(&2, &1, 1, fn count -> count + 1 end))
+  end
+
+  defp collect_field_derived_receiver_variables(ast, suspects, context) do
+    {_ast, collected} =
+      Macro.prewalk(ast, suspects, fn
+        {operator, _, [left, right]} = node, acc when operator in [:=, :<-] ->
+          if expression_references_opaque_receiver?(right, acc, context),
+            do: {node, MapSet.union(acc, bound_pattern_names(left))},
+            else: {node, acc}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    collected
+  end
+
+  defp expression_references_opaque_receiver?(ast, suspects, context) do
+    {_ast, found?} =
+      Macro.prewalk(ast, false, fn
+        {name, _, variable_context} = node, found?
+        when is_atom(name) and (is_atom(variable_context) or is_nil(variable_context)) ->
+          {node, found? or MapSet.member?(suspects, name)}
+
+        node, found? ->
+          {node, found? or opaque_field_receiver?(node, context)}
+      end)
+
+    found?
+  end
+
   defp bound_variable_names(ast) do
     {_ast, names} =
       Macro.prewalk(ast, MapSet.new(), fn
@@ -575,6 +1201,7 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
               scope = %{
                 visibility: visibility,
                 identities: defined_function_identities(head),
+                head: head,
                 body: body,
                 ast: {:__block__, [], [head, body]}
               }
@@ -589,6 +1216,7 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
           scope = %{
             visibility: visibility,
             identities: defined_function_identities(head),
+            head: head,
             body: nil,
             ast: head
           }
@@ -600,6 +1228,18 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       end)
 
     Enum.reverse(scopes)
+  end
+
+  defp ambiguous_privileged_dispatches(analyses) do
+    analyses
+    |> Enum.reject(fn {entry, _source_analyses} -> entry.functions == :all end)
+    |> Enum.flat_map(fn {entry, source_analyses} ->
+      source_analyses
+      |> Enum.filter(& &1.ambiguous?)
+      |> Enum.map(&{entry.module, entry.functions, &1.path})
+    end)
+    |> Enum.uniq()
+    |> Enum.sort()
   end
 
   defp unreviewed_public_wrappers(entries, sources) do

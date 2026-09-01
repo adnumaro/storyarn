@@ -33,6 +33,10 @@ project_language_persistence_ownership = %{
   ordinary_writers: [
     %{
       path: "lib/storyarn/localization/languages/commands/add.ex",
+      functions: [
+        %{identity: "defp insert_language/2", operations: [:insert]},
+        %{identity: "defp reactivate_language/3", operations: [:update]}
+      ],
       role: :command,
       reason: "adds or reactivates a Project language and reconciles its localized-text inventory",
       transaction: "runs inside the command's Repo.transaction",
@@ -40,6 +44,10 @@ project_language_persistence_ownership = %{
     },
     %{
       path: "lib/storyarn/localization/languages/commands/change_source.ex",
+      functions: [
+        %{identity: "defp promote_source_language/2", operations: [:update, :update_all]},
+        %{identity: "defp reactivate_or_insert_source_candidate/2", operations: [:insert!, :update!]}
+      ],
       role: :command,
       reason: "owns ordinary source-language promotion and optional translation reset",
       transaction: "runs inside the command's Repo.transaction",
@@ -47,6 +55,7 @@ project_language_persistence_ownership = %{
     },
     %{
       path: "lib/storyarn/localization/languages/commands/remove.ex",
+      functions: [%{identity: "defp archive_language!/1", operations: [:update]}],
       role: :command,
       reason: "archives an ordinary target language and its localized-text inventory",
       transaction: "runs inside the command's Repo.transaction",
@@ -54,6 +63,7 @@ project_language_persistence_ownership = %{
     },
     %{
       path: "lib/storyarn/localization/languages/commands/reorder.ex",
+      functions: [],
       role: :command_orchestrator,
       reason: "owns ordinary language ordering and delegates the set-based write to the declared adapter",
       transaction: "runs inside the command's Repo.transaction",
@@ -61,6 +71,7 @@ project_language_persistence_ownership = %{
     },
     %{
       path: "lib/storyarn/localization/languages/commands/update.ex",
+      functions: [%{identity: "def run/2", operations: [:update]}],
       role: :command,
       reason: "updates ordinary language metadata",
       transaction: "runs inside the command's Repo.transaction",
@@ -68,6 +79,7 @@ project_language_persistence_ownership = %{
     },
     %{
       path: "lib/storyarn/localization/languages/adapters/positions/postgres.ex",
+      functions: [%{identity: "def set_positions/2", operations: [:update]}],
       role: :persistence_adapter,
       reason: "the reorder command delegates its set-based position update to one PostgreSQL adapter",
       transaction: "called inside Languages.Commands.Reorder's Repo.transaction",
@@ -128,11 +140,17 @@ project_language_persistence_ownership = %{
       writers: [
         %{
           path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
-          functions: [{:def, :import_language, 2}]
+          mapping_paths: [
+            "lib/storyarn/projects/content/localization/records/project_language_record.ex"
+          ],
+          functions: [%{identity: "def import_language/2", operations: [:insert]}]
         },
         %{
           path: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
-          functions: [{:defp, :archive_active_localization, 1}]
+          mapping_paths: [
+            "lib/storyarn/projects/content/localization/records/project_language_record.ex"
+          ],
+          functions: [%{identity: "defp archive_active_localization/1", operations: [:update_all]}]
         }
       ],
       reason: "a Project import must materialize the imported language rows without importing Localization internals",
@@ -145,11 +163,22 @@ project_language_persistence_ownership = %{
       writers: [
         %{
           path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
-          functions: [{:defp, :restore_languages, 4}]
+          mapping_paths: [
+            "lib/storyarn/projects/content/localization/records/project_language_record.ex"
+          ],
+          functions: [%{identity: "defp restore_languages/4", operations: [:insert_all]}]
         },
         %{
           path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
-          functions: [{:defp, :reconcile_localization_before_materialization, 2}]
+          mapping_paths: [
+            "lib/storyarn/projects/content/localization/records/project_language_record.ex"
+          ],
+          functions: [
+            %{
+              identity: "defp reconcile_localization_before_materialization/2",
+              operations: [:update_all]
+            }
+          ]
         }
       ],
       reason:
@@ -177,11 +206,16 @@ persistence_write_analyzer = %{
   scanner: "Storyarn.Architecture.PersistenceWriteOwnershipTest.table_mutations/4",
   scope: "Elixir sources under lib/**/*.ex, including Web, workers and operator Mix tasks",
   detects:
-    "Repo and Ecto.Multi writes through aliases, imports and pipes, plus statically resolved Repo apply/3 calls; table targets propagate through discovered schemas, query/changeset builders, local helper returns and selected Enum/Stream callbacks; Repo and Ecto.Adapters.SQL raw SQL resolves from literals, binary module attributes, local bindings and static concatenation",
+    "Repo and Ecto.Multi writes through aliases, imports and fully normalized pipes; private injected-Repo helpers require unambiguous Storyarn.Repo provenance at every visible local call site, reject ambiguous alias chains, invalidate rebinding/shadowing and support lexical Ecto.Multi.run callbacks; Repo imports, Repo write captures, Function.capture, apply dispatch and Repo-shaped compound receivers are rejected; public variable-Repo writers are rejected unless structurally sealed as transparent delegates; reviewed transparent materialization delegates require direct qualified calls with proven Repo provenance and a schema whose complete private caller set is statically restricted to literal targets; runtime struct schemas and insert_all targets with any opaque caller are rejected; binary table attributes assembled from static fragments remain discoverable candidates but do not count as literal generic-write authority; association-mutating changeset stages, build_assoc, direct preloaded-field write targets, field/map/tuple aliases and mutating Enum, Stream or Task callbacks are rejected; Repo and Ecto.Adapters.SQL raw SQL resolves from literals, binary module attributes, single-assignment local bindings and static concatenation, while every unresolved statement must match the exact reviewed dynamic-writer inventory",
   limits: [
-    "unresolved raw SQL fails closed only in a candidate source file selected for an inventoried table; SQL assembled through runtime helpers may not expose the table marker needed to select that file",
-    "dynamic module/function dispatch is not resolved except for statically identifiable Repo apply/3 calls",
-    "target propagation is limited to local functions in one source file and a reviewed set of Repo, Ecto, Map, Enum and Stream forms; external helper returns, custom macros and unmodelled callbacks may be missed",
+    "every unresolved raw-SQL call fails the global guard unless its exact path/function and pinned module digest appear in reviewed_dynamic_writers; runtime-generated table names therefore require an explicit reviewed contract",
+    "a raw-SQL parameter rebound in the function, or a local binding assigned more than once, is deliberately unresolved for every call in that function; later assignments and opaque branches cannot retroactively make an earlier statement appear safe",
+    "dynamic Repo module/function dispatch is rejected instead of inferred; transparent delegates additionally reject apply, Function.capture, capture, import and piped dynamic dispatch",
+    "Repo provenance and target propagation are limited to visible local functions in one source file and a reviewed set of Ecto, Map, Enum, Stream and Task forms; arbitrary fallbacks, external helper returns, custom macros and unmodelled callbacks are not trusted",
+    "a variable-receiver write without proven Storyarn.Repo provenance fails the global guard; public variable-receiver writers are forbidden unless their exact callers are sealed as transparent delegates; direct dynamic writes inside callbacks must first be exposed through a local helper whose Repo argument can be attributed lexically",
+    "the variable-receiver guard conservatively treats insert/update/delete-shaped calls as persistence capabilities and may reject a non-Ecto technical adapter with the same API",
+    "generic schema attribution is universal only across direct private callers in the same source file; public selectors, captures, external calls and runtime branches remain opaque and require refactoring rather than implicit authority",
+    "inline from/select bindings are resolved to their selected record; association-mutating changeset stages, build_assoc and direct field/map/tuple-backed writes are rejected, while selecting a joined binding from another opaque prebuilt query remains outside the source analyzer",
     "source-wide alias collection and name-based taint are conservative and may flag unrelated aliases or same-named variables in nested scopes",
     "database triggers are not inspected",
     "row predicates and inserted source_type values are reviewed metadata; the scanner identifies table effects, not row-level ownership",
@@ -241,6 +275,9 @@ entity_reference_persistence_ownership = %{
       source_types: ["block", "flow_node"],
       exception: :project_reconstitution_recovery_and_trash,
       path: "lib/storyarn/projects/references/commands/entity_reference_projection.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/references/entities/entity_reference.ex"
+      ],
       functions: [
         %{identity: "def delete_block_references/1", operations: [:delete_all]},
         %{identity: "def delete_flow_node_references/1", operations: [:delete_all]},
@@ -255,6 +292,9 @@ entity_reference_persistence_ownership = %{
       source_types: ["scene_pin", "scene_zone"],
       exception: :project_reconstitution_and_recovery,
       path: "lib/storyarn/projects/references/commands/scene_entity_reference_tracker.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/references/records/entity_reference_record.ex"
+      ],
       functions: [
         %{identity: "defp insert_references/3", operations: [:insert_all]},
         %{identity: "defp replace_references/4", operations: [:delete_all]}
@@ -302,6 +342,9 @@ variable_reference_persistence_ownership = %{
       source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
       exception: :project_reconstitution_recovery_and_trash,
       path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/references/entities/variable_reference.ex"
+      ],
       functions: [
         %{identity: "defp insert_missing_references/4", operations: [:insert_all]},
         %{identity: "defp insert_reference_entries/1", operations: [:insert_all]},
@@ -315,8 +358,11 @@ variable_reference_persistence_ownership = %{
       source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
       exception: :exact_project_snapshot_restore,
       path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/references/entities/variable_reference.ex"
+      ],
       functions: [
-        %{identity: "defp delete_active_variable_references/1", operations: [:delete_all]}
+        %{identity: "defp delete_active_variable_references_by_source/2", operations: [:delete_all]}
       ],
       reason: "exact Project restore clears the active closed graph before rebuilding every captured reference"
     },
@@ -325,6 +371,9 @@ variable_reference_persistence_ownership = %{
       source_types: ["flow_node", "scene_ambient_flow", "scene_pin", "scene_zone"],
       exception: :sheet_snapshot_additive_reconciliation,
       path: "lib/storyarn/sheets/references/commands/variable_projection.ex",
+      mapping_paths: [
+        "lib/storyarn/sheets/references/records/variable_reference_record.ex"
+      ],
       functions: [
         %{identity: "defp insert_missing_references/4", operations: [:insert_all]}
       ],
@@ -462,6 +511,9 @@ localized_text_persistence_ownership = %{
       context: :projects,
       exception: :project_import_reconstitution,
       path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/content/localization/records/localized_text_record.ex"
+      ],
       functions: [%{identity: "def bulk_import_texts/1", operations: [:insert_all]}],
       reason: "validated Project import materializes the captured localization graph"
     },
@@ -469,6 +521,9 @@ localized_text_persistence_ownership = %{
       context: :projects,
       exception: :project_replacement,
       path: "lib/storyarn/projects/interchange/imports/commands/replacement.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/content/localization/records/localized_text_record.ex"
+      ],
       functions: [%{identity: "defp archive_active_localization/1", operations: [:update_all]}],
       reason: "replacement import archives the current closed Project graph before materialization"
     },
@@ -476,6 +531,9 @@ localized_text_persistence_ownership = %{
       context: :projects,
       exception: :project_recovery,
       path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/content/localization/records/localized_text_record.ex"
+      ],
       functions: [%{identity: "defp insert_recovery_text_chunk/1", operations: [:insert_all]}],
       reason: "Project recovery reconstructs exact snapshot-owned localized text rows"
     },
@@ -483,6 +541,9 @@ localized_text_persistence_ownership = %{
       context: :projects,
       exception: :exact_project_snapshot_restore,
       path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      mapping_paths: [
+        "lib/storyarn/projects/content/localization/records/localized_text_record.ex"
+      ],
       functions: [
         %{identity: "defp reconcile_localization_before_materialization/2", operations: [:update_all]}
       ],
@@ -547,6 +608,809 @@ storage_cleanup_persistence_ownership = %{
   analyzer: persistence_write_analyzer
 }
 
+# ENG-113 closes the classification gap around duplicated Ecto mappings. The
+# inventory is discovered from source: any SQL table mapped by more than one
+# bounded context is shared, regardless of whether the duplicate lives under
+# `projections/`, `records/` or `entities/`.
+#
+# For the tables already sealed by `persistence_ownership`, their ordinary
+# writer contexts and exact privileged writers remain the stronger source of
+# truth. For the rest, one and only one context must own an `entities/` mapping.
+# The two exceptions below cannot be inferred from that structural rule:
+# entity versions are deliberately partitioned by tool, while cleanup receipts
+# are database-trigger-owned evidence exposed through read models only.
+#
+# Foreign mappings are passive by default. A foreign write must be named here
+# by table, context, source path, function and operation. Adding a mapping below
+# `entities/` or `records/` never grants write authority on its own.
+shared_persistence_mapping_policy = %{
+  bounded_contexts: bounded_contexts,
+  passive_mapping_roots: ["architecture", "public", "workers"],
+  mapping_root: "lib/storyarn",
+  write_root: "lib",
+  transparent_write_delegates: [
+    %{
+      module: "Storyarn.Projects.Versioning.MaterializationHelpers",
+      path: "lib/storyarn/projects/versioning/execution/materialization_helpers.ex",
+      function: :insert_all,
+      arity: 3,
+      repo_argument: 0,
+      schema_argument: 1,
+      operation: :insert_all,
+      reason:
+        "Project materializers share result normalization while each call site retains proven Repo and an attributable schema target"
+    },
+    %{
+      module: "Storyarn.Projects.Versioning.MaterializationHelpers",
+      path: "lib/storyarn/projects/versioning/execution/materialization_helpers.ex",
+      function: :insert_one_returning_id,
+      arity: 3,
+      repo_argument: 0,
+      schema_argument: 1,
+      operation: :insert_all,
+      reason:
+        "Project materializers use one-row insert_all for deterministic returning IDs while each call site retains proven Repo and an attributable schema target"
+    },
+    %{
+      module: "Storyarn.Scenes.Versioning.Commands.MaterializationHelpers",
+      path: "lib/storyarn/scenes/versioning/commands/materialization_helpers.ex",
+      function: :insert_all,
+      arity: 3,
+      repo_argument: 0,
+      schema_argument: 1,
+      operation: :insert_all,
+      reason:
+        "Scene restore shares result normalization while each call site retains proven Repo and an attributable schema target"
+    },
+    %{
+      module: "Storyarn.Sheets.Versioning.Commands.MaterializationHelpers",
+      path: "lib/storyarn/sheets/versioning/commands/materialization_helpers.ex",
+      function: :insert_all,
+      arity: 3,
+      repo_argument: 0,
+      schema_argument: 1,
+      operation: :insert_all,
+      reason:
+        "Sheet restore shares result normalization while each call site retains proven Repo and an attributable schema target"
+    },
+    %{
+      module: "Storyarn.Sheets.Versioning.Commands.MaterializationHelpers",
+      path: "lib/storyarn/sheets/versioning/commands/materialization_helpers.ex",
+      function: :insert_one_returning_id,
+      arity: 3,
+      repo_argument: 0,
+      schema_argument: 1,
+      operation: :insert_all,
+      reason:
+        "Sheet restore uses one-row insert_all for deterministic returning IDs while each call site retains proven Repo and an attributable schema target"
+    }
+  ],
+  owner_context_overrides: %{
+    entity_versions: %{
+      owner_contexts: [:flows, :scenes, :sheets],
+      application_write_mode: :exact_inventory,
+      reason: "entity_versions is a row-partitioned protocol: each tool owns only its own entity_type rows"
+    },
+    storage_cleanup_ownership_receipts: %{
+      owner_contexts: [:projects],
+      application_write_mode: :no_application_writes,
+      reason: "immutable cleanup evidence is written only by a database trigger; every application mapping is passive"
+    }
+  },
+  exact_writers: [
+    %{
+      table: :entity_versions,
+      context: :flows,
+      authority: :flow_version_rows,
+      entity_type: "flow",
+      mapping_paths: [
+        "lib/storyarn/flows/versioning/entities/entity_version_record.ex"
+      ],
+      path: "lib/storyarn/flows/versioning/commands/version_lifecycle.ex",
+      functions: [
+        %{identity: "defp delete_persisted_version/1", operations: [:delete]},
+        %{identity: "defp insert_stored_version/6", operations: [:insert]},
+        %{identity: "defp persist_locked_version/3", operations: [:update]}
+      ],
+      reason: "Flows owns only entity_versions rows whose entity_type is flow"
+    },
+    %{
+      table: :entity_versions,
+      context: :projects,
+      authority: :project_sheet_hard_delete,
+      entity_type: "sheet",
+      mapping_paths: [
+        "lib/storyarn/projects/versioning/projections/entity_version_record.ex"
+      ],
+      path: "lib/storyarn/projects/trash/execution/sheet_project_trash.ex",
+      functions: [
+        %{identity: "def hard_delete/1", operations: [:delete_all]}
+      ],
+      reason: "Project-owned Sheet hard delete removes only the deleted Sheet's version rows"
+    },
+    %{
+      table: :entity_versions,
+      context: :scenes,
+      authority: :scene_version_rows,
+      entity_type: "scene",
+      mapping_paths: [
+        "lib/storyarn/scenes/versioning/entities/entity_version_record.ex"
+      ],
+      path: "lib/storyarn/scenes/versioning/commands/version_lifecycle.ex",
+      functions: [
+        %{identity: "defp delete_persisted_version/1", operations: [:delete]},
+        %{identity: "defp insert_stored_version/6", operations: [:insert]},
+        %{identity: "defp persist_locked_version/3", operations: [:update]}
+      ],
+      reason: "Scenes owns only entity_versions rows whose entity_type is scene"
+    },
+    %{
+      table: :entity_versions,
+      context: :sheets,
+      authority: :sheet_hard_delete,
+      entity_type: "sheet",
+      mapping_paths: [
+        "lib/storyarn/sheets/versioning/entities/entity_version_record.ex"
+      ],
+      path: "lib/storyarn/sheets/editor/commands/sheets.ex",
+      functions: [
+        %{identity: "def permanently_delete_sheet/1", operations: [:delete_all]}
+      ],
+      reason: "Sheet hard delete removes only the deleted Sheet's version rows"
+    },
+    %{
+      table: :entity_versions,
+      context: :sheets,
+      authority: :sheet_version_rows,
+      entity_type: "sheet",
+      mapping_paths: [
+        "lib/storyarn/sheets/versioning/entities/entity_version_record.ex"
+      ],
+      path: "lib/storyarn/sheets/versioning/commands/version_lifecycle.ex",
+      functions: [
+        %{identity: "defp delete_persisted_version/1", operations: [:delete]},
+        %{identity: "defp insert_stored_version/6", operations: [:insert]},
+        %{identity: "defp persist_locked_version/3", operations: [:update]}
+      ],
+      reason: "Sheets owns only entity_versions rows whose entity_type is sheet"
+    }
+  ],
+  reviewed_dynamic_writers: [
+    %{
+      context: :sheets,
+      path: "lib/storyarn/sheets/editor/adapters/postgres/positions.ex",
+      function: "def batch_set/3",
+      tables: [:blocks, :sheets, :table_columns, :table_rows],
+      operation: :update,
+      module_sha256: "fecd6d264820fb01d3bc9e66748aab8d1fc91e8be7b9b33d0581c7c12ef9aaf2",
+      reason: "the Sheet ordering adapter selects one table from a fixed allowlist before issuing its set-based UPDATE"
+    }
+  ],
+  privileged_workflows: %{
+    exact_project_restore: %{
+      transaction: "the Project snapshot restore executor's enclosing restore transaction",
+      locks_or_preconditions: "validated snapshot/project identity plus the executor's Project and materialization locks"
+    },
+    project_flow_materialization: %{
+      transaction: "the enclosing Project snapshot materialization transaction",
+      locks_or_preconditions: "validated snapshot rows and the builder's locked active Project graph"
+    },
+    project_flow_trash: %{
+      transaction: "the Project-owned Flow trash, restore or hard-delete transaction",
+      locks_or_preconditions:
+        "an active Project and the affected Flow, node and captured-reference rows are locked before mutation"
+    },
+    project_import: %{
+      transaction: "the validated Project import materializer's enclosing transaction",
+      locks_or_preconditions: "validated import identity and payload plus the materializer's locked active Project graph"
+    },
+    project_recovery: %{
+      transaction: "the Project recovery/materialization coordinator's enclosing transaction",
+      locks_or_preconditions: "validated snapshot data and the coordinator's workspace, Project and materialization locks"
+    },
+    project_scene_materialization: %{
+      transaction: "the enclosing Project snapshot materialization transaction",
+      locks_or_preconditions: "validated snapshot rows and the builder's locked active Project graph"
+    },
+    project_scene_trash: %{
+      transaction: "the Project-owned Scene trash, restore or hard-delete transaction",
+      locks_or_preconditions: "the affected Project, Scene and descendant rows are resolved and locked before mutation"
+    },
+    project_sheet_materialization: %{
+      transaction: "the enclosing Project snapshot materialization transaction",
+      locks_or_preconditions: "validated snapshot rows and the builder's locked Project and inheritance sources"
+    },
+    project_sheet_trash: %{
+      transaction: "the Project-owned Sheet trash, restore or hard-delete transaction",
+      locks_or_preconditions:
+        "an active Project and the affected Sheet, block, inheritance and reference rows are locked before mutation"
+    }
+  },
+  privileged_writers: [
+    %{
+      table: :block_gallery_images,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_gallery_image_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [%{identity: "defp restore_gallery_images/6", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Sheet gallery images"
+    },
+    %{
+      table: :blocks,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+      functions: [%{identity: "def import_block/2", operations: [:insert]}],
+      reason: "validated Project import materializes captured Sheet blocks"
+    },
+    %{
+      table: :blocks,
+      context: :projects,
+      authority: :project_sheet_trash,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/sheet_project_trash.ex",
+      functions: [%{identity: "defp reconcile_active_block/2", operations: [:update!]}],
+      reason: "Project-owned Sheet restore normalizes restored block references"
+    },
+    %{
+      table: :blocks,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [
+        %{identity: "defp insert_sheet_blocks/3", operations: [:insert_all]},
+        %{identity: "defp update_inherited_from_block/2", operations: [:update_all]}
+      ],
+      reason: "Project snapshot materialization remaps captured block inheritance"
+    },
+    %{
+      table: :blocks,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp insert_snapshot_import_block_tombstone/3", operations: [:insert_all]},
+        %{identity: "defp remap_block_inheritance/4", operations: [:update_all]},
+        %{identity: "defp remap_sheet_block_payloads/3", operations: [:update_all]}
+      ],
+      reason: "Project recovery remaps captured Sheet block identity and payload references"
+    },
+    %{
+      table: :flow_connections,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_connection_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [%{identity: "defp insert_flow_connections/5", operations: [:insert]}],
+      reason: "Project snapshot materialization restores captured Flow connections"
+    },
+    %{
+      table: :flow_connections,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_connection_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
+      functions: [%{identity: "def bulk_insert_connections/2", operations: [:insert_all]}],
+      reason: "validated Project import materializes captured Flow connections"
+    },
+    %{
+      table: :flow_connections,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_connection_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp remap_single_flow_connection_endpoints/6", operations: [:update_all]},
+        %{identity: "defp update_recovered_dynamic_exit_pin/6", operations: [:update]}
+      ],
+      reason: "Project recovery remaps captured Flow connection endpoints and exit pins"
+    },
+    %{
+      table: :flow_node_sequence_configs,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/sequence_config_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [%{identity: "defp insert_sequence_config/4", operations: [:insert]}],
+      reason: "Project snapshot materialization restores captured Flow sequence configuration"
+    },
+    %{
+      table: :flow_node_sequence_configs,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/sequence_config_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
+      functions: [%{identity: "defp maybe_insert_sequence_config!/3", operations: [:insert]}],
+      reason: "validated Project import materializes captured Flow sequence configuration"
+    },
+    %{
+      table: :flow_node_sequence_tracks,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/sequence_track_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [%{identity: "defp insert_sequence_tracks/7", operations: [:insert]}],
+      reason: "Project snapshot materialization restores captured Flow sequence tracks"
+    },
+    %{
+      table: :flow_node_sequence_visual_layers,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/sequence_visual_layer_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [%{identity: "defp insert_sequence_visual_layer/5", operations: [:insert]}],
+      reason: "Project snapshot materialization restores captured Flow sequence visual layers"
+    },
+    %{
+      table: :flow_nodes,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_node_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [
+        %{identity: "defp do_restore_exact_authored_node_types/4", operations: [:update_all]},
+        %{identity: "defp insert_flow_nodes/7", operations: [:insert]},
+        %{identity: "defp link_exact_snapshot_node_parent/6", operations: [:update]},
+        %{identity: "defp link_portable_snapshot_node_parent/6", operations: [:update]}
+      ],
+      reason: "Project snapshot materialization restores and links captured Flow nodes"
+    },
+    %{
+      table: :flow_nodes,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_node_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
+      functions: [
+        %{identity: "def link_node_data/2", operations: [:update_all]},
+        %{identity: "defp insert_import_node!/4", operations: [:insert]},
+        %{identity: "defp update_node_parent!/2", operations: [:update]}
+      ],
+      reason: "validated Project import materializes and links captured Flow nodes"
+    },
+    %{
+      table: :flow_nodes,
+      context: :projects,
+      authority: :project_flow_trash,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_node_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/flow_entity_trash_references.ex",
+      functions: [
+        %{identity: "defp restore_locked_flow_ref/3", operations: [:update_all]},
+        %{identity: "defp sweep_rows/2", operations: [:update_all]}
+      ],
+      reason: "Project-owned Flow trash restores and sweeps captured node reference fields"
+    },
+    %{
+      table: :flow_nodes,
+      context: :projects,
+      authority: :project_flow_trash,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_node_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/flow_project_trash.ex",
+      functions: [%{identity: "defp normalize_restored_flow_node/2", operations: [:update]}],
+      reason: "Project-owned Flow restore normalizes restored node references"
+    },
+    %{
+      table: :flow_nodes,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_node_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp insert_snapshot_import_node_tombstones/4", operations: [:insert_all]},
+        %{identity: "defp persist_remapped_node_data/3", operations: [:update_all]}
+      ],
+      reason: "Project recovery persists remapped captured Flow node payloads"
+    },
+    %{
+      table: :flows,
+      context: :projects,
+      authority: :project_flow_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+      functions: [%{identity: "defp insert_flow_root/2", operations: [:insert]}],
+      reason: "Project snapshot materialization restores the captured Flow root"
+    },
+    %{
+      table: :flows,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
+      functions: [
+        %{identity: "def import_flow/2", operations: [:insert]},
+        %{identity: "def link_flow_parent/2", operations: [:update!]},
+        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+      ],
+      reason: "validated Project import replaces, materializes and links captured Flows"
+    },
+    %{
+      table: :flows,
+      context: :projects,
+      authority: :project_flow_trash,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/flow_project_trash.ex",
+      functions: [
+        %{identity: "def hard_delete/1", operations: [:delete]},
+        %{identity: "defp restore_flow_transaction/2", operations: [:update]},
+        %{identity: "defp soft_delete_descendants/2", operations: [:update_all]}
+      ],
+      reason: "Project owns the closed-graph Flow trash, restore and purge lifecycle"
+    },
+    %{
+      table: :flows,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/flows/records/flow_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp apply_tree_position/5", operations: [:update_all]},
+        %{identity: "defp insert_snapshot_import_root_tombstone_for_schema/7", operations: [:insert_all]},
+        %{identity: "defp remap_flow_scene_id/5", operations: [:update_all]}
+      ],
+      reason: "Project recovery remaps captured Flow hierarchy and Flow-to-Scene identity"
+    },
+    %{
+      table: :flows_entity_trash_refs,
+      context: :projects,
+      authority: :project_flow_trash,
+      mapping_paths: [
+        "lib/storyarn/projects/references/records/flow_entity_trash_reference_record.ex"
+      ],
+      path: "lib/storyarn/projects/trash/execution/flow_entity_trash_references.ex",
+      functions: [%{identity: "defp sweep_rows/2", operations: [:insert_all]}],
+      reason: "Project Flow trash captures durable references needed for exact restoration"
+    },
+    %{
+      table: :localization_glossary_entries,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/localization/records/glossary_entry_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/localization_reconstitution.ex",
+      functions: [%{identity: "def bulk_import_glossary_entries/1", operations: [:insert_all]}],
+      reason: "validated Project import materializes captured glossary entries"
+    },
+    %{
+      table: :localization_glossary_entries,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/localization/records/glossary_entry_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp restore_glossary/4", operations: [:insert_all]}],
+      reason: "Project recovery materializes captured glossary entries"
+    },
+    %{
+      table: :localization_glossary_entries,
+      context: :projects,
+      authority: :exact_project_restore,
+      mapping_paths: ["lib/storyarn/projects/content/localization/records/glossary_entry_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      functions: [
+        %{identity: "defp reconcile_localization_before_materialization/2", operations: [:delete_all]}
+      ],
+      reason: "exact Project restore clears active glossary rows before closed-graph materialization"
+    },
+    %{
+      table: :scene_ambient_flows,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_ambient_flow_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [
+        %{identity: "defp insert_materialized_ambient_flow_pairs/2", operations: [:insert_all]}
+      ],
+      reason: "Project snapshot materialization restores captured Scene ambient Flow links"
+    },
+    %{
+      table: :scene_ambient_flows,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_ambient_flow_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp remap_scene_ambient_flows/5", operations: [:insert]}],
+      reason: "Project recovery materializes captured Scene ambient Flow links"
+    },
+    %{
+      table: :scene_annotations,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_annotation_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp insert_scene_snapshot_rows/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Scene annotations"
+    },
+    %{
+      table: :scene_annotations,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_annotation_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [%{identity: "defp bulk_insert/3", operations: [:insert_all]}],
+      reason: "validated Project import materializes captured Scene annotations"
+    },
+    %{
+      table: :scene_connections,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_connection_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp insert_scene_snapshot_rows/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Scene connections"
+    },
+    %{
+      table: :scene_connections,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_connection_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [%{identity: "defp bulk_insert/3", operations: [:insert_all]}],
+      reason: "validated Project import materializes captured Scene connections"
+    },
+    %{
+      table: :scene_connections,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_connection_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp remap_single_scene_connection_ref/4", operations: [:update_all]}],
+      reason: "Project recovery remaps captured Scene connection targets"
+    },
+    %{
+      table: :scene_layers,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_layer_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp insert_scene_layers/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Scene layers"
+    },
+    %{
+      table: :scene_layers,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_layer_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [%{identity: "def import_layer/2", operations: [:insert]}],
+      reason: "validated Project import materializes captured Scene layers"
+    },
+    %{
+      table: :scene_pins,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_pin_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp insert_scene_snapshot_rows/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Scene pins"
+    },
+    %{
+      table: :scene_pins,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_pin_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [
+        %{identity: "def import_pin/2", operations: [:insert]},
+        %{identity: "def link_pin_flow_id/2", operations: [:update!]}
+      ],
+      reason: "validated Project import materializes and links captured Scene pins"
+    },
+    %{
+      table: :scene_pins,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_pin_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp maybe_update_scene_pin/2", operations: [:update_all]}],
+      reason: "Project recovery remaps captured Scene pin references"
+    },
+    %{
+      table: :scene_zones,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_zone_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp insert_scene_snapshot_rows/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Scene zones"
+    },
+    %{
+      table: :scene_zones,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_zone_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [
+        %{identity: "def import_zone/2", operations: [:insert]},
+        %{identity: "def link_zone_target/3", operations: [:update!]}
+      ],
+      reason: "validated Project import materializes and links captured Scene zones"
+    },
+    %{
+      table: :scene_zones,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_zone_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [%{identity: "defp maybe_update_scene_zone/2", operations: [:update_all]}],
+      reason: "Project recovery remaps captured Scene zone references"
+    },
+    %{
+      table: :scenes,
+      context: :projects,
+      authority: :project_scene_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      functions: [%{identity: "defp instantiate_scene_snapshot/3", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores the captured Scene root"
+    },
+    %{
+      table: :scenes,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
+      functions: [
+        %{identity: "def import_scene/2", operations: [:insert]},
+        %{identity: "def link_parent/2", operations: [:update!]},
+        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+      ],
+      reason: "validated Project import replaces, materializes and links captured Scenes"
+    },
+    %{
+      table: :scenes,
+      context: :projects,
+      authority: :project_scene_trash,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/scene_project_trash.ex",
+      functions: [
+        %{identity: "def delete_subtree_in_transaction/1", operations: [:update]},
+        %{identity: "def hard_delete/1", operations: [:delete]},
+        %{identity: "def restore/1", operations: [:update]},
+        %{identity: "defp restore_children/1", operations: [:update_all]},
+        %{identity: "defp soft_delete_children/2", operations: [:update_all]}
+      ],
+      reason: "Project owns the closed-graph Scene trash, restore and purge lifecycle"
+    },
+    %{
+      table: :scenes,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/scenes/records/scene_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp apply_tree_position/5", operations: [:update_all]},
+        %{identity: "defp insert_snapshot_import_root_tombstone_for_schema/7", operations: [:insert_all]}
+      ],
+      reason: "Project recovery remaps the captured Scene hierarchy"
+    },
+    %{
+      table: :sheet_avatars,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_avatar_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [%{identity: "defp insert_sheet_avatars/2", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Sheet avatars"
+    },
+    %{
+      table: :sheet_avatars,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_avatar_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+      functions: [%{identity: "def add_avatar/3", operations: [:insert]}],
+      reason: "validated Project import materializes captured Sheet avatars"
+    },
+    %{
+      table: :sheets,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [%{identity: "defp instantiate_sheet_snapshot/3", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores the captured Sheet root"
+    },
+    %{
+      table: :sheets,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+      functions: [
+        %{identity: "def import_sheet/2", operations: [:insert]},
+        %{identity: "def link_import_parent/2", operations: [:update!]},
+        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+      ],
+      reason: "validated Project import replaces, materializes and links captured Sheets"
+    },
+    %{
+      table: :sheets,
+      context: :projects,
+      authority: :project_sheet_trash,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_record.ex"],
+      path: "lib/storyarn/projects/trash/execution/sheet_project_trash.ex",
+      functions: [
+        %{identity: "def delete_subtree_in_transaction/1", operations: [:update!, :update_all]},
+        %{identity: "def hard_delete/1", operations: [:delete]},
+        %{identity: "def restore/1", operations: [:update]}
+      ],
+      reason: "Project owns the closed-graph Sheet trash, restore and purge lifecycle"
+    },
+    %{
+      table: :sheets,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [
+        %{identity: "defp remap_hidden_inherited_block_ids/6", operations: [:update_all]}
+      ],
+      reason: "Project snapshot materialization remaps captured Sheet inheritance metadata"
+    },
+    %{
+      table: :sheets,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/sheet_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      functions: [
+        %{identity: "defp apply_tree_position/5", operations: [:update_all]},
+        %{identity: "defp insert_snapshot_import_root_tombstone_for_schema/7", operations: [:insert_all]},
+        %{identity: "defp remap_hidden_inherited_block_ids/4", operations: [:update_all]}
+      ],
+      reason: "Project recovery remaps captured Sheet hierarchy and inheritance metadata"
+    },
+    %{
+      table: :table_columns,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/table_column_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [%{identity: "defp insert_table_data/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Sheet table columns"
+    },
+    %{
+      table: :table_columns,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/table_column_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+      functions: [%{identity: "def import_column/2", operations: [:insert]}],
+      reason: "validated Project import materializes captured table columns"
+    },
+    %{
+      table: :table_rows,
+      context: :projects,
+      authority: :project_sheet_materialization,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/table_row_record.ex"],
+      path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      functions: [%{identity: "defp insert_table_data/4", operations: [:insert_all]}],
+      reason: "Project snapshot materialization restores captured Sheet table rows"
+    },
+    %{
+      table: :table_rows,
+      context: :projects,
+      authority: :project_import,
+      mapping_paths: ["lib/storyarn/projects/content/sheets/records/table_row_record.ex"],
+      path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
+      functions: [%{identity: "def import_row/2", operations: [:insert]}],
+      reason: "validated Project import materializes captured table rows"
+    },
+    %{
+      table: :table_rows,
+      context: :projects,
+      authority: :project_recovery,
+      mapping_paths: ["lib/storyarn/projects/references/records/table_row_record.ex"],
+      path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+      functions: [%{identity: "defp rewrite_materialized_formula_row/2", operations: [:update]}],
+      reason: "Project recovery rewrites only formula cells whose portable variable namespace changed"
+    }
+  ],
+  scanner_false_positives: []
+}
+
 # ENG-108 seals the four aggregate identity tables touched by owner transfer.
 # These inventories describe direct writes from `lib/`; database cascades are
 # deliberately outside the source ratchet. Every declared writer must be tied
@@ -584,6 +1448,15 @@ aggregate_identity_persistence_ownership = %{
       },
       %{
         context: :projects,
+        authority: :template_instantiation,
+        path: "lib/storyarn/projects/templates/execution/installation.ex",
+        functions: [
+          %{identity: "defp mark_template_origin/2", operations: [:update], detected_by_analyzer: true}
+        ],
+        reason: "template installation records the version that materialized the new Project"
+      },
+      %{
+        context: :projects,
         authority: :project_reconstitution,
         path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
         functions: [
@@ -606,12 +1479,14 @@ aggregate_identity_persistence_ownership = %{
         path: "lib/storyarn/projects/templates/execution/publication_runner.ex",
         function: "defp insert_publication_and_enqueue_locked/1",
         operation: :insert,
+        source_sha256: "e7ddb193c9a9f9adba9bddd478424bccbdb9c1ada6a66fa6e85e01d4eb499807",
         reason: "writes project_template_publications after reading a Project"
       },
       %{
         path: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
         function: "defp clear_reservation/1",
         operation: :update,
+        source_sha256: "748417dbb47be04e04bec4759b989efe534b9253ca1e6a09aaedff2ac6016476",
         reason: "updates a workspace_snapshot_import after reading Project identity"
       }
     ],
@@ -769,14 +1644,7 @@ aggregate_identity_persistence_ownership = %{
         reason: "the serialized Workspace transfer atomically demotes and promotes owner memberships"
       }
     ],
-    scanner_false_positives: [
-      %{
-        path: "lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex",
-        function: "defp clear_reservation/1",
-        operation: :update,
-        reason: "updates a workspace_snapshot_import after reading Workspace membership authority"
-      }
-    ],
+    scanner_false_positives: [],
     analyzer: persistence_write_analyzer
   }
 }
@@ -2051,7 +2919,10 @@ analytics_transport_caller_denials =
 # cannot bypass the reviewed coordinator accidentally.
 # Module-scoped entries also fail closed when a module is passed as a runtime
 # dependency; function-scoped entries leave unrelated capability functions
-# available to their context.
+# available to their context. Runtime-injected modules must expose their exact
+# privileged functions through explicit callbacks anchored to the reviewed
+# default module; opaque field or ambiguously rebound module receivers are not
+# accepted by the ratchet.
 privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Imports.Materializer",
@@ -2101,42 +2972,121 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Versioning.Builders.FlowBuilder",
     path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
-    functions: :all,
+    functions: [build_snapshot: 1, build_capture_snapshot: 1],
     allowed_callers: [
-      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex"
+    ],
+    reason: "Flow graph capture belongs only to the reviewed whole-Project snapshot builder"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.FlowBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/flow_builder.ex",
+    functions: [
+      validate_portable_snapshot: 1,
+      instantiate_snapshot: 2,
+      instantiate_snapshot: 3,
+      validate_materialized_reference_cycles: 1,
+      scan_references: 1
+    ],
+    allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
-    reason: "Flow graph capture and materialization belong to the reviewed whole-Project coordinators"
+    reason: "Flow graph validation and materialization belong only to whole-Project recovery"
   },
   %{
     module: "Storyarn.Projects.Versioning.Builders.SheetBuilder",
     path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
-    functions: :all,
+    functions: [build_snapshot: 1, build_capture_snapshot: 1],
     allowed_callers: [
-      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex"
+    ],
+    reason: "Sheet graph capture belongs only to the reviewed whole-Project snapshot builder"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.SheetBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3, scan_references: 1],
+    allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
-    reason: "Sheet graph capture and materialization belong to the reviewed whole-Project coordinators"
+    reason: "Sheet graph validation and materialization belong only to whole-Project recovery"
   },
   %{
     module: "Storyarn.Projects.Versioning.Builders.SceneBuilder",
     path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
-    functions: :all,
+    functions: [build_snapshot: 1, build_capture_snapshot: 1],
     allowed_callers: [
-      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex"
+    ],
+    reason: "Scene graph capture belongs only to the reviewed whole-Project snapshot builder"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.Builders.SceneBuilder",
+    path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3, scan_references: 1],
+    allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
-    reason: "Scene graph capture and materialization belong to the reviewed whole-Project coordinators"
+    reason: "Scene graph validation and materialization belong only to whole-Project recovery"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.MaterializationHelpers",
+    path: "lib/storyarn/projects/versioning/execution/materialization_helpers.ex",
+    functions: [insert_all: 3, insert_one_returning_id: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
+      "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason:
+      "only reviewed Project materializers may invoke transparent insert delegates whose call sites retain proven Repo and attributable schema targets"
+  },
+  %{
+    module: "Storyarn.Scenes.Versioning.Commands.MaterializationHelpers",
+    path: "lib/storyarn/scenes/versioning/commands/materialization_helpers.ex",
+    functions: [insert_all: 3],
+    allowed_callers: [
+      "lib/storyarn/scenes/versioning/execution/scene_snapshot.ex"
+    ],
+    reason: "only exact Scene snapshot restore may invoke its transparent insert delegates"
+  },
+  %{
+    module: "Storyarn.Sheets.Versioning.Commands.MaterializationHelpers",
+    path: "lib/storyarn/sheets/versioning/commands/materialization_helpers.ex",
+    functions: [insert_all: 3, insert_one_returning_id: 3],
+    allowed_callers: [
+      "lib/storyarn/sheets/versioning/execution/sheet_snapshot.ex"
+    ],
+    reason: "only exact Sheet snapshot restore may invoke its transparent insert delegates"
   },
   %{
     module: "Storyarn.Projects.Versioning.ProjectRecovery",
     path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
-    functions: :all,
+    functions: [
+      materialize_template: 3,
+      materialize_template: 4,
+      validate_snapshot_import: 1,
+      materialize_snapshot_import: 3,
+      materialize_snapshot_import: 4
+    ],
     allowed_callers: [
-      "lib/storyarn/projects/reconstitution/project_reconstitution.ex",
+      "lib/storyarn/projects/reconstitution/project_reconstitution.ex"
+    ],
+    reason: "whole-Project import and template materialization are internal to ProjectReconstitution"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.ProjectRecovery",
+    path: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+    functions: [
+      lock_materializable_localization_actors: 1,
+      lock_materializable_localization_actors: 2,
+      materialize_into_project: 4,
+      materialize_into_project: 5
+    ],
+    allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
     ],
-    reason: "whole-Project materialization is internal to ProjectReconstitution and its injected exact-restore engine"
+    reason: "exact in-place Project materialization is internal to the persisted restore executor"
   },
   %{
     module: "Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor",
@@ -2553,6 +3503,15 @@ privileged_entrypoints = [
     reason: "the Project-wide variable-reference rebuild stays behind its internal Projects adapter"
   },
   %{
+    module: "Storyarn.Projects.References.VariableReferenceTracker",
+    path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+    functions: [rewrite_materialized_formula_bindings: 3],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason: "only Project recovery may rewrite materialized formula bindings after portable namespace remapping"
+  },
+  %{
     module: "Storyarn.Projects.References.VariableTracker",
     path: "lib/storyarn/projects/references/commands/variable_tracker.ex",
     functions: [rebuild_project_variable_references: 1],
@@ -2715,6 +3674,7 @@ policy = %{
     workspaces: aggregate_identity_persistence_ownership.workspaces,
     workspace_memberships: aggregate_identity_persistence_ownership.workspace_memberships
   },
+  shared_persistence_mappings: shared_persistence_mapping_policy,
   canonical_owner_membership_invariant: canonical_owner_membership_invariant,
   privileged_entrypoints: privileged_entrypoints,
 

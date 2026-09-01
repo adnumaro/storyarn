@@ -363,24 +363,26 @@ The declared bounded contexts are listed below. The target structure gives each 
 calling `Context.SubModule.fun()` from `storyarn_web` is a `facade_bypass` violation. Legacy namespaces remain
 only while their owning context is being migrated.
 
-| Bounded context | Facade                  | Owned business capabilities                                                                                                       |
-| --------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
-| Accounts        | `Storyarn.Accounts`     | Users, authentication and profiles                                                                                                |
-| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships and invitations                                                                                           |
-| Commercial      | `Storyarn.Commercial`   | Plan catalog, subscriptions, entitlements, usage limits, storage accounting, reservations and commercial capacity policy          |
-| Platform        | `Storyarn.Platform`     | Product metrics/event reactions, notification inbox/delivery, onboarding and genuinely platform-wide control-plane policy         |
-| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboards, trash, assets, templates, project import/export, snapshots/reconstitution and AI settings |
-| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions, usages and Sheet-owned AI behavior                             |
-| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                   |
-| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                         |
-| Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                        |
-| AI              | `Storyarn.AI`           | AI policy, integrations, model/provider selection, execution, audit and future AI product behavior                                |
+| Bounded context | Facade                  | Owned business capabilities                                                                                                         |
+| --------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Accounts        | `Storyarn.Accounts`     | Users, authentication and profiles                                                                                                  |
+| Workspaces      | `Storyarn.Workspaces`   | Workspaces, memberships and invitations                                                                                             |
+| Commercial      | `Storyarn.Commercial`   | Plan catalog, subscriptions, entitlements, usage limits, storage accounting, reservations and commercial capacity policy            |
+| Platform        | `Storyarn.Platform`     | Product metrics/event reactions, notification inbox/delivery, onboarding and genuinely platform-wide control-plane policy           |
+| Projects        | `Storyarn.Projects`     | Project identity/lifecycle, dashboards, trash, assets, templates, project import/export, snapshots/reconstitution and access policy |
+| Sheets          | `Storyarn.Sheets`       | Sheets, blocks, tables, galleries, formulas, variable definitions, usages and Sheet-owned AI behavior                               |
+| Flows           | `Storyarn.Flows`        | Flows, nodes, connections, sequences, evaluation, health, versioning and Flow-owned AI behavior                                     |
+| Scenes          | `Storyarn.Scenes`       | Scenes, layers, zones, pins, connections, exploration, health and Scene-owned AI behavior                                           |
+| Localization    | `Storyarn.Localization` | Languages, localized texts, glossary, extraction, translation runs, reports and localization import/export                          |
+| AI              | `Storyarn.AI`           | AI policy, integrations, model/provider selection, execution, audit and future AI product behavior                                  |
 
-AI is a bounded context, not a shared business layer. Projects remains the only writer of the current AI model,
-team and configuration records until that ownership is revisited deliberately. Consuming contexts may own their
-domain-specific prompts and context construction, but AI owns provider policy, execution and its growing product
-behavior. Its current dependency graph is intentionally left transitional by ENG-92; that is migration state, not
-permission to treat AI as a utility layer.
+AI is a bounded context, not a shared business layer. AI owns the ordinary writes for AI policy, integrations,
+workspace assignments, personal model preferences, routing, operations, audit and managed-spend records. Its shipped
+model catalog is immutable AI reference data rather than Project-owned persisted configuration. Projects and
+Workspaces retain their identity, membership and authorization models; AI consumes only the facts it needs through
+consumer-local projections. Consuming contexts may own their domain-specific prompts and context construction, but
+they enter execution and AI configuration through `Storyarn.AI`. This ownership must not be weakened by treating AI
+as a utility layer.
 
 `Platform` is a supporting control-plane context, not an umbrella for arbitrary shared code. Mail transport remains
 infrastructure, while each initiating context owns its email intent and copy. Accounts, Workspaces and Projects own
