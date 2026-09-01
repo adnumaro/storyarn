@@ -1,0 +1,59 @@
+.design-sync/bundle-src/.gitignore
+  s_c970a941708e5f::t_c0ea413ab9198c 2-3
+.design-sync/bundle-src/adapters/CollapsibleAdapter.vue
+  s_c970a941708e5f::t_5f13d3f7848648 7
+.design-sync/bundle-src/adapters/PopoverAdapter.vue
+  s_c970a941708e5f::t_230d4f7fdec9e8 9
+.design-sync/bundle-src/adapters/RadioGroupAdapter.vue
+  s_c970a941708e5f::t_abac521be1e5f7 24
+.design-sync/bundle-src/adapters/TabsAdapter.vue
+  s_c970a941708e5f::t_774917932af940 26
+.design-sync/bundle-src/adapters/TooltipAdapter.vue
+  s_c970a941708e5f::t_6f2ecfe0fdb556 6
+.design-sync/bundle-src/cards/Chrome.html
+  s_c970a941708e5f::t_449c0b830c4da9 2-131
+.design-sync/bundle-src/cards/Colors.html
+  s_c970a941708e5f::t_4e072328e76cc9 2-119
+.design-sync/bundle-src/cards/Typography.html
+  s_c970a941708e5f::t_0361b6fce39f9b 2-88
+.design-sync/bundle-src/demos/Button.jsx
+  s_c970a941708e5f::t_0967f5f115dbe0 19-21
+.design-sync/bundle-src/demos/EditableText.jsx
+  s_c970a941708e5f::t_3a9b9915195f8b 8
+.design-sync/bundle-src/demos/Popover.jsx
+  s_c970a941708e5f::t_4233993c738bc8 15
+.design-sync/bundle-src/demos/ScrollArea.jsx
+  s_c970a941708e5f::t_53a2c5b8d258e7 5-14
+.design-sync/bundle-src/demos/Select.jsx
+  s_c970a941708e5f::t_bcf11fcbc9e7d9 7-9,14-29
+.design-sync/bundle-src/demos/SelectField.jsx
+  s_c970a941708e5f::t_1714a46d9563f1 7-9,20-27
+.design-sync/bundle-src/demos/Separator.jsx
+  s_c970a941708e5f::t_b7bd06551cfa11 7
+.design-sync/bundle-src/package.json
+  s_c970a941708e5f::t_c92d60601b353b 5,13-18
+.design-sync/bundle-src/registry.json
+  s_c970a941708e5f::t_69d9c281a86059 4-8,11-15,17-156,158-162
+.design-sync/bundle-src/static/styles.css
+  s_c970a941708e5f::t_314c31d8e6b6d3 27
+.design-sync/bundle-src/verify.mjs
+  s_c970a941708e5f::t_d315ea0e5401f1 29-33
+.design-sync/conventions.md
+  s_c970a941708e5f::t_0ff52f7258a901 22-32,56-59,63-72,77
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "b3a2ad665b48c0d447382410ad5094131ea88315",
+  "prompts": {},
+  "sessions": {
+    "s_c970a941708e5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44fa200b-fa62-431f-80da-55bcb9febcbc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
