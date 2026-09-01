@@ -42,7 +42,7 @@ const themeClass = useContentThemeClass();
 
 <template>
   <DropdownMenu>
-    <DropdownMenuTrigger class="inline-flex">
+    <DropdownMenuTrigger as-child>
       <slot />
     </DropdownMenuTrigger>
     <DropdownMenuContent :side="side" :align="align" :class="themeClass">

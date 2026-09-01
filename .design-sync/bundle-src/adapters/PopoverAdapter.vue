@@ -19,7 +19,7 @@ const themeClass = useContentThemeClass();
 
 <template>
   <Popover v-model:open="open">
-    <PopoverTrigger class="inline-flex">
+    <PopoverTrigger as-child>
       <slot />
     </PopoverTrigger>
     <PopoverContent :side="side" :align="align" :class="[themeClass, contentClass]">

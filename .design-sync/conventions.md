@@ -52,27 +52,31 @@ UI text: system sans stack (already on `body`). **"Courier Prime"** (400/700 + i
 ```jsx
 const { Button, Badge, TextField, SaveIndicator } = window.Storyarn_e287ac;
 
-<div style={{ background: "hsl(var(--background))", minHeight: "100%", padding: 24 }}>
-  <div
-    className="surface-panel"
-    style={{ display: "flex", gap: 4, padding: 6, alignItems: "center", width: "fit-content" }}
-  >
-    <button className="toolbar-btn">Select</button>
-    <SaveIndicator status="saved" />
-  </div>
-  <div
-    style={{
-      background: "hsl(var(--card))",
-      border: "1px solid hsl(var(--border))",
-      borderRadius: "var(--radius-lg)",
-      padding: 16,
-      marginTop: 16,
-      maxWidth: 280,
-    }}
-  >
-    <Badge variant="secondary">dialogue</Badge>
-    <TextField label="Node label" value="mira_intro" onChange={() => {}} />
-    <Button style={{ marginTop: 12 }}>Open</Button>
-  </div>
-</div>;
+function NodePanel() {
+  return (
+    <div style={{ background: "hsl(var(--background))", minHeight: "100%", padding: 24 }}>
+      <div
+        className="surface-panel"
+        style={{ display: "flex", gap: 4, padding: 6, alignItems: "center", width: "fit-content" }}
+      >
+        <button className="toolbar-btn">Select</button>
+        <SaveIndicator status="saved" />
+      </div>
+      <div
+        style={{
+          background: "hsl(var(--card))",
+          border: "1px solid hsl(var(--border))",
+          borderRadius: "var(--radius-lg)",
+          padding: 16,
+          marginTop: 16,
+          maxWidth: 280,
+        }}
+      >
+        <Badge variant="secondary">dialogue</Badge>
+        <TextField label="Node label" value="mira_intro" onChange={() => {}} />
+        <Button style={{ marginTop: 12 }}>Open</Button>
+      </div>
+    </div>
+  );
+}
 ```

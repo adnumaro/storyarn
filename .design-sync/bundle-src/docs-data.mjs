@@ -302,16 +302,16 @@ export interface ToggleGroupProps {
   items?: ToggleGroupOption[];
   type?: "single" | "multiple";
   value?: string | string[];
-  onChange?: (value: string | string[] | undefined) => void;
+  onChange?: (value: string | string[]) => void;
   variant?: "default" | "outline";
   size?: "default" | "sm" | "lg";
   className?: string;
 }
 export declare const ToggleGroup: React.FC<ToggleGroupProps>;`,
-    prompt: `Segmented toggle set — view switchers, formatting marks. CAUTION: with \`type="single"\`, deselecting the active item calls \`onChange(undefined)\`; keep the previous value if you need one always selected.
+    prompt: `Segmented toggle set — view switchers, formatting marks. With \`type="single"\`, clicking the active item again is a no-op (the product keeps a selection; \`onChange\` never fires with \`undefined\`).
 
 \`\`\`jsx
-<ToggleGroup type="single" value={view} onChange={(v) => v && setView(v)}
+<ToggleGroup type="single" value={view} onChange={setView}
   items={[{ value: "canvas", label: "Canvas" }, { value: "list", label: "List" }]} />
 \`\`\``,
   },

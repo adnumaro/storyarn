@@ -1,8 +1,12 @@
 /*
  * Tailwind entry for the Claude Design bundle.
- * Mirrors assets/css/app.css setup (dark variant + @theme inline mapping),
- * scanning only the sources that ship in the bundle. Token values themselves
- * come from tokens/colors.css at runtime — @theme inline references them.
+ * Mirrors assets/css/app.css setup (dark variant + @theme inline mapping).
+ * The scan deliberately covers the whole assets/app/components tree, not
+ * just the 35 registered components: bundled components pull transitive
+ * imports from across ui/, and enumerating exact files would silently drop
+ * classes when those imports shift. The cost is a superset of utilities in
+ * _ds_bundle.css, which is harmless. Token values themselves come from
+ * tokens/colors.css at runtime — @theme inline references them.
  */
 @import "tailwindcss";
 @import "tw-animate-css";

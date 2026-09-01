@@ -29,6 +29,9 @@ const NAMESPACE = registry.namespace;
 
 fs.rmSync(tmpDir, { recursive: true, force: true });
 fs.mkdirSync(tmpDir, { recursive: true });
+// Clean rebuild: a removed or renamed component must not leave a stale
+// card behind that the next upload would ship as current.
+fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(outDir, { recursive: true });
 
 // ---- 1. Validate entry.ts registers exactly the registry.json components ----
@@ -148,8 +151,9 @@ for (const name of ["Chrome", "Colors", "Typography"]) {
 for (const c of registry.components) {
   const demoPath = path.join(here, "demos", `${c.name}.jsx`);
   if (!fs.existsSync(demoPath)) {
-    console.warn(`! no demo for ${c.name} — card skipped`);
-    continue;
+    throw new Error(
+      `no demo for ${c.name} (demos/${c.name}.jsx) — every registry component ships a card`,
+    );
   }
   const demoSrc = fs.readFileSync(demoPath, "utf8");
   const compiled = await transform(demoSrc, {

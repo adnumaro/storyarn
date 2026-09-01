@@ -1,8 +1,10 @@
 <script setup lang="ts">
 /**
  * Props-driven facade over the app's ToggleGroup compound.
- * Note: reka-ui emits `undefined` when a single-type group is fully
- * deselected — the adapter passes that through; keep your state nullable.
+ * Note: the app's ToggleGroup wrapper filters reka-ui's `undefined`
+ * deselection payload, so deselecting the active single-type item is a
+ * no-op — the group always keeps a selection. That is product behavior;
+ * do not forward the deselection here.
  */
 import { ToggleGroup, ToggleGroupItem } from "@components/ui/toggle-group";
 

@@ -23,7 +23,7 @@ const themeClass = useContentThemeClass();
 <template>
   <TooltipProvider :delay-duration="200">
     <Tooltip :open="open">
-      <TooltipTrigger class="inline-flex">
+      <TooltipTrigger as-child>
         <slot />
       </TooltipTrigger>
       <TooltipContent :side="side" :class="themeClass">{{ content }}</TooltipContent>

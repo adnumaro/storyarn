@@ -23,8 +23,10 @@ fs.mkdirSync(outDir, { recursive: true });
 
 const cardsRoot = path.join(repoRoot, "ds-bundle", "components");
 const cards = [];
+const found = new Set();
 for (const group of fs.readdirSync(cardsRoot)) {
   for (const name of fs.readdirSync(path.join(cardsRoot, group))) {
+    found.add(name);
     if (filter && name !== filter) continue;
     cards.push({
       group,
@@ -32,6 +34,16 @@ for (const group of fs.readdirSync(cardsRoot)) {
       url: `http://localhost:8123/components/${group}/${name}/${name}.html`,
     });
   }
+}
+
+// Every registry component plus the foundations cards must have a card on
+// disk — a missing one must fail the run, not silently pass as "all clean".
+const registry = JSON.parse(fs.readFileSync(path.join(here, "registry.json"), "utf8"));
+const expected = [...registry.components.map((c) => c.name), "Chrome", "Colors", "Typography"];
+const absent = expected.filter((name) => !found.has(name));
+if (absent.length) {
+  console.log(`FAIL missing card(s): ${absent.join(", ")}`);
+  process.exit(1);
 }
 
 const browser = await chromium.launch();
