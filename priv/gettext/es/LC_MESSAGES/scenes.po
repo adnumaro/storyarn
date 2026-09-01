@@ -525,7 +525,7 @@ msgstr "Pin \"%{label}\" añadido en capa \"%{layer}\""
 msgid "Added zone \"%{name}\" in layer \"%{layer}\""
 msgstr "Zona \"%{name}\" añadida en capa \"%{layer}\""
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3233
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:21
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3134
 #, elixir-autogen, elixir-format
 msgid "Background image"
@@ -567,13 +567,13 @@ msgstr "Ajustes de escala cambiados"
 msgid "Changed shortcut"
 msgstr "Atajo cambiado"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3256
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:44
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3212
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Pin %{p}"
 msgstr "Capa %{l}, Pin %{p}"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3270
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:58
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3226
 #, elixir-autogen, elixir-format
 msgid "Layer %{l}, Zone %{z}"
@@ -711,19 +711,19 @@ msgstr "Progreso guardado."
 msgid "Saved scene no longer exists. Starting on current scene."
 msgstr "La escena guardada ya no existe. Iniciando en la escena actual."
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3283
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:71
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3239
 #, elixir-autogen, elixir-format
 msgid "Scene Pin %{p}"
 msgstr "Pin de escena %{p}"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3296
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:84
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3252
 #, elixir-autogen, elixir-format
 msgid "Scene Zone %{z}"
 msgstr "Zona de escena %{z}"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3397
+#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3256
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3331
 #, elixir-autogen, elixir-format
 msgid "Scene root"
@@ -885,7 +885,7 @@ msgstr "Elemento"
 msgid "%{type} #%{id}"
 msgstr "%{type} n.º %{id}"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3320
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:108
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3276
 #, elixir-autogen, elixir-format
 msgid " — collection item %{item} sheet"
@@ -897,7 +897,7 @@ msgstr " — ficha del elemento de colección %{item}"
 msgid "Added ambient flow %{flow_id}"
 msgstr "Flujo ambiental %{flow_id} añadido"
 
-#: lib/storyarn/projects/versioning/execution/builders/scene_builder.ex:3342
+#: lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex:130
 #: lib/storyarn/scenes/versioning/execution/scene_snapshot.ex:3298
 #, elixir-autogen, elixir-format
 msgid "Ambient flow %{index}"

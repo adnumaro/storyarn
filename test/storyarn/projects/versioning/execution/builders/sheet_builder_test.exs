@@ -18,6 +18,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.AssetMaterializationCache
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
+  alias Storyarn.Projects.Versioning.SnapshotReferences.SheetScanner
   alias Storyarn.Repo
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Block
@@ -1268,7 +1269,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
     end
   end
 
-  describe "scan_references/1" do
+  describe "SheetScanner.scan/1" do
     test "extracts assets, inheritance, reference targets, and rich-text mentions" do
       snapshot = %{
         "avatar_asset_id" => 10,
@@ -1294,7 +1295,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
         ]
       }
 
-      refs = SheetBuilder.scan_references(snapshot)
+      refs = SheetScanner.scan(snapshot)
 
       types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
@@ -1324,7 +1325,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
         ]
       }
 
-      refs = SheetBuilder.scan_references(snapshot)
+      refs = SheetScanner.scan(snapshot)
 
       assert Enum.any?(refs, &(&1.type == :reference and &1.id == 80))
       assert Enum.any?(refs, &(&1.type == :reference and is_binary(&1.id)))
@@ -1340,7 +1341,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SheetBuilderTest do
         ]
       }
 
-      refs = SheetBuilder.scan_references(snapshot)
+      refs = SheetScanner.scan(snapshot)
       assert refs == []
     end
   end

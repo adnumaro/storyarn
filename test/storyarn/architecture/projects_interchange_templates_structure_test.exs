@@ -1,6 +1,11 @@
 defmodule Storyarn.Architecture.ProjectsInterchangeTemplatesStructureTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Projects.Imports
+  alias Storyarn.Projects.Imports.Cancellation
+  alias Storyarn.Projects.Imports.ImportLifecycle
+  alias Storyarn.Projects.Imports.ImportQueue
+
   @projects_root Path.expand("../../../lib/storyarn/projects", __DIR__)
 
   test "imports and exports live under the Interchange capability" do
@@ -28,9 +33,33 @@ defmodule Storyarn.Architecture.ProjectsInterchangeTemplatesStructureTest do
   end
 
   test "stable implementation module identities remain available" do
-    assert Code.ensure_loaded?(Storyarn.Projects.Imports)
+    assert Code.ensure_loaded?(Imports)
     assert Code.ensure_loaded?(Storyarn.Projects.Exports)
     assert Code.ensure_loaded?(Storyarn.Projects.ProjectTemplates)
+  end
+
+  test "import cancellation has one direct command owner" do
+    assert Code.ensure_loaded?(Cancellation)
+    assert Code.ensure_loaded?(ImportLifecycle)
+    assert Code.ensure_loaded?(ImportQueue)
+
+    imports = beam_imports(Imports)
+
+    for arity <- [2, 3] do
+      assert {Cancellation, :cancel_import, arity} in imports
+
+      refute function_exported?(
+               ImportLifecycle,
+               :cancel_import,
+               arity
+             )
+
+      refute function_exported?(
+               ImportQueue,
+               :cancel_import,
+               arity
+             )
+    end
   end
 
   defp assert_role_layout(relative_root, capability_facades) do
@@ -51,5 +80,14 @@ defmodule Storyarn.Architecture.ProjectsInterchangeTemplatesStructureTest do
                  )
       end
     end)
+  end
+
+  defp beam_imports(module) do
+    {:ok, {_module, [{:imports, imports}]}} =
+      module
+      |> :code.which()
+      |> :beam_lib.chunks([:imports])
+
+    imports
   end
 end

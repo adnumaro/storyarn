@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
   alias Storyarn.Projects.Assets.BlobStore
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.Versioning.SnapshotReferences.SceneScanner
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Scenes.SceneConnection
@@ -1314,7 +1315,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
     end
   end
 
-  describe "scan_references/1" do
+  describe "SceneScanner.scan/1" do
     test "extracts background asset, pin, and zone target refs" do
       snapshot = %{
         "background_asset_id" => 100,
@@ -1343,7 +1344,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
         "ambient_flows" => [%{"flow_id" => 50}]
       }
 
-      refs = SceneBuilder.scan_references(snapshot)
+      refs = SceneScanner.scan(snapshot)
 
       types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
@@ -1375,7 +1376,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
         ]
       }
 
-      refs = SceneBuilder.scan_references(snapshot)
+      refs = SceneScanner.scan(snapshot)
       assert refs == []
     end
 
@@ -1395,7 +1396,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
         ]
       }
 
-      refs = SceneBuilder.scan_references(snapshot)
+      refs = SceneScanner.scan(snapshot)
 
       types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
@@ -1443,7 +1444,7 @@ defmodule Storyarn.Projects.Versioning.Builders.SceneBuilderTest do
         ]
       }
 
-      refs = SceneBuilder.scan_references(snapshot)
+      refs = SceneScanner.scan(snapshot)
 
       assert refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort() ==
                [{:sheet, 10}, {:sheet, 20}]

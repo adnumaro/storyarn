@@ -2985,8 +2985,7 @@ privileged_entrypoints = [
       validate_portable_snapshot: 1,
       instantiate_snapshot: 2,
       instantiate_snapshot: 3,
-      validate_materialized_reference_cycles: 1,
-      scan_references: 1
+      validate_materialized_reference_cycles: 1
     ],
     allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
@@ -3005,7 +3004,7 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Versioning.Builders.SheetBuilder",
     path: "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
-    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3, scan_references: 1],
+    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3],
     allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
@@ -3023,11 +3022,58 @@ privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Versioning.Builders.SceneBuilder",
     path: "lib/storyarn/projects/versioning/execution/builders/scene_builder.ex",
-    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3, scan_references: 1],
+    functions: [validate_portable_snapshot: 1, instantiate_snapshot: 2, instantiate_snapshot: 3],
     allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
     reason: "Scene graph validation and materialization belong only to whole-Project recovery"
+  },
+  %{
+    module: "Storyarn.Projects.References.EntityReferenceExtraction",
+    path: "lib/storyarn/projects/references/rules/entity_reference_extraction.ex",
+    functions: [extract_block_value_references: 2],
+    allowed_callers: [
+      "lib/storyarn/projects/references/commands/entity_reference_projection.ex",
+      "lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex",
+      "lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex"
+    ],
+    reason: "only Project reference writers and pure portable snapshot scanners consume strict block reference extraction"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.SnapshotReferences",
+    path: "lib/storyarn/projects/versioning/rules/snapshot_references/snapshot_references.ex",
+    functions: [validate: 4],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/execution/project_recovery.ex"
+    ],
+    reason: "portable Project recovery is the only production entry to snapshot reference validation"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.SnapshotReferences.SheetScanner",
+    path: "lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex",
+    functions: [scan: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/rules/snapshot_references/snapshot_references.ex"
+    ],
+    reason: "the pure snapshot reference coordinator owns Sheet scanner ordering"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.SnapshotReferences.FlowScanner",
+    path: "lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex",
+    functions: [scan: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/rules/snapshot_references/snapshot_references.ex"
+    ],
+    reason: "the pure snapshot reference coordinator owns Flow scanner ordering"
+  },
+  %{
+    module: "Storyarn.Projects.Versioning.SnapshotReferences.SceneScanner",
+    path: "lib/storyarn/projects/versioning/rules/snapshot_references/scene_scanner.ex",
+    functions: [scan: 1],
+    allowed_callers: [
+      "lib/storyarn/projects/versioning/rules/snapshot_references/snapshot_references.ex"
+    ],
+    reason: "the pure snapshot reference coordinator owns Scene scanner ordering"
   },
   %{
     module: "Storyarn.Projects.Versioning.MaterializationHelpers",
