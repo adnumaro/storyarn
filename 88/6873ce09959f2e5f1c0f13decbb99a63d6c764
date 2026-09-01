@@ -1,0 +1,23 @@
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_e9e5a90425bc26::t_dff4910e465f1e 239-250
+  s_e9e5a90425bc26::t_fcf90521d522cd 930,937,939
+  s_e9e5a90425bc26::t_47933462d5af27 205-215
+  s_e9e5a90425bc26::t_021215258ec7c4 198,226-237,919-929,931-936,938,940-942,1057
+  s_e9e5a90425bc26::t_cd0d9a9aa5f527 216-225,238
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "886873ce09959f2e5f1c0f13decbb99a63d6c764",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
