@@ -24,7 +24,7 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     entries = policy().privileged_entrypoints
     sources = parsed_sources()
 
-    assert length(entries) == 64
+    assert length(entries) == 65
     assert Enum.uniq_by(entries, &entry_identity/1) == entries
     assert disjoint_function_scopes?(entries)
 

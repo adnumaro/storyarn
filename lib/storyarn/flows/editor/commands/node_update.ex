@@ -20,6 +20,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   # Increment it whenever the canonical derivative contract changes. A nil or
   # mismatched value forces FlowSync through the full reconciliation path.
   @derivatives_fingerprint_version 1
+  @data_source_locked_event [:storyarn, :flows, :node_update, :source_locked]
 
   def update_node(%FlowNode{} = node, attrs) do
     result = update_node_without_dashboard_broadcast(node, attrs)
@@ -495,6 +496,7 @@ defmodule Storyarn.Flows.NodeUpdate do
   defp update_node_data_transaction(node, data) do
     with {:ok, %{project_id: project_id, flow: flow, node: locked_node}} <-
            References.lock_active_node_for_write(node, :key_share),
+         :ok <- emit_data_source_locked(locked_node, project_id),
          {:ok, _parent_id} <-
            References.lock_node_parent(
              flow.id,
@@ -528,6 +530,16 @@ defmodule Storyarn.Flows.NodeUpdate do
     else
       {:error, reason} -> Repo.rollback(reason)
     end
+  end
+
+  defp emit_data_source_locked(node, project_id) do
+    :telemetry.execute(@data_source_locked_event, %{count: 1}, %{
+      node_id: node.id,
+      flow_id: node.flow_id,
+      project_id: project_id
+    })
+
+    :ok
   end
 
   defp edit_node_transaction(identity, operation, payload) do

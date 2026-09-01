@@ -73,6 +73,16 @@ external I/O. Routing's shipped model defaults are the current example. The
 managed diagnostic is a registered task definition and therefore lives in
 `routing/tasks/`, not in reference data.
 
+## Write ownership
+
+AI owns ordinary writes to its policies, provider integrations and workspace
+assignments, personal model preferences, routing options, operations, audit and
+managed-spend records. The model catalog is shipped AI reference data and has
+no database writer. Projects and Workspaces continue to own project/workspace
+identity, membership and authorization records; AI maps the foreign fields it
+needs with consumer-local projections and never gains write authority over
+those tables.
+
 There is intentionally no generic `persistence/` folder. `Repo` is technical
 infrastructure shared by the application, while persistence behavior remains
 named after the business operation performing it.

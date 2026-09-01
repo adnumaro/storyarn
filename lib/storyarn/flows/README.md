@@ -118,12 +118,14 @@ Flow versioning owns snapshot asset transfer, quota checks and compensation,
 but requests Projects-owned asset-row registration through its exact local
 adapter and reloads the result through Flow's read model.
 
-Flow snapshot build already holds Project `FOR SHARE` before Flow `FOR UPDATE`.
-Its sealed `Localization.lock_inventory!/1` chain therefore takes only the
-Localization advisory lock and preserves the established lock order. The
-source-level ratchet permits only `FlowSnapshot` to call that port; ordinary
-Localization commands use their own Project `FOR UPDATE` -> advisory-lock
-contract.
+Flow snapshot build follows Project `FOR SHARE` -> source Flow `FOR SHARE` ->
+Localization advisory lock -> referenced Flow `FOR SHARE`. The source lock
+still excludes concurrent Flow writers, while using the same compatible lock
+mode for source and target avoids the former source/target snapshot cycle. Its
+sealed `Localization.lock_inventory!/1` chain takes only the advisory lock;
+the source-level ratchet permits only `FlowSnapshot` to call that port.
+Ordinary Localization commands keep their own Project `FOR UPDATE` ->
+advisory-lock contract.
 
 ## `reference_data/`
 

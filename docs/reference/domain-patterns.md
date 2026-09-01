@@ -160,11 +160,13 @@ writes; tool versioning retains snapshot orchestration and calls narrow
 transaction-participating restore adapters.
 
 Transaction-participating does not mean that every caller may reuse every lock
-port. Flow snapshot build already locks Project `FOR SHARE` and then its Flow
-`FOR UPDATE`; its sealed localization chain therefore acquires only the advisory
-inventory lock and preserves that established order. Ordinary Localization
-commands use the stronger Project `FOR UPDATE` -> advisory-lock path. Both entry
-chains are explicit; the advisory-only function is not a general shortcut.
+port. Flow snapshot build follows Project `FOR SHARE` -> source Flow `FOR SHARE`
+-> Localization advisory lock -> referenced Flow `FOR SHARE`. The source lock
+still excludes Flow writers, while compatible source and referenced locks avoid
+a source/target snapshot cycle. Its sealed localization chain therefore
+acquires only the advisory inventory lock. Ordinary Localization commands use
+the stronger Project `FOR UPDATE` -> advisory-lock path. Both entry chains are
+explicit; the advisory-only function is not a general shortcut.
 
 The storage-cleanup table is the explicit shared-protocol exception. Tool
 contexts are insert-only producers of `storage_compensation` handoffs, while

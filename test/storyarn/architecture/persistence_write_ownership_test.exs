@@ -156,6 +156,25 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
            ]
   end
 
+  test "AST guard keeps target taint in compound schema patterns" do
+    source = """
+    defmodule Example do
+      alias Storyarn.Projects.Assets.Asset
+      alias Storyarn.Repo
+      alias Storyarn.Workspaces.WorkspaceMembership
+
+      def remove({%Asset{} = asset, %WorkspaceMembership{} = _membership} = pair) do
+        _pair = pair
+        Repo.delete(asset)
+      end
+    end
+    """
+
+    assert source
+           |> table_mutations("inline_compound_pattern.ex", ["Storyarn.Projects.Assets.Asset"], "assets")
+           |> Enum.map(&{&1.function, &1.operation}) == [{"def remove/1", :delete}]
+  end
+
   test "AST guard requires a declared schema target and ignores unrelated Repo writes" do
     source = """
     defmodule Example do
@@ -191,6 +210,183 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
            )
            |> Enum.map(&{&1.function, &1.operation})
            |> Enum.sort() == [{"def create/1", :insert}, {"def update/1", :update}]
+  end
+
+  test "AST guard follows the record selected from joined queries" do
+    source = """
+    defmodule Example do
+      import Ecto.Query
+
+      alias Storyarn.Projects.References.Persistence.BlockRecord
+      alias Storyarn.Projects.References.Persistence.TableRowRecord
+      alias Storyarn.Repo
+
+      def update_primary do
+        row =
+          Repo.one!(
+            from(row in TableRowRecord,
+              join: block in BlockRecord,
+              on: block.id == row.block_id
+            )
+          )
+
+        row |> Ecto.Changeset.change(cells: %{}) |> Repo.update()
+      end
+
+      def update_joined do
+        block =
+          Repo.one!(
+            from(row in TableRowRecord,
+              join: block in BlockRecord,
+              on: block.id == row.block_id,
+              select: block
+            )
+          )
+
+        block |> Ecto.Changeset.change(data: %{}) |> Repo.update()
+      end
+
+      def update_joined_from_prebuilt_query do
+        query =
+          from(row in TableRowRecord,
+            join: block in BlockRecord,
+            on: block.id == row.block_id
+          )
+
+        block = query |> select([_row, block], block) |> Repo.one!()
+        block |> Ecto.Changeset.change(data: %{}) |> Repo.update()
+      end
+
+      def update_named_joined_from_prebuilt_query do
+        query =
+          from(row in TableRowRecord,
+            join: block in BlockRecord,
+            as: :block,
+            on: block.id == row.block_id
+          )
+
+        block = query |> select([block: block], block) |> Repo.one!()
+        block |> Ecto.Changeset.change(data: %{}) |> Repo.update()
+      end
+
+      def update_selected_map do
+        row = Repo.one!(from(row in TableRowRecord, select: %{row | cells: %{}}))
+        row |> Ecto.Changeset.change(cells: %{}) |> Repo.update()
+      end
+
+      def update_selected_struct do
+        row = Repo.one!(from(row in TableRowRecord, select: struct(row, [:id, :cells])))
+        row |> Ecto.Changeset.change(cells: %{}) |> Repo.update()
+      end
+
+      def update_joined_association do
+        block =
+          Repo.one!(
+            from(row in TableRowRecord,
+              join: block in assoc(row, :block),
+              select: block
+            )
+          )
+
+        block |> Ecto.Changeset.change(data: %{}) |> Repo.update()
+      end
+    end
+    """
+
+    assert source
+           |> table_mutations(
+             "inline_joined_query.ex",
+             ["Storyarn.Projects.References.Persistence.BlockRecord"],
+             "blocks"
+           )
+           |> Enum.map(&{&1.function, &1.operation})
+           |> Enum.sort() == [
+             {"def update_joined/0", :update},
+             {"def update_joined_association/0", :update},
+             {"def update_joined_from_prebuilt_query/0", :update},
+             {"def update_named_joined_from_prebuilt_query/0", :update}
+           ]
+
+    assert source
+           |> table_mutations(
+             "inline_joined_query.ex",
+             ["Storyarn.Projects.References.Persistence.TableRowRecord"],
+             "table_rows"
+           )
+           |> Enum.map(&{&1.function, &1.operation})
+           |> Enum.sort() == [
+             {"def update_joined_from_prebuilt_query/0", :update},
+             {"def update_named_joined_from_prebuilt_query/0", :update},
+             {"def update_primary/0", :update},
+             {"def update_selected_map/0", :update},
+             {"def update_selected_struct/0", :update}
+           ]
+  end
+
+  test "AST guard discovers association-selected writers without a target marker" do
+    source = """
+    defmodule Example do
+      import Ecto.Query
+
+      alias Storyarn.Projects.References.Persistence.TableRowRecord
+      alias Storyarn.Repo
+
+      def update_joined_association do
+        block =
+          Repo.one!(
+            from(row in TableRowRecord,
+              join: block in assoc(row, :block),
+              select: block
+            )
+          )
+
+        block |> Ecto.Changeset.change(data: %{}) |> Repo.update()
+      end
+    end
+    """
+
+    markers = [
+      "blocks",
+      "Storyarn.Projects.References.Persistence.BlockRecord",
+      "BlockRecord"
+    ]
+
+    refute String.contains?(source, markers)
+    assert shared_source_candidate?(source, markers)
+
+    assert source
+           |> table_mutations(
+             "inline_assoc_query.ex",
+             ["Storyarn.Projects.References.Persistence.BlockRecord"],
+             "blocks"
+           )
+           |> Enum.map(&{&1.function, &1.operation}) == [
+             {"def update_joined_association/0", :update}
+           ]
+  end
+
+  test "AST guard propagates target values into case branch patterns" do
+    source = """
+    defmodule Example do
+      alias Storyarn.Projects.Persistence.BlockRecord
+      alias Storyarn.Repo
+
+      def delete_block(id) do
+        case Repo.get(BlockRecord, id) do
+          nil -> :ok
+          block -> Repo.delete(block)
+        end
+      end
+    end
+    """
+
+    assert source
+           |> table_mutations(
+             "inline_case_binding.ex",
+             ["Storyarn.Projects.Persistence.BlockRecord"],
+             "blocks"
+           )
+           |> Enum.map(&{&1.function, &1.operation}) == [{"def delete_block/1", :delete}]
   end
 
   test "AST guard follows target collections through pipelines and callbacks" do
@@ -399,6 +595,40 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
     assert_raise ArgumentError, ~r/cannot resolve raw SQL.*inline_dynamic_sql\.ex.*def mutate\/1/s, fn ->
       table_mutations(source, "inline_dynamic_sql.ex", [], "localized_texts")
+    end
+  end
+
+  test "unresolved raw SQL cannot hide a statically identifiable Repo write" do
+    source = """
+    defmodule Example do
+      alias Storyarn.Repo
+      alias Storyarn.Sheets.Block
+
+      def mutate(sql, attrs) do
+        Repo.query!(sql, [])
+        Repo.insert(struct(Block, attrs))
+      end
+    end
+    """
+
+    {writes, unresolved} =
+      table_mutation_analysis(
+        source,
+        "inline_dynamic_and_static_sql.ex",
+        ["Storyarn.Sheets.Block"],
+        "blocks"
+      )
+
+    assert Enum.map(writes, &{&1.function, &1.operation}) == [{"def mutate/2", :insert}]
+    assert Enum.map(unresolved, & &1.function) == ["def mutate/2"]
+
+    assert_raise ArgumentError, ~r/cannot resolve raw SQL.*inline_dynamic_and_static_sql\.ex/s, fn ->
+      table_mutations(
+        source,
+        "inline_dynamic_and_static_sql.ex",
+        ["Storyarn.Sheets.Block"],
+        "blocks"
+      )
     end
   end
 
@@ -674,7 +904,14 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
         assert File.regular?(false_positive.path)
         assert is_binary(false_positive.reason) and false_positive.reason != ""
 
-        assert false_positive.function in source_function_identities(File.read!(false_positive.path), false_positive.path)
+        source = File.read!(false_positive.path)
+        assert false_positive.function in source_function_identities(source, false_positive.path)
+
+        normalized_source =
+          source_for_function_identities(source, false_positive.path, [false_positive.function])
+
+        assert sha256(normalized_source) == false_positive.source_sha256,
+               "#{false_positive.path} #{false_positive.function} changed; re-audit the alleged scanner false positive"
       end
 
       actual = detected_reference_writes(contract.table, schemas)
@@ -774,6 +1011,937 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     """
   end
 
+  test "every shared Ecto table has one reviewed ownership classification" do
+    policy = shared_mapping_policy()
+
+    inventory =
+      shared_mapping_inventory(
+        policy.mapping_root,
+        policy.bounded_contexts,
+        policy.passive_mapping_roots
+      )
+
+    shared = shared_mappings(inventory)
+
+    assert shared != %{}, "shared-mapping discovery must never become vacuous"
+    assert policy.mapping_root == "lib/storyarn"
+    assert policy.write_root == "lib"
+
+    outside_mapping_schemas =
+      policy.write_root
+      |> Path.join("**/*.ex")
+      |> Path.wildcard()
+      |> Enum.reject(&String.starts_with?(&1, policy.mapping_root <> "/"))
+      |> Enum.flat_map(fn path ->
+        path
+        |> File.read!()
+        |> schema_declarations(path)
+        |> Enum.map(&Map.put(&1, :path, path))
+      end)
+
+    assert outside_mapping_schemas == [], """
+    Ecto mappings are inventoried only below #{policy.mapping_root}. Web,
+    operator tooling and other infrastructure may consume context mappings but
+    cannot define an invisible schema of their own.
+
+    Outside mappings: #{inspect(outside_mapping_schemas, pretty: true)}
+    """
+
+    assert {:ok, classifications} =
+             classify_shared_mappings(shared, policy, full_persistence_policy())
+
+    assert classifications |> Map.keys() |> Enum.sort() == shared |> Map.keys() |> Enum.sort()
+
+    for {table, table_classification} <- classifications do
+      assert table_classification.owner_contexts == Enum.sort(table_classification.owner_contexts)
+
+      assert table_classification.write_mode in [
+               :dedicated_contract,
+               :exact_inventory,
+               :no_application_writes,
+               :owner_context
+             ]
+
+      assert table_classification.owner_contexts != []
+
+      if table_classification.write_mode == :no_application_writes do
+        assert Enum.all?(table_classification.mappings, &(&1.classification == :passive))
+      end
+
+      assert Enum.all?(table_classification.mappings, fn mapping ->
+               mapping.classification in [:owner_exact, :owner_writable, :passive, :privileged]
+             end),
+             "#{table} contains an unclassified Ecto mapping"
+    end
+  end
+
+  test "foreign mappings remain passive unless every write is an exact reviewed exception" do
+    policy = shared_mapping_policy()
+
+    shared =
+      policy.mapping_root
+      |> shared_mapping_inventory(policy.bounded_contexts, policy.passive_mapping_roots)
+      |> shared_mappings()
+
+    assert {:ok, classifications} =
+             classify_shared_mappings(shared, policy, full_persistence_policy())
+
+    actual_writes = shared_table_writes(shared, policy)
+    allowed_writes = allowed_shared_exact_writes(policy)
+    false_positives = reviewed_shared_false_positives(policy)
+
+    assert_shared_mapping_policy!(shared, classifications, actual_writes, policy, full_persistence_policy())
+
+    violations =
+      classifications
+      |> Enum.flat_map(fn {table, classification} ->
+        actual_writes
+        |> Map.fetch!(table)
+        |> Enum.reject(fn write ->
+          identity = shared_write_identity(table, write)
+
+          shared_write_allowed?(classification, write, identity, allowed_writes) or
+            MapSet.member?(false_positives, identity)
+        end)
+      end)
+      |> Enum.sort_by(&{&1.table, &1.path, &1.function, &1.operation})
+
+    assert violations == [], """
+    A shared-table write escaped both its owner and an exact privileged
+    exception. A foreign mapping is passive regardless of whether it is placed
+    under projections/, records/ or entities/. Review the real workflow, then
+    either route it through the owner or declare its exact path/function/write
+    operation in shared_persistence_mappings.privileged_writers.
+
+    Violations: #{inspect(violations, pretty: true, limit: :infinity)}
+    """
+  end
+
+  test "putting a writable foreign mapping in entities or records cannot grant ownership" do
+    base = %{
+      "blocks" => [
+        shared_mapping(
+          "blocks",
+          :sheets,
+          :entities,
+          "Storyarn.Sheets.Editor.Entities.Block",
+          "lib/storyarn/sheets/editor/entities/block.ex"
+        )
+      ]
+    }
+
+    foreign_entity =
+      shared_mapping(
+        "blocks",
+        :scenes,
+        :entities,
+        "Storyarn.Scenes.Editor.Entities.BlockRecord",
+        "lib/storyarn/scenes/editor/entities/block_record.ex"
+      )
+
+    policy = %{shared_mapping_policy() | owner_context_overrides: %{}}
+
+    assert {:error, [{"blocks", {:ambiguous_owner, [:scenes, :sheets]}}]} =
+             classify_shared_mappings(
+               Map.update!(base, "blocks", &[foreign_entity | &1]),
+               policy,
+               %{}
+             )
+
+    foreign_record = %{
+      foreign_entity
+      | role: :records,
+        path: "lib/storyarn/scenes/editor/records/block_record.ex"
+    }
+
+    assert {:ok, %{"blocks" => classification}} =
+             classify_shared_mappings(
+               Map.update!(base, "blocks", &[foreign_record | &1]),
+               policy,
+               %{}
+             )
+
+    assert Enum.find(classification.mappings, &(&1.path == foreign_record.path)).classification == :passive
+
+    source = ~S"""
+    defmodule ExampleForeignWriter do
+      alias Storyarn.Repo
+      alias Storyarn.Scenes.Editor.Entities.BlockRecord
+
+      def create(attrs), do: Repo.insert(struct(BlockRecord, attrs))
+    end
+    """
+
+    assert [%{operation: :insert}] =
+             table_mutations(
+               source,
+               foreign_record.path,
+               [foreign_record.module],
+               foreign_record.table
+             )
+
+    for path <- ["lib/storyarn_web/foreign_writer.ex", "lib/mix/tasks/foreign_writer.ex"] do
+      assert [%{operation: :insert}] =
+               table_mutations(source, path, [foreign_record.module], foreign_record.table)
+
+      assert shared_context_for_write_path(path, policy.bounded_contexts) in [
+               :presentation_adapters,
+               :infrastructure
+             ]
+    end
+
+    assert_raise ExUnit.AssertionError, ~r/outside the declared bounded contexts/, fn ->
+      shared_context_for_path(
+        "lib/storyarn/unknown_root/entities/block_record.ex",
+        policy.bounded_contexts,
+        policy.passive_mapping_roots
+      )
+    end
+
+    passive_mapping =
+      shared_mapping(
+        "blocks",
+        :technical_consumer,
+        :entities,
+        "Storyarn.Workers.BlockRecord",
+        "lib/storyarn/workers/entities/block_record.ex",
+        false
+      )
+
+    assert {:ok, %{"blocks" => passive_classification}} =
+             classify_shared_mappings(
+               Map.update!(base, "blocks", &[passive_mapping | &1]),
+               policy,
+               %{}
+             )
+
+    assert Enum.find(
+             passive_classification.mappings,
+             &(&1.path == passive_mapping.path)
+           ).classification == :passive
+
+    dynamic_schema = ~S"""
+    defmodule Storyarn.Scenes.DynamicRecord do
+      use Ecto.Schema
+
+      @table "blocks"
+      schema @table do
+      end
+    end
+    """
+
+    assert_raise ExUnit.AssertionError, ~r/non-literal Ecto schema/, fn ->
+      shared_mappings_in_source(
+        dynamic_schema,
+        "lib/storyarn/scenes/editor/records/dynamic_record.ex",
+        policy.bounded_contexts,
+        policy.passive_mapping_roots
+      )
+    end
+
+    assert schema_declarations(dynamic_schema, "lib/storyarn_web/dynamic_record.ex") == [
+             %{table: :non_literal}
+           ]
+  end
+
+  defp shared_mapping_policy do
+    @policy_path
+    |> DependencyPolicy.load!()
+    |> Map.fetch!(:shared_persistence_mappings)
+  end
+
+  defp full_persistence_policy do
+    @policy_path
+    |> DependencyPolicy.load!()
+    |> Map.fetch!(:persistence_ownership)
+  end
+
+  defp shared_mapping_inventory(root, bounded_contexts, passive_mapping_roots) do
+    root
+    |> Path.join("**/*.ex")
+    |> Path.wildcard()
+    |> Enum.sort()
+    |> Enum.flat_map(&shared_mappings_in_file(&1, bounded_contexts, passive_mapping_roots))
+  end
+
+  defp shared_mappings_in_file(path, bounded_contexts, passive_mapping_roots) do
+    path
+    |> File.read!()
+    |> shared_mappings_in_source(path, bounded_contexts, passive_mapping_roots)
+  end
+
+  defp shared_mappings_in_source(source, path, bounded_contexts, passive_mapping_roots) do
+    ast = quoted!(source, path)
+
+    {_ast, mappings} =
+      Macro.prewalk(ast, [], fn
+        {:defmodule, _meta, [{:__aliases__, _, segments}, [do: body]]} = node, mappings ->
+          mapping =
+            case shared_schema_table(body, path) do
+              nil ->
+                []
+
+              table ->
+                {context, owner_eligible?} =
+                  shared_context_for_path(path, bounded_contexts, passive_mapping_roots)
+
+                [
+                  shared_mapping(
+                    table,
+                    context,
+                    shared_role_for_path(path),
+                    Enum.join(segments, "."),
+                    path,
+                    owner_eligible?
+                  )
+                ]
+            end
+
+          {node, mapping ++ mappings}
+
+        node, mappings ->
+          {node, mappings}
+      end)
+
+    Enum.reverse(mappings)
+  end
+
+  defp shared_schema_table(ast, path) do
+    {_ast, schemas} =
+      Macro.prewalk(ast, [], fn
+        {:schema, _meta, [table | _rest]} = node, tables when is_binary(table) ->
+          {node, [{:literal, table} | tables]}
+
+        {:schema, _meta, [_table | _rest]} = node, tables ->
+          {node, [:non_literal | tables]}
+
+        node, tables ->
+          {node, tables}
+      end)
+
+    case Enum.uniq(schemas) do
+      [] ->
+        nil
+
+      [{:literal, table}] ->
+        table
+
+      schemas ->
+        if :non_literal in schemas,
+          do: flunk("non-literal Ecto schema in #{path}"),
+          else: flunk("one module maps multiple SQL tables in #{path}: #{inspect(schemas)}")
+    end
+  end
+
+  defp schema_declarations(source, path) do
+    {_ast, declarations} =
+      source
+      |> quoted!(path)
+      |> Macro.prewalk([], fn
+        {:schema, _meta, [table | _rest]} = node, declarations when is_binary(table) ->
+          {node, [%{table: table} | declarations]}
+
+        {:schema, _meta, [_table | _rest]} = node, declarations ->
+          {node, [%{table: :non_literal} | declarations]}
+
+        node, declarations ->
+          {node, declarations}
+      end)
+
+    declarations |> Enum.reverse() |> Enum.uniq()
+  end
+
+  defp shared_context_for_path(path, bounded_contexts, passive_mapping_roots) do
+    case Path.split(path) do
+      ["lib", "storyarn", context | _rest] ->
+        shared_context_for_root(context, path, bounded_contexts, passive_mapping_roots)
+
+      _other ->
+        flunk("Ecto mapping is outside a bounded context: #{path}")
+    end
+  end
+
+  defp shared_context_for_root(context, path, bounded_contexts, passive_mapping_roots) do
+    bounded_context = Enum.find(bounded_contexts, &(Atom.to_string(&1) == context))
+
+    cond do
+      bounded_context -> {bounded_context, true}
+      context in passive_mapping_roots -> {:technical_consumer, false}
+      true -> flunk("Ecto mapping is outside the declared bounded contexts: #{path}")
+    end
+  end
+
+  defp shared_role_for_path(path) do
+    path
+    |> Path.split()
+    |> Enum.find_value(:other, fn
+      "entities" -> :entities
+      "projections" -> :projections
+      "records" -> :records
+      _segment -> nil
+    end)
+  end
+
+  defp shared_mappings(inventory) do
+    inventory
+    |> Enum.group_by(& &1.table)
+    |> Map.filter(fn {_table, mappings} ->
+      mappings |> Enum.map(& &1.context) |> Enum.uniq() |> length() > 1
+    end)
+  end
+
+  defp classify_shared_mappings(shared, policy, persistence) do
+    {classifications, errors} =
+      shared
+      |> Enum.sort_by(&elem(&1, 0))
+      |> Enum.reduce({%{}, []}, &classify_shared_table(&1, &2, policy, persistence))
+
+    case Enum.reverse(errors) do
+      [] -> {:ok, classifications}
+      errors -> {:error, errors}
+    end
+  end
+
+  defp classify_shared_table({table, mappings}, {classified, errors}, policy, persistence) do
+    case shared_table_authority(table, mappings, policy, persistence) do
+      {:ok, owners, write_mode} ->
+        classification = shared_table_classification(mappings, owners, write_mode, policy, persistence)
+        {Map.put(classified, table, classification), errors}
+
+      {:error, reason} ->
+        {classified, [{table, reason} | errors]}
+    end
+  end
+
+  defp shared_table_classification(mappings, owners, write_mode, policy, persistence) do
+    classified_mappings =
+      Enum.map(mappings, fn mapping ->
+        classification = shared_mapping_classification(mapping, owners, write_mode, policy, persistence)
+        Map.put(mapping, :classification, classification)
+      end)
+
+    %{owner_contexts: owners, write_mode: write_mode, mappings: classified_mappings}
+  end
+
+  defp shared_table_authority(table, mappings, policy, persistence) do
+    persistence_contract =
+      Enum.find_value(persistence, fn {name, contract} ->
+        if Atom.to_string(name) == table, do: contract
+      end)
+
+    override =
+      Enum.find_value(policy.owner_context_overrides, fn {name, override} ->
+        if Atom.to_string(name) == table, do: override
+      end)
+
+    case {persistence_contract, override} do
+      {contract, _override} when not is_nil(contract) ->
+        {:ok, shared_ordinary_contexts(contract), :dedicated_contract}
+
+      {nil, override} when not is_nil(override) ->
+        {:ok, Enum.sort(override.owner_contexts), override.application_write_mode}
+
+      {nil, nil} ->
+        inferred_shared_table_authority(mappings)
+    end
+  end
+
+  defp inferred_shared_table_authority(mappings) do
+    owners =
+      mappings
+      |> Enum.filter(&(&1.role == :entities and &1.owner_eligible?))
+      |> Enum.map(& &1.context)
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    case owners do
+      [] -> {:error, :missing_owner}
+      [_owner] -> {:ok, owners, :owner_context}
+      owners -> {:error, {:ambiguous_owner, owners}}
+    end
+  end
+
+  defp shared_ordinary_contexts(contract) do
+    direct =
+      [Map.get(contract, :ordinary_owner)] ++
+        Enum.map(Map.get(contract, :ordinary_writers, []), &Map.get(&1, :context)) ++
+        Map.values(Map.get(contract, :source_owners, %{}))
+
+    direct
+    |> Enum.reject(&is_nil/1)
+    |> Enum.uniq()
+    |> Enum.sort()
+  end
+
+  defp shared_mapping_classification(mapping, owner_contexts, write_mode, policy, persistence) do
+    cond do
+      write_mode == :no_application_writes -> :passive
+      mapping.context in owner_contexts and write_mode in [:dedicated_contract, :exact_inventory] -> :owner_exact
+      mapping.context in owner_contexts -> :owner_writable
+      shared_privileged_mapping?(mapping, policy, persistence) -> :privileged
+      true -> :passive
+    end
+  end
+
+  defp shared_privileged_mapping?(mapping, policy, persistence) do
+    writers =
+      policy.exact_writers ++
+        policy.privileged_writers ++ shared_sensitive_privileged_writers_for_mapping(persistence)
+
+    Enum.any?(writers, fn writer ->
+      Atom.to_string(writer.table) == mapping.table and writer.context == mapping.context and
+        mapping.path in writer.mapping_paths
+    end)
+  end
+
+  defp shared_sensitive_privileged_writers_for_mapping(persistence) do
+    Enum.flat_map(persistence, fn {table, contract} ->
+      Enum.map(shared_sensitive_privileged_writers(contract), fn writer ->
+        Map.put(writer, :table, table)
+      end)
+    end)
+  end
+
+  defp shared_table_writes(shared, policy) do
+    sources =
+      policy.write_root
+      |> Path.join("**/*.ex")
+      |> Path.wildcard()
+      |> Enum.sort()
+      |> Map.new(&{&1, File.read!(&1)})
+
+    Map.new(shared, fn {table, mappings} ->
+      modules = Enum.map(mappings, & &1.module)
+      markers = [table | modules ++ Enum.map(modules, &(&1 |> String.split(".") |> List.last()))]
+
+      writes =
+        sources
+        |> Enum.flat_map(
+          &shared_source_writes(
+            &1,
+            markers,
+            modules,
+            table,
+            policy.reviewed_dynamic_writers,
+            policy.bounded_contexts
+          )
+        )
+        |> Enum.uniq_by(&{&1.path, &1.function, &1.operation})
+        |> Enum.sort_by(&{&1.path, &1.function, &1.operation})
+
+      {table, writes}
+    end)
+  end
+
+  defp shared_source_candidate?(source, markers),
+    do: String.contains?(source, markers) or String.contains?(source, "assoc(")
+
+  defp shared_source_writes({path, source}, markers, modules, table, dynamic_writers, bounded_contexts) do
+    if shared_source_candidate?(source, markers),
+      do: shared_detected_table_writes(source, path, modules, table, dynamic_writers, bounded_contexts),
+      else: []
+  end
+
+  defp shared_detected_table_writes(source, path, modules, table, dynamic_writers, bounded_contexts) do
+    {static_writes, unresolved} = table_mutation_analysis(source, path, modules, table)
+    dynamic = shared_dynamic_writer(dynamic_writers, path, table)
+
+    dynamic_writes =
+      case {unresolved, dynamic} do
+        {[], _dynamic} ->
+          []
+
+        {unresolved, nil} ->
+          flunk("unreviewed unresolved raw SQL while auditing #{table}: #{inspect(unresolved, pretty: true)}")
+
+        {unresolved, dynamic} ->
+          unresolved_functions = unresolved |> Enum.map(& &1.function) |> Enum.uniq() |> Enum.sort()
+
+          assert unresolved_functions == [dynamic.function]
+          assert dynamic.function in source_function_identities(source, path)
+
+          [
+            %{
+              path: path,
+              function: dynamic.function,
+              operation: dynamic.operation,
+              line: Enum.min_by(unresolved, & &1.line).line
+            }
+          ]
+      end
+
+    writes = static_writes ++ dynamic_writes
+
+    Enum.map(writes, fn write ->
+      write
+      |> Map.put(:table, table)
+      |> Map.put(:context, shared_context_for_write_path(write.path, bounded_contexts))
+    end)
+  end
+
+  defp shared_dynamic_writer(writers, path, table) do
+    Enum.find(writers, fn writer ->
+      writer.path == path and table in Enum.map(writer.tables, &Atom.to_string/1)
+    end)
+  end
+
+  defp shared_context_for_write_path(path, bounded_contexts) do
+    case Path.split(path) do
+      ["lib", "storyarn", context | _rest] ->
+        Enum.find(bounded_contexts, &(Atom.to_string(&1) == context)) || :infrastructure
+
+      ["lib", "storyarn_web" | _rest] ->
+        :presentation_adapters
+
+      ["lib", "mix", "tasks" | _rest] ->
+        :infrastructure
+
+      _other ->
+        :infrastructure
+    end
+  end
+
+  defp allowed_shared_exact_writes(policy) do
+    policy.exact_writers
+    |> Kernel.++(policy.privileged_writers)
+    |> Enum.flat_map(&shared_declared_writer_identities/1)
+    |> MapSet.new()
+  end
+
+  defp shared_sensitive_privileged_writers(%{privileged_writers: writers}) when is_list(writers), do: writers
+
+  defp shared_sensitive_privileged_writers(%{privileged_project_writers: groups}) do
+    Enum.flat_map(groups, fn {_name, group} ->
+      Enum.map(group.writers, fn writer ->
+        %{
+          context: :projects,
+          path: writer.path,
+          mapping_paths: writer.mapping_paths,
+          functions: writer.functions
+        }
+      end)
+    end)
+  end
+
+  defp shared_sensitive_privileged_writers(_contract), do: []
+
+  defp shared_declared_writer_identities(writer) do
+    Enum.flat_map(writer.functions, fn
+      %{identity: identity, operations: operations} ->
+        Enum.map(operations, &{Atom.to_string(writer.table), writer.path, identity, &1})
+
+      identity when is_binary(identity) ->
+        flunk("writer function lacks operations: #{writer.path} #{identity}")
+    end)
+  end
+
+  defp reviewed_shared_false_positives(policy) do
+    MapSet.new(policy.scanner_false_positives, fn candidate ->
+      {Atom.to_string(candidate.table), candidate.path, candidate.function, candidate.operation}
+    end)
+  end
+
+  defp shared_write_allowed?(classification, write, identity, allowed_writes) do
+    case classification.write_mode do
+      :owner_context ->
+        write.context in classification.owner_contexts or MapSet.member?(allowed_writes, identity)
+
+      :exact_inventory ->
+        MapSet.member?(allowed_writes, identity)
+
+      :dedicated_contract ->
+        true
+
+      :no_application_writes ->
+        false
+    end
+  end
+
+  defp assert_shared_mapping_policy!(shared, classifications, actual_writes, policy, persistence) do
+    dedicated_tables =
+      (@reference_tables ++ @owned_inventory_tables ++ @aggregate_identity_tables ++ [:project_languages])
+      |> Enum.uniq()
+      |> Enum.sort()
+
+    assert_dedicated_shared_tables!(dedicated_tables, classifications, persistence)
+    assert_shared_policy_shape!(shared, policy)
+    actual_identities = shared_actual_identities(actual_writes)
+    assert_configured_shared_writers!(shared, classifications, actual_identities, policy)
+    assert_sensitive_shared_writers!(shared, persistence, policy)
+    assert_privileged_workflows!(policy)
+    assert_reviewed_dynamic_writers!(policy.reviewed_dynamic_writers, shared, actual_identities, policy)
+    assert_reviewed_shared_false_positives!(policy.scanner_false_positives, actual_identities, policy)
+    assert_entity_version_scope!(policy.exact_writers)
+    assert_trigger_owned_receipts!(actual_writes)
+  end
+
+  defp assert_dedicated_shared_tables!(dedicated_tables, classifications, persistence) do
+    assert persistence |> Map.keys() |> Enum.sort() == dedicated_tables
+
+    for table <- dedicated_tables do
+      assert Map.fetch!(classifications, Atom.to_string(table)).write_mode == :dedicated_contract
+    end
+  end
+
+  defp assert_shared_policy_shape!(shared, policy) do
+    assert policy.passive_mapping_roots == ["architecture", "public", "workers"]
+    assert policy.passive_mapping_roots == Enum.sort(policy.passive_mapping_roots)
+
+    assert policy.owner_context_overrides |> Map.keys() |> Enum.sort() == [
+             :entity_versions,
+             :storage_cleanup_ownership_receipts
+           ]
+
+    for {table, override} <- policy.owner_context_overrides do
+      assert_shared_owner_override!(table, override, shared, policy.bounded_contexts)
+    end
+  end
+
+  defp assert_shared_owner_override!(table, override, shared, bounded_contexts) do
+    mappings = Map.fetch!(shared, Atom.to_string(table))
+    assert is_binary(override.reason) and override.reason != ""
+    assert override.owner_contexts == override.owner_contexts |> Enum.uniq() |> Enum.sort()
+    assert Enum.all?(override.owner_contexts, &(&1 in bounded_contexts))
+    assert override.application_write_mode in [:exact_inventory, :no_application_writes]
+
+    for owner_context <- override.owner_contexts do
+      assert Enum.any?(mappings, &(&1.context == owner_context)),
+             "#{owner_context} no longer maps overridden shared table #{table}"
+    end
+  end
+
+  defp shared_actual_identities(actual_writes) do
+    actual_writes
+    |> Enum.flat_map(fn {table, writes} -> Enum.map(writes, &shared_write_identity(table, &1)) end)
+    |> MapSet.new()
+  end
+
+  defp assert_configured_shared_writers!(shared, classifications, actual_identities, policy) do
+    configured_writers = policy.exact_writers ++ policy.privileged_writers
+    configured_identities = Enum.flat_map(configured_writers, &shared_declared_writer_identities/1)
+
+    assert configured_identities == Enum.uniq(configured_identities),
+           "shared writer identities must be declared exactly once"
+
+    for writer <- configured_writers do
+      assert_shared_writer!(writer, shared, classifications, actual_identities, policy)
+    end
+  end
+
+  defp assert_sensitive_shared_writers!(shared, persistence, policy) do
+    for writer <- shared_sensitive_privileged_writers_for_mapping(persistence) do
+      assert File.regular?(writer.path)
+      assert writer.context in policy.bounded_contexts
+      assert writer.mapping_paths != []
+      assert writer.mapping_paths == writer.mapping_paths |> Enum.uniq() |> Enum.sort()
+      assert_shared_writer_mappings!(writer.table, writer.context, writer.mapping_paths, shared)
+    end
+  end
+
+  defp assert_privileged_workflows!(policy) do
+    workflow_keys = policy.privileged_workflows |> Map.keys() |> Enum.sort()
+    used_workflows = policy.privileged_writers |> Enum.map(& &1.authority) |> Enum.uniq() |> Enum.sort()
+    assert workflow_keys == used_workflows
+
+    for {_name, workflow} <- policy.privileged_workflows do
+      assert is_binary(workflow.transaction) and workflow.transaction != ""
+      assert is_binary(workflow.locks_or_preconditions) and workflow.locks_or_preconditions != ""
+    end
+  end
+
+  defp assert_trigger_owned_receipts!(actual_writes) do
+    receipt_writes = Map.fetch!(actual_writes, "storage_cleanup_ownership_receipts")
+    assert receipt_writes == [], "database-trigger-owned cleanup receipts cannot acquire an application writer"
+  end
+
+  defp assert_shared_writer!(writer, shared, classifications, actual_identities, policy) do
+    table = Atom.to_string(writer.table)
+
+    assert Map.has_key?(shared, table)
+    assert File.regular?(writer.path), "declared shared writer is missing: #{writer.path}"
+    assert shared_context_for_write_path(writer.path, policy.bounded_contexts) == writer.context
+    assert is_atom(writer.authority)
+    assert is_binary(writer.reason) and writer.reason != ""
+    assert writer.mapping_paths != []
+    assert writer.mapping_paths == writer.mapping_paths |> Enum.uniq() |> Enum.sort()
+    assert valid_declared_functions?(writer.functions)
+
+    assert_shared_writer_mappings!(writer.table, writer.context, writer.mapping_paths, shared)
+
+    source = File.read!(writer.path)
+    available_functions = source_function_identities(source, writer.path)
+
+    for function <- writer.functions do
+      assert function.identity in available_functions
+    end
+
+    for identity <- shared_declared_writer_identities(writer) do
+      assert MapSet.member?(actual_identities, identity),
+             "stale or undetected shared writer exception: #{inspect(identity)}"
+    end
+
+    classification = Map.fetch!(classifications, table)
+
+    if writer in policy.privileged_writers do
+      refute writer.context in classification.owner_contexts
+      assert Map.has_key?(policy.privileged_workflows, writer.authority)
+    else
+      assert classification.write_mode == :exact_inventory
+    end
+  end
+
+  defp assert_shared_writer_mappings!(table, context, mapping_paths, shared) do
+    table = Atom.to_string(table)
+    mappings = Map.fetch!(shared, table)
+
+    for mapping_path <- mapping_paths do
+      assert File.regular?(mapping_path), "declared shared mapping is missing: #{mapping_path}"
+
+      assert Enum.any?(mappings, fn mapping ->
+               mapping.path == mapping_path and mapping.context == context and mapping.table == table
+             end),
+             "#{mapping_path} does not map #{table} for #{context}"
+    end
+  end
+
+  defp assert_reviewed_dynamic_writers!(writers, shared, actual_identities, policy) do
+    assert writers != []
+
+    for writer <- writers do
+      assert File.regular?(writer.path)
+      assert shared_context_for_write_path(writer.path, policy.bounded_contexts) == writer.context
+      assert is_binary(writer.reason) and writer.reason != ""
+      assert writer.tables != []
+      assert writer.tables == writer.tables |> Enum.uniq() |> Enum.sort()
+      assert writer.function in source_function_identities(File.read!(writer.path), writer.path)
+
+      source = File.read!(writer.path)
+      function_source = source_for_function_identities(source, writer.path, [writer.function])
+
+      assert source |> quoted!(writer.path) |> Macro.to_string() |> sha256() == writer.module_sha256,
+             "#{writer.path} changed; re-audit its dynamic table validation and SQL target"
+
+      assert literal_word_list_attribute(source, writer.path, :allowed_tables) ==
+               Enum.map(writer.tables, &Atom.to_string/1)
+
+      for table <- writer.tables do
+        table_name = Atom.to_string(table)
+        assert Map.has_key?(shared, table_name)
+
+        {_static_writes, unresolved} =
+          table_mutation_analysis(
+            source,
+            writer.path,
+            Enum.map(Map.fetch!(shared, table_name), & &1.module),
+            table_name
+          )
+
+        assert unresolved |> Enum.map(& &1.function) |> Enum.uniq() == [writer.function]
+
+        assert MapSet.member?(
+                 actual_identities,
+                 {table_name, writer.path, writer.function, writer.operation}
+               )
+      end
+
+      assert function_source =~ "@allowed_tables"
+      assert function_source =~ "validated_identifier!"
+      assert dynamic_sql_operation(function_source) == writer.operation
+    end
+  end
+
+  defp dynamic_sql_operation(function_source) do
+    operations =
+      ~r/\b(?:INSERT\s+INTO|UPDATE|DELETE\s+FROM)\b/i
+      |> Regex.scan(function_source, capture: :first)
+      |> Enum.map(fn [operation] ->
+        case operation |> String.upcase() |> String.split() |> hd() do
+          "INSERT" -> :insert
+          "UPDATE" -> :update
+          "DELETE" -> :delete
+        end
+      end)
+      |> Enum.uniq()
+
+    case operations do
+      [operation] -> operation
+      _other -> flunk("dynamic SQL writer must expose exactly one literal mutation verb")
+    end
+  end
+
+  defp assert_reviewed_shared_false_positives!(false_positives, actual_identities, policy) do
+    identities =
+      Enum.map(false_positives, fn candidate ->
+        assert File.regular?(candidate.path)
+        assert shared_context_for_write_path(candidate.path, policy.bounded_contexts) == candidate.context
+        assert is_binary(candidate.reason) and candidate.reason != ""
+        source = File.read!(candidate.path)
+        assert candidate.function in source_function_identities(source, candidate.path)
+
+        assert source
+               |> source_for_function_identities(candidate.path, [candidate.function])
+               |> sha256() == candidate.source_sha256,
+               "#{candidate.path} #{candidate.function} changed; re-audit the conservative scanner exception"
+
+        identity =
+          {Atom.to_string(candidate.table), candidate.path, candidate.function, candidate.operation}
+
+        assert MapSet.member?(actual_identities, identity)
+        identity
+      end)
+
+    assert identities == Enum.uniq(identities)
+  end
+
+  defp assert_entity_version_scope!(writers) do
+    writers = Enum.filter(writers, &(&1.table == :entity_versions))
+    assert writers != []
+
+    for writer <- writers do
+      assert_entity_version_writer_scope!(writer)
+    end
+  end
+
+  defp assert_entity_version_writer_scope!(writer) do
+    assert writer.entity_type in ["flow", "scene", "sheet"]
+    source = File.read!(writer.path)
+    assert_tool_entity_version_scope!(writer, source)
+    assert_entity_version_delete_scope!(writer, source)
+  end
+
+  defp assert_tool_entity_version_scope!(writer, source) do
+    if writer.authority in [:flow_version_rows, :scene_version_rows, :sheet_version_rows] do
+      assert source =~ ~s(@entity_type "#{writer.entity_type}")
+      assert source =~ "entity_type: @entity_type"
+      assert source =~ "version.entity_type == @entity_type"
+
+      for mapping_path <- writer.mapping_paths do
+        assert File.read!(mapping_path) =~
+                 ~s|validate_inclusion(:entity_type, ["#{writer.entity_type}"])|
+      end
+    end
+  end
+
+  defp assert_entity_version_delete_scope!(writer, source) do
+    for function <- writer.functions, :delete_all in function.operations do
+      function_source = source_for_function_identities(source, writer.path, [function.identity])
+      assert function_source =~ ~s(entity_type == "#{writer.entity_type}")
+    end
+  end
+
+  defp shared_write_identity(table, write), do: {table, write.path, write.function, write.operation}
+
+  defp shared_mapping(table, context, role, module, path, owner_eligible? \\ true) do
+    %{
+      table: table,
+      context: context,
+      role: role,
+      module: module,
+      path: path,
+      owner_eligible?: owner_eligible?
+    }
+  end
+
   defp reference_ownership_policy do
     @policy_path
     |> DependencyPolicy.load!()
@@ -842,6 +2010,33 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     |> Enum.map_join("\n", fn clause ->
       Macro.to_string(clause.head) <> "\n" <> Macro.to_string(clause.body)
     end)
+  end
+
+  defp literal_word_list_attribute(source, path, attribute) do
+    expression =
+      source
+      |> quoted!(path)
+      |> module_attribute_expressions()
+      |> Map.fetch!(attribute)
+
+    case expression do
+      {:sigil_w, _meta, [{:<<>>, _binary_meta, [words]}, []]} when is_binary(words) ->
+        String.split(words)
+
+      values when is_list(values) ->
+        if Enum.all?(values, &is_binary/1),
+          do: values,
+          else: flunk("@#{attribute} in #{path} must be a literal list of strings")
+
+      _other ->
+        flunk("@#{attribute} in #{path} must be a literal ~w() or string list")
+    end
+  end
+
+  defp sha256(value) do
+    :sha256
+    |> :crypto.hash(value)
+    |> Base.encode16(case: :lower)
   end
 
   defp source_function_write_operations(source, path, identity) do
@@ -972,6 +2167,19 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   @doc false
   def table_mutations(source, path, schemas, table) do
+    {violations, unresolved} = table_mutation_analysis(source, path, schemas, table)
+
+    case unresolved do
+      [] ->
+        violations
+
+      [%{line: line, function: function} | _rest] ->
+        raise ArgumentError,
+              "cannot resolve raw SQL in #{path}:#{line} (#{function}) while auditing #{table}"
+    end
+  end
+
+  defp table_mutation_analysis(source, path, schemas, table) do
     ast = quoted!(source, path)
     aliases = alias_bindings(ast)
     imports = imported_modules(ast, aliases)
@@ -993,36 +2201,46 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       table: table
     }
 
-    clauses
-    |> Enum.flat_map(fn clause ->
-      tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
-      sql_bindings = resolved_sql_variables(clause.body, attributes)
-      context = Map.merge(base_context, %{sql_bindings: sql_bindings, tainted: tainted})
+    {violations, unresolved} =
+      Enum.reduce(clauses, {[], []}, fn clause, {violations, unresolved} ->
+        tainted = clause_tainted_variables(clause, schemas, aliases, analysis, clauses, table)
+        sql_bindings = resolved_sql_variables(clause.body, attributes)
+        context = Map.merge(base_context, %{sql_bindings: sql_bindings, tainted: tainted})
 
-      mutation_violations(clause.body, path, clause.identity, context)
-    end)
-    |> Enum.uniq()
-    |> Enum.sort_by(&{&1.path, &1.line, &1.function, &1.operation})
+        {clause_violations, clause_unresolved} =
+          mutation_analysis(clause.body, path, clause.identity, context)
+
+        {clause_violations ++ violations, clause_unresolved ++ unresolved}
+      end)
+
+    {
+      violations
+      |> Enum.uniq()
+      |> Enum.sort_by(&{&1.path, &1.line, &1.function, &1.operation}),
+      unresolved
+      |> Enum.uniq()
+      |> Enum.sort_by(&{&1.path, &1.line, &1.function})
+    }
   end
 
-  defp mutation_violations(ast, path, function, context) do
-    {_ast, violations} =
-      Macro.prewalk(ast, [], fn node, violations ->
+  defp mutation_analysis(ast, path, function, context) do
+    {_ast, {violations, unresolved}} =
+      Macro.prewalk(ast, {[], []}, fn node, {violations, unresolved} ->
         case table_write(node, context) do
           {:ok, operation, line} ->
             violation = %{path: path, line: line, function: function, operation: operation}
-            {node, [violation | violations]}
+            {node, {[violation | violations], unresolved}}
 
           {:analysis_error, :unresolved_raw_sql, line} ->
-            raise ArgumentError,
-                  "cannot resolve raw SQL in #{path}:#{line} (#{function}) while auditing #{context.table}"
+            candidate = %{path: path, line: line, function: function}
+            {node, {violations, [candidate | unresolved]}}
 
           :no_write ->
-            {node, violations}
+            {node, {violations, unresolved}}
         end
       end)
 
-    violations
+    {violations, unresolved}
   end
 
   defp table_write({:|>, pipe_meta, [left, call]} = node, context) do
@@ -1472,6 +2690,7 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
       {_ast, next} =
         Macro.prewalk(ast, tainted, fn node, current ->
           current = taint_assignment(node, current, schemas, aliases, table, analysis, clauses)
+          current = taint_case_patterns(node, current, schemas, aliases, table, analysis, clauses)
           {node, taint_callback_parameters(node, current, schemas, aliases, table, analysis, clauses)}
         end)
 
@@ -1481,16 +2700,53 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   defp taint_assignment({operator, _meta, [left, right]}, current, schemas, aliases, table, analysis, clauses)
        when operator in [:=, :<-] do
-    if targets_table?(left, schemas, aliases, current, table, analysis, clauses) or
-         targets_table?(right, schemas, aliases, current, table, analysis, clauses) do
-      names = MapSet.union(variable_names(left), variable_names(right))
-      MapSet.union(current, names)
+    cond do
+      targets_table?(right, schemas, aliases, current, table, analysis, clauses) ->
+        MapSet.union(current, variable_names(left))
+
+      assignment_pattern_targets_table?(left, schemas, aliases) ->
+        current
+        |> MapSet.union(variable_names(left))
+        |> MapSet.union(variable_names(right))
+
+      true ->
+        current
+    end
+  end
+
+  defp taint_assignment(_node, current, _schemas, _aliases, _table, _analysis, _clauses), do: current
+
+  # Assignment data flows from the expression on the right into the binding on
+  # the left. Propagating every variable name in both directions makes an
+  # unrelated record used inside a query look like that query's result. A
+  # schema pattern is the one deliberate reverse-flow case: `%Schema{} = row`
+  # proves that `row` is a value of the mapped table.
+  defp assignment_pattern_targets_table?(left, schemas, aliases) do
+    {_left, target?} =
+      Macro.prewalk(left, false, fn
+        {:%, _, [{:__aliases__, _, segments}, _fields]} = node, target? ->
+          {node, target? or module_targets_table?(segments, schemas, aliases)}
+
+        node, target? ->
+          {node, target?}
+      end)
+
+    target?
+  end
+
+  defp taint_case_patterns({:case, _, [scrutinee, [do: branches]]}, current, schemas, aliases, table, analysis, clauses)
+       when is_list(branches) do
+    if targets_table?(scrutinee, schemas, aliases, current, table, analysis, clauses) do
+      Enum.reduce(branches, current, fn
+        {:->, _, [patterns, _body]}, tainted -> MapSet.union(tainted, variable_names(patterns))
+        _branch, tainted -> tainted
+      end)
     else
       current
     end
   end
 
-  defp taint_assignment(_node, current, _schemas, _aliases, _table, _analysis, _clauses), do: current
+  defp taint_case_patterns(_node, current, _schemas, _aliases, _table, _analysis, _clauses), do: current
 
   defp taint_callback_parameters(node, current, schemas, aliases, table, analysis, clauses) do
     case enumerable_callback(node, aliases) do
@@ -1771,6 +3027,12 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
     |> Enum.any?(&targets_table?(&1, schemas, aliases, tainted, table, analysis, clauses))
   end
 
+  defp targets_table?({operator, _, [left, right]}, schemas, aliases, tainted, table, analysis, clauses)
+       when operator in [:||, :or] do
+    targets_table?(left, schemas, aliases, tainted, table, analysis, clauses) or
+      targets_table?(right, schemas, aliases, tainted, table, analysis, clauses)
+  end
+
   defp targets_table?({:|>, _, [left, call]}, schemas, aliases, tainted, table, analysis, clauses) do
     case call do
       {name, _, arguments} when is_atom(name) and is_list(arguments) ->
@@ -1838,52 +3100,249 @@ defmodule Storyarn.Architecture.PersistenceWriteOwnershipTest do
 
   defp kernel_constructor_target?(_name, _arguments, _schemas, _aliases, _tainted, _table, _analysis, _clauses), do: false
 
-  defp query_builder_target?(name, arguments, schemas, aliases, tainted, table, analysis, clauses)
-       when name in [
-              :distinct,
-              :exclude,
-              :from,
-              :group_by,
-              :join,
-              :limit,
-              :lock,
-              :offset,
-              :order_by,
-              :preload,
-              :select,
-              :where
-            ] do
-    Enum.any?(arguments, fn argument ->
-      query_source_targets_table?(argument, schemas, aliases, tainted, table, analysis, clauses)
-    end)
+  defp query_builder_target?(:from, [source | options], schemas, aliases, tainted, table, analysis, clauses) do
+    from_query_result_targets_table?(
+      source,
+      List.flatten(options),
+      schemas,
+      aliases,
+      tainted,
+      table,
+      analysis,
+      clauses
+    )
+  end
+
+  defp query_builder_target?(:select, arguments, schemas, aliases, tainted, table, analysis, clauses) do
+    select_query_result_targets_table?(
+      arguments,
+      schemas,
+      aliases,
+      tainted,
+      table,
+      analysis,
+      clauses
+    )
+  end
+
+  defp query_builder_target?(name, [query | _arguments], schemas, aliases, tainted, table, analysis, clauses)
+       when name in [:distinct, :exclude, :group_by, :join, :limit, :lock, :offset, :order_by, :preload, :where] do
+    targets_table?(query, schemas, aliases, tainted, table, analysis, clauses)
   end
 
   defp query_builder_target?(_name, _arguments, _schemas, _aliases, _tainted, _table, _analysis, _clauses), do: false
 
-  defp query_source_targets_table?(ast, schemas, aliases, tainted, _table, analysis, clauses) do
-    direct_tainted? =
-      case ast do
-        {name, _, context} when is_atom(name) and is_atom(context) -> MapSet.member?(tainted, name)
-        _expression -> false
-      end
+  @query_join_keys [
+    :join,
+    :inner_join,
+    :left_join,
+    :right_join,
+    :full_join,
+    :cross_join,
+    :inner_lateral_join,
+    :left_lateral_join,
+    :cross_lateral_join
+  ]
 
-    {_ast, found?} =
-      Macro.prewalk(ast, direct_tainted?, fn
-        {:__aliases__, _, segments} = node, found? ->
-          {node, found? or module_targets_table?(segments, schemas, aliases)}
+  defp from_query_result_targets_table?(source, options, schemas, aliases, tainted, table, analysis, clauses) do
+    primary_target? =
+      query_source_expression_targets_table?(
+        source,
+        schemas,
+        aliases,
+        tainted,
+        table,
+        analysis,
+        clauses
+      )
 
-        node, found? ->
-          returned? =
-            case local_call(node) do
-              {:ok, name, arguments} -> local_call_returns_target?(clauses, analysis, name, length(arguments))
-              :not_a_local_call -> false
+    case Keyword.fetch(options, :select) do
+      :error ->
+        primary_target?
+
+      {:ok, selection} ->
+        primary_bindings = query_binding_targets(source, primary_target?)
+        primary_modules = query_binding_modules(source, aliases)
+
+        bindings =
+          Map.merge(
+            primary_bindings,
+            join_binding_targets(
+              options,
+              primary_modules,
+              schemas,
+              aliases
+            )
+          )
+
+        selected_query_value_targets_table?(selection, bindings)
+    end
+  end
+
+  defp select_query_result_targets_table?(arguments, schemas, aliases, tainted, table, analysis, clauses) do
+    case arguments do
+      [query, bindings, selection] ->
+        query_target? = targets_table?(query, schemas, aliases, tainted, table, analysis, clauses)
+
+        bindings
+        |> select_binding_targets(query_target?)
+        |> then(&selected_query_value_targets_table?(selection, &1))
+
+      [query, selection] ->
+        query_target? = targets_table?(query, schemas, aliases, tainted, table, analysis, clauses)
+
+        case selection do
+          {name, _, context} when is_atom(name) and is_atom(context) -> query_target?
+          _selection -> false
+        end
+
+      _arguments ->
+        false
+    end
+  end
+
+  defp query_source_expression_targets_table?(
+         {:in, _, [_binding, source]},
+         schemas,
+         aliases,
+         tainted,
+         table,
+         analysis,
+         clauses
+       ) do
+    targets_table?(source, schemas, aliases, tainted, table, analysis, clauses)
+  end
+
+  defp query_source_expression_targets_table?(source, schemas, aliases, tainted, table, analysis, clauses) do
+    targets_table?(source, schemas, aliases, tainted, table, analysis, clauses)
+  end
+
+  defp query_binding_targets({:in, _, [binding, _source]}, target?), do: Map.new(variable_names(binding), &{&1, target?})
+
+  defp query_binding_targets(bindings, target?) when is_list(bindings),
+    do: Map.new(variable_names(bindings), &{&1, target?})
+
+  defp query_binding_targets(_source, _target?), do: %{}
+
+  defp query_binding_modules({:in, _, [binding, source]}, aliases) do
+    modules = query_source_modules(source, %{}, aliases)
+    Map.new(variable_names(binding), &{&1, modules})
+  end
+
+  defp query_binding_modules(_source, _aliases), do: %{}
+
+  # A prebuilt Ecto query does not retain binding provenance in its variable
+  # AST. Its first binding is the query's selected source; selecting any later
+  # binding must therefore fail closed for every mapped table visible to the
+  # source scan. This can create a reviewable false positive, but it prevents a
+  # joined record selected from an opaque query from escaping the ratchet.
+  defp select_binding_targets(bindings, query_target?) when is_list(bindings) do
+    bindings
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {binding, index}, targets ->
+      target? = if index == 0 and not keyword_binding?(binding), do: query_target?, else: true
+      Map.merge(targets, Map.new(variable_names(binding), &{&1, target?}))
+    end)
+  end
+
+  defp select_binding_targets(_bindings, _query_target?), do: %{}
+
+  defp keyword_binding?({name, _binding}) when is_atom(name), do: true
+  defp keyword_binding?(_binding), do: false
+
+  defp join_binding_targets(options, primary_modules, schemas, aliases) do
+    {targets, _modules} =
+      Enum.reduce(options, {%{}, primary_modules}, fn
+        {key, {:in, _, [binding, source]}}, {targets, binding_modules} when key in @query_join_keys ->
+          source_modules = query_source_modules(source, binding_modules, aliases)
+
+          target? =
+            case source_modules do
+              :unresolved -> true
+              modules -> Enum.any?(modules, &(&1 in schemas))
             end
 
-          {node, found? or returned?}
+          source_modules = if source_modules == :unresolved, do: [], else: source_modules
+
+          {
+            Map.merge(targets, Map.new(variable_names(binding), &{&1, target?})),
+            Map.merge(binding_modules, Map.new(variable_names(binding), &{&1, source_modules}))
+          }
+
+        _option, state ->
+          state
       end)
 
-    found?
+    targets
   end
+
+  defp query_source_modules({:__aliases__, _, segments}, _binding_modules, aliases) do
+    segments
+    |> expanded_modules(aliases)
+    |> Enum.map(&module_name/1)
+    |> Enum.uniq()
+  end
+
+  defp query_source_modules({:assoc, _, [parent, association]}, binding_modules, _aliases) when is_atom(association) do
+    with {name, _, context} when is_atom(name) and is_atom(context) <- parent,
+         parent_modules when is_list(parent_modules) and parent_modules != [] <- Map.get(binding_modules, name),
+         related when related != [] <- association_related_modules(parent_modules, association) do
+      related
+    else
+      _unresolved -> :unresolved
+    end
+  end
+
+  defp query_source_modules(_source, _binding_modules, _aliases), do: :unresolved
+
+  defp association_related_modules(parent_modules, association) do
+    parent_modules
+    |> Enum.flat_map(fn module_name ->
+      with {:ok, module} <- existing_module(module_name),
+           {:module, ^module} <- Code.ensure_loaded(module),
+           true <- function_exported?(module, :__schema__, 2),
+           association_metadata when not is_nil(association_metadata) <- module.__schema__(:association, association),
+           related when is_atom(related) <- Map.get(association_metadata, :related) do
+        [related |> Atom.to_string() |> String.trim_leading("Elixir.")]
+      else
+        _unresolved -> []
+      end
+    end)
+    |> Enum.uniq()
+  end
+
+  defp existing_module(module_name) do
+    {:ok, Module.safe_concat(String.split(module_name, "."))}
+  rescue
+    ArgumentError -> :error
+  end
+
+  defp selected_query_value_targets_table?({name, _, context}, bindings) when is_atom(name) and is_atom(context),
+    do: Map.get(bindings, name, false)
+
+  defp selected_query_value_targets_table?({constructor, _, [base | _fields]}, bindings)
+       when constructor in [:struct, :struct!], do: selected_query_value_targets_table?(base, bindings)
+
+  # A field selection is a scalar even when its receiver is a mapped record.
+  # Treating `select: record.id` as the record itself is what made unrelated
+  # joined schemas appear to be written by later Repo calls.
+  defp selected_query_value_targets_table?({{:., _, [_receiver, _field]}, _, []}, _bindings), do: false
+
+  defp selected_query_value_targets_table?({:{}, _, values}, bindings),
+    do: Enum.any?(values, &selected_query_value_targets_table?(&1, bindings))
+
+  defp selected_query_value_targets_table?({:%{}, _, pairs}, bindings) do
+    Enum.any?(pairs, fn
+      {:|, _, [base, _updates]} -> selected_query_value_targets_table?(base, bindings)
+      {_key, value} -> selected_query_value_targets_table?(value, bindings)
+      value -> selected_query_value_targets_table?(value, bindings)
+    end)
+  end
+
+  defp selected_query_value_targets_table?(values, bindings) when is_list(values),
+    do: Enum.any?(values, &selected_query_value_targets_table?(&1, bindings))
+
+  defp selected_query_value_targets_table?(_selection, _bindings), do: false
 
   defp target_context(clauses, schemas, aliases, tainted, table, analysis) do
     %{

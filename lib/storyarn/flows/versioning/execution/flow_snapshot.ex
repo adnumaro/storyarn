@@ -41,6 +41,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   alias Storyarn.Repo
 
   @flow_fields ~w(name shortcut description is_main settings scene_id)
+  @source_locked_event [:storyarn, :flows, :flow_snapshot, :source_locked]
 
   @doc "Builds a deterministic snapshot from current persisted Flow state."
   @spec build(Flow.t()) :: map()
@@ -59,7 +60,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
 
   defp build_transaction(flow_id, project_id) do
     with {:ok, _project} <- References.lock_active_project(project_id),
-         {:ok, flow} <- lock_flow(flow_id, project_id),
+         {:ok, flow} <- lock_source_flow_for_snapshot(flow_id, project_id),
+         :ok <- emit_source_locked(flow),
          :ok <- lock_localization_inventory(project_id),
          {:ok, snapshot} <- build_locked(flow) do
       snapshot
@@ -182,13 +184,36 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   @spec scan_references(map()) :: [map()]
   defdelegate scan_references(snapshot), to: Storyarn.Flows.Versioning.Execution.ReferenceScanner, as: :scan
 
-  defp lock_flow(flow_id, project_id) do
+  defp lock_source_flow_for_snapshot(flow_id, project_id) do
+    # Snapshot build is read-only. A SHARE lock still serializes against every
+    # Flow writer while remaining compatible with the SHARE locks used to
+    # validate referenced Flows. Using UPDATE here creates the avoidable cycle
+    # A(update) -> B(share) / B(update) -> A(share).
+    case Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR SHARE")) do
+      %Flow{project_id: ^project_id, deleted_at: nil} = flow -> {:ok, flow}
+      %Flow{project_id: ^project_id} -> {:error, :flow_not_active}
+      %Flow{} -> {:error, :flow_scope_mismatch}
+      nil -> {:error, :flow_not_found}
+    end
+  end
+
+  defp lock_flow_for_restore(flow_id, project_id) do
     case Repo.one(from(flow in Flow, where: flow.id == ^flow_id, lock: "FOR UPDATE")) do
       %Flow{project_id: ^project_id, deleted_at: nil} = flow -> {:ok, flow}
       %Flow{project_id: ^project_id} -> {:error, :flow_not_active}
       %Flow{} -> {:error, :flow_scope_mismatch}
       nil -> {:error, :flow_not_found}
     end
+  end
+
+  defp emit_source_locked(flow) do
+    :telemetry.execute(@source_locked_event, %{count: 1}, %{
+      flow_id: flow.id,
+      project_id: flow.project_id,
+      lock_mode: :share
+    })
+
+    :ok
   end
 
   defp lock_localization_inventory(project_id) do
@@ -748,7 +773,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
 
   defp restore_transaction(flow, snapshot, opts) do
     with {:ok, _project} <- References.lock_active_project(flow.project_id, :update),
-         {:ok, locked_flow} <- lock_flow(flow.id, flow.project_id),
+         {:ok, locked_flow} <- lock_flow_for_restore(flow.id, flow.project_id),
          {:ok, _version} <- lock_safety_version(locked_flow, opts),
          {:ok, _incoming_pins} <-
            lock_and_validate_incoming_dynamic_pins(

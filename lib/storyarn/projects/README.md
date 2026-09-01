@@ -278,8 +278,10 @@ Project storage policy merely because their objects currently share a bucket.
   inverse dependency without changing this folder migration.
 - Project classification and validation are owned locally under Lifecycle;
   Platform keeps an independent analytics taxonomy and sanitization policy.
-  Projects remains the current writer of AI configuration records. That is an
-  explicit ownership decision to revisit, not permission to use AI as a generic
-  shared layer.
+- AI owns its policies, provider integrations and assignments, personal model
+  preferences, routing state, operations, audit and managed-spend records.
+  Projects owns project identity, access and the `:use_ai` / `:run_bulk_ai`
+  permissions that AI consumes through its own projections; Projects does not
+  write AI-owned configuration records.
 - The shared PostgreSQL schema remains intentional. Code ownership is isolated
   first so schema and database separation can happen independently later.
