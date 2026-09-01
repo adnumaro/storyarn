@@ -1,0 +1,19 @@
+.gitignore
+  s_c970a941708e5f::t_28a5768b624d9e 91-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c83ad041f56812eaeadf86bfc7b578871ea49b85",
+  "prompts": {},
+  "sessions": {
+    "s_c970a941708e5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44fa200b-fa62-431f-80da-55bcb9febcbc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
