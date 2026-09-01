@@ -119,6 +119,9 @@ defmodule Storyarn.Projects.Assets.Queries.AssetUsageQueries do
       |> active_family_ids(asset_id)
       |> then(&get_asset_usages_for_ids(project_id, &1))
 
+    # Trash expands any selected member to the complete transitive family, so
+    # keep every other linked member in its preview and suppress only the row
+    # that would report the selected asset as its own usage.
     Map.update!(usages, :asset_metadata_links, fn links ->
       Enum.reject(links, &(&1.id == asset_id))
     end)

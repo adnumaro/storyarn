@@ -772,6 +772,37 @@ defmodule Storyarn.AssetsTest do
                MapSet.new([web_variant.id, profile_variant.id])
     end
 
+    test "keeps sibling metadata links when a non-root family member is selected", %{
+      project: project,
+      user: user
+    } do
+      original = image_asset_fixture(project, user, %{filename: "family-original.png"})
+      web_variant = image_asset_fixture(project, user, %{filename: "family-web.webp"})
+      profile_variant = image_asset_fixture(project, user, %{filename: "family-profile.webp"})
+
+      assert {:ok, original} =
+               Assets.update_asset(original, %{
+                 metadata: %{
+                   "web_asset_id" => web_variant.id,
+                   "variant_asset_ids" => %{"avatar" => profile_variant.id}
+                 }
+               })
+
+      for variant <- [web_variant, profile_variant] do
+        assert {:ok, _variant} =
+                 Assets.update_asset(variant, %{
+                   metadata: %{"is_variant" => true, "original_asset_id" => original.id}
+                 })
+      end
+
+      usages = Assets.get_asset_family_usages(project.id, web_variant.id)
+
+      assert MapSet.new(usages.asset_metadata_links, & &1.id) ==
+               MapSet.new([original.id, profile_variant.id])
+
+      refute Enum.any?(usages.asset_metadata_links, &(&1.id == web_variant.id))
+    end
+
     test "returns sequence visual layers, including layers owned by trashed nodes", %{
       project: project,
       user: user

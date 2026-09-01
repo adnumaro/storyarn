@@ -26,7 +26,7 @@ defmodule Storyarn.Projects.Assets.AssetFamily do
 
   defp walk_component(adjacency, visited, [id | rest]) do
     unseen = adjacency |> Map.get(id, MapSet.new()) |> MapSet.difference(visited)
-    walk_component(adjacency, MapSet.union(visited, unseen), rest ++ MapSet.to_list(unseen))
+    walk_component(adjacency, MapSet.union(visited, unseen), MapSet.to_list(unseen) ++ rest)
   end
 
   defp metadata_reference_ids(metadata) when is_map(metadata) do
