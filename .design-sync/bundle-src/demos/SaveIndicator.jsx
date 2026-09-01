@@ -1,4 +1,3 @@
-const React = window.React;
 const DS = window.Storyarn_e287ac;
 
 function Demo() {

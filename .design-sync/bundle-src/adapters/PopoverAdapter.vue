@@ -6,10 +6,7 @@
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useContentThemeClass } from "./useDsTheme";
 
-const {
-  side = "bottom",
-  align = "center",
-} = defineProps<{
+const { side = "bottom", align = "center" } = defineProps<{
   side?: "top" | "right" | "bottom" | "left";
   align?: "start" | "center" | "end";
   contentClass?: string;

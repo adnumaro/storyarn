@@ -26,7 +26,11 @@ const cards = [];
 for (const group of fs.readdirSync(cardsRoot)) {
   for (const name of fs.readdirSync(path.join(cardsRoot, group))) {
     if (filter && name !== filter) continue;
-    cards.push({ group, name, url: `http://localhost:8123/components/${group}/${name}/${name}.html` });
+    cards.push({
+      group,
+      name,
+      url: `http://localhost:8123/components/${group}/${name}/${name}.html`,
+    });
   }
 }
 

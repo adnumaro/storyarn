@@ -1,4 +1,3 @@
-const React = window.React;
 const DS = window.Storyarn_e287ac;
 
 function Demo() {
@@ -13,10 +12,7 @@ function Demo() {
             <div style={{ fontSize: 13, fontWeight: 600 }}>Node color</div>
             <div style={{ display: "flex", gap: 6 }}>
               {["#2dd4bf", "#f59e0b", "#ef4444", "#8b5cf6", "#64748b"].map((c) => (
-                <span
-                  key={c}
-                  style={{ width: 20, height: 20, borderRadius: 6, background: c }}
-                />
+                <span key={c} style={{ width: 20, height: 20, borderRadius: 6, background: c }} />
               ))}
             </div>
             <div style={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }}>

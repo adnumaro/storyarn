@@ -1,23 +1,88 @@
 <!-- @dsCard group="Foundations" -->
-<!doctype html><html><head><meta charset="utf-8"><title>Typography</title><style>
-@font-face{font-family:"Courier Prime";font-style:normal;font-weight:400;src:url("../../../fonts/courier-prime-v11-latin-regular.woff2") format("woff2")}
-@font-face{font-family:"Courier Prime";font-style:normal;font-weight:700;src:url("../../../fonts/courier-prime-v11-latin-700.woff2") format("woff2")}
-body{margin:0;padding:24px;background:hsl(220 20% 10%);color:hsl(0 0% 90%);font-family:ui-sans-serif,system-ui,sans-serif;min-height:300px}
-label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 6px}
-h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.02em}
-p.ui{margin:4px 0 24px;font-size:13px;color:hsl(220 10% 55%)}
-.page{background:hsl(220 18% 13%);border:1px solid hsl(220 15% 22%);border-radius:12px;padding:20px 24px;font-family:"Courier Prime","Courier New",Courier,monospace;font-size:13px;line-height:1.4;max-width:340px}
-.sp-character{text-transform:uppercase;text-align:center;margin:0 0 2px;font-weight:700}
-.sp-paren{text-align:center;font-style:italic;opacity:.6;margin:0}
-.sp-dialogue{margin:2px auto 0;max-width:240px}
-</style></head><body>
-<label>UI &mdash; system sans stack</label>
-<h1>Storyarn</h1>
-<p class="ui">Narrative design for game development. Dark-first, teal primary.</p>
-<label>Screenplay &mdash; "Courier Prime" (self-hosted)</label>
-<div class="page">
-<p class="sp-character">MIRA</p>
-<p class="sp-paren">(lowering the lantern)</p>
-<p class="sp-dialogue">The vault was already open when we got here. Someone knew the sequence.</p>
-</div>
-</body></html>
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Typography</title>
+    <style>
+      @font-face {
+        font-family: "Courier Prime";
+        font-style: normal;
+        font-weight: 400;
+        src: url("../../../fonts/courier-prime-v11-latin-regular.woff2") format("woff2");
+      }
+      @font-face {
+        font-family: "Courier Prime";
+        font-style: normal;
+        font-weight: 700;
+        src: url("../../../fonts/courier-prime-v11-latin-700.woff2") format("woff2");
+      }
+      body {
+        margin: 0;
+        padding: 24px;
+        background: hsl(220 20% 10%);
+        color: hsl(0 0% 90%);
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        min-height: 300px;
+      }
+      label {
+        display: block;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.5;
+        margin: 0 0 6px;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.02em;
+      }
+      p.ui {
+        margin: 4px 0 24px;
+        font-size: 13px;
+        color: hsl(220 10% 55%);
+      }
+      .page {
+        background: hsl(220 18% 13%);
+        border: 1px solid hsl(220 15% 22%);
+        border-radius: 12px;
+        padding: 20px 24px;
+        font-family: "Courier Prime", "Courier New", Courier, monospace;
+        font-size: 13px;
+        line-height: 1.4;
+        max-width: 340px;
+      }
+      .sp-character {
+        text-transform: uppercase;
+        text-align: center;
+        margin: 0 0 2px;
+        font-weight: 700;
+      }
+      .sp-paren {
+        text-align: center;
+        font-style: italic;
+        opacity: 0.6;
+        margin: 0;
+      }
+      .sp-dialogue {
+        margin: 2px auto 0;
+        max-width: 240px;
+      }
+    </style>
+  </head>
+  <body>
+    <label>UI &mdash; system sans stack</label>
+    <h1>Storyarn</h1>
+    <p class="ui">Narrative design for game development. Dark-first, teal primary.</p>
+    <label>Screenplay &mdash; "Courier Prime" (self-hosted)</label>
+    <div class="page">
+      <p class="sp-character">MIRA</p>
+      <p class="sp-paren">(lowering the lantern)</p>
+      <p class="sp-dialogue">
+        The vault was already open when we got here. Someone knew the sequence.
+      </p>
+    </div>
+  </body>
+</html>

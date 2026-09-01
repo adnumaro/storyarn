@@ -3,12 +3,7 @@
  * Props-driven facade over the app's Tooltip compound (provider included).
  * Children = trigger; `content` is plain text.
  */
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@components/ui/tooltip";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@components/ui/tooltip";
 import { useContentThemeClass } from "./useDsTheme";
 
 const {

@@ -21,11 +21,7 @@ const modelValue = defineModel<string>();
 <template>
   <RadioGroup v-model="modelValue" :disabled="disabled" :class="$props.class">
     <div v-for="opt in options" :key="opt.value" class="flex items-center gap-2">
-      <RadioGroupItem
-        :id="`ds-radio-${opt.value}`"
-        :value="opt.value"
-        :disabled="opt.disabled"
-      />
+      <RadioGroupItem :id="`ds-radio-${opt.value}`" :value="opt.value" :disabled="opt.disabled" />
       <Label :for="`ds-radio-${opt.value}`">{{ opt.label }}</Label>
     </div>
   </RadioGroup>

@@ -1,10 +1,17 @@
-const React = window.React;
 const DS = window.Storyarn_e287ac;
 
 function Demo() {
   const sheets = [
-    "Hero", "Mira Chen", "The Warden", "Vault Guard", "Merchant",
-    "Old Cartographer", "Ferryman", "Archivist", "Smuggler", "Night Clerk",
+    "Hero",
+    "Mira Chen",
+    "The Warden",
+    "Vault Guard",
+    "Merchant",
+    "Old Cartographer",
+    "Ferryman",
+    "Archivist",
+    "Smuggler",
+    "Night Clerk",
   ];
   return (
     <DS.ScrollArea className="h-40 w-56 rounded-md border">

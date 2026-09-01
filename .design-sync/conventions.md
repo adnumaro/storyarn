@@ -19,17 +19,17 @@ Storyarn runs dark. Put `class="dark"` on `<html>` or `<body>` (preferred — di
 
 shadcn HSL tokens. Raw tokens hold bare HSL triplets — consume as `hsl(var(--token))` or with alpha `hsl(var(--token) / 0.5)`; plain resolved aliases exist as `var(--color-*)`:
 
-| Token pair | Use |
-|---|---|
-| `--background` / `--foreground` | Page ground and default text |
-| `--card` / `--card-foreground` | Elevated cards, panels |
-| `--surface` | Frosted floating chrome ground |
-| `--popover` / `--popover-foreground` | Menus, tooltips |
-| `--primary` / `--primary-foreground` | Teal brand actions (`174 60% 45%`, both themes) |
-| `--secondary`, `--muted`, `--accent` (+`-foreground`) | Subdued fills, secondary text, hover/selected |
-| `--destructive` / `--destructive-foreground` | Danger |
-| `--border`, `--input`, `--ring` | Borders, input borders, focus rings |
-| `--radius` (+ `--radius-sm/md/lg/xl`) | Radius scale, base 0.5rem |
+| Token pair                                            | Use                                             |
+| ----------------------------------------------------- | ----------------------------------------------- |
+| `--background` / `--foreground`                       | Page ground and default text                    |
+| `--card` / `--card-foreground`                        | Elevated cards, panels                          |
+| `--surface`                                           | Frosted floating chrome ground                  |
+| `--popover` / `--popover-foreground`                  | Menus, tooltips                                 |
+| `--primary` / `--primary-foreground`                  | Teal brand actions (`174 60% 45%`, both themes) |
+| `--secondary`, `--muted`, `--accent` (+`-foreground`) | Subdued fills, secondary text, hover/selected   |
+| `--destructive` / `--destructive-foreground`          | Danger                                          |
+| `--border`, `--input`, `--ring`                       | Borders, input borders, focus rings             |
+| `--radius` (+ `--radius-sm/md/lg/xl`)                 | Radius scale, base 0.5rem                       |
 
 `_ds_bundle.css` carries the Tailwind utilities **the components themselves use** — don't rely on arbitrary utility classes being present; style your own layout with inline styles + token vars.
 
@@ -53,15 +53,26 @@ UI text: system sans stack (already on `body`). **"Courier Prime"** (400/700 + i
 const { Button, Badge, TextField, SaveIndicator } = window.Storyarn_e287ac;
 
 <div style={{ background: "hsl(var(--background))", minHeight: "100%", padding: 24 }}>
-  <div className="surface-panel" style={{ display: "flex", gap: 4, padding: 6, alignItems: "center", width: "fit-content" }}>
+  <div
+    className="surface-panel"
+    style={{ display: "flex", gap: 4, padding: 6, alignItems: "center", width: "fit-content" }}
+  >
     <button className="toolbar-btn">Select</button>
     <SaveIndicator status="saved" />
   </div>
-  <div style={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))",
-    borderRadius: "var(--radius-lg)", padding: 16, marginTop: 16, maxWidth: 280 }}>
+  <div
+    style={{
+      background: "hsl(var(--card))",
+      border: "1px solid hsl(var(--border))",
+      borderRadius: "var(--radius-lg)",
+      padding: 16,
+      marginTop: 16,
+      maxWidth: 280,
+    }}
+  >
     <Badge variant="secondary">dialogue</Badge>
     <TextField label="Node label" value="mira_intro" onChange={() => {}} />
     <Button style={{ marginTop: 12 }}>Open</Button>
   </div>
-</div>
+</div>;
 ```

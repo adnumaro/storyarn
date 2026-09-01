@@ -4,11 +4,7 @@
  * `trigger` is the toggle's text; children = the collapsible content.
  */
 import { ChevronDown } from "@lucide/vue";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@components/ui/collapsible";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@components/ui/collapsible";
 
 const { trigger } = defineProps<{
   trigger: string;

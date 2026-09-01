@@ -1,4 +1,3 @@
-const React = window.React;
 const DS = window.Storyarn_e287ac;
 
 function Demo() {
@@ -17,7 +16,9 @@ function Demo() {
         <DS.Button size="sm">Small</DS.Button>
         <DS.Button size="default">Default</DS.Button>
         <DS.Button size="lg">Large</DS.Button>
-        <DS.Button size="icon" aria-label="Add node">+</DS.Button>
+        <DS.Button size="icon" aria-label="Add node">
+          +
+        </DS.Button>
       </div>
     </div>
   );

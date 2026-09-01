@@ -1,11 +1,8 @@
 {
   "name": "storyarn-design-sync-bundle",
   "private": true,
-  "type": "module",
   "description": "Builds the Claude Design bundle (ds-bundle/) from the app's real Vue components. Run: pnpm install --ignore-workspace && node build.mjs. Isolated on purpose — never add these deps to the root package.json, and never run vite here.",
-  "pnpm": {
-    "onlyBuiltDependencies": ["@parcel/watcher", "esbuild"]
-  },
+  "type": "module",
   "devDependencies": {
     "@tailwindcss/cli": "4.3.3",
     "esbuild": "0.25.12",
@@ -13,5 +10,11 @@
     "react-dom": "18.3.1",
     "tailwindcss": "4.3.3",
     "unplugin-vue": "7.1.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@parcel/watcher",
+      "esbuild"
+    ]
   }
 }

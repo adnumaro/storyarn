@@ -23,12 +23,7 @@ const modelValue = defineModel<string>();
 <template>
   <Tabs v-model="modelValue" :class="$props.class">
     <TabsList>
-      <TabsTrigger
-        v-for="tab in tabs"
-        :key="tab.value"
-        :value="tab.value"
-        :disabled="tab.disabled"
-      >
+      <TabsTrigger v-for="tab in tabs" :key="tab.value" :value="tab.value" :disabled="tab.disabled">
         {{ tab.label }}
       </TabsTrigger>
     </TabsList>
