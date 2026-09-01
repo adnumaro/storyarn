@@ -88,3 +88,6 @@ node_modules
 *.storyarn-template.tar.gz
 
 .pnpm-store
+
+# design-sync build output (rebuild: node .design-sync/bundle-src/build.mjs)
+/ds-bundle/
