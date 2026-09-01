@@ -1,0 +1,42 @@
+.design-sync/bundle-src/adapters/PopoverAdapter.vue
+  s_c970a941708e5f::t_8b99e124f2690c 22
+.design-sync/bundle-src/adapters/ToggleGroupAdapter.vue
+  s_c970a941708e5f::t_f3afe0c22433d5 4-7
+.design-sync/bundle-src/tailwind.css
+  s_c970a941708e5f::t_d5215da1c2a468 3-9
+.design-sync/conventions.md
+  s_c970a941708e5f::t_691b0218b22647 55-81
+.design-sync/bundle-src/adapters/DropdownMenuAdapter.vue
+  s_c970a941708e5f::t_3cf6a96e6951e0 45
+.design-sync/bundle-src/docs-data.mjs
+  s_c970a941708e5f::t_d23510bb133379 305
+  s_c970a941708e5f::t_f731a2ae08ed1a 311,314
+.design-sync/bundle-src/build.mjs
+  s_c970a941708e5f::t_d3e1ec340d858f 154-156
+  s_c970a941708e5f::t_7243aabd2b95a6 32-34
+.design-sync/bundle-src/adapters/TooltipAdapter.vue
+  s_c970a941708e5f::t_ec4da68d1e8f54 26
+.design-sync/bundle-src/adapters/RadioGroupAdapter.vue
+  s_c970a941708e5f::t_efcd40926d645e 28-29
+  s_c970a941708e5f::t_21aff05b172c83 20-22
+  s_c970a941708e5f::t_af1a7f2bb99be6 3
+.design-sync/bundle-src/verify.mjs
+  s_c970a941708e5f::t_1e543af3da0c2f 39-48
+  s_c970a941708e5f::t_eb74327c05e00b 26,29
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "536df94a677ae9212478d8bef25b73df0c2ea9b1",
+  "prompts": {},
+  "sessions": {
+    "s_c970a941708e5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44fa200b-fa62-431f-80da-55bcb9febcbc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
