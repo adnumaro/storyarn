@@ -10,19 +10,19 @@ Storyarn runs dark. Put `class="dark"` on the design's root element to get the p
 
 Raw tokens hold bare HSL channel triplets; consume them as `hsl(var(--token))` or with alpha `hsl(var(--token) / 0.5)`:
 
-| Token pair | Use |
-|---|---|
-| `--background` / `--foreground` | Page ground and default text |
-| `--card` / `--card-foreground` | Elevated cards, panels |
-| `--surface` | Frosted floating chrome ground (no foreground pair) |
-| `--popover` / `--popover-foreground` | Menus, tooltips, dropdowns |
-| `--primary` / `--primary-foreground` | Teal brand actions (`174 60% 45%`, same in both themes) |
-| `--secondary` / `--secondary-foreground` | Secondary buttons, subdued fills |
-| `--muted` / `--muted-foreground` | Disabled fills, secondary text |
-| `--accent` / `--accent-foreground` | Hover fills, selected rows |
-| `--destructive` / `--destructive-foreground` | Delete/danger actions |
-| `--border`, `--input`, `--ring` | Borders, input borders, focus rings |
-| `--radius` (+ `--radius-sm/md/lg/xl`) | Radius scale, base 0.5rem |
+| Token pair                                   | Use                                                     |
+| -------------------------------------------- | ------------------------------------------------------- |
+| `--background` / `--foreground`              | Page ground and default text                            |
+| `--card` / `--card-foreground`               | Elevated cards, panels                                  |
+| `--surface`                                  | Frosted floating chrome ground (no foreground pair)     |
+| `--popover` / `--popover-foreground`         | Menus, tooltips, dropdowns                              |
+| `--primary` / `--primary-foreground`         | Teal brand actions (`174 60% 45%`, same in both themes) |
+| `--secondary` / `--secondary-foreground`     | Secondary buttons, subdued fills                        |
+| `--muted` / `--muted-foreground`             | Disabled fills, secondary text                          |
+| `--accent` / `--accent-foreground`           | Hover fills, selected rows                              |
+| `--destructive` / `--destructive-foreground` | Delete/danger actions                                   |
+| `--border`, `--input`, `--ring`              | Borders, input borders, focus rings                     |
+| `--radius` (+ `--radius-sm/md/lg/xl`)        | Radius scale, base 0.5rem                               |
 
 Resolved plain-CSS aliases also exist for every color: `var(--color-primary)`, `var(--color-border)`, etc. — use these when you don't need alpha.
 
@@ -48,10 +48,18 @@ Read `styles.css` (base + chrome classes) and its imports `tokens/colors.css` (a
     <button class="toolbar-btn">Select</button>
     <button class="dock-btn dock-btn-active">+</button>
   </div>
-  <div style="background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px;">
+  <div
+    style="background: hsl(var(--card)); border: 1px solid hsl(var(--border)); border-radius: var(--radius-lg); padding: 16px; margin-top: 16px;"
+  >
     <h3 style="color: hsl(var(--card-foreground)); font-weight: 600;">Flow node</h3>
-    <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">Condition · checks hero.trust</p>
-    <button style="background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border: none; border-radius: var(--radius-md); padding: 6px 12px; margin-top: 12px;">Open</button>
+    <p style="color: hsl(var(--muted-foreground)); font-size: 0.875rem;">
+      Condition · checks hero.trust
+    </p>
+    <button
+      style="background: hsl(var(--primary)); color: hsl(var(--primary-foreground)); border: none; border-radius: var(--radius-md); padding: 6px 12px; margin-top: 12px;"
+    >
+      Open
+    </button>
   </div>
 </div>
 ```
