@@ -1,0 +1,19 @@
+.design-sync/conventions.md
+  s_1945178adea538::t_0c00c01a20c493 13-25,51-53,55-62
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c2f14177576f50c061dd702c52a17141be3636d5",
+  "prompts": {},
+  "sessions": {
+    "s_1945178adea538": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d72a22d7-d47b-4413-9ee1-37c54c0cdb79",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
