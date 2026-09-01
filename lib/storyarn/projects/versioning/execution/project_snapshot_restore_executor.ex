@@ -89,11 +89,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
     materializer = Keyword.get(opts, :asset_materializer, ProjectSnapshotAssetMaterializer)
     recovery = Keyword.get(opts, :project_recovery, ProjectRecovery)
+
+    recovery_port = %{
+      lock_materializable_localization_actors: fn project_data, recovery_opts ->
+        recovery.lock_materializable_localization_actors(project_data, recovery_opts)
+      end,
+      materialize_into_project: fn project, project_data, actor_id, source_id_map, recovery_opts ->
+        recovery.materialize_into_project(project, project_data, actor_id, source_id_map, recovery_opts)
+      end
+    }
+
     tracker = StorageCompensation.new()
     Process.delete(@compensation_context_key)
 
     try do
-      with {:ok, context} <- preflight(restore, reader, materializer, recovery, opts),
+      with {:ok, context} <- preflight(restore, reader, materializer, recovery_port, opts),
            {:ok, context} <- recover_or_reuse_bound_reservation(context),
            {:ok, context} <- reserve_and_bind(context),
            :ok <- remember_compensation_context(context),
@@ -182,7 +192,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
 
   def settle_bound_reservation(_restore, _opts), do: {:error, :invalid_project_snapshot_restore_request}
 
-  defp preflight(restore, reader, materializer, recovery, opts) do
+  defp preflight(restore, reader, materializer, recovery_port, opts) do
     with %ProjectSnapshotRestore{} = restore <- current_restore(restore.id),
          :ok <- validate_execution_fence(restore),
          %ProjectSnapshot{} = snapshot <- Repo.get(ProjectSnapshot, restore.project_snapshot_id),
@@ -231,7 +241,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          archive_plan: archive_plan,
          asset_plan: asset_plan,
          materializer: materializer,
-         recovery: recovery,
+         recovery_port: recovery_port,
          trash_active_assets: Keyword.get(opts, :trash_active_assets, &trash_active_assets/2),
          bound_reservation: bound_reservation,
          reservation_mode: reservation_mode,
@@ -599,7 +609,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
        ) do
     required_actor_ids = [context.restore.requested_by_id, project_owner_id]
 
-    case context.recovery.lock_materializable_localization_actors(
+    case context.recovery_port.lock_materializable_localization_actors.(
            context.archive_plan.project,
            required_actor_ids: required_actor_ids,
            additional_actor_ids: Enum.reject([project_deleted_by_id], &is_nil/1)
@@ -639,7 +649,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
             id_maps: id_maps,
             preserved_localization_actor_ids: ^preserved_localization_actor_ids
           }} <-
-           context.recovery.materialize_into_project(
+           context.recovery_port.materialize_into_project.(
              project,
              context.archive_plan.project,
              locked.actor.id,

@@ -2919,9 +2919,9 @@ analytics_transport_caller_denials =
 # cannot bypass the reviewed coordinator accidentally.
 # Module-scoped entries also fail closed when a module is passed as a runtime
 # dependency; function-scoped entries leave unrelated capability functions
-# available to their context. An exact entry may opt into
-# `anchored_dynamic_receiver` only when a reviewed caller stores its explicitly
-# anchored default module in a context map before invoking the named functions.
+# available to their context. Runtime-injected modules must expose their exact
+# privileged functions through explicit callbacks anchored to the reviewed
+# default module; opaque field receivers are not accepted by the ratchet.
 privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Imports.Materializer",
@@ -3082,7 +3082,6 @@ privileged_entrypoints = [
       materialize_into_project: 4,
       materialize_into_project: 5
     ],
-    anchored_dynamic_receiver: true,
     allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
     ],

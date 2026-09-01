@@ -303,7 +303,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert second_reservation.status == "released"
   end
 
-  test "preflight fails closed before reserving storage when direct project ownership drifts", context do
+  test "preflight fails before resolving recovery or reserving storage when direct project ownership drifts", context do
     project = Repo.get!(Project, context.restore.project_id)
     second_owner = user_fixture()
     _second_owner_membership = membership_fixture(project, second_owner, "owner")
@@ -312,7 +312,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
              ProjectSnapshotRestoreExecutor.execute(context.restore,
                archive_reader: EmptyArchiveReader,
                asset_materializer: EmptyMaterializer,
-               project_recovery: AcceptingRecovery
+               project_recovery: %{}
              )
 
     restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
