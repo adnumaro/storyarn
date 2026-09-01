@@ -2921,7 +2921,8 @@ analytics_transport_caller_denials =
 # dependency; function-scoped entries leave unrelated capability functions
 # available to their context. Runtime-injected modules must expose their exact
 # privileged functions through explicit callbacks anchored to the reviewed
-# default module; opaque field receivers are not accepted by the ratchet.
+# default module; opaque field or ambiguously rebound module receivers are not
+# accepted by the ratchet.
 privileged_entrypoints = [
   %{
     module: "Storyarn.Projects.Imports.Materializer",

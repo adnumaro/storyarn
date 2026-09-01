@@ -38,11 +38,12 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     """
 
     assert ambiguous_privileged_dispatches(analyses) == [], """
-    A function-scoped privileged entrypoint is invoked through an opaque field
-    receiver. The ratchet cannot prove that receiver is the reviewed module.
+    A function-scoped privileged entrypoint is invoked through an opaque or
+    ambiguously rebound module receiver. The ratchet cannot prove that receiver
+    is the reviewed module.
 
-    Replace the field dispatch with a direct call or an explicit callback
-    anchored to the reviewed default module.
+    Replace the field dispatch, unsafe rebinding or shadowed variable with a
+    direct call or an explicit callback anchored to the reviewed default module.
     """
 
     for {entry, source_analyses} <- analyses do
@@ -189,6 +190,17 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
 
     refute entrypoint_used?(rebound_receiver, restore_entry)
     assert ambiguous_entrypoint_used?(rebound_receiver, restore_entry)
+
+    stable_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = Keyword.get([], :snapshot_module, module)\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    assert entrypoint_used?(stable_rebound_receiver, restore_entry)
+    refute ambiguous_entrypoint_used?(stable_rebound_receiver, restore_entry)
 
     shadowed_receiver =
       "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
@@ -546,9 +558,10 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       fn
         scope, analysis ->
           tainted = tainted_receiver_variables(scope.ast, entry.module, base_context)
-          ambiguous = suspect_receiver_variables(scope, base_context)
+          tainted_context = %{base_context | tainted: tainted}
+          ambiguous = suspect_receiver_variables(scope, entry.module, tainted_context)
 
-          context = %{base_context | tainted: tainted, ambiguous: ambiguous}
+          context = %{tainted_context | ambiguous: ambiguous}
 
           merge_call_analysis(
             analysis,
@@ -940,22 +953,55 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     collected
   end
 
-  defp suspect_receiver_variables(scope, context) do
-    multiply_bound =
+  defp suspect_receiver_variables(scope, target, context) do
+    unanchored_bindings = unanchored_receiver_bindings(scope, target, context)
+
+    unsafe_rebindings =
       scope
       |> receiver_binding_counts()
       |> Enum.reduce(MapSet.new(), fn
-        {name, count}, names when count > 1 -> MapSet.put(names, name)
-        {_name, _count}, names -> names
+        {name, count}, names when count > 1 ->
+          if MapSet.member?(unanchored_bindings, name),
+            do: MapSet.put(names, name),
+            else: names
+
+        {_name, _count}, names ->
+          names
       end)
 
-    Enum.reduce_while(1..6, multiply_bound, fn _pass, suspects ->
+    Enum.reduce_while(1..6, unsafe_rebindings, fn _pass, suspects ->
       next_suspects = collect_field_derived_receiver_variables(scope.body, suspects, context)
 
       if MapSet.equal?(next_suspects, suspects),
         do: {:halt, next_suspects},
         else: {:cont, next_suspects}
     end)
+  end
+
+  defp unanchored_receiver_bindings(scope, target, context) do
+    initial = function_head_bound_names(scope.head)
+
+    {_ast, names} =
+      Macro.prewalk(scope.body, initial, fn
+        {operator, _, [left, right]} = node, acc when operator in [:=, :<-] ->
+          if module_expression_references_target?(right, target, context),
+            do: {node, acc},
+            else: {node, MapSet.union(acc, bound_pattern_names(left))}
+
+        {:fn, _, clauses} = node, acc when is_list(clauses) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(clauses))}
+
+        {:case, _, [_value, options]} = node, acc when is_list(options) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(Keyword.get(options, :do, [])))}
+
+        {:receive, _, [options]} = node, acc when is_list(options) ->
+          {node, MapSet.union(acc, arrow_clause_bound_names(Keyword.get(options, :do, [])))}
+
+        node, acc ->
+          {node, acc}
+      end)
+
+    names
   end
 
   defp receiver_binding_counts(scope) do
