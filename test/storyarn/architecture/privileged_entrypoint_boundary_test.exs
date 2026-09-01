@@ -195,12 +195,58 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
       "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
         "def run(flow, snapshot) do\n" <>
         "  module = FlowSnapshot\n" <>
-        "  module = Keyword.get([], :snapshot_module, module)\n" <>
+        "  module = FlowSnapshot\n" <>
         "  module.restore(flow, snapshot, [])\n" <>
         "end"
 
     assert entrypoint_used?(stable_rebound_receiver, restore_entry)
     refute ambiguous_entrypoint_used?(stable_rebound_receiver, restore_entry)
+
+    conditional_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flag, flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = if(flag, do: Other, else: module)\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(conditional_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(conditional_rebound_receiver, restore_entry)
+
+    derived_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = normalize(module)\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(derived_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(derived_rebound_receiver, restore_entry)
+
+    laundered_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
+        "def run(flag, flow, snapshot) do\n" <>
+        "  candidate = if(flag, do: Other, else: FlowSnapshot)\n" <>
+        "  module = FlowSnapshot\n" <>
+        "  module = candidate\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(laundered_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(laundered_rebound_receiver, restore_entry)
+
+    conflicting_alias_rebound_receiver =
+      "alias Storyarn.Flows.Versioning.FlowSnapshot, as: Snapshot\n" <>
+        "alias Storyarn.Other, as: Snapshot\n" <>
+        "def run(flow, snapshot) do\n" <>
+        "  module = Snapshot\n" <>
+        "  module = Snapshot\n" <>
+        "  module.restore(flow, snapshot, [])\n" <>
+        "end"
+
+    refute entrypoint_used?(conflicting_alias_rebound_receiver, restore_entry)
+    assert ambiguous_entrypoint_used?(conflicting_alias_rebound_receiver, restore_entry)
 
     shadowed_receiver =
       "alias Storyarn.Flows.Versioning.FlowSnapshot\n" <>
@@ -870,6 +916,30 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
   defp literal_target_module?(module, target, _aliases) when is_atom(module), do: module_atom_name(module) == target
   defp literal_target_module?(_module, _target, _aliases), do: false
 
+  defp provable_rebinding_target?({:__aliases__, _, segments}, target, context) do
+    parts = module_parts(segments)
+    target_parts = String.split(target, ".")
+
+    parts == target_parts or
+      case parts do
+        [first | rest] ->
+          context.aliases
+          |> Map.get(first, [])
+          |> Enum.map(&(&1 ++ rest))
+          |> Enum.uniq()
+          |> Kernel.==([target_parts])
+
+        [] ->
+          false
+      end
+  end
+
+  defp provable_rebinding_target?({:__MODULE__, _, _arguments}, target, context), do: context.self_module == target
+
+  defp provable_rebinding_target?(module, target, _context) when is_atom(module), do: module_atom_name(module) == target
+
+  defp provable_rebinding_target?(_module, _target, _context), do: false
+
   defp kernel_module?(module_ast, context), do: literal_target_module?(module_ast, "Kernel", context.aliases)
 
   defp function_module?(module_ast, context), do: literal_target_module?(module_ast, "Function", context.aliases)
@@ -984,7 +1054,7 @@ defmodule Storyarn.Architecture.PrivilegedEntrypointBoundaryTest do
     {_ast, names} =
       Macro.prewalk(scope.body, initial, fn
         {operator, _, [left, right]} = node, acc when operator in [:=, :<-] ->
-          if module_expression_references_target?(right, target, context),
+          if provable_rebinding_target?(right, target, context),
             do: {node, acc},
             else: {node, MapSet.union(acc, bound_pattern_names(left))}
 
