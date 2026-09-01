@@ -1,0 +1,156 @@
+.design-sync/bundle-src/adapters/TableAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-59
+.design-sync/bundle-src/demos/PasswordInput.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-14
+.design-sync/bundle-src/demos/Collapsible.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-22
+.design-sync/bundle-src/demos/Checkbox.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-25
+.design-sync/bundle-src/adapters/RadioGroupAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-32
+.design-sync/bundle-src/demos/Switch.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-25
+.design-sync/bundle-src/demos/ToggleField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-15
+.design-sync/bundle-src/cards/Typography.html
+  s_c970a941708e5f::t_839dd724d90a77 1-23
+.design-sync/bundle-src/demos/Label.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-13
+.design-sync/config.json
+  s_c970a941708e5f::t_bb2ade2e08e1d9 4,6
+.design-sync/bundle-src/adapters/SheetAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-45
+.design-sync/bundle-src/registry.json
+  s_c970a941708e5f::t_839dd724d90a77 1-40
+.design-sync/bundle-src/static/tokens/colors.css
+  s_c970a941708e5f::t_839dd724d90a77 1-90
+.design-sync/bundle-src/harness/wrap.ts
+  s_c970a941708e5f::t_839dd724d90a77 1-162
+.design-sync/bundle-src/build.mjs
+  s_c970a941708e5f::t_be8c0b314ae2aa 166-169
+  s_c970a941708e5f::t_3bc94a867c3986 103-104
+  s_c970a941708e5f::t_325ce04f3d6eec 20
+  s_c970a941708e5f::t_839dd724d90a77 1-19,21-102,105-165,170-206
+.design-sync/bundle-src/demos/ConfirmDialog.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-24
+.design-sync/bundle-src/tailwind.css
+  s_c970a941708e5f::t_839dd724d90a77 1-41
+.design-sync/bundle-src/demos/Button.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-26
+.design-sync/bundle-src/demos/RadioGroup.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-19
+.design-sync/bundle-src/package.json
+  s_c970a941708e5f::t_839dd724d90a77 1-17
+.design-sync/bundle-src/demos/EditableText.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-20
+.design-sync/bundle-src/entry.ts
+  s_c970a941708e5f::t_839dd724d90a77 1-118
+.design-sync/bundle-src/demos/Progress.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-24
+.design-sync/bundle-src/harness/host.ts
+  s_c970a941708e5f::t_839dd724d90a77 1-67
+.design-sync/bundle-src/static/styles.css
+  s_c970a941708e5f::t_839dd724d90a77 1-171
+.design-sync/bundle-src/adapters/DropdownMenuAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-64
+.design-sync/bundle-src/demos/SelectField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-26
+.design-sync/bundle-src/demos/ScrollArea.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-34
+.design-sync/bundle-src/demos/Toggle.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-19
+.design-sync/bundle-src/demos/DropdownMenu.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-26
+.design-sync/bundle-src/demos/Textarea.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-16
+.design-sync/bundle-src/verify.mjs
+  s_c970a941708e5f::t_839dd724d90a77 1-80
+.design-sync/bundle-src/demos/Sheet.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-36
+.design-sync/bundle-src/cards/Colors.html
+  s_c970a941708e5f::t_839dd724d90a77 1-29
+.design-sync/bundle-src/demos/Table.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-24
+.design-sync/bundle-src/demos/Dialog.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-33
+.design-sync/bundle-src/adapters/SelectAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-74
+.design-sync/bundle-src/cards/Chrome.html
+  s_c970a941708e5f::t_839dd724d90a77 1-27
+.design-sync/bundle-src/demos/SliderField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-22
+.design-sync/bundle-src/demos/BooleanToggle.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-22
+.design-sync/bundle-src/demos/Input.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-15
+.design-sync/bundle-src/adapters/PopoverAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-32
+.design-sync/bundle-src/static/fonts/fonts.css
+  s_c970a941708e5f::t_839dd724d90a77 1-38
+.design-sync/conventions.md
+  s_c970a941708e5f::t_65d7ead0acd850 1,3,7,9,11-16,18,20-34,38-40,44,48,52-58,60-64
+.design-sync/bundle-src/adapters/DialogAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-41
+.design-sync/bundle-src/adapters/useDsTheme.ts
+  s_c970a941708e5f::t_839dd724d90a77 1-13
+.design-sync/bundle-src/demos/NumberField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-14
+.design-sync/bundle-src/adapters/TooltipAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-37
+.design-sync/bundle-src/demos/Tabs.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-36
+.design-sync/bundle-src/demos/Separator.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-23
+.design-sync/bundle-src/demos/TextField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-15
+.design-sync/bundle-src/docs-data.mjs
+  s_c970a941708e5f::t_d9798e1386251e 1-674
+.design-sync/bundle-src/demos/Popover.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-34
+.design-sync/bundle-src/.gitignore
+  s_c970a941708e5f::t_839dd724d90a77 1
+.design-sync/bundle-src/demos/ColorPicker.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-14
+.design-sync/bundle-src/demos/UserAvatar.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-15
+.design-sync/bundle-src/demos/Select.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-37
+.design-sync/bundle-src/demos/Badge.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-15
+.design-sync/bundle-src/demos/SaveIndicator.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-30
+.design-sync/bundle-src/adapters/CollapsibleAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-36
+.design-sync/bundle-src/demos/Tooltip.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-16
+.design-sync/bundle-src/harness/liveStub.ts
+  s_c970a941708e5f::t_839dd724d90a77 1-39
+.design-sync/bundle-src/adapters/ToggleGroupAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-44
+.design-sync/bundle-src/demos/ToggleGroup.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-34
+.design-sync/NOTES.md
+  s_c970a941708e5f::t_5aae95e5f992ec 3-13
+.design-sync/bundle-src/demos/ButtonGroupField.jsx
+  s_c970a941708e5f::t_839dd724d90a77 1-22
+.design-sync/bundle-src/adapters/TabsAdapter.vue
+  s_c970a941708e5f::t_839dd724d90a77 1-37
+.design-sync/bundle-src/pnpm-lock.yaml
+  s_c970a941708e5f::t_0b7cc553d9f951 1-1550
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "fc7532ef7a86299859256b25d022e2b3b7af3f2f",
+  "prompts": {},
+  "sessions": {
+    "s_c970a941708e5f": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "44fa200b-fa62-431f-80da-55bcb9febcbc",
+        "model": "claude-fable-5"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
