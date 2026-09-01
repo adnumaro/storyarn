@@ -6,6 +6,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
   alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.AssetFamily
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
@@ -40,33 +41,6 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
       result -> result
     end
   end
-
-  @doc false
-  @spec active_family_ids(pos_integer(), pos_integer()) :: [pos_integer()]
-  def active_family_ids(project_id, asset_id)
-      when is_integer(project_id) and project_id > 0 and is_integer(asset_id) and asset_id > 0 do
-    assets =
-      Repo.all(
-        from(asset in Asset,
-          where: asset.project_id == ^project_id,
-          order_by: [asc: asset.id]
-        )
-      )
-
-    case Enum.find(assets, &(&1.id == asset_id)) do
-      %Asset{deleted_at: nil} ->
-        family_ids = family_component_ids(assets, [asset_id])
-
-        for %Asset{id: id, deleted_at: nil} <- assets,
-            MapSet.member?(family_ids, id),
-            do: id
-
-      _missing_or_trashed ->
-        []
-    end
-  end
-
-  def active_family_ids(_project_id, _asset_id), do: []
 
   @spec move_locked(
           pos_integer(),
@@ -255,7 +229,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
   defp state_error(:trashed), do: :asset_not_trashed
 
   defp move_targets(assets, requested, true) do
-    component_ids = family_component_ids(assets, Enum.map(requested, & &1.id))
+    component_ids = AssetFamily.component_ids(assets, Enum.map(requested, & &1.id))
     component = Enum.filter(assets, &MapSet.member?(component_ids, &1.id))
 
     if Enum.all?(component, &is_nil(&1.deleted_at)),
@@ -265,7 +239,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
 
   defp move_targets(assets, requested, false) do
     requested_ids = MapSet.new(requested, & &1.id)
-    component_ids = family_component_ids(assets, MapSet.to_list(requested_ids))
+    component_ids = AssetFamily.component_ids(assets, MapSet.to_list(requested_ids))
 
     if MapSet.equal?(requested_ids, component_ids),
       do: {:ok, requested},
@@ -273,7 +247,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
   end
 
   defp trashed_family(assets, root_ids) do
-    component_ids = family_component_ids(assets, root_ids)
+    component_ids = AssetFamily.component_ids(assets, root_ids)
 
     Enum.filter(assets, fn asset ->
       MapSet.member?(component_ids, asset.id) and not is_nil(asset.deleted_at)
@@ -282,7 +256,7 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
 
   defp ensure_restore_relationships(assets, targets) do
     target_ids = MapSet.new(targets, & &1.id)
-    component_ids = family_component_ids(assets, MapSet.to_list(target_ids))
+    component_ids = AssetFamily.component_ids(assets, MapSet.to_list(target_ids))
 
     if MapSet.equal?(target_ids, component_ids),
       do: :ok,
@@ -337,47 +311,13 @@ defmodule Storyarn.Projects.Assets.AssetTrash do
 
   defp ensure_purge_relationships(assets, targets) do
     target_ids = MapSet.new(targets, & &1.id)
-    component_ids = family_component_ids(assets, MapSet.to_list(target_ids))
+    component_ids = AssetFamily.component_ids(assets, MapSet.to_list(target_ids))
     outside_ids = MapSet.difference(component_ids, target_ids)
 
     if MapSet.size(outside_ids) == 0,
       do: :ok,
       else: {:error, :asset_family_still_referenced}
   end
-
-  defp family_component_ids(assets, root_ids) do
-    known_ids = MapSet.new(assets, & &1.id)
-
-    adjacency =
-      Enum.reduce(assets, Map.new(assets, &{&1.id, MapSet.new()}), fn asset, graph ->
-        asset.metadata
-        |> metadata_reference_ids()
-        |> Enum.filter(&MapSet.member?(known_ids, &1))
-        |> Enum.reduce(graph, fn referenced_id, graph ->
-          graph
-          |> Map.update!(asset.id, &MapSet.put(&1, referenced_id))
-          |> Map.update!(referenced_id, &MapSet.put(&1, asset.id))
-        end)
-      end)
-
-    walk_component(adjacency, MapSet.new(root_ids), root_ids)
-  end
-
-  defp walk_component(_adjacency, visited, []), do: visited
-
-  defp walk_component(adjacency, visited, [id | rest]) do
-    unseen = adjacency |> Map.get(id, MapSet.new()) |> MapSet.difference(visited)
-    walk_component(adjacency, MapSet.union(visited, unseen), rest ++ MapSet.to_list(unseen))
-  end
-
-  defp metadata_reference_ids(metadata) when is_map(metadata) do
-    case Asset.family_reference_ids(metadata) do
-      {:ok, ids} -> Enum.uniq(ids)
-      :error -> []
-    end
-  end
-
-  defp metadata_reference_ids(_metadata), do: []
 
   defp collect_metadata_reference_ids(assets) do
     Enum.reduce_while(assets, {:ok, MapSet.new()}, fn asset, {:ok, ids} ->
