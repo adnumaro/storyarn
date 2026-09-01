@@ -1,0 +1,45 @@
+/*
+ * Tailwind entry for the Claude Design bundle.
+ * Mirrors assets/css/app.css setup (dark variant + @theme inline mapping).
+ * The scan deliberately covers the whole assets/app/components tree, not
+ * just the 35 registered components: bundled components pull transitive
+ * imports from across ui/, and enumerating exact files would silently drop
+ * classes when those imports shift. The cost is a superset of utilities in
+ * _ds_bundle.css, which is harmless. Token values themselves come from
+ * tokens/colors.css at runtime — @theme inline references them.
+ */
+@import "tailwindcss";
+@import "tw-animate-css";
+
+@source "../../assets/app/components";
+@source "./adapters";
+@source "./demos";
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-surface: hsl(var(--surface));
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+}

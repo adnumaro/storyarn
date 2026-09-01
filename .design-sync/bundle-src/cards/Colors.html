@@ -1,0 +1,119 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>Colors</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        display: flex;
+        min-height: 340px;
+      }
+      .pane {
+        flex: 1;
+        padding: 18px 20px;
+      }
+      .dark-pane {
+        background: hsl(220 20% 10%);
+        color: hsl(0 0% 90%);
+      }
+      .light-pane {
+        background: hsl(0 0% 100%);
+        color: hsl(0 0% 3.9%);
+      }
+      h3 {
+        margin: 0 0 12px;
+        font-size: 11px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        opacity: 0.55;
+      }
+      .row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin: 7px 0;
+        font-size: 12px;
+      }
+      .sw {
+        width: 24px;
+        height: 24px;
+        border-radius: 6px;
+        border: 1px solid rgba(128, 128, 128, 0.35);
+        flex: none;
+      }
+      code {
+        font-size: 11px;
+        opacity: 0.7;
+        margin-left: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="pane dark-pane">
+      <h3>Dark (product default)</h3>
+      <div class="row">
+        <span class="sw" style="background: hsl(174 60% 45%)"></span>primary<code>174 60% 45%</code>
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(220 20% 10%)"></span>background<code
+          >220 20% 10%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(220 18% 13%)"></span>card / popover<code
+          >220 18% 13%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(220 14% 20%)"></span>surface<code>220 14% 20%</code>
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(220 15% 18%)"></span>secondary / muted<code
+          >220 15% 18%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(220 15% 22%)"></span>accent / border<code
+          >220 15% 22%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 62.8% 50.6%)"></span>destructive<code
+          >0 62.8% 50.6%</code
+        >
+      </div>
+    </div>
+    <div class="pane light-pane">
+      <h3>Light</h3>
+      <div class="row">
+        <span class="sw" style="background: hsl(174 60% 45%)"></span>primary<code>174 60% 45%</code>
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 0% 100%)"></span>background / card<code
+          >0 0% 100%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 0% 97.5%)"></span>surface<code>0 0% 97.5%</code>
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 0% 96.1%)"></span>secondary / accent<code
+          >0 0% 96.1%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 84.2% 60.2%)"></span>destructive<code
+          >0 84.2% 60.2%</code
+        >
+      </div>
+      <div class="row">
+        <span class="sw" style="background: hsl(0 0% 89.8%)"></span>border / input<code
+          >0 0% 89.8%</code
+        >
+      </div>
+    </div>
+  </body>
+</html>
