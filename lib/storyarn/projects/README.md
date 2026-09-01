@@ -217,9 +217,12 @@ The large historical entry modules remain stable but are now routing surfaces:
 - `ProjectCrud` delegates reads to `Lifecycle.Queries.ProjectQueries` and
   state-changing transactions to `Lifecycle.Commands.ProjectCommands`.
 - `Assets` routes queries, ordinary commands, trash, uploads, blob verification
-  and exact reconstitution through explicit use-case modules. The shared lock,
-  compensation and upload protocol remains an indivisible execution kernel so
-  its order cannot drift between wrappers.
+  and exact reconstitution through explicit use-case modules.
+  `Storyarn.Projects.Assets.Queries.AssetUsageQueries` is the sole owner of the
+  asset-usage read model; it and trash share the pure
+  `Storyarn.Projects.Assets.AssetFamily` graph under `rules/` without coupling
+  reads to execution. The shared lock, compensation and upload protocol remains
+  an indivisible execution kernel so its order cannot drift between wrappers.
 - `Imports` routes preparation, review, queue/cancellation and attempt lookup
   through role-specific modules. Its plan reservation and cleanup workflow stays
   together under `execution/` for the same transactional reason.

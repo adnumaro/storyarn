@@ -17,6 +17,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.Commands.AssetRegistration
   alias Storyarn.Projects.Assets.ImageProcessor
   alias Storyarn.Projects.Assets.Queries.AssetQueries
+  alias Storyarn.Projects.Assets.Queries.AssetUsageQueries
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKey
@@ -33,11 +34,9 @@ defmodule Storyarn.Projects.Assets do
   defdelegate get_trashed_asset(project_id, asset_id), to: AssetQueries
   defdelegate count_assets_by_type(project_id), to: AssetQueries
   defdelegate total_storage_size(project_id), to: AssetQueries
-  # Usage aggregation still shares the trash-family graph and remains in the
-  # indivisible execution kernel until that graph becomes its own read model.
-  defdelegate get_asset_usages(project_id, asset_id), to: AssetOperations
-  defdelegate get_asset_family_usages(project_id, asset_id), to: AssetOperations
-  defdelegate count_asset_usages(project_id, asset_id), to: AssetOperations
+  defdelegate get_asset_usages(project_id, asset_id), to: AssetUsageQueries
+  defdelegate get_asset_family_usages(project_id, asset_id), to: AssetUsageQueries
+  defdelegate count_asset_usages(project_id, asset_id), to: AssetUsageQueries
   defdelegate list_assets_for_export(project_id), to: AssetQueries
   defdelegate count_assets(project_id, opts \\ []), to: AssetQueries
   defdelegate list_image_asset_ids(project_id), to: AssetQueries
