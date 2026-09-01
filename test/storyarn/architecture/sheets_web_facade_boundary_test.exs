@@ -74,7 +74,7 @@ defmodule Storyarn.Architecture.SheetsWebFacadeBoundaryTest do
     end
 
     # The Sheet snapshot writer is context-owned; the shared portable builder
-    # keeps only build/validate/instantiate/diff/scan for project snapshots.
+    # keeps only build/validate/instantiate/diff for project snapshots.
     Code.ensure_loaded!(SheetSnapshot)
     assert function_exported?(SheetSnapshot, :restore_snapshot, 3)
 
