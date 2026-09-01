@@ -5,8 +5,6 @@ defmodule Storyarn.Projects.Imports.ImportQueue do
 
   defdelegate enqueue_import(scope, attempt_id, strategy), to: ImportLifecycle
   defdelegate enqueue_import(scope, attempt_id, strategy, opts), to: ImportLifecycle
-  defdelegate cancel_import(scope, attempt_id), to: ImportLifecycle
-  defdelegate cancel_import(scope, attempt_id, opts), to: ImportLifecycle
   defdelegate subscribe_project_imports(project), to: ImportLifecycle
   defdelegate resume_latest_active_import(scope, project), to: ImportLifecycle
   defdelegate resume_latest_active_import(scope, project, opts), to: ImportLifecycle

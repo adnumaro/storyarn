@@ -26,6 +26,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.Versioning.Builders.FlowBuilder
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
+  alias Storyarn.Projects.Versioning.SnapshotReferences.FlowScanner
   alias Storyarn.Repo
   alias Storyarn.Scenes.Scene
   alias Storyarn.Sheets.SheetAvatar
@@ -2974,7 +2975,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
     end
   end
 
-  describe "scan_references/1" do
+  describe "FlowScanner.scan/1" do
     test "extracts every authoritative external Flow reference surface" do
       nested_mention =
         ~s(<p><span class="mention" data-type="sheet" data-id="12">Nested</span></p>)
@@ -3014,7 +3015,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
         ]
       }
 
-      refs = FlowBuilder.scan_references(snapshot)
+      refs = FlowScanner.scan(snapshot)
 
       types_and_ids = refs |> Enum.map(&{&1.type, &1.id}) |> Enum.sort()
 
@@ -3056,7 +3057,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
         ]
       }
 
-      refs = FlowBuilder.scan_references(snapshot)
+      refs = FlowScanner.scan(snapshot)
       assert refs == []
     end
 
@@ -3070,7 +3071,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
         ]
       }
 
-      assert [%{type: :asset, id: 51}] = FlowBuilder.scan_references(snapshot)
+      assert [%{type: :asset, id: 51}] = FlowScanner.scan(snapshot)
     end
 
     test "surfaces malformed nested rich-text mentions instead of omitting them" do
@@ -3090,7 +3091,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       }
 
       assert [%{type: :reference, id: malformed_id, context: context}] =
-               FlowBuilder.scan_references(snapshot)
+               FlowScanner.scan(snapshot)
 
       assert is_binary(malformed_id)
       assert context =~ "rich-text mention"
@@ -3108,7 +3109,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
         ]
       }
 
-      assert [%{type: :asset, id: 42}] = FlowBuilder.scan_references(snapshot)
+      assert [%{type: :asset, id: 42}] = FlowScanner.scan(snapshot)
     end
   end
 

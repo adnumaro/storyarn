@@ -1,6 +1,7 @@
 defmodule Storyarn.Projects.Imports do
   @moduledoc false
 
+  alias Storyarn.Projects.Imports.Cancellation
   alias Storyarn.Projects.Imports.ImportAttemptQueries
   alias Storyarn.Projects.Imports.ImportPreparation
   alias Storyarn.Projects.Imports.ImportQueue
@@ -27,8 +28,8 @@ defmodule Storyarn.Projects.Imports do
 
   defdelegate enqueue_import(scope, attempt_id, strategy), to: ImportQueue
   defdelegate enqueue_import(scope, attempt_id, strategy, opts), to: ImportQueue
-  defdelegate cancel_import(scope, attempt_id), to: ImportQueue
-  defdelegate cancel_import(scope, attempt_id, opts), to: ImportQueue
+  defdelegate cancel_import(scope, attempt_id), to: Cancellation
+  defdelegate cancel_import(scope, attempt_id, opts), to: Cancellation
   defdelegate subscribe_project_imports(project), to: ImportQueue
   defdelegate resume_latest_active_import(scope, project), to: ImportQueue
   defdelegate resume_latest_active_import(scope, project, opts), to: ImportQueue

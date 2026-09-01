@@ -223,6 +223,14 @@ The large historical entry modules remain stable but are now routing surfaces:
 - `Imports` routes preparation, review, queue/cancellation and attempt lookup
   through role-specific modules. Its plan reservation and cleanup workflow stays
   together under `execution/` for the same transactional reason.
+- `References.EntityReferenceExtraction` owns the pure, strict decoding of
+  embedded Sheet/Flow references used by Project writers and portable snapshot
+  validation. Persistence-backed reference tracking remains under `commands/`;
+  pure consumers never depend on that writer.
+- `Versioning.SnapshotReferences` owns portable whole-Project reference
+  validation and its consumer-local Sheet, Flow and Scene scanners. The large
+  builders retain capture and materialization, but no longer mix this pure
+  preflight rule into their stateful execution code.
 - `ProjectReconstitution` is the single internal entry boundary for privileged
   whole-Project materialization. It forwards inputs, options and results
   unchanged; the initiating lifecycle keeps authorization, transactions, lock

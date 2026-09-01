@@ -45,6 +45,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   alias Storyarn.Projects.Versioning.MaterializationHelpers
   alias Storyarn.Projects.Versioning.ReferencedTombstones
   alias Storyarn.Projects.Versioning.SnapshotObjectFormat
+  alias Storyarn.Projects.Versioning.SnapshotReferences
   alias Storyarn.Repo
 
   require Logger
@@ -686,7 +687,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
          {:ok, block_owners} <- preflight_child_owners(snapshot_data["sheets"], "blocks"),
          {:ok, avatar_owners} <- preflight_child_owners(snapshot_data["sheets"], "avatars"),
          {:ok, node_owners} <- preflight_child_owners(snapshot_data["flows"], "nodes"),
-         :ok <- validate_preflight_reference_scans(snapshot_data, id_maps, asset_ids, avatar_owners),
+         :ok <- SnapshotReferences.validate(snapshot_data, id_maps, asset_ids, avatar_owners),
          :ok <- validate_preflight_sheet_inheritance(snapshot_data, id_maps.block, block_owners),
          :ok <- validate_preflight_flow_cycles(snapshot_data),
          :ok <- validate_preflight_dynamic_exits(snapshot_data, node_owners) do
@@ -739,86 +740,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
         else: {:halt, {:error, :invalid_project_snapshot_entity_identity}}
     end)
   end
-
-  defp validate_preflight_reference_scans(snapshot_data, id_maps, asset_ids, avatar_owners) do
-    scanners = [
-      {:sheet, snapshot_data["sheets"], &SheetBuilder.scan_references/1},
-      {:flow, snapshot_data["flows"], &FlowBuilder.scan_references/1},
-      {:scene, snapshot_data["scenes"], &SceneBuilder.scan_references/1}
-    ]
-
-    Enum.reduce_while(scanners, :ok, fn {entity_type, entries, scanner}, :ok ->
-      case validate_preflight_entity_references(
-             entity_type,
-             entries,
-             scanner,
-             id_maps,
-             asset_ids,
-             avatar_owners
-           ) do
-        :ok -> {:cont, :ok}
-        {:error, _reason} = error -> {:halt, error}
-      end
-    end)
-  end
-
-  defp validate_preflight_entity_references(entity_type, entries, scanner, id_maps, asset_ids, avatar_owners) do
-    Enum.reduce_while(entries, :ok, fn entry, :ok ->
-      references = scanner.(entry["snapshot"])
-
-      case validate_preflight_entry_references(
-             references,
-             entity_type,
-             entry["id"],
-             id_maps,
-             asset_ids,
-             avatar_owners
-           ) do
-        :ok -> {:cont, :ok}
-        {:error, _reason} = error -> {:halt, error}
-      end
-    end)
-  end
-
-  defp validate_preflight_entry_references(references, entity_type, entry_id, id_maps, asset_ids, avatar_owners) do
-    Enum.reduce_while(references, :ok, fn reference, :ok ->
-      case validate_preflight_reference(reference, id_maps, asset_ids, avatar_owners) do
-        :ok ->
-          {:cont, :ok}
-
-        {:error, reason} ->
-          {:halt, {:error, {:missing_project_snapshot_reference, {entity_type, entry_id, reference.context}, reason}}}
-      end
-    end)
-  end
-
-  defp validate_preflight_reference(%{type: :asset, id: id}, _id_maps, asset_ids, _avatar_owners) do
-    if MapSet.member?(asset_ids, normalize_recovery_id(id)), do: :ok, else: {:error, id}
-  end
-
-  defp validate_preflight_reference(%{type: :avatar, id: id} = reference, id_maps, _asset_ids, avatar_owners) do
-    avatar_id = normalize_recovery_id(id)
-    speaker_id = normalize_recovery_id(reference[:speaker_sheet_id])
-
-    cond do
-      is_nil(avatar_id) or not Map.has_key?(id_maps.avatar, avatar_id) -> {:error, id}
-      is_nil(speaker_id) -> :ok
-      Map.get(avatar_owners, avatar_id) == speaker_id -> :ok
-      true -> {:error, {:avatar_speaker_mismatch, avatar_id, Map.get(avatar_owners, avatar_id), speaker_id}}
-    end
-  end
-
-  defp validate_preflight_reference(%{type: type, id: id}, id_maps, _asset_ids, _avatar_owners)
-       when type in [:sheet, :flow, :scene, :block] do
-    normalized_id = normalize_recovery_id(id)
-
-    if Map.has_key?(Map.fetch!(id_maps, type), normalized_id),
-      do: :ok,
-      else: {:error, id}
-  end
-
-  defp validate_preflight_reference(%{type: type, id: id}, _id_maps, _asset_ids, _avatar_owners),
-    do: {:error, {:unsupported_reference, type, id}}
 
   defp validate_preflight_sheet_inheritance(snapshot_data, block_id_map, _block_owners) do
     blocks = Enum.flat_map(snapshot_data["sheets"], &get_in(&1, ["snapshot", "blocks"]))

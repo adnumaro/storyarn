@@ -31,6 +31,7 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
 
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.References.EntityReferenceExtraction
   alias Storyarn.Projects.References.Persistence.BlockRecord, as: Block
   alias Storyarn.Projects.References.Persistence.FlowNodeRecord
   alias Storyarn.Projects.References.Persistence.FlowRecord
@@ -84,7 +85,7 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
   @spec lock_and_normalize_block_value(integer(), String.t(), map()) ::
           {:ok, map()} | {:error, term()}
   def lock_and_normalize_block_value(project_id, "reference", value) when is_integer(project_id) and is_map(value) do
-    case extract_block_value_references("reference", value) do
+    case EntityReferenceExtraction.extract_block_value_references("reference", value) do
       {:ok, []} ->
         clear_reference_target(value)
 
@@ -99,7 +100,7 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
   def lock_and_normalize_block_value(project_id, "rich_text", value) when is_integer(project_id) and is_map(value) do
     content = value["content"] || value[:content] || ""
 
-    with {:ok, references} <- extract_block_value_references("rich_text", value),
+    with {:ok, references} <- EntityReferenceExtraction.extract_block_value_references("rich_text", value),
          specs = Enum.map(references, &mention_reference_spec/1),
          {:ok, _normalized_ids} <-
            ProjectReferenceIntegrity.lock_active_references(project_id, specs) do
@@ -115,52 +116,6 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
   end
 
   def lock_and_normalize_block_value(_project_id, _type, value), do: {:ok, value}
-
-  @doc """
-  Extracts the project entity references encoded in a prospective block value.
-
-  Unlike the best-effort extraction used to repair historical tracker rows,
-  this function applies the same strict value contract as the writer guard so
-  restore previews can surface malformed references instead of omitting them.
-  """
-  @spec extract_block_value_references(String.t(), term()) ::
-          {:ok, [map()]} | {:error, term()}
-  def extract_block_value_references("reference", value) when is_map(value) do
-    target_type = reference_value(value, "target_type")
-    target_id = reference_value(value, "target_id")
-
-    case {normalize_optional_target_type(target_type), target_id} do
-      {nil, id} when id in [nil, ""] ->
-        {:ok, []}
-
-      {type, id} when type in ["sheet", "flow"] and id not in [nil, ""] ->
-        validate_block_reference(type, id, target_type)
-
-      _invalid_pair ->
-        {:error, {:invalid_project_reference, {:block, :value, target_type}, target_id}}
-    end
-  end
-
-  def extract_block_value_references("rich_text", value) when is_map(value) do
-    content = value["content"] || value[:content] || ""
-    strict_mentions_from_html(content)
-  end
-
-  def extract_block_value_references(type, value) when type in ["reference", "rich_text"] do
-    {:error, {:invalid_project_reference, {:block, :value, type}, value}}
-  end
-
-  def extract_block_value_references(_type, _value), do: {:ok, []}
-
-  defp validate_block_reference(type, id, diagnostic_type) do
-    case ProjectReferenceIntegrity.normalize_optional_id(id) do
-      {:ok, normalized_id} when is_integer(normalized_id) ->
-        {:ok, [%{type: type, id: id, context: "value"}]}
-
-      _invalid_or_absent ->
-        {:error, {:invalid_project_reference, {:block, :value, diagnostic_type}, id}}
-    end
-  end
 
   defp clear_reference_target(value) do
     {:ok,
@@ -469,18 +424,6 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
 
   defp parse_id(_), do: nil
 
-  defp normalize_optional_target_type(nil), do: nil
-  defp normalize_optional_target_type(""), do: nil
-  defp normalize_optional_target_type(type) when is_atom(type), do: Atom.to_string(type)
-  defp normalize_optional_target_type(type), do: type
-
-  defp reference_value(value, key) do
-    case Map.fetch(value, key) do
-      {:ok, stored_value} -> stored_value
-      :error -> Map.get(value, reference_atom_key(key))
-    end
-  end
-
   defp put_reference_value(value, key, normalized) do
     value
     |> Map.delete(reference_atom_key(key))
@@ -520,38 +463,13 @@ defmodule Storyarn.Projects.References.EntityReferenceProjection do
   end
 
   defp extract_mentions_from_html(content) when is_binary(content) do
-    case strict_mentions_from_html(content) do
+    case EntityReferenceExtraction.extract_block_value_references("rich_text", %{"content" => content}) do
       {:ok, references} -> references
       {:error, _reason} -> []
     end
   end
 
   defp extract_mentions_from_html(_), do: []
-
-  defp strict_mentions_from_html(content) when is_binary(content) do
-    case RichTextMentions.extract_from_html(content) do
-      {:ok, mentions} ->
-        {:ok, Enum.map(mentions, &Map.put(&1, :context, "content"))}
-
-      {:error, {:invalid_html, reason}} ->
-        {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, reason}}
-
-      {:error, {:invalid_mention, details}} ->
-        invalid_mention_reference(details)
-    end
-  end
-
-  defp strict_mentions_from_html(content) do
-    {:error, {:invalid_project_reference, {:block, :content, :invalid_html}, content}}
-  end
-
-  defp invalid_mention_reference(%{type: [type], id: [id]}) do
-    {:error, {:invalid_project_reference, {:block, :content, type}, id}}
-  end
-
-  defp invalid_mention_reference(details) do
-    {:error, {:invalid_project_reference, {:block, :content, :malformed_mention}, details}}
-  end
 
   defp mention_reference_spec(%{type: "sheet", id: id}), do: {:sheet, {:block, :content, "sheet"}, id}
 
