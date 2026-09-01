@@ -1,0 +1,171 @@
+/*
+ * Storyarn design system — styles entry.
+ *
+ * Storyarn is a narrative design platform for game development: dark-first
+ * UI, teal primary, frosted-glass floating panels over canvas editors.
+ * The product runs with the `dark` class on the root element.
+ *
+ * The app is Vue 3 (LiveVue/Phoenix); the components in _ds_bundle.js are
+ * the app's real Vue components exposed to React through a mount wrapper.
+ * _ds_bundle.css carries their Tailwind utilities and component styles.
+ */
+
+@import "./tokens/colors.css";
+@import "./fonts/fonts.css";
+@import "./_ds_bundle.css";
+
+/* ---- Base (mirrors assets/css/app.css @layer base) ---- */
+
+* {
+  border-color: hsl(var(--border));
+}
+
+body {
+  background-color: hsl(var(--background));
+  color: hsl(var(--foreground));
+  font-family:
+    ui-sans-serif,
+    system-ui,
+    sans-serif,
+    "Apple Color Emoji",
+    "Segoe UI Emoji",
+    "Segoe UI Symbol",
+    "Noto Color Emoji";
+}
+
+button,
+[role="button"],
+a[href],
+[tabindex]:not([tabindex="-1"]) {
+  cursor: pointer;
+}
+
+/* ================================================================
+   Signature chrome — copied verbatim from assets/css/app.css.
+   Frosted-glass panels, toolbar buttons, and the floating dock used
+   by Storyarn's canvas editors (flows, scenes).
+   ================================================================ */
+
+/* Frosted glass panel shared by all floating UI chrome */
+.surface-panel {
+  background-color: hsl(var(--surface) / 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid hsl(var(--border));
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+}
+
+/* Toolbar button — ghost style with subtle hover */
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  line-height: 1.25rem;
+  color: hsl(var(--foreground));
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+  white-space: nowrap;
+}
+
+.toolbar-btn:hover {
+  background-color: hsl(var(--accent));
+}
+
+.toolbar-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Compact text input for the floating toolbar */
+.toolbar-input {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 0.375rem;
+  padding: 0.125rem 0.375rem;
+  font-size: 0.75rem;
+  color: hsl(var(--foreground));
+  outline: none;
+  max-width: 120px;
+  transition: border-color 0.15s ease;
+}
+
+.toolbar-input:focus {
+  border-color: hsl(var(--ring));
+}
+
+.toolbar-input::placeholder {
+  color: hsl(var(--muted-foreground));
+}
+
+.toolbar-input:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Dock — floating bottom tool palette for canvas editors */
+.dock-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition:
+    background-color 0.15s,
+    transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+  color: hsl(var(--foreground));
+  border: none;
+  background: transparent;
+}
+
+.dock-btn:hover {
+  background-color: hsl(var(--accent));
+}
+
+.dock-btn-active {
+  background-color: hsl(var(--primary)) !important;
+  color: hsl(var(--primary-foreground)) !important;
+}
+
+/* Hover bounce animation — items pop up out of the dock */
+.dock-item {
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.dock-item:hover {
+  transform: translateY(-3px);
+}
+
+/* Hover mega-tooltip (delayed appearance) */
+.dock-tooltip {
+  position: absolute;
+  bottom: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 180px;
+  padding: 10px 12px;
+  background: hsl(var(--popover));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s 0.4s;
+  z-index: 10;
+}
+
+.dock-item:hover .dock-tooltip {
+  opacity: 1;
+}
+
+.dock-item:focus-within .dock-tooltip {
+  opacity: 0;
+  transition-delay: 0s;
+}

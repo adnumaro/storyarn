@@ -1,7 +1,7 @@
 {
   "projectId": "e287acc2-3e8a-4773-8451-66b1ba3c4da3",
   "projectName": "Storyarn",
-  "shape": "styles-only",
+  "shape": "vue-wrapped-components",
   "readmeHeader": ".design-sync/conventions.md",
-  "notes": "Off-script partial sync: Storyarn is a Vue 3 app (LiveVue/Phoenix), not a React component library, so no component bundle is possible. This sync ships only the styling layer: shadcn-style HSL tokens from assets/css/app.css, dark/light palettes, radius scale, and the Courier Prime screenplay font. Source of truth: assets/css/app.css (:root/.dark blocks + @theme inline) and assets/css/screenplay.css (@font-face). See NOTES.md."
+  "notes": "Off-script sync: the app is Vue 3 (LiveVue/Phoenix), so the real components are compiled with esbuild+unplugin-vue and exposed as React via the mount-wrapper harness in .design-sync/bundle-src/ (build: node build.mjs; verify: node verify.mjs). reka-ui compounds ship as props-driven adapter SFCs composing the app's own subcomponents. See NOTES.md — never run vite or pnpm exec for this."
 }

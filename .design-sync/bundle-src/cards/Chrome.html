@@ -1,0 +1,27 @@
+<!-- @dsCard group="Foundations" -->
+<!doctype html><html><head><meta charset="utf-8"><title>Chrome</title><style>
+body{margin:0;padding:24px;background:hsl(220 20% 10%);color:hsl(0 0% 90%);font-family:ui-sans-serif,system-ui,sans-serif;min-height:300px}
+.surface-panel{background-color:hsl(220 14% 20% / .92);backdrop-filter:blur(12px);border:1px solid hsl(220 15% 22%);border-radius:.75rem;box-shadow:0 1px 2px 0 rgb(0 0 0 / .05)}
+.toolbar-btn{display:inline-flex;align-items:center;justify-content:center;border-radius:.5rem;padding:.25rem .5rem;font-size:.75rem;line-height:1.25rem;color:hsl(0 0% 90%);background:transparent;border:none;cursor:pointer;transition:background-color .15s ease;white-space:nowrap}
+.toolbar-btn:hover{background-color:hsl(220 15% 22%)}
+.toolbar-input{background:transparent;border:1px solid transparent;border-radius:.375rem;padding:.125rem .375rem;font-size:.75rem;color:hsl(0 0% 90%);outline:none;max-width:120px}
+.toolbar-input::placeholder{color:hsl(220 10% 55%)}
+.dock-btn{display:flex;align-items:center;justify-content:center;width:32px;height:32px;border-radius:10px;cursor:pointer;color:hsl(0 0% 90%);border:none;background:transparent;font-size:14px}
+.dock-btn:hover{background-color:hsl(220 15% 22%)}
+.dock-btn-active{background-color:hsl(174 60% 45%);color:hsl(0 0% 98%)}
+.card{background:hsl(220 18% 13%);border:1px solid hsl(220 15% 22%);border-radius:.5rem;padding:16px;margin-top:20px;max-width:280px}
+.card h4{margin:0;font-size:14px;font-weight:600}
+.card p{margin:4px 0 12px;font-size:12px;color:hsl(220 10% 55%)}
+.card button{background:hsl(174 60% 45%);color:hsl(0 0% 98%);border:none;border-radius:.375rem;padding:6px 12px;font-size:12px;cursor:pointer}
+label{display:block;font-size:10px;letter-spacing:.1em;text-transform:uppercase;opacity:.5;margin:0 0 8px}
+</style></head><body>
+<label>.surface-panel + .toolbar-btn / .toolbar-input</label>
+<div class="surface-panel" style="display:flex;gap:4px;padding:6px;width:fit-content;align-items:center">
+<button class="toolbar-btn">Select</button><button class="toolbar-btn">Connect</button><input class="toolbar-input" placeholder="Node label">
+</div>
+<label style="margin-top:20px">.dock-btn (+ .dock-btn-active)</label>
+<div class="surface-panel" style="display:flex;gap:6px;padding:8px;width:fit-content">
+<button class="dock-btn dock-btn-active">+</button><button class="dock-btn">D</button><button class="dock-btn">C</button><button class="dock-btn">H</button>
+</div>
+<div class="card"><h4>Flow node</h4><p>Condition &middot; checks hero.trust</p><button>Open</button></div>
+</body></html>
