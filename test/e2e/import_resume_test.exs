@@ -303,20 +303,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
   end
 
   defp yarn_project_fixture do
-    filename = "storyarn-emberfall-#{System.unique_integer([:positive])}.zip"
-    path = Path.join(System.tmp_dir!(), filename)
-
-    entries =
-      Enum.map(@emberfall_fixture_files, fn relative_path ->
-        source_path = Path.join(@emberfall_fixture_root, relative_path)
-        {String.to_charlist(relative_path), File.read!(source_path)}
-      end)
-
-    {:ok, {_name, archive}} = :zip.create(~c"emberfall.zip", entries, [:memory])
-    File.write!(path, archive)
-    on_exit(fn -> File.rm(path) end)
-
-    path
+    archive_fixture("storyarn-emberfall", @emberfall_fixture_root, @emberfall_fixture_files)
   end
 
   defp space_journey_fixture do

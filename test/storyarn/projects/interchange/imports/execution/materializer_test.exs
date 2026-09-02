@@ -1136,6 +1136,60 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       assert content_counts(target.id) == before_counts
       assert Repo.get!(Sheet, existing.id).deleted_at == nil
     end
+
+    test "fails before materialization when a skipped sheet table cell changes type", %{
+      source: source,
+      target: target
+    } do
+      source_sheet = sheet_fixture(source, %{name: "Variables", shortcut: "variables"})
+      source_table = table_block_fixture(source_sheet, %{label: "Inventory"})
+      source_column = table_column_fixture(source_table, %{name: "Damage", type: "number"})
+      source_row = table_row_fixture(source_table, %{name: "Sword"})
+
+      existing = sheet_fixture(target, %{name: "Existing variables", shortcut: source_sheet.shortcut})
+      target_table = table_block_fixture(existing, %{label: "Inventory"})
+      _target_column = table_column_fixture(target_table, %{name: "Damage", type: "text"})
+      _target_row = table_row_fixture(target_table, %{name: "Sword"})
+
+      before_counts = content_counts(target.id)
+
+      data =
+        update_in(
+          project_plan_data(source),
+          [
+            "sheets",
+            Access.filter(&(&1["id"] == to_string(source_sheet.id))),
+            "blocks",
+            Access.filter(&(&1["id"] == to_string(source_table.id)))
+          ],
+          fn table_block ->
+            Map.put(table_block, "table_data", %{
+              "columns" => [
+                %{
+                  "id" => to_string(source_column.id),
+                  "name" => source_column.name,
+                  "slug" => source_column.slug,
+                  "type" => source_column.type,
+                  "is_constant" => source_column.is_constant
+                }
+              ],
+              "rows" => [
+                %{
+                  "id" => to_string(source_row.id),
+                  "name" => source_row.name,
+                  "slug" => source_row.slug
+                }
+              ]
+            })
+          end
+        )
+
+      assert {:error, :skip_variable_contract_mismatch} =
+               Imports.execute(target, import_plan(data), conflict_strategy: :skip)
+
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Sheet, existing.id).deleted_at == nil
+    end
   end
 
   describe "re-importing rewrites references to renamed sheets" do
@@ -1926,6 +1980,56 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
 
       assert imported_subflow.data["referenced_flow_id"] == imported_referenced_flow.id
       assert imported_exit.data["target_id"] == imported_referenced_flow.id
+    end
+
+    test "remaps an integer zone target after all roots are imported", %{
+      source: source,
+      target: target
+    } do
+      referenced_flow = flow_fixture(source, %{name: "Integer Zone Target"})
+      source_scene = scene_fixture(source, %{name: "Integer Zone Source"})
+
+      source_zone =
+        zone_fixture(source_scene, %{
+          "name" => "Integer Flow Portal",
+          "action_type" => "action",
+          "target_type" => "flow",
+          "target_id" => referenced_flow.id
+        })
+
+      plan_data =
+        update_in(
+          project_plan_data(source),
+          [
+            "scenes",
+            Access.filter(&(&1["id"] == to_string(source_scene.id))),
+            "zones",
+            Access.filter(&(&1["id"] == to_string(source_zone.id))),
+            "target_id"
+          ],
+          fn _target_id -> referenced_flow.id end
+        )
+
+      integer_zone_data =
+        plan_data["scenes"]
+        |> Enum.flat_map(&(&1["zones"] || []))
+        |> Enum.find(&(&1["name"] == "Integer Flow Portal"))
+
+      assert is_integer(integer_zone_data["target_id"])
+
+      assert {:ok, result} = Imports.execute(target, import_plan(plan_data))
+
+      imported_flow = Enum.find(result.flows, &(&1.name == referenced_flow.name))
+
+      imported_scene =
+        result.scenes
+        |> Enum.find(&(&1.name == source_scene.name))
+        |> Repo.preload(:zones)
+
+      imported_zone = Enum.find(imported_scene.zones, &(&1.name == "Integer Flow Portal"))
+
+      assert imported_zone.target_type == "flow"
+      assert imported_zone.target_id == imported_flow.id
     end
   end
 

@@ -90,6 +90,43 @@ defmodule Storyarn.Projects.SheetImportPersistenceTest do
     end
   end
 
+  describe "list_active_variable_contracts/2" do
+    test "loads regular and referenceable table-cell contracts" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Variables", shortcut: "variables"})
+      _regular = block_fixture(sheet, %{type: "number", variable_name: "gold"})
+      table = table_block_fixture(sheet, %{label: "Inventory"})
+      damage = table_column_fixture(table, %{name: "Damage", type: "number"})
+      hidden = table_column_fixture(table, %{name: "Hidden", type: "text", is_constant: true})
+      formula = table_column_fixture(table, %{name: "Computed", type: "formula", is_constant: true})
+      sword = table_row_fixture(table, %{name: "Sword"})
+
+      contracts = SheetImportPersistence.list_active_variable_contracts(project.id, [sheet.shortcut])
+
+      assert contracts[{sheet.shortcut, "gold"}] == "number"
+      assert contracts[{:table, sheet.shortcut, table.variable_name}] == :present
+      assert contracts[{:table_row, sheet.shortcut, table.variable_name, sword.slug}] == :present
+      assert contracts[{:table_column, sheet.shortcut, table.variable_name, damage.slug}] == "number"
+      assert contracts[{:table_column, sheet.shortcut, table.variable_name, formula.slug}] == "formula"
+      refute Map.has_key?(contracts, {:table_column, sheet.shortcut, table.variable_name, hidden.slug})
+    end
+
+    test "does not load table cells from an inactive sheet" do
+      %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Variables", shortcut: "variables"})
+      table = table_block_fixture(sheet, %{label: "Inventory"})
+      column = table_column_fixture(table, %{name: "Damage", type: "number"})
+      row = table_row_fixture(table, %{name: "Sword"})
+      {:ok, _sheet} = Sheets.trash_sheet(sheet)
+
+      contracts = SheetImportPersistence.list_active_variable_contracts(project.id, [sheet.shortcut])
+
+      refute Map.has_key?(contracts, {:table, sheet.shortcut, table.variable_name})
+      refute Map.has_key?(contracts, {:table_row, sheet.shortcut, table.variable_name, row.slug})
+      refute Map.has_key?(contracts, {:table_column, sheet.shortcut, table.variable_name, column.slug})
+    end
+  end
+
   describe "import_block/2" do
     setup do
       %{project: project} = setup_project()

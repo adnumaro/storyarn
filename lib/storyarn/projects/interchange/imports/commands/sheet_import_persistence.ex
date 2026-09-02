@@ -21,6 +21,8 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   alias Storyarn.Repo
 
   @regular_variable_types References.regular_variable_types()
+  @table_variable_types References.table_variable_types()
+  @constant_table_variable_types References.constant_table_variable_types()
 
   def list_active_identities(project_id) do
     from(sheet in SheetRecord,
@@ -34,22 +36,84 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   def list_active_variable_contracts(_project_id, []), do: %{}
 
   def list_active_variable_contracts(project_id, sheet_shortcuts) when is_list(sheet_shortcuts) do
-    from(block in BlockRecord,
-      join: sheet in SheetRecord,
-      on: sheet.id == block.sheet_id,
-      where:
-        sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and
-          is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
-          block.type in ^@regular_variable_types and block.is_constant == false and
-          not is_nil(block.variable_name) and block.variable_name != "",
-      select: {{sheet.shortcut, block.variable_name}, block.type}
-    )
-    |> Repo.all()
+    [
+      regular_variable_contracts(project_id, sheet_shortcuts),
+      table_identity_contracts(project_id, sheet_shortcuts),
+      table_row_contracts(project_id, sheet_shortcuts),
+      table_column_contracts(project_id, sheet_shortcuts)
+    ]
+    |> Enum.concat()
     |> Enum.reduce(%{}, &merge_variable_contract/2)
   end
 
-  defp merge_variable_contract({key, type}, contracts),
-    do: Map.update(contracts, key, type, fn _existing_type -> :ambiguous end)
+  defp regular_variable_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and
+            is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+            block.type in ^@regular_variable_types and block.is_constant == false and
+            not is_nil(block.variable_name) and block.variable_name != "",
+        select: {{sheet.shortcut, block.variable_name}, block.type}
+      )
+    )
+  end
+
+  defp table_identity_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and is_nil(sheet.deleted_at) and
+            is_nil(block.deleted_at) and block.type == "table" and not is_nil(block.variable_name) and
+            block.variable_name != "",
+        select: {{:table, sheet.shortcut, block.variable_name}, :present}
+      )
+    )
+  end
+
+  defp table_row_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(row in TableRowRecord,
+        join: block in BlockRecord,
+        on: block.id == row.block_id,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and is_nil(sheet.deleted_at) and
+            is_nil(block.deleted_at) and block.type == "table" and not is_nil(block.variable_name) and
+            block.variable_name != "",
+        select: {{:table_row, sheet.shortcut, block.variable_name, row.slug}, :present}
+      )
+    )
+  end
+
+  defp table_column_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(column in TableColumnRecord,
+        join: block in BlockRecord,
+        on: block.id == column.block_id,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where: sheet.project_id == ^project_id,
+        where: sheet.shortcut in ^sheet_shortcuts,
+        where: is_nil(sheet.deleted_at),
+        where: is_nil(block.deleted_at),
+        where: block.type == "table",
+        where: not is_nil(block.variable_name),
+        where: block.variable_name != "",
+        where: column.type in ^@table_variable_types,
+        where: column.is_constant == false or column.type in ^@constant_table_variable_types,
+        select: {{:table_column, sheet.shortcut, block.variable_name, column.slug}, column.type}
+      )
+    )
+  end
+
+  defp merge_variable_contract({key, contract}, contracts),
+    do: Map.update(contracts, key, contract, fn _existing_contract -> :ambiguous end)
 
   def list_shortcuts(project_id) do
     from(sheet in SheetRecord,

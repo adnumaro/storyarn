@@ -100,30 +100,49 @@ defmodule Storyarn.Projects.Imports.ImportedEntityReferenceRewriter do
   defp validate_scene_zone_targets(data, target_ids) do
     data["scenes"]
     |> List.wrap()
-    |> Enum.flat_map(fn
-      scene when is_map(scene) -> List.wrap(scene["zones"])
-      _invalid_scene -> []
+    |> Enum.reduce_while(:ok, fn
+      scene, :ok when is_map(scene) ->
+        case scene["zones"] do
+          nil -> {:cont, :ok}
+          zones when is_list(zones) -> continue_if_valid_zones(zones, target_ids)
+          _invalid_zones -> {:halt, {:error, @error}}
+        end
+
+      _invalid_scene, :ok ->
+        {:cont, :ok}
     end)
-    |> Enum.reduce_while(:ok, fn zone, :ok ->
-      action_type = if is_map(zone), do: zone["action_type"]
-      type = if is_map(zone), do: zone["target_type"]
-      id = if is_map(zone), do: zone["target_id"]
+  end
 
-      cond do
-        action_type not in [nil, "action"] ->
-          {:cont, :ok}
+  defp continue_if_valid_zones(zones, target_ids) do
+    zones
+    |> Enum.reduce_while(:ok, fn
+      zone, :ok when is_map(zone) ->
+        action_type = zone["action_type"]
+        type = zone["target_type"]
+        id = zone["target_id"]
 
-        type in ["sheet", "flow", "scene"] and
-            known_target?(%{type: type, id: id}, target_ids) ->
-          {:cont, :ok}
+        cond do
+          action_type not in [nil, "action"] ->
+            {:cont, :ok}
 
-        type in ["sheet", "flow", "scene"] ->
-          {:halt, {:error, @error}}
+          type in ["sheet", "flow", "scene"] and
+              known_target?(%{type: type, id: id}, target_ids) ->
+            {:cont, :ok}
 
-        true ->
-          {:cont, :ok}
-      end
+          type in ["sheet", "flow", "scene"] ->
+            {:halt, {:error, @error}}
+
+          true ->
+            {:cont, :ok}
+        end
+
+      _invalid_zone, :ok ->
+        {:halt, {:error, @error}}
     end)
+    |> case do
+      :ok -> {:cont, :ok}
+      {:error, _reason} = error -> {:halt, error}
+    end
   end
 
   defp continue_if_valid_references(references, target_ids) do

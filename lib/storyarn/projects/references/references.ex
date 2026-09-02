@@ -14,6 +14,12 @@ defmodule Storyarn.Projects.References do
   defdelegate regular_variable_types(), to: VariableCatalog
 
   @doc false
+  defdelegate table_variable_types(), to: VariableCatalog
+
+  @doc false
+  defdelegate constant_table_variable_types(), to: VariableCatalog
+
+  @doc false
   defdelegate extract_block_value_references(block_type, value), to: EntityReferenceExtraction
 
   @doc false

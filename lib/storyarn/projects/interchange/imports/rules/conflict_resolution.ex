@@ -13,6 +13,8 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
   alias Storyarn.Projects.References
 
   @regular_variable_types References.regular_variable_types()
+  @table_variable_types References.table_variable_types()
+  @constant_table_variable_types References.constant_table_variable_types()
 
   @type shortcut :: String.t() | nil
   @type decision :: {:create, shortcut()} | {:reuse, pos_integer()}
@@ -48,11 +50,13 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
   Verifies every declared variable from a skipped Sheet against the active target.
 
   A shortcut collision proves only root identity. Imported consumers also need
-  every declared variable to resolve to a block with the same name and persisted
-  type. Checking all declarations includes text interpolations, which are not
-  represented by the structured expression reference extractor. Anything less
-  fails before writes instead of completing with an unresolved or type-shifted
-  reference.
+  every declared regular variable to resolve to a block with the same name and
+  persisted type. Referenceable table cells are checked structurally: one table
+  identity, each row, and each typed column. That proves every row-column cell
+  without materializing their Cartesian product. Checking all declarations
+  includes text interpolations, which are not represented by the structured
+  expression reference extractor. Anything less fails before writes instead of
+  completing with an unresolved or type-shifted reference.
   """
   @spec preflight_skip_variables(map(), target_id_by_shortcut(), map()) ::
           :ok | {:error, :skip_variable_contract_mismatch}
@@ -68,9 +72,7 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
     imported_contracts =
       data
       |> imported_variable_contracts()
-      |> Enum.filter(fn {{sheet_shortcut, _variable_name}, _type} ->
-        MapSet.member?(skipped_shortcuts, sheet_shortcut)
-      end)
+      |> Enum.filter(fn {key, _type} -> MapSet.member?(skipped_shortcuts, contract_sheet_shortcut(key)) end)
 
     compatible? =
       Enum.all?(imported_contracts, fn {key, imported_type} ->
@@ -146,7 +148,9 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
     sheet
     |> Map.get("blocks")
     |> List.wrap()
-    |> Enum.flat_map(&variable_contract(shortcut, &1))
+    |> Enum.flat_map(fn block ->
+      variable_contract(shortcut, block) ++ table_variable_contracts(shortcut, block)
+    end)
   end
 
   defp variable_contract(shortcut, block) do
@@ -160,4 +164,68 @@ defmodule Storyarn.Projects.Imports.ConflictResolution do
         []
     end
   end
+
+  defp table_variable_contracts(sheet_shortcut, %{
+         "type" => "table",
+         "variable_name" => table_name,
+         "table_data" => %{"columns" => columns, "rows" => rows}
+       }) do
+    with true <- valid_table_contract_identity?(sheet_shortcut, table_name),
+         true <- is_list(columns),
+         true <- is_list(rows) do
+      row_contracts =
+        Enum.flat_map(rows, &table_row_contract(sheet_shortcut, table_name, &1))
+
+      column_contracts =
+        Enum.flat_map(columns, &table_column_contract(sheet_shortcut, table_name, &1))
+
+      complete_table_contracts(sheet_shortcut, table_name, row_contracts, column_contracts)
+    else
+      false -> []
+    end
+  end
+
+  defp table_variable_contracts(_sheet_shortcut, _block), do: []
+
+  defp valid_table_contract_identity?(sheet_shortcut, table_name) do
+    is_binary(sheet_shortcut) and is_binary(table_name) and table_name != ""
+  end
+
+  defp table_row_contract(sheet_shortcut, table_name, %{"slug" => row_slug})
+       when is_binary(row_slug) and row_slug != "" do
+    [{{:table_row, sheet_shortcut, table_name, row_slug}, :present}]
+  end
+
+  defp table_row_contract(_sheet_shortcut, _table_name, _row), do: []
+
+  defp table_column_contract(sheet_shortcut, table_name, %{"slug" => column_slug, "type" => type} = column)
+       when is_binary(column_slug) and column_slug != "" do
+    if table_variable_column?(column),
+      do: [{{:table_column, sheet_shortcut, table_name, column_slug}, type}],
+      else: []
+  end
+
+  defp table_column_contract(_sheet_shortcut, _table_name, _column), do: []
+
+  defp complete_table_contracts(_sheet_shortcut, _table_name, [], _column_contracts), do: []
+  defp complete_table_contracts(_sheet_shortcut, _table_name, _row_contracts, []), do: []
+
+  defp complete_table_contracts(sheet_shortcut, table_name, row_contracts, column_contracts) do
+    [{{:table, sheet_shortcut, table_name}, :present} | row_contracts] ++ column_contracts
+  end
+
+  defp table_variable_column?(column) when is_map(column) do
+    type = column["type"]
+
+    type in @table_variable_types and
+      (column["is_constant"] != true or type in @constant_table_variable_types)
+  end
+
+  defp table_variable_column?(_column), do: false
+
+  defp contract_sheet_shortcut({sheet_shortcut, _variable_name}), do: sheet_shortcut
+
+  defp contract_sheet_shortcut({:table, sheet_shortcut, _table_name}), do: sheet_shortcut
+  defp contract_sheet_shortcut({:table_row, sheet_shortcut, _table_name, _row_slug}), do: sheet_shortcut
+  defp contract_sheet_shortcut({:table_column, sheet_shortcut, _table_name, _column_slug}), do: sheet_shortcut
 end

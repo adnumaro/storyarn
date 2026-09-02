@@ -1961,7 +1961,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
         _ -> nil
       end
 
-    if type, do: Map.get(map, {type, target_id})
+    if type, do: remap_id(map, type, target_id)
   end
 
   defp reserve_shortcut(used, shortcut) when is_binary(shortcut), do: MapSet.put(used, shortcut)
