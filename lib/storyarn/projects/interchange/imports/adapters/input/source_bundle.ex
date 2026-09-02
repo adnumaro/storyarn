@@ -1,13 +1,14 @@
 defmodule Storyarn.Projects.Imports.SourceBundle do
   @moduledoc """
-  Validates and opens an uploaded Yarn source without touching the filesystem.
+  Validates and opens an uploaded text source or ZIP without touching the
+  filesystem.
 
   ZIP metadata is checked before extraction. Paths, archive nesting, entry
   count, expansion ratio, individual size, and total expanded size are all
-  bounded to limit traversal and decompression-bomb attacks.
+  bounded to limit traversal and decompression-bomb attacks. Accepted source
+  extensions and semantic archive selection are supplied by the selected
+  format parser; this adapter owns no external-format policy.
   """
-
-  alias Storyarn.Projects.Imports.SourceBundle.YarnProjectSources
 
   @max_upload_bytes 50_000_000
   @max_entry_bytes 10_000_000
@@ -20,42 +21,48 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
   @zip_eocd_bytes 22
   @zip64_sentinel_16 0xFFFF
   @zip64_sentinel_32 0xFFFFFFFF
-  @allowed_extensions MapSet.new([".yarn", ".yarnproject", ".csv", ".json"])
-  @archive_extensions MapSet.new([".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"])
+  @nested_archive_extensions MapSet.new([".zip", ".tar", ".gz", ".tgz", ".7z", ".rar"])
 
-  @enforce_keys [:kind, :files, :replace_eligible]
-  defstruct [:kind, :files, :replace_eligible]
+  @enforce_keys [:kind, :files]
+  defstruct [:kind, :files]
 
   @type source_file :: %{alias: String.t(), extension: String.t(), content: binary()}
+  @type archive_candidate :: %{
+          path: String.t(),
+          extension: String.t(),
+          content: binary()
+        }
+  @type input_profile :: %{
+          required(:plain_extensions) => MapSet.t(String.t()),
+          required(:archive_extensions) => MapSet.t(String.t()),
+          required(:archive_entry_extensions) => MapSet.t(String.t())
+        }
+  @type archive_selector ::
+          ([archive_candidate()] -> {:ok, [archive_candidate()]} | {:error, atom()})
   @type t :: %__MODULE__{
           kind: :file | :archive,
-          files: [source_file()],
-          replace_eligible: boolean()
+          files: [source_file()]
         }
 
-  @spec open(String.t(), binary()) :: {:ok, t()} | {:error, atom()}
-  def open(filename, binary) when is_binary(filename) and is_binary(binary) do
+  @spec open(String.t(), binary(), input_profile(), archive_selector()) ::
+          {:ok, t()} | {:error, atom()}
+  def open(filename, binary, profile, archive_selector)
+      when is_binary(filename) and is_binary(binary) and is_map(profile) and is_function(archive_selector, 1) do
+    extension = filename |> Path.extname() |> String.downcase()
+
     cond do
       byte_size(binary) > @max_upload_bytes ->
         {:error, :file_too_large}
 
-      filename |> Path.extname() |> String.downcase() == ".yarn" ->
-        open_text(binary, ".yarn")
+      MapSet.member?(profile.plain_extensions, extension) ->
+        open_text(binary, extension)
 
-      filename |> Path.extname() |> String.downcase() == ".json" ->
-        open_text(binary, ".json")
-
-      filename |> Path.extname() |> String.downcase() == ".zip" ->
-        open_zip(binary)
+      MapSet.member?(profile.archive_extensions, extension) ->
+        open_archive(binary, profile.archive_entry_extensions, archive_selector)
 
       true ->
         {:error, :unsupported_import_format}
     end
-  end
-
-  @spec yarn_files(t()) :: [source_file()]
-  def yarn_files(%__MODULE__{files: files}) do
-    Enum.filter(files, &(&1.extension == ".yarn"))
   end
 
   defp open_text(binary, extension) do
@@ -63,30 +70,47 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
       {:ok,
        %__MODULE__{
          kind: :file,
-         files: [%{alias: "source_1", extension: extension, content: content}],
-         replace_eligible: false
+         files: [%{alias: "source_1", extension: extension, content: content}]
        }}
     end
   end
 
-  defp open_zip(binary) do
+  defp open_archive(binary, archive_entry_extensions, archive_selector) do
     with :ok <- preflight_zip(binary),
          {:ok, entries} <- list_zip(binary),
          :ok <- validate_entry_count(entries),
-         {:ok, selected} <- validate_entries(entries),
+         {:ok, selected} <- validate_entries(entries, archive_entry_extensions),
          {:ok, extracted} <- extract_selected(binary, selected),
          {:ok, normalized} <- normalize_files(extracted),
-         replace_eligible = Enum.any?(normalized, &(&1.extension == ".yarnproject")),
-         {:ok, selected_sources} <- YarnProjectSources.select(normalized),
-         :ok <- require_yarn(selected_sources) do
+         {:ok, selected_sources} <- archive_selector.(normalized),
+         {:ok, selected_sources} <- validate_archive_selection(normalized, selected_sources) do
       {:ok,
        %__MODULE__{
          kind: :archive,
-         files: anonymize_files(selected_sources),
-         replace_eligible: replace_eligible
+         files: anonymize_files(selected_sources)
        }}
     end
   end
+
+  # Format selectors may only choose from the exact candidates that crossed
+  # the ZIP validation and text-normalization boundary above. Treat the
+  # callback as policy, not as another source of bytes: accepting a forged
+  # path, extension, body, extra field, or duplicate here would let an adapter
+  # bypass the archive limits that this module owns.
+  defp validate_archive_selection(validated_files, selected_files) when is_list(selected_files) do
+    validated_set = MapSet.new(validated_files)
+    selected_set = MapSet.new(selected_files)
+
+    if length(selected_files) <= length(validated_files) and
+         MapSet.size(selected_set) == length(selected_files) and
+         MapSet.subset?(selected_set, validated_set) do
+      {:ok, selected_files}
+    else
+      {:error, :invalid_archive}
+    end
+  end
+
+  defp validate_archive_selection(_validated_files, _selected_files), do: {:error, :invalid_archive}
 
   defp preflight_zip(binary) do
     with {:ok, eocd} <- find_eocd(binary),
@@ -335,16 +359,19 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
   defp validate_entry_count(entries) when length(entries) <= @max_entries, do: :ok
   defp validate_entry_count(_entries), do: {:error, :archive_too_many_entries}
 
-  defp validate_entries(entries) do
+  defp validate_entries(entries, allowed_extensions) do
     entries
-    |> Enum.reduce_while({:ok, [], MapSet.new(), 0}, &validate_entry/2)
+    |> Enum.reduce_while(
+      {:ok, [], MapSet.new(), 0},
+      &validate_entry(&1, &2, allowed_extensions)
+    )
     |> case do
       {:ok, selected, _names, _total} -> {:ok, Enum.reverse(selected)}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp validate_entry(entry, {:ok, acc, names, total}) do
+  defp validate_entry(entry, {:ok, acc, names, total}, allowed_extensions) do
     with {:ok, metadata} <- entry_metadata(entry),
          :ok <- validate_path(metadata.name),
          :ok <- validate_type(metadata.type),
@@ -353,7 +380,7 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
          :ok <- validate_expansion_ratio(metadata.size, metadata.compressed_size),
          :ok <- validate_duplicate(metadata.path, names),
          :ok <- validate_total(total + metadata.size) do
-      selected = maybe_select_entry(acc, metadata)
+      selected = maybe_select_entry(acc, metadata, allowed_extensions)
       names = MapSet.put(names, String.downcase(metadata.path))
       {:cont, {:ok, selected, names, total + metadata.size}}
     else
@@ -361,11 +388,11 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
     end
   end
 
-  defp maybe_select_entry(acc, %{type: :regular, extension: extension} = metadata) do
-    if MapSet.member?(@allowed_extensions, extension), do: [metadata | acc], else: acc
+  defp maybe_select_entry(acc, %{type: :regular, extension: extension} = metadata, allowed_extensions) do
+    if MapSet.member?(allowed_extensions, extension), do: [metadata | acc], else: acc
   end
 
-  defp maybe_select_entry(acc, _metadata), do: acc
+  defp maybe_select_entry(acc, _metadata, _allowed_extensions), do: acc
 
   defp entry_metadata({:zip_file, raw_name, info, _comment, _offset, compressed_size}) do
     with {:ok, name} <- zip_name(raw_name),
@@ -413,7 +440,7 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
   defp validate_type(_type), do: {:error, :unsupported_archive_entry}
 
   defp validate_nested_archive(extension) do
-    if MapSet.member?(@archive_extensions, extension),
+    if MapSet.member?(@nested_archive_extensions, extension),
       do: {:error, :nested_archive_not_allowed},
       else: :ok
   end
@@ -511,11 +538,5 @@ defmodule Storyarn.Projects.Imports.SourceBundle do
     else
       {:error, :invalid_text_encoding}
     end
-  end
-
-  defp require_yarn(files) do
-    if Enum.any?(files, &(&1.extension == ".yarn")),
-      do: :ok,
-      else: {:error, :archive_missing_yarn_files}
   end
 end

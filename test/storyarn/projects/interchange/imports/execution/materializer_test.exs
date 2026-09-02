@@ -72,6 +72,13 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   # =============================================================================
 
   describe "validate_plan_data" do
+    test "rejects a corrupt non-map plan envelope without raising" do
+      for invalid <- [nil, [], "invalid"] do
+        assert Materializer.validate_plan_data(invalid) ==
+                 {:error, :invalid_import_plan_data}
+      end
+    end
+
     test "returns error for missing required keys" do
       assert {:error, {:missing_required_keys, missing}} = Materializer.validate_plan_data(%{"foo" => "bar"})
       assert "storyarn_version" in missing
@@ -144,6 +151,20 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       assert {:error, {:invalid_field_types, [field]}} = Materializer.validate_plan_data(data)
 
       assert field == "flows[0].nodes[0].data"
+    end
+
+    test "rejects non-map data for every normalized node type" do
+      for type <- ["annotation", "condition", "hub", "instruction", "jump", "sequence"] do
+        data =
+          minimal_import_data([
+            %{"id" => Ecto.UUID.generate(), "type" => type, "data" => ["invalid"]}
+          ])
+
+        assert {:error, {:invalid_field_types, [field]}} =
+                 Materializer.validate_plan_data(data)
+
+        assert field == "flows[0].nodes[0].data"
+      end
     end
 
     test "rejects malformed sequence config without crashing" do
@@ -240,6 +261,22 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
 
       assert {:error, {:invalid_field_types, fields}} = Imports.execute(target, import_plan(data))
       assert "flows[0].nodes[0]" in fields
+    end
+
+    test "rejects non-map node data before creating a flow", %{target: target} do
+      data =
+        minimal_import_data([
+          %{
+            "id" => Ecto.UUID.generate(),
+            "type" => "annotation",
+            "data" => "invalid"
+          }
+        ])
+
+      assert {:error, {:invalid_field_types, ["flows[0].nodes[0].data"]}} =
+               Imports.execute(target, import_plan(data))
+
+      assert FlowReadModel.list_flows(target.id) == []
     end
 
     test "rejects import with too many sheets", %{target: target} do
@@ -1233,11 +1270,35 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   end
 
   defp import_plan(data) do
+    # These tests exercise the format-neutral materializer with hand-built
+    # native data. Yarn v5 is the only registered format, and an empty review
+    # is resolved by contract when the data has no speaker occurrences. Keep
+    # the complete review envelope here so the tests do not rely on the old
+    # unknown-format fail-open behaviour.
+    data = Map.put(data, "import_review", resolved_empty_yarn_review())
+
     %ImportPlan{
-      format: :test,
-      parser_version: "1",
+      format: :yarn,
+      parser_version: "5",
       source_kind: :file,
       data: data
+    }
+  end
+
+  defp resolved_empty_yarn_review do
+    %{
+      "speaker_decisions" => [],
+      "speaker_decision_count" => 0,
+      "speaker_decisions_truncated" => false,
+      "sheet_speaker_count" => 0,
+      "preserved_channel_count" => 0,
+      "possible_speaker_aliases" => [],
+      "possible_speaker_alias_count" => 0,
+      "possible_speaker_aliases_truncated" => false,
+      "compatibility_warning_count" => 0,
+      "compatibility_warning_counts_by_code" => %{},
+      "requires_acknowledgement" => false,
+      "variable_count" => 0
     }
   end
 

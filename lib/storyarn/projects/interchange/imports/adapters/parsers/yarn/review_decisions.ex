@@ -49,7 +49,8 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
              :invalid_import_review
              | :invalid_import_review_selection
              | :import_review_required
-             | :import_review_too_large}
+             | :import_review_too_large
+             | :unsupported_import_format}
   def apply(
         %ImportPlan{format: :yarn, parser_version: parser_version, data: data} = plan,
         acknowledged?,
@@ -73,7 +74,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
 
   def apply(%ImportPlan{format: :yarn}, _acknowledged?, _selected_decisions), do: {:error, :invalid_import_review}
 
-  def apply(%ImportPlan{} = plan, _acknowledged?, _selected_decisions), do: {:ok, plan}
+  def apply(%ImportPlan{}, _acknowledged?, _selected_decisions), do: {:error, :unsupported_import_format}
 
   @doc false
   @spec save_draft(ImportPlan.t(), term()) ::
@@ -81,7 +82,8 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
           | {:error,
              :invalid_import_review
              | :invalid_import_review_selection
-             | :import_review_too_large}
+             | :import_review_too_large
+             | :unsupported_import_format}
   def save_draft(%ImportPlan{format: :yarn, parser_version: @parser_version, data: data} = plan, selected_decisions)
       when is_map(data) do
     with {:ok, review} <- validate_review(data["import_review"]),
@@ -100,11 +102,11 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
 
   def save_draft(%ImportPlan{format: :yarn}, _selected_decisions), do: {:error, :invalid_import_review}
 
-  def save_draft(%ImportPlan{} = plan, _selected_decisions), do: {:ok, plan}
+  def save_draft(%ImportPlan{}, _selected_decisions), do: {:error, :unsupported_import_format}
 
   @doc false
   @spec confirmation_fingerprint(ImportPlan.t()) ::
-          {:ok, String.t()} | {:error, :invalid_import_review}
+          {:ok, String.t()} | {:error, :invalid_import_review | :unsupported_import_format}
   def confirmation_fingerprint(
         %ImportPlan{
           format: :yarn,
@@ -128,11 +130,12 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
       else: {:error, :invalid_import_review}
   end
 
-  def confirmation_fingerprint(%ImportPlan{}), do: {:ok, "not-required"}
+  def confirmation_fingerprint(%ImportPlan{}), do: {:error, :unsupported_import_format}
 
   @doc false
   @spec confirm(ImportPlan.t(), term()) ::
-          :ok | {:error, :invalid_import_review | :invalid_import_review_selection}
+          :ok
+          | {:error, :invalid_import_review | :invalid_import_review_selection | :unsupported_import_format}
   def confirm(%ImportPlan{format: :yarn} = plan, supplied_fingerprint) do
     case confirmation_fingerprint(plan) do
       {:ok, "not-required"} when supplied_fingerprint in [nil, "not-required"] ->
@@ -149,10 +152,10 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
     end
   end
 
-  def confirm(%ImportPlan{}, _supplied_fingerprint), do: :ok
+  def confirm(%ImportPlan{}, _supplied_fingerprint), do: {:error, :unsupported_import_format}
 
   @spec validate(ImportPlan.t()) ::
-          :ok | {:error, :invalid_import_review | :import_review_too_large}
+          :ok | {:error, :invalid_import_review | :import_review_too_large | :unsupported_import_format}
   def validate(
         %ImportPlan{
           format: :yarn,
@@ -174,7 +177,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
   end
 
   def validate(%ImportPlan{format: :yarn}), do: {:error, :invalid_import_review}
-  def validate(%ImportPlan{}), do: :ok
+  def validate(%ImportPlan{}), do: {:error, :unsupported_import_format}
 
   @spec resolved?(ImportPlan.t()) :: boolean()
   def resolved?(
@@ -223,7 +226,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
   end
 
   def resolved?(%ImportPlan{format: :yarn}), do: false
-  def resolved?(%ImportPlan{}), do: true
+  def resolved?(%ImportPlan{}), do: false
 
   defp validate_review(review) when is_map(review) do
     with {:ok, entries} <- fetch_list(review, "speaker_decisions"),
@@ -627,17 +630,44 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
     if actual == expected, do: :ok, else: {:error, :invalid_import_review}
   end
 
-  defp speaker_occurrences(data) do
-    data
-    |> Map.get("flows", [])
-    |> Enum.flat_map(&Map.get(&1, "nodes", []))
-    |> Enum.reduce(%{}, fn node, counts ->
-      case get_in(node, ["data", "import_yarn_speaker"]) do
-        speaker when is_binary(speaker) -> Map.update(counts, speaker, 1, &(&1 + 1))
-        _not_a_speaker_line -> counts
-      end
-    end)
+  defp speaker_occurrences(data) when is_map(data) do
+    case Map.get(data, "flows", []) do
+      flows when is_list(flows) -> Enum.reduce_while(flows, %{}, &count_flow_speakers/2)
+      _invalid_flows -> :invalid
+    end
   end
+
+  defp speaker_occurrences(_data), do: :invalid
+
+  defp count_flow_speakers(flow, counts) when is_map(flow) do
+    case Map.get(flow, "nodes", []) do
+      nodes when is_list(nodes) ->
+        case Enum.reduce_while(nodes, counts, &count_node_speaker/2) do
+          :invalid -> {:halt, :invalid}
+          updated_counts -> {:cont, updated_counts}
+        end
+
+      _invalid_nodes ->
+        {:halt, :invalid}
+    end
+  end
+
+  defp count_flow_speakers(_flow, _counts), do: {:halt, :invalid}
+
+  defp count_node_speaker(node, counts) when is_map(node) do
+    case Map.get(node, "data", %{}) do
+      data when is_map(data) ->
+        case Map.get(data, "import_yarn_speaker") do
+          speaker when is_binary(speaker) -> {:cont, Map.update(counts, speaker, 1, &(&1 + 1))}
+          _not_a_speaker_line -> {:cont, counts}
+        end
+
+      _invalid_data ->
+        {:halt, :invalid}
+    end
+  end
+
+  defp count_node_speaker(_node, _counts), do: {:halt, :invalid}
 
   defp apply_to_data(data, review_data, review_entries, selected_actions) do
     selected_speakers =

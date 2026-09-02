@@ -7,6 +7,7 @@ defmodule Storyarn.Projects.Imports.Preview do
   would let a caller preview a file whose issues were silently dropped.
   """
 
+  alias Storyarn.Projects.Imports.FormatReview
   alias Storyarn.Projects.Imports.ImportPlan
   alias Storyarn.Projects.ProjectReconstitution
 
@@ -18,16 +19,17 @@ defmodule Storyarn.Projects.Imports.Preview do
 
   Returns a preview struct with entity counts and detected conflicts.
   """
-  def preview(project_id, %ImportPlan{data: parsed_data} = plan) do
+  def preview(project_id, %ImportPlan{} = plan) do
     if ImportPlan.error?(plan) do
       {:error, :import_plan_has_errors}
     else
-      case ProjectReconstitution.preview_import(project_id, parsed_data) do
-        {:ok, preview} ->
-          {:ok, Map.put(preview, :issue_summary, import_issue_summary(plan))}
-
-        error ->
-          error
+      with :ok <- FormatReview.ensure_supported(plan),
+           {:ok, preview} <- ProjectReconstitution.preview_import(project_id, plan),
+           {:ok, review} <- FormatReview.put_allowed_actions(plan, preview.import_review) do
+        {:ok,
+         preview
+         |> Map.put(:import_review, review)
+         |> Map.put(:issue_summary, import_issue_summary(plan))}
       end
     end
   end

@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.Imports.Parsers.Yarn.SpeakerSheets do
   @moduledoc false
 
-  alias Storyarn.Projects.Imports.Parsers.Yarn.Shortcut
+  alias Storyarn.Projects.Imports.ShortcutAllocator
   alias Storyarn.Projects.NameNormalizer
 
   @description "Imported Yarn Spinner character"
@@ -20,7 +20,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.SpeakerSheets do
       speakers
       |> Enum.with_index(length(retained_sheets))
       |> Enum.reduce({[], %{}, used_shortcuts}, fn {speaker, position}, {built, ids, used} ->
-        shortcut = speaker |> NameNormalizer.shortcutify() |> Shortcut.unique(used)
+        shortcut = speaker |> NameNormalizer.shortcutify() |> ShortcutAllocator.unique(used)
         id = id(speaker)
 
         sheet = %{

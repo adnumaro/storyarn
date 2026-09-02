@@ -188,7 +188,7 @@ defmodule Storyarn.Projects.Imports.Resume do
   end
 
   defp report_resume_failure(attempt, {:error, reason}) do
-    {code, _message, _permanent?} = Error.classify(reason)
+    {code, _message, _permanent?} = Error.classify(reason, attempt.format)
 
     Error.report(%{
       format: attempt.format,

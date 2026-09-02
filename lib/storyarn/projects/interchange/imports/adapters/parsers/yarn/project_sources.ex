@@ -1,5 +1,12 @@
-defmodule Storyarn.Projects.Imports.SourceBundle.YarnProjectSources do
-  @moduledoc false
+defmodule Storyarn.Projects.Imports.Parsers.Yarn.ProjectSources do
+  @moduledoc """
+  Applies Yarn Spinner's `.yarnproject` source-selection semantics to a secure
+  archive candidate set opened by `Storyarn.Projects.Imports.SourceBundle`.
+
+  This module deliberately owns Yarn's supported project-file versions, glob
+  behavior, exclusion order, and workload limits. The generic input adapter
+  knows only how to validate and open files safely.
+  """
 
   @supported_project_versions MapSet.new([2, 3, 4])
   @max_patterns_per_list 100

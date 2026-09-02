@@ -17,8 +17,8 @@ defmodule Storyarn.Projects.Imports.Execution do
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Imports.Error
+  alias Storyarn.Projects.Imports.FormatReview
   alias Storyarn.Projects.Imports.NotificationDelivery
-  alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Projects.Imports.PlanCleanup
   alias Storyarn.Projects.Imports.PlanStorage
   alias Storyarn.Projects.Imports.ProjectImportAttempt
@@ -115,12 +115,9 @@ defmodule Storyarn.Projects.Imports.Execution do
     with {:ok, project, _membership} <- authorize_worker(attempt),
          {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
          :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
-         true <- ReviewDecisions.resolved?(plan) do
+         :ok <- FormatReview.ensure_resolved(plan) do
       continue_import_with_snapshot(attempt, project, plan, opts, attempt_number, max_attempts, started_at)
     else
-      false ->
-        handled_execution_error(attempt, :invalid_import_review, attempt_number, max_attempts, started_at, opts)
-
       {:error, reason} ->
         handled_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts)
     end
@@ -484,7 +481,7 @@ defmodule Storyarn.Projects.Imports.Execution do
   end
 
   defp handle_execution_error(attempt, reason, attempt_number, max_attempts, started_at, opts, exception_module) do
-    {code, message, permanent?} = Error.classify(reason)
+    {code, message, permanent?} = Error.classify(reason, attempt.format)
     terminal? = permanent? or attempt_number >= max_attempts
 
     case persist_execution_error(attempt, code, message, attempt_number, max_attempts, terminal?) do

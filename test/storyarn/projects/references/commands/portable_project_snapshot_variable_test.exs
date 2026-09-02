@@ -1,7 +1,7 @@
 defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.References.VariableReferenceTracker
+  alias Storyarn.Projects.References.PortableVariableSnapshot
 
   test "rewrites only authoritative shortcutless variable surfaces" do
     old_namespace = "10"
@@ -54,10 +54,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         ]
       )
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:ok, rewritten} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(
                snapshot,
                plan,
                %{10 => 99}
@@ -104,7 +104,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
       ])
 
     assert {:error, {:unresolved_variable_reference, "table_formula", 1002, "read", "10", "missing"}} =
-             VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
   end
 
   test "rejects malformed same-row bindings and bindings absent from the expression" do
@@ -136,7 +136,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         ])
 
       assert {:error, {:invalid_portable_formula_cell, 101, 1002, "computed", ^invalid_cell}} =
-               VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+               PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
     end
   end
 
@@ -155,7 +155,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         ])
 
       assert {:ok, _plan} =
-               VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+               PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
     end
   end
 
@@ -173,7 +173,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
       ])
 
     assert {:error, {:invalid_portable_table_cell_key, 101, 1002, "ghost"}} =
-             VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
   end
 
   test "preserves noncanonical legacy JSON when fixed-shortcut references do not change" do
@@ -203,10 +203,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         ]
       )
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:ok, rewritten} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(
                snapshot,
                plan,
                %{10 => 99}
@@ -226,7 +226,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
     for sheets <- [entries, Enum.reverse(entries)] do
       snapshot = project_snapshot(sheets)
 
-      assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+      assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
       assert plan.sheet_ids == MapSet.new([42, 84])
       assert plan.namespace_owners == %{"42" => 84}
       assert plan.rewritable_namespaces == %{}
@@ -252,7 +252,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
       )
 
     assert {:error, {:unresolved_variable_reference, "flow_node", 200, "read", "42", "hp"}} =
-             VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
   end
 
   test "rejects destination numeric namespaces that collide with fixed shortcuts" do
@@ -262,10 +262,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         sheet_entry(20, "42", [regular_block(200, "mana")])
       ])
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:error, {:ambiguous_destination_variable_namespace, "42", 10, 20}} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(
                snapshot,
                plan,
                %{10 => 42, 20 => 43}
@@ -285,10 +285,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         ]
       )
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_exact_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_exact_project_snapshot(snapshot)
 
     assert {:ok, rewritten} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(snapshot, plan, %{10 => 42})
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(snapshot, plan, %{10 => 42})
 
     [flow] = rewritten["flows"]
     [node] = flow["snapshot"]["nodes"]
@@ -303,10 +303,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         sheet_entry(20, "actors", [regular_block(200, "mana")])
       ])
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:error, {:non_injective_portable_variable_sheet_mapping, %{10 => 42, 20 => 42}}} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(
                snapshot,
                plan,
                %{10 => 42, 20 => 42}
@@ -320,10 +320,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         sheet_entry(20, "42", [])
       ])
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:ok, ^snapshot} =
-             VariableReferenceTracker.rewrite_portable_project_snapshot(
+             PortableVariableSnapshot.rewrite_portable_project_snapshot(
                snapshot,
                plan,
                %{10 => 42, 20 => 43}
@@ -340,10 +340,10 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
         sheet_entry(50, "77", [])
       ])
 
-    assert {:ok, plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+    assert {:ok, plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
 
     assert {:ok, 2} =
-             VariableReferenceTracker.portable_namespace_materialization_attempt_limit(plan)
+             PortableVariableSnapshot.portable_namespace_materialization_attempt_limit(plan)
   end
 
   defp project_snapshot(sheets, nodes \\ []) do

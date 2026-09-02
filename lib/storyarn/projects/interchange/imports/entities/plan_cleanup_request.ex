@@ -12,10 +12,10 @@ defmodule Storyarn.Projects.Imports.PlanCleanupRequest do
 
   import Ecto.Changeset
 
+  alias Storyarn.Projects.Imports.ImportFormatId
   alias Storyarn.Projects.Project
 
   @states ~w(reserved retained pending deleting completed)
-  @formats ~w(yarn storyarn)
 
   schema "import_plan_cleanup_requests" do
     field :plan_storage_key, :string
@@ -44,7 +44,7 @@ defmodule Storyarn.Projects.Imports.PlanCleanupRequest do
     ])
     |> validate_required([:plan_storage_key, :format, :parser_version, :state, :cleanup_after])
     |> validate_inclusion(:state, @states)
-    |> validate_inclusion(:format, @formats)
+    |> ImportFormatId.validate()
     |> validate_length(:plan_storage_key, max: 255)
     |> validate_format(:plan_storage_key, ~r/\Aimports\/plans\/[0-9a-f-]{36}\.plan\.enc\z/)
     |> validate_length(:parser_version, max: 30)

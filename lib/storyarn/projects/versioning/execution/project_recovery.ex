@@ -32,8 +32,9 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Projects.References
   alias Storyarn.Projects.References.AvatarIntegrity
+  alias Storyarn.Projects.References.MaterializedFormulaBindingRewriter
+  alias Storyarn.Projects.References.PortableVariableSnapshot
   alias Storyarn.Projects.References.RichTextMentions
-  alias Storyarn.Projects.References.VariableReferenceTracker
   alias Storyarn.Projects.Versioning.AssetMaterializationCache
   alias Storyarn.Projects.Versioning.AssetMaterializationScope
   alias Storyarn.Projects.Versioning.Builders.AssetCopyError
@@ -156,7 +157,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
          :ok <- validate_preflight_tree(snapshot_data, id_maps),
          :ok <- validate_preflight_references(snapshot_data, id_maps),
          {:ok, _variable_plan} <-
-           VariableReferenceTracker.prepare_portable_project_snapshot(snapshot_data) do
+           PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot_data) do
       validate_materialization_localization(snapshot_data, id_maps)
     end
   end
@@ -366,9 +367,9 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
   defp prepare_materialization_variable_plan(snapshot_data, opts) when is_list(opts) do
     if MaterializationHelpers.exact_materialization?(opts) do
-      VariableReferenceTracker.prepare_exact_project_snapshot(snapshot_data)
+      PortableVariableSnapshot.prepare_exact_project_snapshot(snapshot_data)
     else
-      VariableReferenceTracker.prepare_portable_project_snapshot(snapshot_data)
+      PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot_data)
     end
   end
 
@@ -1334,7 +1335,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
   defp portable_namespace_attempt_limit(opts) do
     case Keyword.fetch(opts, :portable_variable_plan) do
-      {:ok, plan} -> VariableReferenceTracker.portable_namespace_materialization_attempt_limit(plan)
+      {:ok, plan} -> PortableVariableSnapshot.portable_namespace_materialization_attempt_limit(plan)
       :error -> {:ok, 1}
     end
   end
@@ -1342,7 +1343,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   defp rewrite_snapshot_variable_namespaces(snapshot_data, sheet_id_map, opts) do
     case Keyword.fetch(opts, :portable_variable_plan) do
       {:ok, plan} ->
-        VariableReferenceTracker.rewrite_portable_project_snapshot(
+        PortableVariableSnapshot.rewrite_portable_project_snapshot(
           snapshot_data,
           plan,
           sheet_id_map
@@ -1356,7 +1357,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   defp rewrite_materialized_formula_namespaces(project_id, sheet_id_map, opts) do
     case Keyword.fetch(opts, :portable_variable_plan) do
       {:ok, plan} ->
-        VariableReferenceTracker.rewrite_materialized_formula_bindings(
+        MaterializedFormulaBindingRewriter.rewrite(
           project_id,
           plan,
           sheet_id_map

@@ -2,16 +2,14 @@ defmodule Storyarn.Projects.Imports.Error do
   @moduledoc false
 
   alias Storyarn.Projects.Imports.ErrorDeduplicator
+  alias Storyarn.Projects.Imports.FormatRegistry
 
-  @permanent_codes ~w(
+  @permanent_codes MapSet.new(~w(
     archive_entry_too_large
     archive_expansion_ratio_exceeded
-    archive_missing_yarn_files
     archive_too_large
     archive_too_many_entries
     duplicate_archive_entry
-    duplicate_yarn_node_title
-    empty_yarn_project
     entity_limits_exceeded
     file_too_large
     import_plan_has_errors
@@ -23,7 +21,6 @@ defmodule Storyarn.Projects.Imports.Error do
     invalid_archive
     invalid_archive_entry
     invalid_archive_path
-    invalid_yarn_command
     invalid_json
     invalid_json_structure
     invalid_import_review
@@ -31,9 +28,6 @@ defmodule Storyarn.Projects.Imports.Error do
     invalid_import_snapshot_identity
     invalid_import_snapshot_request
     invalid_text_encoding
-    missing_yarn_body_end
-    missing_yarn_body_start
-    missing_yarn_endif
     nested_archive_not_allowed
     not_found
     ownership_invariant_violation
@@ -47,23 +41,22 @@ defmodule Storyarn.Projects.Imports.Error do
     unauthorized
     unsupported_archive_entry
     unsupported_import_format
-    unsupported_yarn_character_markup
-    yarn_document_limit_exceeded
-    yarn_node_description_too_long
-    yarn_node_title_too_long
-    yarn_statement_limit_exceeded
-  )
+  ))
 
-  @spec classify(term()) :: {String.t(), String.t(), boolean()}
-  def classify(reason) do
+  @spec classify(term(), atom() | String.t() | nil) :: {String.t(), String.t(), boolean()}
+  def classify(reason, format \\ nil) do
     code = safe_code(reason)
 
+    permanent? =
+      MapSet.member?(@permanent_codes, code) or
+        FormatRegistry.permanent_error_code?(format, code)
+
     message =
-      if code in Enum.map(@permanent_codes, &to_string/1),
+      if permanent?,
         do: "The import file could not be processed.",
         else: "The import could not be completed. It may be retried automatically."
 
-    {code, message, code in Enum.map(@permanent_codes, &to_string/1)}
+    {code, message, permanent?}
   end
 
   @spec report(map()) :: :ok

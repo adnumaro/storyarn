@@ -14,7 +14,6 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
   alias Storyarn.Projects.Imports.Parsers.Yarn.Layout
   alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Projects.Imports.PlanStorage
-  alias Storyarn.Projects.Imports.SourceBundle
   alias Storyarn.Repo
   alias Storyarn.Sheets
 
@@ -2099,7 +2098,7 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
       """
 
       assert {:ok, parser} = ParserRegistry.parser_for("argstop.yarn")
-      assert {:ok, bundle} = SourceBundle.open("argstop.yarn", source)
+      assert {:ok, bundle} = parser.open_source("argstop.yarn", source)
       assert {:ok, plan} = parser.parse(bundle)
 
       assert Enum.any?(plan.issues, &(&1.code == :unsupported_yarn_control_command))
@@ -2758,7 +2757,7 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
 
       assert length(resolved_dialogue) == 4
       assert Enum.all?(resolved_dialogue, &(get_in(&1, ["data", "speaker_sheet_id"]) == capsley["id"]))
-      assert {:ok, _preview} = Materializer.preview(-1, resolved_plan.data)
+      assert {:ok, _preview} = Imports.preview(-1, resolved_plan)
     end
 
     test "serializes the same allowed actions enforced by the server" do
@@ -2791,7 +2790,7 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
       assert {:ok, _resolved} =
                ReviewDecisions.apply(legacy_plan, true, selected_suggestions(legacy_plan.data["import_review"]))
 
-      assert {:ok, preview} = Materializer.preview(-1, legacy_plan.data)
+      assert {:ok, preview} = Imports.preview(-1, legacy_plan)
       assert Enum.all?(preview.import_review["speaker_decisions"], &is_list(&1["allowed_actions"]))
     end
 
@@ -2862,6 +2861,14 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
 
       assert {:error, :invalid_import_review} =
                ReviewDecisions.apply(malformed_plan, true, decisions)
+
+      invalid_node_data =
+        update_in(plan.data, ["flows", Access.at(0), "nodes", Access.at(0)], fn node ->
+          Map.put(node, "data", "invalid")
+        end)
+
+      assert {:error, :invalid_import_review} =
+               ReviewDecisions.apply(%{plan | data: invalid_node_data}, true, decisions)
     end
   end
 
@@ -2938,7 +2945,7 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
 
   defp raw_yarn_plan(source) do
     with {:ok, parser} <- ParserRegistry.parser_for("project.yarn"),
-         {:ok, bundle} <- SourceBundle.open("project.yarn", source) do
+         {:ok, bundle} <- parser.open_source("project.yarn", source) do
       parser.parse(bundle)
     end
   end

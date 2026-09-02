@@ -9,15 +9,20 @@ defmodule Storyarn.Projects.Imports.Telemetry do
   """
 
   alias Storyarn.Projects.Imports.Error
+  alias Storyarn.Projects.Imports.FormatRegistry
 
   def source_metadata(filename) do
-    extension = filename |> Path.extname() |> String.downcase()
+    case FormatRegistry.source_for(filename) do
+      {:ok, %{format: format, source_kind: source_kind}} ->
+        %{
+          format: Atom.to_string(format),
+          source_kind: Atom.to_string(source_kind),
+          parser_version: "unknown"
+        }
 
-    %{
-      format: if(extension in [".yarn", ".zip"], do: "yarn", else: "unknown"),
-      source_kind: if(extension == ".zip", do: "archive", else: "file"),
-      parser_version: "unknown"
-    }
+      {:error, :unsupported_import_format} ->
+        %{format: "unknown", source_kind: "file", parser_version: "unknown"}
+    end
   end
 
   def plan_metadata(plan, status, error_code) do
@@ -56,7 +61,7 @@ defmodule Storyarn.Projects.Imports.Telemetry do
   end
 
   def report_prepare_error(reason, metadata, started_at) do
-    {code, _message, _permanent?} = Error.classify(reason)
+    {code, _message, _permanent?} = Error.classify(reason, Map.get(metadata, :format))
     Error.report(Map.merge(metadata, %{phase: "prepare", error_code: code, exception_module: "none"}))
     emit_stop(:prepare, started_at, Map.merge(metadata, %{status: "failed", error_code: code}))
   end

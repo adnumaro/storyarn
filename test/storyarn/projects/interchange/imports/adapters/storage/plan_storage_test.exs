@@ -227,6 +227,18 @@ defmodule Storyarn.Projects.Imports.PlanStorageTest do
     assert {:error, _reason} = Storage.download(key)
   end
 
+  test "rejects an unregistered format before uploading a plan" do
+    key = storage_key()
+    on_exit(fn -> PlanStorage.delete(key) end)
+
+    unknown_format_plan = %{plan(:file) | format: :unknown_test_format}
+
+    assert {:error, :import_plan_storage_failed} =
+             PlanStorage.store_at(key, unknown_format_plan)
+
+    assert {:error, _reason} = Storage.download(key)
+  end
+
   defp plan(source_kind, data \\ %{}) do
     %ImportPlan{
       format: :yarn,

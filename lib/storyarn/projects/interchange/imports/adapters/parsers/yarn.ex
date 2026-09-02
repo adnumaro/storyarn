@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn do
   alias Storyarn.Projects.Imports.ImportPlan
   alias Storyarn.Projects.Imports.Parsers.Yarn.Document
   alias Storyarn.Projects.Imports.Parsers.Yarn.Normalizer
+  alias Storyarn.Projects.Imports.Parsers.Yarn.SourceProfile
   alias Storyarn.Projects.Imports.SourceBundle
 
   @parser_version "5"
@@ -31,8 +32,11 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn do
   def parser_version, do: @parser_version
 
   @impl true
+  defdelegate open_source(filename, binary), to: SourceProfile, as: :open
+
+  @impl true
   def parse(%SourceBundle{} = bundle) do
-    with files when files != [] <- SourceBundle.yarn_files(bundle),
+    with files when files != [] <- SourceProfile.yarn_files(bundle),
          {:ok, documents, document_issues} <-
            Document.parse_files(files,
              max_documents: @max_documents,
@@ -52,7 +56,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn do
         format: format(),
         parser_version: parser_version(),
         source_kind: bundle.kind,
-        replace_eligible: bundle.replace_eligible,
+        replace_eligible: SourceProfile.replace_eligible?(bundle),
         data: data,
         issues: issues,
         metadata: metadata

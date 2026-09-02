@@ -11,6 +11,7 @@ defmodule Storyarn.Projects.Imports.ProjectImportAttempt do
 
   import Ecto.Changeset
 
+  alias Storyarn.Projects.Imports.ImportFormatId
   alias Storyarn.Projects.Imports.PlanCleanupRequest
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
@@ -19,7 +20,6 @@ defmodule Storyarn.Projects.Imports.ProjectImportAttempt do
   @statuses ~w(ready queued running retrying completed failed expired)
   @active_statuses ~w(ready queued running retrying)
   @stages ~w(parsed awaiting_snapshot queued materializing retrying completed failed expired)
-  @formats ~w(yarn storyarn)
   @source_kinds ~w(file archive)
   @strategies ~w(skip overwrite rename)
   @import_modes ~w(additive replace_project)
@@ -317,7 +317,7 @@ defmodule Storyarn.Projects.Imports.ProjectImportAttempt do
     changeset
     |> validate_inclusion(:status, @statuses)
     |> validate_inclusion(:stage, @stages)
-    |> validate_inclusion(:format, @formats)
+    |> ImportFormatId.validate()
     |> validate_inclusion(:source_kind, @source_kinds)
     |> validate_inclusion(:conflict_strategy, @strategies)
     |> validate_inclusion(:import_mode, @import_modes)

@@ -19,9 +19,9 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Imports.Execution
   alias Storyarn.Projects.Imports.Expiration
+  alias Storyarn.Projects.Imports.FormatRegistry
+  alias Storyarn.Projects.Imports.FormatReview
   alias Storyarn.Projects.Imports.ImportPlan
-  alias Storyarn.Projects.Imports.ParserRegistry
-  alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
   alias Storyarn.Projects.Imports.PlanCleanup
   alias Storyarn.Projects.Imports.PlanCleanupRequest
   alias Storyarn.Projects.Imports.PlanStorage
@@ -30,7 +30,6 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   alias Storyarn.Projects.Imports.Queue
   alias Storyarn.Projects.Imports.Resume
   alias Storyarn.Projects.Imports.Shared
-  alias Storyarn.Projects.Imports.SourceBundle
   alias Storyarn.Projects.Imports.Telemetry
   alias Storyarn.Projects.Memberships
   alias Storyarn.Projects.Project
@@ -58,9 +57,10 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   """
   @spec parse_file(String.t(), binary()) :: {:ok, ImportPlan.t()} | {:error, atom() | tuple()}
   def parse_file(filename, binary) when is_binary(filename) and is_binary(binary) do
-    with {:ok, parser} <- ParserRegistry.parser_for(filename),
-         {:ok, bundle} <- SourceBundle.open(filename, binary),
+    with {:ok, %{parser: parser} = source} <- FormatRegistry.source_for(filename),
+         {:ok, bundle} <- parser.open_source(filename, binary),
          {:ok, %ImportPlan{} = plan} <- parser.parse(bundle),
+         :ok <- FormatRegistry.validate_parsed_plan(source, plan),
          false <- ImportPlan.error?(plan) do
       {:ok, plan}
     else
@@ -93,15 +93,10 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   def execute(project, plan, opts \\ [])
 
   def execute(project, %ImportPlan{} = plan, opts) do
-    cond do
-      ImportPlan.error?(plan) ->
-        {:error, :import_plan_has_errors}
-
-      not ReviewDecisions.resolved?(plan) ->
-        {:error, :invalid_import_review}
-
-      true ->
-        ProjectReconstitution.execute_import(project, plan, opts)
+    if ImportPlan.error?(plan) do
+      {:error, :import_plan_has_errors}
+    else
+      ProjectReconstitution.execute_import(project, plan, opts)
     end
   end
 
@@ -150,7 +145,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   end
 
   @doc """
-  Persists an incomplete Yarn review inside the encrypted plan.
+  Persists an incomplete format-specific review inside the encrypted plan.
 
   The durable attempt row and telemetry remain content-free. Each revision is
   written to a new storage key and the attempt pointer is swapped only after
@@ -166,7 +161,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   def save_import_review(%{user: _} = scope, attempt_id, decisions, opts)
       when is_integer(attempt_id) and attempt_id > 0 and is_list(opts) do
     case revise_import_review(scope, attempt_id, opts, fn plan ->
-           ReviewDecisions.save_draft(plan, decisions)
+           FormatReview.save_draft(plan, decisions)
          end) do
       {:ok, attempt, preview, _revised_plan} -> {:ok, attempt, preview}
       error -> error
@@ -176,8 +171,8 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   def save_import_review(%{user: _}, _attempt_id, _decisions, _opts), do: {:error, :not_found}
 
   @doc """
-  Applies every explicit Yarn review decision and returns the exact preview
-  that can subsequently be queued.
+  Applies every explicit format-specific review decision and returns the exact
+  preview that can subsequently be queued.
 
   No import job is created here. The caller must present the returned
   confirmation fingerprint when enqueueing, which prevents a stale browser
@@ -194,9 +189,9 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
       when is_integer(attempt_id) and attempt_id > 0 and is_boolean(acknowledged?) and is_list(opts) do
     with {:ok, attempt, preview, plan} <-
            revise_import_review(scope, attempt_id, opts, fn plan ->
-             ReviewDecisions.apply(plan, acknowledged?, decisions)
+             FormatReview.apply(plan, acknowledged?, decisions)
            end),
-         {:ok, fingerprint} <- ReviewDecisions.confirmation_fingerprint(plan) do
+         {:ok, fingerprint} <- FormatReview.confirmation_fingerprint(plan) do
       {:ok, attempt, preview, fingerprint}
     end
   end
@@ -818,17 +813,14 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
 
     with {:ok, plan} <- Shared.safely_load_plan(plan_load, attempt.plan_storage_key),
          :ok <- Shared.validate_attempt_plan_binding(attempt, plan),
-         true <- ReviewDecisions.resolved?(plan),
+         :ok <- FormatReview.ensure_resolved(plan),
          :ok <-
-           ReviewDecisions.confirm(
+           FormatReview.confirm(
              plan,
              Keyword.get(opts, :review_confirmation_fingerprint)
            ) do
       queue_resolved_import(attempt, plan, strategy)
     else
-      false ->
-        reject_invalid_review_attempt(attempt, :invalid_import_review)
-
       {:error, :invalid_import_review_selection} ->
         {:error, :invalid_import_review_selection}
 

@@ -1,9 +1,12 @@
 defmodule Storyarn.Projects.Imports.ImportPlan do
   @moduledoc """
-  Parser-independent representation of a pending project import.
+  Parser-independent envelope for a pending project import.
 
-  `data` uses Storyarn's native import document so the existing transactional
-  materializer remains the only database-writing implementation.
+  `data` uses Storyarn's normalized import document so the transactional
+  materializer remains the only database-writing implementation. A parser may
+  retain versioned source metadata needed after review or target-project
+  conflict resolution; only its registered format adapter may interpret and
+  remove that metadata before persistence.
   """
 
   alias Storyarn.Projects.Imports.ImportIssue

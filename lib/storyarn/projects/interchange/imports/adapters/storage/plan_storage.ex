@@ -16,6 +16,7 @@ defmodule Storyarn.Projects.Imports.PlanStorage do
 
   alias Storyarn.Platform.Vault
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Imports.FormatRegistry
   alias Storyarn.Projects.Imports.ImportPlan
 
   @default_max_json_bytes 128 * 1024 * 1024
@@ -173,7 +174,7 @@ defmodule Storyarn.Projects.Imports.PlanStorage do
 
   defp decode_plan(%{"format" => format, "parser_version" => parser_version, "data" => data} = payload)
        when is_binary(parser_version) and is_map(data) do
-    with {:ok, format} <- decode_format(format),
+    with {:ok, format} <- FormatRegistry.decode_persisted(format),
          {:ok, source_kind} <- decode_source_kind(Map.get(payload, "source_kind", "file")),
          {:ok, attempt_binding} <- decode_attempt_binding(Map.get(payload, "attempt_binding")),
          {:ok, metadata} <- decode_issue_summary(Map.get(payload, "issue_summary")) do
@@ -190,17 +191,6 @@ defmodule Storyarn.Projects.Imports.PlanStorage do
   end
 
   defp decode_plan(_payload), do: {:error, :invalid_import_plan}
-
-  # No `"storyarn"` clause: the native format is gone, so a stored plan carrying
-  # it decodes to `{:error, :invalid_import_plan}` and its attempt fails rather
-  # than materializing through a format nothing can produce any more. Plans are
-  # retained 24h and re-extended on enqueue, so an attempt prepared just before
-  # the deploy could otherwise have drained through days later. Nothing in the
-  # product could emit that file — the export side was hidden from the picker —
-  # so the population is a hand-crafted or long-archived file, and a failed
-  # import states that plainly.
-  defp decode_format("yarn"), do: {:ok, :yarn}
-  defp decode_format(_format), do: {:error, :invalid_import_plan}
 
   # Older callers could omit source_kind. Treat those plans as single-file
   # imports, matching decode_plan/1's backwards-compatible default.
@@ -234,11 +224,12 @@ defmodule Storyarn.Projects.Imports.PlanStorage do
   # attempt metadata, not plan data, so the parser-v5 payload remains readable
   # by older additive workers during a rolling deploy.
   defp encode_persisted_payload(plan) do
-    with {:ok, source_kind} <- encode_source_kind(plan.source_kind),
+    with {:ok, format} <- FormatRegistry.encode_persisted(plan.format),
+         {:ok, source_kind} <- encode_source_kind(plan.source_kind),
          {:ok, issue_summary} <- encode_issue_summary(plan.metadata) do
       {:ok,
        %{
-         "format" => to_string(plan.format),
+         "format" => format,
          "parser_version" => plan.parser_version,
          "source_kind" => source_kind,
          "data" => plan.data,

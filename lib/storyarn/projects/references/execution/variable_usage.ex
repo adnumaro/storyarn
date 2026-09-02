@@ -2,9 +2,9 @@ defmodule Storyarn.Projects.References.VariableUsage do
   @moduledoc """
   Read paths for variable usage and stale-reference repair.
 
-  Legacy editor reads remain delegated to the cross-context projection owner;
-  bounded, normalized lookup reads live here under the canonical References
-  context.
+  Legacy editor reads and bounded normalized lookup reads live here under the
+  canonical References context. SQL composition is delegated to dedicated
+  query modules; this execution module owns read-side orchestration only.
   """
 
   import Ecto.Query, warn: false
@@ -19,7 +19,7 @@ defmodule Storyarn.Projects.References.VariableUsage do
   alias Storyarn.Projects.References.Persistence.FlowNodeRecord
   alias Storyarn.Projects.References.Persistence.FlowRecord
   alias Storyarn.Projects.References.VariableReference
-  alias Storyarn.Projects.References.VariableReferenceTracker
+  alias Storyarn.Projects.References.VariableReferenceQueries
   alias Storyarn.Repo
 
   @default_limit 25
@@ -27,18 +27,18 @@ defmodule Storyarn.Projects.References.VariableUsage do
   # palette ultimately renders. This remains a hard scan ceiling.
   @max_limit 250
 
-  defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceTracker
-  defdelegate count_variable_usage(block_id), to: VariableReferenceTracker
-  defdelegate referenced_block_ids(block_ids), to: VariableReferenceTracker
-  defdelegate count_stale_references(block_ids, project_id), to: VariableReferenceTracker
+  defdelegate get_variable_usage(block_id, project_id), to: VariableReferenceQueries
+  defdelegate count_variable_usage(block_id), to: VariableReferenceQueries
+  defdelegate referenced_block_ids(block_ids), to: VariableReferenceQueries
+  defdelegate count_stale_references(block_ids, project_id), to: VariableReferenceQueries
 
   def check_stale_variable_references(block_id, project_id),
-    do: VariableReferenceTracker.check_stale_references(block_id, project_id)
+    do: VariableReferenceQueries.check_stale_references(block_id, project_id)
 
   def repair_stale_variable_references(scope, project_id),
     do: StaleVariableReferenceRepair.repair_project(scope, project_id)
 
-  defdelegate list_stale_node_ids(flow_id), to: VariableReferenceTracker
+  defdelegate list_stale_node_ids(flow_id), to: VariableReferenceQueries
 
   @doc """
   Returns active reads and writes for one validated variable definition.
