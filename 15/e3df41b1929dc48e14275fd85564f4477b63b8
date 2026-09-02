@@ -1,0 +1,37 @@
+test/storyarn/projects/references/execution/variable_reference_validation_test.exs
+  s_e9e5a90425bc26::t_fd4d46c79b341c 943-973
+lib/storyarn/projects/references/rules/portable_variable_snapshot.ex
+  s_e9e5a90425bc26::t_d1e6b1a7b63268 354-369,371-372,577-579,581-582,584-610
+  s_e9e5a90425bc26::t_5381f6f08c965b 580,611-612
+lib/storyarn/projects/references/execution/variable_usage.ex
+  s_e9e5a90425bc26::t_a996b12d9ec35f 6-8
+lib/storyarn/projects/references/rules/variable_reference_extraction.ex
+  s_e9e5a90425bc26::t_953ea0aba7face 271
+  s_e9e5a90425bc26::t_d1e6b1a7b63268 156,495,658-668
+  s_e9e5a90425bc26::t_cf5f9fed1e0f79 669-670
+test/storyarn/projects/references/commands/portable_project_snapshot_variable_test.exs
+  s_e9e5a90425bc26::t_fd4d46c79b341c 179-231
+test/storyarn/projects/references/queries/ambient_flow_variable_usage_test.exs
+  s_e9e5a90425bc26::t_1b74f9f813e2be 13,153,157-164,173-176
+  s_e9e5a90425bc26::t_cba047fdec81d9 177
+lib/storyarn/projects/references/queries/variable_reference_queries.ex
+  s_e9e5a90425bc26::t_1b74f9f813e2be 165-168,191-192,200,222-224
+test/storyarn/projects/interchange/imports/adapters/input/source_bundle_test.exs
+  s_e9e5a90425bc26::t_a996b12d9ec35f 67-74,78-84,87-90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15e3df41b1929dc48e14275fd85564f4477b63b8",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
