@@ -1,0 +1,147 @@
+{
+  "schemaVersion": 1,
+  "fixture": "space_journey",
+  "upstream": {
+    "repository": "https://github.com/YarnSpinnerTool/ExampleProjects",
+    "revision": "954b71207fbe6992fe188d1ab22f8b6330080a2b",
+    "path": "SpaceJourney/Assets/Dialogue/SpaceJourney_FinalVersion.yarn",
+    "gitBlob": "83f61dba31c9fbb24a62a270cbcc97ff3823a022",
+    "license": "MIT",
+    "copyright": "Copyright (c) 2021 Secret Lab Pty. Ltd."
+  },
+  "fixtureAdaptations": [
+    {
+      "id": "explicit-variable-declarations",
+      "occurrences": 2,
+      "reason": "Storyarn rejects variables used by conditions unless their type and initial value are explicit."
+    },
+    {
+      "id": "canonical-addition-assignment",
+      "occurrences": 3,
+      "reason": "Storyarn supports `set x to x + 1`, but rejects the equivalent Yarn Spinner 2 `+= 1` shorthand."
+    },
+    {
+      "id": "project-descriptor",
+      "occurrences": 1,
+      "reason": "The upstream Space Journey directory has no Yarn project descriptor; this v3 descriptor selects only the adapted source."
+    }
+  ],
+  "expectedSemantics": {
+    "accepted": [
+      {
+        "construct": "documents",
+        "count": 5,
+        "values": ["Start", "TalkToEngineer", "TalkToCrewmate", "TalkToCaptain", "BridgeEnding"]
+      },
+      {
+        "construct": "cross-flow-jumps",
+        "count": 6
+      },
+      {
+        "construct": "in-flow-connections",
+        "count": 132,
+        "byFlow": {
+          "Start": 7,
+          "TalkToEngineer": 21,
+          "TalkToCrewmate": 13,
+          "TalkToCaptain": 64,
+          "BridgeEnding": 27
+        }
+      },
+      {
+        "construct": "variables",
+        "count": 2,
+        "values": ["away_mission_readiness", "captain_is_friend"]
+      },
+      {
+        "construct": "reviewed-speakers-created-as-sheets",
+        "count": 5,
+        "values": ["Captain", "Crewmate", "Engineer", "Intercom", "Player"]
+      },
+      {
+        "construct": "representative-conditions",
+        "values": ["$away_mission_readiness < 2", "$captain_is_friend"]
+      },
+      {
+        "construct": "start-choice-destinations",
+        "values": {
+          "Go and talk to the Captain": "TalkToCaptain",
+          "Go see the Engineer as per orders": "TalkToEngineer",
+          "Meet up with your friend": "TalkToCrewmate"
+        }
+      },
+      {
+        "construct": "bridge-condition-branches",
+        "values": {
+          "$away_mission_readiness < 2": {
+            "true": "Take me to fight the pirates! I was made for this!",
+            "false": "Now's my chance! Take me to fight the pirates!"
+          },
+          "$captain_is_friend": {
+            "true": "I'll miss you if you die... friend.",
+            "false": "I'm sure somebody will miss you if you die."
+          }
+        }
+      },
+      {
+        "construct": "assignments",
+        "count": 5,
+        "values": [
+          "3 x away_mission_readiness += 1",
+          "captain_is_friend = true",
+          "captain_is_friend = false"
+        ]
+      }
+    ],
+    "transformed": [
+      {
+        "from": "Yarn document",
+        "to": "Storyarn flow"
+      },
+      {
+        "from": "exact Yarn Start document",
+        "to": "Storyarn main flow"
+      },
+      {
+        "from": "jump command",
+        "to": "Storyarn flow-reference exit"
+      },
+      {
+        "from": "declare/set command",
+        "to": "Storyarn variable block and instruction assignment"
+      }
+    ],
+    "preservedForReview": [
+      {
+        "construct": "engine-side-effect-commands",
+        "count": 52,
+        "examples": ["camera", "fadeIn", "fadeOut", "place", "pose", "expression", "wait"],
+        "representation": "annotation nodes with unsupported_yarn_command warnings"
+      },
+      {
+        "construct": "upstream-speaker-typo",
+        "value": "Crewemate",
+        "reviewDecision": "preserve_literal"
+      }
+    ],
+    "omitted": [],
+    "notExercisedByCorpus": [
+      {
+        "construct": "detour",
+        "reason": "The pinned Space Journey source does not contain detours. Known and unknown detour targets are covered without modifying upstream by focused parser tests in test/storyarn/projects/interchange/imports/adapters/parsers/yarn_test.exs."
+      }
+    ],
+    "rejectedInUnadaptedUpstream": [
+      {
+        "construct": "implicit condition variables",
+        "count": 2,
+        "error": "undeclared_yarn_condition_variable"
+      },
+      {
+        "construct": "+= assignment shorthand",
+        "count": 3,
+        "error": "unsupported_yarn_assignment"
+      }
+    ]
+  }
+}

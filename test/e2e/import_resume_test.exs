@@ -15,6 +15,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
   import StoryarnWeb.E2EHelpers
 
   alias Storyarn.Accounts.Scope
+  alias Storyarn.Flows
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.ProjectImportAttempt
@@ -26,18 +27,20 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
 
   @moduletag :e2e
 
-  @yarn_project_fixture_root Path.expand("../fixtures/imports/yarn/emberfall", __DIR__)
-  @yarn_project_fixture_files [
+  @emberfall_fixture_root Path.expand("../fixtures/imports/yarn/emberfall", __DIR__)
+  @emberfall_fixture_files [
     "Emberfall.yarnproject",
     "Dialogue/01_arrival.yarn",
     "Dialogue/02_market.yarn",
     "Dialogue/03_watchtower.yarn"
   ]
+  @space_journey_fixture_root Path.expand("../fixtures/imports/yarn/space_journey", __DIR__)
+  @space_journey_fixture_files ["SpaceJourney.yarnproject", "SpaceJourney_FinalVersion.yarn"]
 
   test "restores a completed import after navigation and reset does not resurrect it", %{conn: conn} do
     user = user_fixture()
     project = user |> project_fixture(%{name: "Import Resume Project"}) |> Repo.preload(:workspace)
-    yarn_path = yarn_fixture()
+    yarn_path = space_journey_fixture()
 
     import_path =
       "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
@@ -45,38 +48,45 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     navigation_path = "/users/settings"
     resume_storage_key = Imports.resume_storage_key(Scope.for_user(user), project)
 
-    conn
-    |> authenticate(user)
-    |> visit(import_path)
-    |> assert_has("#yarn-import-file-picker")
-    |> unwrap(fn %{frame_id: frame_id} ->
-      {:ok, _} =
-        PlaywrightEx.Frame.set_input_files(frame_id,
-          selector: "input[name='import_file']",
-          local_paths: [yarn_path],
-          timeout: 10_000
-        )
-    end)
-    |> assert_has("span", text: Path.basename(yarn_path))
-    |> click("#yarn-import-preview")
-    |> assert_has("#yarn-import-validate:not([disabled])")
-    |> click("#yarn-import-validate")
-    |> assert_has("#yarn-import-confirm:not([disabled])")
-    |> click("#yarn-import-confirm")
-    |> assert_has("[data-testid='yarn-import-processing']")
-    |> assert_attempt_reference_matches_latest(project.id, user.id, resume_storage_key)
-    |> visit(navigation_path)
-    |> assert_has("#profile-display-name")
-    |> unwrap(fn _browser ->
-      queued = latest_active_attempt(project.id, user.id)
+    session =
+      conn
+      |> authenticate(user)
+      |> visit(import_path)
+      |> assert_has("#yarn-import-file-picker")
+      |> unwrap(fn %{frame_id: frame_id} ->
+        {:ok, _} =
+          PlaywrightEx.Frame.set_input_files(frame_id,
+            selector: "input[name='import_file']",
+            local_paths: [yarn_path],
+            timeout: 10_000
+          )
+      end)
+      |> assert_has("span", text: Path.basename(yarn_path))
+      |> click("#yarn-import-preview")
+      |> assert_has("[data-testid='yarn-import-speaker-decision']")
+      |> select_space_journey_speaker_actions()
+      |> assert_has("#yarn-import-review-acknowledgement")
+      |> click("#yarn-import-review-acknowledgement")
+      |> assert_has("#yarn-import-validate:not([disabled])")
+      |> click("#yarn-import-validate")
+      |> assert_has("#yarn-import-confirm:not([disabled])")
+      |> click("#yarn-import-confirm")
+      |> assert_has("[data-testid='yarn-import-processing']")
+      |> assert_attempt_reference_matches_latest(project.id, user.id, resume_storage_key)
+      |> visit(navigation_path)
+      |> assert_has("#profile-display-name")
+      |> unwrap(fn _browser ->
+        queued = latest_active_attempt(project.id, user.id)
 
-      assert {:ok, completed} =
-               Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+        assert {:ok, completed} =
+                 Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
 
-      assert completed.status == "completed"
-    end)
-    |> visit(import_path)
-    |> assert_has("span", text: "The Yarn project was imported successfully.")
+        assert completed.status == "completed"
+      end)
+      |> visit(import_path)
+      |> assert_has("span", text: "The Yarn project was imported successfully.")
+
+    session
     |> assert_has("[data-testid='yarn-import-reset']")
     |> click("[data-testid='yarn-import-reset']")
     |> assert_has("#yarn-import-file-picker")
@@ -86,6 +96,27 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     |> visit(import_path)
     |> assert_has("#yarn-import-file-picker")
     |> refute_has("span", text: "The Yarn project was imported successfully.")
+
+    flows_by_name = Map.new(Flows.list_flows(project.id), &{&1.name, &1})
+    assert flows_by_name["Start"].is_main
+
+    flow_index_path =
+      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows"
+
+    session
+    |> visit(flow_index_path)
+    |> assert_has("a", text: "Start")
+    |> assert_has("a", text: "TalkToCaptain")
+    |> assert_has("a", text: "TalkToEngineer")
+    |> assert_has("a", text: "TalkToCrewmate")
+    |> assert_has("a", text: "BridgeEnding")
+    |> assert_has("[data-slot='badge']", text: "Main")
+    |> visit("#{flow_index_path}/#{flows_by_name["Start"].id}")
+    |> assert_has("[id^='flow-canvas-']")
+    |> assert_has("[data-testid='node']", text: "Another day in Space Fleet.")
+    |> assert_has("[data-testid='node']", text: "Go and talk to the Captain")
+    |> visit("#{flow_index_path}/#{flows_by_name["BridgeEnding"].id}")
+    |> assert_has("[data-testid='node']", text: "We're totally doomed. It's the Space Pirates!")
   end
 
   test "resumes a replacement while its recovery snapshot is pending and links to recovery", %{conn: conn} do
@@ -202,6 +233,33 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     )
   end
 
+  defp select_space_journey_speaker_actions(session) do
+    evaluate(
+      session,
+      """
+      (() => {
+        const decisions = Array.from(
+          document.querySelectorAll('[data-testid="yarn-import-speaker-decision"]')
+        );
+
+        return decisions.map((decision) => {
+          const speaker = decision.querySelector('p[id^="yarn-speaker-"]')?.textContent?.trim();
+          const action = speaker === 'Crewemate'
+            ? 'yarn-import-action-preserve-literal'
+            : 'yarn-import-action-create-sheet';
+
+          decision.querySelector(`[data-testid="${action}"]`)?.click();
+          return [speaker, action];
+        });
+      })()
+      """,
+      fn selections ->
+        assert length(selections) == 6
+        assert ["Crewemate", "yarn-import-action-preserve-literal"] in selections
+      end
+    )
+  end
+
   defp assert_attempt_reference_matches_latest(session, project_id, user_id, resume_storage_key) do
     attempt = latest_active_attempt(project_id, user_id)
     attempt_storage_key = "#{resume_storage_key}:attempt:#{attempt.id}"
@@ -244,27 +302,42 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     )
   end
 
-  defp yarn_fixture do
-    filename = "storyarn-import-resume-#{System.unique_integer([:positive])}.yarn"
-    path = Path.join(System.tmp_dir!(), filename)
-
-    File.write!(path, "title: Resume Start\n---\nHello after navigation\n===\n")
-    on_exit(fn -> File.rm(path) end)
-
-    path
-  end
-
   defp yarn_project_fixture do
     filename = "storyarn-emberfall-#{System.unique_integer([:positive])}.zip"
     path = Path.join(System.tmp_dir!(), filename)
 
     entries =
-      Enum.map(@yarn_project_fixture_files, fn relative_path ->
-        source_path = Path.join(@yarn_project_fixture_root, relative_path)
+      Enum.map(@emberfall_fixture_files, fn relative_path ->
+        source_path = Path.join(@emberfall_fixture_root, relative_path)
         {String.to_charlist(relative_path), File.read!(source_path)}
       end)
 
     {:ok, {_name, archive}} = :zip.create(~c"emberfall.zip", entries, [:memory])
+    File.write!(path, archive)
+    on_exit(fn -> File.rm(path) end)
+
+    path
+  end
+
+  defp space_journey_fixture do
+    archive_fixture(
+      "storyarn-space-journey",
+      @space_journey_fixture_root,
+      @space_journey_fixture_files
+    )
+  end
+
+  defp archive_fixture(name, root, relative_paths) do
+    filename = "#{name}-#{System.unique_integer([:positive])}.zip"
+    path = Path.join(System.tmp_dir!(), filename)
+
+    entries =
+      Enum.map(relative_paths, fn relative_path ->
+        source_path = Path.join(root, relative_path)
+        {String.to_charlist(relative_path), File.read!(source_path)}
+      end)
+
+    {:ok, {_name, archive}} = :zip.create(String.to_charlist(filename), entries, [:memory])
     File.write!(path, archive)
     on_exit(fn -> File.rm(path) end)
 

@@ -891,6 +891,101 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     refute Enum.any?(Flows.list_flows(ctx.project.id), & &1.is_main)
   end
 
+  test "rejects a conflicting overwrite before creating a job or mutating content", ctx do
+    existing = Storyarn.FlowsFixtures.flow_fixture(ctx.project, %{name: "Start"})
+
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "overwrite-conflict.yarn", yarn("Hello"))
+
+    assert preview.has_conflicts
+    job_count = Repo.aggregate(Oban.Job, :count)
+
+    assert {:error, :overwrite_conflict_requires_rename} =
+             Imports.enqueue_import(ctx.scope, ready.id, :overwrite)
+
+    assert Repo.aggregate(Oban.Job, :count) == job_count
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert %{deleted_at: nil} = Repo.reload!(existing)
+    assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.shortcut == existing.shortcut)) == 1
+  end
+
+  test "rejects a skipped variable contract mismatch before creating a job", ctx do
+    _existing_variables = Storyarn.SheetsFixtures.sheet_fixture(ctx.project, %{name: "Yarn"})
+
+    source = """
+    title: Start
+    ---
+    <<declare $gold = 10>>
+    You have {$gold} coins.
+    <<stop>>
+    ===
+    """
+
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "skip-variable-mismatch.yarn", source)
+
+    assert preview.has_conflicts
+    job_count = Repo.aggregate(Oban.Job, :count)
+
+    assert {:error, :skip_variable_contract_mismatch} =
+             Imports.enqueue_import(ctx.scope, ready.id, :skip)
+
+    assert Repo.aggregate(Oban.Job, :count) == job_count
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert Flows.list_flows(ctx.project.id) == []
+  end
+
+  test "rechecks overwrite conflicts in the background transaction", ctx do
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "late-overwrite-conflict.yarn", yarn("Hello"))
+
+    refute preview.has_conflicts
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :overwrite)
+
+    existing = Storyarn.FlowsFixtures.flow_fixture(ctx.project, %{name: "Start"})
+
+    assert {:ok, failed} =
+             Imports.perform_import(queued.id, attempt: 1, max_attempts: 1)
+
+    assert failed.status == "failed"
+    assert failed.error_code == "overwrite_conflict_requires_rename"
+
+    assert [%{id: existing_id, deleted_at: nil}] =
+             ctx.project.id
+             |> Flows.list_flows()
+             |> Enum.filter(&(&1.shortcut == existing.shortcut))
+
+    assert existing_id == existing.id
+  end
+
+  test "rechecks skipped variable contracts in the background transaction", ctx do
+    source = """
+    title: Start
+    ---
+    <<declare $gold = 10>>
+    You have {$gold} coins.
+    <<stop>>
+    ===
+    """
+
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "late-skip-variable-mismatch.yarn", source)
+
+    refute preview.has_conflicts
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :skip)
+
+    existing = Storyarn.SheetsFixtures.sheet_fixture(ctx.project, %{name: "Yarn"})
+
+    assert {:ok, failed} =
+             Imports.perform_import(queued.id, attempt: 1, max_attempts: 1)
+
+    assert failed.status == "failed"
+    assert failed.error_code == "skip_variable_contract_mismatch"
+    assert Flows.list_flows(ctx.project.id) == []
+    assert %{id: existing_id, deleted_at: nil} = Repo.reload!(existing)
+    assert existing_id == existing.id
+  end
+
   test "rolls back materialization when the attempt cannot complete atomically", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))

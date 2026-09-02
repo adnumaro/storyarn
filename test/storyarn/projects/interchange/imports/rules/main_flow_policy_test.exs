@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.Imports.MainFlowPolicyTest do
   alias Storyarn.Projects.Imports.MainFlowPolicy
 
   describe "preview/3" do
-    test "preserves an existing main unless overwrite replaces its shortcut" do
+    test "preserves an existing main for every additive strategy" do
       flows = [flow("start", true), flow("current-main", false)]
       existing_main = %{shortcut: "current-main"}
 
@@ -12,14 +12,14 @@ defmodule Storyarn.Projects.Imports.MainFlowPolicyTest do
                additive: %{
                  skip: "preserve_existing",
                  rename: "preserve_existing",
-                 overwrite: "replace_existing"
+                 overwrite: "preserve_existing"
                },
                replace_project: "import_candidate"
              } = MainFlowPolicy.preview(flows, existing_main, ["current-main"])
     end
 
     test "accounts for a skipped candidate when the target has no main" do
-      assert %{additive: %{skip: "none", overwrite: "import_candidate", rename: "import_candidate"}} =
+      assert %{additive: %{skip: "none", overwrite: "none", rename: "import_candidate"}} =
                MainFlowPolicy.preview([flow("start", true)], nil, ["start"])
     end
 
@@ -52,12 +52,12 @@ defmodule Storyarn.Projects.Imports.MainFlowPolicyTest do
       {false, _state} = MainFlowPolicy.resolve(flow("other", true), "other", :rename, state)
     end
 
-    test "preserves an existing main and transfers its role only on overwrite" do
+    test "preserves an existing main even when a resolved shortcut matches it" do
       state = MainFlowPolicy.initial_state(%{shortcut: "main"})
 
       {false, state} = MainFlowPolicy.resolve(flow("start", true), "start", :rename, state)
       {false, state} = MainFlowPolicy.resolve(flow("other", true), "other", :overwrite, state)
-      {true, state} = MainFlowPolicy.resolve(flow("main", false), "main", :overwrite, state)
+      {false, state} = MainFlowPolicy.resolve(flow("main", false), "main", :overwrite, state)
       {false, _state} = MainFlowPolicy.resolve(flow("later", true), "later", :rename, state)
     end
 

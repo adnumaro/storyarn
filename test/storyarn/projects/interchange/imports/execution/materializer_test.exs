@@ -21,9 +21,14 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.Imports.Parsers.Yarn.Layout
   alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
+  alias Storyarn.Projects.Persistence.BlockRecord, as: Block
+  alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
+  alias Storyarn.Projects.Persistence.ScenePinRecord, as: ScenePin
   alias Storyarn.Projects.Persistence.VariableReferenceRecord, as: VariableReference
+  alias Storyarn.Projects.References
   alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.References.RichTextMentions
   alias Storyarn.Projects.SceneReadModel
   alias Storyarn.Projects.SheetReadModel
   alias Storyarn.Repo
@@ -84,6 +89,40 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       assert "storyarn_version" in missing
       assert "export_version" in missing
       assert "project" in missing
+    end
+
+    test "rejects embedded entity references outside the imported graph with a stable safe code" do
+      reference_block = %{
+        "id" => "block-1",
+        "type" => "reference",
+        "value" => %{"target_type" => "sheet", "target_id" => 999_999}
+      }
+
+      block_data =
+        plan_data(%{
+          "sheets" => [
+            %{"id" => "1", "shortcut" => "notes", "blocks" => [reference_block]}
+          ]
+        })
+
+      mention_data =
+        minimal_import_data([
+          %{
+            "id" => "node-1",
+            "type" => "dialogue",
+            "data" => %{
+              "localization_id" => "dialogue_safe",
+              "responses" => [],
+              "text" => ~s(<span class="mention" data-type="flow" data-id="999999">Missing</span>)
+            }
+          }
+        ])
+
+      assert {:error, :import_reference_contract_mismatch} =
+               Materializer.validate_plan_data(block_data)
+
+      assert {:error, :import_reference_contract_mismatch} =
+               Materializer.validate_plan_data(mention_data)
     end
 
     test "accepts explicit null flow collections without crashing" do
@@ -467,7 +506,7 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       assert preview.main_flow == %{
                additive: %{
                  skip: "preserve_existing",
-                 overwrite: "replace_existing",
+                 overwrite: "preserve_existing",
                  rename: "preserve_existing"
                },
                replace_project: "import_candidate"
@@ -485,6 +524,16 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
     test "skips entities with conflicting shortcuts", %{target: target, parsed: parsed} do
       # Create a conflicting sheet in target
       existing = sheet_fixture(target, %{name: "Hero"})
+      [source_sheet] = parsed.data["sheets"]
+      [source_block] = source_sheet["blocks"]
+
+      _compatible_variable =
+        block_fixture(existing, %{
+          type: source_block["type"],
+          config: source_block["config"],
+          value: source_block["value"],
+          variable_name: source_block["variable_name"]
+        })
 
       # Import with skip strategy
       {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :skip)
@@ -498,6 +547,594 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       hero_sheets = Enum.filter(sheets, &(&1.name == "Hero"))
       assert length(hero_sheets) == 1
       assert hd(hero_sheets).id == existing.id
+    end
+  end
+
+  describe "skip reference integrity" do
+    setup [:setup_projects]
+
+    test "reuses skipped roots across sheet, flow, and scene references", %{
+      source: source,
+      target: target
+    } do
+      source_sheet =
+        sheet_fixture(source, %{
+          name: "Shared character",
+          shortcut: "shared-character"
+        })
+
+      source_health =
+        block_fixture(source_sheet, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"},
+          variable_name: "health"
+        })
+
+      target_sheet =
+        sheet_fixture(target, %{
+          name: "Existing shared character",
+          shortcut: source_sheet.shortcut
+        })
+
+      target_health =
+        block_fixture(target_sheet, %{
+          type: source_health.type,
+          config: %{"label" => "Health", "placeholder" => "0"},
+          variable_name: source_health.variable_name
+        })
+
+      source_destination =
+        flow_fixture(source, %{
+          name: "Shared destination",
+          shortcut: "shared-destination"
+        })
+
+      target_destination =
+        flow_fixture(target, %{
+          name: "Existing shared destination",
+          shortcut: source_destination.shortcut
+        })
+
+      imported_journal =
+        sheet_fixture(source, %{
+          name: "Imported journal",
+          shortcut: "imported-journal"
+        })
+
+      _sheet_reference =
+        block_fixture(imported_journal, %{
+          type: "reference",
+          config: %{"label" => "Character"},
+          value: %{"target_type" => "sheet", "target_id" => source_sheet.id}
+        })
+
+      _flow_reference =
+        block_fixture(imported_journal, %{
+          type: "reference",
+          config: %{"label" => "Destination"},
+          value: %{"target_type" => "flow", "target_id" => source_destination.id}
+        })
+
+      _rich_text_reference =
+        block_fixture(imported_journal, %{
+          type: "rich_text",
+          config: %{"label" => "Links"},
+          value: %{
+            "content" =>
+              ~s(<p><span class="mention" data-type="sheet" data-id="#{source_sheet.id}">Character</span><span class="mention" data-type="flow" data-id="#{source_destination.id}">Destination</span></p>)
+          }
+        })
+
+      source_place =
+        scene_fixture(source, %{
+          name: "Shared place",
+          shortcut: "shared-place"
+        })
+
+      target_place =
+        scene_fixture(target, %{
+          name: "Existing shared place",
+          shortcut: source_place.shortcut
+        })
+
+      caller =
+        flow_fixture(source, %{
+          name: "Imported caller",
+          shortcut: "imported-caller",
+          scene_id: source_place.id
+        })
+
+      _dialogue =
+        node_fixture(caller, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => source_sheet.id,
+            "location_sheet_id" => source_sheet.id,
+            "text" =>
+              ~s(<p>Meet <span class="mention" data-type="sheet" data-id="#{source_sheet.id}">Character</span> in <span class="mention" data-type="flow" data-id="#{source_destination.id}">Destination</span>.</p>),
+            "responses" => []
+          }
+        })
+
+      _instruction =
+        node_fixture(caller, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => Ecto.UUID.generate(),
+                "sheet" => source_sheet.shortcut,
+                "variable" => source_health.variable_name,
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      _hub = node_fixture(caller, %{type: "hub", data: %{"hub_id" => "arrival"}})
+      _jump = node_fixture(caller, %{type: "jump", data: %{"target_hub_id" => "arrival"}})
+
+      _subflow =
+        node_fixture(caller, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => source_destination.id}
+        })
+
+      _exit =
+        node_fixture(caller, %{
+          type: "exit",
+          data: %{"target_type" => "flow", "target_id" => source_destination.id}
+        })
+
+      encounter =
+        scene_fixture(source, %{
+          name: "Imported encounter",
+          shortcut: "imported-encounter"
+        })
+
+      _pin =
+        pin_fixture(encounter, %{
+          "label" => "Shared destination",
+          "sheet_id" => source_sheet.id,
+          "flow_id" => source_destination.id
+        })
+
+      _zone =
+        zone_fixture(encounter, %{
+          "name" => "Shared destination zone",
+          "action_type" => "action",
+          "target_type" => "flow",
+          "target_id" => source_destination.id
+        })
+
+      _scene_zone =
+        zone_fixture(encounter, %{
+          "name" => "Shared place zone",
+          "action_type" => "action",
+          "target_type" => "scene",
+          "target_id" => source_place.id
+        })
+
+      assert source_sheet.shortcut == target_sheet.shortcut
+      assert source_destination.shortcut == target_destination.shortcut
+      assert source_place.shortcut == target_place.shortcut
+
+      source_sheet_shortcut = source_sheet.shortcut
+      source_destination_shortcut = source_destination.shortcut
+      source_place_shortcut = source_place.shortcut
+      target_sheet_id = target_sheet.id
+      target_destination_id = target_destination.id
+      target_place_id = target_place.id
+
+      assert %{^source_sheet_shortcut => ^target_sheet_id} =
+               Storyarn.Projects.SheetImportPersistence.list_active_identities(target.id)
+
+      assert %{^source_destination_shortcut => ^target_destination_id} =
+               Storyarn.Projects.FlowImportPersistence.list_active_identities(target.id)
+
+      assert %{^source_place_shortcut => ^target_place_id} =
+               Storyarn.Projects.SceneImportPersistence.list_active_identities(target.id)
+
+      plan_data = project_plan_data(source)
+
+      scenes =
+        Enum.sort_by(plan_data["scenes"], fn scene_data ->
+          if scene_data["id"] == to_string(encounter.id), do: 0, else: 1
+        end)
+
+      plan = import_plan(Map.put(plan_data, "scenes", scenes))
+
+      assert Enum.sort([source_sheet_shortcut, imported_journal.shortcut]) ==
+               plan.data["sheets"] |> Enum.map(& &1["shortcut"]) |> Enum.sort()
+
+      assert Enum.sort([source_destination_shortcut, caller.shortcut]) ==
+               plan.data["flows"] |> Enum.map(& &1["shortcut"]) |> Enum.sort()
+
+      assert Enum.sort([source_place_shortcut, encounter.shortcut]) ==
+               plan.data["scenes"] |> Enum.map(& &1["shortcut"]) |> Enum.sort()
+
+      assert :ok = Materializer.preflight_conflicts(target.id, plan, :skip)
+
+      assert {:ok, result} =
+               Imports.execute(target, plan, conflict_strategy: :skip)
+
+      assert result.counts == %{assets: 0, flows: 1, nodes: 8, scenes: 1, sheets: 1}
+
+      imported_journal = Enum.find(result.sheets, &(&1.shortcut == imported_journal.shortcut))
+      imported_blocks = Sheets.list_blocks(imported_journal.id)
+
+      imported_sheet_reference =
+        Enum.find(imported_blocks, &(&1.type == "reference" and &1.value["target_type"] == "sheet"))
+
+      imported_flow_reference =
+        Enum.find(imported_blocks, &(&1.type == "reference" and &1.value["target_type"] == "flow"))
+
+      imported_rich_text = Enum.find(imported_blocks, &(&1.type == "rich_text"))
+
+      assert imported_sheet_reference.value["target_id"] == target_sheet.id
+      assert imported_flow_reference.value["target_id"] == target_destination.id
+
+      assert {:ok, rich_text_mentions} =
+               RichTextMentions.extract_from_html(imported_rich_text.value["content"])
+
+      assert MapSet.new(rich_text_mentions, &{&1.type, &1.id}) ==
+               MapSet.new([
+                 {"sheet", to_string(target_sheet.id)},
+                 {"flow", to_string(target_destination.id)}
+               ])
+
+      imported_caller = Enum.find(result.flows, &(&1.shortcut == caller.shortcut))
+      assert imported_caller.scene_id == target_place.id
+
+      imported_nodes = Flows.list_nodes(imported_caller.id)
+      imported_dialogue = Enum.find(imported_nodes, &(&1.type == "dialogue"))
+      imported_instruction = Enum.find(imported_nodes, &(&1.type == "instruction"))
+      imported_jump = Enum.find(imported_nodes, &(&1.type == "jump"))
+      imported_subflow = Enum.find(imported_nodes, &(&1.type == "subflow"))
+
+      imported_exit =
+        Enum.find(imported_nodes, fn node ->
+          node.type == "exit" and node.data["target_type"] == "flow"
+        end)
+
+      assert imported_dialogue.data["speaker_sheet_id"] == target_sheet.id
+      assert imported_dialogue.data["location_sheet_id"] == target_sheet.id
+      assert imported_jump.data["target_hub_id"] == "arrival"
+      assert imported_subflow.data["referenced_flow_id"] == target_destination.id
+      assert imported_exit.data["target_id"] == target_destination.id
+
+      assert {:ok, dialogue_mentions} =
+               RichTextMentions.extract_from_html(imported_dialogue.data["text"])
+
+      assert MapSet.new(dialogue_mentions, &{&1.type, &1.id}) ==
+               MapSet.new([
+                 {"sheet", to_string(target_sheet.id)},
+                 {"flow", to_string(target_destination.id)}
+               ])
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "flow_node",
+                 source_id: imported_dialogue.id,
+                 target_type: "sheet",
+                 target_id: target_sheet.id,
+                 context: "speaker"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "flow_node",
+                 source_id: imported_dialogue.id,
+                 target_type: "sheet",
+                 target_id: target_sheet.id,
+                 context: "location"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "block",
+                 source_id: imported_sheet_reference.id,
+                 target_type: "sheet",
+                 target_id: target_sheet.id,
+                 context: "value"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "block",
+                 source_id: imported_flow_reference.id,
+                 target_type: "flow",
+                 target_id: target_destination.id,
+                 context: "value"
+               )
+
+      assert %VariableReference{} =
+               Repo.get_by(VariableReference,
+                 source_type: "flow_node",
+                 source_id: imported_instruction.id,
+                 block_id: target_health.id,
+                 kind: "write"
+               )
+
+      imported_scene = Enum.find(result.scenes, &(&1.shortcut == encounter.shortcut))
+      imported_scene = Repo.preload(imported_scene, [:pins, :zones])
+      imported_pin = List.first(imported_scene.pins)
+      imported_flow_zone = Enum.find(imported_scene.zones, &(&1.name == "Shared destination zone"))
+      imported_scene_zone = Enum.find(imported_scene.zones, &(&1.name == "Shared place zone"))
+      assert imported_pin.sheet_id == target_sheet.id
+      assert imported_pin.flow_id == target_destination.id
+      assert imported_flow_zone.target_type == "flow"
+      assert imported_flow_zone.target_id == target_destination.id
+      assert imported_scene_zone.target_type == "scene"
+      assert imported_scene_zone.target_id == target_place.id
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "scene_pin",
+                 source_id: imported_pin.id,
+                 target_type: "sheet",
+                 target_id: target_sheet.id,
+                 context: "display"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "scene_pin",
+                 source_id: imported_pin.id,
+                 target_type: "flow",
+                 target_id: target_destination.id,
+                 context: "target"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "scene_zone",
+                 source_id: imported_flow_zone.id,
+                 target_type: "flow",
+                 target_id: target_destination.id,
+                 context: "target"
+               )
+
+      assert %EntityReference{} =
+               Repo.get_by(EntityReference,
+                 source_type: "scene_zone",
+                 source_id: imported_scene_zone.id,
+                 target_type: "scene",
+                 target_id: target_place.id,
+                 context: "target"
+               )
+    end
+
+    test "does not rebuild projections owned by skipped roots", %{
+      source: source,
+      target: target
+    } do
+      source_sheet =
+        sheet_fixture(source, %{
+          name: "Incoming shared character",
+          shortcut: "shared-character"
+        })
+
+      source_health =
+        block_fixture(source_sheet, %{
+          type: "number",
+          config: %{"label" => "Health", "placeholder" => "0"},
+          variable_name: "health"
+        })
+
+      target_sheet =
+        sheet_fixture(target, %{
+          name: "Existing shared character",
+          shortcut: source_sheet.shortcut
+        })
+
+      target_health =
+        block_fixture(target_sheet, %{
+          type: source_health.type,
+          config: source_health.config,
+          variable_name: source_health.variable_name
+        })
+
+      source_flow =
+        flow_fixture(source, %{
+          name: "Incoming shared flow",
+          shortcut: "shared-flow"
+        })
+
+      target_flow =
+        flow_fixture(target, %{
+          name: "Existing shared flow",
+          shortcut: source_flow.shortcut
+        })
+
+      existing_dialogue =
+        node_fixture(target_flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => target_sheet.id,
+            "text" => "Existing dialogue",
+            "responses" => []
+          }
+        })
+
+      existing_instruction =
+        node_fixture(target_flow, %{
+          type: "instruction",
+          data: %{
+            "assignments" => [
+              %{
+                "id" => Ecto.UUID.generate(),
+                "sheet" => target_sheet.shortcut,
+                "variable" => target_health.variable_name,
+                "operator" => "set",
+                "value" => "10",
+                "value_type" => "literal"
+              }
+            ]
+          }
+        })
+
+      assert :ok =
+               References.update_flow_node_entity_references(existing_dialogue,
+                 project_id: target.id
+               )
+
+      assert :ok = References.update_flow_node_variable_references(existing_instruction)
+
+      entity_reference =
+        Repo.get_by!(EntityReference,
+          source_type: "flow_node",
+          source_id: existing_dialogue.id,
+          target_type: "sheet",
+          target_id: target_sheet.id,
+          context: "speaker"
+        )
+
+      variable_reference =
+        Repo.get_by!(VariableReference,
+          source_type: "flow_node",
+          source_id: existing_instruction.id,
+          block_id: target_health.id,
+          kind: "write"
+        )
+
+      Repo.delete!(entity_reference)
+      Repo.delete!(variable_reference)
+
+      assert {:ok, result} =
+               Imports.execute(
+                 target,
+                 import_plan(project_plan_data(source)),
+                 conflict_strategy: :skip
+               )
+
+      assert result.counts == %{assets: 0, flows: 0, nodes: 0, scenes: 0, sheets: 0}
+
+      refute Repo.get_by(EntityReference,
+               source_type: "flow_node",
+               source_id: existing_dialogue.id,
+               target_type: "sheet",
+               target_id: target_sheet.id,
+               context: "speaker"
+             )
+
+      refute Repo.get_by(VariableReference,
+               source_type: "flow_node",
+               source_id: existing_instruction.id,
+               block_id: target_health.id,
+               kind: "write"
+             )
+    end
+
+    test "keeps localization off a reused sheet while importing localization for created sheets", %{
+      source: source,
+      target: target
+    } do
+      source_language_fixture(source, %{locale_code: "en", name: "English"})
+      language_fixture(source, %{locale_code: "es", name: "Spanish"})
+
+      skipped_source =
+        sheet_fixture(source, %{
+          name: "Incoming shared character",
+          shortcut: "shared-character"
+        })
+
+      created_source = sheet_fixture(source, %{name: "Imported journal", shortcut: "imported-journal"})
+
+      [skipped_text] = Localization.get_texts_for_source("sheet", skipped_source.id)
+      [created_text] = Localization.get_texts_for_source("sheet", created_source.id)
+
+      assert {:ok, _text} =
+               Localization.update_text(skipped_text, %{
+                 translated_text: "Personaje entrante",
+                 status: "final"
+               })
+
+      assert {:ok, _text} =
+               Localization.update_text(created_text, %{
+                 translated_text: "Diario importado",
+                 status: "final"
+               })
+
+      existing =
+        sheet_fixture(target, %{
+          name: "Existing shared character",
+          shortcut: skipped_source.shortcut
+        })
+
+      assert [] = Localization.get_texts_for_source("sheet", existing.id)
+
+      assert {:ok, result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :skip)
+
+      assert result.localization.strings == 1
+      assert [] = Localization.get_texts_for_source("sheet", existing.id)
+
+      imported = Enum.find(result.sheets, &(&1.shortcut == created_source.shortcut))
+
+      assert [%{translated_text: "Diario importado", status: "final"}] =
+               Localization.get_texts_for_source("sheet", imported.id)
+    end
+
+    test "fails before materialization when a skipped sheet variable is missing", %{
+      source: source,
+      target: target
+    } do
+      source_sheet = sheet_fixture(source, %{name: "Variables", shortcut: "variables"})
+      _source_variable = block_fixture(source_sheet, %{type: "number", variable_name: "gold"})
+      existing = sheet_fixture(target, %{name: "Existing variables", shortcut: source_sheet.shortcut})
+
+      before_counts = content_counts(target.id)
+
+      assert {:error, :skip_variable_contract_mismatch} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :skip)
+
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Sheet, existing.id).deleted_at == nil
+    end
+
+    test "fails before materialization when a skipped sheet variable changes type", %{
+      source: source,
+      target: target
+    } do
+      source_sheet = sheet_fixture(source, %{name: "Variables", shortcut: "variables"})
+      _source_variable = block_fixture(source_sheet, %{type: "number", variable_name: "gold"})
+      existing = sheet_fixture(target, %{name: "Existing variables", shortcut: source_sheet.shortcut})
+      _wrong_type = block_fixture(existing, %{type: "text", variable_name: "gold"})
+
+      before_counts = content_counts(target.id)
+
+      assert {:error, :skip_variable_contract_mismatch} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :skip)
+
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Sheet, existing.id).deleted_at == nil
+    end
+
+    test "fails before materialization when the matching target block is constant", %{
+      source: source,
+      target: target
+    } do
+      source_sheet = sheet_fixture(source, %{name: "Variables", shortcut: "variables"})
+      _source_variable = block_fixture(source_sheet, %{type: "number", variable_name: "gold"})
+      existing = sheet_fixture(target, %{name: "Existing variables", shortcut: source_sheet.shortcut})
+
+      _constant =
+        block_fixture(existing, %{
+          type: "number",
+          variable_name: "gold",
+          is_constant: true
+        })
+
+      before_counts = content_counts(target.id)
+
+      assert {:error, :skip_variable_contract_mismatch} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :skip)
+
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Sheet, existing.id).deleted_at == nil
     end
   end
 
@@ -887,22 +1524,59 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   describe "conflict resolution — overwrite" do
     setup [:setup_projects, :setup_with_data]
 
-    test "soft-deletes existing entities and imports new ones", %{target: target, parsed: parsed} do
+    test "rejects a conflict without mutating the target", %{target: target, parsed: parsed} do
       # Create a conflicting sheet in target
       existing = sheet_fixture(target, %{name: "Hero"})
 
+      consumer_sheet = sheet_fixture(target, %{name: "Consumer sheet"})
+
+      consumer_block =
+        block_fixture(consumer_sheet, %{
+          type: "reference",
+          config: %{"label" => "Hero"},
+          value: %{"target_type" => "sheet", "target_id" => existing.id}
+        })
+
+      consumer_flow = flow_fixture(target, %{name: "Consumer flow"})
+
+      consumer_node =
+        node_fixture(consumer_flow, %{
+          type: "dialogue",
+          data: %{
+            "speaker_sheet_id" => existing.id,
+            "location_sheet_id" => existing.id,
+            "text" => "Existing reference",
+            "responses" => []
+          }
+        })
+
+      consumer_scene = scene_fixture(target, %{name: "Consumer scene"})
+      consumer_pin = pin_fixture(consumer_scene, %{"sheet_id" => existing.id})
+      before_counts = content_counts(target.id)
+
       # Import with overwrite strategy
-      {:ok, _result} = Imports.execute(target, parsed, conflict_strategy: :overwrite)
+      assert {:error, :overwrite_conflict_requires_rename} =
+               Imports.execute(target, parsed, conflict_strategy: :overwrite)
 
-      # The existing sheet should be soft-deleted
-      reloaded = Repo.get(Sheet, existing.id)
-      assert reloaded.deleted_at
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Sheet, existing.id).deleted_at == nil
+      assert Repo.get!(Block, consumer_block.id).value["target_id"] == existing.id
 
-      # Should have a new active "Hero" sheet
-      active_sheets = Sheets.list_all_sheets(target.id)
-      hero_sheets = Enum.filter(active_sheets, &(&1.name == "Hero"))
-      assert length(hero_sheets) == 1
-      assert hd(hero_sheets).id != existing.id
+      assert Repo.get!(FlowNode, consumer_node.id).data["speaker_sheet_id"] ==
+               existing.id
+
+      assert Repo.get!(FlowNode, consumer_node.id).data["location_sheet_id"] ==
+               existing.id
+
+      assert Repo.get!(ScenePin, consumer_pin.id).sheet_id == existing.id
+    end
+
+    test "keeps overwrite available when the import has no conflicts", %{target: target, parsed: parsed} do
+      assert {:ok, result} = Imports.execute(target, parsed, conflict_strategy: :overwrite)
+
+      assert result.counts.sheets == 1
+      assert result.counts.flows == 1
+      assert result.counts.scenes == 1
     end
   end
 
@@ -1330,7 +2004,7 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       refute Enum.any?(Flows.list_flows(target.id), & &1.is_main)
     end
 
-    test "overwriting the current main shortcut transfers the main role", %{
+    test "a conflicting overwrite leaves the current main and all content untouched", %{
       source: source,
       target: target
     } do
@@ -1338,18 +2012,19 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       flow_fixture(source, %{name: "Shared", is_main: false})
       existing = flow_fixture(target, %{name: "Shared", is_main: true})
 
-      assert {:ok, _result} =
+      before_counts = content_counts(target.id)
+
+      assert {:error, :overwrite_conflict_requires_rename} =
                Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :overwrite)
 
-      assert Repo.get!(Flow, existing.id).deleted_at
+      assert content_counts(target.id) == before_counts
+      assert Repo.get!(Flow, existing.id).deleted_at == nil
 
-      assert [%{name: "Shared", id: imported_id}] =
+      assert [%{name: "Shared", id: existing_id}] =
                target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
 
-      refute imported_id == existing.id
-
-      imported_start = Enum.find(Flows.list_flows(target.id), &(&1.name == "Start"))
-      refute imported_start.is_main
+      assert existing_id == existing.id
+      refute Enum.any?(Flows.list_flows(target.id), &(&1.name == "Start"))
     end
   end
 
@@ -1536,7 +2211,8 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       "fog_color" => scene.fog_color,
       "fog_opacity" => scene.fog_opacity,
       "layers" => Enum.map(scene.layers, &layer_entry/1),
-      "pins" => Enum.map(scene.pins, &pin_entry/1)
+      "pins" => Enum.map(scene.pins, &pin_entry/1),
+      "zones" => Enum.map(scene.zones, &zone_entry/1)
     }
   end
 
@@ -1574,6 +2250,38 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       "condition_effect" => pin.condition_effect,
       "is_playable" => pin.is_playable,
       "is_leader" => pin.is_leader
+    }
+  end
+
+  defp zone_entry(zone) do
+    %{
+      "id" => to_string(zone.id),
+      "name" => zone.name,
+      "shortcut" => zone.shortcut,
+      "hidden" => zone.hidden,
+      "layer_id" => optional_id(zone.layer_id),
+      "vertices" => zone.vertices,
+      "fill_color" => zone.fill_color,
+      "border_color" => zone.border_color,
+      "border_width" => zone.border_width,
+      "border_style" => zone.border_style,
+      "opacity" => zone.opacity,
+      "target_type" => zone.target_type,
+      "target_id" => optional_id(zone.target_id),
+      "tooltip" => zone.tooltip,
+      "position" => zone.position,
+      "locked" => zone.locked,
+      "action_type" => zone.action_type,
+      "action_data" => zone.action_data,
+      "label_mode" => zone.label_mode,
+      "label_font_size" => zone.label_font_size,
+      "label_font_family" => zone.label_font_family,
+      "label_font_weight" => zone.label_font_weight,
+      "label_font_style" => zone.label_font_style,
+      "label_icon_asset_id" => optional_id(zone.label_icon_asset_id),
+      "condition" => zone.condition,
+      "condition_effect" => zone.condition_effect,
+      "is_walkable" => zone.is_walkable
     }
   end
 
@@ -1643,4 +2351,12 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
 
   defp optional_iso8601(nil), do: nil
   defp optional_iso8601(%DateTime{} = datetime), do: DateTime.to_iso8601(datetime)
+
+  defp content_counts(project_id) do
+    %{
+      flows: project_id |> Flows.list_flows() |> length(),
+      scenes: project_id |> Scenes.list_scenes() |> length(),
+      sheets: project_id |> Sheets.list_all_sheets() |> length()
+    }
+  end
 end

@@ -10,15 +10,46 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform.Shared.HtmlUtils
-  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetAvatarRecord
   alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.Persistence.TableColumnRecord
   alias Storyarn.Projects.Persistence.TableRowRecord
+  alias Storyarn.Projects.References
   alias Storyarn.Projects.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+
+  @regular_variable_types References.regular_variable_types()
+
+  def list_active_identities(project_id) do
+    from(sheet in SheetRecord,
+      where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+      select: {sheet.shortcut, sheet.id}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  def list_active_variable_contracts(_project_id, []), do: %{}
+
+  def list_active_variable_contracts(project_id, sheet_shortcuts) when is_list(sheet_shortcuts) do
+    from(block in BlockRecord,
+      join: sheet in SheetRecord,
+      on: sheet.id == block.sheet_id,
+      where:
+        sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and
+          is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+          block.type in ^@regular_variable_types and block.is_constant == false and
+          not is_nil(block.variable_name) and block.variable_name != "",
+      select: {{sheet.shortcut, block.variable_name}, block.type}
+    )
+    |> Repo.all()
+    |> Enum.reduce(%{}, &merge_variable_contract/2)
+  end
+
+  defp merge_variable_contract({key, type}, contracts),
+    do: Map.update(contracts, key, type, fn _existing_type -> :ambiguous end)
 
   def list_shortcuts(project_id) do
     from(sheet in SheetRecord,
@@ -40,17 +71,6 @@ defmodule Storyarn.Projects.SheetImportPersistence do
         )
       )
     end
-  end
-
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    now = TimeHelpers.now()
-
-    Repo.update_all(
-      from(sheet in SheetRecord,
-        where: sheet.project_id == ^project_id and sheet.shortcut == ^shortcut and is_nil(sheet.deleted_at)
-      ),
-      set: [deleted_at: now]
-    )
   end
 
   @doc """
@@ -79,6 +99,10 @@ defmodule Storyarn.Projects.SheetImportPersistence do
     |> BlockRecord.create_changeset(attrs)
     |> Ecto.Changeset.put_change(:word_count, word_count_for_block(type, value))
     |> Repo.insert()
+  end
+
+  def link_block_value(block_id, value) do
+    Repo.update_all(from(block in BlockRecord, where: block.id == ^block_id), set: [value: value])
   end
 
   @doc "Creates a table column for import under the tool's table-scope lock."

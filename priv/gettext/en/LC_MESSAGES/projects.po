@@ -282,7 +282,7 @@ msgstr ""
 msgid "Source language updated."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:185
+#: lib/storyarn_web/live/export_import_live/index.ex:188
 #: lib/storyarn_web/live/hooks/project_scope.ex:51
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
@@ -792,27 +792,27 @@ msgstr ""
 msgid "You don't have permission to publish templates from this project."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:37
+#: lib/storyarn_web/live/export_import_live/index.ex:40
 #, elixir-autogen, elixir-format
 msgid "Import & Export"
 msgstr "Import & Export"
 
-#: lib/storyarn_web/live/export_import_live/index.ex:39
+#: lib/storyarn_web/live/export_import_live/index.ex:42
 #, elixir-autogen, elixir-format
 msgid "Move narrative content into or out of this project."
 msgstr "Move narrative content into or out of this project."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1454
+#: lib/storyarn_web/live/export_import_live/index.ex:1469
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr "The selected Yarn project is invalid or exceeds the import safety limits."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1460
+#: lib/storyarn_web/live/export_import_live/index.ex:1475
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr "The import could not be completed. No project content was changed."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1421
+#: lib/storyarn_web/live/export_import_live/index.ex:1436
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
@@ -1161,42 +1161,42 @@ msgstr ""
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1396
+#: lib/storyarn_web/live/export_import_live/index.ex:1411
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1407
+#: lib/storyarn_web/live/export_import_live/index.ex:1422
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:767
+#: lib/storyarn_web/live/export_import_live/index.ex:770
 #, elixir-autogen, elixir-format
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1414
+#: lib/storyarn_web/live/export_import_live/index.ex:1429
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1350
+#: lib/storyarn_web/live/export_import_live/index.ex:1365
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1400
+#: lib/storyarn_web/live/export_import_live/index.ex:1415
 #, elixir-autogen, elixir-format
 msgid "The import could not run before its retention deadline. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1070
+#: lib/storyarn_web/live/export_import_live/index.ex:1085
 #, elixir-autogen, elixir-format
 msgid "Your previous import could not be restored. Reset it and upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:738
+#: lib/storyarn_web/live/export_import_live/index.ex:741
 #, elixir-autogen, elixir-format
 msgid "The import could not be dismissed. Try again."
 msgstr ""
@@ -1314,7 +1314,7 @@ msgstr ""
 msgid "Ownership could not be transferred because the project ownership data is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:524
+#: lib/storyarn_web/live/export_import_live/index.ex:527
 #: lib/storyarn_web/live/project_settings_live/members.ex:236
 #: lib/storyarn_web/live/project_settings_live/members.ex:312
 #, elixir-autogen, elixir-format
@@ -1398,13 +1398,13 @@ msgstr ""
 msgid "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:656
-#: lib/storyarn_web/live/export_import_live/index.ex:1428
+#: lib/storyarn_web/live/export_import_live/index.ex:659
+#: lib/storyarn_web/live/export_import_live/index.ex:1443
 #, elixir-autogen, elixir-format
 msgid "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:667
+#: lib/storyarn_web/live/export_import_live/index.ex:670
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to import into this project."
 msgstr ""

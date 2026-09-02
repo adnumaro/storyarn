@@ -27,8 +27,10 @@ defmodule Storyarn.Projects.SceneImportPersistenceTest do
       active = import_scene!(project, %{name: "Active", shortcut: "active"})
       deleted = import_scene!(project, %{name: "Deleted", shortcut: "deleted"})
 
-      assert {1, nil} =
-               SceneImportPersistence.soft_delete_by_shortcut(project.id, deleted.shortcut)
+      Repo.update_all(
+        from(scene in SceneRecord, where: scene.id == ^deleted.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
 
       assert %SceneRecord{deleted_at: deleted_at} = Repo.get!(SceneRecord, deleted.id)
       assert deleted_at
@@ -42,11 +44,6 @@ defmodule Storyarn.Projects.SceneImportPersistenceTest do
              ]) == ["active"]
 
       assert SceneReadModel.detect_shortcut_conflicts(project.id, []) == []
-    end
-
-    test "returns an empty update result for a missing shortcut", %{project: project} do
-      assert {0, nil} =
-               SceneImportPersistence.soft_delete_by_shortcut(project.id, "missing")
     end
   end
 

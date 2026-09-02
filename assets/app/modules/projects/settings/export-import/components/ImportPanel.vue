@@ -76,9 +76,41 @@ const currentConflictStrategy = computed<ImportConflictStrategy>(() => {
 
   return "rename";
 });
+const skipUnavailable = computed(
+  () =>
+    importState.errorCode === "skip_conflict_ambiguous" ||
+    importState.errorCode === "skip_variable_contract_mismatch",
+);
+const overwriteUnavailable = computed(
+  () =>
+    importState.preview?.has_conflicts === true ||
+    importState.errorCode === "overwrite_conflict_requires_rename" ||
+    skipUnavailable.value,
+);
+const strategyCorrectionRequired = computed(
+  () => importState.errorCode === "overwrite_conflict_requires_rename" || skipUnavailable.value,
+);
+const showConflictStrategies = computed(
+  () =>
+    !replacementSelected.value &&
+    (importState.preview?.has_conflicts === true || strategyCorrectionRequired.value),
+);
+const unsafeOverwriteSelected = computed(
+  () =>
+    !replacementSelected.value &&
+    overwriteUnavailable.value &&
+    currentConflictStrategy.value === "overwrite",
+);
+const unsafeSkipSelected = computed(
+  () =>
+    !replacementSelected.value && currentConflictStrategy.value === "skip" && skipUnavailable.value,
+);
+const invalidConflictStrategySelected = computed(
+  () => unsafeOverwriteSelected.value || unsafeSkipSelected.value,
+);
 const mainFlowOutcome = computed<MainFlowImportOutcome | null>(() => {
   const preview = importState.preview?.main_flow;
-  if (!preview) return null;
+  if (!preview || invalidConflictStrategySelected.value) return null;
 
   return replacementSelected.value
     ? preview.replace_project
@@ -140,9 +172,26 @@ const upload = uploadConfig
   : null;
 
 const strategyOptions = computed(() => [
-  { value: "skip", label: t("project_settings.import.strategy_skip") },
-  { value: "overwrite", label: t("project_settings.import.strategy_overwrite") },
-  { value: "rename", label: t("project_settings.import.strategy_rename") },
+  {
+    value: "skip",
+    label: t("project_settings.import.strategy_skip"),
+    disabled: skipUnavailable.value,
+    description: null,
+  },
+  {
+    value: "overwrite",
+    label: t("project_settings.import.strategy_overwrite"),
+    disabled: overwriteUnavailable.value,
+    description: overwriteUnavailable.value
+      ? t("project_settings.import.strategy_overwrite_unavailable")
+      : null,
+  },
+  {
+    value: "rename",
+    label: t("project_settings.import.strategy_rename"),
+    disabled: false,
+    description: null,
+  },
 ]);
 
 const hasUploadEntries = computed(() => (upload?.entries.value?.length ?? 0) > 0);
@@ -177,7 +226,11 @@ const showAcknowledgement = computed(
 const RECOVERABLE_PREFLIGHT_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   import_replace_not_eligible: "project_settings.import.errors.preflight_not_eligible",
   invalid_import_snapshot_request: "project_settings.import.errors.preflight_snapshot_request",
+  overwrite_conflict_requires_rename: "project_settings.import.errors.preflight_overwrite_conflict",
   replace_import_confirmation_required: "project_settings.import.errors.preflight_reconfirm",
+  skip_conflict_ambiguous: "project_settings.import.errors.preflight_skip_conflict_ambiguous",
+  skip_variable_contract_mismatch:
+    "project_settings.import.errors.preflight_skip_variable_contract_mismatch",
   stale_import_mode: "project_settings.import.errors.preflight_mode_changed",
 };
 
@@ -223,6 +276,7 @@ const INVALID_FILE_ERROR_CODES = new Set([
   "entity_limits_exceeded",
   "file_too_large",
   "import_plan_too_large",
+  "import_reference_contract_mismatch",
   "import_review_too_large",
   "invalid_archive",
   "invalid_archive_entry",
@@ -253,8 +307,11 @@ const TERMINAL_ERROR_KEYS_BY_CODE: Readonly<Record<string, string>> = {
   pre_import_snapshot_unavailable: "project_settings.import.errors.snapshot_failed",
   pre_import_snapshot_verification_failed: "project_settings.import.errors.snapshot_failed",
   import_project_replacement_failed: "project_settings.import.errors.replacement_failed",
+  overwrite_conflict_requires_rename: "project_settings.import.errors.overwrite_conflict",
   project_changed_since_import_snapshot: "project_settings.import.errors.project_changed",
   project_already_has_main_flow: "project_settings.import.errors.project_has_main_flow",
+  skip_conflict_ambiguous: "project_settings.import.errors.skip_conflict_ambiguous",
+  skip_variable_contract_mismatch: "project_settings.import.errors.skip_variable_contract_mismatch",
   duplicate_yarn_node_title: "project_settings.import.errors.unsupported_narrative",
   import_plan_has_errors: "project_settings.import.errors.unsupported_narrative",
   ownership_invariant_violation: "project_settings.import.errors.ownership_invariant",
@@ -284,6 +341,8 @@ function handleUploadSubmit() {
 function setStrategy(strategy: string) {
   const attemptId = importState.attemptId;
   if (typeof attemptId !== "number" || !Number.isSafeInteger(attemptId)) return;
+  if (strategy === "overwrite" && overwriteUnavailable.value) return;
+  if (strategy === "skip" && skipUnavailable.value) return;
 
   live.pushEvent("set_strategy", { attempt_id: attemptId, strategy });
 }
@@ -298,7 +357,12 @@ function setImportMode(importMode: unknown) {
 }
 
 function startImport() {
-  if (!review.canExecute.value || review.pendingOperation.value !== null) return;
+  if (
+    !review.canExecute.value ||
+    review.pendingOperation.value !== null ||
+    invalidConflictStrategySelected.value
+  )
+    return;
 
   if (replacementSelected.value) {
     if (!replacementEligible.value) return;
@@ -558,18 +622,20 @@ watch(replaceDialogOpen, (open) => {
         <YarnSpeakerReview :review="review" />
 
         <!-- Conflicts -->
-        <div v-if="importState.preview?.has_conflicts && !replacementSelected" class="space-y-2">
-          <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
-            {{ $t("project_settings.import.conflicts_title") }}
-          </h4>
-          <div
-            v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts ?? {})"
-            :key="ci"
-            class="text-sm"
-          >
-            <span class="font-medium capitalize">{{ type }}:</span>
-            <span class="text-muted-foreground">{{ shortcuts.join(", ") }}</span>
-          </div>
+        <div v-if="showConflictStrategies" class="space-y-2">
+          <template v-if="importState.preview?.has_conflicts">
+            <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
+              {{ $t("project_settings.import.conflicts_title") }}
+            </h4>
+            <div
+              v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts ?? {})"
+              :key="ci"
+              class="text-sm"
+            >
+              <span class="font-medium capitalize">{{ type }}:</span>
+              <span class="text-muted-foreground">{{ shortcuts.join(", ") }}</span>
+            </div>
+          </template>
 
           <div class="space-y-2">
             <Label id="yarn-import-conflict-strategy-label">
@@ -584,10 +650,29 @@ watch(replaceDialogOpen, (open) => {
               <label
                 v-for="opt in strategyOptions"
                 :key="opt.value"
-                class="flex cursor-pointer items-center gap-2 py-1"
+                :data-testid="`yarn-import-strategy-${opt.value}`"
+                class="flex items-start gap-2 py-1"
+                :class="opt.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
               >
-                <RadioGroupItem :value="opt.value" />
-                <span class="text-sm">{{ opt.label }}</span>
+                <RadioGroupItem
+                  :value="opt.value"
+                  class="mt-0.5"
+                  :disabled="opt.disabled"
+                  :aria-describedby="
+                    opt.description ? `yarn-import-strategy-${opt.value}-description` : undefined
+                  "
+                />
+                <span class="space-y-0.5 text-sm">
+                  <span class="block">{{ opt.label }}</span>
+                  <span
+                    v-if="opt.description"
+                    :id="`yarn-import-strategy-${opt.value}-description`"
+                    data-testid="yarn-import-strategy-overwrite-unavailable"
+                    class="block text-xs leading-5 text-muted-foreground"
+                  >
+                    {{ opt.description }}
+                  </span>
+                </span>
               </label>
             </RadioGroup>
           </div>
@@ -627,7 +712,11 @@ watch(replaceDialogOpen, (open) => {
           <Button
             id="yarn-import-confirm"
             size="sm"
-            :disabled="!review.canExecute.value || review.pendingOperation.value !== null"
+            :disabled="
+              !review.canExecute.value ||
+              review.pendingOperation.value !== null ||
+              invalidConflictStrategySelected
+            "
             @click="startImport"
           >
             <Upload class="size-4" />

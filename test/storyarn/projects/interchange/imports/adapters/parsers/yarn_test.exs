@@ -1342,6 +1342,63 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
       end)
     end
 
+    test "maps a known detour to a linked subflow and resumes the calling flow" do
+      source = """
+      title: Start
+      ---
+      Before detour
+      <<detour SideQuest>>
+      After detour
+      <<stop>>
+      ===
+      title: SideQuest
+      ---
+      Inside side quest
+      <<return>>
+      ===
+      """
+
+      assert {:ok, plan} = Imports.parse_file("project.yarn", source)
+
+      start_flow = Enum.find(plan.data["flows"], &(&1["name"] == "Start"))
+      side_quest = Enum.find(plan.data["flows"], &(&1["name"] == "SideQuest"))
+      subflow = Enum.find(start_flow["nodes"], &(&1["type"] == "subflow"))
+
+      after_detour =
+        Enum.find(start_flow["nodes"], fn node ->
+          node["type"] == "dialogue" and node["data"]["text"] == "After detour"
+        end)
+
+      assert subflow["data"]["referenced_flow_id"] == side_quest["id"]
+
+      assert Enum.any?(start_flow["connections"], fn connection ->
+               connection["target_node_id"] == subflow["id"]
+             end)
+
+      assert Enum.any?(start_flow["connections"], fn connection ->
+               connection["source_node_id"] == subflow["id"] and
+                 connection["source_pin"] == "output" and
+                 connection["target_node_id"] == after_detour["id"]
+             end)
+    end
+
+    test "rejects a detour whose target does not exist" do
+      source = """
+      title: Start
+      ---
+      <<detour MissingNode>>
+      ===
+      """
+
+      assert {:ok, plan} = raw_yarn_plan(source)
+
+      assert Enum.any?(plan.issues, fn issue ->
+               issue.code == :unknown_yarn_detour_target and issue.severity == :error
+             end)
+
+      assert {:error, :import_plan_has_errors} = Imports.parse_file("project.yarn", source)
+    end
+
     test "does not materialize tails after condition or option branches all terminate" do
       source = """
       title: Start

@@ -67,11 +67,7 @@ export type ImportStep = "upload" | "preview" | "queued" | "done" | "error";
 
 export type ImportMode = "additive" | "replace_project";
 export type ImportConflictStrategy = "skip" | "overwrite" | "rename";
-export type MainFlowImportOutcome =
-  | "preserve_existing"
-  | "replace_existing"
-  | "import_candidate"
-  | "none";
+export type MainFlowImportOutcome = "preserve_existing" | "import_candidate" | "none";
 
 export type ImportAttemptStage =
   | "parsed"

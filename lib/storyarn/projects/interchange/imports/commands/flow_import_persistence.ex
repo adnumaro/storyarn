@@ -4,7 +4,6 @@ defmodule Storyarn.Projects.FlowImportPersistence do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform.Kernel.MapAccess
-  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowHubColors
   alias Storyarn.Projects.FlowWordCount, as: WordCount
   alias Storyarn.Projects.Persistence.FlowConnectionRecord
@@ -12,6 +11,15 @@ defmodule Storyarn.Projects.FlowImportPersistence do
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Projects.Persistence.SequenceConfigRecord
   alias Storyarn.Repo
+
+  def list_active_identities(project_id) do
+    from(flow in FlowRecord,
+      where: flow.project_id == ^project_id and is_nil(flow.deleted_at),
+      select: {flow.shortcut, flow.id}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
 
   def detect_shortcut_conflicts(_project_id, []), do: []
 
@@ -33,17 +41,6 @@ defmodule Storyarn.Projects.FlowImportPersistence do
     )
     |> Repo.all()
     |> MapSet.new()
-  end
-
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    Repo.update_all(
-      from(flow in FlowRecord,
-        where:
-          flow.project_id == ^project_id and flow.shortcut == ^shortcut and
-            is_nil(flow.deleted_at)
-      ),
-      set: [deleted_at: TimeHelpers.now()]
-    )
   end
 
   def import_flow(project_id, attrs) do

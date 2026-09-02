@@ -90,39 +90,6 @@ defmodule Storyarn.Projects.SheetImportPersistenceTest do
     end
   end
 
-  describe "soft_delete_by_shortcut/2" do
-    test "soft-deletes sheets with matching shortcut" do
-      %{project: project} = setup_project()
-
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Target", shortcut: "target"})
-
-      {count, _} = SheetImportPersistence.soft_delete_by_shortcut(project.id, "target")
-
-      assert count == 1
-      assert Sheets.get_sheet(project.id, sheet.id) == nil
-    end
-
-    test "does not affect sheets with different shortcuts" do
-      %{project: project} = setup_project()
-
-      {:ok, _} = Sheets.create_sheet(project, %{name: "Keep", shortcut: "keep"})
-      {:ok, _} = Sheets.create_sheet(project, %{name: "Delete", shortcut: "delete"})
-
-      SheetImportPersistence.soft_delete_by_shortcut(project.id, "delete")
-
-      assert Sheets.get_sheet_by_shortcut(project.id, "keep")
-      assert Sheets.get_sheet_by_shortcut(project.id, "delete") == nil
-    end
-
-    test "returns {0, nil} when no match" do
-      %{project: project} = setup_project()
-
-      {count, _} = SheetImportPersistence.soft_delete_by_shortcut(project.id, "nonexistent")
-
-      assert count == 0
-    end
-  end
-
   describe "import_block/2" do
     setup do
       %{project: project} = setup_project()

@@ -3,9 +3,21 @@ defmodule Storyarn.Projects.References do
   Public facade for entity and variable reference tracking.
   """
 
+  alias Storyarn.Projects.References.EntityReferenceExtraction
   alias Storyarn.Projects.References.EntityTracker
+  alias Storyarn.Projects.References.RichTextMentions
+  alias Storyarn.Projects.References.VariableCatalog
   alias Storyarn.Projects.References.VariableTracker
   alias Storyarn.Projects.References.VariableUsage
+
+  @doc false
+  defdelegate regular_variable_types(), to: VariableCatalog
+
+  @doc false
+  defdelegate extract_block_value_references(block_type, value), to: EntityReferenceExtraction
+
+  @doc false
+  defdelegate rich_text_html_candidates(value), to: RichTextMentions, as: :html_candidates
 
   defdelegate update_block_references(block, opts \\ []), to: EntityTracker
 

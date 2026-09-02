@@ -1,0 +1,3 @@
+# Preserve upstream trailing spaces in the provenance-checked Yarn fixture and its adaptation.
+test/fixtures/imports/yarn/space_journey/SpaceJourney_FinalVersion.yarn -whitespace
+test/fixtures/imports/yarn/space_journey/upstream/SpaceJourney_FinalVersion.yarn -whitespace
