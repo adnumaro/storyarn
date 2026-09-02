@@ -66,6 +66,12 @@ export interface ExportPanelProps {
 export type ImportStep = "upload" | "preview" | "queued" | "done" | "error";
 
 export type ImportMode = "additive" | "replace_project";
+export type ImportConflictStrategy = "skip" | "overwrite" | "rename";
+export type MainFlowImportOutcome =
+  | "preserve_existing"
+  | "replace_existing"
+  | "import_candidate"
+  | "none";
 
 export type ImportAttemptStage =
   | "parsed"
@@ -155,6 +161,10 @@ export interface ImportPreview {
   counts?: Record<string, number>;
   has_conflicts?: boolean;
   conflicts?: Record<string, string[]>;
+  main_flow?: {
+    additive: Record<ImportConflictStrategy, MainFlowImportOutcome>;
+    replace_project: MainFlowImportOutcome;
+  } | null;
   import_review?: YarnImportReview | null;
   import_review_draft?: YarnImportReviewDraft | null;
   import_review_resolution?: YarnImportReviewResolution | null;
@@ -168,7 +178,7 @@ export interface ImportState {
   preview?: ImportPreview | null;
   /** Stable, content-free server code. UI copy is always resolved through i18n. */
   errorCode?: string | null;
-  conflictStrategy?: string;
+  conflictStrategy?: ImportConflictStrategy;
   importMode: ImportMode;
   /** True only for a validated archive that contains one real `.yarnproject`. */
   replaceEligible: boolean;

@@ -86,6 +86,23 @@ defmodule Storyarn.Projects.Imports.FormatBoundaryTest do
     assert Preview.preview(-1, plan) == {:error, :unsupported_import_format}
   end
 
+  test "pre-Start-policy Yarn v5 plans fail closed instead of changing meaning" do
+    legacy_plan = %ImportPlan{
+      format: :yarn,
+      parser_version: "5",
+      source_kind: :file,
+      data: %{
+        "flows" => [
+          %{"name" => "Prologue", "shortcut" => "prologue", "is_main" => true},
+          %{"name" => "Start", "shortcut" => "start", "is_main" => false}
+        ]
+      }
+    }
+
+    assert FormatReview.ensure_supported(legacy_plan) == {:error, :unsupported_import_format}
+    assert Preview.preview(-1, legacy_plan) == {:error, :unsupported_import_format}
+  end
+
   test "known formats with unsupported source kinds fail closed" do
     plan = %ImportPlan{
       format: :yarn,

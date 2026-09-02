@@ -237,6 +237,69 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     assert_receive {:resume_queue_wakeup, %{queue: "imports"}}
   end
 
+  test "rebuilds the main-flow preview and preserves a main created after upload", ctx do
+    assert {:ok, ready, original_preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "main-race.yarn", yarn("Hello"))
+
+    assert original_preview.main_flow.additive.rename == "import_candidate"
+
+    existing_main =
+      Storyarn.FlowsFixtures.flow_fixture(ctx.project, %{name: "Current Main", is_main: true})
+
+    assert {:ok, resumed, resumed_preview} =
+             Imports.resume_import(ctx.scope, ctx.project, ready.id)
+
+    assert resumed.id == ready.id
+    assert resumed_preview.main_flow.additive.rename == "preserve_existing"
+
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+    assert {:ok, completed} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+    assert completed.status == "completed"
+
+    assert [%{id: main_id}] =
+             ctx.project.id
+             |> Flows.list_flows()
+             |> Enum.filter(& &1.is_main)
+
+    assert main_id == existing_main.id
+    refute ctx.project.id |> Flows.list_flows() |> Enum.find(&(&1.name == "Start")) |> Map.fetch!(:is_main)
+  end
+
+  test "rechecks the main-flow decision after confirmation under the final project lock", ctx do
+    assert {:ok, ready, preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "late-main.yarn", yarn("Hello"))
+
+    assert preview.main_flow.additive.rename == "import_candidate"
+    assert {:ok, queued} = Imports.enqueue_import(ctx.scope, ready.id, :rename)
+
+    test_pid = self()
+
+    assert {:ok, completed} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               before_materialization_transaction: fn ->
+                 main =
+                   Storyarn.FlowsFixtures.flow_fixture(ctx.project, %{
+                     name: "Late Main",
+                     is_main: true
+                   })
+
+                 send(test_pid, {:late_main_created, main.id})
+               end
+             )
+
+    assert completed.status == "completed"
+    assert_received {:late_main_created, late_main_id}
+
+    assert [%{id: ^late_main_id}] =
+             ctx.project.id
+             |> Flows.list_flows()
+             |> Enum.filter(& &1.is_main)
+
+    refute ctx.project.id |> Flows.list_flows() |> Enum.find(&(&1.name == "Start")) |> Map.fetch!(:is_main)
+  end
+
   test "rebuilds a ready preview when another tab saves a new review revision", ctx do
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "alias-review.yarn", alias_yarn())
@@ -825,6 +888,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
 
     assert Repo.get!(ProjectImportAttempt, completed.id).counts == completed.counts
     assert Enum.count(Flows.list_flows(ctx.project.id), &(&1.name == "Start")) == 1
+    refute Enum.any?(Flows.list_flows(ctx.project.id), & &1.is_main)
   end
 
   test "rolls back materialization when the attempt cannot complete atomically", ctx do

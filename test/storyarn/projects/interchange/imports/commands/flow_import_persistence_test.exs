@@ -54,6 +54,22 @@ defmodule Storyarn.Projects.FlowImportPersistenceTest do
       assert {:error, changeset} = FlowImportPersistence.import_flow(project.id, %{})
       assert errors_on(changeset).name
     end
+
+    test "keeps the database constraint as a backstop", %{project: project} do
+      _main = import_flow!(project, %{name: "Main", shortcut: "main", is_main: true})
+
+      assert {:error, changeset} =
+               FlowImportPersistence.import_flow(project.id, %{
+                 name: "Second Main",
+                 shortcut: "second-main",
+                 is_main: true
+               })
+
+      assert errors_on(changeset).is_main == ["this project already has a main flow"]
+
+      assert {"project_already_has_main_flow", _message, true} =
+               Storyarn.Projects.Imports.Error.classify(:project_already_has_main_flow)
+    end
   end
 
   describe "import_node/2" do

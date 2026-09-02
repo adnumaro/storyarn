@@ -22,7 +22,12 @@ import ImportCompatibilitySummary from "@modules/projects/settings/export-import
 import YarnSpeakerReview from "@modules/projects/settings/export-import/components/YarnSpeakerReview.vue";
 import { useImportResume } from "@modules/projects/settings/export-import/composables/useImportResume";
 import { useYarnImportReview } from "@modules/projects/settings/export-import/composables/useYarnImportReview";
-import type { ImportMode, ImportPanelProps } from "../types";
+import type {
+  ImportConflictStrategy,
+  ImportMode,
+  ImportPanelProps,
+  MainFlowImportOutcome,
+} from "../types";
 
 const { t } = useI18n();
 
@@ -64,6 +69,24 @@ const currentImportMode = computed<ImportMode>(() =>
   importState.importMode === "replace_project" ? "replace_project" : "additive",
 );
 const replacementSelected = computed(() => currentImportMode.value === "replace_project");
+const currentConflictStrategy = computed<ImportConflictStrategy>(() => {
+  if (importState.conflictStrategy === "skip" || importState.conflictStrategy === "overwrite") {
+    return importState.conflictStrategy;
+  }
+
+  return "rename";
+});
+const mainFlowOutcome = computed<MainFlowImportOutcome | null>(() => {
+  const preview = importState.preview?.main_flow;
+  if (!preview) return null;
+
+  return replacementSelected.value
+    ? preview.replace_project
+    : preview.additive[currentConflictStrategy.value];
+});
+const mainFlowOutcomeKey = computed(() =>
+  mainFlowOutcome.value ? `project_settings.import.main_flow_${mainFlowOutcome.value}` : null,
+);
 const recoverySnapshotUrl = computed(() =>
   replacementSelected.value && typeof importState.recoverySnapshotUrl === "string"
     ? importState.recoverySnapshotUrl
@@ -511,6 +534,25 @@ watch(replaceDialogOpen, (open) => {
               </span>
             </label>
           </RadioGroup>
+        </div>
+
+        <div
+          v-if="mainFlowOutcomeKey"
+          data-testid="yarn-import-main-flow-outcome"
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          class="rounded-xl border border-border bg-muted/30 p-4"
+        >
+          <p class="text-sm font-medium">
+            {{ $t("project_settings.import.main_flow_title") }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t(mainFlowOutcomeKey) }}
+          </p>
+          <p class="mt-1 text-xs leading-5 text-muted-foreground">
+            {{ $t("project_settings.import.main_flow_rechecked") }}
+          </p>
         </div>
 
         <YarnSpeakerReview :review="review" />

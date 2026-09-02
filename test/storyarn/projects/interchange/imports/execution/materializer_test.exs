@@ -439,6 +439,40 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       # Should detect conflicts in at least some schemas
       assert map_size(preview.conflicts) > 0
     end
+
+    test "includes a mode and strategy aware main-flow outcome matrix", %{
+      target: target,
+      parsed: parsed
+    } do
+      existing = flow_fixture(target, %{name: "Current Main", is_main: true})
+      [flow] = parsed.data["flows"]
+
+      parsed =
+        parsed.data
+        |> Map.put("flows", [
+          %{flow | "is_main" => true},
+          %{
+            flow
+            | "id" => "replacement",
+              "shortcut" => existing.shortcut,
+              "is_main" => false,
+              "nodes" => [],
+              "connections" => []
+          }
+        ])
+        |> then(&%{parsed | data: &1})
+
+      assert {:ok, preview} = Imports.preview(target.id, parsed)
+
+      assert preview.main_flow == %{
+               additive: %{
+                 skip: "preserve_existing",
+                 overwrite: "replace_existing",
+                 rename: "preserve_existing"
+               },
+               replace_project: "import_candidate"
+             }
+    end
   end
 
   # =============================================================================
@@ -502,11 +536,6 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       end
 
       assert {:ok, _first} = import_once.()
-
-      # ENG-73: the importer claims is_main positionally, so a second import
-      # collides with the first one's main flow before reaching the sheets.
-      # Clear it here — that behaviour ships separately.
-      Repo.update_all(Flow, set: [is_main: false])
 
       assert {:ok, _second} = import_once.()
 
@@ -615,7 +644,6 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       end
 
       assert {:ok, _first} = import_once.()
-      Repo.update_all(Flow, set: [is_main: false])
       assert {:ok, _second} = import_once.()
 
       second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
@@ -654,7 +682,6 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       end
 
       assert {:ok, _first} = import_once.()
-      Repo.update_all(Flow, set: [is_main: false])
       assert {:ok, _second} = import_once.()
 
       second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
@@ -724,7 +751,6 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
       end
 
       assert {:ok, _first} = import_once.()
-      Repo.update_all(Flow, set: [is_main: false])
       assert {:ok, _second} = import_once.()
 
       second_flow = Enum.find(Flows.list_flows(target.id), &(&1.shortcut == "start-2"))
@@ -1242,36 +1268,94 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
   # matching builder alongside any new fixture that needs them.
   # =============================================================================
 
-  describe "main flow collision" do
+  describe "main flow policy" do
     setup [:setup_projects]
 
-    test "returns a clear error instead of raising when the project has a main flow", %{
+    test "an additive import preserves the project's existing main flow", %{
       source: source,
       target: target
     } do
-      flow_fixture(source, %{name: "Imported Main", is_main: true})
-      flow_fixture(target, %{name: "Existing Main", is_main: true})
+      imported = flow_fixture(source, %{name: "Imported Main", is_main: true})
+      existing = flow_fixture(target, %{name: "Existing Main", is_main: true})
 
       plan = import_plan(project_plan_data(source))
 
-      # `flows_project_id_is_main_index` had no matching `unique_constraint`, so
-      # this raised `Ecto.ConstraintError` — a raw 500 with no usable message.
-      assert {:error, :project_already_has_main_flow} =
-               Imports.execute(target, plan, conflict_strategy: :rename)
-
-      # The failure is permanent, so the worker must not spend three attempts on
-      # a constraint violation that can only ever fail again.
-      assert {"project_already_has_main_flow", _message, true} =
-               Storyarn.Projects.Imports.Error.classify(:project_already_has_main_flow)
+      assert {:ok, result} = Imports.execute(target, plan, conflict_strategy: :rename)
+      assert result.counts.flows == 1
 
       main_flows = target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
       assert [%{name: "Existing Main"}] = main_flows
+      assert hd(main_flows).id == existing.id
+
+      imported_flow = Enum.find(Flows.list_flows(target.id), &(&1.name == imported.name))
+      refute imported_flow.is_main
+    end
+
+    test "skip imports a non-conflicting Start without changing the existing main", %{
+      source: source,
+      target: target
+    } do
+      imported = flow_fixture(source, %{name: "Start", is_main: true})
+      existing = flow_fixture(target, %{name: "Existing Main", is_main: true})
+
+      assert {:ok, result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :skip)
+
+      assert result.counts.flows == 1
+      assert [%{id: main_id}] = target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
+      assert main_id == existing.id
+
+      imported_flow = Enum.find(Flows.list_flows(target.id), &(&1.name == imported.name))
+      refute imported_flow.is_main
+    end
+
+    test "a nominated flow becomes main when the project has none", %{source: source, target: target} do
+      flow_fixture(source, %{name: "Start", is_main: true})
+
+      assert {:ok, _result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :rename)
+
+      assert [%{name: "Start"}] = target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
+    end
+
+    test "an import without a nomination leaves a project without a main flow", %{
+      source: source,
+      target: target
+    } do
+      flow_fixture(source, %{name: "Prologue", is_main: false})
+
+      assert {:ok, _result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :rename)
+
+      refute Enum.any?(Flows.list_flows(target.id), & &1.is_main)
+    end
+
+    test "overwriting the current main shortcut transfers the main role", %{
+      source: source,
+      target: target
+    } do
+      flow_fixture(source, %{name: "Start", is_main: true})
+      flow_fixture(source, %{name: "Shared", is_main: false})
+      existing = flow_fixture(target, %{name: "Shared", is_main: true})
+
+      assert {:ok, _result} =
+               Imports.execute(target, import_plan(project_plan_data(source)), conflict_strategy: :overwrite)
+
+      assert Repo.get!(Flow, existing.id).deleted_at
+
+      assert [%{name: "Shared", id: imported_id}] =
+               target.id |> Flows.list_flows() |> Enum.filter(& &1.is_main)
+
+      refute imported_id == existing.id
+
+      imported_start = Enum.find(Flows.list_flows(target.id), &(&1.name == "Start"))
+      refute imported_start.is_main
     end
   end
 
   defp import_plan(data) do
     # These tests exercise the format-neutral materializer with hand-built
-    # native data. Yarn v5 is the only registered format, and an empty review
+    # native data. Yarn v6 is the only registered format, and an empty review
     # is resolved by contract when the data has no speaker occurrences. Keep
     # the complete review envelope here so the tests do not rely on the old
     # unknown-format fail-open behaviour.
@@ -1279,7 +1363,7 @@ defmodule Storyarn.Projects.Imports.MaterializerTest do
 
     %ImportPlan{
       format: :yarn,
-      parser_version: "5",
+      parser_version: "6",
       source_kind: :file,
       data: data
     }

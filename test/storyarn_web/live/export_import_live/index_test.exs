@@ -213,7 +213,7 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project: project,
       user: user
     } do
-      _existing = flow_fixture(project, %{name: "Start"})
+      _existing = flow_fixture(project, %{name: "Start", is_main: true})
       scope = Scope.for_user(user)
 
       assert {:ok, ready, _preview} =
@@ -234,6 +234,8 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert state["status"] == "ready"
       assert state["preview"]["has_conflicts"]
       assert state["preview"]["counts"]["flows"] == 1
+      assert state["preview"]["main_flow"]["additive"]["rename"] == "preserve_existing"
+      assert state["preview"]["main_flow"]["replace_project"] == "import_candidate"
     end
 
     test "persists the selected conflict strategy across navigation", %{

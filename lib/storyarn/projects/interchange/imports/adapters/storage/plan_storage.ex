@@ -221,8 +221,8 @@ defmodule Storyarn.Projects.Imports.PlanStorage do
 
   # The HMAC and stored object deliberately share this exact materializable
   # payload builder. Source-derived replacement eligibility is intentionally
-  # attempt metadata, not plan data, so the parser-v5 payload remains readable
-  # by older additive workers during a rolling deploy.
+  # attempt metadata, not plan data, so eligibility cannot alter a signed
+  # materializable payload.
   defp encode_persisted_payload(plan) do
     with {:ok, format} <- FormatRegistry.encode_persisted(plan.format),
          {:ok, source_kind} <- encode_source_kind(plan.source_kind),

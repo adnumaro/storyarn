@@ -19,8 +19,8 @@ defmodule Storyarn.Projects.Imports.ImportPlan do
     :source_kind,
     :attempt_binding,
     # Ephemeral parser metadata used only while creating the durable attempt.
-    # It is intentionally absent from PlanStorage so parser-v5 plans remain
-    # compatible with workers during a rolling deploy.
+    # It is intentionally absent from PlanStorage so it cannot change the
+    # signed, materializable payload contract.
     replace_eligible: nil,
     issues: [],
     metadata: %{}
