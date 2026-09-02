@@ -1,0 +1,220 @@
+assets/app/locales/es/project-settings.json
+  s_6ce2be7da793bc::t_d704a3ffdeb0f3 411
+  s_6ce2be7da793bc::t_0fae07fd021af5 409-410
+  s_6ce2be7da793bc::t_dc3789b9a63bc9 511,518
+  s_6ce2be7da793bc::t_c40c7e8f8c40d3 513-514,520-521
+test/storyarn/projects/interchange/imports/integration/yarn_realistic_corpus_test.exs
+  s_6ce2be7da793bc::t_aadb99fd6bbe70 210
+  s_6ce2be7da793bc::t_2267536c3b6ed5 14,71-82,84,121-128,154,162,209,216-219,305-309,321-322,373-378
+  s_6ce2be7da793bc::t_1e07d6370801a8 99-120
+  s_6ce2be7da793bc::t_4bed6e53b5130e 191-207,265-270,294-304,403-508
+  s_6ce2be7da793bc::t_36efa270544d42 19-54,178-179,262-263,509-547,549-551
+  s_6ce2be7da793bc::t_83c32b29906203 1-13,15-18,55-70,83,85-98,129-153,155-161,163-177,180-190,208,220-261,264,271-282,293,310-320,323-372,379-402,548,552-567,587-588
+  s_6ce2be7da793bc::t_2d4b0c5667ba66 211-215,283-292,568-571,573
+  s_6ce2be7da793bc::t_3e189163333678 572,574-586
+priv/docs/es/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_5962f235527a00 51
+  s_6ce2be7da793bc::t_42ef37fda4e6ec 14
+  s_6ce2be7da793bc::t_a09de321f54424 26
+  s_6ce2be7da793bc::t_dc3789b9a63bc9 36
+  s_6ce2be7da793bc::t_0fae07fd021af5 19
+lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex
+  s_6ce2be7da793bc::t_187ff47a33c395 14-22
+lib/storyarn/projects/interchange/imports/rules/imported_entity_reference_rewriter.ex
+  s_6ce2be7da793bc::t_ae09151b2cdc4a 49,74,311
+  s_6ce2be7da793bc::t_249316b19bf3f7 104,107-125
+  s_6ce2be7da793bc::t_3ec17a16c3ce27 10,29,68,75,91,93,223
+  s_6ce2be7da793bc::t_dd1e75750273b8 289,295-307
+  s_6ce2be7da793bc::t_b20355294c25f4 18-20,100-103,105-106,126-128,151-152,175,184,314,319
+  s_6ce2be7da793bc::t_7c0a25fd05a925 1-4,8-9,11-17,21-28,30-48,50-67,69-73,76-90,92,94-99,129-150,153-174,176-183,185-222,224-288,290-294,308-310,312-313,315-318,320-332
+  s_6ce2be7da793bc::t_7aa1f070291018 5-7
+test/storyarn/projects/interchange/imports/commands/scene_import_persistence_test.exs
+  s_6ce2be7da793bc::t_d2b7904498eacc 30-33
+assets/app/locales/en/project-settings.json
+  s_6ce2be7da793bc::t_c40c7e8f8c40d3 513-514,520-521
+  s_6ce2be7da793bc::t_0fae07fd021af5 409-410
+  s_6ce2be7da793bc::t_d704a3ffdeb0f3 411
+  s_6ce2be7da793bc::t_dc3789b9a63bc9 511,518
+lib/storyarn/projects/interchange/imports/rules/error.ex
+  s_6ce2be7da793bc::t_ae09151b2cdc4a 17
+  s_6ce2be7da793bc::t_75bac24ecca86d 35,42-44
+lib/storyarn/projects/interchange/imports/execution/materializer.ex
+  s_6ce2be7da793bc::t_14fdaac6c79111 720-724
+  s_6ce2be7da793bc::t_f85898aea099df 445,449-454,874-875,901,903-907
+  s_6ce2be7da793bc::t_4285a82fd3c3a5 883-890,894
+  s_6ce2be7da793bc::t_f58b29d3a296ef 1972
+  s_6ce2be7da793bc::t_b4f24d65047b06 774,1685-1694,1699,1702-1706,1920-1925
+  s_6ce2be7da793bc::t_458ddf2b12d179 619,640,644-653,660-703
+  s_6ce2be7da793bc::t_53498f6be4b9aa 24,446-448,562-566,902,1970
+  s_6ce2be7da793bc::t_6da776c1f29f22 945,950,953-955,958-961,963,965-967,991-1002
+  s_6ce2be7da793bc::t_16dedace05fa3b 964,985,1131,1190,1390,1432
+  s_6ce2be7da793bc::t_e31e9f8a040a07 570-571,574-580,585,590,593,601,773,859,861-863,868-873,877-879,881-882,891-892,895-899
+  s_6ce2be7da793bc::t_dd1e75750273b8 725-726,728-747
+  s_6ce2be7da793bc::t_2f1a173ebeb4cd 1372,1377,1380-1382,1384-1386,1388-1389,1391-1393,1395-1399
+  s_6ce2be7da793bc::t_ec39b23a4bc003 641-643
+  s_6ce2be7da793bc::t_1dcb9ebd25c96b 572,867,876,880,893,900
+  s_6ce2be7da793bc::t_8fe650b60f6d27 760,765
+  s_6ce2be7da793bc::t_674c3a3e3360b0 962
+  s_6ce2be7da793bc::t_ac70ba56cf6a7e 1580-1586
+  s_6ce2be7da793bc::t_68fbff3c3f3468 1926
+  s_6ce2be7da793bc::t_229faf3ba49e24 1102,1113,1119-1121,1125-1130,1132-1134,1149-1150,1156-1157,1159-1161
+  s_6ce2be7da793bc::t_ae09151b2cdc4a 28,71-73,372,613-615,704-719,727,748-759,761-764,766-772
+  s_6ce2be7da793bc::t_b20355294c25f4 606-607,2039-2041,2052,2055-2057,2061
+  s_6ce2be7da793bc::t_cd1f29f556cc69 616
+  s_6ce2be7da793bc::t_2f16d9bb5cd718 775
+  s_6ce2be7da793bc::t_1504c67b5b3537 908
+test/storyarn/projects/interchange/imports/execution/materializer_test.exs
+  s_6ce2be7da793bc::t_ffcd37a638fb4a 720-723
+  s_6ce2be7da793bc::t_021d353975c3de 116,1029-1078
+  s_6ce2be7da793bc::t_4c4aa29858659e 509
+  s_6ce2be7da793bc::t_bed1565109cb74 94-115,117-127
+  s_6ce2be7da793bc::t_b9469942be7c91 29,908-1028
+  s_6ce2be7da793bc::t_f166668ee2e170 25
+  s_6ce2be7da793bc::t_0ea3ae35a855e5 527-536,556-597,628-651,655-701,710-711,760,773,775,788-795,801-802,804-806,810,817-823,851-860,863,866-867,872-889,1079-1114,1139,1527,1555-1556,1558-1559,1561-1562,1572-1579,2007,2015-2017,2020-2021,2023,2026-2027,2285-2286,2354-2361
+  s_6ce2be7da793bc::t_674c3a3e3360b0 553-555,761
+  s_6ce2be7da793bc::t_ad36e545c2e42d 724-726,730
+  s_6ce2be7da793bc::t_ad3c3adb13b124 1115-1138
+  s_6ce2be7da793bc::t_5632d9e5fd4951 751-757
+  s_6ce2be7da793bc::t_a3581cc14fdc09 24,27,1563,1571
+  s_6ce2be7da793bc::t_bec098cd23facd 727-729,731,734,737
+  s_6ce2be7da793bc::t_123ddeed32282c 732-733,735-736,738,746,758-759
+  s_6ce2be7da793bc::t_b2c31694566c5f 796-800
+  s_6ce2be7da793bc::t_af9a183ef66f72 31,598-627,652-654,702-709,749-750,762-772,774,776-787,803,807-809,811-816,824-850,861-862,890-893,895-896,906-907,1531-1554,1566-1567,1569-1570,2214-2215,2256-2284
+  s_6ce2be7da793bc::t_b20355294c25f4 712-719,739-745,747-748,864-865,868-871,894,897-905,1565,1568
+  s_6ce2be7da793bc::t_10af1cc7f25b1d 1140
+  s_6ce2be7da793bc::t_ac6e98b20ea75c 2287
+config/architecture_boundaries.exs
+  s_6ce2be7da793bc::t_458ddf2b12d179 3579
+  s_6ce2be7da793bc::t_af9a183ef66f72 845-849
+  s_6ce2be7da793bc::t_64a5e22d1c8dc4 3037,3041-3042,3590
+  s_6ce2be7da793bc::t_4285a82fd3c3a5 1028,1258,1324
+test/storyarn/projects/interchange/imports/commands/flow_import_persistence_test.exs
+  s_6ce2be7da793bc::t_d2b7904498eacc 26-29
+lib/storyarn_web/live/export_import_live/index.ex
+  s_6ce2be7da793bc::t_551044146a9e08 15,17-18
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_6ce2be7da793bc::t_2b2bec42abbffe 84,86-91,106
+  s_6ce2be7da793bc::t_dc3789b9a63bc9 98-102,107,175-177,179-194,310,344,360-362,364-365,653-655,657-675,715-717,719
+  s_6ce2be7da793bc::t_200d4814ee20bb 79-83,85,92-97,178,345,625-638
+  s_6ce2be7da793bc::t_1f70d2d8023d81 103-105,108-110,113,279,314,363,718
+  s_6ce2be7da793bc::t_c40c7e8f8c40d3 229,231-233,313
+test/fixtures/imports/yarn/space_journey/SpaceJourney_FinalVersion.yarn
+  s_6ce2be7da793bc::t_964260ce1e4229 3-4,119,122,140
+  s_6ce2be7da793bc::t_c9e0a56d3671e6 1-2,5-118,120-121,123-139,141-231
+test/fixtures/imports/yarn/space_journey/compatibility-manifest.json
+  s_6ce2be7da793bc::t_bcfd3cec35a72b 82-111
+  s_6ce2be7da793bc::t_19fd5017ff4755 47-57
+  s_6ce2be7da793bc::t_9be922b374ade1 1-46,58-81,112-147
+lib/storyarn/projects/reconstitution/project_reconstitution.ex
+  s_6ce2be7da793bc::t_2515b839ecf11e 27-30
+  s_6ce2be7da793bc::t_723c5d3d861f1c 26
+test/fixtures/imports/yarn/space_journey/upstream/SpaceJourney_FinalVersion.yarn
+  s_6ce2be7da793bc::t_875da1b5c7e7f4 1-229
+test/storyarn/projects/interchange/imports/integration/import_lifecycle_test.exs
+  s_6ce2be7da793bc::t_e36c91748bc0bc 938-988
+  s_6ce2be7da793bc::t_2f571844bbd07a 894-937
+test/fixtures/imports/yarn/space_journey/SpaceJourney.yarnproject
+  s_6ce2be7da793bc::t_c9e0a56d3671e6 1-7
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_6ce2be7da793bc::t_c9daea04196cb8 503-510,512-549,553-554
+  s_6ce2be7da793bc::t_a3581cc14fdc09 511,551-552,572,611-613
+  s_6ce2be7da793bc::t_f3034fed0e2e8b 550,555-571,573-610,614-615
+test/storyarn/projects/interchange/imports/adapters/parsers/yarn_test.exs
+  s_6ce2be7da793bc::t_f46095c76870fa 1345-1401
+test/e2e/import_resume_test.exs
+  s_6ce2be7da793bc::t_c6ae23df679aa0 18,30-31,37-38,43,51-65,67-79,81-82,84-89,99-119,236-262,305-306,309-316,322-331,335-336,340
+  s_6ce2be7da793bc::t_3b1eb15d6ff968 66
+test/fixtures/imports/yarn/space_journey/LICENSE.md
+  s_6ce2be7da793bc::t_c9e0a56d3671e6 1-21
+assets/app/test/locales/ProjectSettingsExportLabels.test.ts
+  s_6ce2be7da793bc::t_d704a3ffdeb0f3 44,49
+  s_6ce2be7da793bc::t_0fae07fd021af5 21-25,35
+  s_6ce2be7da793bc::t_887da279954bc3 61-70
+  s_6ce2be7da793bc::t_38d473a42ce616 6,26-34,36-38
+  s_6ce2be7da793bc::t_1a6be121838573 111
+  s_6ce2be7da793bc::t_a4a2d372c37479 71-110
+  s_6ce2be7da793bc::t_4796f966bd2c98 39-43,45-48,50-60,112-119
+lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex
+  s_6ce2be7da793bc::t_3ec17a16c3ce27 19,23
+  s_6ce2be7da793bc::t_187ff47a33c395 25-33
+  s_6ce2be7da793bc::t_ae09151b2cdc4a 104-107
+  s_6ce2be7da793bc::t_ad3c3adb13b124 24
+  s_6ce2be7da793bc::t_dd1e75750273b8 34-35,37-48,50-52
+  s_6ce2be7da793bc::t_33d460062924e4 36,49,53
+lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex
+  s_6ce2be7da793bc::t_187ff47a33c395 15-23
+.gitattributes
+  s_6ce2be7da793bc::t_9b8d84e19d0d94 2-3
+  s_6ce2be7da793bc::t_99ba2251b9603d 1
+priv/docs/en/import-export/01-import-export-overview.md
+  s_6ce2be7da793bc::t_dc3789b9a63bc9 14,36
+  s_6ce2be7da793bc::t_0fae07fd021af5 19
+  s_6ce2be7da793bc::t_a09de321f54424 26
+  s_6ce2be7da793bc::t_da357fd1d5563d 51
+lib/storyarn/projects/interchange/imports/rules/conflict_resolution.ex
+  s_6ce2be7da793bc::t_dd1e75750273b8 140-161
+  s_6ce2be7da793bc::t_b20355294c25f4 16
+  s_6ce2be7da793bc::t_45ca3b953ae546 1-12,14,17-38,45,83-113,115-121,123,163
+  s_6ce2be7da793bc::t_53498f6be4b9aa 48-55,114
+  s_6ce2be7da793bc::t_3ec17a16c3ce27 13,15
+  s_6ce2be7da793bc::t_63dce099265816 39-44,46-47,56-67,69,74-75,78-82,122,124-139,162
+  s_6ce2be7da793bc::t_90d69f0ceebb50 68,70-73,76-77
+lib/storyarn/projects/interchange/imports/execution/import_lifecycle.ex
+  s_6ce2be7da793bc::t_a6f041235efbcf 840-841,859-863,867
+  s_6ce2be7da793bc::t_2d926b507f3e13 864-866,868
+test/storyarn/projects/interchange/imports/rules/conflict_resolution_test.exs
+  s_6ce2be7da793bc::t_ee0cd18e177763 1-67,77-81,99-140
+  s_6ce2be7da793bc::t_b20355294c25f4 82-98
+  s_6ce2be7da793bc::t_475b6cb73f65d0 68-76
+assets/app/test/modules/projects/settings/ImportPanel.test.ts
+  s_6ce2be7da793bc::t_673f4365061099 1283-1308,1310-1333,1459-1462,1558-1566
+  s_6ce2be7da793bc::t_d304453ca60493 1463-1465,1557,1567-1582,1584-1585
+  s_6ce2be7da793bc::t_255f7558adb988 1466-1468,1485-1492
+  s_6ce2be7da793bc::t_ca25d92bbb415a 1495-1511,1514,1516-1519,1521-1539
+  s_6ce2be7da793bc::t_1f70d2d8023d81 1334-1355,1484,1493-1494,1540-1556
+  s_6ce2be7da793bc::t_2b2bec42abbffe 1512-1513,1515,1520
+  s_6ce2be7da793bc::t_19d65893d3931a 1181,1203
+  s_6ce2be7da793bc::t_7616fcced45d68 1469-1483
+  s_6ce2be7da793bc::t_d704a3ffdeb0f3 1309,1444-1458
+  s_6ce2be7da793bc::t_9dbd67f351258b 1583
+  s_6ce2be7da793bc::t_62306c2976c2fa 1586
+test/fixtures/imports/yarn/space_journey/README.md
+  s_6ce2be7da793bc::t_9be922b374ade1 1-17,20-26,30-46
+  s_6ce2be7da793bc::t_f94684d512c0c0 18-19,27-29
+lib/storyarn/projects/interchange/imports/rules/main_flow_policy.ex
+  s_6ce2be7da793bc::t_475b6cb73f65d0 12,16-17
+  s_6ce2be7da793bc::t_4c4aa29858659e 22-25,28,62-64,70-72
+test/storyarn/projects/interchange/imports/rules/main_flow_policy_test.exs
+  s_6ce2be7da793bc::t_4c4aa29858659e 7,15,22,55,60
+lib/storyarn/projects/references/references.ex
+  s_6ce2be7da793bc::t_3ec17a16c3ce27 8-9,13-20
+  s_6ce2be7da793bc::t_0a1e4728445c20 6,21
+assets/app/modules/projects/settings/export-import/types.ts
+  s_6ce2be7da793bc::t_cd33b7607e2da6 70
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_9247337431912c 285,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1317,1401-1402,1407
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_6b272949f83e13 274,279,296,301,306,311
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_5b8ccfbfd14485 285,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1317,1401-1402,1407
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_6bc5bfbb3009bd 274,279,296,301,306,311
+priv/gettext/projects.pot
+  s_6ce2be7da793bc::t_103294213552c3 285,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1317,1401-1402,1407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "8239479f19ef260af1f4af622c53effee72666f0",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
