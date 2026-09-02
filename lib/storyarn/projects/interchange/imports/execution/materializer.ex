@@ -21,10 +21,12 @@ defmodule Storyarn.Projects.Imports.Materializer do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.FlowImportPersistence
+  alias Storyarn.Projects.Imports.FlowQueries
   alias Storyarn.Projects.Imports.FormatRegistry
   alias Storyarn.Projects.Imports.FormatReview
   alias Storyarn.Projects.Imports.ImportedVariableRewriter
   alias Storyarn.Projects.Imports.ImportPlan
+  alias Storyarn.Projects.Imports.MainFlowPolicy
   alias Storyarn.Projects.Imports.ShortcutAllocator
   alias Storyarn.Projects.LocalizationLocaleCode, as: LocaleCode
   alias Storyarn.Projects.LocalizationReconstitution
@@ -368,12 +370,14 @@ defmodule Storyarn.Projects.Imports.Materializer do
          :ok <- validate_entity_counts(data) do
       counts = count_import_entities(data)
       conflicts = detect_conflicts(project_id, data)
+      main_flow = preview_main_flow(project_id, data, conflicts)
 
       {:ok,
        %{
          counts: counts,
          conflicts: conflicts,
          has_conflicts: conflicts != %{},
+         main_flow: main_flow,
          import_review: Map.get(data, "import_review", %{}),
          import_review_draft: Map.get(data, "import_review_draft"),
          import_review_resolution: Map.get(data, "import_review_resolution")
@@ -426,6 +430,14 @@ defmodule Storyarn.Projects.Imports.Materializer do
 
   defp detect_conflicts_for_type(:scene, project_id, shortcuts),
     do: SceneReadModel.detect_shortcut_conflicts(project_id, shortcuts)
+
+  defp preview_main_flow(project_id, data, conflicts) do
+    MainFlowPolicy.preview(
+      data["flows"] || [],
+      FlowQueries.get_active_main_identity(project_id),
+      Map.get(conflicts, :flow, [])
+    )
+  end
 
   # =============================================================================
   # Execute
@@ -902,10 +914,13 @@ defmodule Storyarn.Projects.Imports.Materializer do
 
   defp do_import_flows(project, flows, id_map, strategy, existing_shortcuts, sheet_shortcut_renames, format_adapter) do
     used_shortcuts = Map.fetch!(existing_shortcuts, :flow)
+    main_flow_state = project.id |> FlowQueries.get_active_main_identity() |> MainFlowPolicy.initial_state()
 
     # Pass 1: create flows without parent_id
-    {id_map, flow_records, node_count, _used_shortcuts} =
-      Enum.reduce(flows, {id_map, [], 0, used_shortcuts}, fn flow_data, {map, records, node_count, used} ->
+    {id_map, flow_records, node_count, _used_shortcuts, _main_flow_state} =
+      Enum.reduce(flows, {id_map, [], 0, used_shortcuts, main_flow_state}, fn flow_data, acc ->
+        {map, records, node_count, used, main_state} = acc
+
         case resolve_shortcut(
                flow_data["shortcut"],
                strategy,
@@ -914,14 +929,18 @@ defmodule Storyarn.Projects.Imports.Materializer do
                used
              ) do
           :skip ->
-            {map, records, node_count, used}
+            {map, records, node_count, used, main_state}
 
           shortcut ->
+            {is_main, main_state} =
+              MainFlowPolicy.resolve(flow_data, shortcut, strategy, main_state)
+
             {map, flow, imported_node_count} =
               create_flow_record(
                 project,
                 flow_data,
                 shortcut,
+                is_main,
                 map,
                 sheet_shortcut_renames,
                 format_adapter
@@ -931,7 +950,8 @@ defmodule Storyarn.Projects.Imports.Materializer do
               map,
               [{flow, flow_data} | records],
               node_count + imported_node_count,
-              reserve_shortcut(used, shortcut)
+              reserve_shortcut(used, shortcut),
+              main_state
             }
         end
       end)
@@ -942,7 +962,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
     {id_map, Enum.map(flow_records, fn {flow, _} -> flow end), node_count}
   end
 
-  defp create_flow_record(project, flow_data, shortcut, map, sheet_shortcut_renames, format_adapter) do
+  defp create_flow_record(project, flow_data, shortcut, is_main, map, sheet_shortcut_renames, format_adapter) do
     flow_data = format_adapter.finalize_flow(flow_data, sheet_shortcut_renames)
 
     attrs = %{
@@ -950,7 +970,7 @@ defmodule Storyarn.Projects.Imports.Materializer do
       "shortcut" => shortcut,
       "description" => flow_data["description"],
       "position" => flow_data["position"] || 0,
-      "is_main" => flow_data["is_main"] || false,
+      "is_main" => is_main,
       "settings" => flow_data["settings"] || %{},
       "scene_id" => remap_id(map, :scene, flow_data["scene_id"])
     }

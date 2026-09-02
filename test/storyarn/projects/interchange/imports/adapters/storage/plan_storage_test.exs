@@ -40,7 +40,7 @@ defmodule Storyarn.Projects.Imports.PlanStorageTest do
     assert {:ok, %ImportPlan{source_kind: :archive}} = PlanStorage.load(key)
   end
 
-  test "replacement eligibility stays ephemeral and preserves the parser-v5 payload contract" do
+  test "replacement eligibility stays ephemeral in a legacy parser-v5 payload" do
     key = storage_key()
     on_exit(fn -> PlanStorage.delete(key) end)
 

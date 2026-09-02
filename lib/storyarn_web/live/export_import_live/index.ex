@@ -1012,6 +1012,7 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       counts: stringify_map_keys(preview.counts),
       conflicts: stringify_conflicts(preview.conflicts),
       has_conflicts: preview.has_conflicts,
+      main_flow: serialize_main_flow(Map.get(preview, :main_flow)),
       import_review: serialize_import_review(Map.get(preview, :import_review)),
       import_review_draft: serialize_import_review_state(Map.get(preview, :import_review_draft)),
       import_review_resolution: serialize_import_review_state(Map.get(preview, :import_review_resolution)),
@@ -1024,6 +1025,17 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   defp stringify_conflicts(conflicts) do
     Map.new(conflicts, fn {key, values} -> {to_string(key), values} end)
   end
+
+  defp stringify_nested_map(map) when is_map(map) do
+    Map.new(map, fn {key, value} ->
+      {to_string(key), if(is_map(value), do: stringify_nested_map(value), else: value)}
+    end)
+  end
+
+  defp serialize_main_flow(main_flow) when is_map(main_flow) and map_size(main_flow) > 0,
+    do: stringify_nested_map(main_flow)
+
+  defp serialize_main_flow(_main_flow), do: nil
 
   defp serialize_import_review(review) when is_map(review) and map_size(review) > 0, do: review
   defp serialize_import_review(_review), do: nil

@@ -9,7 +9,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.FormatAdapter do
   # Durable plans from another parser version must be assessed explicitly
   # before adding that version here. The registry verifies at compile time that
   # the current parser version is included in this deliberately supported set.
-  @supported_parser_versions MapSet.new(["5"])
+  @supported_parser_versions MapSet.new(["6"])
 
   @permanent_error_codes MapSet.new(~w(
     archive_missing_yarn_files

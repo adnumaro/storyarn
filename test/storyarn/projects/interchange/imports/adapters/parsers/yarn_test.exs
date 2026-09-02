@@ -49,7 +49,7 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
       assert {:ok, %ImportPlan{format: :yarn} = plan} =
                Imports.parse_file("dialogue.yarn", @project)
 
-      assert plan.parser_version == "5"
+      assert plan.parser_version == "6"
       assert plan.source_kind == :file
       refute plan.replace_eligible
       assert plan.metadata.flow_count == 2
@@ -77,6 +77,43 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
 
       assert Enum.any?(ending_flow["nodes"], &(&1["type"] == "condition"))
       assert Enum.any?(ending_flow["nodes"], &(&1["type"] == "exit"))
+    end
+
+    test "nominates only the exact Yarn Start node as the main flow regardless of source order" do
+      source = """
+      title: Prologue
+      ---
+      First in the file.
+      ===
+      title: start
+      ---
+      Similar, but case-sensitive.
+      ===
+      title: Start
+      ---
+      The Yarn entry node.
+      ===
+      """
+
+      assert {:ok, plan} = raw_yarn_plan(source)
+
+      assert Enum.map(plan.data["flows"], &{&1["name"], &1["is_main"]}) == [
+               {"Prologue", false},
+               {"start", false},
+               {"Start", true}
+             ]
+    end
+
+    test "uses the document title rather than the source filename to nominate the main flow" do
+      assert {:ok, prologue_plan} =
+               raw_yarn_plan("title: Prologue\n---\nNot the entry.\n===\n", "Start.yarn")
+
+      refute prologue_plan.data["flows"] |> List.first() |> Map.fetch!("is_main")
+
+      assert {:ok, start_plan} =
+               raw_yarn_plan("title: Start\n---\nThe entry.\n===\n", "prologue.yarn")
+
+      assert start_plan.data["flows"] |> List.first() |> Map.fetch!("is_main")
     end
 
     test "emits unique graph IDs, existing endpoints and native-valid pins" do
@@ -2943,9 +2980,9 @@ defmodule Storyarn.Projects.Imports.Parsers.YarnTest do
     end
   end
 
-  defp raw_yarn_plan(source) do
-    with {:ok, parser} <- ParserRegistry.parser_for("project.yarn"),
-         {:ok, bundle} <- parser.open_source("project.yarn", source) do
+  defp raw_yarn_plan(source, filename \\ "project.yarn") do
+    with {:ok, parser} <- ParserRegistry.parser_for(filename),
+         {:ok, bundle} <- parser.open_source(filename, source) do
       parser.parse(bundle)
     end
   end

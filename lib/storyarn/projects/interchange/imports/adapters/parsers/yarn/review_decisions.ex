@@ -6,7 +6,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions do
   alias Storyarn.Projects.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Projects.Imports.Parsers.Yarn.SpeakerSheets
 
-  @parser_version "5"
+  @parser_version "6"
   @speaker_metadata_keys ~w(
     import_yarn_inherited_speaker
     import_yarn_speaker

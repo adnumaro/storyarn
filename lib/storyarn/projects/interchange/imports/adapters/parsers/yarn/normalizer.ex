@@ -516,7 +516,9 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.Normalizer do
       "shortcut" => shortcut,
       "description" => document.headers["description"],
       "position" => position,
-      "is_main" => position == 0,
+      # Yarn's entry convention belongs to the document title. The source
+      # filename and archive order must never influence this nomination.
+      "is_main" => document.title == "Start",
       "settings" => %{"import_source" => "yarn_spinner"},
       "import_yarn_annotation_anchors" => state.annotation_anchors,
       "nodes" => Layout.assign_positions(nodes, connections, state.annotation_anchors),

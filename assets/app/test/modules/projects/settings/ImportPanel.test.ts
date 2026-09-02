@@ -1171,6 +1171,84 @@ describe("ImportPanel resume state", () => {
     eligible.unmount();
   });
 
+  it("reacts to mode and conflict-strategy changes using the current preview matrix", async () => {
+    const state = replacementPreviewState("additive");
+    if (!state.preview) throw new Error("preview fixture missing");
+
+    state.preview.main_flow = {
+      additive: {
+        skip: "preserve_existing",
+        overwrite: "replace_existing",
+        rename: "preserve_existing",
+      },
+      replace_project: "import_candidate",
+    };
+
+    const wrapper = mountPanel(state);
+    const outcome = () => wrapper.get('[data-testid="yarn-import-main-flow-outcome"]').text();
+
+    expect(wrapper.get('[data-testid="yarn-import-main-flow-outcome"]').attributes()).toMatchObject(
+      {
+        role: "status",
+        "aria-live": "polite",
+        "aria-atomic": "true",
+      },
+    );
+    expect(outcome()).toContain("current main flow is expected to stay unchanged");
+    expect(outcome()).toContain("checks this again when the background import runs");
+
+    await wrapper.setProps({
+      importState: { ...state, conflictStrategy: "overwrite" },
+    });
+    expect(outcome()).toContain("expected to inherit the main-flow role");
+
+    await wrapper.setProps({
+      importState: { ...state, importMode: "replace_project" },
+    });
+    expect(outcome()).toContain("titled Start is expected to become");
+
+    wrapper.unmount();
+  });
+
+  it("shows when skipping a conflicting Start leaves a project without a main flow", () => {
+    const state = replacementPreviewState("additive");
+    state.conflictStrategy = "skip";
+    if (!state.preview) throw new Error("preview fixture missing");
+
+    state.preview.main_flow = {
+      additive: {
+        skip: "none",
+        overwrite: "import_candidate",
+        rename: "import_candidate",
+      },
+      replace_project: "import_candidate",
+    };
+
+    const wrapper = mountPanel(state);
+    expect(wrapper.get('[data-testid="yarn-import-main-flow-outcome"]').text()).toContain(
+      "expected to have no main flow",
+    );
+
+    wrapper.unmount();
+  });
+
+  it("shows when a replacement without Start leaves no main flow", () => {
+    const state = replacementPreviewState("replace_project");
+    if (!state.preview) throw new Error("preview fixture missing");
+
+    state.preview.main_flow = {
+      additive: { skip: "none", overwrite: "none", rename: "none" },
+      replace_project: "none",
+    };
+
+    const wrapper = mountPanel(state);
+    expect(wrapper.get('[data-testid="yarn-import-main-flow-outcome"]').text()).toContain(
+      "expected to have no main flow",
+    );
+
+    wrapper.unmount();
+  });
+
   it("persists an explicit replacement choice without exposing source metadata", async () => {
     const wrapper = mountPanel(replacementPreviewState("additive"));
 

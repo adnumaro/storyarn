@@ -57,13 +57,14 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
     assert {:ok, %ImportPlan{} = plan} =
              Imports.parse_file("emberfall.zip", yarn_project_fixture_archive())
 
-    assert plan.parser_version == "5"
+    assert plan.parser_version == "6"
     assert plan.source_kind == :archive
     assert plan.replace_eligible
     assert plan.issues == []
 
     flows = Map.new(plan.data["flows"], &{&1["name"], &1})
     assert flows |> Map.keys() |> Enum.sort() == ["Arrival", "Market", "Watchtower"]
+    refute Enum.any?(flows, fn {_name, flow} -> flow["is_main"] end)
 
     variables_sheet = Enum.find(plan.data["sheets"], &(&1["shortcut"] == "yarn"))
 
@@ -755,7 +756,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
     member = user_fixture()
     membership = membership_fixture(ctx.project, member, "editor")
     old_sheet = sheet_fixture(ctx.project, %{name: "Old character"})
-    old_flow = flow_fixture(ctx.project, %{name: "Old flow"})
+    old_flow = flow_fixture(ctx.project, %{name: "Old flow", is_main: true})
     old_scene = scene_fixture(ctx.project, %{name: "Old scene"})
 
     old_sheet_with_blocks = Repo.preload(old_sheet, :blocks, force: true)
@@ -820,6 +821,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     active_flows = Storyarn.Flows.list_flows(ctx.project.id)
     assert Enum.any?(active_flows, &(&1.name == "Start"))
+    assert [%{name: "Start"}] = Enum.filter(active_flows, & &1.is_main)
     refute Enum.any?(active_flows, &(&1.id == old_flow.id))
 
     snapshot_count = Repo.aggregate(ProjectSnapshot, :count)
@@ -850,6 +852,39 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
            |> Storyarn.Flows.list_flows()
            |> Enum.map(& &1.id)
            |> Enum.sort() == active_flow_ids
+  end
+
+  test "a replacement without an exact Start node leaves the project without a main flow", ctx do
+    old_main = flow_fixture(ctx.project, %{name: "Old Main", is_main: true})
+    filename = "replacement-without-start.zip"
+
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(
+               ctx.scope,
+               ctx.project,
+               filename,
+               replaceable_yarn_archive("without-start", "Arrival")
+             )
+
+    assert {:ok, ready} = Imports.update_import_mode(ctx.scope, ready.id, "replace_project")
+
+    assert {:ok, queued} =
+             Imports.enqueue_import(ctx.scope, ready.id, :rename,
+               import_mode: "replace_project",
+               replace_acknowledged: true
+             )
+
+    assert {:ok, completed} =
+             Imports.perform_import(queued.id,
+               attempt: 1,
+               max_attempts: 3,
+               snapshot_request: ready_snapshot_request(ctx, current_project_checksum(ctx.project))
+             )
+
+    assert completed.status == "completed"
+    assert Repo.get!(Flow, old_main.id).deleted_at
+    assert Enum.any?(Storyarn.Flows.list_flows(ctx.project.id), &(&1.name == "Arrival"))
+    refute Enum.any?(Storyarn.Flows.list_flows(ctx.project.id), & &1.is_main)
   end
 
   test "drift and a post-trash failure both leave the prior project active", ctx do
@@ -966,7 +1001,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
     checksum
   end
 
-  defp replaceable_yarn_archive(seed \\ "default") do
+  defp replaceable_yarn_archive(seed \\ "default", title \\ "Start") do
     project =
       Jason.encode!(%{
         "projectFileVersion" => 3,
@@ -976,7 +1011,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
 
     entries = [
       {~c"project.yarnproject", project},
-      {~c"main.yarn", "title: Start\n---\nA new beginning for #{seed}.\n===\n"}
+      {~c"main.yarn", "title: #{title}\n---\nA new beginning for #{seed}.\n===\n"}
     ]
 
     {:ok, {_name, binary}} = :zip.create(~c"replaceable-yarn.zip", entries, [:memory])

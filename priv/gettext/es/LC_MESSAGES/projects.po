@@ -802,17 +802,17 @@ msgstr "Importar y exportar"
 msgid "Move narrative content into or out of this project."
 msgstr "Mueve contenido narrativo hacia o desde este proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1454
+#: lib/storyarn_web/live/export_import_live/index.ex:1466
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr "El proyecto Yarn seleccionado no es válido o supera los límites de seguridad de importación."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1460
+#: lib/storyarn_web/live/export_import_live/index.ex:1472
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr "No se pudo completar la importación. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1421
+#: lib/storyarn_web/live/export_import_live/index.ex:1433
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr "Este proyecto de Yarn usa lógica narrativa que Storyarn no puede importar de forma segura. No se modificó el contenido del proyecto."
@@ -1161,12 +1161,12 @@ msgstr "\"%{node}\" del flujo \"%{flow}\" no es alcanzable desde Entrada y no se
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr "\"%{node}\" del flujo \"%{flow}\" referencia una variable que ya no existe"
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1396
+#: lib/storyarn_web/live/export_import_live/index.ex:1408
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr "Se canceló la importación. No se modificó ningún contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1407
+#: lib/storyarn_web/live/export_import_live/index.ex:1419
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr "No se pudo validar esta importación y se descartó. Valida el archivo otra vez antes de importar."
@@ -1176,22 +1176,22 @@ msgstr "No se pudo validar esta importación y se descartó. Valida el archivo o
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr "Esta importación ya está en curso y no se puede descartar. Terminará en segundo plano."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1414
+#: lib/storyarn_web/live/export_import_live/index.ex:1426
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr "Esta vista previa de importación caducó antes de iniciar la importación. Sube el archivo otra vez."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1350
+#: lib/storyarn_web/live/export_import_live/index.ex:1362
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
 msgstr "Este proyecto ya tiene un flujo principal, así que no se pudo crear el importado. No se modificó ningún contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1400
+#: lib/storyarn_web/live/export_import_live/index.ex:1412
 #, elixir-autogen, elixir-format
 msgid "The import could not run before its retention deadline. No project content was changed."
 msgstr "La importación no pudo ejecutarse antes de su fecha límite de retención. No se modificó el contenido del proyecto."
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1070
+#: lib/storyarn_web/live/export_import_live/index.ex:1082
 #, elixir-autogen, elixir-format
 msgid "Your previous import could not be restored. Reset it and upload the file again."
 msgstr "No se pudo restaurar tu importación anterior. Reiníciala y sube el archivo de nuevo."
@@ -1399,7 +1399,7 @@ msgid "The snapshot action could not be completed because project ownership is i
 msgstr "No se pudo completar la acción sobre la snapshot porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo."
 
 #: lib/storyarn_web/live/export_import_live/index.ex:656
-#: lib/storyarn_web/live/export_import_live/index.ex:1428
+#: lib/storyarn_web/live/export_import_live/index.ex:1440
 #, elixir-autogen, elixir-format
 msgid "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr "No se pudo completar la acción de importación porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo."

@@ -23,6 +23,8 @@ The importer converts:
 - Speaker prefixes such as `Guide: Welcome` into character sheets when they can be inferred safely.
 - Yarn line IDs into Storyarn localization IDs.
 
+The exact, case-sensitive Yarn node title `Start` is the only imported main-flow candidate. An additive import keeps the project's current main flow; if the project has none, `Start` becomes main when that node is actually imported (the skip strategy can omit a conflicting `Start`). Overwriting the current main flow transfers that role to its imported replacement. A whole-project replacement evaluates the rule after removing the old narrative graph, so `Start` becomes main when present and no flow is chosen by file order when it is absent. The preview shows the expected outcome from the current project state; Storyarn checks the rule again under the project lock when the background import runs.
+
 Custom side-effect commands that do not have a Storyarn equivalent are retained as visible annotation nodes and listed as warnings in the preview. Logic that controls branching or state is handled more strictly: if a condition, Smart Variable, assignment, or control-flow target cannot be reproduced safely, validation rejects the import before any plan or project content is stored.
 
 ### Safe import workflow

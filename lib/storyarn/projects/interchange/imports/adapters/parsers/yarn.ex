@@ -17,7 +17,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn do
   alias Storyarn.Projects.Imports.Parsers.Yarn.SourceProfile
   alias Storyarn.Projects.Imports.SourceBundle
 
-  @parser_version "5"
+  @parser_version "6"
   @max_documents 500
   @max_statements_per_document 5_000
   @max_total_statements 100_000

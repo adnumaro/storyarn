@@ -23,6 +23,8 @@ El importador convierte:
 - Los prefijos de hablante como `Guía: Bienvenido` en fichas de personaje cuando se pueden inferir de forma segura.
 - Los identificadores de línea de Yarn en identificadores de localización de Storyarn.
 
+El título exacto y sensible a mayúsculas `Start` es el único nodo de Yarn candidato a flujo principal. Una importación aditiva conserva el flujo principal actual; si el proyecto no tiene ninguno, `Start` pasa a serlo cuando ese nodo se importa realmente (la estrategia de omisión puede descartar un `Start` en conflicto). Si se sobrescribe el flujo principal actual, su reemplazo importado hereda ese rol. El reemplazo completo aplica la regla después de retirar el grafo narrativo anterior: `Start` será principal si existe y, si no existe, Storyarn no elegirá otro flujo por su orden en el archivo. La previsualización muestra el resultado esperado según el estado actual del proyecto; Storyarn vuelve a comprobar la regla bajo el bloqueo del proyecto cuando se ejecuta la importación en segundo plano.
+
 Los comandos personalizados con efectos externos y sin equivalente en Storyarn se conservan como nodos de anotación visibles y aparecen como advertencias en la previsualización. La lógica que controla ramas o estado se trata de forma más estricta: si una condición, Smart Variable, asignación o destino de control de flujo no puede reproducirse de forma segura, la validación rechaza la importación antes de almacenar un plan o modificar el proyecto.
 
 ### Flujo de importación seguro

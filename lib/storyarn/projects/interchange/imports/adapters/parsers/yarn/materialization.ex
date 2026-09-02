@@ -1,6 +1,6 @@
 defmodule Storyarn.Projects.Imports.Parsers.Yarn.Materialization do
   @moduledoc """
-  Yarn-specific final rendering for a parser-v5 import plan.
+  Yarn-specific final rendering for a parser-v6 import plan.
 
   Source text is intentionally retained in durable plans until the target
   project's Sheet shortcuts and review decisions are known. This adapter owns
