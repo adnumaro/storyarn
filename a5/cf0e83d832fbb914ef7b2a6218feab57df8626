@@ -1,0 +1,287 @@
+lib/storyarn/projects/references/execution/variable_reference_validation.ex
+  s_e9e5a90425bc26::t_8e7460cc5d2379 13,48-56,76-78,80-82,103-109,133-136,138-141
+  s_e9e5a90425bc26::t_ebf42480448727 15,86,145,169
+  s_e9e5a90425bc26::t_fd391eb55004ab 1-12,14,16-47,57-75,79,83-85,87-102,110-132,137,142-144,146-168,170-172
+lib/storyarn/projects/references/execution/variable_usage.ex
+  s_e9e5a90425bc26::t_a253ef21cbb059 5-7,22,30-33,36,41
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn.ex
+  s_e9e5a90425bc26::t_7a8f7994c695cf 17,34-36,39,59
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/speaker_sheets.ex
+  s_e9e5a90425bc26::t_d9c5d97d35cdd4 4,23
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/project_sources.ex
+  s_e9e5a90425bc26::t_692b5327726264 1-9
+test/storyarn/projects/interchange/imports/adapters/input/source_bundle_test.exs
+  s_e9e5a90425bc26::t_1c0b46cfaed79e 8-13,25-44,46-52,54-57,59-75
+  s_e9e5a90425bc26::t_40e19bed66d370 4-5,17,19,95,98,113,116,129-130,141-143,147,149,161,179-181,203-205,215,227,241,252-253,265,275-276,288-289,307-308,315-316,321,326,331,343,346,351,356,362-363,369,376,383,390,397,405,412,419,426-427
+  s_e9e5a90425bc26::t_86f94d34b28e35 45,53,58
+  s_e9e5a90425bc26::t_8e910e803fa9db 76
+test/storyarn/projects/interchange/imports/integration/import_lifecycle_test.exs
+  s_e9e5a90425bc26::t_89534b0bb6f90c 21,755-778,780-783
+  s_e9e5a90425bc26::t_ae585dc1fb32d3 779
+  s_e9e5a90425bc26::t_940b4da023254f 784-785
+lib/storyarn/projects/README.md
+  s_e9e5a90425bc26::t_752bf09a09a7f3 228-232
+  s_e9e5a90425bc26::t_3e8481366e2289 233-237
+  s_e9e5a90425bc26::t_8fed8d154e7d2b 242-250
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/review_decisions.ex
+  s_e9e5a90425bc26::t_5fca10a589dbfc 138
+  s_e9e5a90425bc26::t_fb0f508562b61b 52-53,85-86,109,137,158
+  s_e9e5a90425bc26::t_e555308fefbfa4 633-643,652,655-657,667-670
+  s_e9e5a90425bc26::t_247fe96b4328e9 644-649
+  s_e9e5a90425bc26::t_02e4b3736aa250 650-651
+  s_e9e5a90425bc26::t_d9c5d97d35cdd4 77,105,133,155,180,229
+  s_e9e5a90425bc26::t_788e9555a68f34 658-666
+  s_e9e5a90425bc26::t_d621547ba6aee6 671
+config/architecture_boundaries.exs
+  s_e9e5a90425bc26::t_e9c18740730d3f 3547,3562
+  s_e9e5a90425bc26::t_2d6955d59a92e0 1406,3552-3554
+test/storyarn/projects/interchange/imports/adapters/storage/plan_storage_test.exs
+  s_e9e5a90425bc26::t_9d6a44644e2c46 230-241
+test/storyarn/projects/references/queries/variable_reference_queries_test.exs
+  s_e9e5a90425bc26::t_98fa176a7eb8fc 1-850
+lib/storyarn/projects/interchange/imports/rules/imported_variable_rewriter.ex
+  s_e9e5a90425bc26::t_95f74c29f6abfe 1-100
+test/storyarn/projects/references/commands/portable_project_snapshot_variable_writer_test.exs
+  s_e9e5a90425bc26::t_8f991c98e737fa 7,26
+lib/storyarn/projects/references/commands/variable_reference_tracker.ex
+  s_e9e5a90425bc26::t_ebf42480448727 169,171
+  s_e9e5a90425bc26::t_515499cb291ef3 3,5-8,22-23,39,41-42,91-92,94-95,97-98,100-104,107,110,112-114,116-121,123-124,126-130,133,136,138-140,142-143,145-149,152,155,157-158,160,162-165,173-176,179-182,185-187,189
+priv/docs/es/project-management/05-recovery-and-trash.md
+  s_e9e5a90425bc26::t_d3ce03c79a5eba 19
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 25
+  s_e9e5a90425bc26::t_7b17a1bdd2414a 26,32,36-39,41-42,61-63
+  s_e9e5a90425bc26::t_1e293cabc2deae 40
+  s_e9e5a90425bc26::t_bbf2c3ec02f0ab 2,12,17,30,34
+priv/docs/es/project-management/04-project-settings.md
+  s_e9e5a90425bc26::t_bbf2c3ec02f0ab 34,54
+  s_e9e5a90425bc26::t_7b17a1bdd2414a 28,30-32
+test/storyarn/projects/interchange/imports/execution/materializer_test.exs
+  s_e9e5a90425bc26::t_60bdda1fd1fb01 1273-1279,1281-1282,1288-1301
+  s_e9e5a90425bc26::t_1c0b46cfaed79e 156-169,266-280
+  s_e9e5a90425bc26::t_53f226ac5581c3 75-81
+  s_e9e5a90425bc26::t_ebb466b65645e5 281
+  s_e9e5a90425bc26::t_53ac4797d005c7 1302-1304
+lib/storyarn/projects/references/commands/materialized_formula_binding_rewriter.ex
+  s_e9e5a90425bc26::t_5a1d295f3ad1e5 1-22,25-31,38-61,63-98,102-109
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 23-24,32-37
+  s_e9e5a90425bc26::t_25d777c5ab9f43 99-101
+  s_e9e5a90425bc26::t_ebf42480448727 62
+priv/docs/es/welcome/00-start-here.md
+  s_e9e5a90425bc26::t_2afb556948c1ce 20
+lib/storyarn/projects/interchange/imports/adapters/input/source_bundle.ex
+  s_e9e5a90425bc26::t_7a83042e2ad087 109,113
+  s_e9e5a90425bc26::t_e60a4c8c9506b4 24,443
+  s_e9e5a90425bc26::t_a125d05804c042 50
+  s_e9e5a90425bc26::t_1c0b46cfaed79e 85-86,95-108,110-112
+  s_e9e5a90425bc26::t_7340f3d8ca381f 3-4,8-10,26-27,30-41,44,47-49,51-52,57-58,60-61,73,78,82,90,362,364-367,374,383,391-392,395
+  s_e9e5a90425bc26::t_c9f3541d84f224 114
+lib/storyarn/projects/interchange/imports/adapters/storage/plan_storage.ex
+  s_e9e5a90425bc26::t_9d6a44644e2c46 19,177,227-228,232
+lib/storyarn/projects/interchange/imports/contracts/import_format_id.ex
+  s_e9e5a90425bc26::t_9aebdda270e572 1-29
+lib/storyarn/projects/interchange/imports/queries/preview.ex
+  s_e9e5a90425bc26::t_1f4fa02fc2629c 26
+  s_e9e5a90425bc26::t_69062169322cbe 27
+  s_e9e5a90425bc26::t_89a2f617bf91f8 10,22,28-32
+priv/repo/migrations/20260902120000_make_import_format_constraints_registry_neutral.exs
+  s_e9e5a90425bc26::t_9aebdda270e572 1-20,36-53
+  s_e9e5a90425bc26::t_4d39e64c587abe 21-35
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_e9e5a90425bc26::t_ff68211c5ef083 48,868,870
+lib/storyarn/projects/interchange/imports/execution/format_review.ex
+  s_e9e5a90425bc26::t_4a6652cf9f8f14 1-11,17,20-23,29,33-36,42-45,51-54,57-61,64-65,77,85
+  s_e9e5a90425bc26::t_8361f55bac9f3c 13-14,18-19,26-27,37,46,55-56,62-63,66-76
+  s_e9e5a90425bc26::t_1f4fa02fc2629c 12,15-16
+  s_e9e5a90425bc26::t_d2b89b977c5b7e 24-25,28,30-32
+  s_e9e5a90425bc26::t_3adcd14a8ef112 38-41,47-50,78-84
+test/storyarn/architecture/projects_internal_structure_test.exs
+  s_e9e5a90425bc26::t_a8379ae766fd72 189
+  s_e9e5a90425bc26::t_08bdaa6b7babed 212-234
+  s_e9e5a90425bc26::t_de648c33bd83db 187-188,190-211
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/format_adapter.ex
+  s_e9e5a90425bc26::t_165798449583bb 30
+  s_e9e5a90425bc26::t_95f74c29f6abfe 1-8,34-50,62-71
+  s_e9e5a90425bc26::t_8361f55bac9f3c 9-13,28-29,31-32
+  s_e9e5a90425bc26::t_f0cacb75395e4d 14-27,33,51-61
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/source_profile.ex
+  s_e9e5a90425bc26::t_d30ad4b5f9979b 1-49
+lib/storyarn/projects/interchange/imports/adapters/telemetry/telemetry.ex
+  s_e9e5a90425bc26::t_01c9b5035c0f10 16,20,24
+  s_e9e5a90425bc26::t_4bf596f4c75946 12,15,17-19,21,25
+  s_e9e5a90425bc26::t_7900cfcb24ab33 23
+  s_e9e5a90425bc26::t_1bf57046c41597 64
+lib/storyarn/projects/interchange/imports/adapters/parsers/format_registry.ex
+  s_e9e5a90425bc26::t_4a6652cf9f8f14 1-4,11-12,16-17,25,185-186,190-193,235
+  s_e9e5a90425bc26::t_6c33117ef0b98f 124-128
+  s_e9e5a90425bc26::t_8361f55bac9f3c 13,26-31,33-41,43-46,48-51,53-56,64-69,72-76,194-204,206-213,215-220,222-230,233-234
+  s_e9e5a90425bc26::t_9aebdda270e572 112-113,141
+  s_e9e5a90425bc26::t_7900cfcb24ab33 146,153-154,156-159,162
+  s_e9e5a90425bc26::t_d57edd2d463aac 15,18-21,23-24,81,92,142-143,147-150,184
+  s_e9e5a90425bc26::t_9d6a44644e2c46 94-96,163-183
+  s_e9e5a90425bc26::t_d311214f406c11 5-7,82-91,97
+  s_e9e5a90425bc26::t_a125d05804c042 22,79
+  s_e9e5a90425bc26::t_2510c1fe04ec1b 99-104,122-123
+  s_e9e5a90425bc26::t_3e8481366e2289 8-10
+  s_e9e5a90425bc26::t_4bf596f4c75946 77-78,80,93,144-145,151-152,155,160-161
+  s_e9e5a90425bc26::t_5a8437890b69be 187-189
+  s_e9e5a90425bc26::t_165798449583bb 14,32,42,47,52,57-63,70-71,205
+  s_e9e5a90425bc26::t_7047a4fff88dd9 221
+  s_e9e5a90425bc26::t_4d39e64c587abe 98,105-111,114-121,129-140
+  s_e9e5a90425bc26::t_f0cacb75395e4d 214,231-232
+lib/storyarn/projects/interchange/imports/rules/shortcut_allocator.ex
+  s_e9e5a90425bc26::t_4a6652cf9f8f14 1-7
+lib/storyarn/projects/references/queries/variable_reference_resolution_queries.ex
+  s_e9e5a90425bc26::t_2d75374db0eaad 1-286
+test/storyarn/projects/interchange/imports/commands/replacement_test.exs
+  s_e9e5a90425bc26::t_752bf09a09a7f3 342-343
+lib/storyarn/projects/interchange/imports/commands/expiration.ex
+  s_e9e5a90425bc26::t_1bf57046c41597 389
+test/storyarn/projects/interchange/imports/adapters/parsers/yarn_test.exs
+  s_e9e5a90425bc26::t_40e19bed66d370 2101,2948
+  s_e9e5a90425bc26::t_60bdda1fd1fb01 2760,2793
+  s_e9e5a90425bc26::t_788e9555a68f34 2864-2871
+test/storyarn/projects/interchange/imports/entities/durable_format_contract_test.exs
+  s_e9e5a90425bc26::t_acb539c910bfff 4,12
+  s_e9e5a90425bc26::t_4d39e64c587abe 1-3,5-11,13-84
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/materialization.ex
+  s_e9e5a90425bc26::t_95f74c29f6abfe 1-23,26-37,39-87,89-132
+  s_e9e5a90425bc26::t_c4c7a1a177377e 24-25
+  s_e9e5a90425bc26::t_d34a1cc8b054fb 38,88
+lib/storyarn/projects/interchange/imports/contracts/parser.ex
+  s_e9e5a90425bc26::t_7a8f7994c695cf 5-9,17-18
+priv/docs/es/project-management/01-project-dashboard.md
+  s_e9e5a90425bc26::t_bbf2c3ec02f0ab 45
+lib/storyarn/projects/interchange/imports/commands/resume.ex
+  s_e9e5a90425bc26::t_1bf57046c41597 191
+test/storyarn/projects/references/commands/materialized_formula_binding_rewriter_transaction_test.exs
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 1-15
+lib/storyarn/projects/references/rules/portable_variable_snapshot.ex
+  s_e9e5a90425bc26::t_4dfc2ed1fbcda4 16,503-506,530,535,715-718
+  s_e9e5a90425bc26::t_ad07e6c7ace6e7 11,13-15
+  s_e9e5a90425bc26::t_d75ead1fc74236 12
+  s_e9e5a90425bc26::t_763e9d35e8d5ca 1-10,17-502,507-529,531-534,536-714,719-1171,1173-1177
+  s_e9e5a90425bc26::t_ebf42480448727 1172
+lib/storyarn/projects/interchange/imports/entities/plan_cleanup_request.ex
+  s_e9e5a90425bc26::t_9aebdda270e572 15,47
+test/storyarn/projects/content/sheets/records/sheet_record_test.exs
+  s_e9e5a90425bc26::t_f2ca586e969a57 1-10,75-82,104-107,109-119
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 31-50,83-103
+  s_e9e5a90425bc26::t_bbf2c3ec02f0ab 11-30,51-55,57-74
+  s_e9e5a90425bc26::t_07f5b9e5b13e4b 56
+  s_e9e5a90425bc26::t_bdb585a203c99e 108
+lib/storyarn/projects/interchange/imports/contracts/format_adapter.ex
+  s_e9e5a90425bc26::t_4a6652cf9f8f14 1-13,23-29,36-39
+  s_e9e5a90425bc26::t_f0cacb75395e4d 30-35
+  s_e9e5a90425bc26::t_8361f55bac9f3c 14-22
+lib/storyarn/projects/references/rules/variable_reference_extraction.ex
+  s_e9e5a90425bc26::t_ebf42480448727 23,38-39
+  s_e9e5a90425bc26::t_1498ee475718c4 1-22,24-27,34-37,40-920
+  s_e9e5a90425bc26::t_4dfc2ed1fbcda4 28,30-33
+  s_e9e5a90425bc26::t_22f55989a43676 29
+lib/storyarn/projects/interchange/imports/execution/execution.ex
+  s_e9e5a90425bc26::t_89a2f617bf91f8 20,118
+  s_e9e5a90425bc26::t_1bf57046c41597 484
+test/storyarn/projects/references/execution/variable_reference_validation_test.exs
+  s_e9e5a90425bc26::t_811bc51daae529 1-1316
+priv/docs/en/project-management/04-project-settings.md
+  s_e9e5a90425bc26::t_7b17a1bdd2414a 28,30-32,34
+  s_e9e5a90425bc26::t_bbf2c3ec02f0ab 52
+lib/storyarn/projects/interchange/imports/adapters/parsers/yarn/normalizer.ex
+  s_e9e5a90425bc26::t_d9c5d97d35cdd4 10,475
+lib/storyarn/projects/references/execution/variable_tracker.ex
+  s_e9e5a90425bc26::t_e9c18740730d3f 3,5-8,12,21,24,27
+lib/storyarn/projects/content/sheets/records/sheet_record.ex
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 42,44-45
+  s_e9e5a90425bc26::t_f2ca586e969a57 65-68
+lib/storyarn/projects/reconstitution/project_reconstitution.ex
+  s_e9e5a90425bc26::t_61071b93f0a9ed 16
+  s_e9e5a90425bc26::t_5fca10a589dbfc 22
+  s_e9e5a90425bc26::t_89a2f617bf91f8 23-24
+test/storyarn/projects/references/commands/materialized_formula_binding_rewriter_test.exs
+  s_e9e5a90425bc26::t_34de4421dcf9df 29
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 18
+  s_e9e5a90425bc26::t_25d777c5ab9f43 1-17,19-28,30-112
+priv/docs/en/project-management/05-recovery-and-trash.md
+  s_e9e5a90425bc26::t_1feffbcdbfbe23 25
+  s_e9e5a90425bc26::t_1e293cabc2deae 40
+  s_e9e5a90425bc26::t_7b17a1bdd2414a 26,30,32,34,36-39,41-42,61-63
+lib/storyarn/projects/interchange/imports/execution/materializer.ex
+  s_e9e5a90425bc26::t_53f226ac5581c3 73-74
+  s_e9e5a90425bc26::t_1c0b46cfaed79e 207-209,213,225
+  s_e9e5a90425bc26::t_3c6a5bd53f2e04 448-449,495-496,519-520
+  s_e9e5a90425bc26::t_898cc99638f6a1 1067,1069,1071,1092,1241-1246,1281-1286,1740
+  s_e9e5a90425bc26::t_d34a1cc8b054fb 485-493,509-517,886,903,1287
+  s_e9e5a90425bc26::t_778e9d56713968 6-10
+  s_e9e5a90425bc26::t_ef53a2c1012199 24-26,28,377,483,494,497-498,507,518,521-522,531,533,536,539-540,545,550,562-570
+  s_e9e5a90425bc26::t_4d74ea83773b12 211
+  s_e9e5a90425bc26::t_ebd954095884bc 891-900,921-928,945-946,967-974,981,988-990
+test/storyarn/projects/references/execution/variable_usage_test.exs
+  s_e9e5a90425bc26::t_a1c299d1a6158b 1-951
+lib/storyarn/projects/interchange/imports/adapters/parsers/parser_registry.ex
+  s_e9e5a90425bc26::t_d57edd2d463aac 2-3,5-10,13
+lib/storyarn/projects/interchange/imports/entities/project_import_attempt.ex
+  s_e9e5a90425bc26::t_9aebdda270e572 14,320
+lib/storyarn/projects/references/queries/variable_reference_queries.ex
+  s_e9e5a90425bc26::t_9ec4bcc544d288 1-320
+test/storyarn/projects/references/commands/portable_project_snapshot_variable_test.exs
+  s_e9e5a90425bc26::t_6b4144b54aa5d5 57,60,107,139,158,176,206,209,229,255,265,268,288,291,306,309,323,326,343,346
+  s_e9e5a90425bc26::t_8f991c98e737fa 4
+test/storyarn/projects/interchange/imports/execution/format_boundary_test.exs
+  s_e9e5a90425bc26::t_9d6a44644e2c46 230-231,235-236,240-243
+  s_e9e5a90425bc26::t_a95fc3239656b9 13,16,18,228,247-250,252-256,258-261,263-266
+  s_e9e5a90425bc26::t_01c9b5035c0f10 251,257,262
+  s_e9e5a90425bc26::t_69062169322cbe 12,62-63
+  s_e9e5a90425bc26::t_4d39e64c587abe 17,109-115,118-119,124-131,134-137,140,142-143,145-147,149-150,152-153
+  s_e9e5a90425bc26::t_2510c1fe04ec1b 138-139,141,144,148,151
+  s_e9e5a90425bc26::t_c88d106fbed178 177-178,182
+  s_e9e5a90425bc26::t_d2b04df5b0b8cf 1-3,5-6,8,11,14-15,22-23,25-26,30,46-61,64-65,101,103-108,245-246,268-281,287-292,299-307,316-321
+  s_e9e5a90425bc26::t_7047a4fff88dd9 189-190
+  s_e9e5a90425bc26::t_165798449583bb 181
+  s_e9e5a90425bc26::t_d57edd2d463aac 9-10,222-227,229,232-234,244
+  s_e9e5a90425bc26::t_c3b338181bcad2 132-133
+  s_e9e5a90425bc26::t_9aebdda270e572 7,20-21,102,156-164,267,282-284
+  s_e9e5a90425bc26::t_7900cfcb24ab33 237-239
+  s_e9e5a90425bc26::t_752bf09a09a7f3 4,19,24,31-45,154-155,165-173,176,183,186,191,285-286,312-315
+  s_e9e5a90425bc26::t_7e2a96cf5e980a 27-29,66-100,116-117,120-123,174-175,179-180,184-185,187-188,192-221,293-298,308-311
+lib/storyarn/projects/interchange/imports/contracts/import_plan.ex
+  s_e9e5a90425bc26::t_e75398f7cff25d 3,5-9
+test/storyarn/projects/reconstitution/project_reconstitution_test.exs
+  s_e9e5a90425bc26::t_60bdda1fd1fb01 26,29-30,32-33,35-36
+test/storyarn/projects/references/commands/variable_reference_tracker_test.exs
+  s_e9e5a90425bc26::t_98fa176a7eb8fc 15,241,652-656,658-659,661-666,669,678,680,689-690,692-697,700-701,711-713,719,721-722,724-725,727-729,732,741,743,745,747,749,751,760-761,763-765,767-770,772-776,778-781,784,800,802,813,816-819,821-829,833,835-836,838-852,858,860-870,873,876,878-880,886,891-896,898,900,902,904,906-909,911-919,922-924,928,930-932,935-939,942-946,950-956,958,960-969,971-972,977-986,990,992,994,997-1012,1015,1017,1019,1056-1060,1063-1079,1081-1083
+docs/reference/entity-version-restore-integrity.md
+  s_e9e5a90425bc26::t_7b17a1bdd2414a 32-33,141-143
+  s_e9e5a90425bc26::t_1e293cabc2deae 5,7-10
+lib/storyarn/projects/interchange/imports/execution/import_lifecycle.ex
+  s_e9e5a90425bc26::t_4d39e64c587abe 22,60,63
+  s_e9e5a90425bc26::t_7a8f7994c695cf 61
+  s_e9e5a90425bc26::t_d34a1cc8b054fb 96-98
+  s_e9e5a90425bc26::t_3c6a5bd53f2e04 99
+  s_e9e5a90425bc26::t_778e9d56713968 148,174-175
+  s_e9e5a90425bc26::t_89a2f617bf91f8 23,164,192,194,816,818
+lib/storyarn/projects/interchange/imports/commands/replacement.ex
+  s_e9e5a90425bc26::t_5a77c6d27e34fd 431-438
+  s_e9e5a90425bc26::t_f0cacb75395e4d 18,429-430,439-445
+lib/storyarn/projects/interchange/imports/rules/error.ex
+  s_e9e5a90425bc26::t_f0cacb75395e4d 5,7,44,55,59
+  s_e9e5a90425bc26::t_8361f55bac9f3c 46-47,50-52
+  s_e9e5a90425bc26::t_1cb15490be00c4 53
+lib/storyarn/projects/versioning/execution/project_recovery.ex
+  s_e9e5a90425bc26::t_ff68211c5ef083 35-36,160,370,372,1338,1346,1360
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a5cf0e83d832fbb914ef7b2a6218feab57df8626",
+  "prompts": {},
+  "sessions": {
+    "s_e9e5a90425bc26": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a01f85-ceb4-71d2-bd1d-b83f1f65ab5e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
