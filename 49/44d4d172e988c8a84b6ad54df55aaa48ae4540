@@ -1,0 +1,55 @@
+test/storyarn/projects/interchange/imports/rules/imported_entity_reference_rewriter_test.exs
+  s_6ce2be7da793bc::t_49420e30d46c2e 1-31
+lib/storyarn/projects/interchange/imports/execution/materializer.ex
+  s_6ce2be7da793bc::t_c2c2bc3b771628 1964
+lib/storyarn/projects/references/references.ex
+  s_6ce2be7da793bc::t_dbe9bfa36d82d8 16-20
+  s_6ce2be7da793bc::t_77e5bfd507cd6f 21
+test/storyarn/projects/interchange/imports/execution/materializer_test.exs
+  s_6ce2be7da793bc::t_c2c2bc3b771628 1984-1991,1993-2002,2011-2012,2019-2033
+  s_6ce2be7da793bc::t_cad4e215fdcaff 1992,2003-2010
+  s_6ce2be7da793bc::t_23fd2b21837181 2013-2018
+  s_6ce2be7da793bc::t_3fe07cc692f8dd 1139-1145,1148-1155,1187,1189-1192
+  s_6ce2be7da793bc::t_fd771375932511 1146-1147,1156-1186,1188
+lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex
+  s_6ce2be7da793bc::t_1a51ea7e81d4f5 39-45,64,75-78,91-94,112-113,115-116
+  s_6ce2be7da793bc::t_7d7e51d3b3c0c9 65-74,79-90,95-111
+  s_6ce2be7da793bc::t_dbe9bfa36d82d8 24-25,49-63
+  s_6ce2be7da793bc::t_7abaa2b67aa701 114
+test/e2e/import_resume_test.exs
+  s_6ce2be7da793bc::t_2975e162088043 306
+lib/storyarn/projects/interchange/imports/rules/conflict_resolution.ex
+  s_6ce2be7da793bc::t_1a51ea7e81d4f5 53-59,168-171,183,228-230
+  s_6ce2be7da793bc::t_e9f3b4b115dcda 201,221
+  s_6ce2be7da793bc::t_10d6b2b1ac4adc 172-182,184,189-200,202-215,222
+  s_6ce2be7da793bc::t_dbe9bfa36d82d8 16-17,75,151-153,167,186-188,216-220,223-227
+  s_6ce2be7da793bc::t_432c4133c30289 185
+test/storyarn/projects/interchange/imports/rules/conflict_resolution_test.exs
+  s_6ce2be7da793bc::t_51c87b9cf9dd39 78-80,85-94,96,118-119,123-136,140-149,170-177,181-187,224-226,290-305
+  s_6ce2be7da793bc::t_e9f3b4b115dcda 150-169
+  s_6ce2be7da793bc::t_2ac1725d369c3d 95,97-98,102-117
+  s_6ce2be7da793bc::t_1a51ea7e81d4f5 77,81-84,99-101,120-122,137-139,178-180,188-223
+  s_6ce2be7da793bc::t_792991349c13c8 306-308
+  s_6ce2be7da793bc::t_ea3a418d2967f5 309
+lib/storyarn/projects/interchange/imports/rules/imported_entity_reference_rewriter.ex
+  s_6ce2be7da793bc::t_49420e30d46c2e 103-112,114-122,124-126,128-130,132-133,135-140,142-145
+test/storyarn/projects/interchange/imports/commands/sheet_import_persistence_test.exs
+  s_6ce2be7da793bc::t_51c87b9cf9dd39 93-100,102-106,112-123,127-129
+  s_6ce2be7da793bc::t_1a51ea7e81d4f5 101,107-111,124-126
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4944d4d172e988c8a84b6ad54df55aaa48ae4540",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
