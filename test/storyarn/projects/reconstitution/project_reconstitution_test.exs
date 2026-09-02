@@ -1,7 +1,6 @@
 defmodule Storyarn.Projects.ProjectReconstitutionTest do
   use ExUnit.Case, async: true
 
-  alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.ProjectReconstitution
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor
@@ -24,21 +23,17 @@ defmodule Storyarn.Projects.ProjectReconstitutionTest do
     assert function_exported?(ProjectReconstitution, :settle_snapshot_restore_reservation, 2)
   end
 
-  test "returns import validation failures unchanged" do
+  test "rejects raw import data at every reconstitution entry point" do
     invalid_data = %{}
 
-    assert ProjectReconstitution.preview_import(-1, invalid_data) ==
-             Materializer.preview(-1, invalid_data)
+    assert {:error, :import_plan_required} =
+             ProjectReconstitution.preview_import(-1, invalid_data)
 
-    assert ProjectReconstitution.execute_import(%{}, invalid_data, sentinel: :preserved) ==
-             Materializer.execute(%{}, invalid_data, sentinel: :preserved)
+    assert {:error, :import_plan_required} =
+             ProjectReconstitution.execute_import(%{}, invalid_data, sentinel: :preserved)
 
-    assert ProjectReconstitution.materialize_locked_import_in_transaction(
-             %{},
-             invalid_data,
-             sentinel: :preserved
-           ) ==
-             Materializer.materialize_locked_project_in_transaction(
+    assert {:error, :import_plan_required} =
+             ProjectReconstitution.materialize_locked_import_in_transaction(
                %{},
                invalid_data,
                sentinel: :preserved

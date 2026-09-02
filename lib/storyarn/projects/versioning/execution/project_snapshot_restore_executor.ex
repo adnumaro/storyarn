@@ -45,9 +45,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References
   alias Storyarn.Projects.References.EntityReference
+  alias Storyarn.Projects.References.PortableVariableSnapshot
   alias Storyarn.Projects.References.RichTextMentions
   alias Storyarn.Projects.References.VariableReference
-  alias Storyarn.Projects.References.VariableReferenceTracker
   alias Storyarn.Projects.SceneProjectTrash
   alias Storyarn.Projects.SheetProjectTrash
   alias Storyarn.Projects.StorageCleanupInventory
@@ -865,9 +865,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     destination_maps = %{mode: :forward, ids: Map.put(id_maps, :asset, source_id_map)}
 
     with {:ok, variable_plan} <-
-           VariableReferenceTracker.prepare_exact_project_snapshot(expected_source),
+           PortableVariableSnapshot.prepare_exact_project_snapshot(expected_source),
          {:ok, expected_rewritten} <-
-           VariableReferenceTracker.rewrite_portable_project_snapshot(
+           PortableVariableSnapshot.rewrite_portable_project_snapshot(
              expected_source,
              variable_plan,
              Map.fetch!(id_maps, :sheet)

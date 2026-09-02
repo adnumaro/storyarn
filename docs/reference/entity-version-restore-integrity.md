@@ -2,10 +2,12 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-12
+> Last reviewed: 2026-09-02
 >
-> Source of truth: `Storyarn.Versioning.VersionCrud`, `RestorePolicy`, and the
-> Sheet, Flow, and Scene snapshot builders
+> Source of truth: `Storyarn.Sheets.Versioning.Execution.Restore`,
+> `Storyarn.Flows.Versioning.Execution.Restore`,
+> `Storyarn.Scenes.Versioning.Execution.Restore`, each context's `RestorePolicy`,
+> and the Sheet, Flow, and Scene snapshot builders
 
 Storyarn restores named entity versions in place for Sheets, Flows, and Scenes.
 These operations are separate from full-project snapshot restore. Each surface
@@ -27,7 +29,8 @@ The product UI authorizes every preview and mutation with `:edit_content`.
 Context-level restore functions are a trusted service boundary and may record a
 `nil` actor for an internal operation; they do not replace route authorization.
 
-Before a builder can mutate state, `VersionCrud.restore_version/4` verifies:
+Before a builder can mutate state, the owning context's
+`Versioning.Execution.Restore.restore_version/3` verifies:
 
 - the requested entity type, entity ID, and project ID;
 - ownership of the persisted `EntityVersion` row;
@@ -135,6 +138,6 @@ deployed revision passes that surface's builder, policy, authorization,
 rollback, and reference tests in the target environment. A failed surface stays
 off without affecting the other two.
 
-Full-project canonical v2 restore remains owned by ENG-76 and must consume these
-proven primitives without weakening their project, safety-version, reference,
-localization, or compensation boundaries.
+Full-project canonical v2 restore is a separate Projects-owned recovery flow.
+It must preserve the same project, reference, localization, integrity, and
+storage-compensation boundaries while coordinating the context-owned data.

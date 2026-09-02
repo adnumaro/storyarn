@@ -25,14 +25,13 @@ Deleting a project removes it from the active workspace and returns you to the w
 
 ## Version Control
 
-Version Control has separate switches for:
+Version Control has separate switches for automatic versions of:
 
-- Daily project snapshots.
-- Automatic versions for Flows.
-- Automatic versions for Scenes.
-- Automatic versions for Sheets.
+- Flows.
+- Scenes.
+- Sheets.
 
-The page also shows current usage against the plan allowance for project snapshots and named entity versions. Save after changing the switches.
+The page also shows current usage against the plan allowance for manually created project snapshots and named entity versions. Save after changing the automatic entity-version switches. Project snapshots are created and managed from the separate **Snapshots** page; there is currently no daily snapshot switch.
 
 ## Usage Limits
 
@@ -50,6 +49,6 @@ Workspace membership and project membership are separate. A person must be able 
 
 ## Import and Export
 
-The Import & Export page can preview and import Yarn Spinner `.yarn` files or project ZIPs. It also configures export engine format, included sections, asset handling, formatting, and pre-export validation. Only project owners, who hold the `manage_project` permission, can prepare or run an import. See the dedicated [Import and Export guide](/docs/import-export/import-export-overview).
+The Import & Export page can preview and import Yarn Spinner `.yarn` files or Yarn Spinner project ZIPs. It also configures export engine format, included sections, asset handling, formatting, and pre-export validation. Only project owners, who hold the `manage_project` permission, can prepare or run an import. See the dedicated [Import and Export guide](/docs/import-export/import-export-overview).
 
 Snapshots and Trash are covered separately in [Snapshots and Trash](/docs/project-management/recovery-and-trash).

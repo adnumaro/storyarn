@@ -18,6 +18,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
   alias Storyarn.Projects.Imports.PlanCleanupRequest
   alias Storyarn.Projects.Imports.PlanStorage
   alias Storyarn.Projects.Imports.ProjectImportAttempt
+  alias Storyarn.Projects.Imports.Shared
   alias Storyarn.Projects.ProjectMembership
   alias Storyarn.Repo
   alias Storyarn.Sheets
@@ -749,6 +750,37 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     refute_receive :notifications_changed
 
     assert_import_notification(ctx.scope, completed, "success")
+  end
+
+  test "refuses to enqueue a bound plan from an unsupported parser version", ctx do
+    assert {:ok, ready, _preview} =
+             Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
+
+    assert {:ok, stored_plan} = PlanStorage.load(ready.plan_storage_key)
+
+    unsupported_plan = %{
+      stored_plan
+      | parser_version: "unsupported-test-version",
+        attempt_binding: nil
+    }
+
+    assert {:ok, unsupported_plan} =
+             Shared.bind_plan_to_attempt(unsupported_plan, ready.plan_storage_key)
+
+    Repo.update_all(
+      from(attempt in ProjectImportAttempt, where: attempt.id == ^ready.id),
+      set: [parser_version: unsupported_plan.parser_version]
+    )
+
+    job_count = Repo.aggregate(Oban.Job, :count)
+
+    assert {:error, :unsupported_import_format} =
+             Imports.enqueue_import(ctx.scope, ready.id, :rename,
+               plan_load: fn _storage_key -> {:ok, unsupported_plan} end
+             )
+
+    assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
+    assert Repo.aggregate(Oban.Job, :count) == job_count
   end
 
   test "materializes and completes while holding the workspace storage-accounting lock", ctx do

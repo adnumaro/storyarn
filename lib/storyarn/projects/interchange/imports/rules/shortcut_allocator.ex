@@ -1,5 +1,10 @@
-defmodule Storyarn.Projects.Imports.Parsers.Yarn.Shortcut do
-  @moduledoc false
+defmodule Storyarn.Projects.Imports.ShortcutAllocator do
+  @moduledoc """
+  Allocates a valid unique shortcut within an import's in-memory reservation set.
+
+  The rule is format-neutral: target conflicts and the 50-character database
+  contract are the same regardless of which parser produced the import plan.
+  """
 
   @max_length 50
 
@@ -27,10 +32,6 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.Shortcut do
     end)
   end
 
-  # `String.trim_trailing/2` strips the literal two-char pair ".-", not a
-  # character class — a bound that cut right after a separator left a shortcut
-  # ending in `-` or `.`, which `Validations.validate_shortcut/1` rejects at
-  # materialization, after the user already accepted the preview.
   defp bounded_base(base, max_length, fallback) do
     base
     |> String.slice(0, max_length)

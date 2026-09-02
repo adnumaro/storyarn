@@ -25,14 +25,13 @@ Eliminar un proyecto lo retira del espacio de trabajo activo y te devuelve a su 
 
 ## Control de versiones
 
-Control de versiones ofrece interruptores independientes para:
+Control de versiones ofrece interruptores independientes para las versiones automáticas de:
 
-- Capturas diarias del proyecto.
-- Versiones automáticas de Flujos.
-- Versiones automáticas de Escenas.
-- Versiones automáticas de Fichas.
+- Flujos.
+- Escenas.
+- Fichas.
 
-La página también muestra el uso actual frente al límite del plan para capturas del proyecto y versiones con nombre de entidades. Guarda después de cambiar los interruptores.
+La página también muestra el uso actual frente al límite del plan para capturas del proyecto creadas manualmente y versiones con nombre de entidades. Guarda después de cambiar los interruptores de versionado automático. Las capturas se crean y administran desde la página **Snapshots**; actualmente no existe un interruptor para capturas diarias.
 
 ## Límites de uso
 
@@ -52,4 +51,4 @@ La membresía del espacio de trabajo y la del proyecto son independientes. Una p
 
 La página Importar y exportar permite previsualizar e importar archivos `.yarn` o proyectos ZIP de Yarn Spinner. También configura el formato de exportación para el motor, las secciones incluidas, el tratamiento de recursos, el formato de salida y la validación previa. Solo los propietarios del proyecto, que disponen del permiso `manage_project`, pueden preparar o ejecutar una importación. Consulta la guía de [Importación y exportación](/docs/import-export/import-export-overview).
 
-Las capturas y la papelera se explican en [Capturas y papelera](/docs/project-management/recovery-and-trash).
+Las capturas y la papelera se explican en [Snapshots y papelera](/docs/project-management/recovery-and-trash).

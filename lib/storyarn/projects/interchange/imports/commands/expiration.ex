@@ -386,7 +386,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
   end
 
   defp report_expiration_error(attempt, reason) do
-    {error_code, _message, _permanent?} = Error.classify(reason)
+    {error_code, _message, _permanent?} = Error.classify(reason, attempt.format)
 
     Error.report(%{
       format: attempt.format,

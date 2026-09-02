@@ -339,6 +339,8 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
     assert_receive {:snapshot_requested, user_id, attrs}
     assert user_id == ctx.user.id
     assert attrs.idempotency_key == queued.snapshot_request_key
+    assert attrs.title == "Before Yarn project replacement"
+    assert attrs.description == "Recovery point created before replacing narrative project content."
     refute inspect(attrs) =~ "replaceable-yarn.zip"
 
     waiting = Repo.get!(ProjectImportAttempt, queued.id)

@@ -5,9 +5,9 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.Normalizer do
   alias Storyarn.Projects.Imports.Parsers.Yarn.Expression
   alias Storyarn.Projects.Imports.Parsers.Yarn.Layout
   alias Storyarn.Projects.Imports.Parsers.Yarn.ReviewDecisions
-  alias Storyarn.Projects.Imports.Parsers.Yarn.Shortcut
   alias Storyarn.Projects.Imports.Parsers.Yarn.SpeakerClassifier
   alias Storyarn.Projects.Imports.Parsers.Yarn.SpeakerSheets
+  alias Storyarn.Projects.Imports.ShortcutAllocator
   alias Storyarn.Projects.NameNormalizer
 
   @max_title_length 200
@@ -472,7 +472,7 @@ defmodule Storyarn.Projects.Imports.Parsers.Yarn.Normalizer do
       |> Enum.reduce({%{}, MapSet.new()}, fn {document, index}, {shortcuts, used} ->
         base = NameNormalizer.shortcutify(document.title)
         fallback = "yarn-flow-#{index + 1}"
-        shortcut = Shortcut.unique(base, used, fallback)
+        shortcut = ShortcutAllocator.unique(base, used, fallback)
         {Map.put(shortcuts, document.title, shortcut), MapSet.put(used, shortcut)}
       end)
 

@@ -22,16 +22,24 @@ Snapshot creation continues in the background. Storyarn builds one private ZIP a
 
 Each stored snapshot shows its version number, title, creator when available, creation time, stored size, and entity counts. Available actions are:
 
+- **Cancel build** while a snapshot is pending, building, or being verified, until finalization begins.
+- **Restore** a ready, verified snapshot that meets the current restore contract. This durable background operation replaces the active project graph and assets. Current Sheets, Flows, Scenes, and assets move to recoverable trash; the project and its memberships remain intact.
 - **Download** a ready, verified snapshot as a private ZIP archive. Storyarn checks your permission for every request, then the browser downloads the persisted archive directly from private storage.
 - **Delete** the snapshot permanently.
 
-Project snapshot restoration is not currently available in the interface. Keep downloaded archives as project-wide backups; entity versions and Trash provide the in-product restore paths described below.
+Only snapshots that satisfy the verified restore requirements show the restore action. A restore continues safely if you leave the page, and the Snapshots page shows its progress and result.
 
-## Automatic snapshots and entity versions
+## Manual snapshots and automatic entity versions
 
-In **Project Settings > Version Control**, you can enable daily project snapshots separately from automatic Sheet, Flow, and Scene versions.
+Project snapshots are created manually from **Project Settings > Snapshots**. Storyarn does not currently offer a daily project snapshot switch or production flow.
 
-Entity versions are useful for reviewing or restoring one content item. Project snapshots are broader downloadable backups. Their usage limits are tracked separately.
+In **Project Settings > Version Control**, you can enable automatic versions independently for Sheets, Flows, and Scenes. Entity versions are useful for reviewing or restoring one content item. Project snapshots cover the whole project and are also downloadable backups. Their usage limits are tracked separately.
+
+## Recover a project from a downloaded ZIP
+
+A downloaded Storyarn snapshot ZIP can rebuild the captured project as a new project in a workspace. Open **Workspace Settings > Imports** for the destination workspace, choose the ZIP, then select **Validate and import**.
+
+Storyarn validates the archive and checks the workspace's project and storage capacity before starting the background import. The Imports page shows progress and import history, and lets you open the rebuilt project after completion. You need permission to manage the selected workspace.
 
 ## Trash
 
@@ -50,5 +58,6 @@ Restore returns the item to active project content. Permanent deletion and **Emp
 
 1. Check Trash when a single item is missing.
 2. Inspect entity version history when the item exists but its content is wrong.
-3. Use a downloaded project snapshot as a project-wide backup when several related entities are involved.
-4. Download important snapshots before deleting them or performing a high-risk migration.
+3. Restore a verified snapshot in place when you need to return the current project to an earlier complete state.
+4. Import a downloaded snapshot ZIP from Workspace Settings when you need to rebuild the captured project as a new project.
+5. Download important snapshots before deleting them or performing a high-risk migration.

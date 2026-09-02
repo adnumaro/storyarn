@@ -10,6 +10,7 @@ defmodule Storyarn.Projects.References.AmbientFlowVariableUsageTest do
   alias Storyarn.Platform.GlobalSearch
   alias Storyarn.Projects.References
   alias Storyarn.Projects.References.VariableProjectionQueries
+  alias Storyarn.Projects.References.VariableReferenceQueries
   alias Storyarn.Repo
   alias Storyarn.Scenes
   alias Storyarn.Sheets
@@ -149,9 +150,17 @@ defmodule Storyarn.Projects.References.AmbientFlowVariableUsageTest do
            }
   end
 
-  test "legacy usage and stale reads exclude a malformed cross-project ambient Flow", context do
+  test "legacy usage and stale counts exclude a malformed cross-project ambient Flow", context do
     foreign_project = project_fixture(context.user)
     foreign_flow = flow_fixture(foreign_project, %{name: "Foreign ambience"})
+
+    assert {:ok, _renamed_sheet} =
+             Sheets.update_sheet(context.sheet, %{shortcut: "protagonist.profile"})
+
+    assert VariableReferenceQueries.count_stale_references(
+             [context.block.id],
+             context.project.id
+           ) == %{context.block.id => 1}
 
     malformed_ambient =
       context.ambient_flow
@@ -160,6 +169,11 @@ defmodule Storyarn.Projects.References.AmbientFlowVariableUsageTest do
 
     assert malformed_ambient.scene_id == context.scene.id
     assert malformed_ambient.flow_id == foreign_flow.id
+
+    assert VariableReferenceQueries.count_stale_references(
+             [context.block.id],
+             context.project.id
+           ) == %{}
 
     assert [] =
              VariableProjectionQueries.get_scene_ambient_flow_variable_usage(

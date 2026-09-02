@@ -1403,7 +1403,7 @@ shared_persistence_mapping_policy = %{
       context: :projects,
       authority: :project_recovery,
       mapping_paths: ["lib/storyarn/projects/references/records/table_row_record.ex"],
-      path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
+      path: "lib/storyarn/projects/references/commands/materialized_formula_binding_rewriter.ex",
       functions: [%{identity: "defp rewrite_materialized_formula_row/2", operations: [:update]}],
       reason: "Project recovery rewrites only formula cells whose portable variable namespace changed"
     }
@@ -3544,14 +3544,14 @@ privileged_entrypoints = [
     path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
     functions: [rebuild_project_variable_references: 1],
     allowed_callers: [
-      "lib/storyarn/projects/references/commands/variable_tracker.ex"
+      "lib/storyarn/projects/references/execution/variable_tracker.ex"
     ],
     reason: "the Project-wide variable-reference rebuild stays behind its internal Projects adapter"
   },
   %{
-    module: "Storyarn.Projects.References.VariableReferenceTracker",
-    path: "lib/storyarn/projects/references/commands/variable_reference_tracker.ex",
-    functions: [rewrite_materialized_formula_bindings: 3],
+    module: "Storyarn.Projects.References.MaterializedFormulaBindingRewriter",
+    path: "lib/storyarn/projects/references/commands/materialized_formula_binding_rewriter.ex",
+    functions: [rewrite: 3],
     allowed_callers: [
       "lib/storyarn/projects/versioning/execution/project_recovery.ex"
     ],
@@ -3559,7 +3559,7 @@ privileged_entrypoints = [
   },
   %{
     module: "Storyarn.Projects.References.VariableTracker",
-    path: "lib/storyarn/projects/references/commands/variable_tracker.ex",
+    path: "lib/storyarn/projects/references/execution/variable_tracker.ex",
     functions: [rebuild_project_variable_references: 1],
     allowed_callers: [
       "lib/storyarn/projects/references/references.ex"

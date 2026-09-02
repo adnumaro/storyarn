@@ -15,6 +15,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Imports.Error
+  alias Storyarn.Projects.Imports.FormatRegistry
   alias Storyarn.Projects.Imports.ProjectImportAttempt
   alias Storyarn.Projects.Imports.Telemetry
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -425,18 +426,23 @@ defmodule Storyarn.Projects.Imports.Replacement do
   defp request_recovery_snapshot(attempt, project, opts) do
     request = Keyword.get(opts, :snapshot_request, &Versioning.request_full_project_snapshot/3)
 
-    attrs = %{
-      mode: "full",
-      idempotency_key: attempt.snapshot_request_key,
-      title: "Before Yarn project replacement",
-      description: "Recovery point created before replacing narrative project content."
-    }
+    with {:ok, format} <- FormatRegistry.decode_persisted(attempt.format),
+         {:ok, adapter} <- FormatRegistry.fetch(format) do
+      %{title: title, description: description} = adapter.replacement_snapshot_attrs()
 
-    case request.(%{user: attempt.user}, project, attrs) do
-      {:ok, %ProjectSnapshot{} = snapshot} -> {:ok, snapshot}
-      {:error, reason} -> {:error, normalize_snapshot_request_error(reason)}
-      {:error, reason, _details} -> {:error, normalize_snapshot_request_error(reason)}
-      _invalid -> {:error, :pre_import_snapshot_request_failed}
+      attrs = %{
+        mode: "full",
+        idempotency_key: attempt.snapshot_request_key,
+        title: title,
+        description: description
+      }
+
+      case request.(%{user: attempt.user}, project, attrs) do
+        {:ok, %ProjectSnapshot{} = snapshot} -> {:ok, snapshot}
+        {:error, reason} -> {:error, normalize_snapshot_request_error(reason)}
+        {:error, reason, _details} -> {:error, normalize_snapshot_request_error(reason)}
+        _invalid -> {:error, :pre_import_snapshot_request_failed}
+      end
     end
   rescue
     exception ->

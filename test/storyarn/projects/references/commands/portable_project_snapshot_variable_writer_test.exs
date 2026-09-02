@@ -4,7 +4,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableWriterTest
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Projects.References.VariableReferenceTracker
+  alias Storyarn.Projects.References.PortableVariableSnapshot
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Sheets
 
@@ -23,7 +23,7 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableWriterTest
 
       snapshot = ProjectSnapshotBuilder.build_snapshot(project.id)
       assert captured_formula_cell(snapshot, sheet.id, table.id, row.id, formula.slug) == cell
-      assert {:ok, _plan} = VariableReferenceTracker.prepare_portable_project_snapshot(snapshot)
+      assert {:ok, _plan} = PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
     end
   end
 

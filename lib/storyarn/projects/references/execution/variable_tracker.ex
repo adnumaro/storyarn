@@ -1,12 +1,15 @@
 defmodule Storyarn.Projects.References.VariableTracker do
   @moduledoc """
-  Write-path adapter for variable references.
+  Application coordinator for Project-owned variable references.
 
-  During the PR2 transition this module delegates to the existing tracking logic
-  while callers migrate to the `Storyarn.Projects.References` facade.
+  It routes projection mutations to the transactional writer and consistency
+  checks to the independent validation read side. The public
+  `Storyarn.Projects.References` capability remains the only caller-facing
+  boundary.
   """
 
   alias Storyarn.Projects.References.VariableReferenceTracker
+  alias Storyarn.Projects.References.VariableReferenceValidation
 
   @spec rebuild_project_variable_references(integer()) :: :ok | {:error, term()}
   def rebuild_project_variable_references(project_id),
@@ -15,13 +18,13 @@ defmodule Storyarn.Projects.References.VariableTracker do
   def update_flow_node_variable_references(node), do: VariableReferenceTracker.update_references(node)
 
   def flow_node_variable_references_current_ids(nodes, project_id),
-    do: VariableReferenceTracker.flow_node_references_current_ids(nodes, project_id)
+    do: VariableReferenceValidation.flow_node_references_current_ids(nodes, project_id)
 
   def validate_snapshot_variable_references(project_id, sources),
-    do: VariableReferenceTracker.validate_snapshot_variable_references(project_id, sources)
+    do: VariableReferenceValidation.validate_snapshot_variable_references(project_id, sources)
 
   def validate_entity_snapshot_variable_references(project_id, entity_type, snapshot),
-    do: VariableReferenceTracker.validate_entity_snapshot_variable_references(project_id, entity_type, snapshot)
+    do: VariableReferenceValidation.validate_entity_snapshot_variable_references(project_id, entity_type, snapshot)
 
   def update_scene_pin_variable_references(pin, opts \\ []),
     do: VariableReferenceTracker.update_scene_pin_references(pin, opts)

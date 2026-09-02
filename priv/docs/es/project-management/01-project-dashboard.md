@@ -42,4 +42,4 @@ Cuando hay idiomas destino, **Progreso de localización** muestra las traduccion
 
 - Abre [Recursos](/docs/project-management/assets) para gestionar los archivos multimedia.
 - Revisa los [Ajustes del proyecto](/docs/project-management/project-settings) antes de invitar colaboradores o configurar el versionado.
-- Usa [Capturas y papelera](/docs/project-management/recovery-and-trash) antes de realizar cambios masivos de riesgo.
+- Usa [Snapshots y papelera](/docs/project-management/recovery-and-trash) antes de realizar cambios masivos de riesgo.

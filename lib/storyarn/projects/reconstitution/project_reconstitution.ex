@@ -13,12 +13,15 @@ defmodule Storyarn.Projects.ProjectReconstitution do
   facade for Web or workers.
   """
 
+  alias Storyarn.Projects.Imports.ImportPlan
   alias Storyarn.Projects.Imports.Materializer
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor
 
   @doc false
-  def preview_import(project_id, data), do: Materializer.preview(project_id, data)
+  def preview_import(project_id, %ImportPlan{data: data}), do: Materializer.preview(project_id, data)
+
+  def preview_import(_project_id, data) when is_map(data), do: {:error, :import_plan_required}
 
   @doc false
   def execute_import(project, plan, opts \\ []), do: Materializer.execute(project, plan, opts)

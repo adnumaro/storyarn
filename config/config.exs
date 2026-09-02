@@ -7,12 +7,24 @@
 # General application configuration
 import Config
 
-# Keep every object-storage socket phase bounded well below the import-plan
-# reservation lease. The importer also wraps the whole PUT in a wall-clock
-# deadline because a send timeout only limits individual blocked writes.
 alias Storyarn.Platform.ObjectStorage
 alias Storyarn.Workers.TrashRetentionWorker
 
+# `MIX_TEST_PARTITION` only changes the repository name in `config/test.exs`.
+# Without `MIX_ENV=test`, a supposedly isolated Ecto task would still target
+# the configured development or production database.
+if config_env() != :test and System.get_env("MIX_TEST_PARTITION") do
+  raise """
+  MIX_TEST_PARTITION is set while MIX_ENV=#{config_env()}.
+
+  MIX_TEST_PARTITION only isolates the database under MIX_ENV=test. Unset it
+  for this environment or rerun the command with MIX_ENV=test.
+  """
+end
+
+# Keep every object-storage socket phase bounded well below the import-plan
+# reservation lease. The importer also wraps the whole PUT in a wall-clock
+# deadline because a send timeout only limits individual blocked writes.
 config :ex_aws, :req_opts,
   receive_timeout: 60_000,
   pool_timeout: 10_000,

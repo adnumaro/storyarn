@@ -225,11 +225,29 @@ The large historical entry modules remain stable but are now routing surfaces:
   an indivisible execution kernel so its order cannot drift between wrappers.
 - `Imports` routes preparation, review, queue/cancellation and attempt lookup
   through role-specific modules. Its plan reservation and cleanup workflow stays
-  together under `execution/` for the same transactional reason.
+  together under `execution/` for the same transactional reason. The closed
+  `FormatRegistry` is the composition root for parser selection, durable format
+  identities and post-parse adapters. Generic input, telemetry, commands, rules
+  and execution consume that contract; upload profiles, review semantics,
+  parser errors, materialization rewrites and replacement copy remain owned by
+  the registered source-format adapter. Persistence stores a bounded opaque
+  identifier rather than duplicating the registry's allowlist. Unknown formats
+  and parser/registration mismatches fail closed. Extensions are exclusive by
+  design; a future pair of formats sharing one container extension requires an
+  explicit product discriminator rather than content guessing.
 - `References.EntityReferenceExtraction` owns the pure, strict decoding of
   embedded Sheet/Flow references used by Project writers and portable snapshot
   validation. Persistence-backed reference tracking remains under `commands/`;
   pure consumers never depend on that writer.
+- `References.VariableReferenceExtraction` owns the pure Flow/Scene variable
+  scanners. `VariableReferenceValidation` combines those specs with
+  `VariableReferenceResolutionQueries`, while `VariableReferenceTracker`
+  contains only projection writes and additive rebuilds. Usage and staleness
+  stay on the independent read side.
+- `References.PortableVariableSnapshot` owns pure planning and in-memory
+  rewriting for snapshot portability. The lock-sensitive update of already
+  materialized formula rows remains an explicit command in
+  `MaterializedFormulaBindingRewriter`.
 - `Versioning.SnapshotReferences` owns portable whole-Project reference
   validation and its consumer-local Sheet, Flow and Scene scanners. The large
   builders retain capture and materialization, but no longer mix this pure

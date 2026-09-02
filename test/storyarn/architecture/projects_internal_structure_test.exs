@@ -184,6 +184,54 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     refute File.read!("lib/storyarn/projects.ex") =~ "Storyarn.Projects.ProjectReconstitution"
   end
 
+  test "variable reference projection writer stays write-only" do
+    writer =
+      File.read!(Path.join(@root, "references/commands/variable_reference_tracker.ex"))
+
+    assert writer =~ "def rebuild_project_variable_references("
+    assert writer =~ "def update_references("
+    assert writer =~ "def update_scene_pin_references("
+    assert writer =~ "def update_scene_zone_references("
+    assert writer =~ "def update_scene_ambient_flow_references("
+
+    for forbidden <- [
+          "def get_variable_usage(",
+          "def count_variable_usage(",
+          "def count_stale_references(",
+          "def check_stale_references(",
+          "def list_stale_node_ids(",
+          "def validate_snapshot_variable_references(",
+          "def prepare_portable_project_snapshot(",
+          "def rewrite_portable_project_snapshot("
+        ] do
+      refute writer =~ forbidden,
+             "variable reference writer regained non-write responsibility: #{forbidden}"
+    end
+  end
+
+  test "reference rules remain persistence-free" do
+    sources =
+      @root
+      |> Path.join("references/rules/*.ex")
+      |> Path.wildcard()
+      |> Enum.sort()
+
+    assert sources != [], "reference-rules ratchet matched no Elixir sources"
+
+    for path <- sources do
+      source = File.read!(path)
+
+      refute source =~ "alias Storyarn.Repo",
+             "reference rule acquired a Repo dependency: #{path}"
+
+      refute source =~ "import Ecto.Query",
+             "reference rule acquired query composition: #{path}"
+
+      refute source =~ ~r/\bRepo\.(?:all|one|insert|insert!|insert_all|update|update!|delete|delete_all|transaction)\b/,
+             "reference rule acquired persistence behavior: #{path}"
+    end
+  end
+
   test "content is a closed internal model, not a capability or public facade" do
     content_root = Path.join(@root, "content")
 

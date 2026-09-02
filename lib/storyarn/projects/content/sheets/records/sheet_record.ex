@@ -39,10 +39,10 @@ defmodule Storyarn.Projects.Persistence.SheetRecord do
   def restore_changeset(sheet), do: change(sheet, %{deleted_at: nil})
 
   @doc """
-  Validation-only changeset mirroring the Sheet tool's create rules.
+  Create changeset mirroring the Sheet tool's persisted create rules.
 
-  Project snapshot validation must reject exactly the payloads the tool
-  rejects; keep both rule sets in lockstep.
+  Project import and snapshot materialization must reject exactly the payloads
+  the tool rejects; keep both rule sets in lockstep.
   """
   def create_changeset(sheet, attrs) do
     sheet
@@ -61,6 +61,10 @@ defmodule Storyarn.Projects.Persistence.SheetRecord do
     |> validate_length(:shortcut, min: 1, max: 50)
     |> validate_format(:shortcut, @shortcut_format,
       message: "must be lowercase, alphanumeric, with dots or hyphens (e.g., mc.jaime)"
+    )
+    |> unique_constraint(:shortcut,
+      name: :sheets_project_shortcut_unique,
+      message: "is already taken in this project"
     )
     |> validate_color()
     |> foreign_key_constraint(:parent_id)
