@@ -12,7 +12,10 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   @recoverable_import_preflight_errors [
     :import_replace_not_eligible,
     :invalid_import_snapshot_request,
+    :overwrite_conflict_requires_rename,
     :replace_import_confirmation_required,
+    :skip_conflict_ambiguous,
+    :skip_variable_contract_mismatch,
     :stale_import_mode
   ]
 

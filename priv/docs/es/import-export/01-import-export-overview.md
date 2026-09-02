@@ -11,19 +11,19 @@ Storyarn puede importar un {accent}proyecto de Yarn Spinner{/accent} existente y
 
 ## Importar desde Yarn Spinner
 
-Abre **Ajustes del proyecto > Importar y exportar** y sube un archivo fuente `.yarn` o un `.zip` con los fuentes `.yarn` del proyecto. Storyarn valida y previsualiza el paquete antes de modificar el contenido. La política de conflictos predeterminada conserva ambas versiones renombrando lo importado; también puedes omitir el contenido coincidente o sobrescribirlo.
+Abre **Ajustes del proyecto > Importar y exportar** y sube un archivo fuente `.yarn` o un `.zip` con los fuentes `.yarn` del proyecto. Storyarn valida y previsualiza el paquete antes de modificar el contenido. La política de conflictos predeterminada conserva ambas versiones renombrando lo importado; también puedes conservar la versión existente y omitir la importada en conflicto. La opción de reemplazar contenido en una importación aditiva no está disponible cuando hay atajos en conflicto porque Storyarn no puede volver a enlazar de forma segura las referencias del contenido existente.
 
 El importador convierte:
 
 - Los nodos de Yarn en Flujos de Storyarn.
-- Los diálogos y opciones anidadas en nodos de diálogo, hub y respuesta.
+- Los diálogos y las opciones anidadas en nodos de diálogo con respuestas integradas.
 - Las ramas `if`, `elseif` y `else` en condiciones de Storyarn cuando cada expresión tiene un equivalente seguro.
 - Las declaraciones literales, asignaciones compatibles e interpolaciones de variables en una ficha **Yarn Variables** y expresiones de Storyarn.
 - Los comandos `jump`, `detour`, `return` y `stop` en los nodos de control de flujo correspondientes.
 - Los prefijos de hablante como `Guía: Bienvenido` en fichas de personaje cuando se pueden inferir de forma segura.
 - Los identificadores de línea de Yarn en identificadores de localización de Storyarn.
 
-El título exacto y sensible a mayúsculas `Start` es el único nodo de Yarn candidato a flujo principal. Una importación aditiva conserva el flujo principal actual; si el proyecto no tiene ninguno, `Start` pasa a serlo cuando ese nodo se importa realmente (la estrategia de omisión puede descartar un `Start` en conflicto). Si se sobrescribe el flujo principal actual, su reemplazo importado hereda ese rol. El reemplazo completo aplica la regla después de retirar el grafo narrativo anterior: `Start` será principal si existe y, si no existe, Storyarn no elegirá otro flujo por su orden en el archivo. La previsualización muestra el resultado esperado según el estado actual del proyecto; Storyarn vuelve a comprobar la regla bajo el bloqueo del proyecto cuando se ejecuta la importación en segundo plano.
+El título exacto y sensible a mayúsculas `Start` es el único nodo de Yarn candidato a flujo principal. Una importación aditiva conserva el flujo principal actual; si el proyecto no tiene ninguno, `Start` pasa a serlo cuando ese nodo se importa realmente (la estrategia de omisión puede descartar un `Start` en conflicto). Cualquier conflicto aditivo enviado con la estrategia de sobrescritura se rechaza antes de modificar el contenido del proyecto. El reemplazo completo aplica la regla del flujo principal después de retirar el grafo narrativo anterior: `Start` será principal si existe y, si no existe, Storyarn no elegirá otro flujo por su orden en el archivo. La previsualización muestra el resultado esperado según el estado actual del proyecto; Storyarn vuelve a comprobar la regla bajo el bloqueo del proyecto cuando se ejecuta la importación en segundo plano.
 
 Los comandos personalizados con efectos externos y sin equivalente en Storyarn se conservan como nodos de anotación visibles y aparecen como advertencias en la previsualización. La lógica que controla ramas o estado se trata de forma más estricta: si una condición, Smart Variable, asignación o destino de control de flujo no puede reproducirse de forma segura, la validación rechaza la importación antes de almacenar un plan o modificar el proyecto.
 
@@ -33,7 +33,7 @@ Los comandos personalizados con efectos externos y sin equivalente en Storyarn s
 2. Pulsa **Validar y previsualizar**. Antes de extraer un ZIP se comprueban sus rutas, número de entradas, tamaño expandido, ratio de compresión, codificación de texto y tamaño de cada archivo.
 3. Revisa el número de entidades, los conflictos de atajos y las advertencias de compatibilidad.
 4. Mantén el modo predeterminado **Añadir a este proyecto** o elige **Reemplazar contenido narrativo** cuando el ZIP contenga exactamente un archivo `.yarnproject` válido.
-5. En una importación aditiva, elige **Omitir**, **Sobrescribir** o **Conservar ambos** para los conflictos e inicia la importación.
+5. En una importación aditiva con conflictos, elige **Conservar el contenido existente; omitir lo importado en conflicto** o **Conservar ambos renombrando lo importado** e inicia la importación. **Reemplazar el contenido existente por lo importado en conflicto** permanece deshabilitado porque no puede conservar las referencias existentes de forma segura.
 6. El plan de importación cifrado se procesa en segundo plano. Puedes salir de la página y volver cuando termine.
 
 Solo los propietarios del proyecto pueden preparar o ejecutar una importación. Storyarn vuelve a comprobar el permiso dentro del trabajo en segundo plano. Las importaciones fallidas usan una transacción de base de datos, por lo que no conservan contenido parcial.
@@ -48,6 +48,7 @@ Antes del reemplazo, Storyarn crea un snapshot completo normal y visible, y espe
 
 - Los CSV de tablas de localización de Yarn todavía no se importan. Se conservan los identificadores de línea para poder conectar las traducciones en un flujo posterior.
 - Los comandos personalizados con efectos externos se importan como anotaciones para revisión manual. Las interpolaciones dinámicas, las marcas de Yarn y las etiquetas distintas de los identificadores de línea que no sean compatibles permanecen visibles en el texto importado y se marcan para revisión. Las funciones personalizadas usadas en condiciones, las Smart Variables de Yarn 3, las asignaciones a variables no declaradas y otras expresiones de estado o control de flujo no compatibles bloquean la importación en vez de debilitarse o descartarse.
+- Todas las variables usadas en una condición o asignación deben declararse explícitamente con `<<declare ...>>`. Las asignaciones compuestas heredadas como `<<set $score += 1>>` se rechazan; usa en su lugar la forma equivalente `<<set $score to $score + 1>>`.
 - Los grupos de líneas, los grupos de nodos y las cláusulas `when` de los storylets de Yarn 3 todavía no se convierten. Los archivos que los usan se rechazan porque aplanar sus reglas de selección cambiaría qué diálogo aparece. Los bloques `once` con estado se rechazan por el mismo motivo.
 - Las fichas de hablante importadas solo contienen el nombre inferido; complétalas después con el esquema propio de tu proyecto. Las expresiones de hablante dinámicas permanecen en el texto del diálogo y se marcan para revisión en vez de enlazarse a una ficha de personaje.
 - No se importan imágenes, audio, assets de Unity, recursos de Godot ni bytecode compilado de Yarn.

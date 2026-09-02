@@ -1178,7 +1178,7 @@ describe("ImportPanel resume state", () => {
     state.preview.main_flow = {
       additive: {
         skip: "preserve_existing",
-        overwrite: "replace_existing",
+        overwrite: "preserve_existing",
         rename: "preserve_existing",
       },
       replace_project: "import_candidate",
@@ -1200,7 +1200,7 @@ describe("ImportPanel resume state", () => {
     await wrapper.setProps({
       importState: { ...state, conflictStrategy: "overwrite" },
     });
-    expect(outcome()).toContain("expected to inherit the main-flow role");
+    expect(outcome()).toContain("current main flow is expected to stay unchanged");
 
     await wrapper.setProps({
       importState: { ...state, importMode: "replace_project" },
@@ -1276,6 +1276,79 @@ describe("ImportPanel resume state", () => {
 
     expect(wrapper.find("#yarn-import-conflict-strategy-label").exists()).toBe(false);
     expect(wrapper.text()).not.toContain("alice");
+
+    wrapper.unmount();
+  });
+
+  it("disables additive overwrite when shortcuts conflict and explains the safe alternatives", async () => {
+    const state = resolvedPreviewState();
+    if (!state.preview) throw new Error("preview fixture missing");
+    state.preview.has_conflicts = true;
+    state.preview.conflicts = { sheets: ["alice"] };
+
+    const wrapper = mountPanel(state);
+    const overwrite = wrapper.get('[data-testid="yarn-import-strategy-overwrite"]');
+    const overwriteRadio = overwrite.get('[role="radio"]');
+
+    expect(overwriteRadio.attributes("disabled")).toBeDefined();
+    expect(overwriteRadio.attributes("aria-describedby")).toBe(
+      "yarn-import-strategy-overwrite-description",
+    );
+    expect(
+      wrapper
+        .get('[data-testid="yarn-import-strategy-skip"] [role="radio"]')
+        .attributes("disabled"),
+    ).toBeUndefined();
+    expect(
+      wrapper
+        .get('[data-testid="yarn-import-strategy-rename"] [role="radio"]')
+        .attributes("disabled"),
+    ).toBeUndefined();
+    expect(
+      wrapper.get('[data-testid="yarn-import-strategy-overwrite-unavailable"]').text(),
+    ).toContain("could break links from other project content");
+
+    await overwriteRadio.trigger("click");
+    expect(reviewEventCalls("set_strategy")).toHaveLength(0);
+
+    wrapper.unmount();
+  });
+
+  it("blocks a stale persisted overwrite selection after conflicts are detected", async () => {
+    const state = resolvedPreviewState();
+    state.conflictStrategy = "overwrite";
+    if (!state.preview) throw new Error("preview fixture missing");
+    state.preview.has_conflicts = true;
+    state.preview.conflicts = { flows: ["start"] };
+
+    const wrapper = mountPanel(state);
+    const confirm = wrapper.get("#yarn-import-confirm");
+
+    expect(confirm.attributes("disabled")).toBeDefined();
+    await confirm.trigger("click");
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
+
+    wrapper.unmount();
+  });
+
+  it("blocks overwrite after a late conflict rejection even when the preview had no conflicts", async () => {
+    const state = resolvedPreviewState();
+    state.conflictStrategy = "overwrite";
+    state.errorCode = "overwrite_conflict_requires_rename";
+    if (!state.preview) throw new Error("preview fixture missing");
+    state.preview.has_conflicts = false;
+
+    const wrapper = mountPanel(state);
+    const confirm = wrapper.get("#yarn-import-confirm");
+
+    expect(confirm.attributes("disabled")).toBeDefined();
+    await confirm.trigger("click");
+    expect(reviewEventCalls("execute_import")).toHaveLength(0);
+
+    await wrapper.setProps({
+      importState: { ...state, conflictStrategy: "rename" },
+    });
+    expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeUndefined();
 
     wrapper.unmount();
   });
@@ -1364,6 +1437,149 @@ describe("ImportPanel resume state", () => {
     );
     expect(wrapper.find('[data-testid="yarn-import-terminal-error"]').exists()).toBe(false);
     expect(wrapper.find("#yarn-import-confirm").exists()).toBe(true);
+
+    wrapper.unmount();
+  });
+
+  it("keeps an overwrite-conflict rejection recoverable on the additive preview", () => {
+    const state = resolvedPreviewState();
+    state.conflictStrategy = "overwrite";
+    state.errorCode = "overwrite_conflict_requires_rename";
+    if (!state.preview) throw new Error("preview fixture missing");
+    state.preview.has_conflicts = true;
+    state.preview.conflicts = { sheets: ["alice"] };
+
+    const wrapper = mountPanel(state);
+
+    expect(wrapper.get('[data-testid="yarn-import-preflight-error"]').text()).toContain(
+      "cannot be replaced safely",
+    );
+    expect(wrapper.find('[data-testid="yarn-import-terminal-error"]').exists()).toBe(false);
+    expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeDefined();
+
+    wrapper.unmount();
+  });
+
+  it.each([
+    ["skip_variable_contract_mismatch", "does not contain the variables this import expects"],
+    ["skip_conflict_ambiguous", "cannot identify one safe existing item"],
+  ])(
+    "keeps skip preflight %s recoverable without exposing content",
+    async (errorCode, expectedCopy) => {
+      const state = resolvedPreviewState();
+      state.conflictStrategy = "skip";
+      state.errorCode = errorCode;
+      if (!state.preview) throw new Error("preview fixture missing");
+      state.preview.has_conflicts = true;
+      state.preview.conflicts = { sheets: ["private-shortcut"] };
+
+      const wrapper = mountPanel(state);
+      const alert = wrapper.get('[data-testid="yarn-import-preflight-error"]');
+
+      expect(alert.text()).toContain(expectedCopy);
+      expect(alert.text()).toContain("Keep both by renaming imported content");
+      expect(alert.text()).not.toContain("private-shortcut");
+      expect(wrapper.find('[data-testid="yarn-import-terminal-error"]').exists()).toBe(false);
+      expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeDefined();
+
+      await wrapper.setProps({
+        importState: { ...state, conflictStrategy: "rename" },
+      });
+      expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeUndefined();
+
+      wrapper.unmount();
+    },
+  );
+
+  it.each([
+    ["overwrite", "overwrite_conflict_requires_rename"],
+    ["skip", "skip_conflict_ambiguous"],
+    ["skip", "skip_variable_contract_mismatch"],
+  ])(
+    "lets the user correct stale-preview strategy %s after preflight %s",
+    async (strategy, errorCode) => {
+      const state = resolvedPreviewState();
+      state.conflictStrategy = strategy as "overwrite" | "skip";
+      state.errorCode = errorCode;
+      if (!state.preview) throw new Error("preview fixture missing");
+      state.preview.has_conflicts = false;
+      state.preview.conflicts = {};
+
+      const wrapper = mountPanel(state);
+      const failedStrategy = wrapper.get(
+        `[data-testid="yarn-import-strategy-${strategy}"] [role="radio"]`,
+      );
+      const overwrite = wrapper.get(
+        '[data-testid="yarn-import-strategy-overwrite"] [role="radio"]',
+      );
+      const rename = wrapper.get('[data-testid="yarn-import-strategy-rename"] [role="radio"]');
+
+      expect(wrapper.find("#yarn-import-conflict-strategy-label").exists()).toBe(true);
+      expect(wrapper.text()).not.toContain("Existing shortcuts were found");
+      expect(failedStrategy.attributes("disabled")).toBeDefined();
+      expect(overwrite.attributes("disabled")).toBeDefined();
+      expect(rename.attributes("disabled")).toBeUndefined();
+      expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeDefined();
+
+      await rename.trigger("click");
+      expect(reviewEventCalls("set_strategy").at(-1)?.[1]).toEqual({
+        attempt_id: 42,
+        strategy: "rename",
+      });
+
+      await wrapper.setProps({
+        importState: { ...state, conflictStrategy: "rename", errorCode: null },
+      });
+      expect(wrapper.get("#yarn-import-confirm").attributes("disabled")).toBeUndefined();
+
+      wrapper.unmount();
+    },
+  );
+
+  it.each([
+    ["en", "The selected Yarn project is invalid"],
+    ["es", "El proyecto de Yarn seleccionado no es válido"],
+  ])(
+    "treats a reference-contract mismatch as an invalid file in %s without exposing its code",
+    (locale, expectedCopy) => {
+      setTestLocale(locale);
+      const state = attemptState("failed", "error");
+      state.errorCode = "import_reference_contract_mismatch";
+      const wrapper = mountPanel(state);
+
+      const alert = wrapper.get('[data-testid="yarn-import-terminal-error"]');
+      expect(alert.text()).toContain(expectedCopy);
+      expect(alert.text()).not.toContain("import_reference_contract_mismatch");
+
+      wrapper.unmount();
+    },
+  );
+
+  it("explains a defensive terminal overwrite-conflict failure without exposing its raw code", () => {
+    const state = attemptState("failed", "error");
+    state.errorCode = "overwrite_conflict_requires_rename";
+    const wrapper = mountPanel(state);
+
+    const alert = wrapper.get('[data-testid="yarn-import-terminal-error"]');
+    expect(alert.text()).toContain("could break existing references");
+    expect(alert.text()).toContain("No project content was changed");
+    expect(alert.text()).not.toContain("overwrite_conflict_requires_rename");
+
+    wrapper.unmount();
+  });
+
+  it.each([
+    ["skip_variable_contract_mismatch", "does not contain compatible variables"],
+    ["skip_conflict_ambiguous", "could not identify one safe existing item"],
+  ])("explains a defensive terminal skip failure %s", (errorCode, expectedCopy) => {
+    const state = attemptState("failed", "error");
+    state.errorCode = errorCode;
+    const wrapper = mountPanel(state);
+
+    const alert = wrapper.get('[data-testid="yarn-import-terminal-error"]');
+    expect(alert.text()).toContain(expectedCopy);
+    expect(alert.text()).toContain("No project content was changed");
+    expect(alert.text()).not.toContain(errorCode);
 
     wrapper.unmount();
   });

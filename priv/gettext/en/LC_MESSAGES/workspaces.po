@@ -271,12 +271,12 @@ msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:100
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:105
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:387
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:398
 #, elixir-autogen, elixir-format
 msgid "Personal AI member policy could not be updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:391
 #, elixir-autogen, elixir-format
 msgid "Personal AI member policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
 msgstr ""
@@ -293,22 +293,22 @@ msgstr ""
 
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:88
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:93
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:409
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:431
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy could not be updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:424
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:402
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:413
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:406
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:417
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change Storyarn AI policy."
 msgstr ""

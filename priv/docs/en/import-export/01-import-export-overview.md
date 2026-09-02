@@ -11,19 +11,19 @@ Storyarn can import an existing {accent}Yarn Spinner project{/accent} and export
 
 ## Import from Yarn Spinner
 
-Open **Project settings > Import & Export** and upload either one `.yarn` source file or a `.zip` containing the project's `.yarn` sources. Storyarn validates and previews the package before it changes project content. The default conflict policy keeps both versions by renaming imported content; you can instead skip matching content or overwrite it.
+Open **Project settings > Import & Export** and upload either one `.yarn` source file or a `.zip` containing the project's `.yarn` sources. Storyarn validates and previews the package before it changes project content. The default conflict policy keeps both versions by renaming imported content; you can instead keep the existing version and skip the conflicting import. Additive overwrite is unavailable when shortcuts conflict because Storyarn cannot safely relink references from existing content.
 
 The importer converts:
 
 - Yarn nodes into Storyarn Flows.
-- Dialogue and nested options into dialogue, hub, and response nodes.
+- Dialogue and nested options into dialogue nodes with embedded responses.
 - `if`, `elseif`, and `else` branches into Storyarn conditions when every expression has a safe Storyarn equivalent.
 - Literal variable declarations, supported assignments, and interpolations into a generated **Yarn Variables** sheet and Storyarn expressions.
 - `jump`, `detour`, `return`, and `stop` commands into the corresponding flow control nodes.
 - Speaker prefixes such as `Guide: Welcome` into character sheets when they can be inferred safely.
 - Yarn line IDs into Storyarn localization IDs.
 
-The exact, case-sensitive Yarn node title `Start` is the only imported main-flow candidate. An additive import keeps the project's current main flow; if the project has none, `Start` becomes main when that node is actually imported (the skip strategy can omit a conflicting `Start`). Overwriting the current main flow transfers that role to its imported replacement. A whole-project replacement evaluates the rule after removing the old narrative graph, so `Start` becomes main when present and no flow is chosen by file order when it is absent. The preview shows the expected outcome from the current project state; Storyarn checks the rule again under the project lock when the background import runs.
+The exact, case-sensitive Yarn node title `Start` is the only imported main-flow candidate. An additive import keeps the project's current main flow; if the project has none, `Start` becomes main when that node is actually imported (the skip strategy can omit a conflicting `Start`). Any additive conflict submitted with the overwrite strategy is rejected before project content is changed. A whole-project replacement evaluates the main-flow rule after removing the old narrative graph, so `Start` becomes main when present and no flow is chosen by file order when it is absent. The preview shows the expected outcome from the current project state; Storyarn checks the rule again under the project lock when the background import runs.
 
 Custom side-effect commands that do not have a Storyarn equivalent are retained as visible annotation nodes and listed as warnings in the preview. Logic that controls branching or state is handled more strictly: if a condition, Smart Variable, assignment, or control-flow target cannot be reproduced safely, validation rejects the import before any plan or project content is stored.
 
@@ -33,7 +33,7 @@ Custom side-effect commands that do not have a Storyarn equivalent are retained 
 2. Click **Validate and preview**. ZIP paths, entry count, expanded size, compression ratio, text encoding, and individual file sizes are checked before extraction.
 3. Review entity counts, shortcut conflicts, and compatibility warnings.
 4. Keep the default **Add to this project** mode, or choose **Replace narrative content** when the ZIP contains exactly one valid `.yarnproject` file.
-5. For an additive import, choose **Skip**, **Overwrite**, or **Keep both** for conflicts, then start the import.
+5. For an additive import with conflicts, choose **Keep existing content; skip conflicting imports** or **Keep both by renaming imported content**, then start the import. **Replace existing content with conflicting imports** remains disabled because it cannot preserve existing references safely.
 6. The encrypted import plan runs in the background. You can leave the page and return after it completes.
 
 Only project owners can prepare or execute an import. Storyarn checks that permission again in the background job. Failed imports use a database transaction, so partial project content is not retained.
@@ -48,6 +48,7 @@ Before replacement, Storyarn creates a normal, visible full-project snapshot and
 
 - Yarn localization string-table CSV files are not imported yet. Source line IDs are preserved so translations can be connected in a later workflow.
 - Custom side-effect commands are imported as annotations for manual review. Unsupported dynamic interpolation, Yarn markup and non-line-ID tags remain visible in the imported text and are flagged for review. Custom functions used in conditions, Yarn 3 Smart Variables, assignments to undeclared variables, and other unsupported state or control-flow expressions block the import instead of being weakened or discarded.
+- Every variable used in a condition or assignment must be declared explicitly with `<<declare ...>>`. Legacy compound assignments such as `<<set $score += 1>>` are rejected; write the equivalent `<<set $score to $score + 1>>` instead.
 - Yarn 3 line groups, node groups and storylet `when` clauses are not converted yet. Files that use them are rejected because flattening their selection rules would change which dialogue is shown. Stateful `once` blocks are rejected for the same reason.
 - Imported speaker sheets contain the inferred name only; enrich them with your project-specific schema after import. Dynamic speaker expressions remain in the dialogue text and are flagged for review instead of being linked to a character sheet.
 - Images, audio, Unity assets, Godot resources, and compiled Yarn bytecode are not imported.

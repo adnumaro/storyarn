@@ -90,36 +90,40 @@ defmodule Storyarn.Projects.SheetImportPersistenceTest do
     end
   end
 
-  describe "soft_delete_by_shortcut/2" do
-    test "soft-deletes sheets with matching shortcut" do
+  describe "list_active_variable_contracts/2" do
+    test "loads regular and referenceable table-cell contracts" do
       %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Variables", shortcut: "variables"})
+      _regular = block_fixture(sheet, %{type: "number", variable_name: "gold"})
+      table = table_block_fixture(sheet, %{label: "Inventory"})
+      damage = table_column_fixture(table, %{name: "Damage", type: "number"})
+      hidden = table_column_fixture(table, %{name: "Hidden", type: "text", is_constant: true})
+      formula = table_column_fixture(table, %{name: "Computed", type: "formula", is_constant: true})
+      sword = table_row_fixture(table, %{name: "Sword"})
 
-      {:ok, sheet} = Sheets.create_sheet(project, %{name: "Target", shortcut: "target"})
+      contracts = SheetImportPersistence.list_active_variable_contracts(project.id, [sheet.shortcut])
 
-      {count, _} = SheetImportPersistence.soft_delete_by_shortcut(project.id, "target")
-
-      assert count == 1
-      assert Sheets.get_sheet(project.id, sheet.id) == nil
+      assert contracts[{sheet.shortcut, "gold"}] == "number"
+      assert contracts[{:table, sheet.shortcut, table.variable_name}] == :present
+      assert contracts[{:table_row, sheet.shortcut, table.variable_name, sword.slug}] == :present
+      assert contracts[{:table_column, sheet.shortcut, table.variable_name, damage.slug}] == "number"
+      assert contracts[{:table_column, sheet.shortcut, table.variable_name, formula.slug}] == "formula"
+      refute Map.has_key?(contracts, {:table_column, sheet.shortcut, table.variable_name, hidden.slug})
     end
 
-    test "does not affect sheets with different shortcuts" do
+    test "does not load table cells from an inactive sheet" do
       %{project: project} = setup_project()
+      sheet = sheet_fixture(project, %{name: "Variables", shortcut: "variables"})
+      table = table_block_fixture(sheet, %{label: "Inventory"})
+      column = table_column_fixture(table, %{name: "Damage", type: "number"})
+      row = table_row_fixture(table, %{name: "Sword"})
+      {:ok, _sheet} = Sheets.trash_sheet(sheet)
 
-      {:ok, _} = Sheets.create_sheet(project, %{name: "Keep", shortcut: "keep"})
-      {:ok, _} = Sheets.create_sheet(project, %{name: "Delete", shortcut: "delete"})
+      contracts = SheetImportPersistence.list_active_variable_contracts(project.id, [sheet.shortcut])
 
-      SheetImportPersistence.soft_delete_by_shortcut(project.id, "delete")
-
-      assert Sheets.get_sheet_by_shortcut(project.id, "keep")
-      assert Sheets.get_sheet_by_shortcut(project.id, "delete") == nil
-    end
-
-    test "returns {0, nil} when no match" do
-      %{project: project} = setup_project()
-
-      {count, _} = SheetImportPersistence.soft_delete_by_shortcut(project.id, "nonexistent")
-
-      assert count == 0
+      refute Map.has_key?(contracts, {:table, sheet.shortcut, table.variable_name})
+      refute Map.has_key?(contracts, {:table_row, sheet.shortcut, table.variable_name, row.slug})
+      refute Map.has_key?(contracts, {:table_column, sheet.shortcut, table.variable_name, column.slug})
     end
   end
 

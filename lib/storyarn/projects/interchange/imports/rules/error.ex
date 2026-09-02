@@ -14,6 +14,7 @@ defmodule Storyarn.Projects.Imports.Error do
     file_too_large
     import_plan_has_errors
     import_plan_too_large
+    import_reference_contract_mismatch
     import_expired
     import_project_replacement_failed
     import_replace_not_eligible
@@ -31,12 +32,16 @@ defmodule Storyarn.Projects.Imports.Error do
     nested_archive_not_allowed
     not_found
     ownership_invariant_violation
+    overwrite_conflict_requires_rename
     pre_import_snapshot_capacity_unavailable
     pre_import_snapshot_unavailable
     pre_import_snapshot_verification_failed
     project_already_has_main_flow
     project_changed_since_import_snapshot
     replace_import_confirmation_required
+    skip_conflict_ambiguous
+    skip_conflict_target_missing
+    skip_variable_contract_mismatch
     stale_import_mode
     unauthorized
     unsupported_archive_entry

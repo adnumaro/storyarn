@@ -23,7 +23,10 @@ defmodule Storyarn.Projects.FlowImportPersistenceTest do
       active = import_flow!(project, %{name: "Active", shortcut: "active"})
       deleted = import_flow!(project, %{name: "Deleted", shortcut: "deleted"})
 
-      assert {1, nil} = FlowImportPersistence.soft_delete_by_shortcut(project.id, deleted.shortcut)
+      Repo.update_all(
+        from(flow in FlowRecord, where: flow.id == ^deleted.id),
+        set: [deleted_at: TimeHelpers.now()]
+      )
 
       assert FlowImportPersistence.list_shortcuts(project.id) == MapSet.new([active.shortcut])
 
@@ -31,10 +34,6 @@ defmodule Storyarn.Projects.FlowImportPersistenceTest do
                ["active"]
 
       assert FlowImportPersistence.detect_shortcut_conflicts(project.id, []) == []
-    end
-
-    test "returns an empty update result for a missing shortcut", %{project: project} do
-      assert {0, nil} = FlowImportPersistence.soft_delete_by_shortcut(project.id, "missing")
     end
   end
 

@@ -837,7 +837,8 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
   end
 
   defp queue_resolved_import(attempt, plan, strategy) do
-    with {:ok, preview} <- preview(attempt.project_id, plan),
+    with :ok <- preflight_additive_conflicts(attempt, plan, strategy),
+         {:ok, preview} <- preview(attempt.project_id, plan),
          {:ok, job} <-
            %{"attempt_id" => attempt.id}
            |> ImportProjectWorker.new()
@@ -854,6 +855,16 @@ defmodule Storyarn.Projects.Imports.ImportLifecycle do
       {:ok, {:queued, queued}}
     end
   end
+
+  defp preflight_additive_conflicts(
+         %ProjectImportAttempt{import_mode: "additive", project_id: project_id},
+         plan,
+         strategy
+       ) do
+    ProjectReconstitution.preflight_import_conflicts(project_id, plan, strategy)
+  end
+
+  defp preflight_additive_conflicts(%ProjectImportAttempt{}, _plan, _strategy), do: :ok
 
   defp queued_import_changeset(%ProjectImportAttempt{import_mode: "additive"} = attempt, strategy, job_id, expires_at) do
     ProjectImportAttempt.queued_changeset(attempt, strategy, job_id, expires_at)

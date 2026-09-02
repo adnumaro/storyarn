@@ -500,6 +500,119 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert Repo.get!(ProjectImportAttempt, ready.id).status == "ready"
     end
 
+    test "keeps a conflicting overwrite on its actionable preview without creating a job", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      _existing = flow_fixture(project, %{name: "Start"})
+
+      assert {:ok, ready, preview} =
+               Projects.prepare_project_import(
+                 Scope.for_user(user),
+                 project,
+                 "overwrite-conflict.yarn",
+                 "title: Start\n---\nHello\n===\n"
+               )
+
+      assert preview.has_conflicts
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_strategy", %{
+        "attempt_id" => ready.id,
+        "strategy" => "overwrite"
+      })
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(view, %{ok: true, review_confirmation_fingerprint: fingerprint})
+      job_count = Repo.aggregate(Oban.Job, :count)
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "additive"
+      })
+
+      assert_reply(view, %{ok: false, reason: "recoverable"})
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["status"] == "ready"
+      assert state["attemptId"] == ready.id
+      assert state["conflictStrategy"] == "overwrite"
+      assert state["errorCode"] == "overwrite_conflict_requires_rename"
+      assert Repo.aggregate(Oban.Job, :count) == job_count
+
+      assert {:ok, %{status: "ready"}} =
+               Projects.get_project_import_attempt(Scope.for_user(user), ready.id)
+    end
+
+    test "keeps an incompatible skip on its actionable preview without creating a job", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      _existing_variables = sheet_fixture(project, %{name: "Yarn"})
+
+      source = """
+      title: Start
+      ---
+      <<declare $gold = 10>>
+      You have {$gold} coins.
+      <<stop>>
+      ===
+      """
+
+      assert {:ok, ready, preview} =
+               Projects.prepare_project_import(
+                 Scope.for_user(user),
+                 project,
+                 "skip-variable-mismatch.yarn",
+                 source
+               )
+
+      assert preview.has_conflicts
+      {:ok, view, _html} = live(conn, export_url(project))
+
+      render_hook(view, "set_strategy", %{
+        "attempt_id" => ready.id,
+        "strategy" => "skip"
+      })
+
+      render_hook(view, "validate_import_review", %{
+        "attempt_id" => ready.id,
+        "review_acknowledged" => false,
+        "review_decisions" => []
+      })
+
+      assert_reply(view, %{ok: true, review_confirmation_fingerprint: fingerprint})
+      job_count = Repo.aggregate(Oban.Job, :count)
+
+      render_hook(view, "execute_import", %{
+        "attempt_id" => ready.id,
+        "review_confirmation_fingerprint" => fingerprint,
+        "import_mode" => "additive"
+      })
+
+      assert_reply(view, %{ok: false, reason: "recoverable"})
+
+      state = import_state(view)
+      assert state["step"] == "preview"
+      assert state["status"] == "ready"
+      assert state["attemptId"] == ready.id
+      assert state["conflictStrategy"] == "skip"
+      assert state["errorCode"] == "skip_variable_contract_mismatch"
+      assert Repo.aggregate(Oban.Job, :count) == job_count
+
+      assert {:ok, %{status: "ready"}} =
+               Projects.get_project_import_attempt(Scope.for_user(user), ready.id)
+    end
+
     test "a concurrent strategy failure cannot dismiss a running import", %{
       conn: conn,
       project: project,

@@ -3,7 +3,6 @@ defmodule Storyarn.Projects.SceneImportPersistence do
 
   import Ecto.Query, warn: false
 
-  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Persistence.SceneAnnotationRecord
   alias Storyarn.Projects.Persistence.SceneConnectionRecord
   alias Storyarn.Projects.Persistence.SceneLayerRecord
@@ -11,6 +10,15 @@ defmodule Storyarn.Projects.SceneImportPersistence do
   alias Storyarn.Projects.Persistence.SceneRecord
   alias Storyarn.Projects.Persistence.SceneZoneRecord
   alias Storyarn.Repo
+
+  def list_active_identities(project_id) do
+    from(scene in SceneRecord,
+      where: scene.project_id == ^project_id and is_nil(scene.deleted_at),
+      select: {scene.shortcut, scene.id}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
 
   def import_scene(project_id, attrs) do
     %SceneRecord{project_id: project_id}
@@ -38,17 +46,6 @@ defmodule Storyarn.Projects.SceneImportPersistence do
 
   def bulk_insert_connections(attrs_list), do: bulk_insert(SceneConnectionRecord, attrs_list)
   def bulk_insert_annotations(attrs_list), do: bulk_insert(SceneAnnotationRecord, attrs_list)
-
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    Repo.update_all(
-      from(scene in SceneRecord,
-        where:
-          scene.project_id == ^project_id and scene.shortcut == ^shortcut and
-            is_nil(scene.deleted_at)
-      ),
-      set: [deleted_at: TimeHelpers.now()]
-    )
-  end
 
   def link_parent(%SceneRecord{} = scene, parent_id) do
     scene

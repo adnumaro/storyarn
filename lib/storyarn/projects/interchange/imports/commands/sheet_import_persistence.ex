@@ -10,15 +10,110 @@ defmodule Storyarn.Projects.SheetImportPersistence do
   import Ecto.Query, warn: false
 
   alias Storyarn.Platform.Shared.HtmlUtils
-  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.FlowFormulaEngine, as: FormulaEngine
   alias Storyarn.Projects.Persistence.BlockRecord
   alias Storyarn.Projects.Persistence.SheetAvatarRecord
   alias Storyarn.Projects.Persistence.SheetRecord
   alias Storyarn.Projects.Persistence.TableColumnRecord
   alias Storyarn.Projects.Persistence.TableRowRecord
+  alias Storyarn.Projects.References
   alias Storyarn.Projects.References.ProjectReferenceIntegrity
   alias Storyarn.Repo
+
+  @regular_variable_types References.regular_variable_types()
+  @table_variable_types References.table_variable_types()
+  @constant_table_variable_types References.constant_table_variable_types()
+
+  def list_active_identities(project_id) do
+    from(sheet in SheetRecord,
+      where: sheet.project_id == ^project_id and is_nil(sheet.deleted_at),
+      select: {sheet.shortcut, sheet.id}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  def list_active_variable_contracts(_project_id, []), do: %{}
+
+  def list_active_variable_contracts(project_id, sheet_shortcuts) when is_list(sheet_shortcuts) do
+    [
+      regular_variable_contracts(project_id, sheet_shortcuts),
+      table_identity_contracts(project_id, sheet_shortcuts),
+      table_row_contracts(project_id, sheet_shortcuts),
+      table_column_contracts(project_id, sheet_shortcuts)
+    ]
+    |> Enum.concat()
+    |> Enum.reduce(%{}, &merge_variable_contract/2)
+  end
+
+  defp regular_variable_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and
+            is_nil(sheet.deleted_at) and is_nil(block.deleted_at) and
+            block.type in ^@regular_variable_types and block.is_constant == false and
+            not is_nil(block.variable_name) and block.variable_name != "",
+        select: {{sheet.shortcut, block.variable_name}, block.type}
+      )
+    )
+  end
+
+  defp table_identity_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(block in BlockRecord,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and is_nil(sheet.deleted_at) and
+            is_nil(block.deleted_at) and block.type == "table" and not is_nil(block.variable_name) and
+            block.variable_name != "",
+        select: {{:table, sheet.shortcut, block.variable_name}, :present}
+      )
+    )
+  end
+
+  defp table_row_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(row in TableRowRecord,
+        join: block in BlockRecord,
+        on: block.id == row.block_id,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where:
+          sheet.project_id == ^project_id and sheet.shortcut in ^sheet_shortcuts and is_nil(sheet.deleted_at) and
+            is_nil(block.deleted_at) and block.type == "table" and not is_nil(block.variable_name) and
+            block.variable_name != "",
+        select: {{:table_row, sheet.shortcut, block.variable_name, row.slug}, :present}
+      )
+    )
+  end
+
+  defp table_column_contracts(project_id, sheet_shortcuts) do
+    Repo.all(
+      from(column in TableColumnRecord,
+        join: block in BlockRecord,
+        on: block.id == column.block_id,
+        join: sheet in SheetRecord,
+        on: sheet.id == block.sheet_id,
+        where: sheet.project_id == ^project_id,
+        where: sheet.shortcut in ^sheet_shortcuts,
+        where: is_nil(sheet.deleted_at),
+        where: is_nil(block.deleted_at),
+        where: block.type == "table",
+        where: not is_nil(block.variable_name),
+        where: block.variable_name != "",
+        where: column.type in ^@table_variable_types,
+        where: column.is_constant == false or column.type in ^@constant_table_variable_types,
+        select: {{:table_column, sheet.shortcut, block.variable_name, column.slug}, column.type}
+      )
+    )
+  end
+
+  defp merge_variable_contract({key, contract}, contracts),
+    do: Map.update(contracts, key, contract, fn _existing_contract -> :ambiguous end)
 
   def list_shortcuts(project_id) do
     from(sheet in SheetRecord,
@@ -40,17 +135,6 @@ defmodule Storyarn.Projects.SheetImportPersistence do
         )
       )
     end
-  end
-
-  def soft_delete_by_shortcut(project_id, shortcut) do
-    now = TimeHelpers.now()
-
-    Repo.update_all(
-      from(sheet in SheetRecord,
-        where: sheet.project_id == ^project_id and sheet.shortcut == ^shortcut and is_nil(sheet.deleted_at)
-      ),
-      set: [deleted_at: now]
-    )
   end
 
   @doc """
@@ -79,6 +163,10 @@ defmodule Storyarn.Projects.SheetImportPersistence do
     |> BlockRecord.create_changeset(attrs)
     |> Ecto.Changeset.put_change(:word_count, word_count_for_block(type, value))
     |> Repo.insert()
+  end
+
+  def link_block_value(block_id, value) do
+    Repo.update_all(from(block in BlockRecord, where: block.id == ^block_id), set: [value: value])
   end
 
   @doc "Creates a table column for import under the tool's table-scope lock."

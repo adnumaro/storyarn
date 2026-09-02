@@ -24,6 +24,11 @@ defmodule Storyarn.Projects.ProjectReconstitution do
   def preview_import(_project_id, data) when is_map(data), do: {:error, :import_plan_required}
 
   @doc false
+  def preflight_import_conflicts(project_id, plan, strategy) do
+    Materializer.preflight_conflicts(project_id, plan, strategy)
+  end
+
+  @doc false
   def execute_import(project, plan, opts \\ []), do: Materializer.execute(project, plan, opts)
 
   @doc false

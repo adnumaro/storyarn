@@ -9,32 +9,24 @@ defmodule Storyarn.Projects.Imports.MainFlowPolicy do
   """
 
   @type existing_main :: nil | %{required(:shortcut) => String.t() | nil}
-  @type state :: %{
-          required(:main_claimed?) => boolean(),
-          required(:existing_main_shortcut) => String.t() | nil
-        }
+  @type state :: %{required(:main_claimed?) => boolean()}
 
   @doc "Returns the materialization state for the target project's active main flow."
   @spec initial_state(existing_main()) :: state()
-  def initial_state(nil), do: %{main_claimed?: false, existing_main_shortcut: nil}
-
-  def initial_state(%{shortcut: shortcut}) do
-    %{main_claimed?: true, existing_main_shortcut: shortcut}
-  end
+  def initial_state(nil), do: %{main_claimed?: false}
+  def initial_state(%{shortcut: _shortcut}), do: %{main_claimed?: true}
 
   @doc """
   Decides whether one resolved imported flow must be persisted as main.
 
-  Overwriting the active main flow transfers its role to the replacement.
-  Otherwise an adapter nomination is accepted only when the project has no
-  active main flow and no earlier imported flow has claimed the role.
+  An adapter nomination is accepted only when the project has no active main
+  flow and no earlier imported flow has claimed the role. Conflicting
+  overwrites are rejected before this function because replacing a root
+  identity without relinking all references is not supported.
   """
   @spec resolve(map(), String.t() | nil, atom(), state()) :: {boolean(), state()}
-  def resolve(flow_data, resolved_shortcut, strategy, state) do
+  def resolve(flow_data, _resolved_shortcut, _strategy, state) do
     cond do
-      overwrites_existing_main?(resolved_shortcut, strategy, state) ->
-        {true, %{state | main_claimed?: true, existing_main_shortcut: nil}}
-
       state.main_claimed? ->
         {false, state}
 
@@ -65,29 +57,17 @@ defmodule Storyarn.Projects.Imports.MainFlowPolicy do
         not MapSet.member?(conflict_set, candidate["shortcut"])
       end)
 
-    overwrites_target_main? =
-      target_has_main? and
-        is_binary(existing_main.shortcut) and
-        Enum.any?(flows, &(&1["shortcut"] == existing_main.shortcut))
-
     %{
       additive: %{
-        skip: additive_outcome(target_has_main?, candidate_survives_skip?, false),
-        overwrite: additive_outcome(target_has_main?, candidate_exists?, overwrites_target_main?),
-        rename: additive_outcome(target_has_main?, candidate_exists?, false)
+        skip: additive_outcome(target_has_main?, candidate_survives_skip?),
+        overwrite: additive_outcome(target_has_main?, candidate_survives_skip?),
+        rename: additive_outcome(target_has_main?, candidate_exists?)
       },
       replace_project: if(candidate_exists?, do: "import_candidate", else: "none")
     }
   end
 
-  defp overwrites_existing_main?(resolved_shortcut, :overwrite, %{existing_main_shortcut: existing_main_shortcut}) do
-    is_binary(existing_main_shortcut) and resolved_shortcut == existing_main_shortcut
-  end
-
-  defp overwrites_existing_main?(_resolved_shortcut, _strategy, _state), do: false
-
-  defp additive_outcome(true, _candidate_available?, true), do: "replace_existing"
-  defp additive_outcome(true, _candidate_available?, false), do: "preserve_existing"
-  defp additive_outcome(false, true, _overwrites_target_main?), do: "import_candidate"
-  defp additive_outcome(false, false, _overwrites_target_main?), do: "none"
+  defp additive_outcome(true, _candidate_available?), do: "preserve_existing"
+  defp additive_outcome(false, true), do: "import_candidate"
+  defp additive_outcome(false, false), do: "none"
 end

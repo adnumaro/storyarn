@@ -842,8 +842,11 @@ shared_persistence_mapping_policy = %{
       authority: :project_import,
       mapping_paths: ["lib/storyarn/projects/content/sheets/records/block_record.ex"],
       path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
-      functions: [%{identity: "def import_block/2", operations: [:insert]}],
-      reason: "validated Project import materializes captured Sheet blocks"
+      functions: [
+        %{identity: "def import_block/2", operations: [:insert]},
+        %{identity: "def link_block_value/2", operations: [:update_all]}
+      ],
+      reason: "validated Project import materializes Sheet blocks and remaps their embedded root references"
     },
     %{
       table: :blocks,
@@ -1022,8 +1025,7 @@ shared_persistence_mapping_policy = %{
       path: "lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex",
       functions: [
         %{identity: "def import_flow/2", operations: [:insert]},
-        %{identity: "def link_flow_parent/2", operations: [:update!]},
-        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+        %{identity: "def link_flow_parent/2", operations: [:update!]}
       ],
       reason: "validated Project import replaces, materializes and links captured Flows"
     },
@@ -1253,8 +1255,7 @@ shared_persistence_mapping_policy = %{
       path: "lib/storyarn/projects/interchange/imports/commands/scene_import_persistence.ex",
       functions: [
         %{identity: "def import_scene/2", operations: [:insert]},
-        %{identity: "def link_parent/2", operations: [:update!]},
-        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+        %{identity: "def link_parent/2", operations: [:update!]}
       ],
       reason: "validated Project import replaces, materializes and links captured Scenes"
     },
@@ -1320,8 +1321,7 @@ shared_persistence_mapping_policy = %{
       path: "lib/storyarn/projects/interchange/imports/commands/sheet_import_persistence.ex",
       functions: [
         %{identity: "def import_sheet/2", operations: [:insert]},
-        %{identity: "def link_import_parent/2", operations: [:update!]},
-        %{identity: "def soft_delete_by_shortcut/2", operations: [:update_all]}
+        %{identity: "def link_import_parent/2", operations: [:update!]}
       ],
       reason: "validated Project import replaces, materializes and links captured Sheets"
     },
@@ -3034,10 +3034,12 @@ privileged_entrypoints = [
     functions: [extract_block_value_references: 2],
     allowed_callers: [
       "lib/storyarn/projects/references/commands/entity_reference_projection.ex",
+      "lib/storyarn/projects/references/references.ex",
       "lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex",
       "lib/storyarn/projects/versioning/rules/snapshot_references/sheet_scanner.ex"
     ],
-    reason: "only Project reference writers and pure portable snapshot scanners consume strict block reference extraction"
+    reason:
+      "only the Project References facade, reference writers and pure portable snapshot scanners consume strict block reference extraction"
   },
   %{
     module: "Storyarn.Projects.Versioning.SnapshotReferences",
@@ -3571,24 +3573,21 @@ privileged_entrypoints = [
     path: "lib/storyarn/projects/references/references.ex",
     functions: [rebuild_project_entity_references: 1],
     allowed_callers: [
-      "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
       "lib/storyarn/projects/versioning/execution/project_recovery.ex",
       "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
     ],
-    reason: "Project-wide entity-reference rebuild is reserved for validated import, recovery and exact restore"
+    reason: "Project-wide entity-reference rebuild is reserved for recovery and exact restore"
   },
   %{
     module: "Storyarn.Projects.References",
     path: "lib/storyarn/projects/references/references.ex",
     functions: [rebuild_project_variable_references: 1],
     allowed_callers: [
-      "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
       "lib/storyarn/projects/versioning/execution/builders/sheet_builder.ex",
       "lib/storyarn/projects/versioning/execution/project_recovery.ex",
       "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"
     ],
-    reason:
-      "Project-wide variable-reference rebuild is reserved for validated import, materialization, recovery and exact restore"
+    reason: "Project-wide variable-reference rebuild is reserved for materialization, recovery and exact restore"
   },
   %{
     module: "Storyarn.Sheets.References.Commands.VariableProjection",
