@@ -153,7 +153,7 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
     ambient_flow = %{
       "original_id" => source_id,
       "trigger_type" => Map.get(source, :trigger_type) || Map.get(source, "trigger_type"),
-      "trigger_config" => Map.get(source, :trigger_config) || Map.get(source, "trigger_config") || %{}
+      "trigger_config" => source_value_by_presence(source, :trigger_config, "trigger_config", %{})
     }
 
     tag_snapshot_reference_specs(strict_scene_ambient_flow_reference_specs(ambient_flow), source_type)
@@ -268,7 +268,7 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
   end
 
   defp strict_scene_ambient_flow_reference_specs(%{"original_id" => source_id, "trigger_type" => trigger_type})
-       when is_integer(source_id) and is_binary(trigger_type), do: {:ok, []}
+       when is_integer(source_id) and is_binary(trigger_type) and trigger_type != "on_event", do: {:ok, []}
 
   defp strict_scene_ambient_flow_reference_specs(ambient_flow) do
     source_id = if is_map(ambient_flow), do: ambient_flow["original_id"], else: ambient_flow
@@ -492,6 +492,7 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
   defp strict_assignment_read_specs(_source_type, _source_id, _assignment), do: {:ok, []}
 
   defp strict_condition_reference_specs(_source_type, _source_id, nil), do: {:ok, []}
+  defp strict_condition_reference_specs(_source_type, _source_id, condition) when condition == %{}, do: {:ok, []}
 
   defp strict_condition_reference_specs(source_type, source_id, %{} = condition) do
     case FlowCondition.validate(condition) do
@@ -652,6 +653,19 @@ defmodule Storyarn.Projects.References.VariableReferenceExtraction do
 
   defp malformed_variable_reference(source_type, source_id, context, value) do
     {:error, {:malformed_variable_reference, source_type, source_id, context, value}}
+  end
+
+  defp source_value_by_presence(source, atom_key, string_key, default) do
+    case Map.fetch(source, atom_key) do
+      {:ok, value} ->
+        value
+
+      :error ->
+        case Map.fetch(source, string_key) do
+          {:ok, value} -> value
+          :error -> default
+        end
+    end
   end
 
   defp flow_node_reference_specs(%{id: node_id, type: "instruction", data: data}) do

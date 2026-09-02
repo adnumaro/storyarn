@@ -64,14 +64,30 @@ defmodule Storyarn.Projects.Imports.SourceBundleTest do
   test "allows a selector to retain an exact validated subset in its chosen order" do
     first = yarn("First")
     second = yarn("Second")
-    zip = zip!([{"Dialogue/first.yarn", first}, {"Dialogue/second.yarn", second}])
+    third = yarn("Third")
+
+    zip =
+      zip!([
+        {"Dialogue/first.yarn", first},
+        {"Dialogue/second.yarn", second},
+        {"Dialogue/third.yarn", third}
+      ])
 
     assert {:ok, bundle} =
              SourceBundle.open("project.zip", zip, @test_profile, fn files ->
-               {:ok, [List.last(files)]}
+               files_by_path = Map.new(files, &{&1.path, &1})
+
+               {:ok,
+                [
+                  Map.fetch!(files_by_path, "Dialogue/third.yarn"),
+                  Map.fetch!(files_by_path, "Dialogue/first.yarn")
+                ]}
              end)
 
-    assert bundle.files == [%{alias: "source_1", extension: ".yarn", content: second}]
+    assert bundle.files == [
+             %{alias: "source_1", extension: ".yarn", content: third},
+             %{alias: "source_2", extension: ".yarn", content: first}
+           ]
   end
 
   test "selects only Yarn sources included by a project and applies exclusions last" do

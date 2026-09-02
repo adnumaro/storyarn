@@ -162,7 +162,10 @@ defmodule Storyarn.Projects.References.VariableReferenceQueries do
           ambient_flow.id == reference.source_id,
       left_join: ambient_scene in Scene,
       as: :ambient_scene,
-      on: ambient_scene.id == ambient_flow.scene_id
+      on: ambient_scene.id == ambient_flow.scene_id,
+      left_join: ambient_target_flow in FlowRecord,
+      as: :ambient_target_flow,
+      on: ambient_target_flow.id == ambient_flow.flow_id
     )
   end
 
@@ -185,7 +188,8 @@ defmodule Storyarn.Projects.References.VariableReferenceQueries do
         pin: pin,
         pin_scene: pin_scene,
         ambient_flow: ambient_flow,
-        ambient_scene: ambient_scene
+        ambient_scene: ambient_scene,
+        ambient_target_flow: ambient_target_flow
       ] in query,
       where:
         fragment(
@@ -193,7 +197,7 @@ defmodule Storyarn.Projects.References.VariableReferenceQueries do
           (? = 'flow_node' AND ? IS NOT NULL AND ? IS NULL AND ? = ? AND ? IS NULL)
           OR (? = 'scene_zone' AND ? IS NOT NULL AND ? = ? AND ? IS NULL)
           OR (? = 'scene_pin' AND ? IS NOT NULL AND ? = ? AND ? IS NULL)
-          OR (? = 'scene_ambient_flow' AND ? IS NOT NULL AND ? = ? AND ? IS NULL)
+          OR (? = 'scene_ambient_flow' AND ? IS NOT NULL AND ? = ? AND ? IS NULL AND ? = ?)
           """,
           reference.source_type,
           node.id,
@@ -215,7 +219,9 @@ defmodule Storyarn.Projects.References.VariableReferenceQueries do
           ambient_flow.id,
           ambient_scene.project_id,
           ^project_id,
-          ambient_scene.deleted_at
+          ambient_scene.deleted_at,
+          ambient_target_flow.project_id,
+          ambient_scene.project_id
         )
     )
   end

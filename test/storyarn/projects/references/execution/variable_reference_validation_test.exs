@@ -940,6 +940,37 @@ defmodule Storyarn.Projects.References.VariableReferenceValidationTest do
                  ctx.project.id,
                  sources
                )
+
+      assert :ok =
+               VariableReferenceValidation.validate_snapshot_variable_references(
+                 ctx.project.id,
+                 [
+                   %{
+                     source_type: "scene_ambient_flow",
+                     source_id: 103,
+                     trigger_type: "on_event"
+                   }
+                 ]
+               )
+    end
+
+    test "rejects present non-map on-event ambient trigger configs", ctx do
+      invalid_configs = ["not-a-config", [], 123, false, nil]
+
+      for {trigger_config, source_id} <- Enum.with_index(invalid_configs, 104) do
+        assert {:error, {:invalid_variable_reference_source, "scene_ambient_flow", ^source_id}} =
+                 VariableReferenceValidation.validate_snapshot_variable_references(
+                   ctx.project.id,
+                   [
+                     %{
+                       source_type: "scene_ambient_flow",
+                       source_id: source_id,
+                       trigger_type: "on_event",
+                       trigger_config: trigger_config
+                     }
+                   ]
+                 )
+      end
     end
 
     test "indexes a dotted Scene display ref without splitting the shortcut", ctx do

@@ -351,23 +351,25 @@ defmodule Storyarn.Projects.References.PortableVariableSnapshot do
          namespace
        )
        when is_binary(table_name) and table_name != "" and is_list(columns) and is_list(rows) do
-    variable_columns = Enum.filter(columns, &portable_variable_column?/1)
+    with :ok <- validate_portable_table_entries(block_id, columns, rows) do
+      variable_columns = Enum.filter(columns, &portable_variable_column?/1)
 
-    definitions =
-      for row <- rows,
-          column <- variable_columns,
-          is_binary(row["slug"]) and row["slug"] != "",
-          is_binary(column["slug"]) and column["slug"] != "" do
-        variable_name = Enum.join([table_name, row["slug"], column["slug"]], ".")
+      definitions =
+        for row <- rows,
+            column <- variable_columns,
+            is_binary(row["slug"]) and row["slug"] != "",
+            is_binary(column["slug"]) and column["slug"] != "" do
+          variable_name = Enum.join([table_name, row["slug"], column["slug"]], ".")
 
-        %{
-          block_id: block_id,
-          resolution_key: {:table, namespace, table_name, row["slug"], column["slug"]},
-          qualified_ref: Enum.join([namespace, variable_name], ".")
-        }
-      end
+          %{
+            block_id: block_id,
+            resolution_key: {:table, namespace, table_name, row["slug"], column["slug"]},
+            qualified_ref: Enum.join([namespace, variable_name], ".")
+          }
+        end
 
-    {:ok, definitions}
+      {:ok, definitions}
+    end
   end
 
   defp portable_block_variable_definitions(%{} = _block, _namespace), do: {:ok, []}
@@ -572,9 +574,42 @@ defmodule Storyarn.Projects.References.PortableVariableSnapshot do
          "table_data" => %{"columns" => columns, "rows" => rows}
        })
        when is_list(columns) and is_list(rows) do
-    columns_by_slug = Map.new(columns, &{&1["slug"], &1})
-    formula_columns = Enum.filter(columns, &(&1["type"] == "formula"))
+    with :ok <- validate_portable_table_entries(block_id, columns, rows) do
+      columns_by_slug = Map.new(columns, &{&1["slug"], &1})
+      formula_columns = Enum.filter(columns, &(&1["type"] == "formula"))
+      portable_formula_rows_specs(rows, block_id, formula_columns, columns_by_slug)
+    end
+  end
 
+  defp portable_block_formula_binding_specs(%{} = _block), do: {:ok, []}
+
+  defp portable_block_formula_binding_specs(block), do: {:error, {:invalid_portable_formula_block, block}}
+
+  defp validate_portable_table_entries(block_id, columns, rows) do
+    with :ok <- validate_portable_table_entry_maps(block_id, :column, columns) do
+      validate_portable_table_entry_maps(block_id, :row, rows)
+    end
+  end
+
+  defp validate_portable_table_entry_maps(block_id, kind, entries) do
+    entries
+    |> Enum.with_index()
+    |> Enum.reduce_while(:ok, fn
+      {entry, _index}, :ok when is_map(entry) ->
+        {:cont, :ok}
+
+      {entry, index}, :ok ->
+        {:halt, invalid_portable_table_entry(kind, block_id, index, entry)}
+    end)
+  end
+
+  defp invalid_portable_table_entry(:column, block_id, index, entry),
+    do: {:error, {:invalid_portable_table_column, block_id, index, entry}}
+
+  defp invalid_portable_table_entry(:row, block_id, index, entry),
+    do: {:error, {:invalid_portable_table_row, block_id, index, entry}}
+
+  defp portable_formula_rows_specs(rows, block_id, formula_columns, columns_by_slug) do
     Enum.reduce_while(rows, {:ok, []}, fn row, {:ok, specs} ->
       case portable_formula_row_specs(block_id, row, formula_columns, columns_by_slug) do
         {:ok, row_specs} -> {:cont, {:ok, specs ++ row_specs}}
@@ -582,10 +617,6 @@ defmodule Storyarn.Projects.References.PortableVariableSnapshot do
       end
     end)
   end
-
-  defp portable_block_formula_binding_specs(%{} = _block), do: {:ok, []}
-
-  defp portable_block_formula_binding_specs(block), do: {:error, {:invalid_portable_formula_block, block}}
 
   defp portable_formula_row_specs(
          block_id,

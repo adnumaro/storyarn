@@ -3,8 +3,9 @@ defmodule Storyarn.Projects.References.VariableUsage do
   Read paths for variable usage and stale-reference repair.
 
   Legacy editor reads and bounded normalized lookup reads live here under the
-  canonical References context. SQL composition is delegated to dedicated
-  query modules; this execution module owns read-side orchestration only.
+  canonical References context. Dedicated query modules own the delegated
+  reads; this execution module still composes the bounded multi-source usage
+  lookup and orchestrates stale-reference reads and repair.
   """
 
   import Ecto.Query, warn: false

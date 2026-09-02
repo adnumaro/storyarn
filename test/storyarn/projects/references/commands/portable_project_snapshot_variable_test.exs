@@ -176,6 +176,59 @@ defmodule Storyarn.Projects.References.PortableProjectSnapshotVariableTest do
              PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
   end
 
+  test "rejects non-map portable table columns without raising" do
+    block = formula_table_block(101, "10.hp")
+    block = put_in(block, ["table_data", "columns"], ["not-a-column"])
+
+    snapshot =
+      project_snapshot([
+        sheet_entry(10, nil, [regular_block(100, "hp"), block])
+      ])
+
+    assert {:error, {:invalid_portable_table_column, 101, 0, "not-a-column"}} =
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
+  end
+
+  test "rejects non-map portable table rows before variable catalog access" do
+    block = formula_table_block(101, "10.hp")
+    block = put_in(block, ["table_data", "rows"], ["not-a-row"])
+
+    snapshot =
+      project_snapshot([
+        sheet_entry(10, nil, [regular_block(100, "hp"), block])
+      ])
+
+    assert {:error, {:invalid_portable_table_row, 101, 0, "not-a-row"}} =
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
+  end
+
+  test "treats historical empty condition maps as reference-free during portable planning" do
+    snapshot =
+      project_snapshot(
+        [],
+        [
+          %{
+            "original_id" => 200,
+            "type" => "condition",
+            "data" => %{"condition" => %{}}
+          },
+          %{
+            "original_id" => 201,
+            "type" => "dialogue",
+            "data" => %{
+              "responses" => [
+                %{"condition" => %{}, "instruction_assignments" => []},
+                %{"condition" => "{}", "instruction_assignments" => []}
+              ]
+            }
+          }
+        ]
+      )
+
+    assert {:ok, _plan} =
+             PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot)
+  end
+
   test "preserves noncanonical legacy JSON when fixed-shortcut references do not change" do
     condition_json =
       ~s({ "logic" : "all", "blocks" : [{"type":"block","rules":[{"sheet":"actors","variable":"hp","operator":"greater_than"}]}] })
