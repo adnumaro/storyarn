@@ -19,6 +19,8 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @release_gate :enforce_snapshot_lifecycle_release_gate
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
+  @exact_cleanup_authorization_config :exact_multipart_cleanup_cutover_authorization
+  @exact_cleanup_authorization "20260903190000"
   @authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
   @lock_gate_timeout 15_000
 
@@ -313,7 +315,9 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   } do
     with_release_gate(true, fn ->
       with_cleanup_authorization(@cleanup_authorization, fn ->
-        assert :ok = Release.run_project_snapshot_migrations(Repo, fn -> run_migration(:up, prefix) end)
+        with_exact_cleanup_authorization(@exact_cleanup_authorization, fn ->
+          assert :ok = Release.run_project_snapshot_migrations(Repo, fn -> run_migration(:up, prefix) end)
+        end)
       end)
     end)
 
@@ -538,6 +542,10 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
 
   defp with_cleanup_authorization(value, fun) do
     with_application_env(@cleanup_authorization_config, value, fun)
+  end
+
+  defp with_exact_cleanup_authorization(value, fun) do
+    with_application_env(@exact_cleanup_authorization_config, value, fun)
   end
 
   defp with_application_env(key, value, fun) do

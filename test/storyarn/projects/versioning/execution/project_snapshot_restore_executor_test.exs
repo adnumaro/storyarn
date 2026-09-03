@@ -27,6 +27,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Localization.ProjectLanguage
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Persistence.FlowConnectionRecord, as: FlowConnection
   alias Storyarn.Projects.Persistence.FlowNodeRecord, as: FlowNode
   alias Storyarn.Projects.Persistence.FlowRecord, as: Flow
@@ -88,6 +89,31 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     def path, do: @path
 
     defp sha256(bytes), do: :sha256 |> :crypto.hash(bytes) |> Base.encode16(case: :lower)
+  end
+
+  defmodule CanonicalSingleBlobArchiveReader do
+    @moduledoc false
+    alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest.SingleBlobArchiveReader
+
+    def verify(snapshot) do
+      with {:ok, plan} <- SingleBlobArchiveReader.verify(snapshot) do
+        {:ok, update_in(plan.manifest["objects"], fn [blob] -> [Map.put(blob, "path", blob_path(blob))] end)}
+      end
+    end
+
+    def stream_entry(plan, entry_path) do
+      if entry_path == path(),
+        do: SingleBlobArchiveReader.stream_entry(plan, SingleBlobArchiveReader.path()),
+        else: {:error, :entry_not_found}
+    end
+
+    def path do
+      {:ok, plan} = SingleBlobArchiveReader.verify(nil)
+      [blob] = plan.manifest["objects"]
+      blob_path(blob)
+    end
+
+    defp blob_path(blob), do: "blobs/" <> blob["sha256"] <> ".bin"
   end
 
   defmodule FailingMaterializer do
@@ -164,9 +190,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
   defmodule OwnershipDriftMaterializer do
     @moduledoc false
     alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest.EmptyMaterializer
+    alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest.FailingMaterializer
 
     def prepare(project_id, restore_id, manifest, project, prefix, keys) do
-      EmptyMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys)
+      FailingMaterializer.prepare(project_id, restore_id, manifest, project, prefix, keys)
     end
 
     def stage_destination_objects(plan, tracker) do
@@ -229,6 +256,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
   end
 
   setup do
+    :storyarn
+    |> Application.fetch_env!(:storage)
+    |> Keyword.fetch!(:upload_dir)
+    |> File.mkdir_p!()
+
     user = user_fixture()
     project = project_fixture(user)
     snapshot = full_project_snapshot_fixture(project, %{asset_blob_size_bytes: 0})
@@ -319,6 +351,86 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
 
     assert restore.status == "running"
     assert is_nil(restore.storage_reservation_id)
+  end
+
+  test "preflight rejects a cached provider namespace that no longer matches current storage", context do
+    assert {:ok, current_namespace} = Storage.namespace_fingerprint()
+    stale_namespace = String.duplicate("f", 64)
+    refute stale_namespace == current_namespace
+
+    assert {:error, :project_snapshot_restore_provider_namespace_changed} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               provider_namespace_fingerprint: stale_namespace,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: PrepareSpyMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    refute Process.get({PrepareSpyMaterializer, :called})
+    assert is_nil(Repo.get!(ProjectSnapshotRestore, context.restore.id).storage_reservation_id)
+  end
+
+  test "namespace drift after staging preserves homonymous new-provider bytes and original cleanup identity", context do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    assert {:ok, original_namespace} = Storage.namespace_fingerprint()
+
+    new_upload_dir =
+      original_storage
+      |> Keyword.fetch!(:upload_dir)
+      |> Path.join("restore-namespace-drift-#{System.unique_integer([:positive])}")
+
+    File.mkdir_p!(new_upload_dir)
+    new_bytes = "unrelated bytes in the new provider"
+    test_process = self()
+    project = Repo.get!(Project, context.restore.project_id)
+    live_sheet = sheet_fixture(project)
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+      File.rm_rf!(new_upload_dir)
+      Process.delete({OwnershipDriftMaterializer, :before_stage})
+    end)
+
+    Process.put({OwnershipDriftMaterializer, :before_stage}, fn ->
+      restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+      reservation = Repo.get!(StorageReservation, restore.storage_reservation_id)
+      key = reservation.storage_namespace <> "/" <> CanonicalSingleBlobArchiveReader.path()
+      assert Storage.multipart_cleanup_key?(key)
+      assert {:ok, original_bytes} = Storage.download(key)
+      Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :upload_dir, new_upload_dir))
+      assert {:ok, new_namespace} = Storage.namespace_fingerprint()
+      refute new_namespace == original_namespace
+      assert {:ok, _url} = Local.upload(key, new_bytes, "application/octet-stream")
+      send(test_process, {:staged_namespace_object, key, original_bytes})
+    end)
+
+    assert {:retry, :project_snapshot_restore_provider_namespace_changed} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               provider_namespace_fingerprint: original_namespace,
+               archive_reader: CanonicalSingleBlobArchiveReader,
+               asset_materializer: OwnershipDriftMaterializer,
+               project_recovery: AcceptingRecovery
+             )
+
+    assert_received {:staged_namespace_object, key, original_bytes}
+    assert {:ok, ^new_bytes} = Storage.download(key)
+    assert is_nil(Repo.get!(Sheet, live_sheet.id).deleted_at)
+    cleanup_targets = [key, "__storyarn_force_delete__:" <> key]
+
+    requests =
+      Repo.all(
+        from request in StorageCleanupRequest,
+          where: fragment("? && ?::text[]", request.storage_keys, ^cleanup_targets)
+      )
+
+    assert requests != []
+    assert Enum.all?(requests, &(&1.provider_namespace_fingerprint == original_namespace))
+    restore = Repo.get!(ProjectSnapshotRestore, context.restore.id)
+    assert Repo.get!(StorageReservation, restore.storage_reservation_id).status == "released"
+
+    Application.put_env(:storyarn, :storage, original_storage)
+    assert {:ok, ^original_bytes} = Storage.download(key)
+    assert :ok = Local.delete(key)
   end
 
   test "exact commit fails closed when direct project ownership drifts after preflight", context do

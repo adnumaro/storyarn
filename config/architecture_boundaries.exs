@@ -599,7 +599,7 @@ storage_cleanup_persistence_ownership = %{
       write_authority: :full_lifecycle,
       path: "lib/storyarn/projects/assets/execution/storage_compensation.ex",
       functions: [
-        %{identity: "defp insert_cleanup_request/3", operations: [:insert]},
+        %{identity: "defp insert_cleanup_request_with_handoff/2", operations: [:insert]},
         %{identity: "defp retry_persisted_cleanup_request/2", operations: [:delete]},
         %{identity: "defp rotate_persisted_cleanup_request/2", operations: [:delete, :insert]}
       ],
@@ -4299,6 +4299,12 @@ policy = %{
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason: "Project lifecycle enforces commercial policy through the public Commercial facade"
+    },
+    %{
+      source: "lib/storyarn/projects/lifecycle/commands/workspace_data_lifecycle.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace hard-delete preparation verifies the Commercial-owned canonical workspace lock"
     },
     %{
       source: "lib/storyarn/projects/versioning/adapters/commercial/storage_reservations.ex",

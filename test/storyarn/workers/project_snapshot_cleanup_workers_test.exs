@@ -8,6 +8,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
@@ -87,13 +88,11 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
   test "reconciler restores a nonterminal intent whose cleanup job is dead" do
     intent = cleanup_intent_fixture(0)
-    terminal_intent = cleanup_intent_fixture(0)
-    failed_key = hd(terminal_intent.storage_keys)
+    terminal_intent = cleanup_intent_fixture(0, seed_content: "terminal cleanup")
     handler_id = "snapshot-cleanup-recovery-#{System.unique_integer([:positive])}"
     parent = self()
 
-    assert {:ok, _url} = Storage.upload(failed_key, "terminal cleanup", "application/octet-stream")
-    on_exit(fn -> Storage.delete(failed_key) end)
+    expire_initial_handoff!(terminal_intent)
 
     assert {:ok, :terminal} =
              process_cleanup_until_boundary(terminal_intent.id,
@@ -286,6 +285,8 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     File.mkdir_p!(storage_path)
     on_exit(fn -> File.rmdir(storage_path) end)
 
+    expire_initial_handoff!(intent)
+
     log =
       capture_log(fn ->
         assert :ok = perform_cleanup_worker_until_boundary(cleanup_job(intent.id))
@@ -323,12 +324,10 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   end
 
   test "a superseded cleanup claim cannot apply a stale terminal result" do
-    intent = cleanup_intent_fixture(0)
-    failed_key = hd(intent.storage_keys)
+    intent = cleanup_intent_fixture(0, seed_content: "stale claim")
     test_process = self()
 
-    assert {:ok, _url} = Storage.upload(failed_key, "stale claim", "application/octet-stream")
-    on_exit(fn -> Storage.delete(failed_key) end)
+    expire_initial_handoff!(intent)
 
     stale_worker =
       Task.async(fn ->
@@ -552,6 +551,13 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     # Bind the cleanup ownership to an existing local namespace. Creating the
     # configured root after the handoff is intentionally a namespace change.
     File.mkdir_p!(Path.dirname(storage_path("namespace-probe")))
+
+    if content = Keyword.get(opts, :seed_content) do
+      storage_key = hd(storage_keys)
+      assert {:ok, _url} = Storage.upload(storage_key, content, "application/octet-stream")
+      on_exit(fn -> Storage.delete(storage_key) end)
+    end
+
     assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
 
     receipt_storage_keys =
@@ -644,6 +650,20 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       attempt: 1,
       max_attempts: 5
     })
+  end
+
+  defp expire_initial_handoff!(intent) do
+    request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+    assert request.multipart_cleanup_phase == "discover"
+    assert request.multipart_cleanup_generation == 0
+    now = TimeHelpers.now()
+
+    request
+    |> StorageCleanupRequest.multipart_quiescence_changeset(
+      DateTime.add(now, -2, :second),
+      DateTime.add(now, -1, :second)
+    )
+    |> Repo.update!()
   end
 
   # Exact multipart cleanup intentionally performs at most one provider

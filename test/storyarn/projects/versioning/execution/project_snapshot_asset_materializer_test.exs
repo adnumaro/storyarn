@@ -490,6 +490,62 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializerTest do
     cleanup_fixture_objects(fixture, plan)
   end
 
+  test "workspace import retry rejects a same-size corrupt destination after cleanup handoff", %{project: project} do
+    fixture = project.id |> catalog_fixture() |> workspace_snapshot_import_fixture(project.workspace_id)
+    upload_staging_fixture(fixture)
+    assert {:ok, plan} = prepare_plan(project.id, fixture)
+    tracker = StorageCompensation.new()
+    assert :ok = ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
+
+    [asset | _rest] = plan.assets
+    corrupt_bytes = String.duplicate("x", byte_size(fixture.bytes))
+    assert {:ok, _url} = Storage.upload(asset.destination_key, corrupt_bytes, "image/png")
+    assert {:ok, _cleanup_request} = StorageCompensation.persist_cleanup_request([asset.destination_key])
+
+    retry_tracker = StorageCompensation.new()
+
+    assert {:error, {:snapshot_asset_staging_failed, logical_id, :storage_key_cleanup_handed_off}} =
+             ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, retry_tracker)
+
+    assert logical_id == asset.logical_id
+    assert {:ok, ^corrupt_bytes} = Storage.download(asset.destination_key)
+    assert {:ok, source_bytes} = Storage.download(asset.source_key)
+    assert source_bytes == fixture.bytes
+
+    cleanup_fixture_objects(fixture, plan)
+  end
+
+  test "cleanup handoff still blocks adoption without the corresponding durable workspace import plan", %{
+    project: project,
+    user: user
+  } do
+    fixture = project.id |> catalog_fixture() |> workspace_snapshot_import_fixture(project.workspace_id)
+    upload_staging_fixture(fixture)
+    assert {:ok, plan} = prepare_plan(project.id, fixture)
+    tracker = StorageCompensation.new()
+    assert :ok = ProjectSnapshotAssetMaterializer.stage_destination_objects(plan, tracker)
+
+    assert {:ok, _cleanup_request} =
+             plan
+             |> ProjectSnapshotAssetMaterializer.planned_storage_keys()
+             |> StorageCompensation.persist_cleanup_request()
+
+    assert {:error, {:snapshot_asset_insert_failed, :batch, :storage_key_cleanup_handed_off}} =
+             Billing.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+               locked_project = Repo.get!(Project, project.id)
+               ProjectSnapshotAssetMaterializer.adopt_locked(plan, locked_project, user.id, tracker)
+             end)
+
+    assert Assets.list_assets_for_export(project.id) == []
+
+    Enum.each(plan.assets, fn asset ->
+      assert {:ok, bytes} = Storage.download(asset.destination_key)
+      assert bytes == fixture.bytes
+    end)
+
+    cleanup_fixture_objects(fixture, plan)
+  end
+
   test "database rollback removes rows and compensates every pre-staged logical object", %{
     project: project,
     user: user

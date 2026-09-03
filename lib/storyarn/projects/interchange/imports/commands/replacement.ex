@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.Imports.Replacement do
   alias Storyarn.Commercial
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.FlowProjectTrash
   alias Storyarn.Projects.Imports.Error
   alias Storyarn.Projects.Imports.FormatRegistry
@@ -170,9 +171,16 @@ defmodule Storyarn.Projects.Imports.Replacement do
     case Repo.get(Project, attempt_hint.project_id) do
       %Project{deleted_at: nil} = project ->
         result =
-          Commercial.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
-            cleanup_terminal_recovery_snapshot_locked(attempt_hint, project)
-          end)
+          with {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            Commercial.transact_with_workspace_lock(project.workspace_id, fn _workspace ->
+              cleanup_terminal_recovery_snapshot_locked(
+                attempt_hint,
+                project,
+                provider_namespace_fingerprint
+              )
+            end)
+          end
 
         publish_cleanup_transition(result)
 
@@ -183,29 +191,39 @@ defmodule Storyarn.Projects.Imports.Replacement do
 
   # The global order is workspace, project, snapshot, attempt. Snapshot comes
   # before the attempt because deleting it nilifies the attempt FK.
-  defp cleanup_terminal_recovery_snapshot_locked(attempt_hint, project_hint) do
+  defp cleanup_terminal_recovery_snapshot_locked(attempt_hint, project_hint, provider_namespace_fingerprint) do
     with %Project{} = project <- lock_active_project(project_hint),
          snapshot = lock_terminal_cleanup_snapshot(attempt_hint, project),
          %ProjectImportAttempt{} = attempt <- lock_terminal_cleanup_attempt(attempt_hint, project),
          :ok <- validate_terminal_cleanup_attempt(attempt),
-         :ok <- validate_terminal_cleanup_snapshot(attempt, project, snapshot) do
-      cleanup_snapshot_by_state(snapshot, project.workspace_id)
+         :ok <- validate_terminal_cleanup_snapshot(attempt, project, snapshot),
+         {:ok, ^provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+      cleanup_snapshot_by_state(snapshot, project.workspace_id, provider_namespace_fingerprint)
     else
       nil -> {:ok, :not_found}
       {:error, :not_terminal} -> {:ok, :not_terminal}
       {:error, reason} -> {:error, reason}
+      {:ok, _changed_namespace} -> {:error, :pre_import_snapshot_cleanup_failed}
       _invalid -> {:error, :invalid_import_snapshot_identity}
     end
   end
 
-  defp cleanup_snapshot_by_state(nil, _workspace_id), do: {:ok, :not_found}
+  defp cleanup_snapshot_by_state(nil, _workspace_id, _provider_namespace_fingerprint), do: {:ok, :not_found}
 
-  defp cleanup_snapshot_by_state(%ProjectSnapshot{lifecycle_state: state} = snapshot, workspace_id)
+  defp cleanup_snapshot_by_state(
+         %ProjectSnapshot{lifecycle_state: state} = snapshot,
+         workspace_id,
+         provider_namespace_fingerprint
+       )
        when state in @active_snapshot_states do
     case Versioning.request_import_recovery_snapshot_cancellation_in_transaction(snapshot, workspace_id) do
       {:ok, %ProjectSnapshot{lifecycle_state: terminal_state} = terminal_snapshot}
       when terminal_state in @deletable_snapshot_states ->
-        prepare_terminal_snapshot_cleanup(terminal_snapshot, workspace_id)
+        prepare_terminal_snapshot_cleanup(
+          terminal_snapshot,
+          workspace_id,
+          provider_namespace_fingerprint
+        )
 
       {:ok, %ProjectSnapshot{} = cancellation_requested} ->
         {:ok, {:cancellation_requested, cancellation_requested}}
@@ -218,17 +236,37 @@ defmodule Storyarn.Projects.Imports.Replacement do
     end
   end
 
-  defp cleanup_snapshot_by_state(%ProjectSnapshot{lifecycle_state: state} = snapshot, workspace_id)
+  defp cleanup_snapshot_by_state(
+         %ProjectSnapshot{lifecycle_state: state} = snapshot,
+         workspace_id,
+         provider_namespace_fingerprint
+       )
        when state in @deletable_snapshot_states do
-    prepare_terminal_snapshot_cleanup(snapshot, workspace_id)
+    prepare_terminal_snapshot_cleanup(snapshot, workspace_id, provider_namespace_fingerprint)
   end
 
-  defp cleanup_snapshot_by_state(%ProjectSnapshot{}, _workspace_id), do: {:ok, :deferred}
+  defp cleanup_snapshot_by_state(%ProjectSnapshot{}, _workspace_id, _provider_namespace_fingerprint), do: {:ok, :deferred}
 
-  defp prepare_terminal_snapshot_cleanup(snapshot, workspace_id) do
-    case Versioning.prepare_abandoned_import_snapshot_cleanup_in_transaction(snapshot, workspace_id) do
+  defp prepare_terminal_snapshot_cleanup(snapshot, workspace_id, provider_namespace_fingerprint) do
+    case Versioning.prepare_abandoned_import_snapshot_cleanup_in_transaction(
+           snapshot,
+           workspace_id,
+           provider_namespace_fingerprint
+         ) do
       {:ok, %SnapshotCleanupIntent{} = intent} -> {:ok, {:cleanup_intent, intent}}
       {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp provider_namespace_fingerprint do
+    case Storage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) ->
+        if Regex.match?(@sha256_regex, fingerprint),
+          do: {:ok, fingerprint},
+          else: {:error, :pre_import_snapshot_cleanup_failed}
+
+      {:error, _reason} ->
+        {:error, :pre_import_snapshot_cleanup_failed}
     end
   end
 

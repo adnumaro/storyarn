@@ -2635,16 +2635,42 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 5
                })
 
-      assert_enqueued(
+      refute_enqueued(
         worker: DeleteStorageObjectsWorker,
         args: %{cleanup_request_id: cleanup_request_id}
       )
 
       assert %StorageCleanupRequest{
                multipart_cleanup_phase: "discover",
-               multipart_quiescence_started_at: nil,
-               multipart_quiescence_not_before: nil
-             } = Repo.get!(StorageCleanupRequest, cleanup_request_id)
+               multipart_cleanup_generation: 0,
+               multipart_quiescence_started_at: %DateTime{} = started_at,
+               multipart_quiescence_not_before: %DateTime{} = not_before
+             } = cleanup_request = Repo.get!(StorageCleanupRequest, cleanup_request_id)
+
+      assert DateTime.after?(not_before, started_at)
+      assert {:deferred, handoff_seconds} = retry_cleanup_request_until_boundary(cleanup_request_id)
+      assert handoff_seconds > 1
+
+      handoff_now = TimeHelpers.now()
+
+      cleanup_request
+      |> StorageCleanupRequest.multipart_quiescence_changeset(
+        DateTime.add(handoff_now, -2, :second),
+        DateTime.add(handoff_now, -1, :second)
+      )
+      |> Repo.update!()
+
+      assert :ok =
+               RetryStorageCleanupRequestsWorker.perform(%Oban.Job{
+                 args: %{},
+                 attempt: 1,
+                 max_attempts: 5
+               })
+
+      assert_enqueued(
+        worker: DeleteStorageObjectsWorker,
+        args: %{cleanup_request_id: cleanup_request_id}
+      )
 
       assert {:deferred, defer_seconds} =
                retry_cleanup_request_until_boundary(cleanup_request_id)

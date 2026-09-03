@@ -21,7 +21,12 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace do
       Commercial.transact_with_workspace_lock(workspace_id, fn locked_workspace ->
         with :ok <- lock_and_authorize_owner(locked_workspace, user_id),
              {:ok, workspace} <- get_locked_workspace(workspace_id),
-             {:ok, project_cleanup} <- Projects.prepare_workspace_data_hard_delete(locked_workspace.id),
+             {:ok, provider_namespace_fingerprint} <- Projects.storage_provider_namespace_fingerprint(),
+             {:ok, project_cleanup} <-
+               Projects.prepare_workspace_data_hard_delete(
+                 locked_workspace.id,
+                 provider_namespace_fingerprint
+               ),
              :ok <- Banner.prepare_hard_delete(workspace),
              {:ok, deleted_workspace} <- Repo.delete(workspace) do
           {:ok, {deleted_workspace, project_cleanup}}

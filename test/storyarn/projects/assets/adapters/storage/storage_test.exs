@@ -1,9 +1,11 @@
 defmodule Storyarn.Projects.Assets.StorageTest do
-  use ExUnit.Case, async: false
+  use Storyarn.DataCase, async: false
 
   alias Storyarn.MultipartStorageSpy
   alias Storyarn.Platform.ObjectStorage
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
 
   @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
 
@@ -34,6 +36,62 @@ defmodule Storyarn.Projects.Assets.StorageTest do
     end
   end
 
+  defmodule WriteFenceAdapter do
+    @moduledoc false
+
+    def upload(key, _data, _content_type), do: dispatch(:upload, key, {:ok, "stored"})
+    def upload_stream(key, _chunks, _content_type), do: dispatch(:upload_stream, key, {:ok, "stored"})
+    def put_if_absent(key, _data, _content_type), do: dispatch(:put_if_absent, key, {:ok, "stored", true})
+
+    def presigned_upload_url(key, _content_type, _opts), do: dispatch(:presigned_upload_url, key, {:ok, "signed", %{}})
+
+    def copy(_source_key, destination_key), do: dispatch(:copy, destination_key, :ok)
+
+    def copy_if_absent(_source_key, destination_key), do: dispatch(:copy_if_absent, destination_key, {:ok, true})
+
+    def delete(key), do: dispatch(:delete, key, :ok)
+
+    defp dispatch(operation, key, result) do
+      send(self(), {:write_fence_adapter, operation, key})
+
+      case Process.get({__MODULE__, :after_dispatch}) do
+        callback when is_function(callback, 0) ->
+          Process.delete({__MODULE__, :after_dispatch})
+          callback.()
+
+        _none ->
+          :ok
+      end
+
+      Process.get({__MODULE__, operation, :result}, result)
+    end
+  end
+
+  defmodule OverwritingWriteFenceAdapter do
+    @moduledoc false
+
+    def upload(key, bytes, content_type), do: after_write(key, Local.upload(key, bytes, content_type))
+
+    # Model a provider's successful overwrite without changing Local's
+    # exclusive-create stream implementation.
+    def upload_stream(key, chunks, content_type) do
+      bytes = chunks |> Enum.to_list() |> IO.iodata_to_binary()
+      after_write(key, Local.upload(key, bytes, content_type))
+    end
+
+    def copy(source, destination), do: after_write(destination, Local.copy(source, destination))
+
+    def delete(key) do
+      send(self(), {:overwriting_adapter_delete, key})
+      Local.delete(key)
+    end
+
+    defp after_write(key, result) do
+      Process.get({__MODULE__, :after_write}).(key)
+      result
+    end
+  end
+
   test "keeps the legacy multipart deadline key as a deployment compatibility fallback" do
     current_config = Application.get_env(:storyarn, ObjectStorage)
     legacy_config = Application.get_env(:storyarn, @legacy_config_key)
@@ -47,6 +105,19 @@ defmodule Storyarn.Projects.Assets.StorageTest do
     end)
 
     assert Storage.multipart_upload_part_deadline_ms() == 1_234
+  end
+
+  test "nested operation deadlines keep the earliest budget and restore their caller" do
+    ObjectStorage.with_operation_deadline(5_000, fn ->
+      outer_deadline = ObjectStorage.write_operation_deadline()
+
+      ObjectStorage.with_operation_deadline(500, fn ->
+        inner_deadline = ObjectStorage.write_operation_deadline()
+        assert inner_deadline < outer_deadline
+      end)
+
+      assert ObjectStorage.write_operation_deadline() == outer_deadline
+    end)
   end
 
   @test_dir "test/tmp/storage_dispatch"
@@ -102,8 +173,8 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   end
 
   describe "multipart cleanup policy" do
-    test "covers the UploadPart deadline after second-precision clock truncation" do
-      deadline_ms = Storage.multipart_upload_part_deadline_ms()
+    test "covers the total multipart writer deadline after second-precision clock truncation" do
+      deadline_ms = Storage.multipart_upload_total_deadline_ms()
       quiescence_ms = Storage.multipart_cleanup_quiescence_seconds() * 1_000
 
       assert quiescence_ms >= deadline_ms + 1_000
@@ -127,6 +198,155 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       refute Storage.multipart_cleanup_key?(key <> "/extra")
       refute Storage.multipart_cleanup_key?(String.replace(key, lease_token, String.upcase(lease_token)))
       refute Storage.multipart_cleanup_key?(String.replace(key, "projects/42", "projects/0"))
+    end
+
+    test "blocks every internal write destination after durable multipart handoff" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      persist_multipart_handoff!("__storyarn_force_delete__:" <> key)
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.upload(key, "bytes", "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.upload_stream(key, [{:ok, "bytes"}], "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.put_if_absent(key, "bytes", "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.presigned_upload_url(key, "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.copy("source", key)
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.copy_if_absent("source", key)
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.copy_if_absent_or_stream("source", key, 5, "application/zip")
+
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "never issues a bearer PUT for cleanup-protected keys even before handoff" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      token = Ecto.UUID.generate()
+      hash = String.duplicate("a", 64)
+
+      keys = [
+        "projects/1/snapshots/archives/v2/staging/BearerFenceTok01/snapshot.zip",
+        "projects/1/snapshots/archives/v2/ready/BearerFenceTok01/manifest.json",
+        "projects/1/storage-reservations/v1/restore-staging/#{token}/blobs/#{hash}.png",
+        "workspace-snapshot-imports/v1/1/#{token}/snapshot.zip",
+        "workspace-snapshot-imports/v1/1/#{token}/blobs/#{hash}.png"
+      ]
+
+      for key <- keys do
+        assert {:error, :presigned_upload_requires_server_upload} =
+                 Storage.presigned_upload_url(key, "application/zip", expires_in: 3_600, content_length: 5)
+      end
+
+      refute_received {:write_fence_adapter, :presigned_upload_url, _key}
+    end
+
+    test "removes a newly created conditional object when cleanup handoff commits during the provider write" do
+      key = "projects/1/snapshots/archives/v2/staging/RaceFenceToken12/snapshot.zip"
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      Process.put({WriteFenceAdapter, :after_dispatch}, fn -> persist_multipart_handoff!(key) end)
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.put_if_absent(key, "bytes", "application/zip")
+
+      assert_received {:write_fence_adapter, :put_if_absent, ^key}
+      assert_received {:write_fence_adapter, :delete, ^key}
+    end
+
+    test "unconditional writes never delete a pre-existing destination after cleanup handoff" do
+      source_key = "overwrite-fence/source.png"
+      assert {:ok, _url} = Local.upload(source_key, "replacement bytes", "image/png")
+      Application.put_env(:storyarn, :storage, adapter: OverwritingWriteFenceAdapter, upload_dir: @test_dir)
+
+      Process.put({OverwritingWriteFenceAdapter, :after_write}, fn key -> persist_multipart_handoff!(key) end)
+
+      for {operation, write_fun} <- [
+            {:upload, fn key -> Storage.upload(key, "replacement bytes", "image/png") end},
+            {:upload_stream, fn key -> Storage.upload_stream(key, ["replacement bytes"], "image/png") end},
+            {:copy, fn key -> Storage.copy(source_key, key) end}
+          ],
+          namespace <- [:asset, :blob] do
+        key =
+          case namespace do
+            :asset -> "projects/1/assets/#{Ecto.UUID.generate()}/#{operation}.png"
+            :blob -> "projects/1/blobs/#{Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)}.png"
+          end
+
+        assert {:ok, _url} = Local.upload(key, "previously owned bytes", "image/png")
+        assert {:error, :storage_key_cleanup_handed_off} = write_fun.(key)
+        refute_received {:overwriting_adapter_delete, ^key}
+        assert {:ok, "replacement bytes"} = Local.download(key)
+        assert Repo.exists?(from request in StorageCleanupRequest, where: ^key in request.storage_keys)
+      end
+    end
+
+    test "never deletes a pre-existing object after a conditional write reports not created" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      for {operation, key, write_fun} <- [
+            {:put_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken01/snapshot.zip",
+             fn key -> Storage.put_if_absent(key, "bytes", "application/zip") end},
+            {:copy_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken02/snapshot.zip",
+             fn key -> Storage.copy_if_absent("source", key) end},
+            {:copy_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken03/snapshot.zip",
+             fn key ->
+               Storage.copy_if_absent_or_stream("source", key, 5, "application/zip")
+             end}
+          ] do
+        Process.put(
+          {WriteFenceAdapter, operation, :result},
+          if(operation == :put_if_absent, do: {:ok, "stored", false}, else: {:ok, false})
+        )
+
+        Process.put({WriteFenceAdapter, :after_dispatch}, fn -> persist_multipart_handoff!(key) end)
+
+        assert {:error, :storage_key_cleanup_handed_off} = write_fun.(key)
+        assert_received {:write_fence_adapter, ^operation, ^key}
+        refute_received {:write_fence_adapter, :delete, ^key}
+      end
+    end
+
+    test "rejects non-canonical write destinations before provider dispatch" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      invalid_key = "projects/1/snapshots/../escape.zip"
+
+      assert {:error, :invalid_key} = Storage.upload(invalid_key, "bytes", "application/zip")
+      assert {:error, :invalid_key} = Storage.upload_stream(invalid_key, ["bytes"], "application/zip")
+      assert {:error, :invalid_key} = Storage.put_if_absent(invalid_key, "bytes", "application/zip")
+      assert {:error, :invalid_key} = Storage.presigned_upload_url(invalid_key, "application/zip")
+      assert {:error, :invalid_key} = Storage.copy("source", invalid_key)
+      assert {:error, :invalid_key} = Storage.copy_if_absent("source", invalid_key)
+
+      assert {:error, :invalid_key} =
+               Storage.copy_if_absent_or_stream("source", invalid_key, 5, "application/zip")
+
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "fences non-multipart destinations owned by a mixed cleanup receipt" do
+      multipart_key = "projects/1/snapshots/archives/v2/staging/MixedFenceToken1/snapshot.zip"
+      blob_key = "projects/1/blobs/#{String.duplicate("a", 64)}.png"
+      persist_multipart_handoff!([multipart_key, "__storyarn_force_delete__:" <> blob_key])
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.upload(blob_key, "bytes", "image/png")
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "releases reusable blob keys after their cleanup request is consumed" do
+      multipart_key = "projects/1/snapshots/archives/v2/staging/ReleasedFenceTok/snapshot.zip"
+      blob_key = "projects/1/blobs/#{String.duplicate("b", 64)}.png"
+      request = persist_multipart_handoff!([multipart_key, "__storyarn_force_delete__:" <> blob_key])
+      Repo.delete!(request)
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:ok, "stored"} = Storage.upload(blob_key, "bytes", "image/png")
+      assert_received {:write_fence_adapter, :upload, ^blob_key}
     end
   end
 
@@ -491,6 +711,14 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   # =============================================================================
 
   describe "presigned_upload_url/3" do
+    test "preserves presigning outside cleanup-protected namespaces" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      key = "projects/1/assets/#{Ecto.UUID.generate()}/image.png"
+
+      assert {:ok, "signed", %{}} = Storage.presigned_upload_url(key, "image/png", content_length: 5)
+      assert_received {:write_fence_adapter, :presigned_upload_url, ^key}
+    end
+
     test "delegates to configured adapter" do
       # Local adapter returns :not_supported
       assert {:error, :not_supported} = Storage.presigned_upload_url("key", "text/plain")
@@ -531,4 +759,16 @@ defmodule Storyarn.Projects.Assets.StorageTest do
 
   defp restore_env(key, nil), do: Application.delete_env(:storyarn, key)
   defp restore_env(key, value), do: Application.put_env(:storyarn, key, value)
+
+  defp persist_multipart_handoff!(storage_key) when is_binary(storage_key), do: persist_multipart_handoff!([storage_key])
+
+  defp persist_multipart_handoff!(storage_keys) when is_list(storage_keys) do
+    %StorageCleanupRequest{}
+    |> StorageCleanupRequest.changeset(%{
+      storage_keys: storage_keys,
+      provider_namespace_fingerprint: String.duplicate("a", 64),
+      multipart_cleanup_phase: "discover"
+    })
+    |> Repo.insert!()
+  end
 end

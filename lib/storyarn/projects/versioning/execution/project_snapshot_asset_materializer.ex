@@ -395,7 +395,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer do
 
   defp stage_protected_blob(blob, tracker, false) do
     with :ok <- verify_object(blob.source_key, blob.size, blob.sha256) do
-      stage_protected_blob_locked(blob, tracker)
+      # The durable workspace-import plan retains these bytes across retries;
+      # reuse a verified destination without issuing another fenced write.
+      case verify_object(blob.destination_key, blob.size, blob.sha256) do
+        :ok -> :ok
+        {:error, _reason} -> stage_protected_blob_locked(blob, tracker)
+      end
     end
   end
 
@@ -467,7 +472,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotAssetMaterializer do
 
   defp stage_logical_asset(asset, tracker, false) do
     with :ok <- verify_object(asset.source_key, asset.content_size, asset.sha256) do
-      do_stage_logical_asset(asset, tracker)
+      case verify_object(asset.destination_key, asset.content_size, asset.sha256) do
+        :ok -> StorageCompensation.track_force_delete(tracker, asset.destination_key)
+        {:error, _reason} -> do_stage_logical_asset(asset, tracker)
+      end
     end
   end
 

@@ -1,5 +1,5 @@
 defmodule Storyarn.Projects.Imports.PlanStorageTest do
-  use ExUnit.Case, async: false
+  use Storyarn.DataCase, async: false
 
   alias Storyarn.Platform.Vault
   alias Storyarn.Projects.Assets.Storage

@@ -1158,20 +1158,9 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   defp insert_cleanup_request(storage_keys, attrs, persistence_kind) do
     with {:ok, attrs} <- prepare_cleanup_request_attrs(storage_keys, attrs),
-         {:ok, attrs} <- finalize_cleanup_request_attrs(storage_keys, attrs) do
-      attrs = Map.put(attrs, :storage_keys, storage_keys)
-
-      insert_result = %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert()
-
-      case insert_result do
-        {:ok, cleanup_request} = success ->
-          report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
-
-          success
-
-        {:error, _changeset} = error ->
-          error
-      end
+         {:ok, cleanup_request} <- insert_cleanup_request_with_handoff(storage_keys, attrs) do
+      report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
+      {:ok, cleanup_request}
     end
   rescue
     error ->
@@ -1183,6 +1172,28 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}")
 
       {:error, {kind, safe_error(reason)}}
+  end
+
+  defp insert_cleanup_request_with_handoff(storage_keys, attrs) do
+    with_cleanup_handoff(storage_keys, fn ->
+      with {:ok, attrs} <- finalize_cleanup_request_attrs(storage_keys, attrs) do
+        attrs = Map.put(attrs, :storage_keys, storage_keys)
+        %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert()
+      end
+    end)
+  end
+
+  defp with_cleanup_handoff(storage_keys, fun) do
+    if multipart_cleanup_keys(storage_keys) == [] do
+      StorageKeyLock.with_cleanup_handoff_locks(storage_keys, fun)
+    else
+      # A multipart restore/import cleanup can also own deterministic blob
+      # keys. Their durable owner rows are committed before object I/O and are
+      # rechecked before deletion; ordinary asset keys are non-reusable UUIDs.
+      # Any future reusable writer for one of these keys must join the global
+      # admission gate before it may rely on this mixed-request handoff.
+      StorageKeyLock.with_multipart_cleanup_handoff(storage_keys, fun)
+    end
   end
 
   defp prepare_cleanup_request_attrs(storage_keys, attrs) do
@@ -1209,18 +1220,43 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   defp drop_unused_provider_namespace(%{owner_kind: "snapshot_lifecycle"} = attrs), do: attrs
   defp drop_unused_provider_namespace(attrs), do: Map.delete(attrs, :provider_namespace_fingerprint)
 
-  defp finalize_cleanup_request_attrs(_storage_keys, attrs), do: {:ok, attrs}
+  defp finalize_cleanup_request_attrs(storage_keys, attrs) do
+    if multipart_cleanup_keys(storage_keys) == [] do
+      {:ok, attrs}
+    else
+      now = database_clock_now()
+      minimum_not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
+
+      not_before = cleanup_not_before(Map.get(attrs, :multipart_quiescence_not_before), minimum_not_before)
+
+      {:ok,
+       Map.merge(attrs, %{
+         multipart_quiescence_started_at: now,
+         multipart_quiescence_not_before: not_before
+       })}
+    end
+  end
+
+  defp cleanup_not_before(%DateTime{} = requested, minimum_not_before) do
+    if DateTime.after?(requested, minimum_not_before), do: requested, else: minimum_not_before
+  end
+
+  defp cleanup_not_before(_missing_or_short, minimum_not_before), do: minimum_not_before
 
   defp capture_missing_provider_namespace(attrs) do
-    case Storage.namespace_fingerprint() do
-      {:ok, fingerprint} when is_binary(fingerprint) ->
-        {:ok,
-         attrs
-         |> Map.put(:provider_namespace_fingerprint, fingerprint)
-         |> Map.put(:multipart_cleanup_phase, "discover")}
+    if Repo.in_transaction?() do
+      {:error, :multipart_cleanup_provider_namespace_capture_required}
+    else
+      case Storage.namespace_fingerprint() do
+        {:ok, fingerprint} when is_binary(fingerprint) ->
+          {:ok,
+           attrs
+           |> Map.put(:provider_namespace_fingerprint, fingerprint)
+           |> Map.put(:multipart_cleanup_phase, "discover")}
 
-      _unavailable ->
-        {:error, :multipart_cleanup_provider_namespace_unavailable}
+        _unavailable ->
+          {:error, :multipart_cleanup_provider_namespace_unavailable}
+      end
     end
   end
 
@@ -1372,7 +1408,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     storage_key = cleanup_target_storage_key(cleanup_target)
     force_delete? = force_delete_target?(cleanup_target)
 
-    StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+    StorageKeyLock.with_cleanup_storage_key_lock(storage_key, fn ->
       deferred_storage_delete(storage_key, force_delete?, restore_cleanup_owner)
     end)
   rescue
@@ -1389,7 +1425,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     if Repo.in_transaction?() do
       delete_owned_storage_key_in_transaction(storage_key, force_delete?)
     else
-      StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+      StorageKeyLock.with_cleanup_storage_key_lock(storage_key, fn ->
         deferred_storage_delete(storage_key, force_delete?)
       end)
     end

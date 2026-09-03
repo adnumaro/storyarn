@@ -78,7 +78,13 @@ defmodule Storyarn.Platform.ObjectStorage do
   caller holds an external write fence for the complete verify/delete operation.
   """
   @callback delete_if_matches(key, object_identity()) :: :ok | {:error, term()}
-  @doc "Returns an opaque stable identity for the configured provider namespace."
+  @doc """
+  Returns the current opaque identity of the configured provider namespace.
+
+  Read only configuration or safe local root metadata. This callback must not
+  issue remote provider requests or substitute a previously captured identity:
+  callers revalidate it while committing namespace-sensitive database changes.
+  """
   @callback namespace_fingerprint() :: {:ok, String.t()} | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
@@ -108,6 +114,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
   @max_exact_multipart_upload_batch 100
   @max_multipart_upload_id_bytes 4_096
+  @max_multipart_upload_bytes 0xFFFFFFFE
+  @multipart_transfer_chunk_size_bytes 16 * 1024 * 1024
+  @multipart_total_fixed_request_slots 6
   @write_deadline_key {__MODULE__, :write_deadline}
 
   @doc false
@@ -120,6 +129,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   defdelegate with_storage_key_lock(storage_key, fun), to: KeyLock
   defdelegate with_storage_key_lock(storage_key, fun, opts), to: KeyLock
   defdelegate with_storage_key_locks(storage_keys, fun, opts \\ []), to: KeyLock
+  defdelegate transact_with_storage_key_locks(storage_keys, fun, opts \\ []), to: KeyLock
+  defdelegate transact_with_storage_key_admission(storage_key, fun, opts \\ []), to: KeyLock
+  defdelegate transact_with_storage_handoff(storage_keys, fun, opts \\ []), to: KeyLock
   defdelegate wrapper_owned_transaction_lock_held?(storage_key), to: KeyLock
   defdelegate with_session_lock(lock_name, fun), to: KeyLock
   defdelegate with_session_lock(lock_name, fun, opts), to: KeyLock
@@ -138,14 +150,42 @@ defmodule Storyarn.Platform.ObjectStorage do
   end
 
   @doc false
+  @spec multipart_transfer_chunk_size_bytes() :: pos_integer()
+  def multipart_transfer_chunk_size_bytes, do: @multipart_transfer_chunk_size_bytes
+
+  @doc "Returns the total wall-clock budget for one bounded multipart writer."
+  @spec multipart_upload_total_deadline_ms() :: pos_integer()
+  def multipart_upload_total_deadline_ms do
+    # A copy fallback can consume one Range GET and one UploadPart per chunk.
+    # The fixed slots cover the conditional-copy attempt group, destination
+    # stat, initiate, complete, abort, and one full request interval of local
+    # enumeration/scheduling margin. At the default 300 seconds this is
+    # 43 hours 10 minutes, keeping the derived bound below 48 hours.
+    max_chunks =
+      div(
+        @max_multipart_upload_bytes + @multipart_transfer_chunk_size_bytes - 1,
+        @multipart_transfer_chunk_size_bytes
+      )
+
+    (2 * max_chunks + @multipart_total_fixed_request_slots) *
+      multipart_upload_part_deadline_ms()
+  end
+
+  @doc false
   @spec write_operation_deadline() :: integer()
   def write_operation_deadline do
-    request_deadline = System.monotonic_time(:millisecond) + multipart_upload_part_deadline_ms()
+    request_deadline = fresh_request_deadline()
 
     case Process.get(@write_deadline_key) do
       total_deadline when is_integer(total_deadline) -> min(total_deadline, request_deadline)
       _none -> request_deadline
     end
+  end
+
+  @doc false
+  @spec fresh_request_deadline() :: integer()
+  def fresh_request_deadline do
+    System.monotonic_time(:millisecond) + multipart_upload_part_deadline_ms()
   end
 
   @doc false
@@ -193,7 +233,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   Uploads a file to storage.
   """
   def upload(key, data, content_type) do
-    adapter().upload(key, data, content_type)
+    if canonical_key?(key),
+      do: with_write_operation_deadline(fn -> adapter().upload(key, data, content_type) end),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -203,7 +245,12 @@ defmodule Storyarn.Platform.ObjectStorage do
   S3-compatible adapters use multipart upload.
   """
   def upload_stream(key, chunks, content_type) do
-    adapter().upload_stream(key, chunks, content_type)
+    if canonical_key?(key),
+      do:
+        with_operation_deadline(multipart_upload_total_deadline_ms(), fn ->
+          adapter().upload_stream(key, chunks, content_type)
+        end),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -222,9 +269,12 @@ defmodule Storyarn.Platform.ObjectStorage do
       adapter = adapter()
       _loaded? = Code.ensure_loaded?(adapter)
 
-      if function_exported?(adapter, :abort_incomplete_multipart_uploads, 2),
-        do: adapter.abort_incomplete_multipart_uploads(key, opts),
-        else: {:ok, 0}
+      with_operation_deadline(fn ->
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+        if function_exported?(adapter, :abort_incomplete_multipart_uploads, 2),
+          do: adapter.abort_incomplete_multipart_uploads(key, opts),
+          else: {:ok, 0}
+      end)
     else
       {:error, :invalid_multipart_cleanup_request}
     end
@@ -434,9 +484,12 @@ defmodule Storyarn.Platform.ObjectStorage do
       adapter = adapter()
       _loaded? = Code.ensure_loaded?(adapter)
 
-      if function_exported?(adapter, :incomplete_multipart_upload_count, 2),
-        do: adapter.incomplete_multipart_upload_count(key, opts),
-        else: {:error, :multipart_inventory_not_supported}
+      with_operation_deadline(fn ->
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+        if function_exported?(adapter, :incomplete_multipart_upload_count, 2),
+          do: adapter.incomplete_multipart_upload_count(key, opts),
+          else: {:error, :multipart_inventory_not_supported}
+      end)
     else
       {:error, :invalid_multipart_inventory_request}
     end
@@ -462,9 +515,12 @@ defmodule Storyarn.Platform.ObjectStorage do
       adapter = adapter()
       _loaded? = Code.ensure_loaded?(adapter)
 
-      if function_exported?(adapter, :incomplete_multipart_upload_summary, 2),
-        do: adapter |> call_multipart_summary(scope, opts) |> normalize_multipart_summary(),
-        else: {:error, :multipart_inventory_not_supported}
+      with_operation_deadline(fn ->
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+        if function_exported?(adapter, :incomplete_multipart_upload_summary, 2),
+          do: adapter |> call_multipart_summary(scope, opts) |> normalize_multipart_summary(),
+          else: {:error, :multipart_inventory_not_supported}
+      end)
     else
       {:error, :invalid_multipart_inventory_request}
     end
@@ -509,7 +565,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   The returned boolean identifies which caller owns cleanup of the object.
   """
   def put_if_absent(key, data, content_type) do
-    adapter().put_if_absent(key, data, content_type)
+    if canonical_key?(key),
+      do: with_write_operation_deadline(fn -> adapter().put_if_absent(key, data, content_type) end),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -523,7 +581,7 @@ defmodule Storyarn.Platform.ObjectStorage do
   Returns private object metadata without exposing a storage URL.
   """
   def stat(key) do
-    adapter().stat(key)
+    with_operation_deadline(fn -> adapter().stat(key) end)
   end
 
   @doc "Returns bounded metadata plus the opaque identity required by conditional cleanup."
@@ -561,7 +619,7 @@ defmodule Storyarn.Platform.ObjectStorage do
   adapters sign each request server-side; no bearer URL is returned to callers.
   """
   def stream(key, offset, length, opts \\ []) do
-    adapter().stream(key, offset, length, opts)
+    with_operation_deadline(fn -> adapter().stream(key, offset, length, opts) end)
   end
 
   @doc "Lists one bounded page of object metadata beneath an exact prefix."
@@ -606,13 +664,15 @@ defmodule Storyarn.Platform.ObjectStorage do
   owning context before invoking this technical operation.
   """
   def delete(key) do
-    if canonical_key?(key), do: adapter().delete(key), else: {:error, :invalid_key}
+    if canonical_key?(key),
+      do: with_operation_deadline(fn -> adapter().delete(key) end),
+      else: {:error, :invalid_key}
   end
 
   @doc "Deletes an object only when its provider identity still matches."
   def delete_if_matches(key, expected_identity) do
     if canonical_key?(key),
-      do: adapter().delete_if_matches(key, expected_identity),
+      do: with_operation_deadline(fn -> adapter().delete_if_matches(key, expected_identity) end),
       else: {:error, :invalid_key}
   end
 
@@ -633,7 +693,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   any additional fields needed for the upload.
   """
   def presigned_upload_url(key, content_type, opts \\ []) do
-    adapter().presigned_upload_url(key, content_type, opts)
+    if canonical_key?(key),
+      do: adapter().presigned_upload_url(key, content_type, opts),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -663,7 +725,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   Copies a file from one storage key to another.
   """
   def copy(source_key, dest_key) do
-    adapter().copy(source_key, dest_key)
+    if canonical_key?(source_key) and canonical_key?(dest_key),
+      do: with_write_operation_deadline(fn -> adapter().copy(source_key, dest_key) end),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -678,7 +742,9 @@ defmodule Storyarn.Platform.ObjectStorage do
   compensate the destination when `created?` is true.
   """
   def copy_if_absent(source_key, dest_key) do
-    adapter().copy_if_absent(source_key, dest_key)
+    if canonical_key?(source_key) and canonical_key?(dest_key),
+      do: with_write_operation_deadline(fn -> adapter().copy_if_absent(source_key, dest_key) end),
+      else: {:error, :invalid_key}
   end
 
   @doc """
@@ -690,16 +756,29 @@ defmodule Storyarn.Platform.ObjectStorage do
   """
   def copy_if_absent_or_stream(source_key, dest_key, size_bytes, content_type)
       when is_integer(size_bytes) and size_bytes >= 0 do
-    case copy_if_absent(source_key, dest_key) do
-      {:error, reason} when reason in [:not_supported, :copy_not_supported] ->
-        copy_via_stream(source_key, dest_key, size_bytes, content_type)
+    if canonical_key?(source_key) and canonical_key?(dest_key) do
+      with_operation_deadline(multipart_upload_total_deadline_ms(), fn ->
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+        case copy_if_absent(source_key, dest_key) do
+          {:error, reason} when reason in [:not_supported, :copy_not_supported] ->
+            copy_via_stream(source_key, dest_key, size_bytes, content_type)
 
-      {:error, {:http_error, status, _response}} when status in [405, 501] ->
-        copy_via_stream(source_key, dest_key, size_bytes, content_type)
+          {:error, {:http_error, status, _response}} when status in [405, 501] ->
+            copy_via_stream(source_key, dest_key, size_bytes, content_type)
 
-      result ->
-        result
+          result ->
+            result
+        end
+      end)
+    else
+      {:error, :invalid_key}
     end
+  end
+
+  def copy_if_absent_or_stream(_source_key, _dest_key, _size_bytes, _content_type), do: {:error, :invalid_copy_request}
+
+  defp with_write_operation_deadline(fun) when is_function(fun, 0) do
+    with_operation_deadline(multipart_upload_part_deadline_ms(), fun)
   end
 
   defp copy_via_stream(source_key, dest_key, size_bytes, content_type) do

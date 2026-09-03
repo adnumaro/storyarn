@@ -92,9 +92,11 @@ defmodule Storyarn.Flows.Versioning.AssetStorageCompensation do
   end
 
   defp persist_cleanup_request(storage_keys) do
-    %StorageCleanupRequestRecord{}
-    |> StorageCleanupRequestRecord.flow_restore_changeset(storage_keys)
-    |> Repo.insert()
+    StorageKeyLock.with_cleanup_handoff_locks(storage_keys, fn ->
+      %StorageCleanupRequestRecord{}
+      |> StorageCleanupRequestRecord.flow_restore_changeset(storage_keys)
+      |> Repo.insert()
+    end)
   end
 
   defp call_delete(delete_fun, storage_key) do

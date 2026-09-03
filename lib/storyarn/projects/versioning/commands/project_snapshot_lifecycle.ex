@@ -126,9 +126,18 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     case Memberships.authorize(scope, project.id, :manage_project) do
       {:ok, %Project{} = authorized_project, _membership} ->
         result =
-          Commercial.transact_with_workspace_lock(authorized_project.workspace_id, fn _workspace ->
-            delete_user_snapshot_locked(scope, authorized_project, snapshot_id, user_id)
-          end)
+          with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            Commercial.transact_with_workspace_lock(authorized_project.workspace_id, fn _workspace ->
+              delete_user_snapshot_locked(
+                scope,
+                authorized_project,
+                snapshot_id,
+                user_id,
+                provider_namespace_fingerprint
+              )
+            end)
+          end
 
         publish_deleted_snapshot(result, authorized_project.id, snapshot_id)
 
@@ -145,10 +154,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   @doc false
   @spec prepare_abandoned_import_snapshot_cleanup_in_transaction(
           ProjectSnapshot.t(),
-          pos_integer()
+          pos_integer(),
+          String.t()
         ) :: {:ok, SnapshotCleanupIntent.t()} | {:error, term()}
-  def prepare_abandoned_import_snapshot_cleanup_in_transaction(%ProjectSnapshot{} = snapshot, workspace_id)
-      when is_integer(workspace_id) and workspace_id > 0 do
+  def prepare_abandoned_import_snapshot_cleanup_in_transaction(
+        %ProjectSnapshot{} = snapshot,
+        workspace_id,
+        provider_namespace_fingerprint
+      )
+      when is_integer(workspace_id) and workspace_id > 0 and is_binary(provider_namespace_fingerprint) do
     cond do
       not Repo.in_transaction?() ->
         {:error, :snapshot_cleanup_transaction_required}
@@ -162,44 +176,56 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
       true ->
         with :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
              :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
-          create_cleanup_and_delete(snapshot, workspace_id, :abandoned_import, :system)
+          create_cleanup_and_delete(
+            snapshot,
+            workspace_id,
+            :abandoned_import,
+            :system,
+            provider_namespace_fingerprint
+          )
         end
     end
   end
 
-  def prepare_abandoned_import_snapshot_cleanup_in_transaction(_snapshot, _workspace_id),
+  def prepare_abandoned_import_snapshot_cleanup_in_transaction(_snapshot, _workspace_id, _fingerprint),
     do: {:error, :invalid_snapshot_cleanup_scope}
 
   @doc false
-  @spec prepare_project_hard_delete(Project.t()) ::
+  @spec prepare_project_hard_delete(Project.t(), String.t()) ::
           {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
-  def prepare_project_hard_delete(%Project{} = project) do
-    prepare_project_hard_delete(project, :project_hard_delete)
+  def prepare_project_hard_delete(%Project{} = project, provider_namespace_fingerprint)
+      when is_binary(provider_namespace_fingerprint) do
+    prepare_project_hard_delete(project, :project_hard_delete, provider_namespace_fingerprint)
   end
 
+  def prepare_project_hard_delete(_project, _fingerprint), do: {:error, :invalid_project_cleanup_scope}
+
   @doc false
-  @spec prepare_workspace_hard_delete(Workspace.t()) ::
+  @spec prepare_workspace_hard_delete(Workspace.t(), String.t()) ::
           {:ok, [SnapshotCleanupIntent.t()]} | {:error, term()}
-  def prepare_workspace_hard_delete(%{id: workspace_id}) when is_integer(workspace_id) do
+  def prepare_workspace_hard_delete(%{id: workspace_id}, provider_namespace_fingerprint)
+      when is_integer(workspace_id) and is_binary(provider_namespace_fingerprint) do
     if Commercial.workspace_lock_held?(workspace_id) do
-      prepare_workspace_hard_delete_locked(workspace_id)
+      prepare_workspace_hard_delete_locked(workspace_id, provider_namespace_fingerprint)
     else
       {:error, :snapshot_cleanup_workspace_lock_required}
     end
   end
 
-  def prepare_workspace_hard_delete(_workspace), do: {:error, :invalid_workspace_cleanup_scope}
+  def prepare_workspace_hard_delete(_workspace, _fingerprint), do: {:error, :invalid_workspace_cleanup_scope}
 
-  defp prepare_workspace_hard_delete_locked(workspace_id) do
+  defp prepare_workspace_hard_delete_locked(workspace_id, provider_namespace_fingerprint) do
     with {:ok, project_ids} <- bounded_workspace_snapshot_project_ids(workspace_id) do
-      Enum.reduce_while(project_ids, {:ok, []}, &prepare_workspace_project(workspace_id, &1, &2))
+      Enum.reduce_while(project_ids, {:ok, []}, fn project_id, acc ->
+        prepare_workspace_project(workspace_id, project_id, provider_namespace_fingerprint, acc)
+      end)
     end
   end
 
-  defp prepare_workspace_project(workspace_id, project_id, {:ok, intents}) do
+  defp prepare_workspace_project(workspace_id, project_id, provider_namespace_fingerprint, {:ok, intents}) do
     project = lock_workspace_project(workspace_id, project_id)
 
-    case prepare_project_hard_delete(project, :workspace_hard_delete) do
+    case prepare_project_hard_delete(project, :workspace_hard_delete, provider_namespace_fingerprint) do
       {:ok, project_intents} -> {:cont, {:ok, project_intents ++ intents}}
       {:error, reason} -> {:halt, {:error, reason}}
     end
@@ -261,9 +287,16 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
         result =
-          Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
-            delete_retention_candidate_locked(candidate, database_clock_now())
-          end)
+          with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
+              delete_retention_candidate_locked(
+                candidate,
+                database_clock_now(),
+                provider_namespace_fingerprint
+              )
+            end)
+          end
 
         publish_deleted_snapshot(result, Map.get(candidate, :project_id), Map.get(candidate, :snapshot_id))
 
@@ -383,9 +416,17 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     case Map.get(candidate, :workspace_id) do
       workspace_id when is_integer(workspace_id) ->
         result =
-          Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
-            delete_expired_build_candidate_locked(candidate, database_clock_now(), namespace_expectation)
-          end)
+          with {:ok, provider_namespace_fingerprint} <-
+                 cleanup_provider_namespace_fingerprint(namespace_expectation) do
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
+              delete_expired_build_candidate_locked(
+                candidate,
+                database_clock_now(),
+                provider_namespace_fingerprint
+              )
+            end)
+          end
 
         publish_deleted_snapshot(result, Map.get(candidate, :project_id), Map.get(candidate, :snapshot_id))
 
@@ -495,7 +536,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
           {:ok, SnapshotCleanupIntent.t() | :already_completed | :already_active} | {:error, term()}
   def replay_terminal_cleanup_intent(intent_id) when is_integer(intent_id) and intent_id > 0 do
     result =
-      Repo.transact(fn -> intent_id |> lock_cleanup_intent() |> replay_locked_cleanup_intent() end)
+      Repo.transact(fn ->
+        intent_id
+        |> lock_cleanup_intent()
+        |> replay_with_current_namespace()
+      end)
 
     emit_cleanup_replay(result)
   end
@@ -509,11 +554,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
       when is_integer(intent_id) and intent_id > 0 and is_map(expectations) do
     if exact_replay_expectations?(expectations) do
       result =
-        Repo.transact(fn ->
-          intent_id
-          |> lock_cleanup_intent()
-          |> replay_locked_cleanup_intent(expectations)
-        end)
+        with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          Repo.transact(fn ->
+            intent_id
+            |> lock_cleanup_intent()
+            |> replay_locked_cleanup_intent(expectations, provider_namespace_fingerprint)
+          end)
+        end
 
       emit_cleanup_replay(result)
     else
@@ -523,6 +571,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   def replay_terminal_cleanup_intent(_intent_id, _expectations),
     do: {:error, :invalid_snapshot_cleanup_replay_expectations}
+
+  defp replay_with_current_namespace(%SnapshotCleanupIntent{status: "terminal", last_error_code: code} = intent)
+       when code in @replayable_cleanup_errors do
+    with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+      replay_locked_cleanup_intent(intent, provider_namespace_fingerprint)
+    end
+  end
+
+  defp replay_with_current_namespace(intent), do: replay_locked_cleanup_intent(intent, nil)
 
   defp exact_replay_expectations?(expectations) do
     expectations
@@ -575,19 +632,25 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     ensure_cleanup_job(intent)
   end
 
-  defp replay_locked_cleanup_intent(nil), do: {:error, :snapshot_cleanup_intent_not_found}
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "completed"}), do: {:ok, :already_completed}
+  defp replay_locked_cleanup_intent(nil, _provider_namespace_fingerprint),
+    do: {:error, :snapshot_cleanup_intent_not_found}
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: status})
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "completed"}, _provider_namespace_fingerprint),
+    do: {:ok, :already_completed}
+
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: status}, _provider_namespace_fingerprint)
        when status in ["pending", "processing", "retrying"], do: {:ok, :already_active}
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal", last_error_code: code})
+  defp replay_locked_cleanup_intent(
+         %SnapshotCleanupIntent{status: "terminal", last_error_code: code},
+         _provider_namespace_fingerprint
+       )
        when code not in @replayable_cleanup_errors, do: {:error, {:snapshot_cleanup_manual_repair_required, code}}
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent) do
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent, provider_namespace_fingerprint) do
     with :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
          :ok <- validate_cleanup_intent_ownership(intent),
-         :ok <- validate_current_provider_namespace(intent),
+         :ok <- validate_captured_provider_namespace(intent, provider_namespace_fingerprint),
          :ok <- ensure_cleanup_namespace_unowned(intent),
          :ok <- resume_cleanup_request_for_replay(intent.cleanup_request_id),
          {:ok, replaying} <- reopen_terminal_cleanup_intent(intent),
@@ -612,20 +675,29 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp replay_locked_cleanup_intent(nil, _expectations), do: {:error, :snapshot_cleanup_intent_not_found}
+  defp replay_locked_cleanup_intent(nil, _expectations, _provider_namespace_fingerprint),
+    do: {:error, :snapshot_cleanup_intent_not_found}
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: "terminal"} = intent, expectations) do
+  defp replay_locked_cleanup_intent(
+         %SnapshotCleanupIntent{status: "terminal"} = intent,
+         expectations,
+         provider_namespace_fingerprint
+       ) do
     if replay_expectations(intent) == expectations,
-      do: replay_locked_cleanup_intent(intent),
+      do: replay_locked_cleanup_intent(intent, provider_namespace_fingerprint),
       else: {:error, :snapshot_cleanup_intent_changed}
   end
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{status: status} = intent, expectations)
+  defp replay_locked_cleanup_intent(
+         %SnapshotCleanupIntent{status: status} = intent,
+         expectations,
+         provider_namespace_fingerprint
+       )
        when status in ["pending", "processing", "retrying"] do
     with true <- active_replay_matches?(intent, expectations),
          :ok <- SnapshotCleanupIntent.validate_persisted_inventory(intent),
          :ok <- validate_cleanup_intent_ownership(intent),
-         :ok <- validate_current_provider_namespace(intent) do
+         :ok <- validate_captured_provider_namespace(intent, provider_namespace_fingerprint) do
       {:ok, :already_active}
     else
       false -> {:error, :snapshot_cleanup_intent_changed}
@@ -633,7 +705,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{}, _expectations),
+  defp replay_locked_cleanup_intent(%SnapshotCleanupIntent{}, _expectations, _provider_namespace_fingerprint),
     do: {:error, :snapshot_cleanup_intent_changed}
 
   defp active_replay_matches?(intent, expectations) do
@@ -718,7 +790,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     )
   end
 
-  defp delete_user_snapshot_locked(scope, project, snapshot_id, user_id) do
+  defp delete_user_snapshot_locked(scope, project, snapshot_id, user_id, provider_namespace_fingerprint) do
     with {:ok, %Project{} = locked_project, _membership} <-
            Memberships.authorize_locked(scope, project.id, :manage_project, :update),
          :ok <- ensure_same_workspace(locked_project, project),
@@ -726,7 +798,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          true <- snapshot.lifecycle_state in @deletable_user_states,
          :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id),
-         {:ok, intent} <- create_cleanup_and_delete(snapshot, project.workspace_id, :user_delete, {:user, user_id}) do
+         {:ok, intent} <-
+           create_cleanup_and_delete(
+             snapshot,
+             project.workspace_id,
+             :user_delete,
+             {:user, user_id},
+             provider_namespace_fingerprint
+           ) do
       {:ok, {:created, intent}}
     else
       nil -> tag_existing_intent(existing_intent_or_error(project.id, snapshot_id))
@@ -738,27 +817,47 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   defp ensure_same_workspace(%Project{workspace_id: workspace_id}, %Project{workspace_id: workspace_id}), do: :ok
   defp ensure_same_workspace(%Project{}, %Project{}), do: {:error, :unauthorized}
 
-  defp prepare_project_hard_delete(%Project{id: project_id, workspace_id: workspace_id}, reason)
-       when reason in @hard_delete_reasons and is_integer(project_id) and is_integer(workspace_id) do
+  defp prepare_project_hard_delete(
+         %Project{id: project_id, workspace_id: workspace_id},
+         reason,
+         provider_namespace_fingerprint
+       )
+       when reason in @hard_delete_reasons and is_integer(project_id) and is_integer(workspace_id) and
+              is_binary(provider_namespace_fingerprint) do
     if Commercial.workspace_lock_held?(workspace_id) do
-      prepare_project_hard_delete_locked(project_id, workspace_id, reason)
+      prepare_project_hard_delete_locked(project_id, workspace_id, reason, provider_namespace_fingerprint)
     else
       {:error, :snapshot_cleanup_workspace_lock_required}
     end
   end
 
-  defp prepare_project_hard_delete(_project, _reason), do: {:error, :invalid_project_cleanup_scope}
+  defp prepare_project_hard_delete(_project, _reason, _fingerprint), do: {:error, :invalid_project_cleanup_scope}
 
-  defp prepare_project_hard_delete_locked(project_id, workspace_id, reason) do
+  defp prepare_project_hard_delete_locked(project_id, workspace_id, reason, provider_namespace_fingerprint) do
     with {:ok, snapshots} <- bounded_project_snapshots(project_id) do
-      Enum.reduce_while(snapshots, {:ok, []}, &prepare_hard_delete_snapshot(&1, &2, workspace_id, reason))
+      Enum.reduce_while(snapshots, {:ok, []}, fn snapshot, acc ->
+        prepare_hard_delete_snapshot(
+          snapshot,
+          acc,
+          workspace_id,
+          reason,
+          provider_namespace_fingerprint
+        )
+      end)
     end
   end
 
-  defp prepare_hard_delete_snapshot(snapshot, {:ok, intents}, workspace_id, reason) do
+  defp prepare_hard_delete_snapshot(snapshot, {:ok, intents}, workspace_id, reason, provider_namespace_fingerprint) do
     with :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, workspace_id),
          :ok <- ensure_hard_delete_operations_supported(snapshot),
-         {:ok, intent} <- create_cleanup_and_delete(snapshot, workspace_id, reason, :system) do
+         {:ok, intent} <-
+           create_cleanup_and_delete(
+             snapshot,
+             workspace_id,
+             reason,
+             :system,
+             provider_namespace_fingerprint
+           ) do
       {:cont, {:ok, [intent | intents]}}
     else
       {:error, cleanup_reason} -> {:halt, {:error, cleanup_reason}}
@@ -820,7 +919,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     |> Keyword.fetch!(:hard_delete_snapshot_limit)
   end
 
-  defp delete_retention_candidate_locked(candidate, now) do
+  defp delete_retention_candidate_locked(candidate, now, provider_namespace_fingerprint) do
     snapshot_id = Map.get(candidate, :snapshot_id)
     project_id = Map.get(candidate, :project_id)
 
@@ -829,14 +928,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          :ok <- revalidate_retention_candidate(snapshot, project, candidate, now),
          :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
-      snapshot |> create_cleanup_and_delete(project.workspace_id, :retention, :system) |> tag_created_intent()
+      snapshot
+      |> create_cleanup_and_delete(
+        project.workspace_id,
+        :retention,
+        :system,
+        provider_namespace_fingerprint
+      )
+      |> tag_created_intent()
     else
       nil -> {:error, :retention_candidate_changed}
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp delete_expired_build_candidate_locked(candidate, now, namespace_expectation) do
+  defp delete_expired_build_candidate_locked(candidate, now, provider_namespace_fingerprint) do
     project_id = Map.get(candidate, :project_id)
     snapshot_id = Map.get(candidate, :snapshot_id)
 
@@ -847,7 +953,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_expired_build_operation_supported(snapshot, reservation) do
       snapshot
-      |> create_cleanup_and_delete(project.workspace_id, :expired_build, :system, namespace_expectation)
+      |> create_cleanup_and_delete(
+        project.workspace_id,
+        :expired_build,
+        :system,
+        provider_namespace_fingerprint
+      )
       |> tag_created_intent()
     else
       nil -> {:error, :expired_build_candidate_changed}
@@ -968,14 +1079,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority),
-    do: create_cleanup_and_delete(snapshot, workspace_id, reason, authority, :current)
-
-  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority, namespace_expectation) do
+  defp create_cleanup_and_delete(snapshot, workspace_id, reason, authority, provider_namespace_fingerprint) do
     with :ok <- ensure_supported_mode(snapshot.mode),
          {:ok, scope} <- snapshot_cleanup_scope(snapshot),
-         {:ok, provider_namespace_fingerprint} <-
-           cleanup_provider_namespace_fingerprint(namespace_expectation),
          now = TimeHelpers.now(),
          {:ok, deleting} <- snapshot |> ProjectSnapshot.deletion_changeset(now) |> Repo.update(),
          :ok <- release_no_write_build_reservations(deleting),
@@ -1471,10 +1577,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
   end
 
   defp revalidate_provider_namespace_failure(intent, reason) do
-    case validate_current_provider_namespace(intent) do
-      {:error, ^reason} -> :ok
-      _changed -> {:error, :snapshot_cleanup_failure_changed}
-    end
+    # The provider observation was made immediately before this transaction.
+    # Repeating provider I/O while the intent row is locked would hold a
+    # checkout across a remote or filesystem call.
+    if reason in [
+         :snapshot_cleanup_provider_namespace_changed,
+         :snapshot_cleanup_provider_namespace_unavailable
+       ] and is_binary(intent.provider_namespace_fingerprint),
+       do: :ok,
+       else: {:error, :snapshot_cleanup_failure_changed}
   end
 
   defp predelete_error_code(:invalid_snapshot_cleanup_inventory), do: "invalid_inventory"
@@ -1486,15 +1597,18 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   defp validate_current_provider_namespace(intent) do
     case current_provider_namespace_fingerprint() do
-      {:ok, fingerprint} when fingerprint == intent.provider_namespace_fingerprint ->
-        :ok
-
-      {:ok, _different_fingerprint} ->
-        {:error, :snapshot_cleanup_provider_namespace_changed}
+      {:ok, fingerprint} ->
+        validate_captured_provider_namespace(intent, fingerprint)
 
       {:error, :snapshot_cleanup_provider_namespace_unavailable} = error ->
         error
     end
+  end
+
+  defp validate_captured_provider_namespace(intent, provider_namespace_fingerprint) do
+    if provider_namespace_fingerprint == intent.provider_namespace_fingerprint,
+      do: :ok,
+      else: {:error, :snapshot_cleanup_provider_namespace_changed}
   end
 
   defp current_provider_namespace_fingerprint do

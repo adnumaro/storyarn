@@ -528,6 +528,11 @@ defmodule Storyarn.Projects do
   @doc "Prepares Project-owned data before its parent Workspace is hard-deleted."
   defdelegate prepare_workspace_data_hard_delete(workspace_id), to: Lifecycle
 
+  defdelegate prepare_workspace_data_hard_delete(workspace_id, provider_namespace_fingerprint), to: Lifecycle
+
+  @doc false
+  defdelegate storage_provider_namespace_fingerprint(), to: Assets
+
   @doc "Publishes Project lifecycle facts after the parent Workspace deletion commits."
   defdelegate publish_committed_workspace_data_hard_delete(preparation), to: Lifecycle
 

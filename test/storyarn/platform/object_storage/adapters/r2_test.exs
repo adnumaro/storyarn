@@ -421,6 +421,13 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
   end
 
   describe "upload_stream/3" do
+    test "derives a sub-48-hour total from the bounded 16 MiB copy request envelope" do
+      assert ObjectStorage.multipart_transfer_chunk_size_bytes() == 16 * 1024 * 1024
+
+      assert ObjectStorage.multipart_upload_total_deadline_ms() ==
+               518 * ObjectStorage.multipart_upload_part_deadline_ms()
+    end
+
     test "accepts an exact successful multipart completion response" do
       key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
       expected_url = "https://t3.storage.dev/private-bucket/#{key}"
@@ -511,7 +518,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
                R2.upload_stream(key, [{:ok, "bounded chunk"}], "image/png")
     end
 
-    test "hard-stops a hung UploadPart at the configured wall-clock deadline and aborts its upload id" do
+    test "hard-stops a hung UploadPart and gives the follow-up abort a fresh deadline" do
       key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
       original_policy = Application.get_env(:storyarn, ObjectStorage)
       Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 50)
@@ -548,9 +555,70 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
       started_at = System.monotonic_time(:millisecond)
 
       assert {:error, :multipart_upload_part_timeout} =
-               R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
+               ObjectStorage.with_operation_deadline(50, fn ->
+                 R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
+               end)
 
       assert System.monotonic_time(:millisecond) - started_at < 800
+    end
+
+    test "gives each multipart request a fresh deadline" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      expected_url = "https://t3.storage.dev/private-bucket/#{key}"
+      original_policy = Application.get_env(:storyarn, ObjectStorage)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 500)
+      on_exit(fn -> restore_env(:storyarn, ObjectStorage, original_policy) end)
+
+      Req.Test.expect(__MODULE__, 4, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        cond do
+          conn.method == "POST" and conn.query_params == %{"uploads" => "1"} ->
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <InitiateMultipartUploadResult>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <UploadId>upload-total-deadline</UploadId>
+              </InitiateMultipartUploadResult>
+              """
+            )
+
+          conn.method == "PUT" ->
+            part_number = conn.query_params["partNumber"]
+            assert part_number in ["1", "2"]
+            assert conn.query_params["uploadId"] == "upload-total-deadline"
+            Process.sleep(300)
+
+            conn
+            |> Plug.Conn.put_resp_header("etag", ~s("part-etag-#{part_number}"))
+            |> Plug.Conn.send_resp(200, "")
+
+          conn.method == "POST" ->
+            assert conn.query_params == %{"uploadId" => "upload-total-deadline"}
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              """
+              <CompleteMultipartUploadResult>
+                <Location>#{expected_url}</Location>
+                <Bucket>private-bucket</Bucket>
+                <Key>#{key}</Key>
+                <ETag>"archive-etag"</ETag>
+              </CompleteMultipartUploadResult>
+              """
+            )
+        end
+      end)
+
+      chunk = :binary.copy(<<1>>, ObjectStorage.multipart_transfer_chunk_size_bytes())
+      started_at = System.monotonic_time(:millisecond)
+
+      assert {:ok, ^expected_url} = R2.upload_stream(key, [{:ok, chunk}, {:ok, chunk}], "application/zip")
+      assert System.monotonic_time(:millisecond) - started_at >= 550
     end
 
     test "turns UploadPart task raises and exits into normal failures before aborting" do
@@ -1062,6 +1130,52 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
   end
 
   describe "incomplete_multipart_upload_summary/2" do
+    test "shares one total deadline across diagnostic inventory pages" do
+      original_storage = Application.get_env(:storyarn, :storage, [])
+      original_deadline = Application.get_env(:storyarn, ObjectStorage)
+      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+
+      Application.put_env(:storyarn, :storage, adapter: R2)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 300)
+
+      on_exit(fn ->
+        Application.put_env(:storyarn, :storage, original_storage)
+        restore_env(:storyarn, ObjectStorage, original_deadline)
+      end)
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+
+        case request_number do
+          1 ->
+            Process.sleep(220)
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_inventory_page(
+                [{"projects/9/archive.bin", "upload-1", "2026-09-01T10:00:00Z"}],
+                true,
+                "projects/9/archive.bin",
+                "upload-1"
+              )
+            )
+
+          2 ->
+            Process.sleep(600)
+            Plug.Conn.send_resp(conn, 200, multipart_inventory_page([], false, nil, nil))
+        end
+      end)
+
+      started_at = System.monotonic_time(:millisecond)
+
+      assert {:error, :multipart_inventory_provider_error} =
+               ObjectStorage.incomplete_multipart_upload_summary(:all, max_uploads: 151)
+
+      elapsed_ms = System.monotonic_time(:millisecond) - started_at
+      assert elapsed_ms < 450
+    end
+
     test "paginates the complete provider namespace and returns only bounded aggregate evidence" do
       {:ok, request_count} = Agent.start_link(fn -> 0 end)
 
@@ -1457,6 +1571,39 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
                R2.stream("projects/1/assets/image.png", 2, 5, etag: ~s("asset-etag"))
 
       assert Enum.to_list(stream) == [{:ok, "23456"}]
+    end
+
+    test "gives each Range GET a fresh deadline" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+      chunk_size = ObjectStorage.multipart_transfer_chunk_size_bytes()
+      chunk = :binary.copy(<<1>>, chunk_size)
+      first_range = "bytes=0-#{chunk_size - 1}"
+      second_range = "bytes=#{chunk_size}-#{chunk_size}"
+      original_policy = Application.get_env(:storyarn, ObjectStorage)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 500)
+      on_exit(fn -> restore_env(:storyarn, ObjectStorage, original_policy) end)
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        Process.sleep(300)
+
+        case Plug.Conn.get_req_header(conn, "range") do
+          [^first_range] ->
+            Plug.Conn.send_resp(conn, 206, chunk)
+
+          [^second_range] ->
+            Plug.Conn.send_resp(conn, 206, <<2>>)
+        end
+      end)
+
+      started_at = System.monotonic_time(:millisecond)
+      assert {:ok, stream} = R2.stream(key, 0, chunk_size + 1, [])
+
+      assert Enum.to_list(stream) == [
+               {:ok, chunk},
+               {:ok, <<2>>}
+             ]
+
+      assert System.monotonic_time(:millisecond) - started_at >= 550
     end
   end
 

@@ -1,5 +1,5 @@
 defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
-  use StoryarnWeb.ConnCase, async: true
+  use StoryarnWeb.ConnCase, async: false
 
   import Ecto.Changeset
   import Phoenix.LiveViewTest
@@ -39,6 +39,31 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
   end
 
   describe "mount" do
+    test "uses server uploads even with external storage without reducing the archive limit", %{conn: conn} do
+      original_storage = Application.get_env(:storyarn, :storage)
+      Application.put_env(:storyarn, :storage, adapter: :r2)
+
+      on_exit(fn ->
+        if is_nil(original_storage),
+          do: Application.delete_env(:storyarn, :storage),
+          else: Application.put_env(:storyarn, :storage, original_storage)
+      end)
+
+      user = user_fixture()
+      workspace = workspace_fixture(user)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(user)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/imports")
+
+      assert {:ok, upload} = Phoenix.LiveView.Channel.fetch_upload_config(view.pid, :snapshot_zip, nil)
+      assert upload.external == false
+      assert upload.max_entries == 1
+      assert upload.max_file_size == Storyarn.Projects.project_snapshot_archive_max_size_bytes()
+      assert get_imports_vue(view).props["request-error-code"] == nil
+    end
+
     test "renders the durable import surface for a workspace owner", %{conn: conn} do
       user = user_fixture()
       workspace = workspace_fixture(user)

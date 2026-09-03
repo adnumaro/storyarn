@@ -350,6 +350,88 @@ schema is deliberately incompatible with pre-v2 binaries and rollback to one
 is unsupported. Leave the canonical v2 constraints intact; do not reconstruct
 the retired columns or worker-name fence.
 
+### Exact multipart cleanup one-release cutover
+
+Migration `20260903190000_fence_storage_cleanup_writers.exs` adds indexed, durable cleanup ownership for the writer fence. The earlier
+`20260903133000_harden_exact_multipart_cleanup.exs` is historical and remains
+unchanged. This incremental migration does not recreate the FSM or reset any
+in-flight request, claim, cursor, generation, or retained upload reference.
+Older writers do not honor this ownership fence, so the additive migration
+must never overlap a running old application or worker.
+
+The main deployment workflow queries the production migration history before
+every deploy and enforces the one-release stop-the-world cutover while this
+migration is pending. This state check is deliberate: inspecting only the Git
+push range would skip the cutover after a failed deployment followed by a new
+commit. A fleet with no started Machine, or a failed SSH/RPC state probe, is
+also treated as requiring the cutover because no running application can prove
+the database state.
+
+The cutover pauses every Oban queue, checks the database-wide count of executing
+jobs until it remains zero, scales the application to zero Machines, and proves
+that no Machine remains. Only after that stop-world proof does it stage the
+exact migration-version acknowledgement and deploy the candidate from zero with
+one application Machine. Fly runs the candidate release command before creating
+that Machine, so no old binary is alive while the migration commits. The check
+emits only aggregate counts and the boolean migration state.
+
+The acknowledgement is
+`EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000`. It does not
+bypass any database precondition: it records that the external stop-the-world
+step was deliberately executed. Every workflow run checks for the temporary
+secret and stages its removal, including a retry where the migration committed
+but candidate startup failed. A failed run remains safe across a
+later commit: the next workflow queries the database again and repeats the
+cutover until the migration is actually present.
+
+Run this cutover in a recorded maintenance window with application traffic
+stopped. Queue pause is not an HTTP admission control. Production currently has
+no users, but that operational precondition must be replaced by an explicit
+ingress or maintenance control before the application accepts real traffic.
+
+If queue quiescence, scale-to-zero, migration, or startup fails, do not restart
+an old image. The safe state is downtime with either the old queues paused or
+zero Machines. Fix the failure and redeploy the candidate forward. A workflow
+retry is idempotent when the application is already at zero Machines. After a
+successful cutover, later commits that do not change this migration use the
+normal deployment path.
+
+If a Machine is reported as started but cannot accept the SSH/RPC drain command,
+the workflow deliberately stops before scaling it to zero: it cannot prove that
+an old writer is idle. Restore access to that Machine or establish the same
+global Oban pause and zero-executing-jobs evidence through approved direct
+database operations, then retry. Do not bypass the drain by killing the Machine.
+
+Do not use `fly releases rollback`, redeploy a commit older than this migration,
+or restore an earlier application image after the cutover. The additive schema
+cannot make older writers honor durable cleanup ownership, even when they
+already understand the ENG-116 multipart phases. Record the deployed
+commit SHA and Fly image digest in the maintenance evidence and treat them as
+the minimum supported application release; recovery is forward-only.
+
+Before accepting the cutover as evidence, rehearse it outside production with
+one legacy `storage_keys` job and one legacy multipart cleanup request. After
+the migration, prove that the new worker persists a provider-bound exact-key
+receipt before any provider mutation, advances it through the durable FSM, and
+leaves no upload, part, object, overdue receipt, or old application Machine.
+
+### Uploads covered by the cleanup fence
+
+Protected object keys cannot receive browser-facing presigned PUT URLs: checking
+admission when issuing a bearer URL cannot stop its later use after cleanup
+handoff. Workspace snapshot imports therefore use the existing server upload
+path for every provider, followed by a bounded stream to object storage. This
+does not revoke URLs issued by an earlier release; do not treat stopping the old
+application as revoking those capabilities.
+
+The server path holds the uploaded archive in temporary disk storage until its
+provider upload finishes. The archive size limit remains just below 4 GiB, but
+that limit is not a temporary-disk reservation or a concurrent-upload guarantee.
+Before claiming near-limit production support, verify available temporary disk,
+concurrent uploads and an end-to-end large-file upload on the deployed Machine.
+Local regression tests do not establish that operational capacity. No Fly disk
+or concurrency setting is changed by this review fix.
+
 ## Real Tigris validation
 
 CI and local-adapter tests do not prove the production bucket, credentials,

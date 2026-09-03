@@ -4,9 +4,11 @@ defmodule Storyarn.Projects.Assets.StorageKeyLock do
   """
 
   alias Storyarn.Platform.ObjectStorage, as: KeyLock
+  alias Storyarn.Projects.Assets.StorageCleanupOwnership
 
   @max_project_id 9_223_372_036_854_775_807
   @temporary_copy_marker ".storyarn-copy-"
+  @force_delete_prefix "__storyarn_force_delete__:"
 
   @spec with_project_blob_lock(String.t(), (-> result)) :: result when result: term()
   def with_project_blob_lock(storage_key, fun) when is_binary(storage_key) and is_function(fun, 0) do
@@ -18,14 +20,50 @@ defmodule Storyarn.Projects.Assets.StorageKeyLock do
   def with_project_blob_lock(storage_key, fun, opts)
       when is_binary(storage_key) and is_function(fun, 0) and is_list(opts) do
     case project_blob_id(storage_key) do
-      {:ok, _project_id} -> KeyLock.with_storage_key_lock(storage_key, fun, opts)
+      {:ok, _project_id} -> with_storage_key_lock(storage_key, fun, opts)
       :error -> fun.()
     end
   end
 
-  defdelegate with_storage_key_lock(storage_key, fun), to: KeyLock
-  defdelegate with_storage_key_lock(storage_key, fun, opts), to: KeyLock
-  defdelegate with_storage_key_locks(storage_keys, fun, opts \\ []), to: KeyLock
+  def with_storage_key_lock(storage_key, fun), do: with_storage_key_lock(storage_key, fun, [])
+
+  def with_storage_key_lock(storage_key, fun, opts)
+      when is_binary(storage_key) and is_function(fun, 0) and is_list(opts) do
+    KeyLock.with_storage_key_lock(storage_key, fn -> run_if_not_handed_off([storage_key], fun) end, opts)
+  end
+
+  def with_storage_key_locks(storage_keys, fun, opts \\ [])
+      when is_list(storage_keys) and is_function(fun, 0) and is_list(opts) do
+    KeyLock.with_storage_key_locks(storage_keys, fn -> run_if_not_handed_off(storage_keys, fun) end, opts)
+  end
+
+  @doc false
+  def with_cleanup_handoff_locks(cleanup_targets, fun, opts \\ [])
+      when is_list(cleanup_targets) and is_function(fun, 0) and is_list(opts) do
+    storage_keys = Enum.map(cleanup_targets, &cleanup_target_storage_key/1)
+    KeyLock.transact_with_storage_key_locks(storage_keys, fun, opts)
+  end
+
+  @doc false
+  def with_multipart_cleanup_handoff(cleanup_targets, fun, opts \\ [])
+      when is_list(cleanup_targets) and is_function(fun, 0) and is_list(opts) do
+    storage_keys = Enum.map(cleanup_targets, &cleanup_target_storage_key/1)
+    KeyLock.transact_with_storage_handoff(storage_keys, fun, opts)
+  end
+
+  @doc false
+  defdelegate transact_with_storage_key_admission(storage_key, fun, opts \\ []),
+    to: KeyLock
+
+  @doc false
+  defdelegate with_cleanup_storage_key_lock(storage_key, fun), to: KeyLock, as: :with_storage_key_lock
+
+  @doc false
+  defdelegate with_cleanup_storage_key_lock(storage_key, fun, opts), to: KeyLock, as: :with_storage_key_lock
+
+  @doc false
+  defdelegate with_owned_asset_adoption_locks(storage_keys, fun), to: KeyLock, as: :with_storage_key_locks
+
   defdelegate wrapper_owned_transaction_lock_held?(storage_key), to: KeyLock
   defdelegate with_session_lock(lock_name, fun), to: KeyLock
   defdelegate with_session_lock(lock_name, fun, opts), to: KeyLock
@@ -59,4 +97,23 @@ defmodule Storyarn.Projects.Assets.StorageKeyLock do
       _invalid -> :error
     end
   end
+
+  defp run_if_not_handed_off(storage_keys, fun) do
+    case cleanup_handoff_state(storage_keys) do
+      {:ok, true} -> {:error, :storage_key_cleanup_handed_off}
+      {:ok, false} -> fun.()
+      {:error, :unavailable} -> {:error, :storage_write_fence_unavailable}
+    end
+  end
+
+  defp cleanup_handoff_state(storage_keys) do
+    {:ok, StorageCleanupOwnership.handed_off_for_any_key?(storage_keys)}
+  rescue
+    _exception -> {:error, :unavailable}
+  catch
+    _kind, _reason -> {:error, :unavailable}
+  end
+
+  defp cleanup_target_storage_key(@force_delete_prefix <> storage_key), do: storage_key
+  defp cleanup_target_storage_key(storage_key), do: storage_key
 end

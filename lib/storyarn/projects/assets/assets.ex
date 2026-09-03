@@ -154,6 +154,7 @@ defmodule Storyarn.Projects.Assets do
   defdelegate parse_asset_upload_purpose(purpose), to: UploadPolicy, as: :parse_purpose
   defdelegate asset_upload_purpose_supported?(purpose), to: UploadPolicy, as: :supported_purpose?
   defdelegate external_project_storage?(), to: Storage, as: :external_upload?
+  defdelegate storage_provider_namespace_fingerprint(), to: Storage, as: :namespace_fingerprint
   defdelegate canonical_storage_key?(key), to: StorageKey, as: :canonical?
   defdelegate project_asset_route_key?(project_id, key), to: StorageKey
   defdelegate project_media_route_key?(project_id, key), to: StorageKey
