@@ -1,0 +1,22 @@
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_metrics_test.exs
+  s_6ce2be7da793bc::t_ff334d68025501 2
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_test.exs
+  s_6ce2be7da793bc::t_2deaccadfb63f9 1544-1547
+  s_6ce2be7da793bc::t_402b76617b6f80 1515-1527,1530-1531,1543,1552-1579
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3ee999e7a9d1fcc5be0acf75073f297fb77e6dee",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
