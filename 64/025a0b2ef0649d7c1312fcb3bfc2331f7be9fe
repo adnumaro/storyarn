@@ -1,0 +1,30 @@
+CLAUDE.md
+  s_dc522f884e191b::t_ee881e51c67f52 125
+docs/reference/component-registry.md
+  s_dc522f884e191b::t_ee881e51c67f52 63,131,174,180-185
+  s_dc522f884e191b::t_ada1d3765bc7a3 186
+lib/storyarn_web/components/settings_layout.ex
+  s_dc522f884e191b::t_4d1848ce007f29 5-7,60,68-69
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_4d1848ce007f29 356,518,527
+docs/reference/domain-patterns.md
+  s_dc522f884e191b::t_ee881e51c67f52 269-295
+test/storyarn_web/layouts_test.exs
+  s_dc522f884e191b::t_a0a1f784177959 48-53
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "64025a0b2ef0649d7c1312fcb3bfc2331f7be9fe",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
