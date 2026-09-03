@@ -1,0 +1,34 @@
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_6ce2be7da793bc::t_0cb81f2aad87d4 321-333,335,352-377
+  s_6ce2be7da793bc::t_a1579d2dd198aa 378
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_6ce2be7da793bc::t_0629f23992b221 494-497,499-506
+  s_6ce2be7da793bc::t_2a85aa10bcaa3a 498
+  s_6ce2be7da793bc::t_4275f0f54b6192 468-493
+test/storyarn/projects/workers/delete_storage_objects_worker_test.exs
+  s_6ce2be7da793bc::t_4275f0f54b6192 100-108
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_6ce2be7da793bc::t_0cb81f2aad87d4 118
+lib/storyarn/workers/projects/delete_storage_objects_worker.ex
+  s_6ce2be7da793bc::t_0cb81f2aad87d4 38
+test/storyarn/projects/versioning/commands/project_snapshot_lifecycle_test.exs
+  s_6ce2be7da793bc::t_2a85aa10bcaa3a 193,201-202,206-243,245-246,248-250
+test/storyarn/platform/object_storage/adapters/local_test.exs
+  s_6ce2be7da793bc::t_4275f0f54b6192 346-364
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "28633f24ccc69503ab2f0486078875eb46b2242a",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
