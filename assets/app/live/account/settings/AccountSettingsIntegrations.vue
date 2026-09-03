@@ -2,11 +2,23 @@
 import { PlugZap } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
-import { SettingsPage } from "@components/settings";
+import {
+  SettingsPage,
+  SettingsReauthBanner,
+  SettingsSection,
+  type SettingsReauthState,
+} from "@components/settings";
 import IntegrationCard, { type IntegrationCardData } from "./integrations/IntegrationCard.vue";
 
-const { cards = [] } = defineProps<{
+const {
+  cards = [],
+  sudoActive = true,
+  reauth = null,
+} = defineProps<{
   cards: IntegrationCardData[];
+  /** False outside the sudo window: the page renders locked with the banner. */
+  sudoActive?: boolean;
+  reauth?: SettingsReauthState | null;
 }>();
 
 const { t } = useI18n();
@@ -21,7 +33,21 @@ const availableCards = computed(() => cards.filter((card) => card.status === "no
       {{ t("integrations.page.description") }}
     </p>
 
-    <template v-if="cards.length > 0">
+    <SettingsReauthBanner v-if="!sudoActive && reauth" :state="reauth" />
+
+    <SettingsSection
+      v-if="!sudoActive"
+      :title="t('settings.reauth.locked_title')"
+      locked
+      :locked-label="t('settings.reauth.locked')"
+      data-testid="settings-reauth-locked"
+    >
+      <div class="px-4 py-6 text-center text-[13px] text-muted-foreground">
+        {{ t("settings.reauth.locked_hint") }}
+      </div>
+    </SettingsSection>
+
+    <template v-else-if="cards.length > 0">
       <section
         v-if="connectedCards.length > 0"
         id="connected-integrations"

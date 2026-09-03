@@ -5,16 +5,19 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
   This screen is intentionally read-only. Selecting a provider navigates to
   `SettingsLive.IntegrationDetail`, where credential and workspace assignment
   mutations are isolated behind the same sudo boundary.
+
+  Outside the sudo window the page mounts locked: no connection summary is
+  loaded until the user confirms their password in place through
+  `StoryarnWeb.Live.Shared.SudoReauth`.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
+  alias StoryarnWeb.Live.Shared.SudoReauth
   alias StoryarnWeb.UserAuth
 
   on_mount {StoryarnWeb.Live.Hooks.RequireFeatureFlag, :ai_integrations}
-  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
-
-  def sudo_return_to(_params, _live_action), do: ~p"/users/settings/integrations"
+  on_mount {UserAuth, :load_sudo_state}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -22,9 +25,15 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
       socket
       |> assign(:page_title, dgettext("integrations", "AI Integrations"))
       |> assign(:current_path, ~p"/users/settings/integrations")
+      |> SudoReauth.assign_reauth(~p"/users/settings/integrations")
       |> assign_cards()
 
     {:ok, socket}
+  end
+
+  @impl true
+  def handle_event("confirm_access", params, socket) do
+    SudoReauth.confirm(socket, params)
   end
 
   @impl true
@@ -44,10 +53,16 @@ defmodule StoryarnWeb.SettingsLive.Integrations do
         v-inject="settings-layout"
         id="settings-integrations-vue"
         cards={@cards}
+        sudo-active={@sudo_active}
+        reauth={SudoReauth.reauth_props(@sudo_return_to, @sudo_handoff, @trigger_sudo_submit)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
+
+  # Credential summaries (account emails, key suffixes) never reach the
+  # browser before the sudo window is open.
+  defp assign_cards(%{assigns: %{sudo_active: false}} = socket), do: assign(socket, :cards, [])
 
   defp assign_cards(socket) do
     user = socket.assigns.current_scope.user

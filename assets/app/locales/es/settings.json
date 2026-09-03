@@ -315,7 +315,9 @@
       "description": "Introduce tu contraseña para desbloquear estos ajustes durante 20 minutos.",
       "password": "Contraseña",
       "confirm": "Confirmar",
-      "locked": "Confirma que eres tú para cambiar estos ajustes"
+      "locked": "Confirma que eres tú para cambiar estos ajustes",
+      "locked_title": "Bloqueado hasta que confirmes",
+      "locked_hint": "Tus conexiones, claves y roles de IA se cargan después de confirmar tu contraseña."
     },
     "preferences": {
       "title": "Preferencias",

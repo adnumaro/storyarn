@@ -282,11 +282,15 @@ Account (`SettingsLive.*`), workspace (`SettingsLive.Workspace*`) and project
   `tone="danger"` section and confirm through `SettingsDeleteDialog`.
 - **Saving.** Simple fields save on blur/toggle and report through
   `SaveStatusTimer` + `SaveIndicator`; nothing shows a "Saved" flash.
-- **Re-authentication.** Profile and Security use `UserAuth`'s
-  `:load_sudo_state` hook plus `StoryarnWeb.Live.Shared.SudoReauth`: the page
-  mounts locked with `SettingsReauthBanner` and unlocks in place. AI
-  Integrations and My AI Team keep the `:require_sudo_mode` redirect because
-  they must not render credential summaries at all before confirmation.
+- **Re-authentication.** Every sensitive page (Profile, Security, AI
+  Integrations, the provider detail, My AI Team and its workspace editor)
+  uses `UserAuth`'s `:load_sudo_state` hook plus
+  `StoryarnWeb.Live.Shared.SudoReauth`: the page mounts locked with
+  `SettingsReauthBanner` and unlocks in place. The AI pages load no
+  credential summary, model list or role preference while `sudo_active` is
+  false; the data is assigned only after the session is confirmed, and a
+  lapsed window locks the page again and replies `sudo_required` to the
+  client instead of navigating away.
 - **Access.** Owner-only pages (project General, Members, Templates, Version
   control, Backups, Localization, Usage, Import) redirect editors and viewers
   at mount; Trash redirects viewers; Export stays read-only for viewers.

@@ -315,7 +315,9 @@
       "description": "Enter your password to unlock these settings for 20 minutes.",
       "password": "Password",
       "confirm": "Confirm",
-      "locked": "Confirm it's you to change these settings"
+      "locked": "Confirm it's you to change these settings",
+      "locked_title": "Locked until you confirm",
+      "locked_hint": "Your connections, keys and AI roles load after you confirm your password."
     },
     "preferences": {
       "title": "Preferences",

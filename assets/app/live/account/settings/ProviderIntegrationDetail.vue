@@ -18,7 +18,12 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import { SettingsPage } from "@components/settings";
+import {
+  SettingsPage,
+  SettingsReauthBanner,
+  SettingsSection,
+  type SettingsReauthState,
+} from "@components/settings";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useLive } from "@shared/composables/useLive";
@@ -102,9 +107,17 @@ interface EventReply {
   error?: string;
 }
 
-const { card, providersPath = "/users/settings/integrations" } = defineProps<{
+const {
+  card,
+  providersPath = "/users/settings/integrations",
+  sudoActive = true,
+  reauth = null,
+} = defineProps<{
   card: ProviderIntegrationDetailData;
   providersPath?: string;
+  /** False outside the sudo window: the page renders locked with the banner. */
+  sudoActive?: boolean;
+  reauth?: SettingsReauthState | null;
 }>();
 
 const { locale, t, te } = useI18n();
@@ -439,448 +452,467 @@ function cancelDisconnect(): void {
       </div>
     </div>
 
-    <div
-      v-if="inlineError"
-      role="alert"
-      class="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-    >
-      <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      {{ t(`integrations.errors.${inlineError}`, t("integrations.errors.unknown_error")) }}
-    </div>
+    <SettingsReauthBanner v-if="!sudoActive && reauth" :state="reauth" />
 
-    <div
-      v-if="successMessage"
-      role="status"
-      class="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300"
+    <SettingsSection
+      v-if="!sudoActive"
+      :title="t('settings.reauth.locked_title')"
+      locked
+      :locked-label="t('settings.reauth.locked')"
+      data-testid="settings-reauth-locked"
     >
-      <CheckCircle2 class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      {{ t(successMessage) }}
-    </div>
+      <div class="px-4 py-6 text-center text-[13px] text-muted-foreground">
+        {{ t("settings.reauth.locked_hint") }}
+      </div>
+    </SettingsSection>
 
-    <section
-      id="provider-connection"
-      class="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm"
-      aria-labelledby="provider-connection-title"
-    >
-      <div class="flex items-center gap-2 border-b border-border/60 px-5 py-4">
-        <KeyRound class="size-4 text-muted-foreground" aria-hidden="true" />
-        <h2 id="provider-connection-title" class="text-sm font-semibold">
-          {{ t("integrations.detail.connection.title") }}
-        </h2>
+    <template v-else>
+      <div
+        v-if="inlineError"
+        role="alert"
+        class="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
+      >
+        <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        {{ t(`integrations.errors.${inlineError}`, t("integrations.errors.unknown_error")) }}
       </div>
 
       <div
-        v-if="connected"
-        class="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between"
+        v-if="successMessage"
+        role="status"
+        class="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 px-3 py-2.5 text-sm text-emerald-700 dark:text-emerald-300"
       >
-        <div class="min-w-0 space-y-2">
-          <p class="truncate text-sm font-medium text-foreground">{{ identifier }}</p>
-          <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
-            <span class="inline-flex items-center gap-1.5">
-              <Clock3 class="size-3.5" aria-hidden="true" />
-              {{
-                t("integrations.detail.connection.connected_at", {
-                  date: formatDate(card.connected_at),
-                })
-              }}
-            </span>
-            <span class="inline-flex items-center gap-1.5">
-              <ShieldCheck class="size-3.5" aria-hidden="true" />
-              {{
-                t("integrations.detail.connection.validated_at", {
-                  date: formatDate(card.last_validated_at),
-                })
-              }}
-            </span>
-          </div>
-        </div>
-
-        <div class="flex flex-wrap gap-2">
-          <Button
-            id="revalidate-provider"
-            type="button"
-            variant="outline"
-            size="sm"
-            :disabled="revalidatePending"
-            @click="revalidate"
-          >
-            <Loader2 v-if="revalidatePending" class="size-3.5 animate-spin" aria-hidden="true" />
-            <RefreshCw v-else class="size-3.5" aria-hidden="true" />
-            {{ t("integrations.detail.connection.revalidate") }}
-          </Button>
-          <Button
-            id="replace-provider-key"
-            type="button"
-            variant="secondary"
-            size="sm"
-            @click="openCredentialDialog('replace')"
-          >
-            <KeyRound class="size-3.5" aria-hidden="true" />
-            {{ t("integrations.detail.connection.replace") }}
-          </Button>
-        </div>
+        <CheckCircle2 class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        {{ t(successMessage) }}
       </div>
 
-      <div v-else class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
-        <div class="max-w-xl">
-          <p class="text-sm font-medium text-foreground">
-            {{ t("integrations.detail.connection.not_connected_title") }}
-          </p>
-          <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
-            {{ t("integrations.detail.connection.not_connected_description") }}
-          </p>
-        </div>
-        <Button
-          id="connect-provider"
-          type="button"
-          size="sm"
-          @click="openCredentialDialog('connect')"
-        >
-          <KeyRound class="size-3.5" aria-hidden="true" />
-          {{ t("integrations.card.connect") }}
-        </Button>
-      </div>
-    </section>
-
-    <section id="provider-models" class="space-y-4" aria-labelledby="provider-models-title">
-      <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
-        <div class="space-y-1">
-          <h2 id="provider-models-title" class="text-sm font-semibold text-foreground">
-            {{ t("integrations.detail.models.title") }}
+      <section
+        id="provider-connection"
+        class="overflow-hidden rounded-xl border border-border/70 bg-card shadow-sm"
+        aria-labelledby="provider-connection-title"
+      >
+        <div class="flex items-center gap-2 border-b border-border/60 px-5 py-4">
+          <KeyRound class="size-4 text-muted-foreground" aria-hidden="true" />
+          <h2 id="provider-connection-title" class="text-sm font-semibold">
+            {{ t("integrations.detail.connection.title") }}
           </h2>
-          <p class="text-xs leading-relaxed text-muted-foreground">
-            {{ t("integrations.detail.models.description") }}
-          </p>
         </div>
-        <span
-          class="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
-        >
-          {{
-            t("integrations.detail.models.compatible_count", {
-              count: compatibleModelCount,
-            })
-          }}
-        </span>
-      </div>
 
-      <div
-        v-if="orderedModels.length > 0"
-        class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/70 bg-card"
-        role="list"
-      >
         <div
-          v-for="model in orderedModels"
-          :key="model.model"
-          class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          :data-model="model.model"
-          :data-model-availability="modelAvailability(model)"
-          :data-model-implementation="model.implementation_status"
-          :data-model-release-stage="model.release_stage"
-          role="listitem"
+          v-if="connected"
+          class="flex flex-col gap-5 p-5 lg:flex-row lg:items-center lg:justify-between"
         >
-          <div class="min-w-0">
-            <p class="truncate text-sm font-medium text-foreground" :title="model.model">
-              {{ model.model }}
-            </p>
-            <div v-if="model.capabilities.length > 0" class="mt-1.5 flex flex-wrap gap-1.5">
-              <span
-                v-for="capability in model.capabilities"
-                :key="capability"
-                class="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-              >
-                {{ formatCapability(capability) }}
+          <div class="min-w-0 space-y-2">
+            <p class="truncate text-sm font-medium text-foreground">{{ identifier }}</p>
+            <div class="flex flex-wrap gap-x-5 gap-y-1 text-xs text-muted-foreground">
+              <span class="inline-flex items-center gap-1.5">
+                <Clock3 class="size-3.5" aria-hidden="true" />
+                {{
+                  t("integrations.detail.connection.connected_at", {
+                    date: formatDate(card.connected_at),
+                  })
+                }}
+              </span>
+              <span class="inline-flex items-center gap-1.5">
+                <ShieldCheck class="size-3.5" aria-hidden="true" />
+                {{
+                  t("integrations.detail.connection.validated_at", {
+                    date: formatDate(card.last_validated_at),
+                  })
+                }}
               </span>
             </div>
-            <p
-              v-if="model.implementation_status === 'configuration_only'"
-              class="mt-2 max-w-xl text-[11px] leading-relaxed text-sky-700 dark:text-sky-300"
-            >
-              {{ t("integrations.detail.models.configuration_only_description") }}
-            </p>
           </div>
-          <div class="flex w-fit shrink-0 flex-wrap items-center gap-1.5">
-            <span
-              v-if="model.release_stage === 'preview'"
-              class="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-300"
+
+          <div class="flex flex-wrap gap-2">
+            <Button
+              id="revalidate-provider"
+              type="button"
+              variant="outline"
+              size="sm"
+              :disabled="revalidatePending"
+              @click="revalidate"
             >
-              <Sparkles class="size-3" aria-hidden="true" />
-              {{ t("integrations.detail.models.release_stage.preview") }}
-            </span>
-            <span
-              :class="[
-                'inline-flex w-fit items-center rounded-full px-2 py-1 text-[11px] font-medium',
-                model.implementation_status === 'executable'
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
-              ]"
+              <Loader2 v-if="revalidatePending" class="size-3.5 animate-spin" aria-hidden="true" />
+              <RefreshCw v-else class="size-3.5" aria-hidden="true" />
+              {{ t("integrations.detail.connection.revalidate") }}
+            </Button>
+            <Button
+              id="replace-provider-key"
+              type="button"
+              variant="secondary"
+              size="sm"
+              @click="openCredentialDialog('replace')"
             >
-              {{ t(`integrations.detail.models.implementation.${model.implementation_status}`) }}
-            </span>
-            <span
-              :class="[
-                'inline-flex w-fit items-center rounded-full px-2 py-1 text-[11px] font-medium',
-                modelAvailability(model) === 'available'
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : modelAvailability(model) === 'unknown'
-                    ? 'bg-muted text-muted-foreground'
-                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
-              ]"
-            >
-              {{ t(`integrations.detail.models.status.${modelAvailability(model)}`) }}
-            </span>
+              <KeyRound class="size-3.5" aria-hidden="true" />
+              {{ t("integrations.detail.connection.replace") }}
+            </Button>
           </div>
         </div>
-      </div>
 
-      <div
-        v-else
-        class="flex items-start gap-3 rounded-xl border border-dashed border-border/70 bg-muted/10 p-4"
-      >
-        <Cpu class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <p class="text-xs leading-relaxed text-muted-foreground">
-          {{ t("integrations.detail.models.empty") }}
-        </p>
-      </div>
-    </section>
-
-    <section
-      v-if="orderedPreferenceImpacts.length > 0"
-      id="provider-role-impacts"
-      class="space-y-4"
-      aria-labelledby="provider-role-impacts-title"
-    >
-      <div class="space-y-1">
-        <h2 id="provider-role-impacts-title" class="text-sm font-semibold text-foreground">
-          {{ t("integrations.detail.impacts.title") }}
-        </h2>
-        <p class="text-xs leading-relaxed text-muted-foreground">
-          {{ t("integrations.detail.impacts.description") }}
-        </p>
-      </div>
-
-      <div
-        class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/70 bg-card"
-        role="list"
-      >
-        <div
-          v-for="impact in orderedPreferenceImpacts"
-          :key="`${impact.workspace_id}:${impact.slot}`"
-          class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
-          :data-impact-workspace="impact.workspace_id"
-          :data-impact-slot="impact.slot"
-          :data-impact-status="impact.status"
-          :data-impact-implementation="impact.implementation_status"
-          role="listitem"
-        >
-          <div class="min-w-0">
-            <p class="text-xs font-medium text-foreground">
-              {{ t(`integrations.team.slots.${impact.slot}.title`) }}
-              <span class="font-normal text-muted-foreground">· {{ impact.workspace_name }}</span>
+        <div v-else class="flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:justify-between">
+          <div class="max-w-xl">
+            <p class="text-sm font-medium text-foreground">
+              {{ t("integrations.detail.connection.not_connected_title") }}
             </p>
-            <p class="mt-1 truncate text-[11px] text-muted-foreground">{{ impact.model }}</p>
-            <p
-              v-if="impact.status === 'configured'"
-              class="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-sky-700 dark:text-sky-300"
-            >
-              <Sparkles class="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-              {{ t("integrations.team.configuration_only.saved_description") }}
+            <p class="mt-1 text-xs leading-relaxed text-muted-foreground">
+              {{ t("integrations.detail.connection.not_connected_description") }}
             </p>
-            <p
-              v-else-if="!preferenceHealthy(impact.status)"
-              class="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300"
-            >
-              <CircleAlert class="mt-0.5 size-3 shrink-0" aria-hidden="true" />
-              {{ t(`integrations.team.repairs.${impact.status}`) }}
+          </div>
+          <Button
+            id="connect-provider"
+            type="button"
+            size="sm"
+            @click="openCredentialDialog('connect')"
+          >
+            <KeyRound class="size-3.5" aria-hidden="true" />
+            {{ t("integrations.card.connect") }}
+          </Button>
+        </div>
+      </section>
+
+      <section id="provider-models" class="space-y-4" aria-labelledby="provider-models-title">
+        <div class="flex flex-col items-start justify-between gap-3 sm:flex-row sm:items-end">
+          <div class="space-y-1">
+            <h2 id="provider-models-title" class="text-sm font-semibold text-foreground">
+              {{ t("integrations.detail.models.title") }}
+            </h2>
+            <p class="text-xs leading-relaxed text-muted-foreground">
+              {{ t("integrations.detail.models.description") }}
             </p>
           </div>
           <span
-            :class="[
-              'inline-flex w-fit shrink-0 items-center rounded-full px-2 py-1 text-[11px] font-medium',
-              impact.status === 'ready'
-                ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                : impact.status === 'configured'
-                  ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
-                  : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
-            ]"
+            class="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
           >
-            {{ t(`integrations.team.status.${impact.status}`) }}
+            {{
+              t("integrations.detail.models.compatible_count", {
+                count: compatibleModelCount,
+              })
+            }}
           </span>
         </div>
-      </div>
-    </section>
 
-    <section
-      v-if="connected"
-      id="provider-workspaces"
-      class="space-y-4"
-      aria-labelledby="provider-workspaces-title"
-    >
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div class="space-y-1">
-          <h2 id="provider-workspaces-title" class="text-sm font-semibold text-foreground">
-            {{ t("integrations.assignments.title") }}
-          </h2>
-          <p class="max-w-xl text-xs leading-relaxed text-muted-foreground">
-            {{ t("integrations.assignments.description") }}
-          </p>
-        </div>
-        <span
-          v-if="card.workspace_assignments.length > 0"
-          class="w-fit shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+        <div
+          v-if="orderedModels.length > 0"
+          class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/70 bg-card"
+          role="list"
         >
-          {{
-            t("integrations.assignments.summary", {
-              assigned: assignedCount,
-              total: card.workspace_assignments.length,
-            })
-          }}
-        </span>
-      </div>
-
-      <div
-        v-if="card.workspace_assignments.length > 0"
-        class="overflow-hidden rounded-xl border border-border/70 bg-card"
-      >
-        <div class="border-b border-border/60 p-3">
-          <div class="relative">
-            <Search
-              class="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
-              aria-hidden="true"
-            />
-            <Input
-              id="workspace-assignment-search"
-              v-model="searchQuery"
-              type="search"
-              size="sm"
-              class="pl-9"
-              :aria-label="t('integrations.assignments.search')"
-              :placeholder="t('integrations.assignments.search')"
-            />
+          <div
+            v-for="model in orderedModels"
+            :key="model.model"
+            class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+            :data-model="model.model"
+            :data-model-availability="modelAvailability(model)"
+            :data-model-implementation="model.implementation_status"
+            :data-model-release-stage="model.release_stage"
+            role="listitem"
+          >
+            <div class="min-w-0">
+              <p class="truncate text-sm font-medium text-foreground" :title="model.model">
+                {{ model.model }}
+              </p>
+              <div v-if="model.capabilities.length > 0" class="mt-1.5 flex flex-wrap gap-1.5">
+                <span
+                  v-for="capability in model.capabilities"
+                  :key="capability"
+                  class="rounded-md bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                >
+                  {{ formatCapability(capability) }}
+                </span>
+              </div>
+              <p
+                v-if="model.implementation_status === 'configuration_only'"
+                class="mt-2 max-w-xl text-[11px] leading-relaxed text-sky-700 dark:text-sky-300"
+              >
+                {{ t("integrations.detail.models.configuration_only_description") }}
+              </p>
+            </div>
+            <div class="flex w-fit shrink-0 flex-wrap items-center gap-1.5">
+              <span
+                v-if="model.release_stage === 'preview'"
+                class="inline-flex items-center gap-1 rounded-full bg-violet-500/10 px-2 py-1 text-[11px] font-medium text-violet-700 dark:text-violet-300"
+              >
+                <Sparkles class="size-3" aria-hidden="true" />
+                {{ t("integrations.detail.models.release_stage.preview") }}
+              </span>
+              <span
+                :class="[
+                  'inline-flex w-fit items-center rounded-full px-2 py-1 text-[11px] font-medium',
+                  model.implementation_status === 'executable'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : 'bg-sky-500/10 text-sky-700 dark:text-sky-300',
+                ]"
+              >
+                {{ t(`integrations.detail.models.implementation.${model.implementation_status}`) }}
+              </span>
+              <span
+                :class="[
+                  'inline-flex w-fit items-center rounded-full px-2 py-1 text-[11px] font-medium',
+                  modelAvailability(model) === 'available'
+                    ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                    : modelAvailability(model) === 'unknown'
+                      ? 'bg-muted text-muted-foreground'
+                      : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+                ]"
+              >
+                {{ t(`integrations.detail.models.status.${modelAvailability(model)}`) }}
+              </span>
+            </div>
           </div>
         </div>
 
         <div
-          v-if="filteredWorkspaces.length > 0"
-          class="max-h-96 divide-y divide-border/50 overflow-y-auto"
+          v-else
+          class="flex items-start gap-3 rounded-xl border border-dashed border-border/70 bg-muted/10 p-4"
+        >
+          <Cpu class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.detail.models.empty") }}
+          </p>
+        </div>
+      </section>
+
+      <section
+        v-if="orderedPreferenceImpacts.length > 0"
+        id="provider-role-impacts"
+        class="space-y-4"
+        aria-labelledby="provider-role-impacts-title"
+      >
+        <div class="space-y-1">
+          <h2 id="provider-role-impacts-title" class="text-sm font-semibold text-foreground">
+            {{ t("integrations.detail.impacts.title") }}
+          </h2>
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.detail.impacts.description") }}
+          </p>
+        </div>
+
+        <div
+          class="divide-y divide-border/50 overflow-hidden rounded-xl border border-border/70 bg-card"
+          role="list"
         >
           <div
-            v-for="workspace in filteredWorkspaces"
-            :key="workspace.workspace_id"
-            class="flex items-center justify-between gap-4 px-4 py-3.5 transition-colors hover:bg-muted/20"
-            :data-workspace-id="workspace.workspace_id"
-            :data-assignment-state="workspace.state"
+            v-for="impact in orderedPreferenceImpacts"
+            :key="`${impact.workspace_id}:${impact.slot}`"
+            class="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+            :data-impact-workspace="impact.workspace_id"
+            :data-impact-slot="impact.slot"
+            :data-impact-status="impact.status"
+            :data-impact-implementation="impact.implementation_status"
+            role="listitem"
           >
-            <div class="flex min-w-0 items-start gap-3">
-              <div
-                :class="[
-                  'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
-                  workspace.assigned
-                    ? 'bg-primary/10 text-primary'
-                    : 'bg-muted text-muted-foreground',
-                ]"
+            <div class="min-w-0">
+              <p class="text-xs font-medium text-foreground">
+                {{ t(`integrations.team.slots.${impact.slot}.title`) }}
+                <span class="font-normal text-muted-foreground">· {{ impact.workspace_name }}</span>
+              </p>
+              <p class="mt-1 truncate text-[11px] text-muted-foreground">{{ impact.model }}</p>
+              <p
+                v-if="impact.status === 'configured'"
+                class="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-sky-700 dark:text-sky-300"
               >
-                <Building2 class="size-3.5" aria-hidden="true" />
-              </div>
-              <div class="min-w-0">
-                <p class="truncate text-xs font-medium text-foreground">
-                  {{ workspace.workspace_name }}
-                </p>
-                <p
-                  :class="[
-                    'mt-0.5 flex items-center gap-1 text-[11px]',
-                    workspace.state === 'blocked'
-                      ? 'text-amber-600 dark:text-amber-400'
-                      : 'text-muted-foreground',
-                  ]"
-                >
-                  <CircleAlert
-                    v-if="workspace.state === 'blocked'"
-                    class="size-3 shrink-0"
-                    aria-hidden="true"
-                  />
-                  {{ t(`integrations.assignments.reasons.${workspace.reason}`) }}
-                </p>
-              </div>
+                <Sparkles class="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                {{ t("integrations.team.configuration_only.saved_description") }}
+              </p>
+              <p
+                v-else-if="!preferenceHealthy(impact.status)"
+                class="mt-1.5 flex items-start gap-1.5 text-[11px] leading-relaxed text-amber-700 dark:text-amber-300"
+              >
+                <CircleAlert class="mt-0.5 size-3 shrink-0" aria-hidden="true" />
+                {{ t(`integrations.team.repairs.${impact.status}`) }}
+              </p>
             </div>
-
-            <Button
-              v-if="workspace.assigned || workspace.can_assign"
-              type="button"
-              size="sm"
-              :variant="workspace.assigned ? 'outline' : 'secondary'"
-              class="h-7 shrink-0 px-2.5 text-xs"
-              :aria-label="
-                t(
-                  workspace.assigned
-                    ? 'integrations.assignments.disable_for_workspace'
-                    : 'integrations.assignments.enable_for_workspace',
-                  { workspace: workspace.workspace_name },
-                )
-              "
-              :disabled="pendingAssignments.has(workspace.workspace_id)"
-              @click="toggleWorkspace(workspace)"
+            <span
+              :class="[
+                'inline-flex w-fit shrink-0 items-center rounded-full px-2 py-1 text-[11px] font-medium',
+                impact.status === 'ready'
+                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+                  : impact.status === 'configured'
+                    ? 'bg-sky-500/10 text-sky-700 dark:text-sky-300'
+                    : 'bg-amber-500/10 text-amber-700 dark:text-amber-300',
+              ]"
             >
-              <Loader2
-                v-if="pendingAssignments.has(workspace.workspace_id)"
-                class="size-3 animate-spin"
-                aria-hidden="true"
-              />
-              {{
-                workspace.assigned
-                  ? t("integrations.assignments.remove")
-                  : t("integrations.assignments.allow")
-              }}
-            </Button>
-            <span v-else class="shrink-0 text-[11px] font-medium text-muted-foreground">
-              {{ t("integrations.assignments.blocked") }}
+              {{ t(`integrations.team.status.${impact.status}`) }}
             </span>
           </div>
         </div>
+      </section>
 
-        <p v-else class="px-4 py-8 text-center text-xs text-muted-foreground">
-          {{ t("integrations.assignments.no_search_results") }}
+      <section
+        v-if="connected"
+        id="provider-workspaces"
+        class="space-y-4"
+        aria-labelledby="provider-workspaces-title"
+      >
+        <div class="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div class="space-y-1">
+            <h2 id="provider-workspaces-title" class="text-sm font-semibold text-foreground">
+              {{ t("integrations.assignments.title") }}
+            </h2>
+            <p class="max-w-xl text-xs leading-relaxed text-muted-foreground">
+              {{ t("integrations.assignments.description") }}
+            </p>
+          </div>
+          <span
+            v-if="card.workspace_assignments.length > 0"
+            class="w-fit shrink-0 rounded-full bg-muted px-2.5 py-1 text-[11px] font-medium text-muted-foreground"
+          >
+            {{
+              t("integrations.assignments.summary", {
+                assigned: assignedCount,
+                total: card.workspace_assignments.length,
+              })
+            }}
+          </span>
+        </div>
+
+        <div
+          v-if="card.workspace_assignments.length > 0"
+          class="overflow-hidden rounded-xl border border-border/70 bg-card"
+        >
+          <div class="border-b border-border/60 p-3">
+            <div class="relative">
+              <Search
+                class="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-muted-foreground"
+                aria-hidden="true"
+              />
+              <Input
+                id="workspace-assignment-search"
+                v-model="searchQuery"
+                type="search"
+                size="sm"
+                class="pl-9"
+                :aria-label="t('integrations.assignments.search')"
+                :placeholder="t('integrations.assignments.search')"
+              />
+            </div>
+          </div>
+
+          <div
+            v-if="filteredWorkspaces.length > 0"
+            class="max-h-96 divide-y divide-border/50 overflow-y-auto"
+          >
+            <div
+              v-for="workspace in filteredWorkspaces"
+              :key="workspace.workspace_id"
+              class="flex items-center justify-between gap-4 px-4 py-3.5 transition-colors hover:bg-muted/20"
+              :data-workspace-id="workspace.workspace_id"
+              :data-assignment-state="workspace.state"
+            >
+              <div class="flex min-w-0 items-start gap-3">
+                <div
+                  :class="[
+                    'mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-lg',
+                    workspace.assigned
+                      ? 'bg-primary/10 text-primary'
+                      : 'bg-muted text-muted-foreground',
+                  ]"
+                >
+                  <Building2 class="size-3.5" aria-hidden="true" />
+                </div>
+                <div class="min-w-0">
+                  <p class="truncate text-xs font-medium text-foreground">
+                    {{ workspace.workspace_name }}
+                  </p>
+                  <p
+                    :class="[
+                      'mt-0.5 flex items-center gap-1 text-[11px]',
+                      workspace.state === 'blocked'
+                        ? 'text-amber-600 dark:text-amber-400'
+                        : 'text-muted-foreground',
+                    ]"
+                  >
+                    <CircleAlert
+                      v-if="workspace.state === 'blocked'"
+                      class="size-3 shrink-0"
+                      aria-hidden="true"
+                    />
+                    {{ t(`integrations.assignments.reasons.${workspace.reason}`) }}
+                  </p>
+                </div>
+              </div>
+
+              <Button
+                v-if="workspace.assigned || workspace.can_assign"
+                type="button"
+                size="sm"
+                :variant="workspace.assigned ? 'outline' : 'secondary'"
+                class="h-7 shrink-0 px-2.5 text-xs"
+                :aria-label="
+                  t(
+                    workspace.assigned
+                      ? 'integrations.assignments.disable_for_workspace'
+                      : 'integrations.assignments.enable_for_workspace',
+                    { workspace: workspace.workspace_name },
+                  )
+                "
+                :disabled="pendingAssignments.has(workspace.workspace_id)"
+                @click="toggleWorkspace(workspace)"
+              >
+                <Loader2
+                  v-if="pendingAssignments.has(workspace.workspace_id)"
+                  class="size-3 animate-spin"
+                  aria-hidden="true"
+                />
+                {{
+                  workspace.assigned
+                    ? t("integrations.assignments.remove")
+                    : t("integrations.assignments.allow")
+                }}
+              </Button>
+              <span v-else class="shrink-0 text-[11px] font-medium text-muted-foreground">
+                {{ t("integrations.assignments.blocked") }}
+              </span>
+            </div>
+          </div>
+
+          <p v-else class="px-4 py-8 text-center text-xs text-muted-foreground">
+            {{ t("integrations.assignments.no_search_results") }}
+          </p>
+
+          <div class="flex items-start gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
+            <ShieldCheck
+              class="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+              aria-hidden="true"
+            />
+            <p class="text-[11px] leading-relaxed text-muted-foreground">
+              {{ t("integrations.assignments.consent_note") }}
+            </p>
+          </div>
+        </div>
+
+        <p
+          v-else
+          class="rounded-xl border border-dashed border-border/70 px-4 py-6 text-xs text-muted-foreground"
+        >
+          {{ t("integrations.assignments.no_workspaces") }}
         </p>
+      </section>
 
-        <div class="flex items-start gap-2 border-t border-border/60 bg-muted/20 px-4 py-3">
-          <ShieldCheck class="mt-0.5 size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
-          <p class="text-[11px] leading-relaxed text-muted-foreground">
-            {{ t("integrations.assignments.consent_note") }}
+      <section
+        v-if="connected"
+        id="provider-danger-zone"
+        class="flex flex-col gap-4 rounded-xl border border-destructive/25 bg-destructive/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div>
+          <h2 class="text-sm font-semibold text-foreground">
+            {{ t("integrations.detail.disconnect.title") }}
+          </h2>
+          <p class="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.detail.disconnect.description") }}
           </p>
         </div>
-      </div>
-
-      <p
-        v-else
-        class="rounded-xl border border-dashed border-border/70 px-4 py-6 text-xs text-muted-foreground"
-      >
-        {{ t("integrations.assignments.no_workspaces") }}
-      </p>
-    </section>
-
-    <section
-      v-if="connected"
-      id="provider-danger-zone"
-      class="flex flex-col gap-4 rounded-xl border border-destructive/25 bg-destructive/[0.025] p-4 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div>
-        <h2 class="text-sm font-semibold text-foreground">
-          {{ t("integrations.detail.disconnect.title") }}
-        </h2>
-        <p class="mt-1 max-w-xl text-xs leading-relaxed text-muted-foreground">
-          {{ t("integrations.detail.disconnect.description") }}
-        </p>
-      </div>
-      <Button
-        id="disconnect-provider"
-        type="button"
-        variant="destructive"
-        size="sm"
-        class="self-start sm:self-auto"
-        @click="disconnectOpen = true"
-      >
-        {{ t("integrations.card.disconnect") }}
-      </Button>
-    </section>
+        <Button
+          id="disconnect-provider"
+          type="button"
+          variant="destructive"
+          size="sm"
+          class="self-start sm:self-auto"
+          @click="disconnectOpen = true"
+        >
+          {{ t("integrations.card.disconnect") }}
+        </Button>
+      </section>
+    </template>
 
     <ConnectKeyDialog
       v-if="credentialMode"

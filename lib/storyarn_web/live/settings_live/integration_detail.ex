@@ -5,17 +5,19 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   The provider comes from the validated route, and every mutation reloads the
   actor-owned active integration server-side. Client-supplied provider or
   integration identifiers are never used as authorization inputs.
+
+  Outside the sudo window the page mounts locked with the provider's public
+  metadata only; the connection, models and assignments load after the user
+  confirms their password in place.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.AI
-  alias StoryarnWeb.SettingsLive.Sudo
+  alias StoryarnWeb.Live.Shared.SudoReauth
   alias StoryarnWeb.UserAuth
 
   on_mount {StoryarnWeb.Live.Hooks.RequireFeatureFlag, :ai_integrations}
-  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
-
-  def sudo_return_to(%{"provider" => provider}, _live_action), do: ~p"/users/settings/integrations/#{provider}"
+  on_mount {UserAuth, :load_sudo_state}
 
   @impl true
   def mount(%{"provider" => provider}, _session, socket) do
@@ -28,6 +30,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
           |> assign(:provider, provider)
           |> assign(:metadata, metadata)
           |> assign(:providers_path, providers_path(socket))
+          |> SudoReauth.assign_reauth(~p"/users/settings/integrations/#{provider}")
           |> assign_detail()
 
         {:ok, socket}
@@ -58,12 +61,18 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
         id="settings-integration-detail-vue"
         card={@card}
         providers-path={@providers_path}
+        sudo-active={@sudo_active}
+        reauth={SudoReauth.reauth_props(@sudo_return_to, @sudo_handoff, @trigger_sudo_submit)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
   end
 
   @impl true
+  def handle_event("confirm_access", params, socket) do
+    SudoReauth.confirm(socket, params)
+  end
+
   def handle_event("connect", %{"api_key" => api_key}, socket) do
     with_sudo(socket, &connect(&1, api_key))
   end
@@ -180,6 +189,31 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   defp mutate_assignment(:unassign, scope, integration_id, workspace_id),
     do: AI.unassign_integration(scope, integration_id, workspace_id)
 
+  # Locked pages carry the public provider metadata only.
+  defp assign_detail(%{assigns: %{sudo_active: false}} = socket) do
+    metadata = socket.assigns.metadata
+
+    assign(socket, :card, %{
+      integration_id: nil,
+      provider: socket.assigns.provider,
+      name: metadata.name,
+      key_generation_url: metadata.key_generation_url,
+      docs_url: metadata.docs_url,
+      key_placeholder: metadata.key_placeholder,
+      capabilities: Enum.map(metadata.capabilities, &Atom.to_string/1),
+      status: "not_connected",
+      account_email: nil,
+      account_display_name: nil,
+      key_last_four: nil,
+      connected_at: nil,
+      last_validated_at: nil,
+      catalog_status: "not_connected",
+      models: [],
+      workspace_assignments: [],
+      preference_impacts: []
+    })
+  end
+
   defp assign_detail(socket) do
     user = socket.assigns.current_scope.user
     integration = AI.get_active(user, socket.assigns.provider)
@@ -259,11 +293,25 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
     )
   end
 
+  # A lapsed sudo window locks the page in place and tells the client why,
+  # so pending spinners settle instead of waiting for a reply that never comes.
   defp with_sudo(socket, fun) do
-    Sudo.authorize(socket, return_to(socket), fun)
-  end
+    case UserAuth.authorize_sudo(
+           socket.assigns.current_scope.user,
+           socket.assigns.sudo_session_token,
+           socket.assigns.sudo_grant
+         ) do
+      {:ok, _grant} ->
+        fun.(socket)
 
-  defp return_to(socket), do: ~p"/users/settings/integrations/#{socket.assigns.provider}"
+      :error ->
+        {:reply, error_reply(:sudo_required),
+         socket
+         |> assign(:sudo_active, false)
+         |> assign_detail()
+         |> put_flash(:error, dgettext("settings", "Confirm it's you to change these settings."))}
+    end
+  end
 
   defp trim(value) when is_binary(value), do: String.trim(value)
   defp trim(_value), do: ""
@@ -298,6 +346,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
   defp error_code(:assignment_not_found), do: "assignment_not_found"
   defp error_code(:invalid_data), do: "invalid_data"
   defp error_code(:unauthorized), do: "unauthorized"
+  defp error_code(:sudo_required), do: "sudo_required"
   defp error_code(%Ecto.Changeset{}), do: "invalid_data"
   defp error_code(_unknown), do: "unknown_error"
 end

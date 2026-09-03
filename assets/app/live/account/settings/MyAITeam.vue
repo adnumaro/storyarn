@@ -3,7 +3,12 @@ import { ArrowLeft, CircleAlert, KeyRound, ShieldCheck } from "@lucide/vue";
 import { onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
-import { SettingsPage } from "@components/settings";
+import {
+  SettingsPage,
+  SettingsReauthBanner,
+  SettingsSection,
+  type SettingsReauthState,
+} from "@components/settings";
 import { useLive } from "@shared/composables/useLive";
 import PreferenceCard, { type PreferenceSlotData } from "./integrations/PreferenceCard.vue";
 
@@ -24,12 +29,17 @@ const {
   slots = [],
   providersPath,
   overviewPath,
+  sudoActive = true,
+  reauth = null,
 } = defineProps<{
   workspace: WorkspaceData;
   policyAllowed: boolean;
   slots: PreferenceSlotData[];
   providersPath: string;
   overviewPath: string;
+  /** False outside the sudo window: the page renders locked with the banner. */
+  sudoActive?: boolean;
+  reauth?: SettingsReauthState | null;
 }>();
 
 const { t } = useI18n();
@@ -133,76 +143,92 @@ onUnmounted(() => {
       {{ t("integrations.team.configuration.description") }}
     </p>
 
-    <div
-      v-if="inlineError"
-      role="alert"
-      class="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
-    >
-      <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      {{ t(`integrations.errors.${inlineError}`, t("integrations.errors.unknown_error")) }}
-    </div>
+    <SettingsReauthBanner v-if="!sudoActive && reauth" :state="reauth" />
 
-    <div
-      v-if="!policyAllowed"
-      id="ai-team-policy-warning"
-      class="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-amber-800 dark:text-amber-200"
+    <SettingsSection
+      v-if="!sudoActive"
+      :title="t('settings.reauth.locked_title')"
+      locked
+      :locked-label="t('settings.reauth.locked')"
+      data-testid="settings-reauth-locked"
     >
-      <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-      <div>
-        <p class="text-sm font-medium">{{ t("integrations.team.policy_blocked.title") }}</p>
-        <p class="mt-1 text-xs leading-relaxed opacity-85">
-          {{ t("integrations.team.policy_blocked.description") }}
-        </p>
+      <div class="px-4 py-6 text-center text-[13px] text-muted-foreground">
+        {{ t("settings.reauth.locked_hint") }}
       </div>
-    </div>
+    </SettingsSection>
 
-    <div
-      class="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <div class="flex max-w-2xl items-start gap-3">
-        <ShieldCheck class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-        <p class="text-xs leading-relaxed text-muted-foreground">
-          {{ t("integrations.team.workspace_scope_note") }}
-        </p>
-      </div>
-      <LiveLink
-        id="manage-ai-integrations"
-        :to="providersPath"
-        class="inline-flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-foreground underline-offset-4 hover:underline sm:self-auto"
+    <template v-else>
+      <div
+        v-if="inlineError"
+        role="alert"
+        class="flex items-start gap-2 rounded-lg border border-destructive/35 bg-destructive/5 px-3 py-2.5 text-sm text-destructive"
       >
-        <KeyRound class="size-3.5" aria-hidden="true" />
-        {{ t("integrations.team.manage_integrations") }}
-      </LiveLink>
-    </div>
-
-    <section class="space-y-4" aria-labelledby="ai-roles-title">
-      <div class="space-y-1">
-        <h2 id="ai-roles-title" class="text-sm font-semibold text-foreground">
-          {{ t("integrations.team.roles_section.title") }}
-        </h2>
-        <p class="text-xs leading-relaxed text-muted-foreground">
-          {{ t("integrations.team.roles_section.description") }}
-        </p>
-      </div>
-
-      <div v-if="slots.length > 0" class="space-y-4">
-        <PreferenceCard
-          v-for="slot in slots"
-          :key="slot.slot"
-          :slot-data="slot"
-          :pending="pendingSlots.has(slot.slot)"
-          :disabled="!policyAllowed"
-          @save="savePreference"
-          @remove="removePreference"
-        />
+        <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        {{ t(`integrations.errors.${inlineError}`, t("integrations.errors.unknown_error")) }}
       </div>
 
       <div
-        v-else
-        class="rounded-xl border border-dashed border-border/70 px-5 py-10 text-center text-xs text-muted-foreground"
+        v-if="!policyAllowed"
+        id="ai-team-policy-warning"
+        class="flex items-start gap-3 rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 text-amber-800 dark:text-amber-200"
       >
-        {{ t("integrations.team.no_roles") }}
+        <CircleAlert class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <div>
+          <p class="text-sm font-medium">{{ t("integrations.team.policy_blocked.title") }}</p>
+          <p class="mt-1 text-xs leading-relaxed opacity-85">
+            {{ t("integrations.team.policy_blocked.description") }}
+          </p>
+        </div>
       </div>
-    </section>
+
+      <div
+        class="flex flex-col gap-3 rounded-xl border border-border/60 bg-muted/20 p-4 sm:flex-row sm:items-center sm:justify-between"
+      >
+        <div class="flex max-w-2xl items-start gap-3">
+          <ShieldCheck class="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.team.workspace_scope_note") }}
+          </p>
+        </div>
+        <LiveLink
+          id="manage-ai-integrations"
+          :to="providersPath"
+          class="inline-flex shrink-0 items-center gap-1.5 self-start text-xs font-medium text-foreground underline-offset-4 hover:underline sm:self-auto"
+        >
+          <KeyRound class="size-3.5" aria-hidden="true" />
+          {{ t("integrations.team.manage_integrations") }}
+        </LiveLink>
+      </div>
+
+      <section class="space-y-4" aria-labelledby="ai-roles-title">
+        <div class="space-y-1">
+          <h2 id="ai-roles-title" class="text-sm font-semibold text-foreground">
+            {{ t("integrations.team.roles_section.title") }}
+          </h2>
+          <p class="text-xs leading-relaxed text-muted-foreground">
+            {{ t("integrations.team.roles_section.description") }}
+          </p>
+        </div>
+
+        <div v-if="slots.length > 0" class="space-y-4">
+          <PreferenceCard
+            v-for="slot in slots"
+            :key="slot.slot"
+            :slot-data="slot"
+            :pending="pendingSlots.has(slot.slot)"
+            :disabled="!policyAllowed"
+            @save="savePreference"
+            @remove="removePreference"
+          />
+        </div>
+
+        <div
+          v-else
+          class="rounded-xl border border-dashed border-border/70 px-5 py-10 text-center text-xs text-muted-foreground"
+        >
+          {{ t("integrations.team.no_roles") }}
+        </div>
+      </section>
+    </template>
   </SettingsPage>
 </template>
