@@ -1,0 +1,21 @@
+test/e2e/settings_form_focus_test.exs
+  s_dc522f884e191b::t_ea42d25a5ae3f3 36
+test/e2e/settings_reauthentication_test.exs
+  s_dc522f884e191b::t_c63e1be51db47b 92-95
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "28b3520f424cc8f4a937b51f30cf11345c36118e",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
