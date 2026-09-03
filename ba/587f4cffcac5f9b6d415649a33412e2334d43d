@@ -1,0 +1,21 @@
+test/storyarn/workspaces/lifecycle/commands/delete_workspace_test.exs
+  s_6ce2be7da793bc::t_cbdd0bf50a74da 27
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_6ce2be7da793bc::t_a7a524628a626f 224-306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ba587f4cffcac5f9b6d415649a33412e2334d43d",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
