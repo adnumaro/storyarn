@@ -53,6 +53,26 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   def incomplete_multipart_upload_count(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
 
   @impl true
+  def list_incomplete_multipart_uploads(_key, opts) when is_list(opts) do
+    if Keyword.keyword?(opts),
+      do: {:ok, %{uploads: [], inventory_complete: true}},
+      else: {:error, :invalid_multipart_inventory_request}
+  end
+
+  def list_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  @impl true
+  def abort_incomplete_multipart_upload(key, upload_id) when is_binary(key) and is_binary(upload_id), do: :ok
+
+  def abort_incomplete_multipart_upload(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
+
+  @impl true
+  def incomplete_multipart_upload_state(key, upload_id) when is_binary(key) and is_binary(upload_id),
+    do: {:ok, :absent_now}
+
+  def incomplete_multipart_upload_state(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
+
+  @impl true
   def incomplete_multipart_upload_summary(scope, opts) when (scope == :all or is_binary(scope)) and is_list(opts) do
     if (scope == :all or Storage.canonical_prefix?(scope)) and Keyword.keyword?(opts) do
       {:ok, %{count: 0, oldest_initiated_at: nil, inventory_complete: true}}
@@ -89,6 +109,18 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
     with {:ok, path} <- file_path(key),
          {:ok, stat} <- File.stat(path) do
       {:ok, %{size: stat.size, etag: nil, content_type: MIME.from_path(key)}}
+    end
+  end
+
+  @impl true
+  def object_probe(key) do
+    with {:ok, path} <- file_path(key),
+         {:ok, %{type: :regular, size: size}} <- File.lstat(path),
+         {:ok, identity} <- regular_file_identity(path, size) do
+      {:ok, %{size: size, content_type: MIME.from_path(key), identity: identity}}
+    else
+      {:ok, _unsafe_type} -> {:error, :unsafe_storage_entry}
+      {:error, reason} -> {:error, reason}
     end
   end
 

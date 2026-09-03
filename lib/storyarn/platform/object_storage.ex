@@ -22,6 +22,11 @@ defmodule Storyarn.Platform.ObjectStorage do
           content_type: String.t() | nil
         }
   @type object_identity :: String.t()
+  @type object_probe :: %{
+          size: non_neg_integer(),
+          content_type: String.t(),
+          identity: object_identity()
+        }
   @type listed_object :: %{
           key: key(),
           size: non_neg_integer(),
@@ -35,6 +40,12 @@ defmodule Storyarn.Platform.ObjectStorage do
           oldest_initiated_at: DateTime.t() | nil,
           inventory_complete: boolean()
         }
+  @type incomplete_multipart_upload :: %{key: key(), upload_id: String.t()}
+  @type incomplete_multipart_upload_inventory :: %{
+          uploads: [incomplete_multipart_upload()],
+          inventory_complete: boolean()
+        }
+  @type multipart_upload_state :: :present | :absent_now
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
@@ -45,6 +56,12 @@ defmodule Storyarn.Platform.ObjectStorage do
   @callback upload_stream(key, Enumerable.t(), content_type) :: {:ok, url} | {:error, term()}
   @callback abort_incomplete_multipart_uploads(key, opts :: keyword()) ::
               {:ok, non_neg_integer()} | {:error, term()}
+  @callback list_incomplete_multipart_uploads(key, opts :: keyword()) ::
+              {:ok, incomplete_multipart_upload_inventory()} | {:error, term()}
+  @callback abort_incomplete_multipart_upload(key, upload_id :: String.t()) ::
+              :ok | {:error, term()}
+  @callback incomplete_multipart_upload_state(key, upload_id :: String.t()) ::
+              {:ok, multipart_upload_state()} | {:error, term()}
   @callback incomplete_multipart_upload_count(key, opts :: keyword()) ::
               {:ok, non_neg_integer()} | {:error, term()}
   @callback incomplete_multipart_upload_summary(:all | String.t(), opts :: keyword()) ::
@@ -66,6 +83,7 @@ defmodule Storyarn.Platform.ObjectStorage do
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}
   @callback stat(key) :: {:ok, object_stat} | {:error, term()}
+  @callback object_probe(key) :: {:ok, object_probe()} | {:error, term()}
   @callback stream(key, non_neg_integer(), non_neg_integer(), opts :: keyword()) ::
               {:ok, Enumerable.t()} | {:error, term()}
   @callback presigned_upload_url(key, content_type, opts :: keyword()) ::
@@ -79,11 +97,18 @@ defmodule Storyarn.Platform.ObjectStorage do
   @callback list_prefix(String.t(), keyword()) :: {:ok, list_page()} | {:error, term()}
   @callback list_prefix_metadata(String.t(), keyword()) :: {:ok, metadata_list_page()} | {:error, term()}
   @optional_callbacks list_prefix_metadata: 2,
+                      object_probe: 1,
                       abort_incomplete_multipart_uploads: 2,
+                      list_incomplete_multipart_uploads: 2,
+                      abort_incomplete_multipart_upload: 2,
+                      incomplete_multipart_upload_state: 2,
                       incomplete_multipart_upload_count: 2,
                       incomplete_multipart_upload_summary: 2
 
   @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
+  @max_exact_multipart_upload_batch 100
+  @max_multipart_upload_id_bytes 4_096
+  @write_deadline_key {__MODULE__, :write_deadline}
 
   @doc false
   @spec child_specs() :: [module()]
@@ -99,7 +124,7 @@ defmodule Storyarn.Platform.ObjectStorage do
   defdelegate with_session_lock(lock_name, fun), to: KeyLock
   defdelegate with_session_lock(lock_name, fun, opts), to: KeyLock
 
-  @doc "Returns the hard wall-clock deadline shared by UploadPart and cleanup quiescence."
+  @doc "Returns the hard wall-clock budget for one remote object-storage request."
   @spec multipart_upload_part_deadline_ms() :: pos_integer()
   def multipart_upload_part_deadline_ms do
     config =
@@ -109,6 +134,44 @@ defmodule Storyarn.Platform.ObjectStorage do
     case Keyword.fetch!(config, :multipart_upload_part_deadline_ms) do
       timeout when is_integer(timeout) and timeout > 0 -> timeout
       _invalid -> raise "invalid multipart UploadPart deadline"
+    end
+  end
+
+  @doc false
+  @spec write_operation_deadline() :: integer()
+  def write_operation_deadline do
+    request_deadline = System.monotonic_time(:millisecond) + multipart_upload_part_deadline_ms()
+
+    case Process.get(@write_deadline_key) do
+      total_deadline when is_integer(total_deadline) -> min(total_deadline, request_deadline)
+      _none -> request_deadline
+    end
+  end
+
+  @doc false
+  @spec with_operation_deadline((-> result)) :: result when result: term()
+  def with_operation_deadline(fun) when is_function(fun, 0),
+    do: with_operation_deadline(multipart_upload_part_deadline_ms(), fun)
+
+  @doc false
+  @spec with_operation_deadline(pos_integer(), (-> result)) :: result when result: term()
+  def with_operation_deadline(timeout_ms, fun) when is_integer(timeout_ms) and timeout_ms > 0 and is_function(fun, 0) do
+    previous_deadline = Process.get(@write_deadline_key)
+    requested_deadline = System.monotonic_time(:millisecond) + timeout_ms
+
+    effective_deadline =
+      if is_integer(previous_deadline),
+        do: min(previous_deadline, requested_deadline),
+        else: requested_deadline
+
+    Process.put(@write_deadline_key, effective_deadline)
+
+    try do
+      fun.()
+    after
+      if is_integer(previous_deadline),
+        do: Process.put(@write_deadline_key, previous_deadline),
+        else: Process.delete(@write_deadline_key)
     end
   end
 
@@ -168,6 +231,193 @@ defmodule Storyarn.Platform.ObjectStorage do
   end
 
   def abort_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_cleanup_request}
+
+  @doc """
+  Returns a bounded inventory of opaque multipart-upload references for one
+  exact canonical key.
+
+  The caller must durably persist every returned `{key, upload_id}` before it
+  aborts an upload. A false `inventory_complete` means another bounded delete
+  pass is required; it is never evidence that the exact inventory is empty.
+  """
+  @spec list_incomplete_multipart_uploads(key(), keyword()) ::
+          {:ok, incomplete_multipart_upload_inventory()} | {:error, term()}
+  def list_incomplete_multipart_uploads(key, opts \\ [])
+
+  def list_incomplete_multipart_uploads(key, opts) when is_binary(key) and is_list(opts) do
+    if canonical_key?(key) and Keyword.keyword?(opts) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      with_operation_deadline(fn ->
+        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+        if function_exported?(adapter, :list_incomplete_multipart_uploads, 2) do
+          adapter
+          |> call_exact_multipart_inventory(key, opts)
+          |> normalize_exact_multipart_inventory(key)
+        else
+          {:error, :multipart_inventory_not_supported}
+        end
+      end)
+    else
+      {:error, :invalid_multipart_inventory_request}
+    end
+  end
+
+  def list_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  defp call_exact_multipart_inventory(adapter, key, opts) do
+    adapter.list_incomplete_multipart_uploads(key, opts)
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
+  end
+
+  defp normalize_exact_multipart_inventory({:ok, %{uploads: uploads, inventory_complete: complete?}}, key)
+       when is_list(uploads) and length(uploads) <= @max_exact_multipart_upload_batch and is_boolean(complete?) do
+    with {:ok, normalized} <- normalize_exact_multipart_uploads(uploads, key),
+         true <- length(normalized) == MapSet.size(MapSet.new(normalized)) do
+      {:ok, %{uploads: normalized, inventory_complete: complete?}}
+    else
+      _invalid -> {:error, :invalid_multipart_inventory_response}
+    end
+  end
+
+  defp normalize_exact_multipart_inventory({:error, reason}, _key)
+       when reason in [
+              :multipart_inventory_not_supported,
+              :invalid_multipart_inventory_request,
+              :invalid_multipart_cleanup_limit,
+              :invalid_multipart_cleanup_batch_limit,
+              :invalid_multipart_cleanup_response,
+              :invalid_multipart_cleanup_cursor,
+              :multipart_cleanup_inventory_limit_exceeded,
+              :multipart_inventory_provider_error
+            ], do: {:error, reason}
+
+  defp normalize_exact_multipart_inventory({:error, _provider_reason}, _key),
+    do: {:error, :multipart_inventory_provider_error}
+
+  defp normalize_exact_multipart_inventory(_invalid, _key), do: {:error, :invalid_multipart_inventory_response}
+
+  defp normalize_exact_multipart_uploads(uploads, key) do
+    uploads
+    |> Enum.reduce_while({:ok, []}, fn
+      %{key: ^key, upload_id: upload_id}, {:ok, normalized}
+      when is_binary(upload_id) ->
+        if valid_multipart_upload_id?(upload_id),
+          do: {:cont, {:ok, [%{key: key, upload_id: upload_id} | normalized]}},
+          else: {:halt, {:error, :invalid_multipart_inventory_response}}
+
+      _invalid, _acc ->
+        {:halt, {:error, :invalid_multipart_inventory_response}}
+    end)
+    |> case do
+      {:ok, normalized} -> {:ok, Enum.reverse(normalized)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp valid_multipart_upload_id?(upload_id) do
+    upload_id != "" and byte_size(upload_id) <= @max_multipart_upload_id_bytes and
+      String.valid?(upload_id)
+  end
+
+  @doc "Aborts one previously persisted exact multipart-upload reference."
+  @spec abort_incomplete_multipart_upload(key(), String.t()) :: :ok | {:error, term()}
+  def abort_incomplete_multipart_upload(key, upload_id) when is_binary(key) and is_binary(upload_id) do
+    if canonical_key?(key) and valid_multipart_upload_id?(upload_id) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      with_operation_deadline(fn ->
+        if function_exported?(adapter, :abort_incomplete_multipart_upload, 2) do
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          case adapter.abort_incomplete_multipart_upload(key, upload_id) do
+            :ok ->
+              :ok
+
+            {:error, reason}
+            when reason in [
+                   :multipart_cleanup_not_supported,
+                   :invalid_multipart_upload_reference,
+                   :multipart_cleanup_provider_error
+                 ] ->
+              {:error, reason}
+
+            {:error, _provider_reason} ->
+              {:error, :multipart_cleanup_provider_error}
+
+            _invalid ->
+              {:error, :invalid_multipart_cleanup_response}
+          end
+        else
+          {:error, :multipart_cleanup_not_supported}
+        end
+      end)
+    else
+      {:error, :invalid_multipart_upload_reference}
+    end
+  rescue
+    _exception -> {:error, :multipart_cleanup_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_cleanup_provider_error}
+  end
+
+  def abort_incomplete_multipart_upload(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
+
+  @doc """
+  Checks one retained multipart reference without mutating provider state.
+
+  `:absent_now` is deliberately point-in-time evidence. The owning cleanup
+  protocol must retain the reference until its complete quiescence window and
+  confirmation pass have succeeded.
+  """
+  @spec incomplete_multipart_upload_state(key(), String.t()) ::
+          {:ok, multipart_upload_state()} | {:error, term()}
+  def incomplete_multipart_upload_state(key, upload_id) when is_binary(key) and is_binary(upload_id) do
+    if canonical_key?(key) and valid_multipart_upload_id?(upload_id) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      with_operation_deadline(fn ->
+        if function_exported?(adapter, :incomplete_multipart_upload_state, 2) do
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          case adapter.incomplete_multipart_upload_state(key, upload_id) do
+            {:ok, state} when state in [:present, :absent_now] ->
+              {:ok, state}
+
+            {:error, reason}
+            when reason in [
+                   :multipart_inventory_not_supported,
+                   :invalid_multipart_upload_reference,
+                   :invalid_multipart_parts_response,
+                   :multipart_parts_inventory_failed,
+                   :multipart_inventory_provider_error
+                 ] ->
+              {:error, reason}
+
+            {:error, _provider_reason} ->
+              {:error, :multipart_inventory_provider_error}
+
+            _invalid ->
+              {:error, :invalid_multipart_parts_response}
+          end
+        else
+          {:error, :multipart_inventory_not_supported}
+        end
+      end)
+    else
+      {:error, :invalid_multipart_upload_reference}
+    end
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
+  end
+
+  def incomplete_multipart_upload_state(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
 
   @doc """
   Counts incomplete multipart uploads for one exact canonical cleanup key.
@@ -275,6 +525,34 @@ defmodule Storyarn.Platform.ObjectStorage do
   def stat(key) do
     adapter().stat(key)
   end
+
+  @doc "Returns bounded metadata plus the opaque identity required by conditional cleanup."
+  @spec object_probe(key()) :: {:ok, object_probe()} | {:error, term()}
+  def object_probe(key) do
+    if canonical_key?(key) do
+      with_operation_deadline(fn -> object_probe_with_adapter(adapter(), key) end)
+    else
+      {:error, :invalid_key}
+    end
+  end
+
+  defp object_probe_with_adapter(adapter, key) do
+    _loaded? = Code.ensure_loaded?(adapter)
+
+    if function_exported?(adapter, :object_probe, 1),
+      do: adapter.object_probe(key),
+      else: object_probe_from_stat(adapter.stat(key))
+  end
+
+  defp object_probe_from_stat({:ok, %{size: size, content_type: content_type, etag: identity}})
+       when is_integer(size) and size >= 0 and is_binary(content_type) and is_binary(identity) do
+    if content_type != "" and identity != "",
+      do: {:ok, %{size: size, content_type: content_type, identity: identity}},
+      else: {:error, :invalid_object_probe_response}
+  end
+
+  defp object_probe_from_stat({:error, reason}), do: {:error, reason}
+  defp object_probe_from_stat(_invalid), do: {:error, :invalid_object_probe_response}
 
   @doc """
   Streams a byte window from private storage in bounded chunks.

@@ -781,7 +781,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
           request_number in [4, 6] and conn.method == "GET" ->
             assert conn.query_params["uploadId"] in ["upload-1", "upload-2"]
             assert conn.query_params["max_parts"] == "1"
-            Plug.Conn.send_resp(conn, 200, multipart_parts_page([]))
+            Plug.Conn.send_resp(conn, 404, "")
 
           request_number == 7 and conn.method == "GET" ->
             Plug.Conn.send_resp(
@@ -829,7 +829,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
 
           {5, "GET"} ->
             assert conn.query_params["uploadId"] == "upload-in-flight"
-            Plug.Conn.send_resp(conn, 200, multipart_parts_page([]))
+            Plug.Conn.send_resp(conn, 404, "")
 
           {6, "GET"} ->
             Plug.Conn.send_resp(
@@ -911,6 +911,138 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
 
       assert {:error, {:multipart_cleanup_abort_failed, {:http_error, 400, _response}}} =
                R2.abort_incomplete_multipart_uploads(key, [])
+    end
+  end
+
+  describe "exact multipart upload references" do
+    test "finishes an exact-key inventory after a truncated page has crossed into sibling keys" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      sibling_key = key <> ".stale-sibling"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.query_params["prefix"] == key
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_upload_page(sibling_key, "sibling-upload", true, sibling_key, "sibling-upload")
+        )
+      end)
+
+      assert {:ok, %{uploads: [], inventory_complete: true}} =
+               R2.list_incomplete_multipart_uploads(key, batch_size: 1)
+    end
+
+    test "fails closed when an exact-key inventory returns a key outside the requested prefix" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      outside_key = "projects/2/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.query_params["prefix"] == key
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_upload_page(outside_key, "outside-upload", false, nil, nil)
+        )
+      end)
+
+      assert {:error, :invalid_multipart_cleanup_response} =
+               R2.list_incomplete_multipart_uploads(key, batch_size: 1)
+    end
+
+    test "returns one bounded batch and marks remaining exact uploads incomplete" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["uploads"] == "1"
+        assert conn.query_params["prefix"] == key
+        assert conn.query_params["max-uploads"] == "1"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_upload_page(key, "upload-1", true, key, "upload-1")
+        )
+      end)
+
+      assert {:ok,
+              %{
+                uploads: [%{key: ^key, upload_id: "upload-1"}],
+                inventory_complete: false
+              }} = R2.list_incomplete_multipart_uploads(key, max_uploads: 7, batch_size: 1)
+
+      assert {:error, :invalid_multipart_cleanup_batch_limit} =
+               R2.list_incomplete_multipart_uploads(key, batch_size: 101)
+    end
+
+    test "marks a 404 as absent-now but treats a successful empty parts page as present" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/manifest.json"
+      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        assert conn.method == "GET"
+        assert conn.query_params["max_parts"] == "1"
+
+        case request_number do
+          1 ->
+            assert conn.query_params["uploadId"] == "upload-gone"
+            Plug.Conn.send_resp(conn, 404, "private provider response")
+
+          2 ->
+            assert conn.query_params["uploadId"] == "upload-still-present"
+            Plug.Conn.send_resp(conn, 200, multipart_parts_page([]))
+        end
+      end)
+
+      assert {:ok, :absent_now} =
+               R2.incomplete_multipart_upload_state(key, "upload-gone")
+
+      assert {:ok, :present} =
+               R2.incomplete_multipart_upload_state(key, "upload-still-present")
+    end
+
+    test "aborts only the supplied exact upload reference" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "DELETE"
+        assert conn.request_path == "/private-bucket/#{key}"
+        assert conn.query_params == %{"uploadId" => "opaque-upload-id"}
+        Plug.Conn.send_resp(conn, 204, "")
+      end)
+
+      assert :ok = R2.abort_incomplete_multipart_upload(key, "opaque-upload-id")
+    end
+
+    test "collapses provider response details for exact abort and state failures" do
+      key = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/snapshot.zip"
+      private_value = "private-bucket/#{key}?signature=secret"
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        case conn.method do
+          "DELETE" -> Plug.Conn.send_resp(conn, 500, private_value)
+          "GET" -> Plug.Conn.send_resp(conn, 500, private_value)
+        end
+      end)
+
+      abort_result = R2.abort_incomplete_multipart_upload(key, "upload-private")
+      state_result = R2.incomplete_multipart_upload_state(key, "upload-private")
+
+      assert abort_result == {:error, :multipart_cleanup_provider_error}
+      assert state_result == {:error, :multipart_inventory_provider_error}
+      refute inspect(abort_result) =~ private_value
+      refute inspect(state_result) =~ private_value
     end
   end
 

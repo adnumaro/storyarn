@@ -159,6 +159,8 @@ defmodule Storyarn.Projects.Assets do
   defdelegate project_media_route_key?(project_id, key), to: StorageKey
   defdelegate delete_storage_keys(cleanup_targets), to: StorageCompensation
   defdelegate persist_cleanup_request(cleanup_targets), to: StorageCompensation
+  defdelegate enqueue_due_cleanup_request_jobs(), to: StorageCompensation
+  defdelegate retry_persisted_cleanup_request_by_id(cleanup_request_id), to: StorageCompensation
   defdelegate emit_storage_cleanup_request_backlog(), to: StorageCompensation, as: :emit_cleanup_request_backlog
   defdelegate inspect_storage_multipart_inventory(), to: StorageMultipartInventory, as: :inspect
   defdelegate retry_persisted_cleanup_requests(), to: StorageCompensation

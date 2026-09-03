@@ -229,6 +229,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     delete_project_snapshot_retention_candidate: 1,
     delete_storage_keys: 1,
     discard_stale_project_snapshot_maintenance_jobs: 0,
+    enqueue_due_cleanup_request_jobs: 0,
     emit_storage_cleanup_request_backlog: 0,
     expire_stale_imports_batch: 0,
     fail_project_snapshot_reconciliation: 3,
@@ -268,6 +269,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     recover_project_snapshot_reconciliation_repair_delivery_page: 1,
     replay_terminal_project_snapshot_cleanup: 1,
     rescue_stale_project_snapshot_cleanup_jobs: 0,
+    retry_persisted_cleanup_request_by_id: 1,
     retry_persisted_cleanup_requests: 0
   ]
 
@@ -311,7 +313,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
              %{documented: 76, hidden: 15, none: 93}
 
-    assert length(worker_docs) == 45
+    assert length(worker_docs) == 47
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
 
     assert digest(Enum.sort(established_docs)) == @docs_digest

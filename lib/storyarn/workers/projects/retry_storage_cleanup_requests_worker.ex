@@ -20,7 +20,7 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorker do
   def perform(%Oban.Job{} = job) do
     perform_with(
       job,
-      &Projects.retry_persisted_cleanup_requests/0,
+      &Projects.enqueue_due_cleanup_request_jobs/0,
       &Projects.emit_storage_cleanup_request_backlog/0
     )
   end

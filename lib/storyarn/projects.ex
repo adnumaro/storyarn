@@ -602,6 +602,12 @@ defmodule Storyarn.Projects do
   defdelegate persist_cleanup_request(cleanup_targets), to: Assets
 
   @doc false
+  defdelegate enqueue_due_cleanup_request_jobs(), to: Assets
+
+  @doc false
+  defdelegate retry_persisted_cleanup_request_by_id(cleanup_request_id), to: Assets
+
+  @doc false
   defdelegate emit_storage_cleanup_request_backlog(), to: Assets
 
   @doc false

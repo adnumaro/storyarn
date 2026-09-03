@@ -135,7 +135,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
            ] in [nil, 0]
 
     assert [%StorageCleanupRequest{storage_keys: [archive_key], multipart_quiescence_not_before: not_before}] =
-             Repo.all(StorageCleanupRequest)
+             import_cleanup_requests(upload)
 
     assert String.starts_with?(archive_key, import_prefix(context.workspace.id))
     assert {:error, :enoent} = Storage.stat(archive_key)
@@ -489,7 +489,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
 
     refute Repo.get(WorkspaceSnapshotImport, upload.id)
     archive_key = upload.archive_storage_key
-    assert [%StorageCleanupRequest{storage_keys: [^archive_key]}] = Repo.all(StorageCleanupRequest)
+    assert [%StorageCleanupRequest{storage_keys: [^archive_key]}] = import_cleanup_requests(upload)
     assert import_job_count() == 0
 
     {_direct, stale} = prepare_stored_upload!(context, archive_path, "stale.zip")

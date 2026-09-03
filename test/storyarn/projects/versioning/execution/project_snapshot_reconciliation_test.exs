@@ -1819,7 +1819,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
              )
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(cleanup_intent.id,
+             process_cleanup_until_boundary(cleanup_intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -2118,6 +2118,20 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       end
     end)
   end
+
+  # Exact multipart cleanup performs at most one provider operation per
+  # delivery. Drive only immediate continuations and fail if the FSM loops.
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left \\ 100)
+
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
+    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
+      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
+    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp advance_until_terminal(run_id, generation, remaining \\ 100)
 

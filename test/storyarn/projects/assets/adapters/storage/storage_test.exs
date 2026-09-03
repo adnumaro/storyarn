@@ -11,6 +11,29 @@ defmodule Storyarn.Projects.Assets.StorageTest do
     @moduledoc false
   end
 
+  defmodule ExactMultipartAdapter do
+    @moduledoc false
+
+    def list_incomplete_multipart_uploads(key, opts) do
+      send(self(), {:exact_multipart_inventory_dispatched, key, opts})
+
+      Process.get(
+        {__MODULE__, :inventory_result},
+        {:ok, %{uploads: [%{key: key, upload_id: "opaque-upload-id"}], inventory_complete: true}}
+      )
+    end
+
+    def abort_incomplete_multipart_upload(key, upload_id) do
+      send(self(), {:exact_multipart_abort_dispatched, key, upload_id})
+      Process.get({__MODULE__, :abort_result}, :ok)
+    end
+
+    def incomplete_multipart_upload_state(key, upload_id) do
+      send(self(), {:exact_multipart_state_dispatched, key, upload_id})
+      Process.get({__MODULE__, :state_result}, {:ok, :absent_now})
+    end
+  end
+
   test "keeps the legacy multipart deadline key as a deployment compatibility fallback" do
     current_config = Application.get_env(:storyarn, ObjectStorage)
     legacy_config = Application.get_env(:storyarn, @legacy_config_key)
@@ -189,6 +212,109 @@ defmodule Storyarn.Projects.Assets.StorageTest do
 
       assert {:error, :invalid_multipart_cleanup_request} =
                Storage.abort_incomplete_multipart_uploads("projects/1/snapshot.zip", %{limit: 1})
+    end
+  end
+
+  describe "exact multipart upload references" do
+    setup do
+      Application.put_env(:storyarn, :storage, adapter: ExactMultipartAdapter)
+      :ok
+    end
+
+    test "dispatches exact key and upload id through the Projects storage policy" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      upload_id = "opaque-upload-id"
+      opts = [batch_size: 7]
+
+      assert {:ok,
+              %{
+                uploads: [%{key: ^key, upload_id: ^upload_id}],
+                inventory_complete: true
+              }} = Storage.list_incomplete_multipart_uploads(key, opts)
+
+      assert_received {:exact_multipart_inventory_dispatched, ^key, ^opts}
+
+      assert :ok = Storage.abort_incomplete_multipart_upload(key, upload_id)
+      assert_received {:exact_multipart_abort_dispatched, ^key, ^upload_id}
+
+      assert {:ok, :absent_now} = Storage.incomplete_multipart_upload_state(key, upload_id)
+      assert_received {:exact_multipart_state_dispatched, ^key, ^upload_id}
+    end
+
+    test "rejects unsafe keys and upload ids before provider dispatch" do
+      valid_key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.list_incomplete_multipart_uploads("projects/1/../snapshot.zip")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.abort_incomplete_multipart_upload("projects/1/private.bin", "upload-id")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.abort_incomplete_multipart_upload(valid_key, "")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.incomplete_multipart_upload_state(valid_key, String.duplicate("u", 4_097))
+
+      refute_received {:exact_multipart_inventory_dispatched, _, _}
+      refute_received {:exact_multipart_abort_dispatched, _, _}
+      refute_received {:exact_multipart_state_dispatched, _, _}
+    end
+
+    test "fails closed on malformed, duplicate, or oversized provider inventory" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      invalid_results = [
+        {:ok, %{uploads: [%{key: key, upload_id: "upload-1"}]}},
+        {:ok,
+         %{
+           uploads: [%{key: "projects/2/private.bin", upload_id: "upload-1"}],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads: [
+             %{key: key, upload_id: "duplicate"},
+             %{key: key, upload_id: "duplicate"}
+           ],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads: [%{key: key, upload_id: String.duplicate("u", 4_097)}],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads:
+             Enum.map(1..101, fn index ->
+               %{key: key, upload_id: "upload-#{index}"}
+             end),
+           inventory_complete: false
+         }}
+      ]
+
+      Enum.each(invalid_results, fn result ->
+        Process.put({ExactMultipartAdapter, :inventory_result}, result)
+
+        assert {:error, :invalid_multipart_inventory_response} =
+                 Storage.list_incomplete_multipart_uploads(key)
+      end)
+    end
+
+    test "collapses private provider failures at the neutral boundary" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      private_value = "private-bucket/#{key}?signature=secret"
+
+      Process.put(
+        {ExactMultipartAdapter, :inventory_result},
+        {:error, {:http_error, 500, %{body: private_value}}}
+      )
+
+      result = Storage.list_incomplete_multipart_uploads(key)
+
+      assert result == {:error, :multipart_inventory_provider_error}
+      refute inspect(result) =~ private_value
     end
   end
 
