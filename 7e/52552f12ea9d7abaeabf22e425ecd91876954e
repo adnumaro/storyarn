@@ -1,0 +1,52 @@
+test/storyarn_web/live/settings_live/integrations_test.exs
+  s_dc522f884e191b::t_a6e707b919e0b5 32,37,39-51
+lib/storyarn_web/live/settings_live/integrations.ex
+  s_dc522f884e191b::t_bb700d35609e31 8-11,16,20,28,34-38,56-57,63-65
+  s_dc522f884e191b::t_b885514d287415 66
+lib/storyarn_web/live/settings_live/integration_detail.ex
+  s_dc522f884e191b::t_bb700d35609e31 8-11,16,20,33,64-65,72-75,192-216,296-297,299-305,307-314,349
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_dc522f884e191b::t_0bfb59b560f6ab 470-476,480-482,484-548,552-560,562,565,568,571-592,594-660,662-665,667-672,674-679,681-682,685,690-691,693-711,713-722,726-727,729-730,734,738,740-744,746-752,756-757,759-764,768,770,772-787,791-792,794-802,804-807,810-831,834-856,858-865,868-869,871-880,883-887,889,891-894,896-914
+  s_dc522f884e191b::t_a6e707b919e0b5 21-26,110-115,118-120,455,457-462,464-467,469,890,915
+lib/storyarn_web/live/settings_live/ai_team_overview.ex
+  s_dc522f884e191b::t_bb700d35609e31 7-9,15,19,27,33-37,55-56,62
+  s_dc522f884e191b::t_b3f4428f7c1d19 63
+test/storyarn_web/live/settings_live/integration_detail_test.exs
+  s_dc522f884e191b::t_a6e707b919e0b5 40,45,47-62
+assets/app/locales/en/settings.json
+  s_dc522f884e191b::t_a6e707b919e0b5 318-320
+assets/app/live/account/settings/MyAITeam.vue
+  s_dc522f884e191b::t_0bfb59b560f6ab 161-164,166-167,170-181,185,187-200,202-231
+  s_dc522f884e191b::t_a6e707b919e0b5 6-11,32-33,40-42,146,148-153,155-156,158-160,232
+test/storyarn_web/live/settings_live/ai_team_test.exs
+  s_dc522f884e191b::t_a6e707b919e0b5 64,72,74-78,80-81,83-92
+assets/app/locales/es/settings.json
+  s_dc522f884e191b::t_a6e707b919e0b5 318-320
+assets/app/test/live/account/settings/AISettingsReauth.test.ts
+  s_dc522f884e191b::t_6817079ef18ed2 1-103
+lib/storyarn_web/live/settings_live/ai_team.ex
+  s_dc522f884e191b::t_bb700d35609e31 8-10,16,20,34,61-62,69-72,112-121,163-164,166-180,207
+docs/reference/domain-patterns.md
+  s_dc522f884e191b::t_a6e707b919e0b5 285-293
+assets/app/live/account/settings/MyAITeamOverview.vue
+  s_dc522f884e191b::t_0bfb59b560f6ab 123-124,126-129,132-144,146-194,196-200,202-209,211-229,231-259,261-262,264,267-271,273-278,282-292,294-300,303-305,307-317
+  s_dc522f884e191b::t_a6e707b919e0b5 13-18,48-52,54-56,107,109-114,116-119,121,319
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_dc522f884e191b::t_a6e707b919e0b5 5-10,13-17,19-21,36-50
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "7e52552f12ea9d7abaeabf22e425ecd91876954e",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
