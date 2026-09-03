@@ -465,6 +465,45 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
              Repo.get!(StorageCleanupRequest, request.id)
   end
 
+  test "durable ordinary cleanup rejects targets owned by another request" do
+    user = user_fixture()
+    project = project_fixture(user)
+    owned_key = cleanup_asset_key("owned", project.id)
+    unrelated_key = cleanup_asset_key("unrelated", project.id)
+
+    assert {:ok, _url} = Storage.upload(unrelated_key, "keep me", "image/png")
+    on_exit(fn -> Storage.delete(unrelated_key) end)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, [^unrelated_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [unrelated_key])
+
+    assert {:ok, "keep me"} = Storage.download(unrelated_key)
+  end
+
+  test "durable ordinary cleanup rejects a batch without valid targets" do
+    owned_key = cleanup_asset_key("owned")
+    assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, []} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, ["../invalid"])
+  end
+
+  test "durable mixed cleanup rejects a batch that omits its multipart target" do
+    ordinary_key = cleanup_asset_key("ordinary")
+
+    multipart_key =
+      "projects/1/snapshots/archives/v2/staging/MissingBatch0001/snapshot.zip"
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([ordinary_key, multipart_key])
+
+    assert {:error, [^ordinary_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [ordinary_key])
+  end
+
   test "force cleanup rechecks repaired bytes inside a lock-owned transaction" do
     user = user_fixture()
     project = project_fixture(user)

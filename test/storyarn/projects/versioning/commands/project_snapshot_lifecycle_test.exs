@@ -190,7 +190,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       end)
     end
 
-    test "completes only after the coordinator's read-only confirmation pass" do
+    test "reopens lifecycle cleanup when a late upload appears during read-only confirmation" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
@@ -198,22 +198,56 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
 
       assert {:ok, {:deferred, _seconds}} = process_cleanup_until_boundary(intent.id)
 
-      assert %StorageCleanupRequest{multipart_cleanup_phase: "quiet"} =
-               Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      quiet_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert quiet_request.multipart_cleanup_phase == "quiet"
 
       expire_multipart_quiescence!(intent.cleanup_request_id)
 
-      before_confirmation = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert {:ok, {:deferred, 1}} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id)
+
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase ==
+               "verify_inventory"
+
+      cleanup_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      test_pid = self()
+
+      late_inventory_opts = [
+        namespace_fun: fn -> {:ok, cleanup_request.provider_namespace_fingerprint} end,
+        list_fun: fn key ->
+          send(test_pid, {:late_multipart_inventory, key})
+
+          {:ok,
+           %{
+             uploads: [%{key: key, upload_id: "late-upload-id"}],
+             inventory_complete: true
+           }}
+        end,
+        abort_fun: fn _key, _upload_id -> flunk("confirmation must remain read-only") end,
+        object_delete_fun: fn _key, _identity -> flunk("confirmation must remain read-only") end,
+        state_fun: fn _key, _upload_id -> flunk("new references are not probed during inventory") end
+      ]
+
+      assert {:deferred, 1} =
+               StorageCompensation.delete_cleanup_request_keys(
+                 cleanup_request.id,
+                 cleanup_request.storage_keys,
+                 late_inventory_opts
+               )
+
+      assert_received {:late_multipart_inventory, _key}
+
+      reopened_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert reopened_request.multipart_cleanup_phase == "abort"
+      assert reopened_request.multipart_cleanup_generation > quiet_request.multipart_cleanup_generation
+      assert Repo.get!(SnapshotCleanupIntent, intent.id).remaining_storage_keys == intent.storage_keys
+
+      assert {:ok, {:deferred, _seconds}} = process_cleanup_until_boundary(intent.id)
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase == "quiet"
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
       assert {:ok, :completed} = process_cleanup_until_boundary(intent.id)
-
-      assert %StorageCleanupRequest{
-               multipart_cleanup_phase: "confirmed",
-               multipart_quiescence_started_at: started_at,
-               multipart_quiescence_not_before: not_before
-             } = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
-
-      assert started_at == before_confirmation.multipart_quiescence_started_at
-      assert not_before == before_confirmation.multipart_quiescence_not_before
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase == "confirmed"
     end
 
     test "keeps deletion available after runtime manifest limits are lowered" do

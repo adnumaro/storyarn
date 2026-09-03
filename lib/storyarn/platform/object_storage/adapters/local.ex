@@ -115,6 +115,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   @impl true
   def object_probe(key) do
     with {:ok, path} <- file_path(key),
+         :ok <- ensure_no_symlink_components(path),
          {:ok, %{type: :regular, size: size}} <- File.lstat(path),
          {:ok, identity} <- regular_file_identity(path, size) do
       {:ok, %{size: size, content_type: MIME.from_path(key), identity: identity}}

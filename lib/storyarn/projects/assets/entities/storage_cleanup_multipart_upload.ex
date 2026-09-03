@@ -61,22 +61,6 @@ defmodule Storyarn.Projects.Assets.StorageCleanupMultipartUpload do
     |> add_error(:storage_key, "is not an exact multipart upload reference")
   end
 
-  @doc "Advances abort and absence evidence without changing the retained identity."
-  @spec evidence_changeset(t(), non_neg_integer() | nil, non_neg_integer() | nil) ::
-          Ecto.Changeset.t()
-  def evidence_changeset(upload, last_aborted_generation, last_absent_generation) do
-    upload
-    |> change(
-      last_aborted_generation: last_aborted_generation,
-      last_absent_generation: last_absent_generation
-    )
-    |> validate_number(:last_aborted_generation, greater_than_or_equal_to: 0)
-    |> validate_number(:last_absent_generation, greater_than_or_equal_to: 0)
-    |> check_constraint(:last_aborted_generation,
-      name: :storage_cleanup_multipart_uploads_shape
-    )
-  end
-
   @doc "Returns the collision-resistant identity used by the per-request unique index."
   @spec reference_digest(String.t(), String.t()) :: String.t()
   def reference_digest(storage_key, upload_id) when is_binary(storage_key) and is_binary(upload_id) do

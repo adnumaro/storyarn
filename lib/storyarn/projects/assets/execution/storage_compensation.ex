@@ -318,16 +318,21 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       when is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(cleanup_targets) and is_list(opts) do
     cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
-    if multipart_cleanup_keys(cleanup_targets) == [] do
-      delete_storage_keys(cleanup_targets, opts)
-    else
-      opts =
-        opts
-        |> Keyword.put_new(:authorize_fun, &authorize_multipart_cleanup_targets/1)
-        |> Keyword.put_new(:object_policy_fun, &multipart_cleanup_object_policy/1)
-        |> Keyword.put_new(:step_limit, 1)
+    with {:ok, request} <- load_cleanup_request(cleanup_request_id),
+         :ok <- validate_cleanup_request_targets(request, cleanup_targets) do
+      if multipart_cleanup_keys(request.storage_keys) == [] do
+        delete_storage_keys(cleanup_targets, opts)
+      else
+        opts =
+          opts
+          |> Keyword.put_new(:authorize_fun, &authorize_multipart_cleanup_targets/1)
+          |> Keyword.put_new(:object_policy_fun, &multipart_cleanup_object_policy/1)
+          |> Keyword.put_new(:step_limit, 1)
 
-      MultipartCleanup.process(cleanup_request_id, cleanup_targets, opts)
+        MultipartCleanup.process(cleanup_request_id, cleanup_targets, opts)
+      end
+    else
+      {:error, _reason} -> {:error, cleanup_targets}
     end
   rescue
     error ->
@@ -343,6 +348,33 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     do: {:error, cleanup_targets}
 
   def delete_cleanup_request_keys(_cleanup_request_id, _cleanup_targets, _opts), do: {:error, []}
+
+  defp load_cleanup_request(cleanup_request_id) do
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{} = request -> {:ok, request}
+      nil -> {:error, :storage_cleanup_request_not_found}
+    end
+  end
+
+  defp validate_cleanup_request_targets(_request, []), do: {:error, :empty_storage_cleanup_batch}
+
+  defp validate_cleanup_request_targets(request, cleanup_targets) do
+    owned_targets = MapSet.new(request.storage_keys)
+
+    cond do
+      not Enum.all?(cleanup_targets, &MapSet.member?(owned_targets, &1)) ->
+        {:error, :storage_cleanup_batch_not_owned}
+
+      not MapSet.subset?(
+        request.storage_keys |> multipart_cleanup_keys() |> MapSet.new(),
+        cleanup_targets |> multipart_cleanup_keys() |> MapSet.new()
+      ) ->
+        {:error, :multipart_cleanup_batch_incomplete}
+
+      true ->
+        :ok
+    end
+  end
 
   @doc false
   @spec reopen_confirmed_cleanup_request(pos_integer()) :: :ok | {:error, term()}
