@@ -1,0 +1,25 @@
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_dc522f884e191b::t_3c0a4767a70a71 5,19-22,33,59,87
+assets/app/live/account/settings/MyAITeam.vue
+  s_dc522f884e191b::t_3c0a4767a70a71 2,6,117-134,207
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_dc522f884e191b::t_3c0a4767a70a71 21,392-402,404,410,415-440,905
+assets/app/live/account/settings/MyAITeamOverview.vue
+  s_dc522f884e191b::t_3c0a4767a70a71 13,90-93,290
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "f8bad86c6d3c64e0154be10f7fc0f90b32942549",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
