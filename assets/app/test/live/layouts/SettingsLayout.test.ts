@@ -62,13 +62,11 @@ function mountLayout({
   sudoGrant = null,
   aiIntegrations = false,
   currentPath = "/users/settings",
-  title = null,
 }: {
   settingsNav?: Nav | null;
   sudoGrant?: string | null;
   aiIntegrations?: boolean;
   currentPath?: string;
-  title?: string | null;
 } = {}) {
   vi.stubGlobal(
     "matchMedia",
@@ -84,7 +82,6 @@ function mountLayout({
       currentPath,
       settingsNav,
       sudoGrant,
-      title,
       featureFlags: { aiIntegrations },
     },
     global: {

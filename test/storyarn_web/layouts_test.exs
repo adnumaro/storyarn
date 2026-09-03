@@ -45,7 +45,12 @@ defmodule StoryarnWeb.LayoutsTest do
           socket: mock_socket(),
           current_scope: %{user: nil},
           current_path: "/workspaces/acme/projects/story/settings",
-          project: %{id: 7, name: "Story", slug: "story"},
+          settings_nav: %{
+            workspace: %{id: 3, slug: "acme", name: "Acme", access: "manage", owner: true},
+            workspaces: [],
+            project: %{id: 7, name: "Story", slug: "story", workspaceSlug: "acme", access: "owner"},
+            projects: []
+          },
           inner_block: []
         )
 

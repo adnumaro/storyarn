@@ -266,6 +266,33 @@ The three canvas/editor dispatchers are far over any reasonable size budget
 (`sheet_live/show.ex` 1108 lines, `flow_live/show.ex` 1699, `scene_live/show.ex` 2139).
 Extract into `handlers/` or `helpers/` rather than adding to them.
 
+### Settings surfaces
+
+Account (`SettingsLive.*`), workspace (`SettingsLive.Workspace*`) and project
+(`ProjectSettingsLive.*`, `ExportImportLive.Index`) settings share one grammar:
+
+- **Rail.** `StoryarnWeb.Live.Hooks.SettingsNav` assigns `@settings_nav`; the
+  LiveView passes it to `SettingsLayout.settings` and never builds nav data
+  itself. Groups are Personal, Workspace and Project; pages the actor cannot
+  change render locked with a lock icon, pages they cannot use at all are left
+  out (a project viewer sees only Export).
+- **Page.** The Vue page renders `SettingsPage` with its own title; sections
+  are `SettingsSection` cards of `SettingsRow`s (label + hint left, control
+  right), quotas are `SettingsMeterRow`s, destructive actions live in a
+  `tone="danger"` section and confirm through `SettingsDeleteDialog`.
+- **Saving.** Simple fields save on blur/toggle and report through
+  `SaveStatusTimer` + `SaveIndicator`; nothing shows a "Saved" flash.
+- **Re-authentication.** Profile and Security use `UserAuth`'s
+  `:load_sudo_state` hook plus `StoryarnWeb.Live.Shared.SudoReauth`: the page
+  mounts locked with `SettingsReauthBanner` and unlocks in place. AI
+  Integrations and My AI Team keep the `:require_sudo_mode` redirect because
+  they must not render credential summaries at all before confirmation.
+- **Access.** Owner-only pages (project General, Members, Templates, Version
+  control, Backups, Localization, Usage, Import) redirect editors and viewers
+  at mount; Trash redirects viewers; Export stays read-only for viewers.
+  `/settings/export-import`, `/workspaces/:slug/imports` and
+  `/workspaces/:slug/deleted-projects` are redirect-only legacy routes.
+
 ---
 
 ## Authorization in LiveViews

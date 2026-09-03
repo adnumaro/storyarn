@@ -103,16 +103,12 @@ interface SettingsFeatureFlags {
 const {
   currentPath,
   settingsNav = null,
-  title = null,
-  subtitle = null,
   onboarding = null,
   sudoGrant = null,
   featureFlags = {},
 } = defineProps<{
   currentPath: string;
   settingsNav?: SettingsNav | null;
-  title?: string | null;
-  subtitle?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
   sudoGrant?: string | null;
   featureFlags?: SettingsFeatureFlags;
@@ -357,7 +353,7 @@ const backPath = computed(() => {
 });
 
 const scopeLabel = computed(() => activeGroup.value?.label ?? t("settings.nav.sections.personal"));
-const pageLabel = computed(() => title ?? activeItem.value?.label ?? "");
+const pageLabel = computed(() => activeItem.value?.label ?? "");
 
 const wide = computed(() => {
   const route = routePath(currentPath);
@@ -519,13 +515,8 @@ watch(
       <main class="min-h-0 flex-1 overflow-y-auto">
         <div class="px-4 py-5 lg:px-12 lg:py-14">
           <div :class="[contentWidthClass, 'mx-auto']" data-testid="settings-content">
-            <header v-if="title" class="flex items-start justify-between gap-4 pb-6">
-              <div>
-                <h1 class="text-2xl font-semibold leading-tight tracking-[-0.01em]">{{ title }}</h1>
-                <p v-if="subtitle" class="mt-1 text-sm text-muted-foreground">{{ subtitle }}</p>
-              </div>
+            <div v-if="onboarding" class="flex justify-end pb-4">
               <button
-                v-if="onboarding"
                 type="button"
                 class="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                 @click="showTutorial"
@@ -533,7 +524,7 @@ watch(
                 <CircleHelp class="size-4" />
                 {{ t("onboarding.common.view_tutorial") }}
               </button>
-            </header>
+            </div>
 
             <slot />
           </div>

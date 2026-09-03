@@ -122,7 +122,7 @@ even when that means duplication. Then inspect the existing code before writing 
 
 1. **Check `lib/storyarn/platform/{kernel,adapters,discovery}/` and its README** — the closed technical kernel, provider adapters, and discovery queries include some established `Storyarn.Platform.Shared.*` identities. Reuse them only when the README's kernel-admission criteria apply. Project-owned helpers live in `lib/storyarn/projects/`: InvitationNotifier, InvitationOperations, InvitationSchema, MembershipOperations, NameNormalizer, Validations, WordCount.
 2. **Check `lib/storyarn_web/helpers/`** — Authorize, AutoSnapshot, EntitySearch, SaveStatusTimer, UndoRedoStack, VersionEventHelpers, VersionHistoryHelpers
-3. **Check `lib/storyarn_web/live/shared/`** — CollaborationHelpers, DashboardHandlers, DashboardHelpers, InvitationHelpers, OnboardingHelpers, PickerSearch, ProjectChromeHelpers
+3. **Check `lib/storyarn_web/live/shared/`** — CollaborationHelpers, DashboardHandlers, DashboardHelpers, InvitationHelpers, OnboardingHelpers, PickerSearch, ProjectChromeHelpers, SudoReauth; settings pages compose `assets/app/components/settings/` (see @docs/reference/component-registry.md)
 4. **Read `docs/reference/shared-utilities.md`** for the full registry with examples
 
 ## Commands

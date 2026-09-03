@@ -67,9 +67,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      managed_workspace_slugs={@managed_workspace_slugs}
-      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
       settings_nav={@settings_nav}
     >

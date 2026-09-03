@@ -60,7 +60,7 @@ Each is its own module under `lib/storyarn_web/components/`, invoked by full pat
 | `AuthLayout`      | `auth/1`      | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`                                                                                                    |
 | `PublicLayout`    | `public/1`    | `flash`, `socket`, `seo_metadata`                                                       | `current_scope`, `theme`, `landing`, `language_links`                                                              |
 | `DocsLayout`      | `docs/1`      | `flash`, `socket`, `seo_metadata`, `categories`, `guides`, `locale`                     | `guide`, `expanded_categories`, `search_query`, `search_results`, `prev`, `next`, `sidebar_open`, `language_links` |
-| `SettingsLayout`  | `settings/1`  | `flash`, `socket`, `current_scope`, `current_path`                                      | `workspaces`, `workspace`, `project`, `sudo_grant`, `onboarding*`, slots `:title`, `:subtitle`                     |
+| `SettingsLayout`  | `settings/1`  | `flash`, `socket`, `current_scope`, `current_path`, `settings_nav`                       | `sudo_grant`, `onboarding*` — no title slots; the injected page renders `SettingsPage`                            |
 | `ProjectLayout`   | `project/1`   | `socket`, `project`, `workspace`, `current_scope`, `current_user`, `membership`, `urls` | `id`, `flash`, `active_tool`, `online_users`, `sidebar_module`, `sidebar_session`, `canvas_mode`, `onboarding*`    |
 | `WorkspaceLayout` | `workspace/1` | `flash`, `socket`                                                                       | `current_scope`, `current_workspace`, `workspaces`, `onboarding*`                                                  |
 | `CompareLayout`   | `compare/1`   | `flash`, `socket`                                                                       | `id`, `panel_title`, `panel_open`, `content_class`                                                                 |
@@ -128,6 +128,7 @@ the call site, not by editing the primitive.
 | `language/`           | `LanguageFlag.vue`, `LanguagePicker.vue`                                                                                                                                                                                           |
 | `navigation/`         | `LiveLink.vue` — `to`, `mode` (`navigate\|patch\|external`), `state` (`push\|replace`). Use instead of a raw `<a>` so scroll position survives navigation                                                                          |
 | `onboarding/`         | `OnboardingDialog.vue`, `onboardingGuides.ts`                                                                                                                                                                                      |
+| `settings/`           | The settings page grammar: `SettingsPage` (title + `#eyebrow`/`#actions`), `SettingsSection` (titled card of rows; `locked`, `tone="danger"`, `#footer`), `SettingsRow` (label + hint left, control right; `stacked`, `control="input"`), `SettingsMeterRow` (quota with status pill and bar), `SettingsDeleteDialog` (typed confirmation), `SettingsEmptyState`, `SettingsReauthBanner` (in-place sudo). Barrel `index.ts` |
 | `toolbar/`            | `ToolbarBase`, `ToolbarButton`, `ToolbarSeparator`, `ToolbarSizePicker`, `ToolbarColorPicker`, `ToolbarTooltip` (barrel `index.ts`)                                                                                                |
 | `versioning/history/` | `VersionHistory.vue`, `CreateVersionDialog`, `DeleteVersionDialog`, `PromoteVersionDialog`, `RestorePreviewDialog`, `UnsavedChangesDialog`, `useVersionHistory.ts`                                                                 |
 
@@ -170,10 +171,18 @@ NEVER use `window.confirm/alert/prompt` or `data-confirm`.
 | ------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------- |
 | `DashboardHelpers`  | `import StoryarnWeb.Live.Shared.DashboardHelpers` | Sorting, pagination, issue filtering, and load-state helpers for Vue dashboards |
 | `DashboardHandlers` | `use StoryarnWeb.Live.Shared.DashboardHandlers`   | Injects debounced dashboard-invalidation `handle_info` clauses                  |
+| `SudoReauth`        | `alias StoryarnWeb.Live.Shared.SudoReauth`        | In-place re-authentication for settings pages: `assign_reauth/2`, `reauth_props/3`, `confirm/2`, `with_sudo/2` (locks the page instead of navigating) |
 
 The rest of `lib/storyarn_web/live/shared/` (`CollaborationHelpers`,
 `InvitationHelpers`, `OnboardingHelpers`, `PickerSearch`, `ProjectChromeHelpers`)
 contains presentation coordination helpers, not domain services.
+
+`StoryarnWeb.Live.Hooks.SettingsNav` (`lib/storyarn_web/live/hooks/settings_nav.ex`)
+is a session hook that assigns `@settings_nav` (current workspace/project, access
+level and switcher options) to every settings LiveView; `SettingsLayout` forwards
+it to the rail. `StoryarnWeb.UserAuth.on_mount(:load_sudo_state, ...)` assigns
+`sudo_active`/`sudo_grant` without redirecting, for pages that re-authenticate in
+place through `SettingsReauthBanner`.
 
 ---
 
