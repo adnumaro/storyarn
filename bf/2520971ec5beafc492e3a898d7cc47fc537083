@@ -1,0 +1,55 @@
+assets/app/live/project/settings/ProjectSettingsLocalization.vue
+  s_dc522f884e191b::t_d25b0aa1c29cd1 2,4,6-13,40,64,95,121-122,124-142,146-159,161-171,178,180-183,185,189-194,197,199-210,216,220-221,225,229-230,232-254,256,258-274
+assets/app/locales/en/project-settings.json
+  s_dc522f884e191b::t_3e4e31a1292d05 162-169,218,222-226,234-236,331-342,379-381
+test/storyarn_web/live/project_live/settings_test.exs
+  s_dc522f884e191b::t_f34284691f112b 1001-1002
+assets/app/locales/es/project-settings.json
+  s_dc522f884e191b::t_3e4e31a1292d05 162-169,218,222-226,234-236,331-342,379-381
+assets/app/test/live/project/settings/ProjectSettingsLocalization.test.ts
+  s_dc522f884e191b::t_b706513f4071d2 1-35,39-43,47-84
+  s_dc522f884e191b::t_d9a20587b160e2 36-38,44-46
+priv/gettext/es/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_012430b06a0f86 132
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_dc522f884e191b::t_0aac062d1a56bd 2,5-6,8,65,69,73,77,105-108,110,116,130,134,138,142,155,161,168,177,202,206,210,220,238,243,247,250,263-290,293-313,317-319,321-328,332,337,341,345-346,349,356,358-367,373,377,384,390,394,400-464
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_dc522f884e191b::t_6f82277d328a6e 16-24,119,125,490-494,496-497,499-506,660-703,705-723,725-726,728-731,735,743,749-754,756,761,1139-1166,1189
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_dc522f884e191b::t_be7998a7e697c3 46
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_012430b06a0f86 24,56,58,70,111,116,121-122,127-129,134-135,140-141,146-147,152,160-161,165-166,169,1138,1143,1148,1153,1158,1163,1259,1264,1294,1299,1304,1320
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_012430b06a0f86 24,56,58,70,111,116,121-122,127-129,134-135,140-141,146-147,152,160-161,165-166,169,1138,1143,1148,1153,1158,1163,1259,1264,1294,1299,1304,1320
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_dc522f884e191b::t_4d5d7e059faeb4 192
+  s_dc522f884e191b::t_be7998a7e697c3 146,148-154,156-159,349-351
+  s_dc522f884e191b::t_d9a20587b160e2 133,478
+  s_dc522f884e191b::t_38d66282cf7c08 190,389
+priv/gettext/projects.pot
+  s_dc522f884e191b::t_012430b06a0f86 24,56,58,70,111,116,121-122,127-129,134-135,140-141,146-147,152,160-161,165-166,169,1138,1143,1148,1153,1158,1163,1259,1264,1294,1299,1304,1320
+priv/gettext/en/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_012430b06a0f86 132
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_dc522f884e191b::t_be7998a7e697c3 62-68,70-86
+priv/gettext/default.pot
+  s_dc522f884e191b::t_012430b06a0f86 132
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_dc522f884e191b::t_be7998a7e697c3 519,524,526,532-533
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "bf2520971ec5beafc492e3a898d7cc47fc537083",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
