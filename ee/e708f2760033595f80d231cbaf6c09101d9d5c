@@ -1,0 +1,21 @@
+assets/app/test/live/project/settings/ProjectSettingsVersionControl.test.ts
+  s_dc522f884e191b::t_e26326909f27f1 54-79
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_dc522f884e191b::t_e26326909f27f1 97-103,110,121-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "eee708f2760033595f80d231cbaf6c09101d9d5c",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
