@@ -639,15 +639,23 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   defp classify_changed_reservation(finding, provider_namespace_fingerprint) do
     finding.workspace_id_snapshot
     |> Commercial.transact_with_workspace_lock(fn _workspace ->
-      reservation = lock_reservation(finding.storage_reservation_id_snapshot)
-
-      if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do
-        {:ok, {"repaired", "expired_build_cleanup_already_scheduled", %{}}}
-      else
-        {:ok, {"manual", "expired_build_no_longer_repairable", %{}}}
+      case validate_namespace(provider_namespace_fingerprint) do
+        :ok -> classify_changed_reservation_locked(finding, provider_namespace_fingerprint)
+        {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, {"manual", "provider_namespace_changed", %{}}}
+        {:error, _reason} = error -> error
       end
     end)
     |> flatten_repair_result()
+  end
+
+  defp classify_changed_reservation_locked(finding, provider_namespace_fingerprint) do
+    reservation = lock_reservation(finding.storage_reservation_id_snapshot)
+
+    if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do
+      {:ok, {"repaired", "expired_build_cleanup_already_scheduled", %{}}}
+    else
+      {:ok, {"manual", "expired_build_no_longer_repairable", %{}}}
+    end
   end
 
   defp lock_reservation(reservation_id) do

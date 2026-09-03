@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Assets.StorageTest do
 
   alias Storyarn.MultipartStorageSpy
   alias Storyarn.Platform.ObjectStorage
+  alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
 
@@ -63,6 +64,31 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       end
 
       Process.get({__MODULE__, operation, :result}, result)
+    end
+  end
+
+  defmodule OverwritingWriteFenceAdapter do
+    @moduledoc false
+
+    def upload(key, bytes, content_type), do: after_write(key, Local.upload(key, bytes, content_type))
+
+    # Model a provider's successful overwrite without changing Local's
+    # exclusive-create stream implementation.
+    def upload_stream(key, chunks, content_type) do
+      bytes = chunks |> Enum.to_list() |> IO.iodata_to_binary()
+      after_write(key, Local.upload(key, bytes, content_type))
+    end
+
+    def copy(source, destination), do: after_write(destination, Local.copy(source, destination))
+
+    def delete(key) do
+      send(self(), {:overwriting_adapter_delete, key})
+      Local.delete(key)
+    end
+
+    defp after_write(key, result) do
+      Process.get({__MODULE__, :after_write}).(key)
+      result
     end
   end
 
@@ -199,16 +225,64 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       refute_received {:write_fence_adapter, _, _}
     end
 
-    test "removes an object when cleanup handoff commits during the provider write" do
+    test "never issues a bearer PUT for cleanup-protected keys even before handoff" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      token = Ecto.UUID.generate()
+      hash = String.duplicate("a", 64)
+
+      keys = [
+        "projects/1/snapshots/archives/v2/staging/BearerFenceTok01/snapshot.zip",
+        "projects/1/snapshots/archives/v2/ready/BearerFenceTok01/manifest.json",
+        "projects/1/storage-reservations/v1/restore-staging/#{token}/blobs/#{hash}.png",
+        "workspace-snapshot-imports/v1/1/#{token}/snapshot.zip",
+        "workspace-snapshot-imports/v1/1/#{token}/blobs/#{hash}.png"
+      ]
+
+      for key <- keys do
+        assert {:error, :presigned_upload_requires_server_upload} =
+                 Storage.presigned_upload_url(key, "application/zip", expires_in: 3_600, content_length: 5)
+      end
+
+      refute_received {:write_fence_adapter, :presigned_upload_url, _key}
+    end
+
+    test "removes a newly created conditional object when cleanup handoff commits during the provider write" do
       key = "projects/1/snapshots/archives/v2/staging/RaceFenceToken12/snapshot.zip"
       Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
       Process.put({WriteFenceAdapter, :after_dispatch}, fn -> persist_multipart_handoff!(key) end)
 
       assert {:error, :storage_key_cleanup_handed_off} =
-               Storage.upload(key, "bytes", "application/zip")
+               Storage.put_if_absent(key, "bytes", "application/zip")
 
-      assert_received {:write_fence_adapter, :upload, ^key}
+      assert_received {:write_fence_adapter, :put_if_absent, ^key}
       assert_received {:write_fence_adapter, :delete, ^key}
+    end
+
+    test "unconditional writes never delete a pre-existing destination after cleanup handoff" do
+      source_key = "overwrite-fence/source.png"
+      assert {:ok, _url} = Local.upload(source_key, "replacement bytes", "image/png")
+      Application.put_env(:storyarn, :storage, adapter: OverwritingWriteFenceAdapter, upload_dir: @test_dir)
+
+      Process.put({OverwritingWriteFenceAdapter, :after_write}, fn key -> persist_multipart_handoff!(key) end)
+
+      for {operation, write_fun} <- [
+            {:upload, fn key -> Storage.upload(key, "replacement bytes", "image/png") end},
+            {:upload_stream, fn key -> Storage.upload_stream(key, ["replacement bytes"], "image/png") end},
+            {:copy, fn key -> Storage.copy(source_key, key) end}
+          ],
+          namespace <- [:asset, :blob] do
+        key =
+          case namespace do
+            :asset -> "projects/1/assets/#{Ecto.UUID.generate()}/#{operation}.png"
+            :blob -> "projects/1/blobs/#{Base.encode16(:crypto.strong_rand_bytes(32), case: :lower)}.png"
+          end
+
+        assert {:ok, _url} = Local.upload(key, "previously owned bytes", "image/png")
+        assert {:error, :storage_key_cleanup_handed_off} = write_fun.(key)
+        refute_received {:overwriting_adapter_delete, ^key}
+        assert {:ok, "replacement bytes"} = Local.download(key)
+        assert Repo.exists?(from request in StorageCleanupRequest, where: ^key in request.storage_keys)
+      end
     end
 
     test "never deletes a pre-existing object after a conditional write reports not created" do
@@ -637,6 +711,14 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   # =============================================================================
 
   describe "presigned_upload_url/3" do
+    test "preserves presigning outside cleanup-protected namespaces" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      key = "projects/1/assets/#{Ecto.UUID.generate()}/image.png"
+
+      assert {:ok, "signed", %{}} = Storage.presigned_upload_url(key, "image/png", content_length: 5)
+      assert_received {:write_fence_adapter, :presigned_upload_url, ^key}
+    end
+
     test "delegates to configured adapter" do
       # Local adapter returns :not_supported
       assert {:error, :not_supported} = Storage.presigned_upload_url("key", "text/plain")

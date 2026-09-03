@@ -19,6 +19,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
   alias Storyarn.Projects
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Imports
   alias Storyarn.Projects.Imports.ImportPlan
   alias Storyarn.Projects.Imports.ProjectImportAttempt
@@ -37,6 +38,7 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
   alias Storyarn.Sheets
   alias Storyarn.Sheets.Sheet
   alias Storyarn.Sheets.Versioning.EntityVersionRecord, as: EntityVersion
+  alias Storyarn.SnapshotReadSwitchStorage
 
   @yarn_project_fixture_root Path.expand("../../../../../fixtures/imports/yarn/emberfall", __DIR__)
   @yarn_project_fixture_files [
@@ -387,6 +389,39 @@ defmodule Storyarn.Projects.Imports.ReplacementTest do
              Repo.get_by!(SnapshotCleanupIntent,
                project_snapshot_id_snapshot: snapshot_id
              )
+  end
+
+  test "recovery cleanup rejects namespace drift while acquiring its workspace lock", ctx do
+    assert {:ok, queued} = queued_replacement(ctx)
+    assert {:snooze, _seconds} = Imports.perform_import(queued.id, attempt: 1, max_attempts: 3)
+    waiting = Repo.get!(ProjectImportAttempt, queued.id)
+    snapshot_before = Repo.get!(ProjectSnapshot, waiting.pre_import_snapshot_id)
+
+    expired =
+      waiting
+      |> ProjectImportAttempt.expired_changeset(TimeHelpers.now(), "import_cancelled")
+      |> Repo.update!()
+
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+    Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage))
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+      if Process.whereis(SnapshotReadSwitchStorage), do: Agent.stop(SnapshotReadSwitchStorage)
+    end)
+
+    assert {:ok, original_namespace} = Storage.namespace_fingerprint()
+
+    SnapshotReadSwitchStorage.observe_namespace(fn
+      ^original_namespace -> SnapshotReadSwitchStorage.override_namespace_fingerprint(String.duplicate("f", 64))
+      _value -> :ok
+    end)
+
+    assert {:error, :pre_import_snapshot_cleanup_failed} = Replacement.cleanup_terminal_recovery_snapshot(expired)
+    assert Repo.get!(ProjectSnapshot, snapshot_before.id) == snapshot_before
+    assert Repo.get!(ProjectImportAttempt, expired.id).pre_import_snapshot_id == snapshot_before.id
+    refute Repo.get_by(SnapshotCleanupIntent, project_snapshot_id_snapshot: snapshot_before.id)
   end
 
   test "an active recovery build is cancelled cooperatively and swept after it becomes terminal", ctx do

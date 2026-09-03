@@ -120,7 +120,11 @@ defmodule Storyarn.Projects.Assets.Storage do
 
   def presigned_upload_url(key, content_type, opts \\ []) do
     with :ok <- ensure_write_not_handed_off(key) do
-      ObjectStorage.presigned_upload_url(key, content_type, opts)
+      # A bearer PUT cannot be revoked by admission or bounded by the server's
+      # write deadline. Protected keys must use the server upload path instead.
+      if multipart_cleanup_key?(key),
+        do: {:error, :presigned_upload_requires_server_upload},
+        else: ObjectStorage.presigned_upload_url(key, content_type, opts)
     end
   end
 
@@ -187,7 +191,7 @@ defmodule Storyarn.Projects.Assets.Storage do
   defp finalize_guarded_object_write(result, key, ownership) do
     case successful_object_write?(result, ownership) do
       :created -> finalize_created_object_write(result, key)
-      :unchanged -> finalize_unchanged_object_write(result, key)
+      :unowned -> finalize_unowned_object_write(result, key)
       :failed -> result
     end
   end
@@ -206,20 +210,22 @@ defmodule Storyarn.Projects.Assets.Storage do
     end
   end
 
-  defp finalize_unchanged_object_write(result, key) do
+  # A successful unconditional write can overwrite an already-owned object.
+  # Only the durable cleanup policy may decide whether those bytes are deletable.
+  defp finalize_unowned_object_write(result, key) do
     case ensure_write_not_handed_off(key) do
       :ok -> result
       {:error, reason} -> {:error, reason}
     end
   end
 
-  defp successful_object_write?(:ok, :unconditional), do: :created
-  defp successful_object_write?({:ok, _value}, :unconditional), do: :created
-  defp successful_object_write?({:ok, _url, _metadata}, :unconditional), do: :created
+  defp successful_object_write?(:ok, :unconditional), do: :unowned
+  defp successful_object_write?({:ok, _value}, :unconditional), do: :unowned
+  defp successful_object_write?({:ok, _url, _metadata}, :unconditional), do: :unowned
   defp successful_object_write?({:ok, true}, :conditional), do: :created
-  defp successful_object_write?({:ok, false}, :conditional), do: :unchanged
+  defp successful_object_write?({:ok, false}, :conditional), do: :unowned
   defp successful_object_write?({:ok, _url, true}, :conditional), do: :created
-  defp successful_object_write?({:ok, _url, false}, :conditional), do: :unchanged
+  defp successful_object_write?({:ok, _url, false}, :conditional), do: :unowned
   defp successful_object_write?(_result, _ownership), do: :failed
 
   @spec abort_incomplete_multipart_uploads(key(), keyword()) ::

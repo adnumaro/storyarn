@@ -196,12 +196,14 @@ defmodule Storyarn.Projects.Imports.Replacement do
          snapshot = lock_terminal_cleanup_snapshot(attempt_hint, project),
          %ProjectImportAttempt{} = attempt <- lock_terminal_cleanup_attempt(attempt_hint, project),
          :ok <- validate_terminal_cleanup_attempt(attempt),
-         :ok <- validate_terminal_cleanup_snapshot(attempt, project, snapshot) do
+         :ok <- validate_terminal_cleanup_snapshot(attempt, project, snapshot),
+         {:ok, ^provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
       cleanup_snapshot_by_state(snapshot, project.workspace_id, provider_namespace_fingerprint)
     else
       nil -> {:ok, :not_found}
       {:error, :not_terminal} -> {:ok, :not_terminal}
       {:error, reason} -> {:error, reason}
+      {:ok, _changed_namespace} -> {:error, :pre_import_snapshot_cleanup_failed}
       _invalid -> {:error, :invalid_import_snapshot_identity}
     end
   end

@@ -360,6 +360,18 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
              end)
   end
 
+  test "multipart handoff captures local provider identity under a checkout without a transaction" do
+    storage_key = "projects/1/snapshots/archives/v2/staging/NamespaceCap0001/snapshot.zip"
+    assert {:ok, fingerprint} = Storage.namespace_fingerprint()
+
+    assert {:ok, %StorageCleanupRequest{provider_namespace_fingerprint: ^fingerprint}} =
+             Repo.checkout(fn ->
+               assert Repo.checked_out?()
+               refute Repo.in_transaction?()
+               StorageCompensation.persist_planned_cleanup_request([storage_key])
+             end)
+  end
+
   test "multipart handoff requires a previously captured provider namespace inside a transaction" do
     storage_key =
       "projects/1/snapshots/archives/v2/staging/NamespaceCap0001/snapshot.zip"

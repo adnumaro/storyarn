@@ -380,7 +380,7 @@ The acknowledgement is
 bypass any database precondition: it records that the external stop-the-world
 step was deliberately executed. Every workflow run checks for the temporary
 secret and stages its removal, including a retry where the migration committed
-but the original retirement step failed. A failed run remains safe across a
+but candidate startup failed. A failed run remains safe across a
 later commit: the next workflow queries the database again and repeats the
 cutover until the migration is actually present.
 
@@ -414,6 +414,23 @@ one legacy `storage_keys` job and one legacy multipart cleanup request. After
 the migration, prove that the new worker persists a provider-bound exact-key
 receipt before any provider mutation, advances it through the durable FSM, and
 leaves no upload, part, object, overdue receipt, or old application Machine.
+
+### Uploads covered by the cleanup fence
+
+Protected object keys cannot receive browser-facing presigned PUT URLs: checking
+admission when issuing a bearer URL cannot stop its later use after cleanup
+handoff. Workspace snapshot imports therefore use the existing server upload
+path for every provider, followed by a bounded stream to object storage. This
+does not revoke URLs issued by an earlier release; do not treat stopping the old
+application as revoking those capabilities.
+
+The server path holds the uploaded archive in temporary disk storage until its
+provider upload finishes. The archive size limit remains just below 4 GiB, but
+that limit is not a temporary-disk reservation or a concurrent-upload guarantee.
+Before claiming near-limit production support, verify available temporary disk,
+concurrent uploads and an end-to-end large-file upload on the deployed Machine.
+Local regression tests do not establish that operational capacity. No Fly disk
+or concurrency setting is changed by this review fix.
 
 ## Real Tigris validation
 

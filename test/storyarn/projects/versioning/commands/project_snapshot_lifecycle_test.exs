@@ -362,6 +362,31 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
                Versioning.project_snapshot_cleanup_backlog()
     end
 
+    test "operator replay preserves no-op and missing results when storage is unavailable" do
+      user = user_fixture()
+      project = project_fixture(user)
+      ready = create_ready_snapshot(user, project)
+      assert {:ok, completed} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+      expire_multipart_quiescence!(completed.cleanup_request_id)
+      assert {:ok, {:deferred, _seconds}} = process_cleanup_until_boundary(completed.id)
+      expire_multipart_quiescence!(completed.cleanup_request_id)
+      assert {:ok, :completed} = process_cleanup_until_boundary(completed.id)
+
+      another_ready = create_ready_snapshot(user, project)
+      assert {:ok, active} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, another_ready.id)
+      before_active = Repo.get!(SnapshotCleanupIntent, active.id)
+
+      use_alternate_storage_namespace!("/")
+      assert {:error, :unsafe_storage_entry} = Storage.namespace_fingerprint()
+      assert {:ok, :already_completed} = Versioning.replay_terminal_project_snapshot_cleanup(completed.id)
+      assert {:ok, :already_active} = Versioning.replay_terminal_project_snapshot_cleanup(active.id)
+
+      assert {:error, :snapshot_cleanup_intent_not_found} =
+               Versioning.replay_terminal_project_snapshot_cleanup(9_223_372_036_854_775_807)
+
+      assert Repo.get!(SnapshotCleanupIntent, active.id) == before_active
+    end
+
     test "operator replay safely reopens a terminal intent and emits one replay event" do
       user = user_fixture()
       project = project_fixture(user)

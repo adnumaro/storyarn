@@ -1244,7 +1244,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   defp cleanup_not_before(_missing_or_short, minimum_not_before), do: minimum_not_before
 
   defp capture_missing_provider_namespace(attrs) do
-    if Repo.in_transaction?() or Repo.checked_out?() do
+    if Repo.in_transaction?() do
       {:error, :multipart_cleanup_provider_namespace_capture_required}
     else
       case Storage.namespace_fingerprint() do

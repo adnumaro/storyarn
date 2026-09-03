@@ -322,6 +322,61 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
            ).rows == [[true, true]]
   end
 
+  test "the historically attached trigger captures new ownership after writer-fence migration" do
+    # The trigger is installed by 20260804120000; the incremental migration
+    # replaces its function without detaching it. Exercise INSERT, not backfill.
+    assert Repo.query!("""
+           SELECT EXISTS (
+             SELECT 1 FROM pg_trigger
+             WHERE tgrelid = 'storage_cleanup_requests'::regclass
+               AND tgname = 'storage_cleanup_requests_capture_ownership_receipt'
+               AND tgenabled <> 'D' AND NOT tgisinternal
+           )
+           """).rows == [[true]]
+
+    prefix = "projects/1/snapshots/archives/v2/staging/CAPTURETRIGGER01"
+
+    keys = [
+      "workspace-snapshot-imports/v1/1/#{Ecto.UUID.generate()}/snapshot.zip",
+      "#{prefix}/snapshot.zip"
+    ]
+
+    assert [[request_id]] =
+             Repo.query!(
+               """
+               INSERT INTO storage_cleanup_requests
+                 (storage_keys, owner_kind, provider_namespace_fingerprint,
+                  multipart_cleanup_phase, inserted_at, updated_at)
+               VALUES ($1, 'storage_compensation', repeat('a', 64), 'discover', now(), now())
+               RETURNING id
+               """,
+               [keys]
+             ).rows
+
+    assert Repo.query!(
+             "SELECT storage_keys FROM storage_cleanup_ownership_receipts WHERE cleanup_request_id = $1",
+             [request_id]
+           ).rows == [[keys]]
+
+    assert Repo.query!(
+             "SELECT object_prefix FROM storage_cleanup_ownership_namespaces WHERE cleanup_request_id = $1",
+             [request_id]
+           ).rows == [[prefix]]
+  end
+
+  test "the cutover workflow retires the old fleet before authorizing the migration" do
+    workflow = File.read!(Path.expand("../../.github/workflows/fly-deploy.yml", __DIR__))
+
+    {stop, _} = :binary.match(workflow, "flyctl scale count 0 --app storyarn-prod --yes")
+    {proof, _} = :binary.match(workflow, "test \"$(flyctl machine list --app storyarn-prod --json | jq 'length')\" -eq 0")
+    {authorization, _} = :binary.match(workflow, "EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000")
+    {deployment, _} = :binary.match(workflow, "flyctl deploy --remote-only --ha=false")
+
+    assert stop < proof
+    assert proof < authorization
+    assert authorization < deployment
+  end
+
   test "a mixed-case prefix reaches the frozen migration ABI and applies real DDL" do
     prefix = use_mixed_case_schema!()
     create_schema_migrations!(@storage_accounting_migration)

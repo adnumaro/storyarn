@@ -526,6 +526,36 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              "expired_build_cleanup_already_scheduled"
   end
 
+  test "an already cleaned expired candidate remains manual if namespace drifts before classification" do
+    {snapshot, _finding, action} = expired_build_action!()
+
+    assert [candidate] =
+             Versioning.list_expired_project_snapshot_build_candidates(TimeHelpers.now(),
+               after_id: snapshot.id - 1,
+               through_id: snapshot.id,
+               limit: 1
+             )
+
+    assert {:ok, intent} = Versioning.delete_expired_project_snapshot_build_candidate(candidate)
+    request_before = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+    reservation_before = Repo.get!(StorageReservation, snapshot.storage_reservation_id)
+    install_snapshot_read_switch_storage()
+    assert {:ok, original_namespace} = Storage.namespace_fingerprint()
+
+    SnapshotReadSwitchStorage.observe_namespace(fn
+      ^original_namespace -> SnapshotReadSwitchStorage.override_namespace_fingerprint(String.duplicate("f", 64))
+      _value -> :ok
+    end)
+
+    assert {:ok, :manual} = Versioning.perform_project_snapshot_reconciliation_repair(action.id)
+
+    assert %ProjectSnapshotReconciliationRepairAction{result_code: "provider_namespace_changed"} =
+             Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+
+    assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id) == request_before
+    assert Repo.get!(StorageReservation, snapshot.storage_reservation_id) == reservation_before
+  end
+
   test "changed expired-build evidence cannot release the reservation or create cleanup" do
     {snapshot, _finding, action} = expired_build_action!()
 

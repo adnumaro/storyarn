@@ -536,13 +536,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
           {:ok, SnapshotCleanupIntent.t() | :already_completed | :already_active} | {:error, term()}
   def replay_terminal_cleanup_intent(intent_id) when is_integer(intent_id) and intent_id > 0 do
     result =
-      with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
-        Repo.transact(fn ->
-          intent_id
-          |> lock_cleanup_intent()
-          |> replay_locked_cleanup_intent(provider_namespace_fingerprint)
-        end)
-      end
+      Repo.transact(fn ->
+        intent_id
+        |> lock_cleanup_intent()
+        |> replay_with_current_namespace()
+      end)
 
     emit_cleanup_replay(result)
   end
@@ -573,6 +571,15 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   def replay_terminal_cleanup_intent(_intent_id, _expectations),
     do: {:error, :invalid_snapshot_cleanup_replay_expectations}
+
+  defp replay_with_current_namespace(%SnapshotCleanupIntent{status: "terminal", last_error_code: code} = intent)
+       when code in @replayable_cleanup_errors do
+    with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+      replay_locked_cleanup_intent(intent, provider_namespace_fingerprint)
+    end
+  end
+
+  defp replay_with_current_namespace(intent), do: replay_locked_cleanup_intent(intent, nil)
 
   defp exact_replay_expectations?(expectations) do
     expectations

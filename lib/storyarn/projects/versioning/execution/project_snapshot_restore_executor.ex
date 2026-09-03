@@ -210,6 +210,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
            Memberships.authorize(%{user: actor}, project.id, :manage_project),
          true <- project_id == restore.project_id,
          {:ok, archive_plan} <- reader.verify(snapshot),
+         :ok <- validate_current_provider_namespace(provider_namespace_fingerprint),
          :ok <- validate_canonical_project_fields(project, archive_plan.project),
          bound_reservation = bound_reservation(restore),
          lease_token = reservation_lease_token(bound_reservation),
@@ -494,7 +495,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     storage_keys = reservation_cleanup_keys(context)
     cleanup_plan = %{temporary_prefix: reservation.storage_namespace, storage_keys: storage_keys}
 
-    with {:ok, reservation} <-
+    with :ok <- validate_current_provider_namespace(context.provider_namespace_fingerprint),
+         {:ok, reservation} <-
            CommercialStorageReservations.mark_started(
              reservation.id,
              reservation.lease_token,
@@ -552,7 +554,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   end
 
   defp stage_destination_objects(context, tracker) do
-    with {:ok, restore} <- ensure_phase(current_restore(context.restore.id), "materializing"),
+    with :ok <- validate_current_provider_namespace(context.provider_namespace_fingerprint),
+         {:ok, restore} <- ensure_phase(current_restore(context.restore.id), "materializing"),
          :ok <- context.materializer.stage_destination_objects(context.asset_plan, tracker),
          {:ok, restore} <- ensure_phase(restore, "verifying") do
       {:ok, %{context | restore: restore}}
@@ -638,7 +641,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     do: {:error, :invalid_project_snapshot_restore_lock_context}
 
   defp commit_owner(_reservation, preserved_localization_actor_ids, context, tracker) do
-    with {:ok, locked} <- lock_and_reauthorize(context, preserved_localization_actor_ids),
+    with :ok <- validate_current_provider_namespace(context.provider_namespace_fingerprint),
+         {:ok, locked} <- lock_and_reauthorize(context, preserved_localization_actor_ids),
          {:ok, previous} <- capture_active_state(locked.project.id),
          :ok <- trash_active_graph(previous),
          :ok <- reconcile_localization_before_materialization(locked.project.id, context.archive_plan.project),
@@ -676,6 +680,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
              adoption.source_id_map,
              preserved_localization_actor_ids
            ),
+         :ok <- validate_current_provider_namespace(context.provider_namespace_fingerprint),
          {:ok, cleanup_request_id} <- persist_staging_cleanup(context) do
       result = build_result(context, cleanup_request_id, semantic_digest, previous)
 
@@ -1758,7 +1763,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     context = Process.get(@compensation_context_key)
     cleanup_fun = Keyword.get(opts, :cleanup_after_rollback, &cleanup_after_rollback(&1, context))
     release_fun = Keyword.get(opts, :release_reservation, &release_active_reservation/2)
-    cleanup_result = cleanup_fun.(tracker)
+
+    cleanup_result =
+      case validate_compensation_namespace(context) do
+        :ok -> cleanup_fun.(tracker)
+        {:error, _reason} = error -> error
+      end
 
     ownership_result =
       case cleanup_result do
@@ -1783,6 +1793,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   end
 
   defp cleanup_after_rollback(tracker, _context), do: StorageCompensation.cleanup_after_rollback(tracker)
+
+  defp validate_compensation_namespace(%{provider_namespace_fingerprint: fingerprint}) do
+    # A drifted provider may contain unrelated objects under identical keys.
+    # Keep cleanup bound to the original identity instead of deleting there.
+    validate_current_provider_namespace(fingerprint)
+  end
+
+  defp validate_compensation_namespace(_context), do: :ok
 
   defp persist_failed_cleanup_ownership(tracker, cleanup_result, context) do
     cleanup_targets = cleanup_failure_targets(cleanup_result)
@@ -1960,8 +1978,22 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
 
   defp provider_namespace_fingerprint(opts) do
     case Keyword.get(opts, :provider_namespace_fingerprint) do
-      fingerprint when is_binary(fingerprint) -> validate_provider_namespace_fingerprint(fingerprint)
-      _missing -> capture_provider_namespace_fingerprint()
+      fingerprint when is_binary(fingerprint) ->
+        with {:ok, fingerprint} <- validate_provider_namespace_fingerprint(fingerprint),
+             :ok <- validate_current_provider_namespace(fingerprint) do
+          {:ok, fingerprint}
+        end
+
+      _missing ->
+        capture_provider_namespace_fingerprint()
+    end
+  end
+
+  defp validate_current_provider_namespace(expected) do
+    case capture_provider_namespace_fingerprint() do
+      {:ok, ^expected} -> :ok
+      {:ok, _changed} -> {:error, :project_snapshot_restore_provider_namespace_changed}
+      {:error, _reason} = error -> error
     end
   end
 
