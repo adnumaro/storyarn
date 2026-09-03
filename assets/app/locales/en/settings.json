@@ -16,7 +16,8 @@
         "workspace_members": "Members",
         "workspace_imports": "Imports",
         "deleted_projects": "Deleted Projects",
-        "preferences": "Preferences"
+        "preferences": "Preferences",
+        "workspace_ai": "AI"
       },
       "search": "Search settings…",
       "switch_workspace": "Switch workspace",
@@ -97,9 +98,15 @@
           "upload_banner": "Upload Banner",
           "source_language": "Source language",
           "select_language": "Select language...",
-          "source_language_hint": "Default source language for new projects in this workspace."
+          "source_language_hint": "Default source language for new projects in this workspace.",
+          "description_placeholder": "What this workspace is for",
+          "banner_hint": "Shown at the top of the workspace dashboard. PNG or JPG, up to 2 MB.",
+          "upload": "Upload"
         },
-        "save_changes": "Save Changes"
+        "save_changes": "Save Changes",
+        "page_title": "General",
+        "details": "Details",
+        "owner_only": "Only the workspace owner can change these settings"
       },
       "storyarn_ai": {
         "title": "Storyarn AI",
@@ -114,7 +121,8 @@
           "active": "Allowance active",
           "paused": "Allowance paused",
           "unavailable": "No allowance"
-        }
+        },
+        "units_left": "{count} units left"
       },
       "personal_ai": {
         "title": "Personal AI for members",
@@ -123,7 +131,8 @@
         "toggle_label": "Allow other members to use their personal AI keys in this workspace",
         "owner_only": "Only the workspace owner can allow personal AI for other members.",
         "disclosure": "Authorized project content leaves Storyarn and is processed under each member's provider account. Processing region, retention and possible model-training use depend on that provider and account; Storyarn cannot guarantee zero retention or no training for personal keys. Each member must review the disclosed data scope and consent before first use.",
-        "manage_keys": "Manage my provider connections"
+        "manage_keys": "Manage my provider connections",
+        "data_handling": "Data handling"
       },
       "appearance": {
         "title": "Appearance",
@@ -139,9 +148,10 @@
       },
       "delete_modal": {
         "title": "Delete workspace?",
-        "description": "This action cannot be undone.",
+        "description": "Deletes every project in it. This cannot be undone.",
         "cancel": "Cancel",
-        "delete": "Delete"
+        "delete": "Delete",
+        "type_name": "Type the workspace name to confirm"
       },
       "members": {
         "title": "Team Members",
@@ -158,7 +168,8 @@
           "email": "Email address",
           "email_placeholder": "colleague{'@'}example.com",
           "role": "Role",
-          "submit": "Send Invite"
+          "submit": "Send Invite",
+          "roles_hint": "Admins manage members and projects. Members edit. Viewers read."
         },
         "pending_title": "Pending invitations",
         "pending_description": "Pending invitations reserve a member seat until accepted, revoked, or expired.",
@@ -175,6 +186,16 @@
           "pending": "Transferring workspace ownership…",
           "cancel": "Cancel",
           "connection_unconfirmed": "The connection was interrupted, so Storyarn could not confirm the result. Reconnect and refresh this page before trying again."
+        },
+        "page_title": "Members",
+        "count": "{count} people",
+        "pending_hint": "Reserve a seat until accepted, revoked or expired",
+        "owner_note": "Only the owner can change roles, transfer ownership or remove members.",
+        "remove_dialog": {
+          "title": "Remove from workspace?",
+          "description": "{name} loses access to every project in this workspace. You can invite them again later.",
+          "confirm": "Remove",
+          "cancel": "Cancel"
         }
       },
       "imports": {
@@ -242,6 +263,13 @@
         "empty": {
           "title": "No deleted projects",
           "description": "Projects moved to workspace trash will appear here."
+        }
+      },
+      "ai": {
+        "title": "AI",
+        "unavailable": {
+          "title": "AI is not enabled for this workspace",
+          "text": "Storyarn AI is an invite-only beta. This workspace will see its allowance and policies here once it is enabled."
         }
       }
     },

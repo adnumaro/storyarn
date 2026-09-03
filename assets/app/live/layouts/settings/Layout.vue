@@ -228,6 +228,17 @@ const workspaceGroup = computed<SettingsGroup | null>(() => {
             icon: Users,
             locked: false,
           },
+          ...(featureFlags.aiIntegrations
+            ? [
+                {
+                  key: "workspace_ai",
+                  label: t("settings.nav.items.workspace_ai"),
+                  path: `${base}/ai`,
+                  icon: Bot,
+                  locked: !workspace.owner,
+                },
+              ]
+            : []),
           {
             key: "workspace_imports",
             label: t("settings.nav.items.workspace_imports"),

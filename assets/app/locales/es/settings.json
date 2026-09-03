@@ -16,7 +16,8 @@
         "workspace_members": "Miembros",
         "workspace_imports": "Importaciones",
         "deleted_projects": "Proyectos eliminados",
-        "preferences": "Preferencias"
+        "preferences": "Preferencias",
+        "workspace_ai": "IA"
       },
       "search": "Buscar ajustes…",
       "switch_workspace": "Cambiar de workspace",
@@ -97,9 +98,15 @@
           "upload_banner": "Subir imagen",
           "source_language": "Idioma origen predeterminado",
           "select_language": "Seleccionar idioma...",
-          "source_language_hint": "Idioma origen predeterminado para los nuevos proyectos en este espacio."
+          "source_language_hint": "Idioma origen predeterminado para los nuevos proyectos en este espacio.",
+          "description_placeholder": "Para qué es este workspace",
+          "banner_hint": "Se muestra en la parte superior del panel del workspace. PNG o JPG, hasta 2 MB.",
+          "upload": "Subir"
         },
-        "save_changes": "Guardar cambios"
+        "save_changes": "Guardar cambios",
+        "page_title": "General",
+        "details": "Detalles",
+        "owner_only": "Solo el propietario del workspace puede cambiar estos ajustes"
       },
       "storyarn_ai": {
         "title": "Storyarn AI",
@@ -114,7 +121,8 @@
           "active": "Asignación activa",
           "paused": "Asignación pausada",
           "unavailable": "Sin asignación"
-        }
+        },
+        "units_left": "{count} unidades restantes"
       },
       "personal_ai": {
         "title": "IA personal para miembros",
@@ -123,7 +131,8 @@
         "toggle_label": "Permitir que otros miembros usen sus claves personales de IA en este espacio",
         "owner_only": "Solo el propietario del espacio puede permitir IA personal a otros miembros.",
         "disclosure": "El contenido autorizado del proyecto sale de Storyarn y se procesa con la cuenta de proveedor de cada miembro. La región, la retención y el posible uso para entrenar modelos dependen de ese proveedor y esa cuenta; Storyarn no puede garantizar retención cero ni exclusión del entrenamiento con claves personales. Cada miembro debe revisar el alcance de datos y consentir antes del primer uso.",
-        "manage_keys": "Gestionar mis conexiones de proveedor"
+        "manage_keys": "Gestionar mis conexiones de proveedor",
+        "data_handling": "Tratamiento de datos"
       },
       "appearance": {
         "title": "Apariencia",
@@ -139,9 +148,10 @@
       },
       "delete_modal": {
         "title": "¿Eliminar espacio de trabajo?",
-        "description": "Esta acción no se puede deshacer.",
+        "description": "Elimina todos sus proyectos. Esta acción no se puede deshacer.",
         "cancel": "Cancelar",
-        "delete": "Eliminar"
+        "delete": "Eliminar",
+        "type_name": "Escribe el nombre del workspace para confirmar"
       },
       "members": {
         "title": "Miembros del equipo",
@@ -158,7 +168,8 @@
           "email": "Dirección de correo electrónico",
           "email_placeholder": "colega{'@'}ejemplo.com",
           "role": "Rol",
-          "submit": "Enviar invitación"
+          "submit": "Enviar invitación",
+          "roles_hint": "Los administradores gestionan miembros y proyectos. Los miembros editan. Los lectores solo leen."
         },
         "pending_title": "Invitaciones pendientes",
         "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
@@ -175,6 +186,16 @@
           "pending": "Transfiriendo la propiedad del espacio…",
           "cancel": "Cancelar",
           "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+        },
+        "page_title": "Miembros",
+        "count": "{count} personas",
+        "pending_hint": "Reservan un asiento hasta que se acepten, se revoquen o caduquen",
+        "owner_note": "Solo el propietario puede cambiar roles, transferir la propiedad o eliminar miembros.",
+        "remove_dialog": {
+          "title": "¿Eliminar del workspace?",
+          "description": "{name} perderá el acceso a todos los proyectos de este workspace. Puedes invitarle de nuevo más adelante.",
+          "confirm": "Eliminar",
+          "cancel": "Cancelar"
         }
       },
       "imports": {
@@ -242,6 +263,13 @@
         "empty": {
           "title": "No hay proyectos eliminados",
           "description": "Los proyectos movidos a la papelera del espacio de trabajo aparecerán aquí."
+        }
+      },
+      "ai": {
+        "title": "IA",
+        "unavailable": {
+          "title": "La IA no está activada para este workspace",
+          "text": "Storyarn AI es una beta con invitación. Cuando se active, aquí verás la asignación y las políticas de este workspace."
         }
       }
     },
