@@ -1,0 +1,116 @@
+priv/repo/migrations/20260903190000_fence_storage_cleanup_writers.exs
+  s_6ce2be7da793bc::t_8b7744d141c670 1-10,13,15-20,22-232
+  s_6ce2be7da793bc::t_2a4027819c3c7d 11-12,14,21
+test/storyarn/projects/assets/adapters/storage/key_lock_test.exs
+  s_6ce2be7da793bc::t_b62aed0f2faec5 284-332
+config/architecture_boundaries.exs
+  s_6ce2be7da793bc::t_361168d11bb88e 602
+  s_6ce2be7da793bc::t_e2e0695cc3c925 592,606
+test/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage_test.exs
+  s_6ce2be7da793bc::t_e2e0695cc3c925 220-234
+lib/storyarn/projects/versioning/execution/project_snapshot_asset_materializer.ex
+  s_6ce2be7da793bc::t_0acc5bef11a80f 400-403,475-478
+  s_6ce2be7da793bc::t_68a6c1e587fda4 398-399
+test/storyarn/workers/project_snapshot_cleanup_workers_test.exs
+  s_6ce2be7da793bc::t_1ed983ca605d90 91,95,288-289,327,330,554-560,655-666
+  s_6ce2be7da793bc::t_e2e0695cc3c925 96,98,255,292,334,339,344,346,348,351-353,356-357,361,365,370-371,563-567,570,667-702
+  s_6ce2be7da793bc::t_a06ad62a01c221 331
+  s_6ce2be7da793bc::t_7ddaf33b1ab4c4 703
+lib/storyarn/projects/assets/adapters/storage/storage.ex
+  s_6ce2be7da793bc::t_85520207b6922d 89-95,98-102,104-108
+  s_6ce2be7da793bc::t_3a35437b69b259 88
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_test.exs
+  s_6ce2be7da793bc::t_e2e0695cc3c925 408,593,623,659,696,710,1003-1015
+  s_6ce2be7da793bc::t_fefed05b5ea2d7 590-591,620,656-657,693-694,707
+  s_6ce2be7da793bc::t_7ae9ec5326b773 1026-1038
+  s_6ce2be7da793bc::t_48fe9a9c5f1f0b 621
+  s_6ce2be7da793bc::t_45767f01b420c2 708
+  s_6ce2be7da793bc::t_0221503ef94c6a 1016
+config/prod.exs
+  s_6ce2be7da793bc::t_9131c5adf7bef9 16
+test/storyarn/platform/object_storage/adapters/local_test.exs
+  s_6ce2be7da793bc::t_e2e0695cc3c925 346-364
+test/storyarn/projects/workers/delete_storage_objects_worker_test.exs
+  s_6ce2be7da793bc::t_e2e0695cc3c925 100-108
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_6ce2be7da793bc::t_e2e0695cc3c925 321-333,335,352-378,1160
+  s_6ce2be7da793bc::t_d8355141338960 1161-1163,1177-1185,1230,1240-1244
+  s_6ce2be7da793bc::t_140931a0e2e7d8 1245
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_test.exs
+  s_6ce2be7da793bc::t_8213dcd51ac284 15,566,1822-1831
+  s_6ce2be7da793bc::t_e2e0695cc3c925 1834,2134-2146
+  s_6ce2be7da793bc::t_5d38dc9911ac22 1832
+  s_6ce2be7da793bc::t_e7e9480004907f 2147
+test/storyarn/repo/migrations/remove_transitional_snapshot_cutover_scaffolding_migration_test.exs
+  s_6ce2be7da793bc::t_101a75b36cac7a 23
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_6ce2be7da793bc::t_e2e0695cc3c925 138,492
+  s_6ce2be7da793bc::t_38ed64193f3a64 286
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_6ce2be7da793bc::t_e2e0695cc3c925 118
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex
+  s_6ce2be7da793bc::t_3a35437b69b259 607-608
+  s_6ce2be7da793bc::t_85520207b6922d 164-165,508-514,609-614
+test/storyarn/projects/versioning/commands/project_snapshot_lifecycle_test.exs
+  s_6ce2be7da793bc::t_faec6d5935f9dd 152-159,207,309-310,337-338,371-372,428-429,509-510,543-544,848
+  s_6ce2be7da793bc::t_e2e0695cc3c925 201,210-211,215-245,247-255,257-259
+  s_6ce2be7da793bc::t_8e5cb710fce986 849
+lib/storyarn/projects/assets/execution/asset_operations.ex
+  s_6ce2be7da793bc::t_9f1a851a015ed8 14,43,2003,2011-2029
+  s_6ce2be7da793bc::t_847ad2c4c841a2 2030
+test/storyarn/architecture/storage_composition_boundary_test.exs
+  s_6ce2be7da793bc::t_3b87086f4a6db8 82-83
+lib/storyarn/workers/projects/delete_storage_objects_worker.ex
+  s_6ce2be7da793bc::t_e2e0695cc3c925 38
+lib/storyarn/platform/object_storage/key_lock.ex
+  s_6ce2be7da793bc::t_b62aed0f2faec5 106-110,123
+config/runtime.exs
+  s_6ce2be7da793bc::t_9131c5adf7bef9 360
+docs/reference/versioning-containment.md
+  s_6ce2be7da793bc::t_bf0b6708d9764c 407-408
+  s_6ce2be7da793bc::t_76b2e00c7d52a0 355-360,379
+test/storyarn/release_snapshot_cutover_test.exs
+  s_6ce2be7da793bc::t_0134928bf87d38 676,759
+  s_6ce2be7da793bc::t_0e4e5f99b7ae34 9,17,22,136,139,546,562,667,687,707,749
+  s_6ce2be7da793bc::t_d458f2d651395f 257-263
+  s_6ce2be7da793bc::t_2a4027819c3c7d 268,272
+  s_6ce2be7da793bc::t_48726b34d533b5 267,269-271,273-274,276-289,291-299,305-308,312-322
+  s_6ce2be7da793bc::t_66ee4e99f065bb 226-256,264-266,275,290,300-304,309-311,323-324
+lib/storyarn/release.ex
+  s_6ce2be7da793bc::t_8862ce05e27831 16-17
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_6ce2be7da793bc::t_3a4f609710fa80 365-370,431-433,435
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_6ce2be7da793bc::t_1ed983ca605d90 386,391-420,434
+  s_6ce2be7da793bc::t_3a4f609710fa80 352-360
+  s_6ce2be7da793bc::t_e2e0695cc3c925 540-578
+  s_6ce2be7da793bc::t_faec6d5935f9dd 518-525,927-928,1029-1030,1866,1945
+  s_6ce2be7da793bc::t_10ab206ac59ffb 1946
+.github/workflows/fly-deploy.yml
+  s_6ce2be7da793bc::t_fd85082636ebf7 30,106
+lib/storyarn/platform/object_storage.ex
+  s_6ce2be7da793bc::t_1754a2ac223bc3 81-87
+test/storyarn/projects/versioning/execution/project_snapshot_build_test.exs
+  s_6ce2be7da793bc::t_8213dcd51ac284 2638,2645-2673
+  s_6ce2be7da793bc::t_e2e0695cc3c925 37,2017,2019,2032,2639-2644,2674-2679,2681,2696,3207-3220
+  s_6ce2be7da793bc::t_95696b3eed8089 3221
+test/storyarn/projects/versioning/execution/project_snapshot_asset_materializer_test.exs
+  s_6ce2be7da793bc::t_9f1a851a015ed8 518-548
+  s_6ce2be7da793bc::t_68a6c1e587fda4 493-517
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "68ffb5a365ade119fb2f1bc0cfc1b1849a065f12",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
