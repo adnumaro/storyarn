@@ -79,6 +79,10 @@ defmodule Storyarn.Platform.Adapters.Telemetry.PrometheusEndpoint do
       {:error, kind}
   end
 
+  # The reporter builds this body from the fixed metric definitions registered
+  # at startup. The listener is private and forces text/plain plus nosniff;
+  # escaping the Prometheus exposition format would make the scrape invalid.
+  # sobelow_skip ["XSS.SendResp"]
   defp metrics_response(conn, body) do
     conn
     |> put_private_headers()
