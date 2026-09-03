@@ -89,6 +89,10 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
 
     conn
     |> visit("/users/settings/security")
+    |> assert_has("body .phx-connected")
+    # The rail renders on the first handle_params; clicking before that render
+    # loses the reveal when the injected page is re-rendered.
+    |> assert_has("[data-settings-group='personal']")
     |> click("#security-change-password")
     |> assert_has("#security-password")
     |> fill_in("#security-password", "New password", with: new_password)

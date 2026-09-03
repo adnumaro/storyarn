@@ -33,6 +33,7 @@ defmodule StoryarnWeb.E2E.SettingsFormFocusTest do
     |> authenticate(user_fixture())
     |> visit("/users/settings/security")
     |> assert_has("body .phx-connected")
+    |> assert_has("[data-settings-group='personal']")
     |> click("#security-change-password")
     |> assert_has("#security-password")
     |> evaluate(remember_input_expression("#security-password"))
