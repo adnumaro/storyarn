@@ -589,9 +589,26 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          :ok <- validate_cleanup_intent_ownership(intent),
          :ok <- validate_current_provider_namespace(intent),
          :ok <- ensure_cleanup_namespace_unowned(intent),
+         :ok <- resume_cleanup_request_for_replay(intent.cleanup_request_id),
          {:ok, replaying} <- reopen_terminal_cleanup_intent(intent),
          {:ok, _job} <- enqueue_cleanup_replay(replaying.id) do
       {:ok, replaying}
+    end
+  end
+
+  defp resume_cleanup_request_for_replay(cleanup_request_id) do
+    case StorageCompensation.resume_cleanup_request_for_replay(cleanup_request_id) do
+      :ok ->
+        :ok
+
+      {:error, {:multipart_cleanup_manual_repair_required, error_code}} ->
+        {:error, {:snapshot_cleanup_manual_repair_required, error_code}}
+
+      {:error, :multipart_cleanup_still_processing} ->
+        {:error, :snapshot_cleanup_intent_changed}
+
+      {:error, _reason} ->
+        {:error, :invalid_snapshot_cleanup_ownership}
     end
   end
 
@@ -636,13 +653,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   def process_cleanup_intent(intent_id, opts) when is_integer(intent_id) and intent_id > 0 and is_list(opts) do
     final_attempt? = Keyword.get(opts, :final_attempt?, false) == true
-    delete_fun = Keyword.get(opts, :delete_fun, &StorageCompensation.delete_storage_keys_with_evidence/1)
-    verify_fun = Keyword.get(opts, :verify_fun, &verify_cleanup_namespace_empty/1)
+    delete_fun = Keyword.get(opts, :delete_fun)
 
-    if valid_cleanup_process_options?(opts, delete_fun, verify_fun) do
+    if valid_cleanup_process_options?(opts, delete_fun) do
       case claim_cleanup_intent(intent_id) do
         {:ok, claimed} ->
-          process_claimed_cleanup(claimed, delete_fun, verify_fun, final_attempt?)
+          process_claimed_cleanup(claimed, delete_fun, final_attempt?)
 
         {:error, reason} ->
           handle_predelete_failure(intent_id, reason, final_attempt?)
@@ -654,11 +670,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
 
   def process_cleanup_intent(_intent_id, _opts), do: {:error, :invalid_snapshot_cleanup_intent}
 
-  defp valid_cleanup_process_options?(opts, delete_fun, verify_fun) do
-    allowed = [:delete_fun, :final_attempt?, :verify_fun]
+  defp valid_cleanup_process_options?(opts, delete_fun) do
+    allowed = [:delete_fun, :final_attempt?]
 
-    Enum.all?(Keyword.keys(opts), &(&1 in allowed)) and is_function(delete_fun, 1) and
-      is_function(verify_fun, 1)
+    Enum.all?(Keyword.keys(opts), &(&1 in allowed)) and (is_nil(delete_fun) or is_function(delete_fun, 1))
   end
 
   @doc "Returns operational cleanup backlog gauges without changing quota."
@@ -814,9 +829,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
          :ok <- revalidate_retention_candidate(snapshot, project, candidate, now),
          :ok <- Commercial.settle_expired_snapshot_export_leases_locked(snapshot, project.workspace_id),
          :ok <- ensure_no_active_snapshot_operations(snapshot.id) do
-      snapshot
-      |> create_cleanup_and_delete(project.workspace_id, :retention, :system)
-      |> tag_created_intent()
+      snapshot |> create_cleanup_and_delete(project.workspace_id, :retention, :system) |> tag_created_intent()
     else
       nil -> {:error, :retention_candidate_changed}
       {:error, reason} -> {:error, reason}
@@ -1314,23 +1327,23 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp process_claimed_cleanup(:already_completed, _delete_fun, _verify_fun, _final_attempt?),
-    do: {:ok, :already_completed}
+  defp process_claimed_cleanup(:already_completed, _delete_fun, _final_attempt?), do: {:ok, :already_completed}
 
-  defp process_claimed_cleanup(:terminal, _delete_fun, _verify_fun, _final_attempt?), do: {:ok, :terminal}
+  defp process_claimed_cleanup(:terminal, _delete_fun, _final_attempt?), do: {:ok, :terminal}
 
-  defp process_claimed_cleanup({:deferred, seconds}, _delete_fun, _verify_fun, _final_attempt?),
-    do: {:ok, {:deferred, seconds}}
+  defp process_claimed_cleanup({:deferred, seconds}, _delete_fun, _final_attempt?), do: {:ok, {:deferred, seconds}}
 
-  defp process_claimed_cleanup(%SnapshotCleanupIntent{} = intent, delete_fun, verify_fun, final_attempt?) do
-    batch = Enum.take(intent.remaining_storage_keys, @batch_size)
+  defp process_claimed_cleanup(%SnapshotCleanupIntent{} = intent, delete_fun, final_attempt?) do
+    batch = cleanup_batch(intent.remaining_storage_keys)
+
+    cleanup_opts = cleanup_options(delete_fun)
 
     with :ok <- validate_cleanup_intent_ownership(intent),
          :ok <- validate_current_provider_namespace(intent),
          :ok <- ensure_cleanup_namespace_unowned(intent) do
-      case StorageCompensation.delete_cleanup_request_keys(intent.cleanup_request_id, batch, delete_fun: delete_fun) do
+      case StorageCompensation.delete_cleanup_request_keys(intent.cleanup_request_id, batch, cleanup_opts) do
         :ok ->
-          finish_verified_batch(intent, batch, verify_fun, final_attempt?)
+          finish_successful_batch(intent, batch)
 
         {:deferred, seconds} ->
           emit_cleanup_stop(intent, :deferred, 0)
@@ -1345,88 +1358,26 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     end
   end
 
-  defp finish_verified_batch(intent, batch, verify_fun, final_attempt?) do
-    if batch == intent.remaining_storage_keys do
-      case safe_verify(verify_fun, intent) do
-        :ok -> finish_successful_batch(intent, batch)
-        {:error, _reason} -> finish_failed_batch(intent, batch, batch, final_attempt?)
-      end
-    else
-      finish_successful_batch(intent, batch)
-    end
+  defp cleanup_batch(storage_keys) do
+    if Enum.any?(storage_keys, &Storage.multipart_cleanup_key?/1),
+      do: storage_keys,
+      else: Enum.take(storage_keys, @batch_size)
   end
 
-  defp verify_cleanup_namespace_empty(intent) do
-    with :ok <- validate_current_provider_namespace(intent),
-         {:ok, remaining_keys} <- list_cleanup_namespace_keys(intent),
-         :ok <- validate_listed_cleanup_keys(remaining_keys, intent.storage_keys) do
-      delete_listed_cleanup_keys(remaining_keys, intent)
-    end
-  end
+  defp cleanup_options(nil), do: []
 
-  defp delete_listed_cleanup_keys([], _intent), do: :ok
-
-  defp delete_listed_cleanup_keys(keys, intent) do
-    with :ok <- validate_cleanup_intent_ownership(intent),
-         :ok <- validate_current_provider_namespace(intent) do
-      case StorageCompensation.delete_storage_keys(keys) do
-        :ok -> {:error, :snapshot_cleanup_verification_recheck_required}
-        {:error, _failed_keys} -> {:error, :snapshot_cleanup_verification_delete_failed}
+  defp cleanup_options(delete_fun) when is_function(delete_fun, 1) do
+    object_delete_fun = fn storage_key, _expected_identity ->
+      case delete_fun.([storage_key]) do
+        :ok -> :ok
+        {:ok, _evidence} -> :ok
+        {:error, []} -> :ok
+        {:error, _failed_keys} -> {:error, :storage_provider_failure}
+        _invalid -> {:error, :invalid_storage_delete_response}
       end
     end
-  end
 
-  defp list_cleanup_namespace_keys(intent) do
-    Enum.reduce_while([intent.ready_prefix, intent.staging_prefix], {:ok, []}, fn prefix, {:ok, keys} ->
-      prefix
-      |> then(&Storage.list_prefix(&1 <> "/", limit: @batch_size))
-      |> reduce_cleanup_inventory_response(keys)
-    end)
-  end
-
-  defp reduce_cleanup_inventory_response({:ok, %{objects: [], cursor: nil}}, keys), do: {:cont, {:ok, keys}}
-
-  defp reduce_cleanup_inventory_response({:ok, %{objects: [], cursor: _invalid_cursor}}, _keys),
-    do: {:halt, {:error, :invalid_snapshot_cleanup_inventory_response}}
-
-  defp reduce_cleanup_inventory_response({:ok, %{objects: objects, cursor: cursor}}, keys)
-       when is_list(objects) and objects != [] and (is_nil(cursor) or is_binary(cursor)) do
-    case listed_storage_keys(objects) do
-      {:ok, listed_keys} -> {:cont, {:ok, listed_keys ++ keys}}
-      {:error, reason} -> {:halt, {:error, reason}}
-    end
-  end
-
-  defp reduce_cleanup_inventory_response({:error, reason}, _keys), do: {:halt, {:error, reason}}
-
-  defp reduce_cleanup_inventory_response(_invalid, _keys),
-    do: {:halt, {:error, :invalid_snapshot_cleanup_inventory_response}}
-
-  defp listed_storage_keys(objects) do
-    Enum.reduce_while(objects, {:ok, []}, fn
-      %{key: key}, {:ok, keys} when is_binary(key) -> {:cont, {:ok, [key | keys]}}
-      _invalid, _keys -> {:halt, {:error, :invalid_snapshot_cleanup_inventory_response}}
-    end)
-  end
-
-  defp validate_listed_cleanup_keys(listed_keys, owned_keys) do
-    owned = MapSet.new(owned_keys)
-
-    if Enum.all?(listed_keys, &MapSet.member?(owned, &1)),
-      do: :ok,
-      else: {:error, :snapshot_cleanup_namespace_contains_unowned_objects}
-  end
-
-  defp safe_verify(verify_fun, intent) do
-    case verify_fun.(intent) do
-      :ok -> :ok
-      {:error, reason} -> {:error, reason}
-      _invalid -> {:error, :invalid_snapshot_cleanup_verification_result}
-    end
-  rescue
-    exception -> {:error, {:snapshot_cleanup_verification_raised, exception.__struct__}}
-  catch
-    kind, _reason -> {:error, {:snapshot_cleanup_verification_caught, kind}}
+    [object_delete_fun: object_delete_fun]
   end
 
   defp handle_predelete_failure(intent_or_id, reason, true)
@@ -1616,7 +1567,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycle do
     now = database_clock_now()
 
     if current.completed_delete_passes + 1 < current.required_delete_passes do
-      with {:ok, _updated} <- current |> SnapshotCleanupIntent.next_delete_pass_changeset() |> Repo.update() do
+      with :ok <- StorageCompensation.reopen_confirmed_cleanup_request(current.cleanup_request_id),
+           {:ok, _updated} <- current |> SnapshotCleanupIntent.next_delete_pass_changeset() |> Repo.update() do
         {:ok, Repo.get!(SnapshotCleanupIntent, current.id)}
       end
     else

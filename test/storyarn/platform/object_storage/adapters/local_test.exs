@@ -343,6 +343,25 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.LocalTest do
     end
   end
 
+  describe "object_probe/1" do
+    test "never follows an ancestor symlink outside the storage root", %{test_dir: test_dir} do
+      contents = "external"
+      external_dir = external_storage_dir()
+      external_path = Path.join(external_dir, "object.bin")
+      linked_directory = Path.join(test_dir, "projects/1")
+      key = "projects/1/object.bin"
+
+      File.mkdir_p!(external_dir)
+      File.write!(external_path, contents)
+      File.mkdir_p!(Path.dirname(linked_directory))
+      assert :ok = File.ln_s(Path.expand(external_dir), linked_directory)
+      on_exit(fn -> File.rm_rf(external_dir) end)
+
+      assert {:error, :unsafe_storage_entry} = Local.object_probe(key)
+      assert File.read!(external_path) == contents
+    end
+  end
+
   describe "list_prefix/2" do
     test "returns stable bounded pages from only the exact canonical prefix" do
       prefix = "projects/1/snapshots/archives/v2/ready/AbCdEfGhIjKlMnOp/"

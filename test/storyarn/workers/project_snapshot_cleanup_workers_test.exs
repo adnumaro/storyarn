@@ -8,7 +8,6 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.SnapshotArchiveStorage
@@ -89,11 +88,15 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   test "reconciler restores a nonterminal intent whose cleanup job is dead" do
     intent = cleanup_intent_fixture(0)
     terminal_intent = cleanup_intent_fixture(0)
+    failed_key = hd(terminal_intent.storage_keys)
     handler_id = "snapshot-cleanup-recovery-#{System.unique_integer([:positive])}"
     parent = self()
 
+    assert {:ok, _url} = Storage.upload(failed_key, "terminal cleanup", "application/octet-stream")
+    on_exit(fn -> Storage.delete(failed_key) end)
+
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(terminal_intent.id,
+             process_cleanup_until_boundary(terminal_intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -250,12 +253,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
   end
 
   test "reconciler hands invalid ownership to a worker that can terminalize it" do
-    intent = cleanup_intent_fixture(0)
-
-    intent.cleanup_request_id
-    |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(storage_keys: intent.storage_keys ++ ["projects/999/assets/foreign.bin"])
-    |> Repo.update!()
+    intent = cleanup_intent_fixture(0, invalid_ownership?: true)
 
     assert :ok =
              ReconcileProjectSnapshotCleanupWorker.perform(%Oban.Job{
@@ -290,12 +288,7 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
     log =
       capture_log(fn ->
-        assert :ok =
-                 CleanupProjectSnapshotWorker.perform(%Oban.Job{
-                   args: %{"intent_id" => intent.id},
-                   attempt: 10,
-                   max_attempts: 10
-                 })
+        assert :ok = perform_cleanup_worker_until_boundary(cleanup_job(intent.id))
       end)
 
     assert log =~ "Snapshot cleanup exhausted retries intent_id=#{intent.id}"
@@ -331,53 +324,52 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
 
   test "a superseded cleanup claim cannot apply a stale terminal result" do
     intent = cleanup_intent_fixture(0)
+    failed_key = hd(intent.storage_keys)
     test_process = self()
+
+    assert {:ok, _url} = Storage.upload(failed_key, "stale claim", "application/octet-stream")
+    on_exit(fn -> Storage.delete(failed_key) end)
 
     stale_worker =
       Task.async(fn ->
-        Versioning.process_project_snapshot_cleanup_intent(intent.id,
+        process_cleanup_until_boundary(intent.id,
           final_attempt?: true,
           delete_fun: fn keys ->
             send(test_process, {:stale_claim_started, self()})
             receive do: (:resume_stale_claim -> {:error, keys})
-          end,
-          verify_fun: fn _intent -> :ok end
+          end
         )
       end)
 
     assert_receive {:stale_claim_started, stale_worker_pid}
+    generation_before = Repo.get!(SnapshotCleanupIntent, intent.id).processing_generation
 
-    assert {:error, :storage_provider_failure} =
+    assert {:ok, {:deferred, seconds}} =
              Versioning.process_project_snapshot_cleanup_intent(intent.id,
-               delete_fun: fn keys -> {:error, keys} end,
-               verify_fun: fn _intent -> :ok end
+               delete_fun: fn _keys -> flunk("the active provider claim must defer a second delivery") end
              )
 
-    assert %SnapshotCleanupIntent{status: "retrying", processing_generation: 2} =
+    assert seconds > 0
+
+    assert %SnapshotCleanupIntent{status: "processing", processing_generation: generation_after} =
              Repo.get!(SnapshotCleanupIntent, intent.id)
+
+    assert generation_after == generation_before + 1
 
     send(stale_worker_pid, :resume_stale_claim)
     assert {:ok, :stale_claim} = Task.await(stale_worker)
 
-    assert %SnapshotCleanupIntent{status: "retrying", processing_generation: 2} =
+    assert %SnapshotCleanupIntent{status: "processing", processing_generation: ^generation_after} =
              Repo.get!(SnapshotCleanupIntent, intent.id)
 
     assert {:ok, {:deferred, seconds}} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
-               delete_fun: fn _keys -> :ok end,
-               verify_fun: fn _intent -> :ok end
-             )
+             Versioning.process_project_snapshot_cleanup_intent(intent.id)
 
     assert seconds > 0
   end
 
-  test "cleanup fails closed when its durable ownership receipt is changed" do
-    intent = cleanup_intent_fixture(0)
-
-    intent.cleanup_request_id
-    |> then(&Repo.get!(StorageCleanupRequest, &1))
-    |> Ecto.Changeset.change(storage_keys: intent.storage_keys ++ ["projects/999/assets/foreign.bin"])
-    |> Repo.update!()
+  test "cleanup fails closed when its durable ownership receipt does not match" do
+    intent = cleanup_intent_fixture(0, invalid_ownership?: true)
 
     assert {:error, :invalid_snapshot_cleanup_ownership} =
              Versioning.process_project_snapshot_cleanup_intent(intent.id)
@@ -562,9 +554,14 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
     File.mkdir_p!(Path.dirname(storage_path("namespace-probe")))
     assert {:ok, provider_namespace_fingerprint} = Storage.namespace_fingerprint()
 
+    receipt_storage_keys =
+      if Keyword.get(opts, :invalid_ownership?, false),
+        do: storage_keys ++ ["projects/999/assets/#{Ecto.UUID.generate()}/foreign.bin"],
+        else: storage_keys
+
     assert {:ok, cleanup_request} =
              StorageCompensation.persist_snapshot_lifecycle_cleanup(
-               storage_keys,
+               receipt_storage_keys,
                Ecto.UUID.generate(),
                provider_namespace_fingerprint
              )
@@ -648,6 +645,41 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       max_attempts: 5
     })
   end
+
+  # Exact multipart cleanup intentionally performs at most one provider
+  # operation per delivery. Drive consecutive deliveries until the workflow
+  # reaches a real wait, terminal result, or completion.
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left \\ 100)
+
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
+    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
+      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
+    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
+
+  defp cleanup_job(intent_id) do
+    %Oban.Job{
+      args: %{"intent_id" => intent_id},
+      attempt: 10,
+      max_attempts: 10
+    }
+  end
+
+  defp perform_cleanup_worker_until_boundary(job, attempts_left \\ 100)
+
+  defp perform_cleanup_worker_until_boundary(job, attempts_left) when attempts_left > 0 do
+    case CleanupProjectSnapshotWorker.perform(job) do
+      {:snooze, 1} -> perform_cleanup_worker_until_boundary(job, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp perform_cleanup_worker_until_boundary(_job, 0),
+    do: flunk("snapshot cleanup worker did not reach a durable delivery boundary")
 
   defp raw_intent_attrs(intent) do
     intent

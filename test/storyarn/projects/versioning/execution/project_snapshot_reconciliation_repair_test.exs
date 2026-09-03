@@ -405,7 +405,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   test "an abandoned temporary object remains untouched for manual review" do
     {_user, _project, snapshot} = ready_snapshot!()
     staging_prefix = String.replace(snapshot.object_prefix, "/ready/", "/staging/")
-    storage_key = SnapshotArchiveStorage.archive_key(staging_prefix)
+    storage_key = staging_prefix <> "/orphan.bin"
 
     assert {:ok, _url} = Storage.upload(storage_key, "orphan", "application/json")
     run = completed_run!()
@@ -588,7 +588,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+             process_cleanup_until_boundary(intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -616,7 +616,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+             process_cleanup_until_boundary(intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -650,7 +650,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+             process_cleanup_until_boundary(intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -685,7 +685,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              Versioning.delete_project_snapshot(user_scope_fixture(user), project, snapshot.id)
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+             process_cleanup_until_boundary(intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -697,7 +697,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              Versioning.replay_terminal_project_snapshot_cleanup(intent.id)
 
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(intent.id,
+             process_cleanup_until_boundary(intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -989,6 +989,20 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
     assert completed.status == "completed"
     completed
   end
+
+  # Exact multipart cleanup performs at most one provider operation per
+  # delivery. Drive only immediate continuations and fail if the FSM loops.
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left \\ 100)
+
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
+    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
+      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
+    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp start_run do
     Storyarn.SnapshotReconciliationTestHelpers.start_run(

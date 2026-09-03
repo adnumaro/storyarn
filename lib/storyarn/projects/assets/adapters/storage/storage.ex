@@ -23,6 +23,9 @@ defmodule Storyarn.Projects.Assets.Storage do
   @type list_page :: ObjectStorage.list_page()
   @type metadata_list_page :: ObjectStorage.metadata_list_page()
   @type incomplete_multipart_summary :: ObjectStorage.incomplete_multipart_summary()
+  @type incomplete_multipart_upload :: ObjectStorage.incomplete_multipart_upload()
+  @type incomplete_multipart_upload_inventory :: ObjectStorage.incomplete_multipart_upload_inventory()
+  @type multipart_upload_state :: ObjectStorage.multipart_upload_state()
   @type conditional_copy_cleanup_error :: ObjectStorage.conditional_copy_cleanup_error()
   @type storage_write_cleanup_error :: ObjectStorage.storage_write_cleanup_error()
 
@@ -55,11 +58,14 @@ defmodule Storyarn.Projects.Assets.Storage do
   def multipart_cleanup_key?(_key), do: false
 
   defdelegate external_upload?(), to: ObjectStorage
+  defdelegate with_operation_deadline(fun), to: ObjectStorage
+  defdelegate with_operation_deadline(timeout_ms, fun), to: ObjectStorage
   defdelegate upload(key, data, content_type), to: ObjectStorage
   defdelegate upload_stream(key, chunks, content_type), to: ObjectStorage
   defdelegate put_if_absent(key, data, content_type), to: ObjectStorage
   defdelegate download(key), to: ObjectStorage
   defdelegate stat(key), to: ObjectStorage
+  defdelegate object_probe(key), to: ObjectStorage
   defdelegate stream(key, offset, length, opts \\ []), to: ObjectStorage
   defdelegate list_prefix(prefix, opts \\ []), to: ObjectStorage
   defdelegate list_prefix_metadata(prefix, opts \\ []), to: ObjectStorage
@@ -75,6 +81,13 @@ defmodule Storyarn.Projects.Assets.Storage do
   defdelegate delete_if_matches(key, expected_identity), to: ObjectStorage
   defdelegate canonical_key?(key), to: StorageKey, as: :canonical?
   defdelegate canonical_prefix?(prefix), to: StorageKey, as: :canonical_prefix?
+
+  @doc false
+  @spec valid_namespace_fingerprint?(term()) :: boolean()
+  def valid_namespace_fingerprint?(fingerprint) when is_binary(fingerprint),
+    do: byte_size(fingerprint) == 64 and String.match?(fingerprint, ~r/\A[0-9a-f]{64}\z/)
+
+  def valid_namespace_fingerprint?(_fingerprint), do: false
 
   @spec abort_incomplete_multipart_uploads(key(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
@@ -94,6 +107,44 @@ defmodule Storyarn.Projects.Assets.Storage do
   end
 
   def abort_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_cleanup_request}
+
+  @spec list_incomplete_multipart_uploads(key(), keyword()) ::
+          {:ok, incomplete_multipart_upload_inventory()} | {:error, term()}
+  def list_incomplete_multipart_uploads(key, opts \\ [])
+
+  def list_incomplete_multipart_uploads(key, opts) when is_binary(key) and is_list(opts) do
+    cond do
+      not canonical_key?(key) or not Keyword.keyword?(opts) ->
+        {:error, :invalid_multipart_inventory_request}
+
+      not multipart_cleanup_key?(key) ->
+        {:error, :invalid_multipart_inventory_request}
+
+      true ->
+        ObjectStorage.list_incomplete_multipart_uploads(key, opts)
+    end
+  end
+
+  def list_incomplete_multipart_uploads(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  @spec abort_incomplete_multipart_upload(key(), String.t()) :: :ok | {:error, term()}
+  def abort_incomplete_multipart_upload(key, upload_id) when is_binary(key) and is_binary(upload_id) do
+    if multipart_cleanup_key?(key),
+      do: ObjectStorage.abort_incomplete_multipart_upload(key, upload_id),
+      else: {:error, :invalid_multipart_upload_reference}
+  end
+
+  def abort_incomplete_multipart_upload(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
+
+  @spec incomplete_multipart_upload_state(key(), String.t()) ::
+          {:ok, multipart_upload_state()} | {:error, term()}
+  def incomplete_multipart_upload_state(key, upload_id) when is_binary(key) and is_binary(upload_id) do
+    if multipart_cleanup_key?(key),
+      do: ObjectStorage.incomplete_multipart_upload_state(key, upload_id),
+      else: {:error, :invalid_multipart_upload_reference}
+  end
+
+  def incomplete_multipart_upload_state(_key, _upload_id), do: {:error, :invalid_multipart_upload_reference}
 
   @spec incomplete_multipart_upload_count(key(), keyword()) ::
           {:ok, non_neg_integer()} | {:error, term()}
