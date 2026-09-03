@@ -7,9 +7,23 @@ defmodule Storyarn.Application do
 
   @impl true
   def start(_type, _args) do
-    children =
+    # See https://hexdocs.pm/elixir/Supervisor.html
+    # for more information on supervision trees
+    opts = [strategy: :one_for_one, name: Storyarn.Supervisor]
+    Supervisor.start_link(children(), opts)
+  end
+
+  @doc false
+  def children(operational_metrics_config \\ Application.fetch_env!(:storyarn, :operational_metrics)) do
+    [
+      StoryarnWeb.Telemetry
+    ] ++
+      StoryarnWeb.Telemetry.prometheus_reporter_child_specs(operational_metrics_config) ++
+      Storyarn.Platform.Adapters.Telemetry.PrometheusEndpoint.child_specs(
+        operational_metrics_config,
+        StoryarnWeb.Telemetry.prometheus_reporter_name()
+      ) ++
       [
-        StoryarnWeb.Telemetry,
         Storyarn.Repo,
         Storyarn.Platform.Vault,
         Storyarn.Projects.import_error_deduplicator_child_spec(),
@@ -22,19 +36,18 @@ defmodule Storyarn.Application do
         Storyarn.Flows,
         {Task.Supervisor, name: Storyarn.TaskSupervisor}
       ] ++
-        Storyarn.Platform.ObjectStorage.child_specs() ++
-        [
-          {Oban, Application.fetch_env!(:storyarn, Oban)},
-          {Storyarn.Platform.Adapters.Oban.QueueWakeup,
-           queue: :invitation_delivery, interval: to_timeout(second: 15), repetitions: 20},
-          # Start to serve requests, typically the last entry
-          StoryarnWeb.Endpoint
-        ]
-
-    # See https://hexdocs.pm/elixir/Supervisor.html
-    # for other strategies and supported options
-    opts = [strategy: :one_for_one, name: Storyarn.Supervisor]
-    Supervisor.start_link(children, opts)
+      Storyarn.Platform.ObjectStorage.child_specs() ++
+      [
+        {Oban, Application.fetch_env!(:storyarn, Oban)}
+      ] ++
+      Storyarn.Platform.Adapters.Oban.OperationalMetrics.child_specs(operational_metrics_config) ++
+      Storyarn.Projects.project_snapshot_reconciliation_metrics_child_specs(operational_metrics_config) ++
+      [
+        {Storyarn.Platform.Adapters.Oban.QueueWakeup,
+         queue: :invitation_delivery, interval: to_timeout(second: 15), repetitions: 20},
+        # Start to serve requests, typically the last entry
+        StoryarnWeb.Endpoint
+      ]
   end
 
   # Tell Phoenix to update the endpoint configuration

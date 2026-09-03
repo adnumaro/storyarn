@@ -1384,15 +1384,15 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
       {:error, cleanup_reason} ->
         Logger.error(
           "Portable template cleanup failed while preserving the original exception " <>
-            "error_tag=#{error_tag} cleanup_reason=#{inspect(cleanup_reason)}"
+            "error_tag=#{error_tag} cleanup_error_code=#{cleanup_error_code(cleanup_reason)}"
         )
 
         :ok
 
-      unexpected_result ->
+      _unexpected_result ->
         Logger.error(
           "Portable template cleanup returned an unexpected result while preserving the original exception " <>
-            "error_tag=#{error_tag} cleanup_result=#{inspect(unexpected_result)}"
+            "error_tag=#{error_tag} cleanup_error_code=unexpected_cleanup_result"
         )
 
         :ok
@@ -1401,20 +1401,23 @@ defmodule Storyarn.Projects.ProjectTemplates.PortableImport do
     cleanup_error ->
       Logger.error(
         "Portable template cleanup raised while preserving the original exception " <>
-          "error_tag=#{error_tag} cleanup_error=" <>
-          Exception.format(:error, cleanup_error, __STACKTRACE__)
+          "error_tag=#{error_tag} exception_module=#{inspect(cleanup_error.__struct__)}"
       )
 
       :ok
   catch
-    kind, cleanup_reason ->
+    kind, _cleanup_reason ->
       Logger.error(
         "Portable template cleanup threw while preserving the original exception " <>
-          "error_tag=#{error_tag} cleanup_reason=#{inspect({kind, cleanup_reason})}"
+          "error_tag=#{error_tag} failure_kind=#{inspect(kind)}"
       )
 
       :ok
   end
+
+  defp cleanup_error_code(reason) when is_atom(reason), do: reason
+  defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
+  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp normalize_string(value) when is_atom(value), do: Atom.to_string(value)
   defp normalize_string(value) when is_binary(value), do: value

@@ -126,6 +126,8 @@ The top-level `adapters/` directory is intentionally explicit:
 - `security/` contains encryption, sanitization and token-provider adapters.
 - `oban/` contains policy-neutral runtime helpers for bounded queue signalling;
   it never creates or interprets a context's jobs.
+- `telemetry/` exposes bounded, privacy-safe operational metrics through the
+  dedicated private Prometheus listener; it is never mounted in the Phoenix router.
 - `clock.ex` owns access to the wall clock without pretending Time is a capability.
 - `rate_limiter.ex` and `rate_limiter/` implement the policy-neutral counter mechanism.
 

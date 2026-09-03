@@ -5,7 +5,7 @@ defmodule Storyarn.Architecture.PlatformInternalStructureTest do
 
   @root "lib/storyarn/platform"
   @areas %{
-    "adapters" => ~w(configuration email oban rate_limiter security),
+    "adapters" => ~w(configuration email oban rate_limiter security telemetry),
     "collaboration" => ~w(adapters rules),
     "discovery" => ~w(adapters commands entities projections queries reference_data),
     "kernel" => [],

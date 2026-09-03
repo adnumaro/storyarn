@@ -25,6 +25,7 @@ defmodule Storyarn.Projects.Versioning do
   alias Storyarn.Projects.Versioning.ProjectSnapshotLeasePolicy
   alias Storyarn.Projects.Versioning.ProjectSnapshotLifecycle
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliation
+  alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationMetrics
   alias Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair
   alias Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle
   alias Storyarn.Projects.Versioning.RestorePolicy
@@ -273,6 +274,11 @@ defmodule Storyarn.Projects.Versioning do
   defdelegate start_project_snapshot_reconciliation(opts \\ []),
     to: ProjectSnapshotReconciliation,
     as: :start
+
+  @doc false
+  defdelegate project_snapshot_reconciliation_metrics_child_specs(config),
+    to: ProjectSnapshotReconciliationMetrics,
+    as: :child_specs
 
   @doc false
   defdelegate advance_project_snapshot_reconciliation(run_id, expected_generation),

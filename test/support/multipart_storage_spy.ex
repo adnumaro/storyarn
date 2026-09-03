@@ -16,6 +16,20 @@ defmodule Storyarn.MultipartStorageSpy do
     {:ok, 23}
   end
 
+  def incomplete_multipart_upload_summary(prefix, opts) do
+    send(self(), {:multipart_summary_dispatched, prefix, opts})
+
+    Process.get(
+      {__MODULE__, :multipart_summary_result},
+      {:ok,
+       %{
+         count: 29,
+         oldest_initiated_at: ~U[2026-09-01 12:00:00Z],
+         inventory_complete: true
+       }}
+    )
+  end
+
   def put_if_absent(_key, _data, _content_type), do: {:error, :not_implemented}
   def delete(_key), do: {:error, :not_implemented}
   def delete_if_matches(_key, _identity), do: {:error, :not_implemented}

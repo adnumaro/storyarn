@@ -1047,7 +1047,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     end
   rescue
     exception ->
-      Logger.error("Project snapshot request failed safely: #{Exception.message(exception)}")
+      Logger.error(
+        "Project snapshot request failed safely: " <>
+          "event=project_snapshot_request_failed reason_code=snapshot_request_exception " <>
+          "failure_origin=request_transaction exception_module=#{inspect(exception.__struct__)}"
+      )
+
       {:error, :snapshot_capture_failed}
   end
 

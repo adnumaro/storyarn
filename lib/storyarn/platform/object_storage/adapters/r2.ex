@@ -17,6 +17,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   @multipart_chunk_size 5 * 1024 * 1024
   @multipart_cleanup_page_size 100
   @multipart_cleanup_max_uploads 10_000
+  @multipart_inventory_max_pages 100
+  @multipart_inventory_max_response_bytes 2 * 1024 * 1024
 
   # This value is part of the persisted cleanup and reconciliation contract.
   # Keep the pre-Projects namespace so moving this adapter cannot strand work
@@ -194,6 +196,30 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     end
   end
 
+  @impl true
+  def incomplete_multipart_upload_summary(scope, opts) do
+    with true <- valid_multipart_inventory_scope?(scope) and Keyword.keyword?(opts),
+         {:ok, max_uploads} <- multipart_cleanup_limit(opts),
+         {:ok, max_pages} <- multipart_inventory_page_limit(opts) do
+      summarize_incomplete_multipart_uploads(
+        scope,
+        nil,
+        max_uploads,
+        max_pages,
+        0,
+        nil,
+        MapSet.new()
+      )
+    else
+      false -> {:error, :invalid_multipart_inventory_request}
+      {:error, reason} -> {:error, reason}
+    end
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
+  end
+
   defp multipart_cleanup_limit(opts) do
     case Keyword.get(opts, :max_uploads, @multipart_cleanup_max_uploads) do
       limit when is_integer(limit) and limit > 0 ->
@@ -208,6 +234,16 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     case Keyword.get(opts, :max_passes, 3) do
       passes when is_integer(passes) and passes > 0 and passes <= 10 -> {:ok, passes}
       _invalid -> {:error, :invalid_multipart_cleanup_pass_limit}
+    end
+  end
+
+  defp multipart_inventory_page_limit(opts) do
+    case Keyword.get(opts, :max_pages, @multipart_inventory_max_pages) do
+      pages when is_integer(pages) and pages > 0 ->
+        {:ok, min(pages, @multipart_inventory_max_pages)}
+
+      _invalid ->
+        {:error, :invalid_multipart_inventory_limit}
     end
   end
 
@@ -266,8 +302,12 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     end
   end
 
-  defp list_multipart_upload_page(key, cursor, limit) do
-    opts = maybe_put_multipart_cursor([prefix: key, max_uploads: limit], cursor)
+  defp list_multipart_upload_page(scope, cursor, limit, encoding \\ :identity) do
+    opts =
+      [max_uploads: limit]
+      |> maybe_put_multipart_encoding(encoding)
+      |> maybe_put_multipart_prefix(scope)
+      |> maybe_put_multipart_cursor(cursor)
 
     request =
       bucket()
@@ -275,9 +315,21 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
       |> Map.put(:parser, &parse_multipart_upload_page/1)
 
     case ExAws.request(request) do
-      {:ok, %{body: page}} when is_map(page) -> {:ok, page}
-      {:ok, _invalid} -> {:error, :invalid_multipart_cleanup_response}
-      {:error, reason} -> {:error, reason}
+      {:ok, %{body: page}} when is_map(page) ->
+        normalize_multipart_page_encoding(page, encoding)
+
+      {:ok, _invalid} ->
+        {:error, :invalid_multipart_cleanup_response}
+
+      {:error, reason}
+      when reason in [
+             :invalid_multipart_cleanup_response,
+             :invalid_multipart_inventory_response
+           ] ->
+        {:error, reason}
+
+      {:error, _provider_reason} ->
+        {:error, :multipart_inventory_provider_error}
     end
   end
 
@@ -289,19 +341,79 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     |> Keyword.put(:upload_id_marker, upload_id_marker)
   end
 
-  defp parse_multipart_upload_page({:ok, %{body: xml} = response}) when is_binary(xml) do
+  defp maybe_put_multipart_prefix(opts, :all), do: opts
+  defp maybe_put_multipart_prefix(opts, prefix), do: Keyword.put(opts, :prefix, prefix)
+
+  defp maybe_put_multipart_encoding(opts, :identity), do: opts
+  defp maybe_put_multipart_encoding(opts, :url), do: Keyword.put(opts, :encoding_type, "url")
+
+  defp parse_multipart_upload_page({:ok, %{body: xml} = response})
+       when is_binary(xml) and byte_size(xml) <= @multipart_inventory_max_response_bytes do
     page =
       SweetXml.xpath(xml, ~x"//ListMultipartUploadsResult",
+        encoding_type: ~x"./EncodingType/text()"s,
         is_truncated: ~x"./IsTruncated/text()"s,
         next_key_marker: ~x"./NextKeyMarker/text()"s,
         next_upload_id_marker: ~x"./NextUploadIdMarker/text()"s,
-        uploads: [~x"./Upload"l, key: ~x"./Key/text()"s, upload_id: ~x"./UploadId/text()"s]
+        uploads: [
+          ~x"./Upload"l,
+          key: ~x"./Key/text()"s,
+          upload_id: ~x"./UploadId/text()"s,
+          initiated_at: ~x"./Initiated/text()"s
+        ]
       )
 
     {:ok, %{response | body: page}}
   end
 
+  defp parse_multipart_upload_page({:ok, %{body: xml}}) when is_binary(xml),
+    do: {:error, :invalid_multipart_cleanup_response}
+
   defp parse_multipart_upload_page(result), do: result
+
+  defp normalize_multipart_page_encoding(page, :identity), do: {:ok, page}
+
+  defp normalize_multipart_page_encoding(%{encoding_type: "url", uploads: uploads} = page, :url) when is_list(uploads) do
+    with {:ok, next_key_marker} <- decode_multipart_key(Map.get(page, :next_key_marker, "")),
+         {:ok, uploads} <- decode_multipart_upload_keys(uploads) do
+      {:ok, %{page | next_key_marker: next_key_marker, uploads: uploads}}
+    end
+  end
+
+  defp normalize_multipart_page_encoding(_page, :url), do: {:error, :invalid_multipart_inventory_response}
+
+  defp decode_multipart_upload_keys(uploads) do
+    uploads
+    |> Enum.reduce_while({:ok, []}, fn
+      %{key: encoded_key} = upload, {:ok, decoded} ->
+        case decode_multipart_key(encoded_key) do
+          {:ok, ""} -> {:halt, {:error, :invalid_multipart_inventory_response}}
+          {:ok, key} -> {:cont, {:ok, [%{upload | key: key} | decoded]}}
+          {:error, _reason} = error -> {:halt, error}
+        end
+
+      _invalid, _acc ->
+        {:halt, {:error, :invalid_multipart_inventory_response}}
+    end)
+    |> case do
+      {:ok, decoded} -> {:ok, Enum.reverse(decoded)}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp decode_multipart_key(value) when is_binary(value) do
+    if valid_url_encoding?(value) do
+      decoded = URI.decode(value)
+
+      if String.valid?(decoded),
+        do: {:ok, decoded},
+        else: {:error, :invalid_multipart_inventory_response}
+    else
+      {:error, :invalid_multipart_inventory_response}
+    end
+  end
+
+  defp decode_multipart_key(_value), do: {:error, :invalid_multipart_inventory_response}
 
   defp validate_multipart_page(%{uploads: uploads, is_truncated: truncated}, page_limit)
        when is_list(uploads) and length(uploads) <= page_limit and truncated in ["true", "false"] do
@@ -311,6 +423,92 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   end
 
   defp validate_multipart_page(_page, _page_limit), do: {:error, :invalid_multipart_cleanup_response}
+
+  defp summarize_incomplete_multipart_uploads(
+         scope,
+         cursor,
+         remaining_uploads,
+         remaining_pages,
+         count,
+         oldest,
+         seen_cursors
+       ) do
+    page_limit = min(remaining_uploads, @multipart_cleanup_page_size)
+
+    with {:ok, page} <- list_multipart_upload_page(scope, cursor, page_limit, :url),
+         :ok <- validate_multipart_page(page, page_limit),
+         {:ok, page_oldest} <- oldest_multipart_initiated_at(page.uploads, scope),
+         {:ok, next} <- multipart_page_continuation(page, cursor, seen_cursors) do
+      next_count = count + length(page.uploads)
+      next_oldest = oldest_datetime(oldest, page_oldest)
+      consumed = length(page.uploads)
+
+      cond do
+        is_nil(next) ->
+          {:ok,
+           %{
+             count: next_count,
+             oldest_initiated_at: next_oldest,
+             inventory_complete: true
+           }}
+
+        consumed < remaining_uploads and remaining_pages > 1 ->
+          summarize_incomplete_multipart_uploads(
+            scope,
+            next,
+            remaining_uploads - consumed,
+            remaining_pages - 1,
+            next_count,
+            next_oldest,
+            MapSet.put(seen_cursors, next)
+          )
+
+        true ->
+          {:ok,
+           %{
+             count: next_count,
+             oldest_initiated_at: next_oldest,
+             inventory_complete: false
+           }}
+      end
+    end
+  end
+
+  defp oldest_multipart_initiated_at(uploads, scope) do
+    Enum.reduce_while(uploads, {:ok, nil}, fn
+      %{key: key, initiated_at: initiated_at}, {:ok, oldest}
+      when is_binary(key) and is_binary(initiated_at) ->
+        with true <- multipart_upload_in_scope?(key, scope),
+             {:ok, parsed} <- parse_multipart_initiated_at(initiated_at) do
+          {:cont, {:ok, oldest_datetime(oldest, parsed)}}
+        else
+          _invalid -> {:halt, {:error, :invalid_multipart_inventory_response}}
+        end
+
+      _invalid, _acc ->
+        {:halt, {:error, :invalid_multipart_inventory_response}}
+    end)
+  end
+
+  defp parse_multipart_initiated_at(value) do
+    case DateTime.from_iso8601(value) do
+      {:ok, initiated_at, _offset} -> {:ok, DateTime.truncate(initiated_at, :second)}
+      {:error, _reason} -> {:error, :invalid_multipart_inventory_response}
+    end
+  end
+
+  defp valid_multipart_inventory_scope?(:all), do: true
+  defp valid_multipart_inventory_scope?(prefix), do: Storage.canonical_prefix?(prefix)
+
+  defp multipart_upload_in_scope?(key, :all), do: is_binary(key)
+  defp multipart_upload_in_scope?(key, prefix), do: is_binary(key) and String.starts_with?(key, prefix)
+
+  defp oldest_datetime(nil, value), do: value
+  defp oldest_datetime(value, nil), do: value
+
+  defp oldest_datetime(left, right) do
+    if DateTime.after?(left, right), do: right, else: left
+  end
 
   defp exact_multipart_uploads(uploads, key) do
     uploads

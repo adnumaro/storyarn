@@ -4385,8 +4385,8 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
       {:error, cleanup_reason} ->
         Logger.error(
-          "Project recovery asset cleanup failed while preserving the original exception: " <>
-            inspect(cleanup_reason)
+          "Project recovery asset cleanup failed while preserving the original exception " <>
+            "error_code=#{cleanup_error_code(cleanup_reason)}"
         )
 
         :ok
@@ -4394,22 +4394,26 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   rescue
     cleanup_error ->
       Logger.error(
-        "Project recovery asset cleanup raised while preserving the original exception: " <>
-          Exception.format(:error, cleanup_error, __STACKTRACE__)
+        "Project recovery asset cleanup raised while preserving the original exception " <>
+          "exception_module=#{inspect(cleanup_error.__struct__)}"
       )
 
       :ok
   catch
-    kind, cleanup_reason ->
+    kind, _cleanup_reason ->
       Logger.error(
-        "Project recovery asset cleanup threw while preserving the original exception: " <>
-          inspect({kind, cleanup_reason})
+        "Project recovery asset cleanup threw while preserving the original exception " <>
+          "failure_kind=#{inspect(kind)}"
       )
 
       :ok
   end
 
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok
+
+  defp cleanup_error_code(reason) when is_atom(reason), do: reason
+  defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
+  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp restore_glossary(_project_id, [], _opts, _now), do: :ok
 

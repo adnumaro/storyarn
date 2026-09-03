@@ -1,6 +1,8 @@
 defmodule Storyarn.Projects.Workers.PublicFacadeBoundaryTest do
   use ExUnit.Case, async: true
 
+  alias Storyarn.Workers.InspectStorageMultipartInventoryWorker
+
   @active_states [:available, :scheduled, :executing, :retryable]
   @worker_contract [
     {Storyarn.Workers.BuildProjectSnapshotWorker, :snapshot_archives, 3, nil, [:worker, :args], :infinity},
@@ -12,6 +14,7 @@ defmodule Storyarn.Projects.Workers.PublicFacadeBoundaryTest do
     {Storyarn.Workers.ImportProjectSnapshotWorker, :snapshot_imports, 3, nil, [:worker, :args], :infinity},
     {Storyarn.Workers.ImportProjectWorker, :imports, 3, nil, nil, nil},
     {Storyarn.Workers.InspectProjectSnapshotsWorker, :snapshots_maintenance, 5, 3, [:worker, :args], 86_400},
+    {InspectStorageMultipartInventoryWorker, :storage_inventory, 3, 3, [:worker, :args], 29 * 60},
     {Storyarn.Workers.InstallProjectTemplateWorker, :template_installs, 3, nil, nil, nil},
     {Storyarn.Workers.ProjectSnapshotRetentionWorker, :snapshots_maintenance, 5, nil, [:worker, :args], 600},
     {Storyarn.Workers.PublishProjectTemplateWorker, :templates, 3, nil, nil, nil},

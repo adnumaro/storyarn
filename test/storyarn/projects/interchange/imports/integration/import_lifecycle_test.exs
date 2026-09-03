@@ -2475,6 +2475,22 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
   end
 
   test "cancels an executable job and deletes its plan after the absolute deadline", ctx do
+    handler_id = "import-accepted-expiration-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :expiration, :terminal],
+        fn _event, measurements, metadata, {pid, ref} ->
+          send(pid, {ref, measurements, metadata})
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     assert {:ok, ready, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
@@ -2507,6 +2523,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     assert Repo.get!(PlanCleanupRequest, queued.plan_cleanup_request_id).state == "completed"
     assert_receive :notifications_changed
     assert_import_notification(ctx.scope, expired, "failure")
+    assert_receive {^marker, %{count: 1}, %{format: "yarn", disposition: "accepted"}}
   end
 
   test "an absolute-deadline cancellation failure backs off without deleting the plan", ctx do
@@ -2947,6 +2964,22 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
   end
 
   test "expires abandoned previews and removes their encrypted plans", ctx do
+    handler_id = "import-preview-expiration-#{System.unique_integer([:positive])}"
+    marker = make_ref()
+    parent = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :import, :expiration, :terminal],
+        fn _event, measurements, metadata, {pid, ref} ->
+          send(pid, {ref, measurements, metadata})
+        end,
+        {parent, marker}
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     assert {:ok, attempt, _preview} =
              Imports.prepare_import(ctx.scope, ctx.project, "project.yarn", yarn("Hello"))
 
@@ -2962,6 +2995,7 @@ defmodule Storyarn.Projects.Imports.ImportLifecycleTest do
     assert {:error, :import_plan_unavailable} = PlanStorage.load(attempt.plan_storage_key)
     refute_receive :notifications_changed
     assert Notifications.list_notifications(ctx.scope) == []
+    assert_receive {^marker, %{count: 1}, %{format: "yarn", disposition: "preview"}}
   end
 
   describe "owner-only import authorization" do

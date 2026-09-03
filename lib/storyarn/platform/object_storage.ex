@@ -30,6 +30,11 @@ defmodule Storyarn.Platform.ObjectStorage do
   @type listed_object_metadata :: %{key: key(), size: non_neg_integer()}
   @type list_page :: %{objects: [listed_object()], cursor: String.t() | nil}
   @type metadata_list_page :: %{objects: [listed_object_metadata()], cursor: String.t() | nil}
+  @type incomplete_multipart_summary :: %{
+          count: non_neg_integer(),
+          oldest_initiated_at: DateTime.t() | nil,
+          inventory_complete: boolean()
+        }
   @type conditional_copy_cleanup_error ::
           {:conditional_copy_cleanup_required, destination_created? :: boolean(), pending_cleanup_key :: key(),
            cleanup_reason :: term()}
@@ -42,6 +47,8 @@ defmodule Storyarn.Platform.ObjectStorage do
               {:ok, non_neg_integer()} | {:error, term()}
   @callback incomplete_multipart_upload_count(key, opts :: keyword()) ::
               {:ok, non_neg_integer()} | {:error, term()}
+  @callback incomplete_multipart_upload_summary(:all | String.t(), opts :: keyword()) ::
+              {:ok, incomplete_multipart_summary()} | {:error, term()}
   @callback put_if_absent(key, binary_data, content_type) ::
               {:ok, url, created? :: boolean()} | {:error, term()}
   @callback delete(key) :: :ok | {:error, term()}
@@ -73,7 +80,8 @@ defmodule Storyarn.Platform.ObjectStorage do
   @callback list_prefix_metadata(String.t(), keyword()) :: {:ok, metadata_list_page()} | {:error, term()}
   @optional_callbacks list_prefix_metadata: 2,
                       abort_incomplete_multipart_uploads: 2,
-                      incomplete_multipart_upload_count: 2
+                      incomplete_multipart_upload_count: 2,
+                      incomplete_multipart_upload_summary: 2
 
   @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
 
@@ -185,6 +193,65 @@ defmodule Storyarn.Platform.ObjectStorage do
   end
 
   def incomplete_multipart_upload_count(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  @doc """
+  Summarizes incomplete multipart uploads across the provider namespace or
+  beneath one canonical prefix.
+
+  This operation is read-only. It returns no object keys, upload identifiers,
+  bucket names, or filenames. A false `inventory_complete` means the bounded
+  scan reached its configured limit and must not be treated as proof of an
+  empty provider inventory.
+  """
+  @spec incomplete_multipart_upload_summary(:all | String.t(), keyword()) ::
+          {:ok, incomplete_multipart_summary()} | {:error, term()}
+  def incomplete_multipart_upload_summary(scope, opts \\ [])
+
+  def incomplete_multipart_upload_summary(scope, opts) when (scope == :all or is_binary(scope)) and is_list(opts) do
+    if (scope == :all or canonical_prefix?(scope)) and Keyword.keyword?(opts) do
+      adapter = adapter()
+      _loaded? = Code.ensure_loaded?(adapter)
+
+      if function_exported?(adapter, :incomplete_multipart_upload_summary, 2),
+        do: adapter |> call_multipart_summary(scope, opts) |> normalize_multipart_summary(),
+        else: {:error, :multipart_inventory_not_supported}
+    else
+      {:error, :invalid_multipart_inventory_request}
+    end
+  end
+
+  def incomplete_multipart_upload_summary(_prefix, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  defp call_multipart_summary(adapter, scope, opts) do
+    adapter.incomplete_multipart_upload_summary(scope, opts)
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
+  end
+
+  defp normalize_multipart_summary({:ok, %{count: count, oldest_initiated_at: oldest, inventory_complete: complete?}})
+       when is_integer(count) and count >= 0 and is_boolean(complete?) do
+    if is_nil(oldest) or is_struct(oldest, DateTime),
+      do: {:ok, %{count: count, oldest_initiated_at: oldest, inventory_complete: complete?}},
+      else: {:error, :invalid_multipart_inventory_response}
+  end
+
+  defp normalize_multipart_summary({:error, reason})
+       when reason in [
+              :multipart_inventory_not_supported,
+              :invalid_multipart_inventory_request,
+              :invalid_multipart_cleanup_limit,
+              :invalid_multipart_inventory_limit,
+              :invalid_multipart_inventory_response,
+              :invalid_multipart_cleanup_response,
+              :invalid_multipart_cleanup_cursor,
+              :multipart_inventory_provider_error
+            ], do: {:error, reason}
+
+  defp normalize_multipart_summary({:error, _provider_reason}), do: {:error, :multipart_inventory_provider_error}
+
+  defp normalize_multipart_summary(_invalid), do: {:error, :invalid_multipart_inventory_response}
 
   @doc """
   Stores an object only when the key does not already exist.

@@ -1112,8 +1112,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
       {:error, :workspace_snapshot_import_context_changed} ->
         {:discard, :workspace_snapshot_import_stale_delivery}
 
-      {:error, changeset} ->
-        {:retry, {:workspace_snapshot_import_retry_state_failed, changeset}}
+      {:error, _changeset} ->
+        {:retry, :workspace_snapshot_import_retry_state_failed}
     end
   end
 

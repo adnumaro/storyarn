@@ -141,10 +141,13 @@ defmodule Storyarn.Workers.ProjectSnapshotCleanupWorkersTest do
       [:storyarn, :snapshot, :cleanup, :backlog],
       %{
         terminal_retry_count: 1,
-        repeated_terminal_failures: 0
+        repeated_terminal_failures: 0,
+        observed_at_unix_seconds: observed_at
       },
       %{}
     }
+
+    assert is_integer(observed_at)
   end
 
   test "recovery ignores a cleanup worker stranded on the wrong queue" do

@@ -229,10 +229,12 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     delete_project_snapshot_retention_candidate: 1,
     delete_storage_keys: 1,
     discard_stale_project_snapshot_maintenance_jobs: 0,
+    emit_storage_cleanup_request_backlog: 0,
     expire_stale_imports_batch: 0,
     fail_project_snapshot_reconciliation: 3,
     fail_project_snapshot_reconciliation_repair: 2,
     heartbeat_project_snapshot_build: 2,
+    inspect_storage_multipart_inventory: 0,
     list_abandoned_project_snapshot_restore_deliveries: 1,
     list_expired_project_snapshot_build_candidates: 2,
     list_project_snapshot_cleanup_recovery_candidates: 1,
@@ -254,6 +256,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     project_snapshot_cleanup_recovery_high_watermark: 0,
     project_snapshot_export_lease_retention_seconds: 0,
     project_snapshot_lifecycle_high_watermark: 0,
+    project_snapshot_reconciliation_metrics_child_specs: 1,
     project_snapshot_reconciliation_repair_recovery_high_watermark: 0,
     project_snapshot_restore_delivery_recovery_high_watermark: 0,
     purge_released_project_snapshot_export_leases: 2,
@@ -308,7 +311,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
              %{documented: 76, hidden: 15, none: 93}
 
-    assert length(worker_docs) == 42
+    assert length(worker_docs) == 45
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
 
     assert digest(Enum.sort(established_docs)) == @docs_digest

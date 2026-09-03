@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-30
+> Last reviewed: 2026-09-02
 >
 > Source of truth: this index
 
@@ -43,5 +43,6 @@ in this directory.
 - [AI provider adapters](ai-provider-adapters.md)
 - [AI operations](ai-operations.md)
 - [Versioning containment](versioning-containment.md)
+- [ENG-52 operational recovery validation](eng-52-operational-recovery-validation.md)
 - [Entity-version restore integrity](entity-version-restore-integrity.md)
 - [Ownership integrity preflight](ownership-integrity-preflight.md)

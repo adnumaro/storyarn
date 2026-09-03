@@ -29,6 +29,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
   @expiration_retry_backoff_seconds 300
   @executable_import_job_states ~w(available scheduled retryable executing)
   @terminal_import_job_states ~w(cancelled completed discarded)
+  @observable_formats ~w(yarn storyarn)
 
   @doc false
   @spec expire_stale_imports() ::
@@ -115,6 +116,7 @@ defmodule Storyarn.Projects.Imports.Expiration do
     Platform.publish_notification_delivery(notification_outcome)
     snapshot_cleanup_failure_count = snapshot_cleanup_failure_count(expired)
     expired = Repo.get(ProjectImportAttempt, expired.id) || expired
+    emit_expiration_outcome(expired)
     Queue.broadcast(expired)
 
     plan_cleanup_failure_count =
@@ -123,6 +125,17 @@ defmodule Storyarn.Projects.Imports.Expiration do
       |> PlanCleanup.cleanup_failure_count()
 
     {expired_count + 1, failure_count + plan_cleanup_failure_count + snapshot_cleanup_failure_count}
+  end
+
+  defp emit_expiration_outcome(expired) do
+    format = if expired.format in @observable_formats, do: expired.format, else: "unknown"
+    disposition = if expired.error_code == "import_expired", do: "accepted", else: "preview"
+
+    :telemetry.execute(
+      [:storyarn, :import, :expiration, :terminal],
+      %{count: 1},
+      %{format: format, disposition: disposition}
+    )
   end
 
   defp snapshot_cleanup_failure_count(expired) do

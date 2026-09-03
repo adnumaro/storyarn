@@ -53,6 +53,17 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   def incomplete_multipart_upload_count(_key, _opts), do: {:error, :invalid_multipart_inventory_request}
 
   @impl true
+  def incomplete_multipart_upload_summary(scope, opts) when (scope == :all or is_binary(scope)) and is_list(opts) do
+    if (scope == :all or Storage.canonical_prefix?(scope)) and Keyword.keyword?(opts) do
+      {:ok, %{count: 0, oldest_initiated_at: nil, inventory_complete: true}}
+    else
+      {:error, :invalid_multipart_inventory_request}
+    end
+  end
+
+  def incomplete_multipart_upload_summary(_prefix, _opts), do: {:error, :invalid_multipart_inventory_request}
+
+  @impl true
   # sobelow_skip ["Traversal.FileModule"]
   def put_if_absent(key, data, _content_type) do
     with {:ok, path} <- file_path(key),

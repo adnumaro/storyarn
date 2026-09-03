@@ -410,6 +410,8 @@ if config_env() == :prod do
       bounded_positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_SIGNED_URL_TTL_SECONDS", 5 * 60, 5 * 60),
     download_max_transfer_seconds: positive_integer_env.("PROJECT_SNAPSHOT_DOWNLOAD_MAX_TRANSFER_SECONDS", 60 * 60)
 
+  config :storyarn, :operational_metrics, enabled: bool_env.("METRICS_ENABLED")
+
   # ONE key: a configured URL is what selects the Redis backend, so "Redis
   # without a URL" is not a representable state. `env.()` trims and maps "" to
   # nil, and nothing downstream re-reads the raw variable, so the value that

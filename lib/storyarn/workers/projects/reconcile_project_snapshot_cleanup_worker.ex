@@ -12,6 +12,7 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
     max_attempts: 5,
     unique: [fields: [:worker, :args], period: 600, states: [:available, :scheduled, :executing, :retryable]]
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
 
   require Logger
@@ -114,7 +115,8 @@ defmodule Storyarn.Workers.ReconcileProjectSnapshotCleanupWorker do
         terminal_failures: backlog.terminal_failures,
         terminal_retry_count: backlog.terminal_retry_count,
         repeated_terminal_failures: backlog.repeated_terminal_failures,
-        oldest_age_seconds: backlog.oldest_age_seconds
+        oldest_age_seconds: backlog.oldest_age_seconds,
+        observed_at_unix_seconds: DateTime.to_unix(TimeHelpers.now())
       },
       %{}
     )

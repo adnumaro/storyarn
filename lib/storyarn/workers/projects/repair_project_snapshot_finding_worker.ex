@@ -3,8 +3,8 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
   Applies one explicit, generation-fenced snapshot reconciliation action.
 
   One finding per job bounds provider work and prevents a large workspace from
-  monopolizing the maintenance queue. Exits and throws are left to Oban so it
-  retains their original failure class and stacktrace.
+  monopolizing the maintenance queue. Runtime failures are reduced to bounded
+  classifications before they cross the Oban boundary.
   """
 
   use Oban.Worker,
@@ -55,7 +55,9 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
   defp call_safely(repair, action_id) do
     {:returned, repair.(action_id)}
   rescue
-    exception -> {:raised, exception, __STACKTRACE__}
+    exception -> {:raised, exception.__struct__}
+  catch
+    kind, _reason -> {:stopped, kind}
   end
 
   defp handle_result({:returned, {:ok, status}}, _action_id, _final_attempt?)
@@ -71,10 +73,16 @@ defmodule Storyarn.Workers.RepairProjectSnapshotFindingWorker do
 
   defp handle_result({:returned, _invalid}, _action_id, false), do: {:error, :snapshot_reconciliation_repair_failed}
 
-  defp handle_result({:raised, exception, _stacktrace}, action_id, true),
-    do: terminalize(action_id, {:snapshot_reconciliation_repair_exception, exception.__struct__})
+  defp handle_result({:raised, exception_module}, action_id, true),
+    do: terminalize(action_id, {:snapshot_reconciliation_repair_exception, exception_module})
 
-  defp handle_result({:raised, exception, stacktrace}, _action_id, false), do: reraise(exception, stacktrace)
+  defp handle_result({:raised, exception_module}, _action_id, false),
+    do: {:error, {:snapshot_reconciliation_repair_exception, exception_module}}
+
+  defp handle_result({:stopped, kind}, action_id, true),
+    do: terminalize(action_id, {:snapshot_reconciliation_repair_stopped, kind})
+
+  defp handle_result({:stopped, kind}, _action_id, false), do: {:error, {:snapshot_reconciliation_repair_stopped, kind}}
 
   defp terminalize(action_id, reason) do
     case Projects.fail_project_snapshot_reconciliation_repair(action_id, reason) do

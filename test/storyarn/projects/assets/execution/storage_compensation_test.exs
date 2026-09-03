@@ -1486,6 +1486,51 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:error, :enoent} = Storage.download(removable_key)
   end
 
+  test "reports aggregate durable cleanup backlog from the time work became due" do
+    now = TimeHelpers.now()
+    oldest = DateTime.add(now, -600, :second)
+
+    Repo.insert!(%StorageCleanupRequest{
+      storage_keys: [cleanup_asset_key("oldest-due")],
+      inserted_at: oldest,
+      updated_at: oldest
+    })
+
+    Repo.insert!(%StorageCleanupRequest{
+      storage_keys: [cleanup_asset_key("overdue-multipart")],
+      inserted_at: DateTime.add(now, -1_200, :second),
+      updated_at: DateTime.add(now, -1_200, :second),
+      multipart_quiescence_started_at: DateTime.add(now, -120, :second),
+      multipart_quiescence_not_before: DateTime.add(now, -60, :second)
+    })
+
+    Repo.insert!(%StorageCleanupRequest{
+      storage_keys: [cleanup_asset_key("deferred-multipart")],
+      inserted_at: DateTime.add(now, -1_800, :second),
+      updated_at: DateTime.add(now, -1_800, :second),
+      multipart_quiescence_started_at: now,
+      multipart_quiescence_not_before: DateTime.add(now, 300, :second)
+    })
+
+    Repo.insert!(%StorageCleanupRequest{
+      storage_keys: [cleanup_asset_key("snapshot-lifecycle")],
+      owner_kind: "snapshot_lifecycle",
+      owner_token: Ecto.UUID.generate(),
+      provider_namespace_fingerprint: String.duplicate("a", 64)
+    })
+
+    assert %{
+             pending_count: 3,
+             due_count: 2,
+             deferred_multipart_count: 1,
+             oldest_age_seconds: oldest_age_seconds,
+             oldest_due_age_seconds: oldest_due_age_seconds
+           } = StorageCompensation.cleanup_request_backlog()
+
+    assert oldest_age_seconds in 1_800..1_802
+    assert oldest_due_age_seconds in 600..602
+  end
+
   test "keeps v2 cleanup receipt through empty, late multipart, and a second durable empty pass" do
     token = "QuiescenceTest01"
 

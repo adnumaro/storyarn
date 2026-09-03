@@ -929,6 +929,259 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
     end
   end
 
+  describe "incomplete_multipart_upload_summary/2" do
+    test "paginates the complete provider namespace and returns only bounded aggregate evidence" do
+      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+        conn = Plug.Conn.fetch_query_params(conn)
+
+        assert conn.method == "GET"
+        assert conn.query_params["encoding-type"] == "url"
+        assert conn.query_params["prefix"] == nil
+        assert conn.query_params["max-uploads"] in ["100", "149"]
+
+        case request_number do
+          1 ->
+            assert conn.query_params["key-marker"] == nil
+            assert conn.query_params["upload-id-marker"] == nil
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_inventory_page(
+                [
+                  {"projects/9/archive.bin", "upload-1", "2026-09-01T10:00:00.000Z"},
+                  {"workspace-snapshot-imports/v1/9/snapshot.zip", "upload-2", "2026-08-30T08:00:00.000Z"}
+                ],
+                true,
+                "workspace-snapshot-imports/v1/9/snapshot.zip",
+                "upload-2"
+              )
+            )
+
+          2 ->
+            assert conn.query_params["key-marker"] == "workspace-snapshot-imports/v1/9/snapshot.zip"
+            assert conn.query_params["upload-id-marker"] == "upload-2"
+
+            Plug.Conn.send_resp(
+              conn,
+              200,
+              multipart_inventory_page(
+                [{"project_templates/imports/demo/blob", "upload-3", "2026-08-31T09:00:00.000Z"}],
+                false,
+                nil,
+                nil
+              )
+            )
+        end
+      end)
+
+      assert {:ok,
+              %{
+                count: 3,
+                oldest_initiated_at: ~U[2026-08-30 08:00:00Z],
+                inventory_complete: true
+              }} = R2.incomplete_multipart_upload_summary(:all, max_uploads: 151)
+    end
+
+    test "marks the inventory incomplete when the bounded upload capacity is exhausted" do
+      prefix = "workspace-snapshot-imports/v1/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["max-uploads"] == "1"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [
+              {prefix <> "1/3abf435a-c086-4801-9b91-5a49a440f917/snapshot.zip", "upload-1", "2026-09-01T10:00:00Z"}
+            ],
+            true,
+            prefix <> "1/3abf435a-c086-4801-9b91-5a49a440f917/snapshot.zip",
+            "upload-1"
+          )
+        )
+      end)
+
+      assert {:ok,
+              %{
+                count: 1,
+                oldest_initiated_at: ~U[2026-09-01 10:00:00Z],
+                inventory_complete: false
+              }} = R2.incomplete_multipart_upload_summary(prefix, max_uploads: 1)
+    end
+
+    test "marks the inventory incomplete when the bounded page capacity is exhausted" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["max-uploads"] == "100"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{"projects/9/file.bin", "upload-1", "2026-09-01T10:00:00Z"}],
+            true,
+            "projects/9/file.bin",
+            "upload-1"
+          )
+        )
+      end)
+
+      assert {:ok,
+              %{
+                count: 1,
+                oldest_initiated_at: ~U[2026-09-01 10:00:00Z],
+                inventory_complete: false
+              }} = R2.incomplete_multipart_upload_summary(prefix, max_pages: 1)
+    end
+
+    test "fails closed when the provider returns an upload outside the requested prefix" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "GET"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{"outside/file.bin", "upload-1", "2026-09-01T10:00:00Z"}],
+            false,
+            nil,
+            nil
+          )
+        )
+      end)
+
+      assert {:error, :invalid_multipart_inventory_response} =
+               R2.incomplete_multipart_upload_summary(prefix, [])
+    end
+
+    test "fails closed when a truncated provider page repeats its cursor" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, 2, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        marker = "projects/9/file.bin"
+        assert conn.method == "GET"
+
+        if conn.query_params["key-marker"] do
+          assert conn.query_params["key-marker"] == marker
+          assert conn.query_params["upload-id-marker"] == "upload-1"
+        end
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{marker, "upload-1", "2026-09-01T10:00:00Z"}],
+            true,
+            marker,
+            "upload-1"
+          )
+        )
+      end)
+
+      assert {:error, :invalid_multipart_cleanup_cursor} =
+               R2.incomplete_multipart_upload_summary(prefix, [])
+    end
+
+    test "fails closed when initiated-at evidence is missing or invalid" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "GET"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{"projects/9/file.bin", "upload-1", "not-a-timestamp"}],
+            false,
+            nil,
+            nil
+          )
+        )
+      end)
+
+      assert {:error, :invalid_multipart_inventory_response} =
+               R2.incomplete_multipart_upload_summary(prefix, [])
+    end
+
+    test "requests URL encoding and decodes provider keys before prefix validation" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        conn = Plug.Conn.fetch_query_params(conn)
+        assert conn.method == "GET"
+        assert conn.query_params["encoding-type"] == "url"
+
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{"projects%2Ffolder%252Fname.bin", "upload-1", "2026-09-01T10:00:00Z"}],
+            false,
+            nil,
+            nil
+          )
+        )
+      end)
+
+      assert {:ok,
+              %{
+                count: 1,
+                oldest_initiated_at: ~U[2026-09-01 10:00:00Z],
+                inventory_complete: true
+              }} = R2.incomplete_multipart_upload_summary(prefix, [])
+    end
+
+    test "collapses provider response details at the adapter boundary" do
+      private_value = "private-bucket/projects/42/private.zip?signature=secret"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "GET"
+        Plug.Conn.send_resp(conn, 500, private_value)
+      end)
+
+      result = R2.incomplete_multipart_upload_summary(:all, [])
+
+      assert result == {:error, :multipart_inventory_provider_error}
+      refute inspect(result) =~ private_value
+    end
+
+    test "collapses malformed provider XML instead of raising across the adapter boundary" do
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "GET"
+        Plug.Conn.send_resp(conn, 200, "<ListMultipartUploadsResult><broken")
+      end)
+
+      assert {:error, :multipart_inventory_provider_error} =
+               R2.incomplete_multipart_upload_summary(:all, [])
+    end
+
+    test "rejects an oversized provider page before XML parsing" do
+      prefix = "projects/"
+
+      Req.Test.expect(__MODULE__, fn conn ->
+        assert conn.method == "GET"
+        Plug.Conn.send_resp(conn, 200, String.duplicate("x", 2 * 1024 * 1024 + 1))
+      end)
+
+      assert {:error, :invalid_multipart_cleanup_response} =
+               R2.incomplete_multipart_upload_summary(prefix, [])
+    end
+  end
+
   describe "copy_if_absent/2" do
     test "uses a server-side destination-conditional copy" do
       Req.Test.expect(__MODULE__, fn conn ->
@@ -1164,6 +1417,38 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
         <Key>#{key}</Key>
         <UploadId>#{upload_id}</UploadId>
       </Upload>
+    </ListMultipartUploadsResult>
+    """
+  end
+
+  defp multipart_inventory_page(uploads, truncated?, next_key_marker, next_upload_id_marker) do
+    next_markers =
+      if truncated? do
+        """
+        <NextKeyMarker>#{next_key_marker}</NextKeyMarker>
+        <NextUploadIdMarker>#{next_upload_id_marker}</NextUploadIdMarker>
+        """
+      else
+        ""
+      end
+
+    upload_xml =
+      Enum.map_join(uploads, "\n", fn {key, upload_id, initiated_at} ->
+        """
+        <Upload>
+          <Key>#{key}</Key>
+          <UploadId>#{upload_id}</UploadId>
+          <Initiated>#{initiated_at}</Initiated>
+        </Upload>
+        """
+      end)
+
+    """
+    <ListMultipartUploadsResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">
+      <EncodingType>url</EncodingType>
+      <IsTruncated>#{truncated?}</IsTruncated>
+      #{next_markers}
+      #{upload_xml}
     </ListMultipartUploadsResult>
     """
   end

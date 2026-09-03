@@ -22,6 +22,7 @@ defmodule Storyarn.Projects.Assets.Storage do
   @type listed_object_metadata :: ObjectStorage.listed_object_metadata()
   @type list_page :: ObjectStorage.list_page()
   @type metadata_list_page :: ObjectStorage.metadata_list_page()
+  @type incomplete_multipart_summary :: ObjectStorage.incomplete_multipart_summary()
   @type conditional_copy_cleanup_error :: ObjectStorage.conditional_copy_cleanup_error()
   @type storage_write_cleanup_error :: ObjectStorage.storage_write_cleanup_error()
 
@@ -62,6 +63,7 @@ defmodule Storyarn.Projects.Assets.Storage do
   defdelegate stream(key, offset, length, opts \\ []), to: ObjectStorage
   defdelegate list_prefix(prefix, opts \\ []), to: ObjectStorage
   defdelegate list_prefix_metadata(prefix, opts \\ []), to: ObjectStorage
+  defdelegate incomplete_multipart_upload_summary(prefix, opts \\ []), to: ObjectStorage
   defdelegate namespace_fingerprint(), to: ObjectStorage
   defdelegate get_url(key), to: ObjectStorage
   defdelegate presigned_upload_url(key, content_type, opts \\ []), to: ObjectStorage

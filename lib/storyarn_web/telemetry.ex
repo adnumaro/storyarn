@@ -4,6 +4,20 @@ defmodule StoryarnWeb.Telemetry do
 
   import Telemetry.Metrics
 
+  alias Storyarn.Platform.Adapters.Oban.OperationalMetrics
+
+  @multipart_inventory_failures [
+    :none,
+    :inventory_limit_exceeded,
+    :unsupported,
+    :invalid_response,
+    :provider_error,
+    :exception,
+    :exit,
+    :throw
+  ]
+  @prometheus_reporter_name :storyarn_operational_metrics
+
   def start_link(arg) do
     Supervisor.start_link(__MODULE__, arg, name: __MODULE__)
   end
@@ -20,6 +34,32 @@ defmodule StoryarnWeb.Telemetry do
 
     Supervisor.init(children, strategy: :one_for_one)
   end
+
+  @doc false
+  def prometheus_metrics do
+    metrics()
+    |> Enum.filter(&prometheus_operational_metric?/1)
+    |> Enum.map(&sanitize_prometheus_metric/1)
+    |> Kernel.++(oban_prometheus_metrics())
+  end
+
+  @doc false
+  def prometheus_reporter_child_specs(config) when is_list(config) do
+    if Keyword.fetch!(config, :enabled) do
+      [
+        TelemetryMetricsPrometheus.Core.child_spec(
+          metrics: prometheus_metrics(),
+          name: @prometheus_reporter_name,
+          start_async: false
+        )
+      ]
+    else
+      []
+    end
+  end
+
+  @doc false
+  def prometheus_reporter_name, do: @prometheus_reporter_name
 
   def metrics do
     [
@@ -119,6 +159,9 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.import.expiration.stop.continuation_count",
         tags: [:status, :error_code]
       ),
+      sum("storyarn.import.expiration.terminal.count",
+        tags: [:format, :disposition]
+      ),
       summary("storyarn.import.expiration.stop.duration",
         tags: [:status, :error_code],
         unit: {:native, :millisecond}
@@ -129,6 +172,12 @@ defmodule StoryarnWeb.Telemetry do
       sum("storyarn.assets.trash.stop.count", tags: [:action, :outcome]),
       sum("storyarn.assets.storage_compensation.persisted_retry.count"),
       sum("storyarn.assets.storage_compensation.persisted_retry.failed_count"),
+      last_value("storyarn.assets.storage_compensation.backlog.pending_count"),
+      last_value("storyarn.assets.storage_compensation.backlog.due_count"),
+      last_value("storyarn.assets.storage_compensation.backlog.deferred_multipart_count"),
+      last_value("storyarn.assets.storage_compensation.backlog.oldest_age_seconds"),
+      last_value("storyarn.assets.storage_compensation.backlog.oldest_due_age_seconds"),
+      last_value("storyarn.assets.storage_compensation.backlog.observed_at_unix_seconds"),
 
       # Product-accounted storage and provider footprint are separate signals.
       # Workspace IDs remain event metadata rather than metric tags to avoid
@@ -165,6 +214,31 @@ defmodule StoryarnWeb.Telemetry do
       ),
       last_value("storyarn.storage.provider_footprint.drift_bytes",
         tags: [:accounting_version]
+      ),
+
+      # The inventory operation scans the complete provider namespace but never
+      # emits provider keys or upload IDs. Only the closed failure taxonomy is
+      # exported as a label.
+      last_value("storyarn.storage.multipart_inventory.snapshot.count",
+        keep: &multipart_inventory_metadata?/1,
+        tag_values: &no_tag_values/1
+      ),
+      last_value("storyarn.storage.multipart_inventory.snapshot.oldest_age_seconds",
+        keep: &multipart_inventory_metadata?/1,
+        tag_values: &no_tag_values/1
+      ),
+      last_value("storyarn.storage.multipart_inventory.snapshot.inventory_complete",
+        keep: &multipart_inventory_metadata?/1,
+        tag_values: &no_tag_values/1
+      ),
+      last_value("storyarn.storage.multipart_inventory.snapshot.observed_at_unix_seconds",
+        keep: &multipart_inventory_metadata?/1,
+        tag_values: &no_tag_values/1
+      ),
+      sum("storyarn.storage.multipart_inventory.snapshot.failure_count",
+        tags: [:failure],
+        keep: &multipart_inventory_failure?/1,
+        tag_values: &multipart_inventory_tag_values/1
       ),
       sum("storyarn.snapshot.reset.stop.object_count",
         tags: [:status, :environment, :error_code]
@@ -211,6 +285,7 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.snapshot.cleanup.backlog.terminal_retry_count"),
       last_value("storyarn.snapshot.cleanup.backlog.repeated_terminal_failures"),
       last_value("storyarn.snapshot.cleanup.backlog.oldest_age_seconds"),
+      last_value("storyarn.snapshot.cleanup.backlog.observed_at_unix_seconds"),
       sum("storyarn.snapshot.retention.stop.deleted_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_build_count", tags: [:status]),
       sum("storyarn.snapshot.retention.stop.expired_export_lease_candidate_count", tags: [:status]),
@@ -237,6 +312,10 @@ defmodule StoryarnWeb.Telemetry do
       summary("storyarn.snapshot.download.stop.duration",
         tags: [:outcome, :phase, :error_code],
         unit: {:native, :millisecond}
+      ),
+      sum("storyarn.snapshot.import.delivery.stop.count",
+        tags: [:outcome],
+        keep: &snapshot_import_outcome?/1
       ),
 
       # Reconciliation is an operator-started, observation-only dry-run. IDs
@@ -279,6 +358,18 @@ defmodule StoryarnWeb.Telemetry do
       last_value("storyarn.snapshot.reconciliation.summary.terminal_cleanup_retry_count",
         tags: [:contract_version, :mode, :multipart_inventory_state]
       ),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.success"),
+      sum("storyarn.snapshot.reconciliation.projection.stop.failure_count"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.latest_completed_available"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.latest_completed_at_unix_seconds"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.observed_at_unix_seconds"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.finding_count"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.stale_reservation_bytes"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.orphan_object_bytes"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.missing_ready_snapshot_count"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.corrupt_ready_snapshot_count"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.terminal_cleanup_failure_count"),
+      last_value("storyarn.snapshot.reconciliation.projection.stop.terminal_cleanup_retry_count"),
 
       # AI result retention is content-free and bounded per worker batch.
       sum("storyarn.ai.expiration.stop.expired_count", tags: [:status]),
@@ -303,4 +394,190 @@ defmodule StoryarnWeb.Telemetry do
       # {StoryarnWeb, :count_users, []}
     ]
   end
+
+  defp prometheus_operational_metric?(metric) do
+    aggregate? = metric.__struct__ in [Telemetry.Metrics.Sum, Telemetry.Metrics.LastValue]
+    name = metric.name
+
+    aggregate? and
+      (List.starts_with?(name, [:storyarn, :import]) or
+         List.starts_with?(name, [:storyarn, :assets, :storage_compensation]) or
+         List.starts_with?(name, [:storyarn, :storage, :multipart_inventory]) or
+         (List.starts_with?(name, [:storyarn, :snapshot]) and
+            not List.starts_with?(name, [:storyarn, :snapshot, :reconciliation, :page]) and
+            not List.starts_with?(name, [:storyarn, :snapshot, :reconciliation, :summary]) and
+            name != [:storyarn, :snapshot, :reconciliation, :stop, :finding_count]))
+  end
+
+  defp oban_prometheus_metrics do
+    [
+      counter("storyarn.oban.job.stop.count",
+        event_name: [:oban, :job, :stop],
+        tags: [:queue, :state],
+        keep: &recovery_queue_job?/1,
+        tag_values: &oban_job_tag_values/1
+      ),
+      counter("storyarn.oban.job.exception.count",
+        event_name: [:oban, :job, :exception],
+        tags: [:queue, :state],
+        keep: &recovery_queue_job?/1,
+        tag_values: &oban_job_tag_values/1
+      ),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.backlog_count"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.due_count"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.executing_count"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.retryable_count"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.max_recorded_error_count"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.oldest_due_age_seconds"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.oldest_waiting_age_seconds"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.oldest_executing_age_seconds"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.configured_capacity"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.effective_capacity"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.paused"),
+      recovery_queue_last_value("storyarn.oban.queue.snapshot.runtime_available"),
+      last_value("storyarn.oban.queue.poll.stop.success"),
+      last_value("storyarn.oban.queue.poll.stop.last_success_unix_seconds",
+        keep: &oban_poll_success?/1
+      ),
+      sum("storyarn.oban.queue.poll.stop.failure_count",
+        tags: [:failure],
+        keep: &oban_poll_failure?/1,
+        tag_values: &oban_poll_tag_values/1
+      )
+    ]
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :import, :execute, :stop, :count]} = metric) do
+    %{metric | tags: [:format, :status, :import_mode], tag_values: &import_execute_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :import, :error, :count]} = metric) do
+    %{metric | tags: [:format, :import_mode, :phase], tag_values: &import_error_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :import, :snapshot, :transition, :count]} = metric) do
+    %{metric | tags: [:format, :import_mode, :state], tag_values: &import_snapshot_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :import, :expiration, :terminal, :count]} = metric) do
+    %{metric | tags: [:format, :disposition], tag_values: &import_expiration_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :storage, :multipart_inventory, :snapshot | _]} = metric),
+    do: metric
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :snapshot, :import, :delivery, :stop, :count]} = metric) do
+    %{metric | tags: [:outcome], tag_values: &snapshot_import_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :snapshot, :reconciliation, :stop | _]} = metric) do
+    %{metric | tags: [:status], tag_values: &reconciliation_status_tag_values/1}
+  end
+
+  defp sanitize_prometheus_metric(%{name: [:storyarn, :snapshot, :reconciliation, :repair, :stop | _]} = metric) do
+    %{metric | tags: [:outcome], tag_values: &reconciliation_repair_tag_values/1}
+  end
+
+  # Every other selected metric is already global and is exported as an
+  # aggregate. Per-workspace accounting, provider-footprint, and per-page
+  # reconciliation gauges are not selected: dropping their scoping labels
+  # would turn the latest local event into a misleading global value.
+  defp sanitize_prometheus_metric(metric), do: %{metric | tags: [], tag_values: &no_tag_values/1}
+
+  defp recovery_queue_job?(%{job: %{queue: queue}}), do: queue in OperationalMetrics.queue_names()
+  defp recovery_queue_job?(_metadata), do: false
+
+  defp recovery_queue_last_value(name) do
+    last_value(name,
+      tags: [:queue],
+      keep: &recovery_queue_snapshot?/1,
+      tag_values: &recovery_queue_snapshot_tag_values/1
+    )
+  end
+
+  defp recovery_queue_snapshot?(%{queue: queue}), do: queue in OperationalMetrics.queue_names()
+  defp recovery_queue_snapshot?(_metadata), do: false
+  defp recovery_queue_snapshot_tag_values(%{queue: queue}), do: %{queue: queue}
+
+  defp oban_job_tag_values(%{job: %{queue: queue}, state: state}) do
+    %{queue: queue, state: bounded_job_state(state)}
+  end
+
+  defp oban_poll_success?(%{failure: :none}), do: true
+  defp oban_poll_success?(_metadata), do: false
+
+  defp oban_poll_failure?(%{failure: failure}), do: failure in [:exception, :exit, :throw]
+  defp oban_poll_failure?(_metadata), do: false
+  defp oban_poll_tag_values(%{failure: failure}), do: %{failure: Atom.to_string(failure)}
+
+  defp import_execute_tag_values(metadata) do
+    %{
+      format: bounded_tag_value(Map.get(metadata, :format), ~w(yarn storyarn unknown)),
+      status: bounded_tag_value(Map.get(metadata, :status), ~w(completed retrying failed expired)),
+      import_mode: bounded_tag_value(Map.get(metadata, :import_mode), ~w(additive replace_project unknown))
+    }
+  end
+
+  defp import_error_tag_values(metadata) do
+    %{
+      format: bounded_tag_value(Map.get(metadata, :format), ~w(yarn storyarn unknown)),
+      import_mode: bounded_tag_value(Map.get(metadata, :import_mode), ~w(additive replace_project unknown)),
+      phase: bounded_tag_value(Map.get(metadata, :phase), ~w(prepare execute unknown))
+    }
+  end
+
+  defp import_snapshot_tag_values(metadata) do
+    %{
+      format: bounded_tag_value(Map.get(metadata, :format), ~w(yarn storyarn unknown)),
+      import_mode: bounded_tag_value(Map.get(metadata, :import_mode), ~w(additive replace_project unknown)),
+      state: bounded_tag_value(Map.get(metadata, :state), ~w(awaiting_snapshot ready))
+    }
+  end
+
+  defp import_expiration_tag_values(metadata) do
+    %{
+      format: bounded_tag_value(Map.get(metadata, :format), ~w(yarn storyarn unknown)),
+      disposition: bounded_tag_value(Map.get(metadata, :disposition), ~w(accepted preview))
+    }
+  end
+
+  defp no_tag_values(_metadata), do: %{}
+
+  defp multipart_inventory_metadata?(%{failure: failure}), do: failure in @multipart_inventory_failures
+
+  defp multipart_inventory_metadata?(_metadata), do: false
+
+  defp multipart_inventory_failure?(%{failure: failure} = metadata),
+    do: failure != :none and multipart_inventory_metadata?(metadata)
+
+  defp multipart_inventory_failure?(_metadata), do: false
+
+  defp multipart_inventory_tag_values(%{failure: failure}), do: %{failure: Atom.to_string(failure)}
+
+  defp snapshot_import_outcome?(%{outcome: outcome}),
+    do: outcome in [:completed, :terminal_failure, :retrying, :snoozed, :discarded, :unexpected]
+
+  defp snapshot_import_outcome?(_metadata), do: false
+  defp snapshot_import_tag_values(%{outcome: outcome}), do: %{outcome: Atom.to_string(outcome)}
+
+  defp reconciliation_status_tag_values(metadata) do
+    %{status: bounded_tag_value(Map.get(metadata, :status), ~w(completed failed))}
+  end
+
+  defp reconciliation_repair_tag_values(metadata) do
+    %{outcome: bounded_tag_value(Map.get(metadata, :outcome), ~w(repaired resolved manual failed))}
+  end
+
+  defp bounded_tag_value(value, allowed) when is_atom(value), do: bounded_tag_value(Atom.to_string(value), allowed)
+
+  defp bounded_tag_value(value, allowed) when is_binary(value) do
+    if value in allowed, do: value, else: "other"
+  end
+
+  defp bounded_tag_value(_value, _allowed), do: "other"
+
+  defp bounded_job_state(state) when state in [:success, :failure, :cancelled, :discard, :exhausted, :snoozed],
+    do: Atom.to_string(state)
+
+  defp bounded_job_state(_state), do: "other"
 end

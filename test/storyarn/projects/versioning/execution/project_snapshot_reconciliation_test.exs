@@ -2,6 +2,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
@@ -1425,24 +1426,52 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   test "the worker terminalizes a raised page failure only on its final attempt" do
     assert {:ok, run} = start_run()
     job = reconciliation_job!(run.id, run.cursor_generation)
-    advance = fn _run_id, _cursor_generation -> raise "private database failure" end
+    private_message = "private database failure for private-project/private-snapshot.zip"
+    advance = fn _run_id, _cursor_generation -> raise private_message end
+    handler_id = "snapshot-reconciliation-private-failure-#{System.unique_integer([:positive])}"
+    test_pid = self()
 
-    assert_raise RuntimeError, "private database failure", fn ->
-      InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
-    end
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :snapshot, :reconciliation, :stop],
+        fn _event, measurements, metadata, pid -> send(pid, {:private_failure_stop, measurements, metadata}) end,
+        test_pid
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
+    retry_log =
+      capture_log(fn ->
+        assert {:error, {:snapshot_reconciliation_page_exception, RuntimeError}} =
+                 InspectProjectSnapshotsWorker.perform_page(%{job | attempt: 1}, advance)
+      end)
+
+    refute retry_log =~ private_message
 
     assert Versioning.get_project_snapshot_reconciliation_run(run.id).status == "pending"
 
-    assert :ok =
-             InspectProjectSnapshotsWorker.perform_page(
-               %{job | attempt: job.max_attempts},
-               advance
-             )
+    terminal_log =
+      capture_log(fn ->
+        assert :ok =
+                 InspectProjectSnapshotsWorker.perform_page(
+                   %{job | attempt: job.max_attempts},
+                   advance
+                 )
+      end)
 
     failed = Versioning.get_project_snapshot_reconciliation_run(run.id)
     assert failed.status == "failed"
     assert failed.last_error_code == "snapshot_reconciliation_page_exception"
     assert %DateTime{} = failed.finished_at
+    refute terminal_log =~ private_message
+
+    assert_receive {:private_failure_stop, measurements, metadata}
+    telemetry_payload = inspect({measurements, metadata})
+    assert metadata.error_code == "snapshot_reconciliation_page_exception"
+    refute telemetry_payload =~ private_message
+    refute telemetry_payload =~ "private-project"
+    refute telemetry_payload =~ "private-snapshot.zip"
   end
 
   test "the worker terminalizes deterministic page errors without exhausting retries" do
@@ -1482,29 +1511,72 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     assert is_nil(unchanged.last_error_code)
   end
 
-  test "the worker lets exits and throws reach Oban even on the final attempt" do
+  test "the worker retries bounded stops and persists terminal evidence on the final attempt" do
+    handler_id = "snapshot-reconciliation-private-stop-#{System.unique_integer([:positive])}"
+    test_pid = self()
+
+    :ok =
+      :telemetry.attach(
+        handler_id,
+        [:storyarn, :snapshot, :reconciliation, :stop],
+        fn _event, measurements, metadata, pid -> send(pid, {:private_stop, measurements, metadata}) end,
+        test_pid
+      )
+
+    on_exit(fn -> :telemetry.detach(handler_id) end)
+
     assert {:ok, run} = start_run()
     job = reconciliation_job!(run.id, run.cursor_generation)
-    exit_advance = fn _run_id, _cursor_generation -> exit(:database_connection_timeout) end
-    throw_advance = fn _run_id, _cursor_generation -> throw(:provider_cancelled) end
+    private_exit_path = "private-project/private-exit.zip"
+    private_exit = {:database_connection_timeout, private_exit_path}
+    exit_advance = fn _run_id, _cursor_generation -> exit(private_exit) end
 
-    assert catch_exit(
+    retry_result =
+      InspectProjectSnapshotsWorker.perform_page(
+        %{job | attempt: 1},
+        exit_advance
+      )
+
+    assert retry_result == {:error, {:snapshot_reconciliation_page_stopped, :exit}}
+    assert Versioning.get_project_snapshot_reconciliation_run(run.id).status == "pending"
+
+    assert :ok =
              InspectProjectSnapshotsWorker.perform_page(
                %{job | attempt: job.max_attempts},
                exit_advance
              )
-           ) == :database_connection_timeout
 
-    assert catch_throw(
+    failed = Versioning.get_project_snapshot_reconciliation_run(run.id)
+    assert failed.status == "failed"
+    assert failed.last_error_code == "snapshot_reconciliation_page_stopped"
+
+    assert_receive {:private_stop, exit_measurements, exit_metadata}
+    exit_telemetry_payload = inspect({exit_measurements, exit_metadata})
+    assert exit_metadata.error_code == "snapshot_reconciliation_page_stopped"
+    refute exit_telemetry_payload =~ private_exit_path
+    refute exit_telemetry_payload =~ "private-project"
+
+    assert {:ok, throw_run} = start_run()
+    throw_job = reconciliation_job!(throw_run.id, throw_run.cursor_generation)
+    private_throw_path = "projects/42/private-storage-key"
+    private_throw = {:provider_cancelled, private_throw_path}
+    throw_advance = fn _run_id, _cursor_generation -> throw(private_throw) end
+
+    assert :ok =
              InspectProjectSnapshotsWorker.perform_page(
-               %{job | attempt: job.max_attempts},
+               %{throw_job | attempt: throw_job.max_attempts},
                throw_advance
              )
-           ) == :provider_cancelled
 
-    unchanged = Versioning.get_project_snapshot_reconciliation_run(run.id)
-    assert unchanged.status == "pending"
-    assert is_nil(unchanged.last_error_code)
+    throw_failed = Versioning.get_project_snapshot_reconciliation_run(throw_run.id)
+    assert throw_failed.status == "failed"
+    assert throw_failed.last_error_code == "snapshot_reconciliation_page_stopped"
+
+    assert_receive {:private_stop, throw_measurements, throw_metadata}
+    throw_telemetry_payload = inspect({throw_measurements, throw_metadata})
+    assert throw_metadata.error_code == "snapshot_reconciliation_page_stopped"
+    refute throw_telemetry_payload =~ private_throw_path
+    refute throw_telemetry_payload =~ "private-storage-key"
   end
 
   test "the worker terminalizes an unexpected page result only on its final attempt" do

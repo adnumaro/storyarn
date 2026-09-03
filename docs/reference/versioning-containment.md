@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-08-27
+> Last reviewed: 2026-09-03
 >
 > Source of truth: `lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex`,
 > `lib/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage.ex`,
@@ -18,6 +18,27 @@
 Project snapshots have one canonical representation: a v2 full ZIP archive and
 its manifest sidecar. There is no runtime switch, alternate format, linked mode,
 conversion path, or compatibility reader.
+
+The operational evidence for this contract is recorded separately in
+[ENG-52 operational recovery validation](eng-52-operational-recovery-validation.md).
+That record distinguishes a point-in-time provider observation from a completed
+recovery drill.
+
+## Ownership and escalation
+
+Engineering owns this runbook, the recovery drill, and the decision to resume
+writers. The engineer starting an incident or drill remains the operational
+owner until an explicit handoff is recorded in the incident or ENG-52 evidence.
+
+Escalate immediately to the Engineering owner as a highest-severity production
+incident when production snapshot integrity is unknown, a production recovery
+cannot be completed, or production database and object-store state cannot be
+reconciled. Escalate provider
+permission, inventory, or durability failures through the approved Fly/Tigris
+account owner; escalate database restore or PITR failures through the approved
+Neon account owner. If output contains a credential, signed URL, imported
+content, or personal data, stop collecting and sharing it, treat the exposure as
+a security incident, and do not attach the raw output to GitHub or Linear.
 
 ## Canonical lifecycle
 
@@ -139,6 +160,45 @@ guarantee: it lists and aborts incomplete multipart uploads until a bounded
 verification pass proves the inventory empty. A later empty pass after the full
 quiescence window is required before the cleanup receipt can be consumed. List,
 pagination, part, abort, delete, or quiescence failures leave cleanup pending.
+
+### Global multipart inventory after PITR or uncertain ownership
+
+Global multipart inventory is observation only. It never grants deletion
+authority. There is deliberately no global abort operation: an upload may
+belong to a live writer, and a database recovered through PITR may not contain
+the ownership row for a later provider upload.
+
+After a PITR exercise, or whenever database/object ownership is uncertain:
+
+1. Contain new writers and pause the affected queues using the procedure below.
+2. Keep the recovered database isolated from production traffic and preserve
+   the provider namespace unchanged.
+3. Run observation-only snapshot reconciliation against the isolated candidate.
+4. Obtain a provider-level, read-only multipart inventory through approved
+   operational tooling. Do not print storage keys, upload IDs, bucket names, or
+   request URLs into shared evidence.
+5. Match every candidate to a durable cleanup receipt and exact key in the
+   recovered database. Use only the owning application cleanup path when that
+   match is proven.
+6. Leave unmatched uploads untouched, record only aggregate sanitized counts,
+   and escalate for manual investigation.
+
+Run the public, read-only application path for step 4 on a release node:
+
+```bash
+/app/bin/storyarn rpc 'IO.inspect(Storyarn.Projects.inspect_storage_multipart_inventory(), label: "Multipart inventory status")'
+```
+
+The command is the shared, aggregate detection control. It emits only the
+metrics documented below and returns `:ok` or a bounded failure classification
+such as `:inventory_limit_exceeded`, `:unsupported`, `:invalid_response`, or
+`:provider_error`. It does
+not print provider keys, upload IDs, bucket names, filenames, or raw provider
+errors. Candidate identification for the matching step still requires approved,
+access-controlled provider tooling; that detailed output must never be copied
+into the command, metrics, logs, GitHub, or Linear. Until the aggregate metrics
+reach the production reporter and their alert is exercised, ENG-52 remains open
+and no operator may claim complete physical coverage.
 
 ## Fenced reconciliation repair
 
@@ -304,15 +364,18 @@ the deployed application and private Tigris configuration.
    - `s3:ListMultipartUploadParts`; and
    - `s3:AbortMultipartUpload`.
 
-2. Verify the bucket has a lifecycle rule that expires incomplete multipart
-   uploads after a bounded period. This is provider-side defence in depth for a
-   remote upload that outlives the local five-minute `UploadPart` deadline.
+2. Evaluate whether the provider supports a native bounded abort rule for
+   incomplete multipart uploads. On 2026-09-02 the real Tigris endpoint rejected
+   `AbortIncompleteMultipartUpload` with HTTP 400 and `InvalidRequest`; it
+   reported support only for completed-object expiration rules. Do not
+   substitute a global object-expiration rule: it does not clean incomplete
+   uploads and can delete valid completed objects.
 3. Create one small full snapshot with the deployed background worker and wait
    until it is `ready` and `verified`.
 4. Run the read-only smoke on the release node:
 
    ```bash
-   bin/storyarn rpc 'Storyarn.Projects.Versioning.SnapshotArchiveSmoke.run!(SNAPSHOT_ID)'
+   /app/bin/storyarn rpc 'Storyarn.Projects.run_snapshot_archive_smoke!(SNAPSHOT_ID)'
    ```
 
 The selected archive must be at most 300 MiB. The smoke proves exact-key
@@ -345,6 +408,312 @@ ENTITY_TRASH_RETENTION_ENABLED=false
 ```
 
 These switches do not affect project snapshot creation or downloads.
+
+### Recovery telemetry and minimum alert contract
+
+`METRICS_ENABLED=true` starts the Prometheus reporter and its dedicated listener
+synchronously before the database pollers, so their first observations are
+retained. The listener binds to `0.0.0.0:9091`, accepts only `GET /metrics`, and
+is declared through Fly's `[metrics]` configuration. It is not an application
+route and port `9091` must never be added to the public HTTP service. This
+matches Fly's [custom-metrics contract](https://fly.io/docs/monitoring/metrics/#custom-metrics).
+Metric labels are limited to fixed queue names and bounded outcome
+classifications; job arguments, entity identifiers, storage keys, filenames,
+imported content, provider errors, and exception messages are excluded.
+
+The minimum dashboard has five views:
+
+1. backlog, due work, executing work, oldest waiting and executing age, maximum
+   recorded error count, configured capacity, effective capacity, pause state,
+   and runtime availability for all eight operational recovery and inventory
+   queues;
+2. job outcomes and exceptions by queue, correlated with the domain terminal
+   outcomes below rather than inferred from delivery timing alone;
+3. ordinary storage-compensation and snapshot-lifecycle cleanup backlog,
+   terminal failures, oldest age, and observation freshness;
+4. global multipart count, oldest age, observation freshness, scan completeness,
+   and scan failures for the complete configured provider namespace; and
+5. snapshot-import terminal outcomes plus reconciliation's missing, corrupt,
+   orphan, stale-reservation, and terminal-cleanup summaries, including both
+   projector freshness and the age of the latest completed run.
+
+The metrics poller reloads the latest immutable completed reconciliation for
+the currently configured provider namespace and its aggregate finding summary
+from PostgreSQL every 15 minutes. This rehydrates
+the gauges after a deployment or process restart without exporting run,
+snapshot, project, workspace, cleanup, or storage identifiers. The
+`observed_at` metric proves that this projection is still polling successfully;
+`latest_completed_at` records when the underlying reconciliation itself
+finished. They are deliberately separate: repeatedly projecting an old run
+must not make its integrity observation look current. For the current no-user
+environment, complete at least one observation-only reconciliation every 24
+hours; review that cadence before admitting traffic.
+
+The scheduled provider-wide multipart inspection is guarded by the same
+`METRICS_ENABLED` opt-in. With observability disabled the cron job performs no
+provider request; operators can still invoke the read-only Projects entrypoint
+manually for an explicit drill. This prevents an unobserved scan from creating
+provider load or retry traffic.
+
+The Yarn execution, Yarn-expiration, snapshot-import delivery, reconciliation,
+and reconciliation-repair counters below are best-effort edge signals. Their
+corresponding domain state can be committed before the telemetry event is
+emitted, so a process crash in that narrow interval can lose the counter without
+losing the durable terminal record. Treat the import and reconciliation tables
+as the source of truth. The completed-reconciliation projection rehydrates
+integrity findings, but it does not project failed runs or failed/manual repair
+actions. These counters are useful supplemental alerts, but they are not
+evidence that every terminal transition is observed. Before ENG-52 can claim
+complete terminal coverage, add and deploy either a durable polling projection
+over all of those records or a persisted outbox, and prove its restart behavior.
+
+Use the exported metric names below as the minimum alert definitions. Thresholds
+are deliberately conservative for the current no-user environment and must be
+reviewed before traffic is admitted:
+
+```promql
+# Reporter or database poll absent/stale. The poll interval is 15 minutes.
+absent(storyarn_oban_queue_poll_stop_success)
+max(storyarn_oban_queue_poll_stop_success) == 0
+absent(storyarn_oban_queue_poll_stop_last_success_unix_seconds)
+time() - max(storyarn_oban_queue_poll_stop_last_success_unix_seconds) > 1200
+sum(increase(storyarn_oban_queue_poll_stop_failure_count[30m])) > 0
+or sum(
+  storyarn_oban_queue_poll_stop_failure_count
+    unless storyarn_oban_queue_poll_stop_failure_count offset 30m
+) > 0
+
+# A recovery queue is unavailable, unexpectedly paused, or has due work older
+# than 20 minutes. Suppress the pause alert only inside a recorded containment.
+min by (queue) (storyarn_oban_queue_snapshot_runtime_available) < 1
+count(count by (queue) (storyarn_oban_queue_snapshot_runtime_available)) != 8
+max by (queue) (storyarn_oban_queue_snapshot_paused) > 0
+max by (queue) (storyarn_oban_queue_snapshot_due_count) > 0
+  and max by (queue) (storyarn_oban_queue_snapshot_oldest_due_age_seconds) > 1200
+max by (queue) (storyarn_oban_queue_snapshot_executing_count) > 0
+  and max by (queue) (storyarn_oban_queue_snapshot_oldest_executing_age_seconds) > 900
+max by (queue) (storyarn_oban_queue_snapshot_retryable_count) > 0
+  and max by (queue) (storyarn_oban_queue_snapshot_max_recorded_error_count) >= 3
+
+# Worker exceptions, plus discards only in the three critical snapshot-delivery
+# queues. Yarn and maintenance-domain failures have dedicated alerts below.
+sum by (queue) (increase(storyarn_oban_job_exception_count[15m])) > 0
+or sum by (queue) (
+  storyarn_oban_job_exception_count
+    unless storyarn_oban_job_exception_count offset 15m
+) > 0
+sum by (queue) (
+  increase(
+    storyarn_oban_job_stop_count{
+      queue=~"snapshot_archives|snapshot_restores|snapshot_imports",
+      state="discard"
+    }[15m]
+  )
+) > 0
+or sum by (queue) (
+  storyarn_oban_job_stop_count{
+    queue=~"snapshot_archives|snapshot_restores|snapshot_imports",
+    state="discard"
+  }
+  unless storyarn_oban_job_stop_count{
+    queue=~"snapshot_archives|snapshot_restores|snapshot_imports",
+    state="discard"
+  } offset 15m
+) > 0
+
+# Best-effort edge signal: a Yarn execution reached a failed or expired
+# terminal domain outcome. Do not infer this only from the Oban job result:
+# delivery can still succeed. Its durable polling/outbox counterpart remains
+# required for complete coverage.
+sum(increase(storyarn_import_execute_stop_count{format="yarn",status=~"failed|expired"}[15m])) > 0
+or sum(
+  storyarn_import_execute_stop_count{format="yarn",status=~"failed|expired"}
+    unless storyarn_import_execute_stop_count{format="yarn",status=~"failed|expired"} offset 15m
+) > 0
+
+# Best-effort edge signal: the maintenance reconciler can terminalize an
+# accepted Yarn attempt whose delivery job vanished or exceeded the absolute
+# deadline. Preview expiry is expected and is deliberately excluded. Its
+# durable polling/outbox counterpart remains required for complete coverage.
+sum(increase(storyarn_import_expiration_terminal_count{format="yarn",disposition="accepted"}[15m])) > 0
+or sum(
+  storyarn_import_expiration_terminal_count{format="yarn",disposition="accepted"}
+    unless storyarn_import_expiration_terminal_count{format="yarn",disposition="accepted"} offset 15m
+) > 0
+
+# Best-effort edge signal: a snapshot ZIP import reached its durable failed
+# state, or its worker boundary rejected an exception/invalid contract, even if
+# delivery itself was ACKed. Its durable polling/outbox counterpart remains
+# required for complete coverage.
+sum(increase(storyarn_snapshot_import_delivery_stop_count{outcome=~"terminal_failure|unexpected"}[15m])) > 0
+or sum(
+  storyarn_snapshot_import_delivery_stop_count{outcome=~"terminal_failure|unexpected"}
+    unless storyarn_snapshot_import_delivery_stop_count{outcome=~"terminal_failure|unexpected"} offset 15m
+) > 0
+
+# Durable cleanup cannot converge within one maintenance interval plus margin.
+absent(storyarn_assets_storage_compensation_backlog_observed_at_unix_seconds)
+time() - storyarn_assets_storage_compensation_backlog_observed_at_unix_seconds > 1200
+storyarn_assets_storage_compensation_backlog_due_count > 0
+  and storyarn_assets_storage_compensation_backlog_oldest_due_age_seconds > 1200
+absent(storyarn_snapshot_cleanup_backlog_observed_at_unix_seconds)
+time() - storyarn_snapshot_cleanup_backlog_observed_at_unix_seconds > 1200
+max(storyarn_snapshot_cleanup_backlog_terminal_failures) > 0
+max(storyarn_snapshot_cleanup_backlog_repeated_terminal_failures) > 0
+
+# The read-only global multipart scan is missing, stale, incomplete, failing, or
+# observes an upload older than 30 minutes. Count alone is not deletion
+# authority. The scheduled scan interval is 30 minutes.
+absent(storyarn_storage_multipart_inventory_snapshot_observed_at_unix_seconds)
+time() - storyarn_storage_multipart_inventory_snapshot_observed_at_unix_seconds > 2700
+storyarn_storage_multipart_inventory_snapshot_inventory_complete < 1
+sum(increase(storyarn_storage_multipart_inventory_snapshot_failure_count[45m])) > 0
+or sum(
+  storyarn_storage_multipart_inventory_snapshot_failure_count
+    unless storyarn_storage_multipart_inventory_snapshot_failure_count offset 45m
+) > 0
+storyarn_storage_multipart_inventory_snapshot_oldest_age_seconds > 1800
+
+# Best-effort edge signals: reconciliation or repair reached a failed/manual
+# domain outcome. Their durable failed-run/action projection or outbox remains
+# required for complete coverage. The later completed-run gauges are durable.
+sum(increase(storyarn_snapshot_reconciliation_stop_count{status="failed"}[15m])) > 0
+or sum(
+  storyarn_snapshot_reconciliation_stop_count{status="failed"}
+    unless storyarn_snapshot_reconciliation_stop_count{status="failed"} offset 15m
+) > 0
+sum(increase(storyarn_snapshot_reconciliation_repair_stop_count{outcome=~"failed|manual"}[15m])) > 0
+or sum(
+  storyarn_snapshot_reconciliation_repair_stop_count{outcome=~"failed|manual"}
+    unless storyarn_snapshot_reconciliation_repair_stop_count{outcome=~"failed|manual"} offset 15m
+) > 0
+sum(increase(storyarn_snapshot_reconciliation_repair_recovery_stop_failure_count[15m])) > 0
+or sum(
+  storyarn_snapshot_reconciliation_repair_recovery_stop_failure_count
+    unless storyarn_snapshot_reconciliation_repair_recovery_stop_failure_count offset 15m
+) > 0
+# The persisted reconciliation projection must remain live, must have a
+# completed source run, and that source observation must be no older than 24h.
+absent(storyarn_snapshot_reconciliation_projection_stop_success)
+min(storyarn_snapshot_reconciliation_projection_stop_success) < 1
+absent(storyarn_snapshot_reconciliation_projection_stop_observed_at_unix_seconds)
+time() - min(storyarn_snapshot_reconciliation_projection_stop_observed_at_unix_seconds) > 1200
+sum(increase(storyarn_snapshot_reconciliation_projection_stop_failure_count[30m])) > 0
+or sum(
+  storyarn_snapshot_reconciliation_projection_stop_failure_count
+    unless storyarn_snapshot_reconciliation_projection_stop_failure_count offset 30m
+) > 0
+absent(storyarn_snapshot_reconciliation_projection_stop_latest_completed_available)
+min(storyarn_snapshot_reconciliation_projection_stop_latest_completed_available) < 1
+absent(storyarn_snapshot_reconciliation_projection_stop_latest_completed_at_unix_seconds)
+time() - min(storyarn_snapshot_reconciliation_projection_stop_latest_completed_at_unix_seconds) > 86400
+max(storyarn_snapshot_reconciliation_projection_stop_finding_count) > 0
+max(storyarn_snapshot_reconciliation_projection_stop_missing_ready_snapshot_count) > 0
+max(storyarn_snapshot_reconciliation_projection_stop_corrupt_ready_snapshot_count) > 0
+max(storyarn_snapshot_reconciliation_projection_stop_terminal_cleanup_failure_count) > 0
+```
+
+Counter alerts combine `increase` with `unless ... offset`: bounded label series
+do not exist before their first event, so the second branch catches a first
+failure that arrived before Prometheus had a zero-valued sample. Gauges describe
+the latest emitted observation. Reconciliation alert gauges are rehydrated from
+the latest durable completed run; their separate projection and source-run
+timestamps prevent a restart or repeated projection from hiding missing or
+stale integrity evidence.
+The critical-queue discard rule is a request for triage, not proof of data loss.
+Correlate it with the durable snapshot/import state and the domain alerts above.
+Expected authorization fences, stale maintenance work, and invalid maintenance
+payloads can legitimately discard delivery jobs, which is why there is no
+all-queue discard alert. Keep triage aggregate and sanitized: do not copy job
+arguments, object keys, imported content, identifiers, or raw provider errors
+into the incident record.
+
+The exporter registry is in memory and starts empty after every process restart.
+Installed alert rules must therefore include a startup grace with `for`: at
+least 30 minutes for database-backed cleanup gauges and at least 45 minutes for
+the 30-minute provider inventory. The Oban and reconciliation pollers emit on
+startup, so five minutes is sufficient for their missing-series alerts. Keep
+the due-work alert based on `due_count` and `oldest_due_age_seconds`:
+`oldest_waiting_age_seconds` deliberately includes future scheduled/backoff
+work for dashboard context and must not page by itself.
+
+An alert is not operational merely because this query exists in the runbook.
+ENG-52 requires the deployed reporter to be scraped by a real backend, every
+rule to be installed with an owned receiver, and one sanitized firing and
+recovery test to be linked from the evidence record. A Fly dashboard without a
+working notification receiver does not satisfy that criterion. At the time of
+this document, the dashboard, receiver, installed rules, and firing/recovery
+evidence are still pending; none of the PromQL above is claimed as deployed.
+Port `9091` must remain private and must not be published as a Fly service.
+
+### Queue containment
+
+Use the smallest queue set that contains the incident. For a Yarn replacement
+incident, pause `imports` first; keep `imports_maintenance` and
+`storage_cleanup` running unless their own behaviour is under investigation so
+expired attempts and exact-key cleanup can converge. For a database restore,
+provider-namespace ownership incident, or full ENG-52 recovery drill, contain
+all seven recovery queues:
+
+```text
+imports
+imports_maintenance
+snapshot_archives
+snapshot_restores
+snapshot_imports
+snapshots_maintenance
+storage_cleanup
+```
+
+Run the following on a release node. It prints only queue names, pause state,
+limits, and aggregate running counts; it does not print job IDs or arguments:
+
+```bash
+/app/bin/storyarn rpc '
+queues = [:imports, :imports_maintenance, :snapshot_archives, :snapshot_restores,
+  :snapshot_imports, :snapshots_maintenance, :storage_cleanup]
+Enum.each(queues, fn queue -> :ok = Oban.pause_queue(queue: queue) end)
+states = Enum.map(queues, fn queue ->
+  case Oban.check_queue(queue: queue) do
+    nil -> %{queue: queue, paused: :not_running, limit: 0, running_count: 0}
+    state -> %{queue: queue, paused: state.paused, limit: state.limit,
+      running_count: length(state.running)}
+  end
+end)
+IO.inspect(states, label: "Recovery queue containment")
+'
+```
+
+Pausing prevents new jobs from starting; already-running jobs continue. Do not
+begin PITR comparison or mutate provider data until every affected
+`running_count` is zero. The pause signal is not application admission control
+and is not durable across a machine restart. In the current no-user production,
+perform containment inside a controlled window with no requests. Before real
+traffic exists, define a separate ingress or application admission control;
+without it, pausing queues alone is insufficient. Re-run the command after every
+restart or deployment.
+
+Resume only after the operational owner records the reconciliation result and
+accepts any residual risk:
+
+```bash
+/app/bin/storyarn rpc '
+queues = [:imports, :imports_maintenance, :snapshot_archives, :snapshot_restores,
+  :snapshot_imports, :snapshots_maintenance, :storage_cleanup]
+Enum.each(queues, fn queue -> :ok = Oban.resume_queue(queue: queue) end)
+states = Enum.map(queues, fn queue ->
+  case Oban.check_queue(queue: queue) do
+    nil -> %{queue: queue, paused: :not_running, limit: 0, running_count: 0}
+    state -> %{queue: queue, paused: state.paused, limit: state.limit,
+      running_count: length(state.running)}
+  end
+end)
+IO.inspect(states, label: "Recovery queues resumed")
+'
+```
+
+Never delete or rewrite Oban rows, cleanup receipts, reconciliation findings, or
+snapshot ownership rows to make a drill pass.
 
 ### Yarn replacement rollout and containment
 
