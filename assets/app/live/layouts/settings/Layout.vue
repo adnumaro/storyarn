@@ -13,6 +13,7 @@ import {
   Gauge,
   GitBranch,
   Languages,
+  LayoutTemplate,
   LayoutGrid,
   Lock,
   Menu,
@@ -294,6 +295,7 @@ const projectGroup = computed<SettingsGroup | null>(() => {
   const items: SettingsItem[] = [
     item("project_general", "general", "", Settings, ownerOnly),
     item("project_members", "members", "/members", Users, ownerOnly),
+    item("project_templates", "templates", "/templates", LayoutTemplate, ownerOnly),
     item("project_version_control", "version_control", "/version-control", GitBranch, ownerOnly),
     item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
     item("project_import_export", "import_export", "/export-import", Package, false),

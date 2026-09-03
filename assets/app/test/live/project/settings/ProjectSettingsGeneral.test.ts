@@ -4,6 +4,7 @@ import type { App } from "vue";
 import ProjectSettingsGeneral from "../../../../live/project/settings/ProjectSettingsGeneral.vue";
 import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import LanguagePicker from "../../../../components/language/LanguagePicker.vue";
+import SettingsSection from "../../../../components/settings/SettingsSection.vue";
 import { createMockLive } from "../../../setup";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
 
@@ -14,6 +15,23 @@ function livePlugin(live: LiveInterface) {
     },
   };
 }
+
+const english = {
+  value: "en",
+  localeCode: "en",
+  label: "English",
+  languageTag: "en",
+  flagCode: "gb",
+  shortLabel: "EN",
+};
+
+const spanish = {
+  value: "es",
+  label: "Spanish",
+  languageTag: "es",
+  flagCode: "es",
+  shortLabel: "ES",
+};
 
 function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
   return mount(ProjectSettingsGeneral, {
@@ -32,8 +50,6 @@ function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
       },
       sourceLanguage: null,
       sourceLanguageOptions: [],
-      projectTemplates: [],
-      projectTemplatePublications: [],
       canManageProject: true,
       ...props,
     },
@@ -57,88 +73,53 @@ function mountGeneral(props = {}, live: LiveInterface = createMockLive()) {
   });
 }
 
-describe("ProjectSettingsGeneral template publication", () => {
-  it("renders recent template publication status", () => {
-    const wrapper = mountGeneral({
-      projectTemplatePublications: [
-        {
-          id: 42,
-          mode: "new",
-          status: "running",
-          template_id: null,
-          template_version_id: null,
-          name: "Starter Template",
-          description: "",
-        },
-      ],
-    });
-
-    expect(wrapper.get('[data-testid="template-publication-42"]').text()).toContain(
-      "Starter Template",
-    );
-    expect(wrapper.get('[data-testid="template-publication-42"]').text()).toContain("Publishing");
-  });
-
-  it("disables publishing when this project already has an active publication", () => {
-    const wrapper = mountGeneral({
-      projectTemplatePublications: [
-        {
-          id: 42,
-          mode: "new",
-          status: "queued",
-          template_id: null,
-          template_version_id: null,
-          name: "Starter Template",
-          description: "",
-        },
-      ],
-    });
-
-    const trigger = wrapper.get('[data-testid="open-template-publication-dialog"]');
-    expect(trigger.attributes("disabled")).toBeDefined();
-    expect(trigger.text()).toContain("Publication running");
-  });
-
-  it("sends version notes when publishing a template", async () => {
+describe("ProjectSettingsGeneral details", () => {
+  it("saves the details on blur only when they changed", async () => {
     const live = createMockLive();
     const wrapper = mountGeneral({}, live);
 
-    await wrapper.get("#template-version-notes").setValue("First release notes");
-    await wrapper.get('[data-testid="publish-template-submit"]').trigger("click");
+    await wrapper.get("#project-name").trigger("blur");
+    expect(live.pushEvent).not.toHaveBeenCalled();
+
+    await wrapper.get("#project-name").setValue("Renamed Project");
+    await wrapper.get("#project-name").trigger("blur");
 
     expect(live.pushEvent).toHaveBeenCalledWith(
-      "publish_template",
+      "update_project",
       {
-        template: expect.objectContaining({
-          mode: "new",
-          name: "Source Project",
+        project: {
+          name: "Renamed Project",
           description: "Project description",
-          version_notes: "First release notes",
-        }),
+          project_type: "game",
+          project_subtype: "",
+          project_type_other: "",
+        },
       },
       undefined,
     );
+  });
+
+  it("does not save an empty name", async () => {
+    const live = createMockLive();
+    const wrapper = mountGeneral({}, live);
+
+    await wrapper.get("#project-name").setValue("   ");
+    await wrapper.get("#project-name").trigger("blur");
+
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("no longer hosts template publishing", () => {
+    const wrapper = mountGeneral();
+
+    expect(wrapper.find('[data-testid="open-template-publication-dialog"]').exists()).toBe(false);
+    expect(wrapper.text()).not.toContain("Appearance");
   });
 });
 
 describe("ProjectSettingsGeneral source language", () => {
   it("requires confirmation before resetting translations", async () => {
     const live = createMockLive();
-    const english = {
-      value: "en",
-      localeCode: "en",
-      label: "English",
-      languageTag: "en",
-      flagCode: "gb",
-      shortLabel: "EN",
-    };
-    const spanish = {
-      value: "es",
-      label: "Spanish",
-      languageTag: "es",
-      flagCode: "es",
-      shortLabel: "ES",
-    };
     const wrapper = mountGeneral(
       { sourceLanguage: english, sourceLanguageOptions: [english, spanish] },
       live,
@@ -165,17 +146,26 @@ describe("ProjectSettingsGeneral source language", () => {
   });
 });
 
-describe("ProjectSettingsGeneral ownership changes", () => {
-  it("keeps shared controls available but removes owner-only controls", () => {
-    const english = {
-      value: "en",
-      localeCode: "en",
-      label: "English",
-      languageTag: "en",
-      flagCode: "gb",
-      shortLabel: "EN",
-    };
+describe("ProjectSettingsGeneral danger zone", () => {
+  it("requires typing the project name before deleting", async () => {
+    const live = createMockLive();
+    const wrapper = mountGeneral({}, live);
 
+    await wrapper.get('[data-testid="open-project-delete-dialog"]').trigger("click");
+
+    const confirm = wrapper.get("#confirm-delete-project");
+    expect(confirm.attributes("disabled")).toBeDefined();
+
+    await wrapper.get("input[placeholder='Source Project']").setValue("Source Project");
+    expect(wrapper.get("#confirm-delete-project").attributes("disabled")).toBeUndefined();
+
+    await wrapper.get("#confirm-delete-project").trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("delete_project", {}, undefined);
+  });
+});
+
+describe("ProjectSettingsGeneral ownership changes", () => {
+  it("locks every section and explains why for non-owners", () => {
     const wrapper = mountGeneral({
       canManageProject: false,
       sourceLanguage: english,
@@ -185,32 +175,18 @@ describe("ProjectSettingsGeneral ownership changes", () => {
     expect(wrapper.get('[data-testid="project-owner-controls-unavailable"]').text()).toContain(
       "Only the current project owner",
     );
-    expect(wrapper.find("#project-name").exists()).toBe(false);
-    expect(wrapper.findComponent(LanguagePicker).exists()).toBe(false);
-    expect(wrapper.text()).not.toContain("Project Theme");
-    expect(wrapper.text()).not.toContain("Maintenance");
-    expect(wrapper.text()).not.toContain("Danger Zone");
 
-    expect(wrapper.find('[data-testid="open-template-publication-dialog"]').exists()).toBe(true);
-    expect(wrapper.text()).toContain("Appearance");
+    const sections = wrapper.findAllComponents(SettingsSection);
+    expect(sections.length).toBeGreaterThan(0);
+    for (const section of sections) {
+      expect(section.props("locked")).toBe(true);
+    }
+
+    expect(wrapper.get("#project-name").attributes("disabled")).toBeDefined();
+    expect(wrapper.find('[data-testid="project-delete-confirm-dialog"]').exists()).toBe(false);
   });
 
   it("clears owner-only confirmations instead of reopening stale intent", async () => {
-    const english = {
-      value: "en",
-      localeCode: "en",
-      label: "English",
-      languageTag: "en",
-      flagCode: "gb",
-      shortLabel: "EN",
-    };
-    const spanish = {
-      value: "es",
-      label: "Spanish",
-      languageTag: "es",
-      flagCode: "es",
-      shortLabel: "ES",
-    };
     const wrapper = mountGeneral({
       sourceLanguage: english,
       sourceLanguageOptions: [english, spanish],

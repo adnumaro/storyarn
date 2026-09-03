@@ -9,17 +9,18 @@
       },
       "items": {
         "general": "General",
-        "version_control": "Version Control",
-        "usage_limits": "Usage Limits",
+        "version_control": "Version control",
+        "usage_limits": "Usage",
         "localization": "Localization",
         "members": "Members",
-        "snapshots": "Snapshots",
+        "snapshots": "Backups",
         "import_export": "Import & Export",
-        "trash": "Trash"
+        "trash": "Trash",
+        "templates": "Templates"
       }
     },
     "general": {
-      "owner_controls_unavailable": "Only the current project owner can edit project details, source language, project theme, maintenance, or deletion. You can still publish templates and change your appearance.",
+      "owner_controls_unavailable": "Only the current project owner can change these settings. You can still publish templates from the Templates page.",
       "project_name": "Project Name",
       "project_type": "Project type",
       "project_type_placeholder": "Select a type",
@@ -75,8 +76,25 @@
       "cancel": "Cancel",
       "continue": "Continue",
       "delete_confirm_title": "Delete project?",
-      "delete_confirm_description": "This action cannot be undone.",
-      "delete": "Delete"
+      "delete_confirm_description": "This removes every flow, scene, sheet, asset and backup in the project. The project stays recoverable from the workspace trash for a limited time.",
+      "delete": "Delete",
+      "page_title": "General",
+      "owner_only_label": "Only the project owner can change this",
+      "details": "Details",
+      "type_hint": "Adjusts templates and export presets.",
+      "description_hint": "Shown on the workspace dashboard and in templates.",
+      "language": "Language",
+      "source_language_row_hint": "Base locale for source text. Changing it resets every existing translation.",
+      "theme_colors": "Theme colors",
+      "theme_colors_hint": "Canvases and accents in this project",
+      "primary_hint": "Nodes, pins and selection.",
+      "accent_hint": "Highlights and warnings.",
+      "theme_apply_row": "Apply colors",
+      "theme_apply_hint": "Preview the colors above, then apply them to the project.",
+      "repair_action": "Repair",
+      "delete_row": "Delete this project",
+      "delete_hint": "Removes flows, scenes, sheets and backups. You will be asked to type the project name.",
+      "delete_type_name": "Type the project name to confirm"
     },
     "members": {
       "invite_title": "Invite a project member",
@@ -99,6 +117,24 @@
         "pending": "Transferring project ownership…",
         "cancel": "Cancel",
         "connection_unconfirmed": "The connection was interrupted, so Storyarn could not confirm the result. Reconnect and refresh this page before trying again."
+      },
+      "page_title": "Members",
+      "invite_section": "Invite",
+      "roles_hint": "Editors change content. Viewers read.",
+      "members_section": "Members",
+      "count": "No members | 1 member | {count} members",
+      "owner_note": "Only the owner can transfer ownership or remove members.",
+      "roles": {
+        "owner": "Owner",
+        "editor": "Editor",
+        "viewer": "Viewer"
+      },
+      "remove": {
+        "action": "Remove from project",
+        "title": "Remove {name} from this project?",
+        "description": "They lose access immediately. You can invite them again later.",
+        "confirm": "Remove",
+        "cancel": "Cancel"
       }
     },
     "localization": {
@@ -326,15 +362,25 @@
       "empty_confirm_description": "All deleted project items will be permanently deleted. This action cannot be undone."
     },
     "version_control": {
-      "auto_versioning": "Auto-Versioning",
-      "auto_versioning_description": "Automatically create entity versions while editing.",
+      "auto_versioning": "Auto-versioning",
+      "auto_versioning_description": "Creates entity versions while editing",
       "flows": "Flows",
       "scenes": "Scenes",
       "sheets": "Sheets",
       "save_changes": "Save Changes",
       "usage": "Usage",
       "project_snapshots": "Project Snapshots",
-      "named_versions": "Named Versions"
+      "named_versions": "Named versions",
+      "page_title": "Version control",
+      "flows_hint": "Dialogue and logic graphs.",
+      "scenes_hint": "Maps and exploration.",
+      "sheets_hint": "Characters, items and variables.",
+      "quota": "Quota",
+      "quota_hint": "Counted against the plan",
+      "backups": "Backups",
+      "backups_hint": "Full project snapshots, including builds in progress.",
+      "named_versions_hint": "Promoted entity versions.",
+      "view_usage": "View usage"
     },
     "usage_limits": {
       "current_plan": "Current plan",
@@ -391,6 +437,27 @@
       },
       "accessibility": {
         "status": "{label} status: {status}"
+      },
+      "page_title": "Usage",
+      "project_limits_hint": "Block new entities or versions in this project",
+      "items_breakdown": "Sheets {sheets} · Flows {flows} · Scenes {scenes} · Flow nodes {nodes}",
+      "backups": "Backups",
+      "backups_hint": "Full project snapshots, including builds in progress.",
+      "named_versions_hint": "Promoted entity versions.",
+      "reached_hint": {
+        "items": "Delete sheets, flows or scenes, or raise the plan limit to create more.",
+        "backups": "Delete a backup or raise the plan limit to create another one.",
+        "named_versions": "Delete a named version or raise the plan limit to promote another one."
+      },
+      "plan_link": "Plan & usage",
+      "workspace_note": "Workspace-wide limits (projects, members, storage) live in",
+      "workspace_note_link": "Workspace › Plan & usage",
+      "meter_status": {
+        "available": "Available",
+        "warning": "Near limit",
+        "reached": "Limit reached",
+        "unlimited": "No limit",
+        "unknown": "Unknown"
       }
     },
     "import": {
@@ -648,6 +715,40 @@
       "info_findings": "Additional information",
       "more_findings": "{count} more finding is not shown. | {count} more findings are not shown.",
       "no_issues": "No issues found. Project is ready for export."
+    },
+    "templates": {
+      "page_title": "Templates",
+      "publish_section": "Publish",
+      "publish_row": "Publish this project as a template",
+      "publish_hint": "Creates a private template for new projects in this workspace. Publishing again adds a version.",
+      "no_permission": "Only the project owner or a workspace admin can publish templates.",
+      "published_templates": "Published templates",
+      "publish_template": "Publish template",
+      "publication_active": "Publication running",
+      "history": "History",
+      "history_hint": "Last 10 publications",
+      "empty_title": "No publications yet",
+      "empty_text": "Publish this project to create a private template for this workspace.",
+      "dialog_title": "Publish project template",
+      "dialog_description": "Creates an immutable version from the current project state after the template audit passes.",
+      "mode_new": "New template",
+      "mode_update": "Update existing",
+      "existing": "Template",
+      "existing_placeholder": "Select a template",
+      "existing_option": "{name} · v{version}",
+      "name": "Template name",
+      "description": "Template description",
+      "version_notes": "Version notes",
+      "publication_new": "New template publication",
+      "publication_update": "Template version publication",
+      "cancel": "Cancel",
+      "status": {
+        "queued": "Queued",
+        "running": "Publishing",
+        "retrying": "Retrying",
+        "published": "Published",
+        "failed": "Failed"
+      }
     }
   }
 }

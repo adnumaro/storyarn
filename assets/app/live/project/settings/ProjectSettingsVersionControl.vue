@@ -1,8 +1,17 @@
 <script setup lang="ts">
-import { ref, watch } from "vue";
+import { Clapperboard, FileText, Workflow } from "@lucide/vue";
+import { computed, ref, watch, type Component } from "vue";
+import { useI18n } from "vue-i18n";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import SaveIndicator from "@components/SaveIndicator.vue";
+import {
+  SettingsMeterRow,
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+  type SettingsMeterStatus,
+} from "@components/settings";
 import { Button } from "@components/ui/button";
-import { Progress } from "@components/ui/progress";
-import { Separator } from "@components/ui/separator";
 import { Switch } from "@components/ui/switch";
 import { useLive } from "@shared/composables/useLive";
 
@@ -21,14 +30,24 @@ const {
   autoVersionScenes = false,
   autoVersionSheets = false,
   versionUsage = null,
+  usagePath = null,
+  saveStatus = "idle",
 } = defineProps<{
   autoVersionFlows?: boolean;
   autoVersionScenes?: boolean;
   autoVersionSheets?: boolean;
   versionUsage?: VersionUsage | null;
+  usagePath?: string | null;
+  saveStatus?: "idle" | "saving" | "saved";
 }>();
 
 const live = useLive();
+const { locale, t } = useI18n();
+
+// ---------------------------------------------------------------------------
+// Auto-versioning: each switch saves on toggle.
+// ---------------------------------------------------------------------------
+type EntityKey = "flows" | "scenes" | "sheets";
 
 const autoFlows = ref(autoVersionFlows);
 const autoScenes = ref(autoVersionScenes);
@@ -53,7 +72,18 @@ watch(
   },
 );
 
-function saveVersionControl() {
+const entityRows: { key: EntityKey; icon: Component; model: typeof autoFlows }[] = [
+  { key: "flows", icon: Workflow, model: autoFlows },
+  { key: "scenes", icon: Clapperboard, model: autoScenes },
+  { key: "sheets", icon: FileText, model: autoSheets },
+];
+
+function toggle(key: EntityKey, value: boolean): void {
+  const row = entityRows.find((candidate) => candidate.key === key);
+  if (!row) return;
+
+  row.model.value = value;
+
   live.pushEvent("save_version_control", {
     version_control: {
       auto_version_flows: String(autoFlows.value),
@@ -63,107 +93,133 @@ function saveVersionControl() {
   });
 }
 
-function usagePct(used: number, limit: number | null) {
-  if (limit === null || limit <= 0) return 0;
-  return Math.min(Math.round((used / limit) * 100), 100);
+// ---------------------------------------------------------------------------
+// Quota
+// ---------------------------------------------------------------------------
+interface Meter {
+  key: string;
+  label: string;
+  hint: string;
+  used: string;
+  limit: string;
+  percent: number | null;
+  status: SettingsMeterStatus;
 }
 
-function hasCountCapacity(limit: number | null) {
-  return limit !== null && limit > 0;
+function formatCount(value: number): string {
+  return new Intl.NumberFormat(locale.value).format(value);
 }
 
-function formatCountLimit(limit: number | null) {
-  return limit === null ? null : limit;
+function meterStatus(bucket: UsageBucket): SettingsMeterStatus {
+  if (bucket.limit === null) return "unknown";
+  if (bucket.limit <= 0 || bucket.used >= bucket.limit) return "reached";
+  if (bucket.used / bucket.limit >= 0.8) return "warning";
+
+  return "available";
+}
+
+function meterPercent(bucket: UsageBucket): number | null {
+  if (bucket.limit === null || bucket.limit <= 0) return null;
+
+  return Math.min(Math.round((bucket.used / bucket.limit) * 100), 100);
+}
+
+function meter(key: string, bucket: UsageBucket, label: string, hint: string): Meter {
+  return {
+    key,
+    label,
+    hint,
+    used: formatCount(bucket.used),
+    limit:
+      bucket.limit === null
+        ? t("project_settings.usage_limits.status.unknown")
+        : formatCount(bucket.limit),
+    percent: meterPercent(bucket),
+    status: meterStatus(bucket),
+  };
+}
+
+const meters = computed<Meter[]>(() => {
+  if (!versionUsage) return [];
+
+  return [
+    meter(
+      "backups",
+      versionUsage.projectSnapshots,
+      t("project_settings.version_control.backups"),
+      t("project_settings.version_control.backups_hint"),
+    ),
+    meter(
+      "named_versions",
+      versionUsage.namedVersions,
+      t("project_settings.version_control.named_versions"),
+      t("project_settings.version_control.named_versions_hint"),
+    ),
+  ];
+});
+
+function statusLabel(status: SettingsMeterStatus): string {
+  return t(`project_settings.usage_limits.meter_status.${status}`);
 }
 </script>
 
 <template>
-  <div class="space-y-8">
-    <form @submit.prevent="saveVersionControl">
-      <!-- Per-Entity Auto-Versioning -->
-      <section>
-        <h3 class="text-lg font-semibold mb-4">
-          {{ $t("project_settings.version_control.auto_versioning") }}
-        </h3>
-        <p class="text-sm text-muted-foreground mb-4">
-          {{ $t("project_settings.version_control.auto_versioning_description") }}
-        </p>
-        <div class="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <Switch v-model="autoFlows" />
-            <span>{{ $t("project_settings.version_control.flows") }}</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <Switch v-model="autoScenes" />
-            <span>{{ $t("project_settings.version_control.scenes") }}</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <Switch v-model="autoSheets" />
-            <span>{{ $t("project_settings.version_control.sheets") }}</span>
-          </label>
-        </div>
-      </section>
+  <SettingsPage :title="t('project_settings.version_control.page_title')">
+    <template #actions>
+      <SaveIndicator :status="saveStatus" />
+    </template>
 
-      <div class="flex justify-end gap-3 pt-4">
-        <Button type="submit">{{ $t("project_settings.version_control.save_changes") }}</Button>
-      </div>
-    </form>
-
-    <Separator v-if="versionUsage" />
-
-    <!-- Usage Breakdown -->
-    <section v-if="versionUsage">
-      <h3 class="text-lg font-semibold mb-4">{{ $t("project_settings.version_control.usage") }}</h3>
-      <div class="space-y-4">
-        <div>
-          <div class="flex justify-between text-sm mb-1">
-            <span>{{ $t("project_settings.version_control.project_snapshots") }}</span>
-            <span class="text-muted-foreground">
-              {{ versionUsage.projectSnapshots.used }} /
-              {{
-                formatCountLimit(versionUsage.projectSnapshots.limit) ??
-                $t("project_settings.usage_limits.status.unknown")
-              }}
-            </span>
-          </div>
-          <p
-            v-if="versionUsage.projectSnapshots.limit === 0"
-            class="mb-1 text-xs font-medium text-destructive"
-          >
-            {{ $t("project_settings.usage_limits.status.limit_reached") }}
-          </p>
-          <Progress
-            v-if="hasCountCapacity(versionUsage.projectSnapshots.limit)"
-            :model-value="
-              usagePct(versionUsage.projectSnapshots.used, versionUsage.projectSnapshots.limit)
-            "
+    <SettingsSection
+      :title="t('project_settings.version_control.auto_versioning')"
+      :hint="t('project_settings.version_control.auto_versioning_description')"
+    >
+      <SettingsRow
+        v-for="row in entityRows"
+        :key="row.key"
+        :label="t(`project_settings.version_control.${row.key}`)"
+        :hint="t(`project_settings.version_control.${row.key}_hint`)"
+        :html-for="`auto-version-${row.key}`"
+      >
+        <template #leading>
+          <component
+            :is="row.icon"
+            class="size-4 shrink-0 text-muted-foreground"
+            aria-hidden="true"
           />
-        </div>
-        <div>
-          <div class="flex justify-between text-sm mb-1">
-            <span>{{ $t("project_settings.version_control.named_versions") }}</span>
-            <span class="text-muted-foreground">
-              {{ versionUsage.namedVersions.used }} /
-              {{
-                formatCountLimit(versionUsage.namedVersions.limit) ??
-                $t("project_settings.usage_limits.status.unknown")
-              }}
-            </span>
-          </div>
-          <p
-            v-if="versionUsage.namedVersions.limit === 0"
-            class="mb-1 text-xs font-medium text-destructive"
-          >
-            {{ $t("project_settings.usage_limits.status.limit_reached") }}
-          </p>
-          <Progress
-            v-if="hasCountCapacity(versionUsage.namedVersions.limit)"
-            :model-value="
-              usagePct(versionUsage.namedVersions.used, versionUsage.namedVersions.limit)
-            "
-          />
-        </div>
-      </div>
-    </section>
-  </div>
+        </template>
+        <Switch
+          :id="`auto-version-${row.key}`"
+          :model-value="row.model.value"
+          @update:model-value="(value) => toggle(row.key, value)"
+        />
+      </SettingsRow>
+    </SettingsSection>
+
+    <SettingsSection
+      v-if="versionUsage"
+      :title="t('project_settings.version_control.quota')"
+      :hint="t('project_settings.version_control.quota_hint')"
+    >
+      <SettingsMeterRow
+        v-for="row in meters"
+        :key="row.key"
+        :data-testid="`version-control-meter-${row.key}`"
+        :label="row.label"
+        :hint="row.hint"
+        :used="row.used"
+        :limit="row.limit"
+        :percent="row.percent"
+        :status="row.status"
+        :status-label="statusLabel(row.status)"
+      />
+
+      <template v-if="usagePath" #footer>
+        <Button as-child variant="link" size="sm" class="h-auto p-0 text-xs">
+          <LiveLink :to="usagePath">{{
+            t("project_settings.version_control.view_usage")
+          }}</LiveLink>
+        </Button>
+      </template>
+    </SettingsSection>
+  </SettingsPage>
 </template>

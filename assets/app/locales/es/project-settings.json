@@ -10,16 +10,17 @@
       "items": {
         "general": "General",
         "version_control": "Control de versiones",
-        "usage_limits": "Límites de uso",
+        "usage_limits": "Uso",
         "localization": "Localización",
         "members": "Miembros",
-        "snapshots": "Snapshots",
+        "snapshots": "Copias de seguridad",
         "import_export": "Importar y exportar",
-        "trash": "Papelera"
+        "trash": "Papelera",
+        "templates": "Plantillas"
       }
     },
     "general": {
-      "owner_controls_unavailable": "Solo la persona propietaria actual puede editar los detalles, el idioma de origen, el tema, el mantenimiento o la eliminación del proyecto. Todavía puedes publicar plantillas y cambiar tu apariencia.",
+      "owner_controls_unavailable": "Solo el propietario actual del proyecto puede cambiar estos ajustes. Puedes seguir publicando plantillas desde la página Plantillas.",
       "project_name": "Nombre del proyecto",
       "project_type": "Tipo de proyecto",
       "project_type_placeholder": "Selecciona un tipo",
@@ -75,8 +76,25 @@
       "cancel": "Cancelar",
       "continue": "Continuar",
       "delete_confirm_title": "¿Eliminar proyecto?",
-      "delete_confirm_description": "Esta acción no se puede deshacer.",
-      "delete": "Eliminar"
+      "delete_confirm_description": "Elimina todos los flujos, escenas, fichas, recursos y copias de seguridad del proyecto. El proyecto se puede recuperar desde la papelera del workspace durante un tiempo limitado.",
+      "delete": "Eliminar",
+      "page_title": "General",
+      "owner_only_label": "Solo el propietario del proyecto puede cambiar esto",
+      "details": "Detalles",
+      "type_hint": "Ajusta las plantillas y los preajustes de exportación.",
+      "description_hint": "Se muestra en el panel del workspace y en las plantillas.",
+      "language": "Idioma",
+      "source_language_row_hint": "Idioma base del texto original. Cambiarlo reinicia todas las traducciones existentes.",
+      "theme_colors": "Colores del tema",
+      "theme_colors_hint": "Lienzos y acentos de este proyecto",
+      "primary_hint": "Nodos, pines y selección.",
+      "accent_hint": "Resaltados y avisos.",
+      "theme_apply_row": "Aplicar colores",
+      "theme_apply_hint": "Previsualiza los colores de arriba y aplícalos al proyecto.",
+      "repair_action": "Reparar",
+      "delete_row": "Eliminar este proyecto",
+      "delete_hint": "Elimina flujos, escenas, fichas y copias de seguridad. Te pediremos que escribas el nombre del proyecto.",
+      "delete_type_name": "Escribe el nombre del proyecto para confirmar"
     },
     "members": {
       "invite_title": "Invitar a un miembro del proyecto",
@@ -99,6 +117,24 @@
         "pending": "Transfiriendo la propiedad del proyecto…",
         "cancel": "Cancelar",
         "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+      },
+      "page_title": "Miembros",
+      "invite_section": "Invitar",
+      "roles_hint": "Los editores cambian el contenido. Los lectores solo leen.",
+      "members_section": "Miembros",
+      "count": "Sin miembros | 1 miembro | {count} miembros",
+      "owner_note": "Solo el propietario puede transferir la propiedad o quitar miembros.",
+      "roles": {
+        "owner": "Propietario",
+        "editor": "Editor",
+        "viewer": "Lector"
+      },
+      "remove": {
+        "action": "Quitar del proyecto",
+        "title": "¿Quitar a {name} de este proyecto?",
+        "description": "Perderá el acceso de inmediato. Puedes volver a invitarle más adelante.",
+        "confirm": "Quitar",
+        "cancel": "Cancelar"
       }
     },
     "localization": {
@@ -327,14 +363,24 @@
     },
     "version_control": {
       "auto_versioning": "Versionado automático",
-      "auto_versioning_description": "Crear versiones automáticamente al editar entidades.",
+      "auto_versioning_description": "Crea versiones de las entidades mientras editas",
       "flows": "Flujos",
       "scenes": "Escenas",
       "sheets": "Fichas",
       "save_changes": "Guardar cambios",
       "usage": "Uso",
       "project_snapshots": "Snapshots del proyecto",
-      "named_versions": "Versiones con nombre"
+      "named_versions": "Versiones con nombre",
+      "page_title": "Control de versiones",
+      "flows_hint": "Grafos de diálogo y lógica.",
+      "scenes_hint": "Mapas y exploración.",
+      "sheets_hint": "Personajes, objetos y variables.",
+      "quota": "Cuota",
+      "quota_hint": "Cuenta para el plan",
+      "backups": "Copias de seguridad",
+      "backups_hint": "Instantáneas completas del proyecto, incluidas las que están en curso.",
+      "named_versions_hint": "Versiones de entidades promocionadas.",
+      "view_usage": "Ver uso"
     },
     "usage_limits": {
       "current_plan": "Plan actual",
@@ -391,6 +437,27 @@
       },
       "accessibility": {
         "status": "Estado de {label}: {status}"
+      },
+      "page_title": "Uso",
+      "project_limits_hint": "Bloquean nuevas entidades o versiones en este proyecto",
+      "items_breakdown": "Fichas {sheets} · Flujos {flows} · Escenas {scenes} · Nodos de flujo {nodes}",
+      "backups": "Copias de seguridad",
+      "backups_hint": "Instantáneas completas del proyecto, incluidas las que están en curso.",
+      "named_versions_hint": "Versiones de entidades promocionadas.",
+      "reached_hint": {
+        "items": "Elimina fichas, flujos o escenas, o amplía el límite del plan para crear más.",
+        "backups": "Elimina una copia de seguridad o amplía el límite del plan para crear otra.",
+        "named_versions": "Elimina una versión con nombre o amplía el límite del plan para promocionar otra."
+      },
+      "plan_link": "Plan y uso",
+      "workspace_note": "Los límites del workspace (proyectos, miembros, almacenamiento) están en",
+      "workspace_note_link": "Workspace › Plan y uso",
+      "meter_status": {
+        "available": "Disponible",
+        "warning": "Cerca del límite",
+        "reached": "Límite alcanzado",
+        "unlimited": "Sin límite",
+        "unknown": "Desconocido"
       }
     },
     "import": {
@@ -648,6 +715,40 @@
       "info_findings": "Información adicional",
       "more_findings": "No se muestra {count} hallazgo más. | No se muestran {count} hallazgos más.",
       "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
+    },
+    "templates": {
+      "page_title": "Plantillas",
+      "publish_section": "Publicar",
+      "publish_row": "Publicar este proyecto como plantilla",
+      "publish_hint": "Crea una plantilla privada para nuevos proyectos de este workspace. Volver a publicar añade una versión.",
+      "no_permission": "Solo el propietario del proyecto o un administrador del workspace pueden publicar plantillas.",
+      "published_templates": "Plantillas publicadas",
+      "publish_template": "Publicar plantilla",
+      "publication_active": "Publicación en curso",
+      "history": "Historial",
+      "history_hint": "Últimas 10 publicaciones",
+      "empty_title": "Todavía no hay publicaciones",
+      "empty_text": "Publica este proyecto para crear una plantilla privada para este workspace.",
+      "dialog_title": "Publicar plantilla del proyecto",
+      "dialog_description": "Crea una versión inmutable a partir del estado actual del proyecto cuando la auditoría de plantilla se supere.",
+      "mode_new": "Nueva plantilla",
+      "mode_update": "Actualizar existente",
+      "existing": "Plantilla",
+      "existing_placeholder": "Selecciona una plantilla",
+      "existing_option": "{name} · v{version}",
+      "name": "Nombre de la plantilla",
+      "description": "Descripción de la plantilla",
+      "version_notes": "Notas de la versión",
+      "publication_new": "Publicación de nueva plantilla",
+      "publication_update": "Publicación de versión de plantilla",
+      "cancel": "Cancelar",
+      "status": {
+        "queued": "En cola",
+        "running": "Publicando",
+        "retrying": "Reintentando",
+        "published": "Publicada",
+        "failed": "Fallida"
+      }
     }
   }
 }

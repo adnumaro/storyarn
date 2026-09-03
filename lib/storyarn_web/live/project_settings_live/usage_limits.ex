@@ -22,20 +22,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.UsageLimits do
       current_scope={@current_scope}
       current_path={@current_path}
       settings_nav={@settings_nav}
-      workspace={@workspace}
-      project={@project}
     >
-      <:title>{dgettext("projects", "Usage Limits")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Review project and workspace usage against plan limits")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsUsageLimits"
         v-socket={@socket}
         v-inject="settings-layout"
         id="project-settings-usage-limits"
         usage-limits={serialize_usage_limits(@usage_limits)}
+        workspace-plan-path={~p"/users/settings/workspaces/#{@workspace.slug}/plan"}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """

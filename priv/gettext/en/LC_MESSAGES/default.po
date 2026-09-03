@@ -128,9 +128,9 @@ msgid "No changes detected"
 msgstr ""
 
 #: lib/storyarn_web/helpers/authorize.ex:134
-#: lib/storyarn_web/live/project_settings_live/general.ex:389
+#: lib/storyarn_web/live/project_settings_live/general.ex:370
 #: lib/storyarn_web/live/project_settings_live/snapshots.ex:740
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:172
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:171
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:289
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."

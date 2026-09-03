@@ -6,6 +6,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   alias Storyarn.Commercial
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.Helpers.SaveStatusTimer
 
   # ===========================================================================
   # Render
@@ -20,14 +21,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
       current_scope={@current_scope}
       current_path={@current_path}
       settings_nav={@settings_nav}
-      workspace={@workspace}
-      project={@project}
     >
-      <:title>{dgettext("projects", "Version Control")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Configure automatic entity versioning")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsVersionControl"
         v-socket={@socket}
@@ -37,6 +31,10 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
         auto-version-scenes={version_control_value(@version_control_form, :auto_version_scenes)}
         auto-version-sheets={version_control_value(@version_control_form, :auto_version_sheets)}
         version-usage={serialize_version_usage(@version_usage)}
+        usage-path={
+          ~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/settings/usage-limits"
+        }
+        save-status={Atom.to_string(@save_status)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -94,6 +92,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
             to_form(version_control_changeset(project), as: "version_control")
           )
           |> assign(:version_usage, Commercial.project_usage(project.id, project.workspace_id))
+          |> assign(:save_status, :idle)
 
         {:ok, socket}
 
@@ -145,7 +144,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
                :version_control_form,
                to_form(version_control_changeset(project), as: "version_control")
              )
-             |> put_flash(:info, dgettext("projects", "Version control settings saved."))}
+             |> SaveStatusTimer.mark_saved()}
 
           {:error, :unauthorized} ->
             project_access_lost(socket)
@@ -180,6 +179,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
   end
 
   @impl true
+  def handle_info({:reset_save_status, token}, socket) do
+    if socket.assigns[:save_status_reset_token] == token do
+      {:noreply, assign(socket, :save_status, :idle)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info(
         {:project_ownership_transferred, %{project_id: project_id}},
         %{assigns: %{project: %{id: project_id}}} = socket

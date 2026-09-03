@@ -316,6 +316,10 @@ defmodule StoryarnWeb.Router do
            ProjectSettingsLive.Members,
            :edit
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/templates",
+           ProjectSettingsLive.Templates,
+           :edit
+
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
            ProjectSettingsLive.Snapshots,
            :edit
