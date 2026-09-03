@@ -1,0 +1,76 @@
+assets/app/locales/es/project-settings.json
+  s_dc522f884e191b::t_5d4a318c294ea0 13,16,18-19,23,79-97,120-137,366,373-383,440-460,718-751
+assets/app/test/live/project/settings/ProjectSettingsUsageLimits.test.ts
+  s_dc522f884e191b::t_6b99bc8e007f97 41-43,76-78
+  s_dc522f884e191b::t_ae9142de7871e1 13,18-24,26,28-31,33-40,46-47,49-53,58-64,69,72-75,79-80,83,85-88,92-95
+lib/storyarn_web/live/project_settings_live/templates.ex
+  s_dc522f884e191b::t_07a1ea27340ae9 1-296
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_dc522f884e191b::t_f488ad83971ad4 4,6-11,18-22,41,44-48,51,53,58-59,62-65,67,70-71,73,76-88,91-97,100-119,121-122,127-145,153-161,167-171
+  s_dc522f884e191b::t_6b99bc8e007f97 146-152,162-165
+assets/app/locales/en/project-settings.json
+  s_dc522f884e191b::t_5d4a318c294ea0 12-13,16,18-19,23,79-97,120-137,365-366,373-383,440-460,718-751
+lib/storyarn_web/router.ex
+  s_dc522f884e191b::t_b944a47539b540 319-322
+assets/app/live/project/settings/ProjectSettingsMembers.vue
+  s_dc522f884e191b::t_968614947b2a34 2-4,6,18,48,61-68,70,78,101,116-137,141-147,150,154-160,162,166-167,172-173,175,190,195,199-240,242,244,246-249,251-257,260-288,290-292,296,298,302-303,305,309,315-330,332
+  s_dc522f884e191b::t_6b99bc8e007f97 180,183,196-198
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_b944a47539b540 16,298
+assets/app/test/live/project/settings/ProjectSettingsVersionControl.test.ts
+  s_dc522f884e191b::t_4c83bbf148617a 2,7,24-25,35,45,55,62-78,82
+  s_dc522f884e191b::t_6b99bc8e007f97 56-61,79-81
+priv/gettext/default.pot
+  s_dc522f884e191b::t_8d2e2be23f3ab2 131,133
+priv/gettext/en/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_8d2e2be23f3ab2 131,133
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_8d2e2be23f3ab2 34,60,62,64-65,70,172-174,177-179,182-187,197,202,207,212,227,232,242,247,360,654,664,687,703,714,748,1254,1260,1265,1271-1272,1277-1278,1283,1298,1318,1339
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_8d2e2be23f3ab2 34,60,62,64-65,70,172-174,177-179,182-187,197,202,207,212,227,232,242,247,360,654,664,687,703,714,748,1254,1260,1265,1271-1272,1277-1278,1283,1298,1318,1339
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_dc522f884e191b::t_6b99bc8e007f97 184-187,218-220
+  s_dc522f884e191b::t_7fb8a296690a76 2-13,33-34,40-41,45-50,75-86,96-124,127-139,142-162,167-183,189-217,221-224
+priv/gettext/projects.pot
+  s_dc522f884e191b::t_8d2e2be23f3ab2 34,60,62,64-65,70,172-174,177-179,182-187,197,202,207,212,227,232,242,247,360,654,664,687,703,714,748,1254,1260,1265,1271-1272,1277-1278,1283,1298,1318,1339
+assets/app/test/live/project/settings/ProjectSettingsTemplates.test.ts
+  s_dc522f884e191b::t_12a5447de61df7 1-138
+test/storyarn_web/live/project_settings_live/template_publication_test.exs
+  s_dc522f884e191b::t_b944a47539b540 17,20-21,24,38,68
+assets/app/live/project/settings/ProjectSettingsTemplates.vue
+  s_dc522f884e191b::t_6b99bc8e007f97 363-367
+  s_dc522f884e191b::t_ed3fa13ba72da6 32,72,180
+  s_dc522f884e191b::t_a6e93cca7642c6 1-31,33-71,73-179,181-362,368-378
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_dc522f884e191b::t_b944a47539b540 9,37,95,147,182-189
+  s_dc522f884e191b::t_d7f3f31dee6757 34-36
+priv/gettext/es/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_8d2e2be23f3ab2 131,133
+assets/app/test/live/project/settings/ProjectSettingsGeneral.test.ts
+  s_dc522f884e191b::t_5a0d24b272b558 7,19-35,76-77,81-85,88,90-91,93-96,101-117,149-152,154-168,178-186
+test/storyarn_web/live/project_live/settings_test.exs
+  s_dc522f884e191b::t_b944a47539b540 255,257,332-342
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_dc522f884e191b::t_d80b585e505a2b 2-6,15,45,110,166,280-285
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_dc522f884e191b::t_b97d51bba35d81 32
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_dc522f884e191b::t_972d8902381051 2,4,9-15,62,72,76,78-80,98-100,103-104,113-120,122-123,136-140,143-145,148-149,152-156,158-159,161-162,165-166,168-172,175,178-180,197,204,211,216,221-223,226,235,253-256,260-264,271,274-292,294-346,349,351-375,382,384-385,387,390-412,425,427-466,475,477,481-484,492,494,498,504,508-517
+  s_dc522f884e191b::t_ed3fa13ba72da6 414-424
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "1b67404028315a3abb26d0cf2c1d6899a4f38296",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
