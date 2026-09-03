@@ -51,6 +51,32 @@ describe("ProjectSettingsVersionControl entity auto-versioning", () => {
     expect(wrapper.findAll('[role="switch"]')[1].attributes("aria-checked")).toBe("true");
   });
 
+  it("lets only the latest request settle a switch toggled twice before a reply", async () => {
+    const live = createMockLive();
+    const wrapper = mount(ProjectSettingsVersionControl, {
+      props: { autoVersionFlows: true, versionUsage: null },
+      global: { provide: { _live_vue: live } },
+    });
+
+    const flows = () => wrapper.findAll('[role="switch"]')[0];
+    await flows().trigger("click");
+    await flows().trigger("click");
+
+    const calls = vi.mocked(live.pushEvent).mock.calls;
+    expect(calls).toHaveLength(2);
+    expect(flows().attributes("aria-checked")).toBe("true");
+
+    // The first reply belongs to a superseded request: the pending value stays.
+    calls[0]?.[2]?.({ ok: true });
+    await wrapper.vm.$nextTick();
+    expect(flows().attributes("aria-checked")).toBe("true");
+
+    // The latest reply settles it; without a prop change the server value shows.
+    calls[1]?.[2]?.({ ok: false });
+    await wrapper.vm.$nextTick();
+    expect(flows().attributes("aria-checked")).toBe("true");
+  });
+
   it("never presents unknown or zero count limits as unlimited", () => {
     const wrapper = mount(ProjectSettingsVersionControl, {
       props: {

@@ -94,13 +94,20 @@ function displayedValue(key: EntityKey): boolean {
   return pending.value[key] ?? serverValue(key);
 }
 
-function clearPending(key: EntityKey): void {
+// Only the latest request for a switch may settle its pending value: an
+// earlier reply must not drop a newer toggle of the same switch.
+const requestTokens: Record<EntityKey, number> = { flows: 0, scenes: 0, sheets: 0 };
+
+function clearPending(key: EntityKey, token: number): void {
+  if (requestTokens[key] !== token) return;
+
   const { [key]: _cleared, ...rest } = pending.value;
   pending.value = rest;
 }
 
 function toggle(key: EntityKey, value: boolean): void {
   pending.value = { ...pending.value, [key]: value };
+  const token = ++requestTokens[key];
 
   const payload = {
     auto_version_flows: String(displayedValue("flows")),
@@ -111,8 +118,8 @@ function toggle(key: EntityKey, value: boolean): void {
   live.pushEvent(
     "save_version_control",
     { version_control: payload },
-    () => clearPending(key),
-    () => clearPending(key),
+    () => clearPending(key, token),
+    () => clearPending(key, token),
   );
 }
 
