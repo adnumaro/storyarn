@@ -97,6 +97,15 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorkerTest do
     refute_received {:exact_multipart_abort_dispatched, _, _}
   end
 
+  test "discards a malformed legacy delivery instead of snoozing forever" do
+    job = %Oban.Job{args: %{"storage_keys" => ["../invalid"]}}
+
+    assert {:discard, :invalid_storage_cleanup_job} =
+             DeleteStorageObjectsWorker.perform(job)
+
+    assert Repo.aggregate(StorageCleanupRequest, :count, :id) == 0
+  end
+
   test "a persisted multipart backoff snoozes the same per-request delivery" do
     key = "projects/1/snapshots/archives/v2/staging/RetryBackoff0001/snapshot.zip"
     next_attempt_at = DateTime.add(TimeHelpers.now(), 60, :second)

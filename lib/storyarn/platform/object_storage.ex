@@ -78,7 +78,13 @@ defmodule Storyarn.Platform.ObjectStorage do
   caller holds an external write fence for the complete verify/delete operation.
   """
   @callback delete_if_matches(key, object_identity()) :: :ok | {:error, term()}
-  @doc "Returns an opaque stable identity for the configured provider namespace."
+  @doc """
+  Returns the current opaque identity of the configured provider namespace.
+
+  Read only configuration or safe local root metadata. This callback must not
+  issue remote provider requests or substitute a previously captured identity:
+  callers revalidate it while committing namespace-sensitive database changes.
+  """
   @callback namespace_fingerprint() :: {:ok, String.t()} | {:error, term()}
   @callback get_url(key) :: url
   @callback download(key) :: {:ok, binary_data} | {:error, term()}

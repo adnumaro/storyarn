@@ -20,7 +20,7 @@ defmodule Storyarn.Repo.Migrations.RemoveTransitionalSnapshotCutoverScaffoldingM
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
   @exact_cleanup_authorization_config :exact_multipart_cleanup_cutover_authorization
-  @exact_cleanup_authorization "20260903133000"
+  @exact_cleanup_authorization "20260903190000"
   @authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
   @lock_gate_timeout 15_000
 

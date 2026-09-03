@@ -79,6 +79,8 @@ defmodule Storyarn.Architecture.StorageCompositionBoundaryTest do
     transact_with_storage_handoff: 3,
     transact_with_storage_key_admission: 2,
     transact_with_storage_key_admission: 3,
+    transact_with_storage_key_locks: 2,
+    transact_with_storage_key_locks: 3,
     upload: 3,
     upload_stream: 3,
     with_operation_deadline: 1,
@@ -89,8 +91,6 @@ defmodule Storyarn.Architecture.StorageCompositionBoundaryTest do
     with_storage_key_lock: 3,
     with_storage_key_locks: 2,
     with_storage_key_locks: 3,
-    transact_with_storage_key_locks: 2,
-    transact_with_storage_key_locks: 3,
     wrapper_owned_transaction_lock_held?: 1,
     write_operation_deadline: 0
   ]

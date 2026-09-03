@@ -352,12 +352,12 @@ the retired columns or worker-name fence.
 
 ### Exact multipart cleanup one-release cutover
 
-Migration `20260903133000_harden_exact_multipart_cleanup.exs` changes the
-execution contract of existing `storage_cleanup` jobs and requests. A binary
-from before this migration can ignore the new blocked state and run the retired
-aggregate deletion path. Consequently, this migration must never overlap a
-running old application or worker, even though its additive columns are schema
-compatible.
+Migration `20260903190000_fence_storage_cleanup_writers.exs` adds indexed, durable cleanup ownership for the writer fence. The earlier
+`20260903133000_harden_exact_multipart_cleanup.exs` is historical and remains
+unchanged. This incremental migration does not recreate the FSM or reset any
+in-flight request, claim, cursor, generation, or retained upload reference.
+Older writers do not honor this ownership fence, so the additive migration
+must never overlap a running old application or worker.
 
 The main deployment workflow queries the production migration history before
 every deploy and enforces the one-release stop-the-world cutover while this
@@ -376,7 +376,7 @@ that Machine, so no old binary is alive while the migration commits. The check
 emits only aggregate counts and the boolean migration state.
 
 The acknowledgement is
-`EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903133000`. It does not
+`EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000`. It does not
 bypass any database precondition: it records that the external stop-the-world
 step was deliberately executed. Every workflow run checks for the temporary
 secret and stages its removal, including a retry where the migration committed
@@ -404,8 +404,8 @@ database operations, then retry. Do not bypass the drain by killing the Machine.
 
 Do not use `fly releases rollback`, redeploy a commit older than this migration,
 or restore an earlier application image after the cutover. The additive schema
-cannot make a pre-ENG-116 worker understand the durable multipart phases, so
-that rollback would reintroduce the retired mutation path. Record the deployed
+cannot make older writers honor durable cleanup ownership, even when they
+already understand the ENG-116 multipart phases. Record the deployed
 commit SHA and Fly image digest in the maintenance evidence and treat them as
 the minimum supported application release; recovery is forward-only.
 

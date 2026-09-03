@@ -577,7 +577,6 @@ storage_cleanup_persistence_ownership = %{
       path: "lib/storyarn/projects/assets/execution/multipart_cleanup.ex",
       functions: [
         %{identity: "def reopen_confirmed/1", operations: [:update]},
-        %{identity: "def resume_for_replay/1", operations: [:update]},
         %{identity: "defp block_unbound_legacy_request/1", operations: [:update]},
         %{identity: "defp clear_retry_state_for_replay/1", operations: [:update]},
         %{identity: "defp consume_confirmed_request/2", operations: [:delete]},
@@ -590,6 +589,7 @@ storage_cleanup_persistence_ownership = %{
         %{identity: "defp persist_residue_state/3", operations: [:update]},
         %{identity: "defp release_claim/1", operations: [:update]},
         %{identity: "defp reset_blocked_request_for_replay/1", operations: [:update]},
+        %{identity: "defp retire_expired_claim/2", operations: [:update]},
         %{identity: "defp transition_claimed/2", operations: [:update]}
       ],
       reason: "Projects owns the durable exact multipart cleanup state machine"
@@ -599,12 +599,11 @@ storage_cleanup_persistence_ownership = %{
       write_authority: :full_lifecycle,
       path: "lib/storyarn/projects/assets/execution/storage_compensation.ex",
       functions: [
-        %{identity: "defp defer_planned_cleanup/2", operations: [:update]},
-        %{identity: "defp insert_cleanup_request/3", operations: [:insert]},
+        %{identity: "defp insert_cleanup_request_with_handoff/2", operations: [:insert]},
         %{identity: "defp retry_persisted_cleanup_request/2", operations: [:delete]},
         %{identity: "defp rotate_persisted_cleanup_request/2", operations: [:delete, :insert]}
       ],
-      reason: "Projects owns durable cleanup creation, retry, rotation and lifecycle transitions"
+      reason: "Projects owns durable cleanup creation, retry and rotation"
     },
     %{
       context: :scenes,

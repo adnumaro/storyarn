@@ -281,6 +281,55 @@ defmodule Storyarn.Projects.Assets.StorageKeyLockTest do
              end)
   end
 
+  test "writer admission reuses a session checkout without retaining its transaction locks" do
+    storage_key = "projects/42/assets/#{Ecto.UUID.generate()}/session-admission.png"
+    lock_name = "snapshot-restore-admission:#{Ecto.UUID.generate()}"
+
+    assert :session_complete =
+             Sandbox.unboxed_run(Repo, fn ->
+               StorageKeyLock.with_session_lock(lock_name, fn ->
+                 assert Repo.checked_out?()
+                 refute Repo.in_transaction?()
+
+                 assert :writer_admitted =
+                          PlatformKeyLock.transact_with_storage_key_admission(storage_key, fn ->
+                            assert Repo.in_transaction?()
+                            :writer_admitted
+                          end)
+
+                 assert Repo.checked_out?()
+                 refute Repo.in_transaction?()
+
+                 assert %{rows: [[0]]} =
+                          Repo.query!("""
+                          SELECT count(*)
+                          FROM pg_locks
+                          WHERE locktype = 'advisory' AND pid = pg_backend_pid()
+                            AND classid IN (731001, 731003)
+                          """)
+
+                 :session_complete
+               end)
+             end)
+  end
+
+  test "writer admission still rejects an existing transaction before its callback" do
+    storage_key = "projects/42/assets/#{Ecto.UUID.generate()}/transaction-admission.png"
+
+    assert {:ok, {:error, :storage_key_admission_requires_outside_transaction}} =
+             Sandbox.unboxed_run(Repo, fn ->
+               Repo.transaction(fn ->
+                 result =
+                   PlatformKeyLock.transact_with_storage_key_admission(storage_key, fn ->
+                     flunk("admission must not run inside a caller-owned transaction")
+                   end)
+
+                 assert %{rows: [[1]]} = Repo.query!("SELECT 1")
+                 result
+               end)
+             end)
+  end
+
   test "durable handoff waits for an earlier writer admission before running its database callback" do
     parent = self()
     asset_key = "projects/42/assets/#{Ecto.UUID.generate()}/writer-first.png"

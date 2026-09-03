@@ -35,6 +35,7 @@ defmodule Storyarn.Workers.DeleteStorageObjectsWorker do
   def perform(%Oban.Job{args: %{"storage_keys" => storage_keys}}) when is_list(storage_keys) do
     case Projects.persist_cleanup_request(storage_keys) do
       {:ok, _request} -> :ok
+      {:error, :no_valid_storage_keys} -> {:discard, :invalid_storage_cleanup_job}
       {:error, reason} -> persist_retry(reason)
     end
   end

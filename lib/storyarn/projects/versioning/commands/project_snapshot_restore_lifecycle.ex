@@ -362,15 +362,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
          {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
       opts = Keyword.put(opts, :provider_namespace_fingerprint, provider_namespace_fingerprint)
 
-      Storage.with_captured_namespace_fingerprint(provider_namespace_fingerprint, fn ->
-        "project-snapshot-restore:#{project_id}"
-        |> StorageKeyLock.with_session_lock(
-          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-          fn -> recover_abandoned_delivery_locked(candidate, opts) end,
-          acquisition_timeout: timeout
-        )
-        |> normalize_delivery_recovery_lock_result()
-      end)
+      "project-snapshot-restore:#{project_id}"
+      |> StorageKeyLock.with_session_lock(
+        fn -> recover_abandoned_delivery_locked(candidate, opts) end,
+        acquisition_timeout: timeout
+      )
+      |> normalize_delivery_recovery_lock_result()
     end
   end
 
@@ -431,14 +428,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
       {:ok, provider_namespace_fingerprint} ->
         opts = Keyword.put(opts, :provider_namespace_fingerprint, provider_namespace_fingerprint)
 
-        Storage.with_captured_namespace_fingerprint(provider_namespace_fingerprint, fn ->
-          "project-snapshot-restore:#{restore.project_id}"
-          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-          |> StorageKeyLock.with_session_lock(fn ->
-            perform_locked(restore.id, requested_generation, executor, opts)
-          end)
-          |> normalize_lock_result()
+        "project-snapshot-restore:#{restore.project_id}"
+        |> StorageKeyLock.with_session_lock(fn ->
+          perform_locked(restore.id, requested_generation, executor, opts)
         end)
+        |> normalize_lock_result()
 
       {:error, _reason} ->
         {:retry, :snapshot_archive_storage_unavailable}

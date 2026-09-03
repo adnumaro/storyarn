@@ -6,7 +6,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   alias Storyarn.Repo
   alias Storyarn.Repo.Migrations.AddSnapshotStorageAccounting
   alias Storyarn.Repo.Migrations.AllowZeroByteSnapshotExportLeases
-  alias Storyarn.Repo.Migrations.HardenExactMultipartCleanup
+  alias Storyarn.Repo.Migrations.FenceStorageCleanupWriters
   alias Storyarn.Repo.Migrations.MakeProjectSnapshotsV2Only
 
   @storage_accounting_migration 20_260_804_120_000
@@ -14,12 +14,12 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
   @barrier_migration 20_260_810_130_000
   @v2_only_migration 20_260_811_180_000
   @scaffolding_cleanup_migration 20_260_812_100_000
-  @exact_multipart_cleanup_migration 20_260_903_133_000
+  @exact_multipart_cleanup_migration 20_260_903_190_000
   @release_gate :enforce_snapshot_lifecycle_release_gate
   @cleanup_authorization_config :project_snapshot_scaffolding_cleanup_authorization
   @cleanup_authorization "20260812100000"
   @exact_cleanup_authorization_config :exact_multipart_cleanup_cutover_authorization
-  @exact_cleanup_authorization "20260903133000"
+  @exact_cleanup_authorization "20260903190000"
   @exact_cleanup_queues ~w(
     imports
     imports_maintenance
@@ -133,10 +133,10 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     )
   end
 
-  if !Code.ensure_loaded?(HardenExactMultipartCleanup) do
+  if !Code.ensure_loaded?(FenceStorageCleanupWriters) do
     Code.require_file(
       Path.expand(
-        "../../priv/repo/migrations/20260903133000_harden_exact_multipart_cleanup.exs",
+        "../../priv/repo/migrations/20260903190000_fence_storage_cleanup_writers.exs",
         __DIR__
       )
     )
@@ -221,6 +221,105 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
     with_exact_cleanup_authorization(nil, fn ->
       assert :migrated = Release.run_project_snapshot_migrations(Repo, fn -> :migrated end)
     end)
+  end
+
+  test "the applied FSM migration does not bypass the additive writer-fence cutover" do
+    use_isolated_schema!()
+
+    create_schema_migrations!([
+      @storage_accounting_migration,
+      @lifecycle_migration,
+      @barrier_migration,
+      @v2_only_migration,
+      @scaffolding_cleanup_migration,
+      20_260_903_133_000
+    ])
+
+    with_exact_cleanup_authorization("20260903133000", fn ->
+      assert_raise RuntimeError, ~r/EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000/, fn ->
+        Release.run_project_snapshot_migrations(Repo, fn -> :unreachable end)
+      end
+    end)
+  end
+
+  test "incremental writer fencing backfills ownership without resetting in-flight FSM state" do
+    prefix = use_isolated_schema!()
+
+    create_schema_migrations!([
+      @storage_accounting_migration,
+      @lifecycle_migration,
+      @barrier_migration,
+      @v2_only_migration,
+      @scaffolding_cleanup_migration,
+      20_260_903_133_000
+    ])
+
+    Repo.query!(
+      "CREATE TABLE storage_cleanup_requests (LIKE public.storage_cleanup_requests INCLUDING DEFAULTS INCLUDING CONSTRAINTS, PRIMARY KEY (id))"
+    )
+
+    Repo.query!(
+      "CREATE TABLE storage_cleanup_multipart_uploads (LIKE public.storage_cleanup_multipart_uploads INCLUDING DEFAULTS INCLUDING CONSTRAINTS, PRIMARY KEY (id), FOREIGN KEY (cleanup_request_id) REFERENCES storage_cleanup_requests(id) ON DELETE CASCADE)"
+    )
+
+    Repo.query!("CREATE TABLE oban_jobs (id bigint PRIMARY KEY, state text NOT NULL)")
+
+    Repo.query!(
+      "CREATE TABLE storage_cleanup_ownership_receipts (cleanup_request_id bigint PRIMARY KEY, storage_keys text[] NOT NULL CHECK (cardinality(storage_keys) > 0), recorded_at timestamp NOT NULL)"
+    )
+
+    Repo.query!(
+      "CREATE TABLE storage_cleanup_ownership_namespaces (cleanup_request_id bigint NOT NULL REFERENCES storage_cleanup_ownership_receipts(cleanup_request_id) ON DELETE RESTRICT, object_prefix text NOT NULL, PRIMARY KEY (cleanup_request_id, object_prefix))"
+    )
+
+    key = "workspace-snapshot-imports/v1/1/00000000-0000-0000-0000-000000000001/snapshot.zip"
+
+    Repo.query!(
+      """
+      INSERT INTO storage_cleanup_requests
+        (id, storage_keys, owner_kind, provider_namespace_fingerprint,
+         multipart_cleanup_phase, multipart_cleanup_generation, multipart_cleanup_cursor,
+         multipart_cleanup_inventory_complete, multipart_cleanup_claim_token,
+         multipart_cleanup_claim_expires_at, inserted_at, updated_at)
+      VALUES (1, ARRAY[$1]::text[], 'storage_compensation', repeat('a', 64),
+              'delete', 7, 2, true, '00000000-0000-0000-0000-000000000002',
+              now() + interval '10 minutes', now(), now())
+      """,
+      [key]
+    )
+
+    Repo.query!(
+      """
+      INSERT INTO storage_cleanup_multipart_uploads
+        (id, cleanup_request_id, storage_key, upload_id, reference_digest,
+         last_aborted_generation, last_absent_generation, inserted_at, updated_at)
+      VALUES (1, 1, $1, 'retained-upload-id', repeat('b', 64), 7, 6, now(), now())
+      """,
+      [key]
+    )
+
+    before_request = Repo.query!("SELECT row_to_json(request) FROM storage_cleanup_requests AS request").rows
+    before_upload = Repo.query!("SELECT row_to_json(upload) FROM storage_cleanup_multipart_uploads AS upload").rows
+
+    Release.run_project_snapshot_migrations(Repo, fn ->
+      Runner.run(Repo, Repo.config(), @exact_multipart_cleanup_migration, FenceStorageCleanupWriters, :forward, :up, :up,
+        prefix: prefix,
+        log: false
+      )
+    end)
+
+    assert Repo.query!("SELECT row_to_json(request) FROM storage_cleanup_requests AS request").rows == before_request
+
+    assert Repo.query!("SELECT row_to_json(upload) FROM storage_cleanup_multipart_uploads AS upload").rows ==
+             before_upload
+
+    assert Repo.query!("SELECT cleanup_request_id, storage_keys FROM storage_cleanup_ownership_receipts").rows == [
+             [1, [key]]
+           ]
+
+    assert Repo.query!(
+             "SELECT to_regclass('storage_cleanup_requests_storage_keys_gin_idx') IS NOT NULL, to_regclass('storage_cleanup_ownership_receipts_storage_keys_gin_idx') IS NOT NULL"
+           ).rows == [[true, true]]
   end
 
   test "a mixed-case prefix reaches the frozen migration ABI and applies real DDL" do
@@ -444,7 +543,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
       "20260810130000_allow_zero_byte_snapshot_export_leases.exs",
       "20260811180000_make_project_snapshots_v2_only.exs",
       "20260812100000_remove_transitional_snapshot_cutover_scaffolding.exs",
-      "20260903133000_harden_exact_multipart_cleanup.exs"
+      "20260903190000_fence_storage_cleanup_writers.exs"
     ]
 
     for migration_file <- migration_files do
@@ -460,7 +559,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
 
   test "the exact cleanup migration preserves the retired snapshot-key ratchet" do
     source =
-      "../../priv/repo/migrations/20260903133000_harden_exact_multipart_cleanup.exs"
+      "../../priv/repo/migrations/20260903190000_fence_storage_cleanup_writers.exs"
       |> Path.expand(__DIR__)
       |> File.read!()
 
@@ -565,7 +664,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
         Repo,
         Repo.config(),
         @exact_multipart_cleanup_migration,
-        HardenExactMultipartCleanup,
+        FenceStorageCleanupWriters,
         :forward,
         :up,
         :up,
@@ -574,7 +673,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
       )
     end
 
-    refute column_exists?("storage_cleanup_requests", "multipart_cleanup_phase")
+    assert Repo.query!("SELECT to_regclass('storage_cleanup_requests_storage_keys_gin_idx') IS NULL").rows == [[true]]
   end
 
   test "the exact multipart cleanup rollback also rejects direct production execution" do
@@ -585,7 +684,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
         Repo,
         Repo.config(),
         @exact_multipart_cleanup_migration,
-        HardenExactMultipartCleanup,
+        FenceStorageCleanupWriters,
         :backward,
         :down,
         :down,
@@ -605,7 +704,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
           Repo,
           Repo.config(),
           @exact_multipart_cleanup_migration,
-          HardenExactMultipartCleanup,
+          FenceStorageCleanupWriters,
           :backward,
           :down,
           :down,
@@ -647,7 +746,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
             Repo,
             Repo.config(),
             @exact_multipart_cleanup_migration,
-            HardenExactMultipartCleanup,
+            FenceStorageCleanupWriters,
             :forward,
             :up,
             :up,
@@ -657,7 +756,7 @@ defmodule Storyarn.ReleaseSnapshotCutoverTest do
         end)
       end
 
-      refute column_exists?("storage_cleanup_requests", "multipart_cleanup_phase")
+      assert Repo.query!("SELECT to_regclass('storage_cleanup_requests_storage_keys_gin_idx') IS NULL").rows == [[true]]
     end
   end
 

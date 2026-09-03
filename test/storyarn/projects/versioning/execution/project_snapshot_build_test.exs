@@ -34,6 +34,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
   alias Storyarn.Sheets.Sheet
   alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Workers.BuildProjectSnapshotWorker
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
   describe "request_full_project_snapshot/3" do
@@ -2013,9 +2014,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       Application.put_env(
         :storyarn,
         SnapshotArchiveStorage,
-        Keyword.put(original_snapshot_config, :cleanup_persist_fun, fn _keys ->
+        Keyword.put(original_snapshot_config, :cleanup_persist_fun, fn keys ->
           send(parent, :snapshot_staging_cleanup_attempted)
-          {:error, :database_unavailable}
+          StorageCompensation.persist_planned_cleanup_request(keys)
         end)
       )
 
@@ -2028,7 +2029,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 2
                )
 
-      refute_receive :snapshot_staging_cleanup_attempted
+      assert_receive :snapshot_staging_cleanup_attempted
       assert ready.lifecycle_state == "ready"
       assert ready.integrity_state == "verified"
       assert Repo.get!(StorageReservation, requested.storage_reservation_id).status == "committed"
@@ -2634,7 +2635,50 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
                  max_attempts: 5
                })
 
+      refute_enqueued(
+        worker: DeleteStorageObjectsWorker,
+        args: %{cleanup_request_id: cleanup_request_id}
+      )
+
       assert %StorageCleanupRequest{
+               multipart_cleanup_phase: "discover",
+               multipart_cleanup_generation: 0,
+               multipart_quiescence_started_at: %DateTime{} = started_at,
+               multipart_quiescence_not_before: %DateTime{} = not_before
+             } = cleanup_request = Repo.get!(StorageCleanupRequest, cleanup_request_id)
+
+      assert DateTime.after?(not_before, started_at)
+      assert {:deferred, handoff_seconds} = retry_cleanup_request_until_boundary(cleanup_request_id)
+      assert handoff_seconds > 1
+
+      handoff_now = TimeHelpers.now()
+
+      cleanup_request
+      |> StorageCleanupRequest.multipart_quiescence_changeset(
+        DateTime.add(handoff_now, -2, :second),
+        DateTime.add(handoff_now, -1, :second)
+      )
+      |> Repo.update!()
+
+      assert :ok =
+               RetryStorageCleanupRequestsWorker.perform(%Oban.Job{
+                 args: %{},
+                 attempt: 1,
+                 max_attempts: 5
+               })
+
+      assert_enqueued(
+        worker: DeleteStorageObjectsWorker,
+        args: %{cleanup_request_id: cleanup_request_id}
+      )
+
+      assert {:deferred, defer_seconds} =
+               retry_cleanup_request_until_boundary(cleanup_request_id)
+
+      assert defer_seconds > 0
+
+      assert %StorageCleanupRequest{
+               multipart_cleanup_phase: "quiet",
                multipart_quiescence_started_at: %DateTime{},
                multipart_quiescence_not_before: %DateTime{}
              } = Repo.get!(StorageCleanupRequest, cleanup_request_id)
@@ -2649,12 +2693,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       )
       |> Repo.update!()
 
-      assert :ok =
-               RetryStorageCleanupRequestsWorker.perform(%Oban.Job{
-                 args: %{},
-                 attempt: 1,
-                 max_attempts: 5
-               })
+      assert :ok = retry_cleanup_request_until_boundary(cleanup_request_id)
 
       refute Repo.get(StorageCleanupRequest, cleanup_request_id)
     end
@@ -3164,6 +3203,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
     %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
     DateTime.truncate(now, :second)
   end
+
+  # Exact multipart cleanup intentionally performs one provider operation per
+  # delivery. Drive consecutive deliveries until it reaches a real wait or a
+  # terminal result.
+  defp retry_cleanup_request_until_boundary(cleanup_request_id, attempts_left \\ 100)
+
+  defp retry_cleanup_request_until_boundary(cleanup_request_id, attempts_left) when attempts_left > 0 do
+    case StorageCompensation.retry_persisted_cleanup_request_by_id(cleanup_request_id) do
+      {:deferred, 1} -> retry_cleanup_request_until_boundary(cleanup_request_id, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp retry_cleanup_request_until_boundary(_cleanup_request_id, 0),
+    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp set_stale_build_heartbeat_seconds(seconds) do
     original = Application.fetch_env!(:storyarn, :snapshot_lifecycle)

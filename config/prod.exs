@@ -13,7 +13,7 @@ config :storyarn, StoryarnWeb.Endpoint,
   force_ssl: [hsts: true, rewrite_on: [:x_forwarded_proto]]
 
 # Release-command integrity guard, not a runtime or user-facing feature flag.
-# Frozen snapshot and exact multipart cleanup migrations require the release
+# Frozen snapshot and additive storage-writer fencing migrations require the release
 # task's process authorization; direct production migration entrypoints fail
 # before their protected DDL.
 config :storyarn, :enforce_snapshot_lifecycle_release_gate, true

@@ -11,6 +11,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
 
   alias Storyarn.Commercial
   alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
@@ -39,6 +40,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
   alias Storyarn.Projects.Persistence.UserRecord, as: User
   alias Storyarn.Projects.Project
   alias Storyarn.Projects.References.ProjectReferenceIntegrity
+  alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Repo
 
   require Logger
@@ -1998,13 +2000,33 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
          :ok <- lock_snapshot_asset_insert_family_references(project.id, changesets) do
       storage_keys = Enum.map(changesets, &Ecto.Changeset.get_field(&1, :key))
 
-      StorageKeyLock.with_storage_key_locks(storage_keys, fn ->
+      with_snapshot_asset_insert_storage_locks(project, storage_keys, fn ->
         insert_snapshot_asset_changesets(changesets)
       end)
     end
   end
 
   def import_snapshot_assets_locked(_project, _uploaded_by_id, _attrs_list), do: {:error, :invalid_snapshot_asset_import}
+
+  defp with_snapshot_asset_insert_storage_locks(project, storage_keys, fun) do
+    if workspace_snapshot_import_owns_asset_keys?(project, storage_keys) do
+      # The held workspace lock keeps this durable owner active through adoption.
+      # Retain exact-key exclusion without treating this DB-only adoption as a new object write.
+      ObjectStorage.with_storage_key_locks(storage_keys, fun)
+    else
+      StorageKeyLock.with_storage_key_locks(storage_keys, fun)
+    end
+  end
+
+  defp workspace_snapshot_import_owns_asset_keys?(project, storage_keys) do
+    Repo.exists?(
+      from import in WorkspaceSnapshotImport,
+        where:
+          import.workspace_id == ^project.workspace_id and import.reserved_project_id == ^project.id and
+            import.status == "running" and import.stage == "materializing" and
+            fragment("? @> ?::varchar[]", import.materialization_storage_keys, ^storage_keys)
+    )
+  end
 
   @doc false
   @spec update_imported_snapshot_assets_locked(Project.t(), [{asset(), map()}]) ::

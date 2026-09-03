@@ -27,7 +27,7 @@ jobs:
           fi
 
           if migration_state="$(flyctl ssh console --app storyarn-prod --command "/app/bin/storyarn rpc '
-              version = 20_260_903_133_000
+              version = 20_260_903_190_000
               applied = version in Ecto.Migrator.migrated_versions(Storyarn.Repo)
               IO.puts(\"storyarn-exact-cleanup-applied=#{applied}\")
             '")"; then
@@ -103,7 +103,7 @@ jobs:
         if: steps.exact-cleanup-cutover.outputs.required == 'true'
         run: >-
           flyctl secrets set --stage --app storyarn-prod
-          EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903133000
+          EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903190000
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 

@@ -13,8 +13,8 @@ defmodule Storyarn.Platform.Release do
   @snapshot_v2_only_migration 20_260_811_180_000
   @snapshot_scaffolding_cleanup_migration 20_260_812_100_000
   @snapshot_scaffolding_cleanup_authorization "20260812100000"
-  @exact_multipart_cleanup_migration 20_260_903_133_000
-  @exact_multipart_cleanup_authorization "20260903133000"
+  @exact_multipart_cleanup_migration 20_260_903_190_000
+  @exact_multipart_cleanup_authorization "20260903190000"
   # Frozen migrations consume this process-local key directly so they can
   # enforce the release gate without calling application code. Keep the atom
   # stable even if this module or its helper functions are renamed.

@@ -149,6 +149,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       assert request_storage_keys == intent.storage_keys
       assert Billing.workspace_storage_usage(project.workspace_id).full_snapshots == %{bytes: 0, count: 0}
 
+      assert {:ok, {:deferred, handoff_seconds}} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id)
+
+      assert handoff_seconds > 1
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase == "discover"
+      assert {:ok, _stat} = Storage.stat(ready.manifest_storage_key)
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+
       assert {:ok, {:deferred, seconds}} = process_cleanup_until_boundary(intent.id)
       assert seconds == Storage.multipart_cleanup_quiescence_seconds()
       expire_multipart_quiescence!(intent.cleanup_request_id)
@@ -190,30 +198,65 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       end)
     end
 
-    test "completes only after the coordinator's read-only confirmation pass" do
+    test "reopens lifecycle cleanup when a late upload appears during read-only confirmation" do
       user = user_fixture()
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
 
+      expire_multipart_quiescence!(intent.cleanup_request_id)
       assert {:ok, {:deferred, _seconds}} = process_cleanup_until_boundary(intent.id)
 
-      assert %StorageCleanupRequest{multipart_cleanup_phase: "quiet"} =
-               Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      quiet_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert quiet_request.multipart_cleanup_phase == "quiet"
 
       expire_multipart_quiescence!(intent.cleanup_request_id)
 
-      before_confirmation = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert {:ok, {:deferred, 1}} =
+               Versioning.process_project_snapshot_cleanup_intent(intent.id)
+
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase ==
+               "verify_inventory"
+
+      cleanup_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      test_pid = self()
+
+      late_inventory_opts = [
+        namespace_fun: fn -> {:ok, cleanup_request.provider_namespace_fingerprint} end,
+        list_fun: fn key ->
+          send(test_pid, {:late_multipart_inventory, key})
+
+          {:ok,
+           %{
+             uploads: [%{key: key, upload_id: "late-upload-id"}],
+             inventory_complete: true
+           }}
+        end,
+        abort_fun: fn _key, _upload_id -> flunk("confirmation must remain read-only") end,
+        object_delete_fun: fn _key, _identity -> flunk("confirmation must remain read-only") end,
+        state_fun: fn _key, _upload_id -> flunk("new references are not probed during inventory") end
+      ]
+
+      assert {:deferred, 1} =
+               StorageCompensation.delete_cleanup_request_keys(
+                 cleanup_request.id,
+                 cleanup_request.storage_keys,
+                 late_inventory_opts
+               )
+
+      assert_received {:late_multipart_inventory, _key}
+
+      reopened_request = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
+      assert reopened_request.multipart_cleanup_phase == "abort"
+      assert reopened_request.multipart_cleanup_generation > quiet_request.multipart_cleanup_generation
+      assert Repo.get!(SnapshotCleanupIntent, intent.id).remaining_storage_keys == intent.storage_keys
+
+      assert {:ok, {:deferred, _seconds}} = process_cleanup_until_boundary(intent.id)
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase == "quiet"
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
       assert {:ok, :completed} = process_cleanup_until_boundary(intent.id)
-
-      assert %StorageCleanupRequest{
-               multipart_cleanup_phase: "confirmed",
-               multipart_quiescence_started_at: started_at,
-               multipart_quiescence_not_before: not_before
-             } = Repo.get!(StorageCleanupRequest, intent.cleanup_request_id)
-
-      assert started_at == before_confirmation.multipart_quiescence_started_at
-      assert not_before == before_confirmation.multipart_quiescence_not_before
+      assert Repo.get!(StorageCleanupRequest, intent.cleanup_request_id).multipart_cleanup_phase == "confirmed"
     end
 
     test "keeps deletion available after runtime manifest limits are lowered" do
@@ -263,6 +306,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
         {:error, [failed_key]}
       end
 
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+
       assert {:error, :storage_provider_failure} =
                process_cleanup_until_boundary(intent.id,
                  delete_fun: delete_with_one_failure
@@ -288,6 +333,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, :terminal} =
                process_cleanup_until_boundary(intent.id,
@@ -320,6 +367,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, :terminal} =
                process_cleanup_until_boundary(intent.id,
@@ -375,6 +424,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       project = project_fixture(user)
       ready = create_ready_snapshot(user, project)
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, :terminal} =
                process_cleanup_until_boundary(intent.id,
@@ -455,6 +506,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       ready = create_ready_snapshot(user, project)
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
 
+      expire_multipart_quiescence!(intent.cleanup_request_id)
+
       assert {:ok, :terminal} =
                process_cleanup_until_boundary(intent.id,
                  delete_fun: fn keys -> {:error, keys} end,
@@ -486,6 +539,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       assert {:ok, intent} = Versioning.delete_project_snapshot(user_scope_fixture(user), project, ready.id)
 
       fail_all = fn keys -> {:error, keys} end
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, :terminal} =
                process_cleanup_until_boundary(intent.id,
@@ -789,6 +844,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
       assert intent.reason == "expired_build"
       assert intent.required_delete_passes == 2
       assert intent.completed_delete_passes == 0
+
+      expire_multipart_quiescence!(intent.cleanup_request_id)
 
       assert {:ok, {:deferred, defer_seconds}} = process_cleanup_until_boundary(intent.id)
 

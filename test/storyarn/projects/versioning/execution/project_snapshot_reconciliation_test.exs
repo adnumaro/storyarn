@@ -12,6 +12,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.ProjectSnapshot
@@ -562,6 +563,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
     project = project_fixture(user)
     prefix = SnapshotArchiveStorage.staging_prefix(project.id, "LARGERECEIPT0001")
     storage_key = SnapshotArchiveStorage.archive_key(prefix)
+    assert {:ok, _url} = Storage.upload(storage_key, "owned", "application/json")
 
     oversized_inventory =
       [
@@ -582,7 +584,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
                [request.id]
              ).rows
 
-    assert {:ok, _url} = Storage.upload(storage_key, "owned", "application/json")
     assert {:ok, run} = start_run()
     failed = advance_until_terminal(run.id, run.cursor_generation)
 
@@ -1818,8 +1819,19 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
                cleanup_snapshot.id
              )
 
+    cleanup_request = Repo.get!(StorageCleanupRequest, cleanup_intent.cleanup_request_id)
+    assert cleanup_request.multipart_cleanup_phase == "discover"
+    assert cleanup_request.multipart_cleanup_generation == 0
+
+    cleanup_request
+    |> StorageCleanupRequest.multipart_quiescence_changeset(
+      DateTime.add(now, -2, :second),
+      DateTime.add(now, -1, :second)
+    )
+    |> Repo.update!()
+
     assert {:ok, :terminal} =
-             Versioning.process_project_snapshot_cleanup_intent(cleanup_intent.id,
+             process_cleanup_until_boundary(cleanup_intent.id,
                delete_fun: fn keys -> {:error, keys} end,
                final_attempt?: true
              )
@@ -2118,6 +2130,20 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
       end
     end)
   end
+
+  # Exact multipart cleanup performs at most one provider operation per
+  # delivery. Drive only immediate continuations and fail if the FSM loops.
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left \\ 100)
+
+  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
+    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
+      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
+      result -> result
+    end
+  end
+
+  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
+    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp advance_until_terminal(run_id, generation, remaining \\ 100)
 

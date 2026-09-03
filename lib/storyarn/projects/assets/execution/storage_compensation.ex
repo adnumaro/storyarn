@@ -318,16 +318,21 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       when is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(cleanup_targets) and is_list(opts) do
     cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
-    if multipart_cleanup_keys(cleanup_targets) == [] do
-      delete_storage_keys(cleanup_targets, opts)
-    else
-      opts =
-        opts
-        |> Keyword.put_new(:authorize_fun, &authorize_multipart_cleanup_targets/1)
-        |> Keyword.put_new(:object_policy_fun, &multipart_cleanup_object_policy/1)
-        |> Keyword.put_new(:step_limit, 1)
+    with {:ok, request} <- load_cleanup_request(cleanup_request_id),
+         :ok <- validate_cleanup_request_targets(request, cleanup_targets) do
+      if multipart_cleanup_keys(request.storage_keys) == [] do
+        delete_storage_keys(cleanup_targets, opts)
+      else
+        opts =
+          opts
+          |> Keyword.put_new(:authorize_fun, &authorize_multipart_cleanup_targets/1)
+          |> Keyword.put_new(:object_policy_fun, &multipart_cleanup_object_policy/1)
+          |> Keyword.put_new(:step_limit, 1)
 
-      MultipartCleanup.process(cleanup_request_id, cleanup_targets, opts)
+        MultipartCleanup.process(cleanup_request_id, cleanup_targets, opts)
+      end
+    else
+      {:error, _reason} -> {:error, cleanup_targets}
     end
   rescue
     error ->
@@ -343,6 +348,33 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     do: {:error, cleanup_targets}
 
   def delete_cleanup_request_keys(_cleanup_request_id, _cleanup_targets, _opts), do: {:error, []}
+
+  defp load_cleanup_request(cleanup_request_id) do
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{} = request -> {:ok, request}
+      nil -> {:error, :storage_cleanup_request_not_found}
+    end
+  end
+
+  defp validate_cleanup_request_targets(_request, []), do: {:error, :empty_storage_cleanup_batch}
+
+  defp validate_cleanup_request_targets(request, cleanup_targets) do
+    owned_targets = MapSet.new(request.storage_keys)
+
+    cond do
+      not Enum.all?(cleanup_targets, &MapSet.member?(owned_targets, &1)) ->
+        {:error, :storage_cleanup_batch_not_owned}
+
+      not MapSet.subset?(
+        request.storage_keys |> multipart_cleanup_keys() |> MapSet.new(),
+        cleanup_targets |> multipart_cleanup_keys() |> MapSet.new()
+      ) ->
+        {:error, :multipart_cleanup_batch_incomplete}
+
+      true ->
+        :ok
+    end
+  end
 
   @doc false
   @spec reopen_confirmed_cleanup_request(pos_integer()) :: :ok | {:error, term()}
@@ -1125,25 +1157,10 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     do: {:error, :invalid_snapshot_cleanup_owner}
 
   defp insert_cleanup_request(storage_keys, attrs, persistence_kind) do
-    with {:ok, attrs} <- prepare_cleanup_request_attrs(storage_keys, attrs) do
-      attrs = Map.put(attrs, :storage_keys, storage_keys)
-
-      insert_result =
-        with_cleanup_handoff(storage_keys, fn ->
-          with {:ok, attrs} <- finalize_cleanup_request_attrs(storage_keys, attrs) do
-            %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert()
-          end
-        end)
-
-      case insert_result do
-        {:ok, cleanup_request} = success ->
-          report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
-
-          success
-
-        {:error, _changeset} = error ->
-          error
-      end
+    with {:ok, attrs} <- prepare_cleanup_request_attrs(storage_keys, attrs),
+         {:ok, cleanup_request} <- insert_cleanup_request_with_handoff(storage_keys, attrs) do
+      report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
+      {:ok, cleanup_request}
     end
   rescue
     error ->
@@ -1155,6 +1172,15 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}")
 
       {:error, {kind, safe_error(reason)}}
+  end
+
+  defp insert_cleanup_request_with_handoff(storage_keys, attrs) do
+    with_cleanup_handoff(storage_keys, fn ->
+      with {:ok, attrs} <- finalize_cleanup_request_attrs(storage_keys, attrs) do
+        attrs = Map.put(attrs, :storage_keys, storage_keys)
+        %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert()
+      end
+    end)
   end
 
   defp with_cleanup_handoff(storage_keys, fun) do
@@ -1201,14 +1227,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       now = database_clock_now()
       minimum_not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
 
-      not_before =
-        case Map.get(attrs, :multipart_quiescence_not_before) do
-          %DateTime{} = requested ->
-            if DateTime.after?(requested, minimum_not_before), do: requested, else: minimum_not_before
-
-          _missing_or_short ->
-            minimum_not_before
-        end
+      not_before = cleanup_not_before(Map.get(attrs, :multipart_quiescence_not_before), minimum_not_before)
 
       {:ok,
        Map.merge(attrs, %{
@@ -1217,6 +1236,12 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
        })}
     end
   end
+
+  defp cleanup_not_before(%DateTime{} = requested, minimum_not_before) do
+    if DateTime.after?(requested, minimum_not_before), do: requested, else: minimum_not_before
+  end
+
+  defp cleanup_not_before(_missing_or_short, minimum_not_before), do: minimum_not_before
 
   defp capture_missing_provider_namespace(attrs) do
     if Repo.in_transaction?() or Repo.checked_out?() do

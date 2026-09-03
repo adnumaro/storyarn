@@ -161,11 +161,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
 
   defp continue_recorded_action(_action, action_id, lock_fun) do
     with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
-      Storage.with_captured_namespace_fingerprint(provider_namespace_fingerprint, fn ->
-        # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-        lock_fun.("snapshot-reconciliation-repair:#{action_id}", fn ->
-          perform_recorded_action(action_id, provider_namespace_fingerprint)
-        end)
+      lock_fun.("snapshot-reconciliation-repair:#{action_id}", fn ->
+        perform_recorded_action(action_id, provider_namespace_fingerprint)
       end)
     end
   end
@@ -508,12 +505,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   end
 
   defp repair_integrity_locked(finding, observed_snapshot, observed_integrity, provider_namespace_fingerprint) do
-    # dispatch_with_namespace/3 captured this identity immediately before the
-    # workspace transaction. Re-reading the provider here would hold the
-    # checkout and workspace lock across provider I/O.
-    if is_binary(provider_namespace_fingerprint),
-      do: apply_locked_integrity(finding, observed_snapshot, observed_integrity),
-      else: {:error, :snapshot_reconciliation_namespace_unavailable}
+    # Namespace identity is local/config metadata, not remote provider I/O.
+    # Revalidate after inspection before committing its integrity result.
+    case validate_namespace(provider_namespace_fingerprint) do
+      :ok -> apply_locked_integrity(finding, observed_snapshot, observed_integrity)
+      {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, {"manual", "provider_namespace_changed", %{}}}
+      {:error, _reason} = error -> error
+    end
   end
 
   defp apply_locked_integrity(finding, observed_snapshot, observed_integrity) do
@@ -606,6 +604,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     do: classify_changed_reservation(finding, provider_namespace_fingerprint)
 
   defp repair_expired_build_candidate(candidate, finding, provider_namespace_fingerprint) do
+    case validate_namespace(provider_namespace_fingerprint) do
+      :ok -> delete_expired_build_candidate(candidate, finding, provider_namespace_fingerprint)
+      {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, "manual", "provider_namespace_changed", %{}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp delete_expired_build_candidate(candidate, finding, provider_namespace_fingerprint) do
     case ProjectSnapshotLifecycle.delete_expired_build_candidate(candidate, provider_namespace_fingerprint) do
       {:ok, %SnapshotCleanupIntent{}} ->
         {:ok, "repaired", "expired_build_cleanup_scheduled", %{}}

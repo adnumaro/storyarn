@@ -11,7 +11,6 @@ defmodule Storyarn.Projects.Assets.Storage do
   alias Storyarn.Projects.Assets.StorageCleanupOwnership
   alias Storyarn.Projects.Assets.StorageKey
   alias Storyarn.Projects.Assets.StorageKeyLock
-  alias Storyarn.Repo
 
   require Logger
 
@@ -35,7 +34,6 @@ defmodule Storyarn.Projects.Assets.Storage do
   @snapshot_archive_multipart_cleanup_key_pattern ~r'\Aprojects/[1-9][0-9]*/snapshots/archives/v2/(?:staging|ready)/[A-Za-z0-9_-]{16}/(?:snapshot\.zip|manifest\.json)\z'
   @restore_staging_multipart_cleanup_key_pattern ~r'\Aprojects/[1-9][0-9]*/storage-reservations/v1/restore-staging/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31}\z'
   @workspace_snapshot_import_multipart_cleanup_key_pattern ~r'\Aworkspace-snapshot-imports/v1/[1-9][0-9]*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:snapshot\.zip|blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31})\z'
-  @captured_namespace_key {__MODULE__, :provider_namespace_fingerprint}
 
   @spec multipart_upload_part_deadline_ms() :: pos_integer()
   defdelegate multipart_upload_part_deadline_ms(), to: ObjectStorage
@@ -87,53 +85,27 @@ defmodule Storyarn.Projects.Assets.Storage do
   defdelegate list_prefix(prefix, opts \\ []), to: ObjectStorage
   defdelegate list_prefix_metadata(prefix, opts \\ []), to: ObjectStorage
   defdelegate incomplete_multipart_upload_summary(prefix, opts \\ []), to: ObjectStorage
-  @doc "Returns the provider namespace identity without holding a database checkout."
+
+  @doc """
+  Returns the current provider namespace identity from local metadata only.
+
+  Adapters must not perform HTTP or other remote provider I/O here: R2 hashes
+  configuration and Local inspects its safe root identity. Fresh reads are safe
+  under a database checkout and must never substitute a previously captured value.
+  """
   @spec namespace_fingerprint() :: {:ok, String.t()} | {:error, term()}
-  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def namespace_fingerprint do
-    if Repo.in_transaction?() or Repo.checked_out?() do
-      case Process.get(@captured_namespace_key) do
-        fingerprint when is_binary(fingerprint) ->
-          if valid_namespace_fingerprint?(fingerprint),
-            do: {:ok, fingerprint},
-            else: {:error, :invalid_storage_provider_namespace_fingerprint}
+    case ObjectStorage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) ->
+        if valid_namespace_fingerprint?(fingerprint),
+          do: {:ok, fingerprint},
+          else: {:error, :invalid_storage_provider_namespace_fingerprint}
 
-        _missing ->
-          {:error, :storage_provider_io_inside_database_checkout}
-      end
-    else
-      case ObjectStorage.namespace_fingerprint() do
-        {:ok, fingerprint} when is_binary(fingerprint) ->
-          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
-          if valid_namespace_fingerprint?(fingerprint),
-            do: {:ok, fingerprint},
-            else: {:error, :invalid_storage_provider_namespace_fingerprint}
+      {:error, _reason} = error ->
+        error
 
-        {:error, _reason} = error ->
-          error
-
-        _invalid ->
-          {:error, :invalid_storage_provider_namespace_fingerprint}
-      end
-    end
-  end
-
-  @doc false
-  @spec with_captured_namespace_fingerprint(String.t(), (-> result)) :: result when result: term()
-  def with_captured_namespace_fingerprint(fingerprint, fun) when is_binary(fingerprint) and is_function(fun, 0) do
-    if valid_namespace_fingerprint?(fingerprint) do
-      previous = Process.get(@captured_namespace_key)
-      Process.put(@captured_namespace_key, fingerprint)
-
-      try do
-        fun.()
-      after
-        if is_nil(previous),
-          do: Process.delete(@captured_namespace_key),
-          else: Process.put(@captured_namespace_key, previous)
-      end
-    else
-      {:error, :invalid_storage_provider_namespace_fingerprint}
+      _invalid ->
+        {:error, :invalid_storage_provider_namespace_fingerprint}
     end
   end
 

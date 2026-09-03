@@ -349,9 +349,15 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
              ])
   end
 
-  test "provider namespace capture fails closed while a database checkout is held" do
-    assert {:error, :storage_provider_io_inside_database_checkout} =
-             Repo.transact(fn -> Storage.namespace_fingerprint() end)
+  test "provider namespace identity is read freshly from local metadata under a database checkout" do
+    assert {:ok, fingerprint} = ObjectStorage.namespace_fingerprint()
+
+    assert {:ok, ^fingerprint} =
+             Repo.transact(fn ->
+               assert Repo.checked_out?()
+               assert ObjectStorage.namespace_fingerprint() == {:ok, fingerprint}
+               Storage.namespace_fingerprint()
+             end)
   end
 
   test "multipart handoff requires a previously captured provider namespace inside a transaction" do
@@ -377,12 +383,41 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
              end)
   end
 
-  test "planned multipart deferral is persisted atomically with the cleanup handoff" do
+  test "planned multipart deferral clamps a short deadline to the complete writer drain" do
     storage_key =
       "projects/1/snapshots/archives/v2/staging/AtomicDefer00001/snapshot.zip"
 
     fingerprint = String.duplicate("a", 64)
-    not_before = TimeHelpers.now() |> DateTime.add(300, :second) |> DateTime.truncate(:second)
+    quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
+
+    requested_not_before =
+      TimeHelpers.now()
+      |> DateTime.add(max(div(quiescence_seconds, 2), 1), :second)
+      |> DateTime.truncate(:second)
+
+    assert {:ok,
+            %StorageCleanupRequest{
+              provider_namespace_fingerprint: ^fingerprint,
+              multipart_cleanup_phase: "discover",
+              multipart_quiescence_started_at: %DateTime{} = started_at,
+              multipart_quiescence_not_before: %DateTime{} = not_before
+            }} =
+             StorageCompensation.persist_planned_cleanup_request([storage_key],
+               provider_namespace_fingerprint: fingerprint,
+               not_before: requested_not_before
+             )
+
+    assert DateTime.diff(not_before, started_at, :second) == quiescence_seconds
+    assert DateTime.after?(not_before, requested_not_before)
+  end
+
+  test "planned multipart deferral preserves an explicit deadline longer than the writer drain" do
+    storage_key =
+      "projects/1/snapshots/archives/v2/staging/AtomicDefer00002/snapshot.zip"
+
+    fingerprint = String.duplicate("a", 64)
+    quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
+    not_before = TimeHelpers.now() |> DateTime.add(quiescence_seconds + 300, :second) |> DateTime.truncate(:second)
 
     assert {:ok,
             %StorageCleanupRequest{
@@ -396,6 +431,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
                not_before: not_before
              )
 
+    assert DateTime.diff(not_before, started_at, :second) >= quiescence_seconds
     assert DateTime.before?(started_at, not_before)
   end
 
@@ -479,6 +515,14 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       step_limit: 100
     ]
 
+    assert {:deferred, handoff_seconds} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys, opts)
+
+    assert handoff_seconds > 1
+    assert Repo.get!(StorageCleanupRequest, request.id).multipart_cleanup_phase == "discover"
+    assert {:ok, _stat} = Storage.stat(blob_key)
+    expire_multipart_quiescence!(request.id)
+
     assert {:deferred, quiet_seconds} =
              StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys, opts)
 
@@ -491,6 +535,45 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
     assert %StorageCleanupRequest{multipart_cleanup_phase: "confirmed"} =
              Repo.get!(StorageCleanupRequest, request.id)
+  end
+
+  test "durable ordinary cleanup rejects targets owned by another request" do
+    user = user_fixture()
+    project = project_fixture(user)
+    owned_key = cleanup_asset_key("owned", project.id)
+    unrelated_key = cleanup_asset_key("unrelated", project.id)
+
+    assert {:ok, _url} = Storage.upload(unrelated_key, "keep me", "image/png")
+    on_exit(fn -> Storage.delete(unrelated_key) end)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, [^unrelated_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [unrelated_key])
+
+    assert {:ok, "keep me"} = Storage.download(unrelated_key)
+  end
+
+  test "durable ordinary cleanup rejects a batch without valid targets" do
+    owned_key = cleanup_asset_key("owned")
+    assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, []} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, ["../invalid"])
+  end
+
+  test "durable mixed cleanup rejects a batch that omits its multipart target" do
+    ordinary_key = cleanup_asset_key("ordinary")
+
+    multipart_key =
+      "projects/1/snapshots/archives/v2/staging/MissingBatch0001/snapshot.zip"
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([ordinary_key, multipart_key])
+
+    assert {:error, [^ordinary_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [ordinary_key])
   end
 
   test "force cleanup rechecks repaired bytes inside a lock-owned transaction" do
@@ -841,6 +924,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:ok, request} =
              StorageCompensation.persist_planned_cleanup_request([storage_key])
 
+    expire_multipart_quiescence!(request.id)
+
     assert {:deferred, seconds} =
              StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
                consume?: true,
@@ -940,6 +1025,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
 
     assert {:ok, request} =
              StorageCompensation.persist_planned_cleanup_request([published_key, poisoned_key])
+
+    expire_multipart_quiescence!(request.id)
 
     assert {:deferred, seconds} =
              StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
@@ -1776,6 +1863,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       end
     ]
 
+    expire_multipart_quiescence!(request.id)
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
 
     assert %StorageCleanupRequest{
@@ -1853,6 +1941,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       stat_fun: fn ^key -> {:error, :enoent} end,
       step_limit: 100
     ]
+
+    expire_multipart_quiescence!(request.id)
 
     assert {:deferred, _seconds} =
              StorageCompensation.delete_cleanup_request_keys(

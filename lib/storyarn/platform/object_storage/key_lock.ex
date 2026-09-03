@@ -103,9 +103,11 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
   inspect durable ownership. Provider I/O runs after this transaction releases
   both locks, then performs its normal durable-ownership postcheck.
 
-  This helper intentionally refuses an existing checkout: transaction advisory
-  locks cannot be released before the caller's transaction ends, which would
-  otherwise keep the shared gate (and a pool connection) across provider I/O.
+  This helper refuses an existing transaction: its advisory locks could not be
+  released before the caller's transaction ends. An existing session checkout
+  is safe to reuse because admission opens and commits its own short transaction,
+  releasing both admission locks before returning. The caller remains responsible
+  for the lifetime of its existing checkout.
   """
   @spec transact_with_storage_key_admission(String.t(), (-> result), keyword()) ::
           result
@@ -118,7 +120,7 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
 
   def transact_with_storage_key_admission(storage_key, fun, opts)
       when is_binary(storage_key) and storage_key != "" and is_function(fun, 0) and is_list(opts) do
-    if Repo.in_transaction?() or Repo.checked_out?() do
+    if Repo.in_transaction?() do
       {:error, :storage_key_admission_requires_outside_transaction}
     else
       acquire_storage_key_admission_and_run(storage_key, fun, acquisition_deadline(opts))
