@@ -2,6 +2,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   use Storyarn.DataCase, async: false
   use Oban.Testing, repo: Storyarn.Repo
 
+  import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
@@ -791,24 +792,63 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
              "workspace_no_longer_exists"
   end
 
-  test "repair worker preserves exits and throws for Oban" do
+  test "repair worker exposes only bounded exception metadata to Oban" do
+    private_message = "private repair for Private Project/private-snapshot.zip/projects/42/object"
+
     job = %Oban.Job{
       args: %{"action_id" => 1, "contract_version" => 1},
-      attempt: 5,
+      attempt: 1,
       max_attempts: 5
     }
 
-    assert catch_exit(
-             RepairProjectSnapshotFindingWorker.perform_action(job, fn _action_id ->
-               exit(:database_connection_timeout)
-             end)
-           ) == :database_connection_timeout
+    retry_log =
+      capture_log(fn ->
+        assert {:error, {:snapshot_reconciliation_repair_exception, RuntimeError}} =
+                 RepairProjectSnapshotFindingWorker.perform_action(job, fn _action_id ->
+                   raise private_message
+                 end)
+      end)
 
-    assert catch_throw(
-             RepairProjectSnapshotFindingWorker.perform_action(job, fn _action_id ->
-               throw(:provider_cancelled)
-             end)
-           ) == :provider_cancelled
+    refute retry_log =~ private_message
+  end
+
+  test "repair worker retries bounded stops and persists terminal evidence on the final attempt" do
+    {_snapshot, _finding, action} = expired_build_action!()
+
+    action =
+      action
+      |> ProjectSnapshotReconciliationRepairAction.attempt_changeset()
+      |> Repo.update!()
+
+    job = %Oban.Job{
+      args: %{"action_id" => action.id, "contract_version" => 1},
+      attempt: 1,
+      max_attempts: 5
+    }
+
+    private_exit = {:database_connection_timeout, "private-project/private-exit.zip"}
+    private_throw = {:provider_cancelled, "projects/42/private-storage-key"}
+
+    retry_result =
+      RepairProjectSnapshotFindingWorker.perform_action(job, fn _action_id ->
+        exit(private_exit)
+      end)
+
+    assert retry_result == {:error, {:snapshot_reconciliation_repair_stopped, :exit}}
+    assert Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id).status == "pending"
+
+    terminal_result =
+      RepairProjectSnapshotFindingWorker.perform_action(%{job | attempt: job.max_attempts}, fn _action_id ->
+        throw(private_throw)
+      end)
+
+    assert terminal_result == :ok
+    refute inspect({retry_result, terminal_result}) =~ "private-project"
+    refute inspect({retry_result, terminal_result}) =~ "private-storage-key"
+
+    failed = Repo.get!(ProjectSnapshotReconciliationRepairAction, action.id)
+    assert failed.status == "failed"
+    assert failed.result_code == "snapshot_reconciliation_repair_stopped"
   end
 
   defp finding_action!(run, category, snapshot_id \\ nil) do

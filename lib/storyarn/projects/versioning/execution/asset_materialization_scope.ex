@@ -125,8 +125,15 @@ defmodule Storyarn.Projects.Versioning.AssetMaterializationScope do
   defp log_cleanup_failure(:ok), do: :ok
 
   defp log_cleanup_failure({:error, reason}) do
-    Logger.error("Asset materialization cleanup failed while preserving the original exception: #{inspect(reason)}")
+    Logger.error(
+      "Asset materialization cleanup failed while preserving the original exception " <>
+        "error_code=#{cleanup_error_code(reason)}"
+    )
   end
+
+  defp cleanup_error_code(reason) when is_atom(reason), do: reason
+  defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
+  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp cleanup_copy_tracker(_copy_tracker, false), do: :ok
 

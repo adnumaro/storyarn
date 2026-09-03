@@ -12,6 +12,11 @@ PHX_HOST = 'www.storyarn.com'
 PORT = '8080'
 STORYARN_DEPLOYMENT_ENVIRONMENT = 'production'
 TRUST_PROXY = 'true'
+METRICS_ENABLED = 'true'
+
+[metrics]
+port = 9091
+path = '/metrics'
 
 [http_service]
 internal_port = 8080

@@ -227,6 +227,74 @@ defmodule Storyarn.Projects.Assets.StorageTest do
     end
   end
 
+  describe "incomplete_multipart_upload_summary/2" do
+    test "dispatches one bounded global inventory through the neutral provider contract" do
+      opts = [max_uploads: 47]
+      Application.put_env(:storyarn, :storage, adapter: MultipartStorageSpy)
+
+      assert {:ok,
+              %{
+                count: 29,
+                oldest_initiated_at: ~U[2026-09-01 12:00:00Z],
+                inventory_complete: true
+              }} = Storage.incomplete_multipart_upload_summary(:all, opts)
+
+      assert_received {:multipart_summary_dispatched, :all, ^opts}
+    end
+
+    test "fails closed when the configured adapter has no aggregate inventory" do
+      Application.put_env(:storyarn, :storage, adapter: NoMultipartInventoryAdapter)
+
+      assert {:error, :multipart_inventory_not_supported} =
+               Storage.incomplete_multipart_upload_summary("projects/")
+    end
+
+    test "reports the local backend as a complete empty inventory" do
+      assert {:ok, %{count: 0, oldest_initiated_at: nil, inventory_complete: true}} =
+               Storage.incomplete_multipart_upload_summary(:all)
+    end
+
+    test "rejects unsafe prefixes and options before dispatch" do
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.incomplete_multipart_upload_summary("projects")
+
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.incomplete_multipart_upload_summary("projects//", %{max_uploads: 1})
+
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.incomplete_multipart_upload_summary(:everything)
+    end
+
+    test "strips extra fields and collapses private provider errors at the neutral boundary" do
+      private_value = "private-bucket/projects/42/private.zip?signature=secret"
+      Application.put_env(:storyarn, :storage, adapter: MultipartStorageSpy)
+
+      Process.put(
+        {MultipartStorageSpy, :multipart_summary_result},
+        {:ok,
+         %{
+           count: 1,
+           oldest_initiated_at: ~U[2026-09-01 12:00:00Z],
+           inventory_complete: true,
+           storage_key: private_value
+         }}
+      )
+
+      assert {:ok, summary} = Storage.incomplete_multipart_upload_summary(:all)
+      refute Map.has_key?(summary, :storage_key)
+      refute inspect(summary) =~ private_value
+
+      Process.put(
+        {MultipartStorageSpy, :multipart_summary_result},
+        {:error, {:http_error, 500, %{body: private_value}}}
+      )
+
+      result = Storage.incomplete_multipart_upload_summary(:all)
+      assert result == {:error, :multipart_inventory_provider_error}
+      refute inspect(result) =~ private_value
+    end
+  end
+
   # =============================================================================
   # delete/1
   # =============================================================================

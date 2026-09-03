@@ -7,6 +7,7 @@ defmodule StoryarnWeb.TelemetryTest do
   @summary_mod :"Elixir.Telemetry.Metrics.Summary"
   @sum_mod :"Elixir.Telemetry.Metrics.Sum"
   @last_value_mod :"Elixir.Telemetry.Metrics.LastValue"
+  @counter_mod :"Elixir.Telemetry.Metrics.Counter"
 
   # ── metrics/0 ───────────────────────────────────────────────────────
 
@@ -31,7 +32,8 @@ defmodule StoryarnWeb.TelemetryTest do
 
       storage_metrics =
         Enum.filter(metrics, fn metric ->
-          List.starts_with?(metric.name, [:storyarn, :storage])
+          List.starts_with?(metric.name, [:storyarn, :storage, :accounting]) or
+            List.starts_with?(metric.name, [:storyarn, :storage, :provider_footprint])
         end)
 
       assert length(storage_metrics) == 11
@@ -146,7 +148,12 @@ defmodule StoryarnWeb.TelemetryTest do
     test "includes import metrics with privacy-safe tags" do
       metrics = Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :import]))
 
-      assert length(metrics) == 10
+      assert length(metrics) == 11
+
+      assert Enum.any?(metrics, fn metric ->
+               metric.name == [:storyarn, :import, :expiration, :terminal, :count] and
+                 metric.tags == [:format, :disposition]
+             end)
 
       assert Enum.any?(metrics, fn metric ->
                metric.name == [:storyarn, :import, :snapshot, :transition, :count] and
@@ -224,17 +231,69 @@ defmodule StoryarnWeb.TelemetryTest do
       assert Enum.all?(metrics, &(&1.tags == []))
     end
 
+    test "registers durable storage-cleanup backlog gauges without tags" do
+      metrics =
+        Enum.filter(
+          Telemetry.metrics(),
+          &(Enum.take(&1.name, 4) == [:storyarn, :assets, :storage_compensation, :backlog])
+        )
+
+      assert metrics |> Enum.map(& &1.name) |> Enum.sort() ==
+               Enum.sort([
+                 [:storyarn, :assets, :storage_compensation, :backlog, :pending_count],
+                 [:storyarn, :assets, :storage_compensation, :backlog, :due_count],
+                 [:storyarn, :assets, :storage_compensation, :backlog, :deferred_multipart_count],
+                 [:storyarn, :assets, :storage_compensation, :backlog, :oldest_age_seconds],
+                 [:storyarn, :assets, :storage_compensation, :backlog, :oldest_due_age_seconds],
+                 [:storyarn, :assets, :storage_compensation, :backlog, :observed_at_unix_seconds]
+               ])
+
+      assert Enum.all?(metrics, &(&1.__struct__ == @last_value_mod))
+      assert Enum.all?(metrics, &(&1.tags == []))
+    end
+
+    test "registers global multipart inventory with only the bounded failure label" do
+      metrics =
+        Enum.filter(
+          Telemetry.metrics(),
+          &(Enum.take(&1.name, 4) == [:storyarn, :storage, :multipart_inventory, :snapshot])
+        )
+
+      assert length(metrics) == 5
+
+      count = Enum.find(metrics, &(&1.name == [:storyarn, :storage, :multipart_inventory, :snapshot, :count]))
+
+      assert count.tags == []
+
+      safe_metadata = %{failure: :none, storage_key: "private/path"}
+      assert count.keep.(safe_metadata)
+      assert count.tag_values.(safe_metadata) == %{}
+
+      refute count.keep.(%{failure: :private_path})
+
+      failure =
+        Enum.find(
+          metrics,
+          &(&1.name == [:storyarn, :storage, :multipart_inventory, :snapshot, :failure_count])
+        )
+
+      assert failure.tags == [:failure]
+      refute failure.keep.(safe_metadata)
+      assert failure.keep.(%{failure: :provider_error})
+    end
+
     test "registers snapshot lifecycle, recovery, retention, and reset metrics without identifier tags" do
       metrics =
         Enum.filter(Telemetry.metrics(), &(Enum.take(&1.name, 2) == [:storyarn, :snapshot]))
 
-      assert length(metrics) == 64
+      assert length(metrics) == 78
 
       names = Enum.map(metrics, & &1.name)
       assert [:storyarn, :snapshot, :cleanup, :intent, :count] in names
       assert [:storyarn, :snapshot, :cleanup, :stop, :terminal_failure_count] in names
       assert [:storyarn, :snapshot, :cleanup, :recovery, :stop, :recovered_count] in names
       assert [:storyarn, :snapshot, :cleanup, :backlog, :oldest_age_seconds] in names
+      assert [:storyarn, :snapshot, :cleanup, :backlog, :observed_at_unix_seconds] in names
       assert [:storyarn, :snapshot, :cleanup, :backlog, :terminal_retry_count] in names
       assert [:storyarn, :snapshot, :cleanup, :backlog, :repeated_terminal_failures] in names
       assert [:storyarn, :snapshot, :retention, :stop, :deleted_count] in names
@@ -266,6 +325,17 @@ defmodule StoryarnWeb.TelemetryTest do
       assert [:storyarn, :snapshot, :reconciliation, :summary, :corrupt_ready_snapshot_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :summary, :terminal_cleanup_failure_count] in names
       assert [:storyarn, :snapshot, :reconciliation, :summary, :terminal_cleanup_retry_count] in names
+      assert [:storyarn, :snapshot, :reconciliation, :projection, :stop, :success] in names
+      assert [:storyarn, :snapshot, :reconciliation, :projection, :stop, :failure_count] in names
+
+      projection_metrics =
+        Enum.filter(
+          metrics,
+          &(Enum.take(&1.name, 5) == [:storyarn, :snapshot, :reconciliation, :projection, :stop])
+        )
+
+      assert length(projection_metrics) == 12
+      assert Enum.all?(projection_metrics, &(&1.tags == []))
 
       repair_metrics =
         Enum.filter(metrics, &(Enum.take(&1.name, 5) == [:storyarn, :snapshot, :reconciliation, :repair, :stop]))
@@ -305,10 +375,97 @@ defmodule StoryarnWeb.TelemetryTest do
     test "defines exactly the expected number of metrics" do
       metrics = Telemetry.metrics()
 
-      # 9 Phoenix + 5 DB + 3 template installation + 9 import + 11 storage +
-      # 1 asset trash + 2 storage cleanup retry + 64 snapshot lifecycle +
-      # 3 AI expiration + 4 VM = 111
-      assert length(metrics) == 112
+      # 9 Phoenix + 5 DB + 3 template installation + 11 import + 11 storage +
+      # 1 asset trash + 2 storage cleanup retry + 6 storage cleanup backlog +
+      # 5 global multipart inventory + 78 snapshot lifecycle +
+      # 3 AI expiration + 4 VM = 138
+      assert length(metrics) == 138
+    end
+
+    test "exports a Prometheus-compatible allowlist with recovery queue telemetry" do
+      metrics = Telemetry.prometheus_metrics()
+
+      refute Enum.any?(metrics, &(&1.__struct__ == @summary_mod))
+      assert Enum.all?(metrics, &(&1.__struct__ in [@sum_mod, @last_value_mod, @counter_mod]))
+
+      assert Enum.any?(metrics, fn metric ->
+               metric.name == [:storyarn, :import, :execute, :stop, :count] and
+                 metric.__struct__ == @sum_mod and
+                 metric.tags == [:format, :status, :import_mode]
+             end)
+
+      assert Enum.any?(metrics, fn metric ->
+               metric.name == [:storyarn, :import, :expiration, :terminal, :count] and
+                 metric.__struct__ == @sum_mod and
+                 metric.tags == [:format, :disposition]
+             end)
+
+      refute Enum.any?(metrics, &(&1.name == [:storyarn, :import, :execute, :stop, :duration]))
+      refute Enum.any?(metrics, &(&1.name == [:storyarn, :snapshot, :download, :stop, :duration]))
+
+      assert Enum.any?(metrics, fn metric ->
+               metric.name == [:storyarn, :oban, :job, :stop, :count] and
+                 metric.__struct__ == @counter_mod and metric.tags == [:queue, :state]
+             end)
+
+      queue_metrics =
+        Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :oban, :queue, :snapshot]))
+
+      assert length(queue_metrics) == 12
+      assert Enum.all?(queue_metrics, &(&1.__struct__ == @last_value_mod))
+      assert Enum.all?(queue_metrics, &(&1.tags == [:queue]))
+
+      poll_metrics =
+        Enum.filter(metrics, &(Enum.take(&1.name, 4) == [:storyarn, :oban, :queue, :poll]))
+
+      assert length(poll_metrics) == 3
+
+      projection_metrics =
+        Enum.filter(
+          metrics,
+          &(Enum.take(&1.name, 5) == [:storyarn, :snapshot, :reconciliation, :projection, :stop])
+        )
+
+      assert length(projection_metrics) == 12
+      assert Enum.all?(projection_metrics, &(&1.tags == []))
+
+      refute Enum.any?(metrics, fn metric ->
+               Enum.take(metric.name, 4) == [:storyarn, :snapshot, :reconciliation, :summary] or
+                 Enum.take(metric.name, 4) == [:storyarn, :snapshot, :reconciliation, :page] or
+                 metric.name == [:storyarn, :snapshot, :reconciliation, :stop, :finding_count]
+             end)
+
+      refute Enum.any?(metrics, fn metric ->
+               List.first(metric.name) in [:phoenix, :vm] or
+                 Enum.take(metric.name, 2) in [[:storyarn, :repo], [:storyarn, :ai]] or
+                 Enum.take(metric.name, 3) == [:storyarn, :project_template, :installation] or
+                 Enum.take(metric.name, 3) in [
+                   [:storyarn, :storage, :accounting],
+                   [:storyarn, :storage, :provider_footprint]
+                 ]
+             end)
+    end
+
+    test "Oban metric functions retain only bounded queue and result labels" do
+      metric =
+        Enum.find(Telemetry.prometheus_metrics(), fn metric ->
+          metric.name == [:storyarn, :oban, :job, :stop, :count]
+        end)
+
+      metadata = %{
+        job: %Oban.Job{
+          queue: "imports",
+          args: %{"filename" => "private-story.yarn", "project_id" => 999},
+          worker: "Storyarn.Workers.ImportProjectWorker"
+        },
+        state: :snoozed,
+        reason: "private provider failure"
+      }
+
+      assert metric.keep.(metadata)
+      assert metric.tag_values.(metadata) == %{queue: "imports", state: "snoozed"}
+
+      refute metric.keep.(put_in(metadata.job.queue, "default"))
     end
   end
 
@@ -325,6 +482,43 @@ defmodule StoryarnWeb.TelemetryTest do
       spec = Telemetry.child_spec([])
       assert spec.id == Telemetry
       assert spec.type == :supervisor
+    end
+
+    test "Prometheus reporter is opt-in and attaches synchronously" do
+      assert Telemetry.prometheus_reporter_child_specs(enabled: false) == []
+
+      assert [
+               %{
+                 id: :storyarn_operational_metrics,
+                 start: {TelemetryMetricsPrometheus.Core.Registry, :start_link, [options]}
+               }
+             ] = Telemetry.prometheus_reporter_child_specs(enabled: true)
+
+      assert Keyword.fetch!(options, :name) == Telemetry.prometheus_reporter_name()
+      assert Keyword.fetch!(options, :start_async) == false
+      assert Keyword.fetch!(options, :metrics) == Telemetry.prometheus_metrics()
+    end
+
+    test "Prometheus core records a bounded metric without private metadata" do
+      start_supervised!(
+        {TelemetryMetricsPrometheus.Core,
+         metrics: Telemetry.prometheus_metrics(), name: :storyarn_operational_metrics_test, start_async: false}
+      )
+
+      private_canary = "author@example.com/private/project.yarn"
+
+      :telemetry.execute(
+        [:storyarn, :import, :expiration, :terminal],
+        %{count: 1},
+        %{format: "yarn", disposition: "accepted", private_value: private_canary}
+      )
+
+      scrape = TelemetryMetricsPrometheus.Core.scrape(:storyarn_operational_metrics_test)
+
+      assert scrape =~ "storyarn_import_expiration_terminal_count"
+      assert scrape =~ ~s(disposition="accepted")
+      assert scrape =~ ~s(format="yarn")
+      refute scrape =~ private_canary
     end
   end
 

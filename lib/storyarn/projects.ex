@@ -48,6 +48,9 @@ defmodule Storyarn.Projects do
   @spec import_error_deduplicator_child_spec() :: Supervisor.child_spec()
   defdelegate import_error_deduplicator_child_spec(), to: Interchange
 
+  @doc false
+  defdelegate project_snapshot_reconciliation_metrics_child_specs(config), to: Versioning
+
   # =============================================================================
   # Project CRUD
   # =============================================================================
@@ -597,6 +600,12 @@ defmodule Storyarn.Projects do
 
   @doc false
   defdelegate persist_cleanup_request(cleanup_targets), to: Assets
+
+  @doc false
+  defdelegate emit_storage_cleanup_request_backlog(), to: Assets
+
+  @doc false
+  defdelegate inspect_storage_multipart_inventory(), to: Assets
 
   @doc false
   defdelegate expire_stale_imports_batch(), to: Interchange

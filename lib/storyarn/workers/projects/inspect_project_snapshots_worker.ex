@@ -54,7 +54,9 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
   defp advance_safely(advance, run_id, cursor_generation) do
     {:returned, advance.(run_id, cursor_generation)}
   rescue
-    exception -> {:raised, :error, exception, __STACKTRACE__}
+    exception -> {:raised, exception.__struct__}
+  catch
+    kind, _reason -> {:stopped, kind}
   end
 
   defp handle_advance_result({:returned, {:ok, status}}, _run_id, _cursor_generation, _final_attempt?)
@@ -78,11 +80,17 @@ defmodule Storyarn.Workers.InspectProjectSnapshotsWorker do
   defp handle_advance_result({:returned, _unexpected}, _run_id, _cursor_generation, false),
     do: {:error, :snapshot_reconciliation_page_failed}
 
-  defp handle_advance_result({:raised, _kind, _reason, _stacktrace}, run_id, cursor_generation, true),
-    do: terminalize(run_id, cursor_generation, :snapshot_reconciliation_page_exception)
+  defp handle_advance_result({:raised, exception_module}, run_id, cursor_generation, true),
+    do: terminalize(run_id, cursor_generation, {:snapshot_reconciliation_page_exception, exception_module})
 
-  defp handle_advance_result({:raised, kind, reason, stacktrace}, _run_id, _cursor_generation, false),
-    do: :erlang.raise(kind, reason, stacktrace)
+  defp handle_advance_result({:raised, exception_module}, _run_id, _cursor_generation, false),
+    do: {:error, {:snapshot_reconciliation_page_exception, exception_module}}
+
+  defp handle_advance_result({:stopped, kind}, run_id, cursor_generation, true),
+    do: terminalize(run_id, cursor_generation, {:snapshot_reconciliation_page_stopped, kind})
+
+  defp handle_advance_result({:stopped, kind}, _run_id, _cursor_generation, false),
+    do: {:error, {:snapshot_reconciliation_page_stopped, kind}}
 
   @impl Oban.Worker
   def timeout(_job), do: @timeout_ms

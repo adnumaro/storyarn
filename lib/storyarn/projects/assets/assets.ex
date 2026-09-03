@@ -21,6 +21,7 @@ defmodule Storyarn.Projects.Assets do
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.Assets.StorageKey
+  alias Storyarn.Projects.Assets.StorageMultipartInventory
   alias Storyarn.Projects.Assets.UploadPolicy
   alias Storyarn.Projects.Versioning
 
@@ -158,5 +159,7 @@ defmodule Storyarn.Projects.Assets do
   defdelegate project_media_route_key?(project_id, key), to: StorageKey
   defdelegate delete_storage_keys(cleanup_targets), to: StorageCompensation
   defdelegate persist_cleanup_request(cleanup_targets), to: StorageCompensation
+  defdelegate emit_storage_cleanup_request_backlog(), to: StorageCompensation, as: :emit_cleanup_request_backlog
+  defdelegate inspect_storage_multipart_inventory(), to: StorageMultipartInventory, as: :inspect
   defdelegate retry_persisted_cleanup_requests(), to: StorageCompensation
 end

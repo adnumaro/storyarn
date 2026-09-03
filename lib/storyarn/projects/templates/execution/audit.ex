@@ -1094,8 +1094,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
 
       {:error, cleanup_reason} ->
         Logger.error(
-          "Template audit asset cleanup failed while preserving the original exception: " <>
-            inspect(cleanup_reason)
+          "Template audit asset cleanup failed while preserving the original exception " <>
+            "error_code=#{cleanup_error_code(cleanup_reason)}"
         )
 
         :ok
@@ -1103,20 +1103,24 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
   rescue
     cleanup_error ->
       Logger.error(
-        "Template audit asset cleanup raised while preserving the original exception: " <>
-          Exception.format(:error, cleanup_error, __STACKTRACE__)
+        "Template audit asset cleanup raised while preserving the original exception " <>
+          "exception_module=#{inspect(cleanup_error.__struct__)}"
       )
 
       :ok
   catch
-    kind, cleanup_reason ->
+    kind, _cleanup_reason ->
       Logger.error(
-        "Template audit asset cleanup threw while preserving the original exception: " <>
-          inspect({kind, cleanup_reason})
+        "Template audit asset cleanup threw while preserving the original exception " <>
+          "failure_kind=#{inspect(kind)}"
       )
 
       :ok
   end
+
+  defp cleanup_error_code(reason) when is_atom(reason), do: reason
+  defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
+  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp recover_project_transaction_result(snapshot, workspace_id, user_id, opts) do
     name = Keyword.get(opts, :name, "Template Materialization Audit")

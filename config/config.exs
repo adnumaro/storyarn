@@ -138,6 +138,11 @@ config :storyarn, Oban,
     snapshot_restores: 1,
     snapshot_imports: 1,
     snapshots_maintenance: 1,
+    # Multipart inventory may spend several minutes paging provider state. Its
+    # dedicated queue keeps that bounded scan from starving snapshot recovery
+    # maintenance and prevents older nodes from claiming the new worker during
+    # a rolling deployment.
+    storage_inventory: 1,
     storage_cleanup: 1,
     # This queue was introduced together with its worker. Keeping it separate
     # prevents an older node in a rolling deployment from claiming a job whose
@@ -175,6 +180,11 @@ config :storyarn, Oban,
         # Repair actions are a durable operator ledger too. Restore only their
         # exact delivery chain and terminalize exhausted chains fail-closed.
         {"*/15 * * * *", Storyarn.Workers.ReconcileProjectSnapshotRepairWorker},
+        # Tigris does not provide native abort-after-age lifecycle policy.
+        # Keep this compensating control read-only: it emits bounded aggregate
+        # evidence and never infers deletion authority from provider inventory.
+        # The worker skips provider I/O unless operational metrics are enabled.
+        {"*/30 * * * *", Storyarn.Workers.InspectStorageMultipartInventoryWorker},
         # Snapshot TTL deletion is coarse, but this worker also reclaims expired
         # build reservations. Run at the ENG-37 floor to bound that quota leak.
         {"*/15 * * * *", Storyarn.Workers.ProjectSnapshotRetentionWorker}
@@ -294,6 +304,17 @@ config :storyarn,
 
 # Email sender configuration (name and email address for outgoing emails)
 config :storyarn, :mailer_sender, {"Storyarn", "noreply@storyarn.com"}
+
+# Operational metric collection is infrastructure configuration shared by the
+# reporter and its bounded-context collectors. Keeping it separate from the
+# web telemetry supervisor prevents domain workers from depending on
+# StoryarnWeb. It is enabled explicitly at runtime; the default avoids provider
+# inventory and database polling in development and tests.
+config :storyarn, :operational_metrics,
+  enabled: false,
+  oban_poll_interval: to_timeout(minute: 15),
+  listener_ip: {0, 0, 0, 0},
+  listener_port: 9091
 
 # Frontend PostHog boot is optional. The SDK config above remains the source for
 # api_host/api_key; this only controls whether root metadata initializes the

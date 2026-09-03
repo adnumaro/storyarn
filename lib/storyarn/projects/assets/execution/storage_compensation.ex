@@ -3,6 +3,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   import Ecto.Query, warn: false
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupPersistenceError
@@ -914,6 +915,71 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
     if failed_count == 0, do: :ok, else: {:error, failed_count}
   end
+
+  @doc "Returns aggregate backlog gauges for durable storage-compensation requests."
+  @spec cleanup_request_backlog() :: %{
+          pending_count: non_neg_integer(),
+          due_count: non_neg_integer(),
+          deferred_multipart_count: non_neg_integer(),
+          oldest_age_seconds: non_neg_integer(),
+          oldest_due_age_seconds: non_neg_integer()
+        }
+  def cleanup_request_backlog do
+    now = TimeHelpers.now()
+
+    stats =
+      Repo.one!(
+        from(request in StorageCleanupRequest,
+          where: request.owner_kind == "storage_compensation",
+          select: %{
+            pending_count: count(request.id),
+            due_count:
+              filter(
+                count(request.id),
+                is_nil(request.multipart_quiescence_not_before) or
+                  request.multipart_quiescence_not_before <= ^now
+              ),
+            deferred_multipart_count: filter(count(request.id), request.multipart_quiescence_not_before > ^now),
+            oldest_inserted_at: min(request.inserted_at),
+            oldest_due_at:
+              filter(
+                min(
+                  type(
+                    fragment("COALESCE(?, ?)", request.multipart_quiescence_not_before, request.inserted_at),
+                    :utc_datetime
+                  )
+                ),
+                is_nil(request.multipart_quiescence_not_before) or
+                  request.multipart_quiescence_not_before <= ^now
+              )
+          }
+        )
+      )
+
+    %{
+      pending_count: stats.pending_count,
+      due_count: stats.due_count,
+      deferred_multipart_count: stats.deferred_multipart_count,
+      oldest_age_seconds: age_seconds(stats.oldest_inserted_at, now),
+      oldest_due_age_seconds: age_seconds(stats.oldest_due_at, now)
+    }
+  end
+
+  @doc "Emits aggregate durable cleanup backlog gauges without identifiers or payloads."
+  @spec emit_cleanup_request_backlog() :: :ok
+  def emit_cleanup_request_backlog do
+    :telemetry.execute(
+      [:storyarn, :assets, :storage_compensation, :backlog],
+      Map.put(cleanup_request_backlog(), :observed_at_unix_seconds, DateTime.to_unix(TimeHelpers.now())),
+      %{}
+    )
+
+    :ok
+  end
+
+  defp age_seconds(nil, _now), do: 0
+  defp age_seconds(%NaiveDateTime{} = timestamp, now), do: age_seconds(DateTime.from_naive!(timestamp, "Etc/UTC"), now)
+  defp age_seconds(timestamp, now), do: max(DateTime.diff(now, timestamp, :second), 0)
 
   @spec discard(reference()) :: :ok
   def discard(reference) when is_reference(reference) do

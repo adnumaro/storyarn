@@ -537,8 +537,8 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
 
       {:error, cleanup_reason} ->
         Logger.error(
-          "Template installation asset cleanup failed while preserving the original exception: " <>
-            inspect(cleanup_reason)
+          "Template installation asset cleanup failed while preserving the original exception " <>
+            "error_code=#{safe_reason(cleanup_reason)}"
         )
 
         :ok
@@ -546,16 +546,16 @@ defmodule Storyarn.Projects.ProjectTemplates.Installation do
   rescue
     cleanup_error ->
       Logger.error(
-        "Template installation asset cleanup raised while preserving the original exception: " <>
-          Exception.format(:error, cleanup_error, __STACKTRACE__)
+        "Template installation asset cleanup raised while preserving the original exception " <>
+          "exception_module=#{inspect(cleanup_error.__struct__)}"
       )
 
       :ok
   catch
-    kind, cleanup_reason ->
+    kind, _cleanup_reason ->
       Logger.error(
-        "Template installation asset cleanup threw while preserving the original exception: " <>
-          inspect({kind, cleanup_reason})
+        "Template installation asset cleanup threw while preserving the original exception " <>
+          "failure_kind=#{inspect(kind)}"
       )
 
       :ok

@@ -18,6 +18,11 @@ defmodule StoryarnWeb.RouterTest do
       conn = get(conn, ~p"/users/log-in")
       assert html_response(conn, 200)
     end
+
+    test "Prometheus metrics are not exposed by the public endpoint", %{conn: conn} do
+      conn = get(conn, "/metrics")
+      assert response(conn, 404)
+    end
   end
 
   # ── Auth gating ────────────────────────────────────────────────

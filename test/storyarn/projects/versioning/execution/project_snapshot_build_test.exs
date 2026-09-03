@@ -265,6 +265,30 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuildTest do
       assert Repo.get!(StorageReservation, snapshot.storage_reservation_id).status == "active"
     end
 
+    test "request exception logging exposes only a bounded classification" do
+      user = user_fixture()
+      project = project_fixture(user)
+      private_message = "private filename.zip / Private Project / projects/42/private-object"
+
+      log =
+        capture_log(fn ->
+          assert {:error, :snapshot_capture_failed} =
+                   Versioning.request_full_project_snapshot(user_scope_fixture(user), project, %{
+                     idempotency_key: Ecto.UUID.generate(),
+                     title: private_message <> <<0>>
+                   })
+        end)
+
+      assert log =~ "event=project_snapshot_request_failed"
+      assert log =~ "reason_code=snapshot_request_exception"
+      assert log =~ "failure_origin=request_transaction"
+      assert log =~ "exception_module=Postgrex.Error"
+      refute log =~ private_message
+      refute log =~ "private filename.zip"
+      refute log =~ "Private Project"
+      refute log =~ "projects/42/private-object"
+    end
+
     test "reports durable retry timing and a safe generic error without exposing Oban details" do
       user = user_fixture()
       project = project_fixture(user)
