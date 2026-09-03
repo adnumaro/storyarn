@@ -347,14 +347,17 @@ defmodule StoryarnWeb.Router do
       live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
       live "/users/settings/workspaces/:slug/ai", SettingsLive.WorkspaceAI, :edit
+      live "/users/settings/workspaces/:slug/projects", SettingsLive.WorkspaceProjects, :index
+      live "/users/settings/workspaces/:slug/plan", SettingsLive.WorkspacePlan, :show
 
+      # Former pages, merged into Projects. Kept so old links keep working.
       live "/users/settings/workspaces/:slug/imports",
-           SettingsLive.WorkspaceImports,
-           :index
+           SettingsLive.WorkspaceProjects,
+           :legacy_imports
 
       live "/users/settings/workspaces/:slug/deleted-projects",
-           SettingsLive.WorkspaceDeletedProjects,
-           :index
+           SettingsLive.WorkspaceProjects,
+           :legacy_deleted_projects
     end
 
     post "/users/confirm-access", UserSessionController, :confirm_access

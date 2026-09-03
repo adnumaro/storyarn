@@ -21,7 +21,7 @@ msgstr ""
 msgid "Cannot remove the workspace owner."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:244
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:213
 #, elixir-autogen, elixir-format
 msgid "Failed to delete workspace."
 msgstr ""
@@ -81,7 +81,7 @@ msgstr ""
 msgid "Workspace Members"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:34
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:35
 #, elixir-autogen, elixir-format
 msgid "Workspace Settings"
 msgstr ""
@@ -91,7 +91,7 @@ msgstr ""
 msgid "Workspace created successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:237
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:206
 #, elixir-autogen, elixir-format
 msgid "Workspace deleted."
 msgstr ""
@@ -104,17 +104,14 @@ msgstr ""
 msgid "Workspace not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:135
-#, elixir-autogen, elixir-format
-msgid "Workspace updated successfully."
-msgstr ""
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:34
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:44
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:309
-#: lib/storyarn_web/live/settings_live/workspace_imports.ex:41
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:41
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:119
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:45
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:245
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:45
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:227
+#: lib/storyarn_web/live/settings_live/workspace_plan.ex:36
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:55
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
 msgstr ""
@@ -142,58 +139,53 @@ msgstr ""
 msgid "You have reached the workspace limit for your plan."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:206
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:176
 #, elixir-autogen, elixir-format
 msgid "Banner removed successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:173
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:144
 #, elixir-autogen, elixir-format
 msgid "Banner uploaded successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:183
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:154
 #, elixir-autogen, elixir-format
 msgid "Invalid file data or upload failed."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:93
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:364
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:90
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:361
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:87
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:358
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:70
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:341
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:23
-#, elixir-autogen, elixir-format
-msgid "Deleted Projects"
-msgstr ""
-
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:73
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:344
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex:84
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:355
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr ""
@@ -269,56 +261,51 @@ msgstr ""
 msgid "This invitation cannot be accepted while the workspace is at its member limit. Ask an owner or admin to free a seat, then try this invitation again."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:101
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:106
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:399
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:87
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:92
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:184
 #, elixir-autogen, elixir-format
 msgid "Personal AI member policy could not be updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:392
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:177
 #, elixir-autogen, elixir-format
 msgid "Personal AI member policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:377
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:162
 #, elixir-autogen, elixir-format
 msgid "Personal AI member policy updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:384
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:169
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change Personal AI member policy."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:89
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:94
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:432
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:75
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:80
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:217
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy could not be updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:425
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:210
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy could not be updated because workspace ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:414
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:199
 #, elixir-autogen, elixir-format
 msgid "Storyarn AI policy updated."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:418
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:203
 #, elixir-autogen, elixir-format
 msgid "Only the workspace owner can change Storyarn AI policy."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_imports.ex:22
-#, elixir-autogen, elixir-format
-msgid "Imports"
-msgstr ""
-
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:216
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:186
 #, elixir-autogen, elixir-format
 msgid "Banner could not be removed."
 msgstr ""
@@ -344,7 +331,7 @@ msgstr ""
 msgid "Only the current workspace owner can transfer ownership."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:268
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:276
 #, elixir-autogen, elixir-format
 msgid "Only the current workspace owner can update this workspace."
 msgstr ""
@@ -380,7 +367,7 @@ msgstr ""
 msgid "Could not revoke invitation."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_general.ex:256
+#: lib/storyarn_web/live/settings_live/workspace_general.ex:264
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:237
 #, elixir-autogen, elixir-format
 msgid "Storyarn could not verify the current workspace owner, so no changes were made. Contact support if the problem continues."
@@ -394,4 +381,19 @@ msgstr ""
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:438
 #, elixir-autogen, elixir-format
 msgid "The member role could not be updated because workspace ownership is inconsistent."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_plan.ex:27
+#, elixir-autogen, elixir-format
+msgid "Plan & usage"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:35
+#, elixir-autogen, elixir-format
+msgid "Projects"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/workspace_ai.ex:32
+#, elixir-autogen, elixir-format
+msgid "Workspace AI"
 msgstr ""

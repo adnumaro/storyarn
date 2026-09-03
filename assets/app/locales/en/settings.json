@@ -17,7 +17,9 @@
         "workspace_imports": "Imports",
         "deleted_projects": "Deleted Projects",
         "preferences": "Preferences",
-        "workspace_ai": "AI"
+        "workspace_ai": "AI",
+        "workspace_projects": "Projects",
+        "workspace_plan": "Plan & usage"
       },
       "search": "Search settings…",
       "switch_workspace": "Switch workspace",
@@ -270,6 +272,41 @@
         "unavailable": {
           "title": "AI is not enabled for this workspace",
           "text": "Storyarn AI is an invite-only beta. This workspace will see its allowance and policies here once it is enabled."
+        }
+      },
+      "projects": {
+        "title": "Projects",
+        "import_section": "Import",
+        "deleted_empty_text": "Projects moved to the workspace trash appear here with who deleted them and when. A downloaded snapshot can always be re-imported above."
+      },
+      "plan": {
+        "title": "Plan & usage",
+        "plan_section": "Plan",
+        "current_plan": "Current plan",
+        "plan_hint": "Limits combine each project's quotas with quotas shared across the workspace.",
+        "talk_to_us": "Talk to us",
+        "limits_section": "Workspace limits",
+        "limits_hint": "Shared by every project",
+        "meters": {
+          "projects": "Projects",
+          "members": "Members",
+          "storage": "Storage"
+        },
+        "hints": {
+          "projects": "Active projects in this workspace.",
+          "members": "Unique workspace and project members. New invitations are blocked until a seat frees up."
+        },
+        "storage_breakdown": "Assets {assets} · Recoverable trash {trash} · Backups {backups} · Reservations {reservations}",
+        "status": {
+          "available": "Available",
+          "warning": "Almost full",
+          "reached": "Limit reached",
+          "unlimited": "Unlimited",
+          "unknown": "Unknown"
+        },
+        "footer": "Per-project limits (items, backups, named versions) are under each project's Usage page.",
+        "plans": {
+          "free": "Free"
         }
       }
     },

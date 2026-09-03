@@ -1,4 +1,4 @@
-defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
+defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Ecto.Changeset
@@ -10,7 +10,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
   alias Storyarn.Repo
 
   defp get_imports_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsImports")
+    LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsProjects")
   end
 
   defp workspace_import_fixture(user, workspace, attrs \\ %{}) do
@@ -47,10 +47,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
       {:ok, view, _html} =
         conn
         |> log_in_user(user)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/imports")
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
 
       vue = get_imports_vue(view)
-      assert vue.component == "live/workspace/settings/WorkspaceSettingsImports"
+      assert vue.component == "live/workspace/settings/WorkspaceSettingsProjects"
       assert is_map(vue.props["upload-config"])
       assert vue.props["quota-rejection"] == nil
       assert vue.props["request-error-code"] == nil
@@ -76,7 +76,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
       {:ok, view, _html} =
         conn
         |> log_in_user(admin)
-        |> live(~p"/users/settings/workspaces/#{workspace.slug}/imports")
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
 
       assert get_imports_vue(view).props["imports"] == []
     end
@@ -90,14 +90,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
       assert {:error, {:live_redirect, %{to: "/users/settings", flash: flash}}} =
                conn
                |> log_in_user(member)
-               |> live(~p"/users/settings/workspaces/#{workspace.slug}/imports")
+               |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
 
       assert flash["error"] =~ "You don't have permission to manage this workspace."
     end
 
     test "redirects an unauthenticated user to login", %{conn: conn} do
       assert {:error, {:redirect, %{to: path}}} =
-               live(conn, ~p"/users/settings/workspaces/some-slug/imports")
+               live(conn, ~p"/users/settings/workspaces/some-slug/projects")
 
       assert path == ~p"/users/log-in"
     end
@@ -111,7 +111,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImportsTest do
     {:ok, view, _html} =
       conn
       |> log_in_user(user)
-      |> live(~p"/users/settings/workspaces/#{workspace.slug}/imports")
+      |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
 
     persisted =
       import

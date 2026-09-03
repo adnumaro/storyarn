@@ -117,8 +117,9 @@ describe("SettingsLayout rail", () => {
 
     expect(links).toContain("/users/settings/workspaces/admin/general");
     expect(links).toContain("/users/settings/workspaces/admin/members");
-    expect(links).toContain("/users/settings/workspaces/admin/imports");
-    expect(links).toContain("/users/settings/workspaces/admin/deleted-projects");
+    expect(links).toContain("/users/settings/workspaces/admin/projects");
+    expect(links).toContain("/users/settings/workspaces/admin/plan");
+    expect(links).not.toContain("/users/settings/workspaces/admin/ai");
     expect(wrapper.find('[data-settings-group="workspace"]').text()).toContain("Admin workspace");
     expect(wrapper.findAll("[data-settings-locked]")).toHaveLength(0);
   });
@@ -142,8 +143,21 @@ describe("SettingsLayout rail", () => {
 
     expect(links).toContain("/users/settings/workspaces/member/general");
     expect(links).not.toContain("/users/settings/workspaces/member/members");
-    expect(links).not.toContain("/users/settings/workspaces/member/imports");
+    expect(links).not.toContain("/users/settings/workspaces/member/projects");
     expect(wrapper.findAll("[data-settings-locked]")).toHaveLength(1);
+  });
+
+  it("lists the workspace AI page only for flagged users, locked for non-owners", () => {
+    const flagged = mountLayout({
+      aiIntegrations: true,
+      settingsNav: nav({ workspace: { ...ownerWorkspace, owner: false } }),
+    });
+    const aiLink = flagged
+      .findAll("a")
+      .find((link) => link.attributes("href") === "/users/settings/workspaces/admin/ai");
+
+    expect(aiLink).toBeDefined();
+    expect(aiLink?.find("[data-settings-locked]").exists()).toBe(true);
   });
 
   it("offers a workspace switcher only when there is more than one workspace", () => {

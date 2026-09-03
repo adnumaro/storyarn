@@ -1,5 +1,7 @@
 export { default as SettingsDeleteDialog } from "./SettingsDeleteDialog.vue";
 export { default as SettingsEmptyState } from "./SettingsEmptyState.vue";
+export { default as SettingsMeterRow } from "./SettingsMeterRow.vue";
+export type { SettingsMeterStatus } from "./SettingsMeterRow.vue";
 export { default as SettingsPage } from "./SettingsPage.vue";
 export { default as SettingsReauthBanner } from "./SettingsReauthBanner.vue";
 export type { SettingsReauthState } from "./SettingsReauthBanner.vue";

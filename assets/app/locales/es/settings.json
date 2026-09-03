@@ -17,7 +17,9 @@
         "workspace_imports": "Importaciones",
         "deleted_projects": "Proyectos eliminados",
         "preferences": "Preferencias",
-        "workspace_ai": "IA"
+        "workspace_ai": "IA",
+        "workspace_projects": "Proyectos",
+        "workspace_plan": "Plan y uso"
       },
       "search": "Buscar ajustes…",
       "switch_workspace": "Cambiar de workspace",
@@ -270,6 +272,41 @@
         "unavailable": {
           "title": "La IA no está activada para este workspace",
           "text": "Storyarn AI es una beta con invitación. Cuando se active, aquí verás la asignación y las políticas de este workspace."
+        }
+      },
+      "projects": {
+        "title": "Proyectos",
+        "import_section": "Importar",
+        "deleted_empty_text": "Los proyectos enviados a la papelera del workspace aparecen aquí con quién los eliminó y cuándo. Un snapshot descargado siempre se puede volver a importar arriba."
+      },
+      "plan": {
+        "title": "Plan y uso",
+        "plan_section": "Plan",
+        "current_plan": "Plan actual",
+        "plan_hint": "Los límites combinan las cuotas de cada proyecto con las cuotas compartidas del workspace.",
+        "talk_to_us": "Habla con nosotros",
+        "limits_section": "Límites del workspace",
+        "limits_hint": "Compartidos por todos los proyectos",
+        "meters": {
+          "projects": "Proyectos",
+          "members": "Miembros",
+          "storage": "Almacenamiento"
+        },
+        "hints": {
+          "projects": "Proyectos activos en este workspace.",
+          "members": "Miembros únicos del workspace y de sus proyectos. Las invitaciones nuevas se bloquean hasta que se libere un asiento."
+        },
+        "storage_breakdown": "Assets {assets} · Papelera recuperable {trash} · Copias de seguridad {backups} · Reservas {reservations}",
+        "status": {
+          "available": "Disponible",
+          "warning": "Casi lleno",
+          "reached": "Límite alcanzado",
+          "unlimited": "Sin límite",
+          "unknown": "Desconocido"
+        },
+        "footer": "Los límites por proyecto (elementos, copias de seguridad, versiones con nombre) están en la página Uso de cada proyecto.",
+        "plans": {
+          "free": "Free"
         }
       }
     },
