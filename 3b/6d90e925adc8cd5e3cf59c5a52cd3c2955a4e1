@@ -1,0 +1,191 @@
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_dc522f884e191b::t_4a172b1037e404 8,40-41,117,122,137,232,291,306-308,319,321-333,335,359-360,375,379-390,407-408,416,418-441,601-606,629-776,782,786,799-812,814,824-828,838,992-993,1070,1087,1089-1099,1101-1108,1112-1118,1120-1122,1126-1127,1130,1137,1160-1163,1177-1262,1330-1406,1411,1428,1541-1543,1562,1581-1582,1859,1951-1985
+  s_dc522f884e191b::t_b547dfd231095b 1986
+lib/storyarn/scenes/assets/adapters/storage/locks.ex
+  s_dc522f884e191b::t_4a172b1037e404 4-5,7-8,12,19,24-39,68-104
+lib/storyarn/projects/versioning/versioning.ex
+  s_dc522f884e191b::t_4a172b1037e404 357-362,365,370
+priv/repo/migrations/20260903190000_fence_storage_cleanup_writers.exs
+  s_dc522f884e191b::t_4a172b1037e404 1-232
+lib/storyarn/flows/versioning/adapters/storage/asset_storage_compensation.ex
+  s_dc522f884e191b::t_4a172b1037e404 95-99
+lib/storyarn/projects/lifecycle/lifecycle.ex
+  s_dc522f884e191b::t_4a172b1037e404 43-46
+lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex
+  s_dc522f884e191b::t_4a172b1037e404 24-29
+lib/storyarn/scenes/assets/adapters/storage/compensation.ex
+  s_dc522f884e191b::t_4a172b1037e404 130-134
+lib/storyarn/platform/object_storage/key_lock.ex
+  s_dc522f884e191b::t_4a172b1037e404 8-9,68-160,243-459,600-626,636-664
+  s_dc522f884e191b::t_56ca2441e5a349 665
+lib/storyarn/projects/assets/entities/storage_cleanup_multipart_upload.ex
+  s_dc522f884e191b::t_4a172b1037e404 1-91
+lib/storyarn/projects/versioning/commands/project_snapshot_restore_lifecycle.ex
+  s_dc522f884e191b::t_4a172b1037e404 16,361-364,427-451
+test/storyarn/workspaces/lifecycle/commands/delete_workspace_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 1-30
+config/architecture_boundaries.exs
+  s_dc522f884e191b::t_4a172b1037e404 577-596,602,606,4303
+  s_dc522f884e191b::t_fe54dce84eeee1 574-576,4304-4308
+test/storyarn/architecture/storage_composition_boundary_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 37,50,54,58-59,64,66,68,78-83,86-87,94-95,99,108,111,115
+test/storyarn/projects/versioning/adapters/storage/snapshot_archive_storage_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 220-234
+test/storyarn/projects/interchange/imports/commands/replacement_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 22,41,394-424
+  s_dc522f884e191b::t_1006ffa76b293a 425-426
+test/storyarn/projects/versioning/execution/project_snapshot_build_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 37,2017,2019,2032,2638-2679,2681,2696,3207-3220
+  s_dc522f884e191b::t_5700adc454d104 3221
+lib/storyarn/workers/projects/delete_storage_objects_worker.ex
+  s_dc522f884e191b::t_4a172b1037e404 12-19,26-29,31-39,43,45-51,54-55,57-59,63-65
+.github/workflows/fly-deploy.yml
+  s_dc522f884e191b::t_4a172b1037e404 16-132
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_dc522f884e191b::t_4a172b1037e404 55-74,112-124
+lib/storyarn/sheets/assets/adapters/storage/compensation.ex
+  s_dc522f884e191b::t_4a172b1037e404 130-134
+config/prod.exs
+  s_dc522f884e191b::t_4a172b1037e404 16-18
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex
+  s_dc522f884e191b::t_4a172b1037e404 163-167,399,409,431,436-437,448-450,453,455-456,458-461,508-513,607-614,642-645,651-659
+  s_dc522f884e191b::t_cf85a9837d18f7 660
+lib/storyarn/projects/assets/adapters/storage/key_lock.ex
+  s_dc522f884e191b::t_4a172b1037e404 7,11,23,28-66,100-118
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 138,224-306,369,575
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 340-449,504-590,933-947,949-958,1035-1050,1052-1061,1788-1792,1796-1803,1806,1812-1826,1833-1849,1851-1878,1882,1887-1888,1892-1893,1902-1909,1915-1916,1920,1925,1927-1929,1931-1933,1935-1936,1938-1939,1941-1944,1946-1947,1949-1955,1957,1959-1964,1966,1970-1973,1977,1982-1997,2001-2008,2122-2129,2134
+  s_dc522f884e191b::t_d5dd05483af752 2130-2133,2135
+lib/storyarn/projects/assets/execution/multipart_cleanup.ex
+  s_dc522f884e191b::t_4a172b1037e404 1-1570
+lib/storyarn/projects.ex
+  s_dc522f884e191b::t_4a172b1037e404 531-535,609-613
+  s_dc522f884e191b::t_065b187fb4e032 614
+lib/storyarn/workers/projects/retry_storage_cleanup_requests_worker.ex
+  s_dc522f884e191b::t_4a172b1037e404 23
+test/storyarn/projects/assets/execution/multipart_cleanup_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 1-773
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex
+  s_dc522f884e191b::t_4a172b1037e404 16,904
+lib/storyarn/projects/assets/adapters/storage/cleanup_ownership.ex
+  s_dc522f884e191b::t_4a172b1037e404 1-60
+test/storyarn/workers/project_snapshot_cleanup_workers_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 91,95-96,98,255,288-289,292,327,330-331,334,339,344,346,348,351-353,356-357,361,365,370-371,554-560,563-567,570,655-702
+  s_dc522f884e191b::t_77c8ff20eb1dc0 703
+lib/storyarn/projects/versioning/execution/project_snapshot_asset_materializer.ex
+  s_dc522f884e191b::t_4a172b1037e404 398-403,475-478
+test/support/multipart_storage_spy.ex
+  s_dc522f884e191b::t_4a172b1037e404 14-33,56
+lib/storyarn/flows/versioning/adapters/storage/locks.ex
+  s_dc522f884e191b::t_4a172b1037e404 4-6,8,12,19,24-34,63-99
+lib/storyarn/projects/lifecycle/commands/workspace_data_lifecycle.ex
+  s_dc522f884e191b::t_4a172b1037e404 21-31,35-38,45
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_dc522f884e191b::t_4a172b1037e404 36,435-461,896-930,1030-1039,1049,1051,1056-1057,1061-1065,1074,1076,1080,1083-1084,1147-1158,1174,1185-1189,1228,1236-1251
+lib/storyarn/release.ex
+  s_dc522f884e191b::t_4a172b1037e404 16-17,23,68-71,86,90-92,104-143,221-231,279-281
+  s_dc522f884e191b::t_e718eff684b5f0 282
+test/storyarn/projects/workers/public_facade_boundary_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 11
+priv/repo/migrations/20260903133000_harden_exact_multipart_cleanup.exs
+  s_dc522f884e191b::t_4a172b1037e404 1-296
+test/storyarn/repo/migrations/remove_transitional_snapshot_cutover_scaffolding_migration_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 22-23,318-320,547-548
+  s_dc522f884e191b::t_1fea5d41e48b20 549-550
+test/storyarn/projects/workers/delete_storage_objects_worker_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 3,5-6,10-11,77-158
+test/storyarn/projects/workers/retry_storage_cleanup_requests_worker_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 9,12,36-38,43-44,54-67
+  s_dc522f884e191b::t_e24ac4df97a6c7 68-69
+lib/storyarn/projects/assets/execution/asset_operations.ex
+  s_dc522f884e191b::t_4a172b1037e404 42,2002,2010-2028
+  s_dc522f884e191b::t_ee6380198bbc93 2029
+lib/storyarn/projects/assets/adapters/storage/storage.ex
+  s_dc522f884e191b::t_4a172b1037e404 11,13,28-30,41-43,47,50-51,66-80,83,88-118,120-130,132-148,154-230,250-286
+  s_dc522f884e191b::t_305228dd4e9f5e 287
+config/runtime.exs
+  s_dc522f884e191b::t_4a172b1037e404 360-366
+test/storyarn/projects/assets/adapters/storage/key_lock_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 5-6,272-491,644-658
+  s_dc522f884e191b::t_14e27d00d46d1b 659
+test/storyarn/projects/versioning/adapters/archive/project_snapshot_archive_reader_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 2
+docs/reference/versioning-containment.md
+  s_dc522f884e191b::t_4a172b1037e404 353-434
+lib/storyarn/platform/object_storage/adapters/r2.ex
+  s_dc522f884e191b::t_4a172b1037e404 17,30-38,58-65,89-97,151-157,159-171,174,177-183,188-189,191-192,194,197,200,202,204,206-207,209-212,215-222,239-281,331-340,418-423,624-633,644-655,685,694-702,709-719,721-729,736-743,760-789,848,850-855,867-872,948-949,951,960,963-970,981,1064,1083,1105-1112
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_dc522f884e191b::t_4a172b1037e404 177-182,203,213,260,498-499,557-558,644-645,683,1677-1680,1766-1771,1776,1797-1805,1813,1838,1840,1842,1845,1849-1853,1950-1954,1978-2014
+lib/storyarn/sheets/assets/adapters/storage/locks.ex
+  s_dc522f884e191b::t_4a172b1037e404 4-5,7-8,12,19,24-39,68-104
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 143,195,234,274,279,313,316,318
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 30,94-118,193,196,259-263,356-434
+  s_dc522f884e191b::t_0a97aff2e9cc57 435
+lib/storyarn/projects/interchange/imports/commands/replacement.ex
+  s_dc522f884e191b::t_4a172b1037e404 16,174-183,194,199-201,206,211,213-217,222-226,239-243,245,248,250-255,261-269
+  s_dc522f884e191b::t_45dccfc997ab6c 270-272
+test/storyarn/projects/versioning/commands/project_snapshot_lifecycle_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 152-160,164,201,208,210-211,213-244,247,249-251,254-256,258-259,309-310,312,321-324,327,337-338,340,345-349,365-389,396-397,399,420-425,453-454,456,534-535,537,568-569,571,580,873-875,884,896-897,899-901,1746-1760,1776-1783
+  s_dc522f884e191b::t_5adea6cd8804fb 1784-1789
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 408,529-558,620-621,623,650-651,653,686-687,689,723-724,726,737-738,740,1033-1046,1056-1067
+  s_dc522f884e191b::t_e0db9f19678770 1068
+lib/storyarn/projects/assets/entities/storage_cleanup_request.ex
+  s_dc522f884e191b::t_4a172b1037e404 8-9,11-39,49-61,73-84,93-103,106,109-111,119-141,162-164,167-223,227-309
+  s_dc522f884e191b::t_6bb703c0e1d5cf 310
+lib/storyarn_web/live/settings_live/workspace_projects.ex
+  s_dc522f884e191b::t_4a172b1037e404 7-9,40-42
+  s_dc522f884e191b::t_eb6c7bcd989c52 10
+test/storyarn/platform/object_storage/adapters/r2_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 424-430,521,558-560,565-623,852,900,985-1116,1133-1178,1575-1607
+test/storyarn/projects/interchange/imports/adapters/storage/plan_storage_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 2
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 15,566,1822-1832,1834,2134-2146
+  s_dc522f884e191b::t_351232e8195e2a 2147
+test/storyarn/platform/object_storage/adapters/local_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 346-364
+test/storyarn/projects/assets/adapters/storage/storage_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 2,6,8,16-94,110-122,176-177,202-350,438-540,714-721,762-773
+test/storyarn/release_snapshot_cutover_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 9,17,21-32,35,93-108,136-144,148-151,155-160,164-168,178-203,207-379,600-601,615-626,664-679,689-692,694,710-815,929-931
+  s_dc522f884e191b::t_70a55f5a80a7a3 932
+test/storyarn_web/live/settings_live/workspace_projects_test.exs
+  s_dc522f884e191b::t_0c9c51e20e418b 58
+  s_dc522f884e191b::t_4a172b1037e404 2,42-57,59-66
+test/storyarn/projects/versioning/execution/project_snapshot_zip_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 2
+lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex
+  s_dc522f884e191b::t_4a172b1037e404 129-140,157-158,160-165,179-185,190,194,196-198,201-202,204,206-207,209,215,217,219-221,225,228,290-299,419-429,539-543,557-564,575-583,635-636,638-641,644-647,650,653,655,662-679,681-685,687,691-695,700,708,728,730,733,745-746,748,793,801-808,820-826,828,834,836,838-846,850,853-860,922,932-937,945,956-961,1082,1436-1438,1440,1442-1443,1445,1450,1452,1467-1470,1473,1475-1482,1486,1580-1588,1600-1601,1608-1613,1684-1685
+lib/storyarn/projects/lifecycle/commands/project_commands.ex
+  s_dc522f884e191b::t_4a172b1037e404 91-105
+lib/storyarn/platform/object_storage.ex
+  s_dc522f884e191b::t_4a172b1037e404 25-29,43-48,59-64,81-87,92,106,108-110,115-120,132-134,139,152-217,236-238,248-253,272-277,285-471,487-492,518-523,568-570,584-609,612-614,622,667-669,675,696-698,728-730,745-747,759-776,778,780-781
+lib/storyarn/projects/versioning/execution/project_snapshot_build.ex
+  s_dc522f884e191b::t_4a172b1037e404 19,782
+lib/storyarn/projects/assets/entities/storage_cleanup_ownership_receipt.ex
+  s_dc522f884e191b::t_4a172b1037e404 1-17
+test/storyarn/projects/versioning/execution/project_snapshot_asset_materializer_test.exs
+  s_dc522f884e191b::t_4a172b1037e404 493-548
+lib/storyarn/projects/assets/assets.ex
+  s_dc522f884e191b::t_4a172b1037e404 157,163-164
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3b6d90e925adc8cd5e3cf59c5a52cd3c2955a4e1",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
