@@ -1,0 +1,82 @@
+assets/app/locales/en/settings.json
+  s_dc522f884e191b::t_bb292d0989963e 20-22,276-309
+  s_dc522f884e191b::t_9a1ff1315c77c8 310
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_dc522f884e191b::t_e189113593a2ae 397
+  s_dc522f884e191b::t_92f2fc50695384 24,84,94,107-110,113-114,142,147,152,157,164,171,178,183,188,264-266,271,276,281,286-288,293,298,303,308,334,370,385-396,398-399
+assets/app/test/live/layouts/SettingsLayout.test.ts
+  s_dc522f884e191b::t_5e4fbad22f22e3 150-162
+  s_dc522f884e191b::t_ef2f78c63de1b0 146
+  s_dc522f884e191b::t_2cf049086d8c18 120-122
+assets/app/live/workspace/settings/WorkspaceSettingsProjects.vue
+  s_dc522f884e191b::t_f0c1666860e1e4 3,25-27,388
+  s_dc522f884e191b::t_77759ecde8d900 1-2,4-24,28-332,339-356,361-372,383-387,389-438
+  s_dc522f884e191b::t_8c0442d00daf56 333-338,357-360,373-382
+lib/storyarn_web/live/settings_live/workspace_projects.ex
+  s_dc522f884e191b::t_c7cfb1a4392ce5 1-428
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_dc522f884e191b::t_e433acac03464b 394
+  s_dc522f884e191b::t_92f2fc50695384 24,84,94,107-110,113-114,142,147,152,157,164,171,178,183,188,264-266,271,276,281,286-288,293,298,303,308,334,370,385-388,390-393,395-396,398
+  s_dc522f884e191b::t_bcd34d186ee398 389
+  s_dc522f884e191b::t_5f7e47ce21ca72 397,399
+assets/app/locales/es/settings.json
+  s_dc522f884e191b::t_bb292d0989963e 20-22,276-309
+  s_dc522f884e191b::t_7962c4baa75dbc 310
+priv/gettext/default.pot
+  s_dc522f884e191b::t_92f2fc50695384 134
+assets/app/components/settings/SettingsMeterRow.vue
+  s_dc522f884e191b::t_ee678b6d6e82e5 1-66
+test/storyarn_web/live/settings_live/workspace_plan_test.exs
+  s_dc522f884e191b::t_a3243e3a5380e2 1-66
+test/storyarn_web/live/settings_live/workspace_projects_test.exs
+  s_dc522f884e191b::t_075d4fd5c5566c 1-129
+assets/app/live/workspace/settings/WorkspaceDeletedProjectsList.vue
+  s_dc522f884e191b::t_39b99397abd27f 1-49
+assets/app/test/live/workspace/settings/WorkspaceSettingsPlan.test.ts
+  s_dc522f884e191b::t_f63e8ef26f146f 1-80
+lib/storyarn_web/router.ex
+  s_dc522f884e191b::t_81369cac70ed00 350-351,353,355-356,359-360
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_2fd41a9495895d 16
+  s_dc522f884e191b::t_00fe5e895a99b2 243-246,250-253
+assets/app/test/live/workspace/settings/WorkspaceSettingsProjects.test.ts
+  s_dc522f884e191b::t_075d4fd5c5566c 1-210
+priv/gettext/en/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_92f2fc50695384 134
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_dc522f884e191b::t_808e7c0d278609 152,155,161,169,172
+  s_dc522f884e191b::t_abeddec2c71cc0 4
+lib/storyarn/commercial.ex
+  s_dc522f884e191b::t_34125ae870678b 106-109
+lib/storyarn_web/live/settings_live/workspace_plan.ex
+  s_dc522f884e191b::t_91cb9de464eaa8 1-10,12-77
+  s_dc522f884e191b::t_a1a65a48a43b9a 11
+assets/app/live/workspace/settings/WorkspaceSettingsPlan.vue
+  s_dc522f884e191b::t_7f8e0c1ded69b9 83-90,92-97
+  s_dc522f884e191b::t_8c0442d00daf56 109-116,131-133,139-141
+  s_dc522f884e191b::t_ac66d98b33634e 1-82,91,98-108,117-130,134-138,142-171
+test/storyarn_web/live/settings_live/workspace_projects_page_test.exs
+  s_dc522f884e191b::t_1ea60ab1c5f392 1-52
+priv/gettext/es/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_92f2fc50695384 134
+priv/gettext/workspaces.pot
+  s_dc522f884e191b::t_92f2fc50695384 24,84,94,107-110,113-114,142,147,152,157,164,171,178,183,188,264-266,271,276,281,286-288,293,298,303,308,334,370,385-399
+assets/app/components/settings/index.ts
+  s_dc522f884e191b::t_45495fc6d8f3a6 3-4
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c486b297b8f8f6f0681632c1fbe60fd5087df780",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
