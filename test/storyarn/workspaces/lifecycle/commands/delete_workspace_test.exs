@@ -24,7 +24,7 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspaceTest do
              Workspaces.delete_workspace(user_scope_fixture(owner), 9_223_372_036_854_775_807)
 
     assert Repo.get!(Workspace, workspace.id)
-    assert {:error, _reason} = Workspaces.delete_workspace(user_scope_fixture(owner), workspace.id)
+    assert {:error, :unsafe_storage_entry} = Workspaces.delete_workspace(user_scope_fixture(owner), workspace.id)
     assert Repo.get!(Workspace, workspace.id)
   end
 end
