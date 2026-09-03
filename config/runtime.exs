@@ -357,6 +357,13 @@ end
 
 config :storyarn, :contact_email, System.get_env("CONTACT_EMAIL") || "hello@storyarn.com"
 
+# One-release acknowledgement for the ENG-116 stop-the-world cutover. The
+# release preflight consumes the exact migration version; the application does
+# not treat this value as a runtime feature switch.
+config :storyarn,
+       :exact_multipart_cleanup_cutover_authorization,
+       env.("EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION")
+
 # One-release operational acknowledgement for the irreversible ENG-86 schema
 # cleanup. This is not a runtime feature switch: Release.migrate consumes the
 # exact migration version only after the prior v2-only rollout is verified.

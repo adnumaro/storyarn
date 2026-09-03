@@ -574,12 +574,33 @@ storage_cleanup_persistence_ownership = %{
     %{
       context: :projects,
       write_authority: :full_lifecycle,
+      path: "lib/storyarn/projects/assets/execution/multipart_cleanup.ex",
+      functions: [
+        %{identity: "def reopen_confirmed/1", operations: [:update]},
+        %{identity: "def resume_for_replay/1", operations: [:update]},
+        %{identity: "defp block_unbound_legacy_request/1", operations: [:update]},
+        %{identity: "defp clear_retry_state_for_replay/1", operations: [:update]},
+        %{identity: "defp consume_confirmed_request/2", operations: [:delete]},
+        %{identity: "defp enter_quiet/2", operations: [:update]},
+        %{identity: "defp initialize_and_claim/2", operations: [:update]},
+        %{identity: "defp persist_claim/2", operations: [:update]},
+        %{identity: "defp persist_confirmed/3", operations: [:update]},
+        %{identity: "defp persist_discovery/4", operations: [:update]},
+        %{identity: "defp persist_failure/2", operations: [:update]},
+        %{identity: "defp persist_residue_state/3", operations: [:update]},
+        %{identity: "defp release_claim/1", operations: [:update]},
+        %{identity: "defp reset_blocked_request_for_replay/1", operations: [:update]},
+        %{identity: "defp transition_claimed/2", operations: [:update]}
+      ],
+      reason: "Projects owns the durable exact multipart cleanup state machine"
+    },
+    %{
+      context: :projects,
+      write_authority: :full_lifecycle,
       path: "lib/storyarn/projects/assets/execution/storage_compensation.ex",
       functions: [
-        %{identity: "defp consume_multipart_cleanup_receipt/1", operations: [:delete]},
         %{identity: "defp defer_planned_cleanup/2", operations: [:update]},
         %{identity: "defp insert_cleanup_request/3", operations: [:insert]},
-        %{identity: "defp persist_reset_multipart_quiescence/2", operations: [:update]},
         %{identity: "defp retry_persisted_cleanup_request/2", operations: [:delete]},
         %{identity: "defp rotate_persisted_cleanup_request/2", operations: [:delete, :insert]}
       ],
@@ -4279,6 +4300,12 @@ policy = %{
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
       reason: "Project lifecycle enforces commercial policy through the public Commercial facade"
+    },
+    %{
+      source: "lib/storyarn/projects/lifecycle/commands/workspace_data_lifecycle.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace hard-delete preparation verifies the Commercial-owned canonical workspace lock"
     },
     %{
       source: "lib/storyarn/projects/versioning/adapters/commercial/storage_reservations.ex",

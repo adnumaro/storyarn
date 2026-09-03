@@ -5,6 +5,8 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
 
   @lock_namespace 731_001
   @session_lock_namespace 731_002
+  @handoff_gate_namespace 731_003
+  @handoff_gate_key 1
   @max_lock_key 2_147_483_647
   @acquisition_timeout to_timeout(minute: 5)
   @lock_retry_delay_ms 25
@@ -62,6 +64,97 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
   end
 
   def with_storage_key_locks(_storage_keys, _fun, _opts), do: {:error, :invalid_storage_key_lock_set}
+
+  @doc """
+  Runs one database-only callback while holding an exact set of storage-key
+  transaction locks.
+
+  Outside a transaction, contended all-or-none attempts are rolled back before
+  retrying. The retry delay therefore holds neither a checked-out connection
+  nor a partial lock set. Inside an existing transaction, contention is returned
+  immediately so its owner can roll back and retry the complete operation
+  outside the checkout. Callers must not perform provider I/O in the callback.
+  """
+  @spec transact_with_storage_key_locks([String.t()], (-> result), keyword()) ::
+          result | {:error, :invalid_storage_key_lock_set | :storage_key_lock_timeout}
+        when result: term()
+  def transact_with_storage_key_locks(storage_keys, fun, opts \\ [])
+
+  def transact_with_storage_key_locks(storage_keys, fun, opts)
+      when is_list(storage_keys) and is_function(fun, 0) and is_list(opts) do
+    with {:ok, storage_keys} <- normalize_storage_keys(storage_keys) do
+      deadline = acquisition_deadline(opts)
+
+      if Repo.in_transaction?() do
+        try_existing_transaction_lock_set_and_run(storage_keys, fun)
+      else
+        acquire_lock_set_and_run(storage_keys, fun, deadline)
+      end
+    end
+  end
+
+  def transact_with_storage_key_locks(_storage_keys, _fun, _opts), do: {:error, :invalid_storage_key_lock_set}
+
+  @doc """
+  Runs one database-only writer admission while holding the global cleanup
+  handoff gate in shared mode, followed by the exact storage-key lock.
+
+  The callback must only establish the bounded provider-operation deadline and
+  inspect durable ownership. Provider I/O runs after this transaction releases
+  both locks, then performs its normal durable-ownership postcheck.
+
+  This helper intentionally refuses an existing checkout: transaction advisory
+  locks cannot be released before the caller's transaction ends, which would
+  otherwise keep the shared gate (and a pool connection) across provider I/O.
+  """
+  @spec transact_with_storage_key_admission(String.t(), (-> result), keyword()) ::
+          result
+          | {:error,
+             :invalid_storage_key
+             | :storage_key_admission_requires_outside_transaction
+             | :storage_key_lock_timeout}
+        when result: term()
+  def transact_with_storage_key_admission(storage_key, fun, opts \\ [])
+
+  def transact_with_storage_key_admission(storage_key, fun, opts)
+      when is_binary(storage_key) and storage_key != "" and is_function(fun, 0) and is_list(opts) do
+    if Repo.in_transaction?() or Repo.checked_out?() do
+      {:error, :storage_key_admission_requires_outside_transaction}
+    else
+      acquire_storage_key_admission_and_run(storage_key, fun, acquisition_deadline(opts))
+    end
+  end
+
+  def transact_with_storage_key_admission(_storage_key, _fun, _opts), do: {:error, :invalid_storage_key}
+
+  @doc """
+  Runs one database-only cleanup handoff while holding a single global
+  transaction advisory lock in exclusive mode.
+
+  Writer admissions take the same gate in shared mode before their exact-key
+  lock. Consequently this callback cannot overlap an admission, while its lock
+  footprint remains constant for inventories containing tens of thousands of
+  keys. The callback must not perform provider I/O.
+  """
+  @spec transact_with_storage_handoff([String.t()], (-> result), keyword()) ::
+          result | {:error, :invalid_storage_key_lock_set | :storage_key_lock_timeout}
+        when result: term()
+  def transact_with_storage_handoff(storage_keys, fun, opts \\ [])
+
+  def transact_with_storage_handoff(storage_keys, fun, opts)
+      when is_list(storage_keys) and is_function(fun, 0) and is_list(opts) do
+    with {:ok, _storage_keys} <- normalize_storage_keys(storage_keys) do
+      deadline = acquisition_deadline(opts)
+
+      if Repo.in_transaction?() do
+        try_existing_transaction_handoff_and_run(fun)
+      else
+        acquire_storage_handoff_and_run(fun, deadline)
+      end
+    end
+  end
+
+  def transact_with_storage_handoff(_storage_keys, _fun, _opts), do: {:error, :invalid_storage_key_lock_set}
 
   @doc false
   @spec wrapper_owned_transaction_lock_held?(String.t()) :: boolean()
@@ -143,6 +236,223 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
     after
       Process.delete(attempt_ref)
     end
+  end
+
+  defp acquire_lock_set_and_run(storage_keys, fun, deadline) do
+    case transaction_lock_set_attempt(storage_keys, fun) do
+      :checkout_unavailable ->
+        retry_lock_set(storage_keys, fun, deadline)
+
+      {:ok, {:locks_acquired, callback_result}} ->
+        callback_result
+
+      {:error, :storage_key_locks_busy} ->
+        retry_lock_set(storage_keys, fun, deadline)
+
+      {:error, {:storage_key_callback_error, callback_result}} ->
+        callback_result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp acquire_storage_key_admission_and_run(storage_key, fun, deadline) do
+    case storage_key_admission_attempt(storage_key, fun) do
+      :checkout_unavailable ->
+        retry_storage_key_admission(storage_key, fun, deadline)
+
+      {:ok, {:admission_acquired, callback_result}} ->
+        callback_result
+
+      {:error, :storage_key_admission_busy} ->
+        retry_storage_key_admission(storage_key, fun, deadline)
+
+      {:error, {:storage_key_callback_error, callback_result}} ->
+        callback_result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp storage_key_admission_attempt(storage_key, fun) do
+    attempt_ref = make_ref()
+
+    try do
+      Repo.checkout(
+        fn ->
+          Process.put(attempt_ref, :connection_checked_out)
+
+          Repo.transaction(
+            fn ->
+              if try_shared_handoff_gate!() and try_lock!(storage_key) do
+                Process.put(attempt_ref, :callback_started)
+                {:admission_acquired, rollback_callback_error(fun.())}
+              else
+                Repo.rollback(:storage_key_admission_busy)
+              end
+            end,
+            timeout: :infinity
+          )
+        end,
+        queue: false,
+        timeout: :infinity
+      )
+    rescue
+      error in DBConnection.ConnectionError ->
+        if Process.get(attempt_ref) == :callback_started do
+          reraise error, __STACKTRACE__
+        else
+          :checkout_unavailable
+        end
+    after
+      Process.delete(attempt_ref)
+    end
+  end
+
+  defp acquire_storage_handoff_and_run(fun, deadline) do
+    case storage_handoff_attempt(fun) do
+      :checkout_unavailable ->
+        retry_storage_handoff(fun, deadline)
+
+      {:ok, {:handoff_acquired, callback_result}} ->
+        callback_result
+
+      {:error, :storage_handoff_busy} ->
+        retry_storage_handoff(fun, deadline)
+
+      {:error, {:storage_key_callback_error, callback_result}} ->
+        callback_result
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp storage_handoff_attempt(fun) do
+    attempt_ref = make_ref()
+
+    try do
+      Repo.checkout(
+        fn ->
+          Process.put(attempt_ref, :connection_checked_out)
+
+          Repo.transaction(
+            fn ->
+              if try_exclusive_handoff_gate!() do
+                Process.put(attempt_ref, :callback_started)
+                {:handoff_acquired, rollback_callback_error(fun.())}
+              else
+                Repo.rollback(:storage_handoff_busy)
+              end
+            end,
+            timeout: :infinity
+          )
+        end,
+        queue: false,
+        timeout: :infinity
+      )
+    rescue
+      error in DBConnection.ConnectionError ->
+        if Process.get(attempt_ref) == :callback_started do
+          reraise error, __STACKTRACE__
+        else
+          :checkout_unavailable
+        end
+    after
+      Process.delete(attempt_ref)
+    end
+  end
+
+  defp transaction_lock_set_attempt(storage_keys, fun) do
+    attempt_ref = make_ref()
+    lock_keys = storage_keys |> Enum.map(&lock_key/1) |> Enum.uniq() |> Enum.sort()
+
+    try do
+      Repo.checkout(
+        fn ->
+          Process.put(attempt_ref, :connection_checked_out)
+
+          Repo.transaction(
+            fn ->
+              if try_lock_set!(lock_keys) do
+                Process.put(attempt_ref, :callback_started)
+                {:locks_acquired, rollback_callback_error(fun.())}
+              else
+                # A failed all-or-none attempt may already own a subset. The
+                # rollback releases it before the caller sleeps and retries.
+                Repo.rollback(:storage_key_locks_busy)
+              end
+            end,
+            timeout: :infinity
+          )
+        end,
+        queue: false,
+        timeout: :infinity
+      )
+    rescue
+      error in DBConnection.ConnectionError ->
+        if Process.get(attempt_ref) == :callback_started do
+          reraise error, __STACKTRACE__
+        else
+          :checkout_unavailable
+        end
+    after
+      Process.delete(attempt_ref)
+    end
+  end
+
+  # Cleanup handoffs may be part of a larger domain transaction. They cannot
+  # wait and retry without pinning that transaction's connection, so contention
+  # fails the outer operation closed. The explicit savepoint releases any locks
+  # acquired earlier in the TRY set before returning the retryable error.
+  defp try_existing_transaction_lock_set_and_run(storage_keys, fun) do
+    lock_keys = storage_keys |> Enum.map(&lock_key/1) |> Enum.uniq() |> Enum.sort()
+    Repo.query!("SAVEPOINT storyarn_storage_key_lock_set")
+
+    if try_lock_set!(lock_keys) do
+      callback_result = fun.()
+      Repo.query!("RELEASE SAVEPOINT storyarn_storage_key_lock_set")
+      callback_result
+    else
+      rollback_storage_key_lock_set_savepoint!()
+      {:error, :storage_key_lock_timeout}
+    end
+  rescue
+    error ->
+      rollback_storage_key_lock_set_savepoint!()
+      reraise error, __STACKTRACE__
+  end
+
+  defp rollback_storage_key_lock_set_savepoint! do
+    Repo.query!("ROLLBACK TO SAVEPOINT storyarn_storage_key_lock_set")
+    Repo.query!("RELEASE SAVEPOINT storyarn_storage_key_lock_set")
+  end
+
+  # A nested handoff cannot wait without pinning its caller's transaction. A
+  # savepoint keeps a failed non-blocking attempt from changing that transaction
+  # and releases the exclusive gate if the callback itself raises.
+  defp try_existing_transaction_handoff_and_run(fun) do
+    Repo.query!("SAVEPOINT storyarn_storage_handoff_gate")
+
+    if try_exclusive_handoff_gate!() do
+      callback_result = fun.()
+      Repo.query!("RELEASE SAVEPOINT storyarn_storage_handoff_gate")
+      callback_result
+    else
+      rollback_storage_handoff_gate_savepoint!()
+      {:error, :storage_key_lock_timeout}
+    end
+  rescue
+    error ->
+      rollback_storage_handoff_gate_savepoint!()
+      reraise error, __STACKTRACE__
+  end
+
+  defp rollback_storage_handoff_gate_savepoint! do
+    Repo.query!("ROLLBACK TO SAVEPOINT storyarn_storage_handoff_gate")
+    Repo.query!("RELEASE SAVEPOINT storyarn_storage_handoff_gate")
   end
 
   defp handle_transaction_lock_result({:ok, {:lock_acquired, callback_result}}, _storage_key, _fun, _deadline),
@@ -285,10 +595,67 @@ defmodule Storyarn.Platform.ObjectStorage.KeyLock do
     end
   end
 
+  defp retry_lock_set(storage_keys, fun, deadline) do
+    if System.monotonic_time(:millisecond) < deadline do
+      Process.sleep(@lock_retry_delay_ms)
+      acquire_lock_set_and_run(storage_keys, fun, deadline)
+    else
+      {:error, :storage_key_lock_timeout}
+    end
+  end
+
+  defp retry_storage_key_admission(storage_key, fun, deadline) do
+    if System.monotonic_time(:millisecond) < deadline do
+      Process.sleep(@lock_retry_delay_ms)
+      acquire_storage_key_admission_and_run(storage_key, fun, deadline)
+    else
+      {:error, :storage_key_lock_timeout}
+    end
+  end
+
+  defp retry_storage_handoff(fun, deadline) do
+    if System.monotonic_time(:millisecond) < deadline do
+      Process.sleep(@lock_retry_delay_ms)
+      acquire_storage_handoff_and_run(fun, deadline)
+    else
+      {:error, :storage_key_lock_timeout}
+    end
+  end
+
   defp try_lock!(storage_key) do
     case Repo.query!("SELECT pg_try_advisory_xact_lock($1, $2)", [
            @lock_namespace,
            lock_key(storage_key)
+         ]) do
+      %{rows: [[acquired?]]} when is_boolean(acquired?) -> acquired?
+    end
+  end
+
+  defp try_lock_set!(lock_keys) do
+    case Repo.query!(
+           """
+           SELECT COALESCE(bool_and(pg_try_advisory_xact_lock($1, candidate.lock_key)), TRUE)
+           FROM unnest($2::integer[]) AS candidate(lock_key)
+           """,
+           [@lock_namespace, lock_keys]
+         ) do
+      %{rows: [[acquired?]]} when is_boolean(acquired?) -> acquired?
+    end
+  end
+
+  defp try_shared_handoff_gate! do
+    case Repo.query!("SELECT pg_try_advisory_xact_lock_shared($1, $2)", [
+           @handoff_gate_namespace,
+           @handoff_gate_key
+         ]) do
+      %{rows: [[acquired?]]} when is_boolean(acquired?) -> acquired?
+    end
+  end
+
+  defp try_exclusive_handoff_gate! do
+    case Repo.query!("SELECT pg_try_advisory_xact_lock($1, $2)", [
+           @handoff_gate_namespace,
+           @handoff_gate_key
          ]) do
       %{rows: [[acquired?]]} when is_boolean(acquired?) -> acquired?
     end

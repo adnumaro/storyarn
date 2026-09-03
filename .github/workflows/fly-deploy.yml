@@ -13,6 +13,122 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only
+
+      - name: Detect exact-cleanup cutover
+        id: exact-cleanup-cutover
+        shell: bash
+        run: |
+          machine_inventory="$(flyctl machine list --app storyarn-prod --json)"
+          started_machine_count="$(jq '[.[] | select((.state // .State) == "started")] | length' <<<"$machine_inventory")"
+
+          if [ "$started_machine_count" -eq 0 ]; then
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if migration_state="$(flyctl ssh console --app storyarn-prod --command "/app/bin/storyarn rpc '
+              version = 20_260_903_133_000
+              applied = version in Ecto.Migrator.migrated_versions(Storyarn.Repo)
+              IO.puts(\"storyarn-exact-cleanup-applied=#{applied}\")
+            '")"; then
+            :
+          else
+            echo "Could not query the exact-cleanup migration state; requiring the fail-closed cutover" >&2
+            echo "required=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          case "$migration_state" in
+            *storyarn-exact-cleanup-applied=true*)
+              echo "required=false" >> "$GITHUB_OUTPUT"
+              ;;
+            *storyarn-exact-cleanup-applied=false*)
+              echo "required=true" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "Could not prove the exact-cleanup migration state" >&2
+              exit 1
+              ;;
+          esac
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Stop old storage writers for exact-cleanup cutover
+        if: steps.exact-cleanup-cutover.outputs.required == 'true'
+        shell: bash
+        run: |
+          machine_inventory="$(flyctl machine list --app storyarn-prod --json)"
+          started_machine_count="$(jq '[.[] | select((.state // .State) == "started")] | length' <<<"$machine_inventory")"
+
+          if [ "$started_machine_count" -gt 0 ]; then
+            flyctl ssh console --app storyarn-prod --command "/app/bin/storyarn rpc '
+              :ok = Oban.pause_all_queues()
+              deadline = System.monotonic_time(:millisecond) + 1_800_000
+              wait = fn wait ->
+                result = Storyarn.Repo.query!(\"\"\"
+                  SELECT count(*)
+                  FROM oban_jobs
+                  WHERE state = \$1
+                  \"\"\", [\"executing\"])
+                [[running_count]] = result.rows
+                IO.inspect(%{running_count: running_count}, label: \"Exact cleanup cutover\")
+
+                cond do
+                  running_count == 0 -> :ok
+                  System.monotonic_time(:millisecond) >= deadline ->
+                    raise \"exact cleanup cutover timed out waiting for queue quiescence\"
+                  true -> Process.sleep(1_000); wait.(wait)
+                end
+              end
+              wait.(wait)
+              Process.sleep(2_000)
+
+              case Storyarn.Repo.query!(\"\"\"
+                     SELECT count(*)
+                     FROM oban_jobs
+                     WHERE state = \$1
+                     \"\"\", [\"executing\"]).rows do
+                [[0]] -> :ok
+                _ -> raise \"exact cleanup cutover lost queue quiescence before shutdown\"
+              end
+            '"
+          fi
+
+          flyctl scale count 0 --app storyarn-prod --yes
+          test "$(flyctl machine list --app storyarn-prod --json | jq 'length')" -eq 0
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Authorize exact-cleanup migration after stop-world proof
+        if: steps.exact-cleanup-cutover.outputs.required == 'true'
+        run: >-
+          flyctl secrets set --stage --app storyarn-prod
+          EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903133000
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy exact-cleanup cutover from zero
+        if: steps.exact-cleanup-cutover.outputs.required == 'true'
+        run: flyctl deploy --remote-only --ha=false
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Retire exact-cleanup cutover authorization
+        shell: bash
+        run: |
+          secret_inventory="$(flyctl secrets list --app storyarn-prod --json)"
+          jq -e 'type == "array"' <<<"$secret_inventory" >/dev/null
+
+          if jq -e 'any(.[]; (.Name // .name) == "EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION")' \
+            <<<"$secret_inventory" >/dev/null; then
+            flyctl secrets unset --stage --app storyarn-prod \
+              EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      - name: Deploy normally
+        if: steps.exact-cleanup-cutover.outputs.required != 'true'
+        run: flyctl deploy --remote-only
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

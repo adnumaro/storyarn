@@ -18,17 +18,31 @@ defmodule Storyarn.Projects.WorkspaceDataLifecycle do
   @spec prepare_hard_delete(pos_integer()) ::
           {:ok, hard_delete_preparation()} | {:error, term()}
   def prepare_hard_delete(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    if Storyarn.Commercial.workspace_lock_held?(workspace_id),
+      do: {:error, :multipart_cleanup_provider_namespace_capture_required},
+      else: {:error, :snapshot_cleanup_workspace_lock_required}
+  end
+
+  def prepare_hard_delete(_workspace_id), do: {:error, :invalid_workspace_project_cleanup_scope}
+
+  @spec prepare_hard_delete(pos_integer(), String.t()) ::
+          {:ok, hard_delete_preparation()} | {:error, term()}
+  def prepare_hard_delete(workspace_id, provider_namespace_fingerprint)
+      when is_integer(workspace_id) and workspace_id > 0 and is_binary(provider_namespace_fingerprint) do
     workspace_identity = %{id: workspace_id}
 
     with {:ok, snapshot_cleanup_intents} <-
-           Versioning.prepare_workspace_snapshot_hard_delete(workspace_identity),
+           Versioning.prepare_workspace_snapshot_hard_delete(
+             workspace_identity,
+             provider_namespace_fingerprint
+           ),
          :ok <- Versioning.prepare_workspace_snapshot_import_hard_delete(workspace_identity),
          :ok <- Assets.prepare_parent_hard_delete_locked(workspace_id, :all) do
       {:ok, {__MODULE__, workspace_id, snapshot_cleanup_intents}}
     end
   end
 
-  def prepare_hard_delete(_workspace_id), do: {:error, :invalid_workspace_project_cleanup_scope}
+  def prepare_hard_delete(_workspace_id, _fingerprint), do: {:error, :invalid_workspace_project_cleanup_scope}
 
   @doc """
   Publishes Project snapshot cleanup facts after the Workspace deletion commits.

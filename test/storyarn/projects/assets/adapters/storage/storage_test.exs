@@ -1,14 +1,69 @@
 defmodule Storyarn.Projects.Assets.StorageTest do
-  use ExUnit.Case, async: false
+  use Storyarn.DataCase, async: false
 
   alias Storyarn.MultipartStorageSpy
   alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Projects.Assets.Storage
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
 
   @legacy_config_key :"Elixir.Storyarn.Projects.Assets.Storage"
 
   defmodule NoMultipartInventoryAdapter do
     @moduledoc false
+  end
+
+  defmodule ExactMultipartAdapter do
+    @moduledoc false
+
+    def list_incomplete_multipart_uploads(key, opts) do
+      send(self(), {:exact_multipart_inventory_dispatched, key, opts})
+
+      Process.get(
+        {__MODULE__, :inventory_result},
+        {:ok, %{uploads: [%{key: key, upload_id: "opaque-upload-id"}], inventory_complete: true}}
+      )
+    end
+
+    def abort_incomplete_multipart_upload(key, upload_id) do
+      send(self(), {:exact_multipart_abort_dispatched, key, upload_id})
+      Process.get({__MODULE__, :abort_result}, :ok)
+    end
+
+    def incomplete_multipart_upload_state(key, upload_id) do
+      send(self(), {:exact_multipart_state_dispatched, key, upload_id})
+      Process.get({__MODULE__, :state_result}, {:ok, :absent_now})
+    end
+  end
+
+  defmodule WriteFenceAdapter do
+    @moduledoc false
+
+    def upload(key, _data, _content_type), do: dispatch(:upload, key, {:ok, "stored"})
+    def upload_stream(key, _chunks, _content_type), do: dispatch(:upload_stream, key, {:ok, "stored"})
+    def put_if_absent(key, _data, _content_type), do: dispatch(:put_if_absent, key, {:ok, "stored", true})
+
+    def presigned_upload_url(key, _content_type, _opts), do: dispatch(:presigned_upload_url, key, {:ok, "signed", %{}})
+
+    def copy(_source_key, destination_key), do: dispatch(:copy, destination_key, :ok)
+
+    def copy_if_absent(_source_key, destination_key), do: dispatch(:copy_if_absent, destination_key, {:ok, true})
+
+    def delete(key), do: dispatch(:delete, key, :ok)
+
+    defp dispatch(operation, key, result) do
+      send(self(), {:write_fence_adapter, operation, key})
+
+      case Process.get({__MODULE__, :after_dispatch}) do
+        callback when is_function(callback, 0) ->
+          Process.delete({__MODULE__, :after_dispatch})
+          callback.()
+
+        _none ->
+          :ok
+      end
+
+      Process.get({__MODULE__, operation, :result}, result)
+    end
   end
 
   test "keeps the legacy multipart deadline key as a deployment compatibility fallback" do
@@ -24,6 +79,19 @@ defmodule Storyarn.Projects.Assets.StorageTest do
     end)
 
     assert Storage.multipart_upload_part_deadline_ms() == 1_234
+  end
+
+  test "nested operation deadlines keep the earliest budget and restore their caller" do
+    ObjectStorage.with_operation_deadline(5_000, fn ->
+      outer_deadline = ObjectStorage.write_operation_deadline()
+
+      ObjectStorage.with_operation_deadline(500, fn ->
+        inner_deadline = ObjectStorage.write_operation_deadline()
+        assert inner_deadline < outer_deadline
+      end)
+
+      assert ObjectStorage.write_operation_deadline() == outer_deadline
+    end)
   end
 
   @test_dir "test/tmp/storage_dispatch"
@@ -79,8 +147,8 @@ defmodule Storyarn.Projects.Assets.StorageTest do
   end
 
   describe "multipart cleanup policy" do
-    test "covers the UploadPart deadline after second-precision clock truncation" do
-      deadline_ms = Storage.multipart_upload_part_deadline_ms()
+    test "covers the total multipart writer deadline after second-precision clock truncation" do
+      deadline_ms = Storage.multipart_upload_total_deadline_ms()
       quiescence_ms = Storage.multipart_cleanup_quiescence_seconds() * 1_000
 
       assert quiescence_ms >= deadline_ms + 1_000
@@ -104,6 +172,107 @@ defmodule Storyarn.Projects.Assets.StorageTest do
       refute Storage.multipart_cleanup_key?(key <> "/extra")
       refute Storage.multipart_cleanup_key?(String.replace(key, lease_token, String.upcase(lease_token)))
       refute Storage.multipart_cleanup_key?(String.replace(key, "projects/42", "projects/0"))
+    end
+
+    test "blocks every internal write destination after durable multipart handoff" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      persist_multipart_handoff!("__storyarn_force_delete__:" <> key)
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.upload(key, "bytes", "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.upload_stream(key, [{:ok, "bytes"}], "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.put_if_absent(key, "bytes", "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.presigned_upload_url(key, "application/zip")
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.copy("source", key)
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.copy_if_absent("source", key)
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.copy_if_absent_or_stream("source", key, 5, "application/zip")
+
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "removes an object when cleanup handoff commits during the provider write" do
+      key = "projects/1/snapshots/archives/v2/staging/RaceFenceToken12/snapshot.zip"
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      Process.put({WriteFenceAdapter, :after_dispatch}, fn -> persist_multipart_handoff!(key) end)
+
+      assert {:error, :storage_key_cleanup_handed_off} =
+               Storage.upload(key, "bytes", "application/zip")
+
+      assert_received {:write_fence_adapter, :upload, ^key}
+      assert_received {:write_fence_adapter, :delete, ^key}
+    end
+
+    test "never deletes a pre-existing object after a conditional write reports not created" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      for {operation, key, write_fun} <- [
+            {:put_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken01/snapshot.zip",
+             fn key -> Storage.put_if_absent(key, "bytes", "application/zip") end},
+            {:copy_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken02/snapshot.zip",
+             fn key -> Storage.copy_if_absent("source", key) end},
+            {:copy_if_absent, "projects/1/snapshots/archives/v2/staging/NoOpFenceToken03/snapshot.zip",
+             fn key ->
+               Storage.copy_if_absent_or_stream("source", key, 5, "application/zip")
+             end}
+          ] do
+        Process.put(
+          {WriteFenceAdapter, operation, :result},
+          if(operation == :put_if_absent, do: {:ok, "stored", false}, else: {:ok, false})
+        )
+
+        Process.put({WriteFenceAdapter, :after_dispatch}, fn -> persist_multipart_handoff!(key) end)
+
+        assert {:error, :storage_key_cleanup_handed_off} = write_fun.(key)
+        assert_received {:write_fence_adapter, ^operation, ^key}
+        refute_received {:write_fence_adapter, :delete, ^key}
+      end
+    end
+
+    test "rejects non-canonical write destinations before provider dispatch" do
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+      invalid_key = "projects/1/snapshots/../escape.zip"
+
+      assert {:error, :invalid_key} = Storage.upload(invalid_key, "bytes", "application/zip")
+      assert {:error, :invalid_key} = Storage.upload_stream(invalid_key, ["bytes"], "application/zip")
+      assert {:error, :invalid_key} = Storage.put_if_absent(invalid_key, "bytes", "application/zip")
+      assert {:error, :invalid_key} = Storage.presigned_upload_url(invalid_key, "application/zip")
+      assert {:error, :invalid_key} = Storage.copy("source", invalid_key)
+      assert {:error, :invalid_key} = Storage.copy_if_absent("source", invalid_key)
+
+      assert {:error, :invalid_key} =
+               Storage.copy_if_absent_or_stream("source", invalid_key, 5, "application/zip")
+
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "fences non-multipart destinations owned by a mixed cleanup receipt" do
+      multipart_key = "projects/1/snapshots/archives/v2/staging/MixedFenceToken1/snapshot.zip"
+      blob_key = "projects/1/blobs/#{String.duplicate("a", 64)}.png"
+      persist_multipart_handoff!([multipart_key, "__storyarn_force_delete__:" <> blob_key])
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:error, :storage_key_cleanup_handed_off} = Storage.upload(blob_key, "bytes", "image/png")
+      refute_received {:write_fence_adapter, _, _}
+    end
+
+    test "releases reusable blob keys after their cleanup request is consumed" do
+      multipart_key = "projects/1/snapshots/archives/v2/staging/ReleasedFenceTok/snapshot.zip"
+      blob_key = "projects/1/blobs/#{String.duplicate("b", 64)}.png"
+      request = persist_multipart_handoff!([multipart_key, "__storyarn_force_delete__:" <> blob_key])
+      Repo.delete!(request)
+      Application.put_env(:storyarn, :storage, adapter: WriteFenceAdapter)
+
+      assert {:ok, "stored"} = Storage.upload(blob_key, "bytes", "image/png")
+      assert_received {:write_fence_adapter, :upload, ^blob_key}
     end
   end
 
@@ -189,6 +358,109 @@ defmodule Storyarn.Projects.Assets.StorageTest do
 
       assert {:error, :invalid_multipart_cleanup_request} =
                Storage.abort_incomplete_multipart_uploads("projects/1/snapshot.zip", %{limit: 1})
+    end
+  end
+
+  describe "exact multipart upload references" do
+    setup do
+      Application.put_env(:storyarn, :storage, adapter: ExactMultipartAdapter)
+      :ok
+    end
+
+    test "dispatches exact key and upload id through the Projects storage policy" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      upload_id = "opaque-upload-id"
+      opts = [batch_size: 7]
+
+      assert {:ok,
+              %{
+                uploads: [%{key: ^key, upload_id: ^upload_id}],
+                inventory_complete: true
+              }} = Storage.list_incomplete_multipart_uploads(key, opts)
+
+      assert_received {:exact_multipart_inventory_dispatched, ^key, ^opts}
+
+      assert :ok = Storage.abort_incomplete_multipart_upload(key, upload_id)
+      assert_received {:exact_multipart_abort_dispatched, ^key, ^upload_id}
+
+      assert {:ok, :absent_now} = Storage.incomplete_multipart_upload_state(key, upload_id)
+      assert_received {:exact_multipart_state_dispatched, ^key, ^upload_id}
+    end
+
+    test "rejects unsafe keys and upload ids before provider dispatch" do
+      valid_key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      assert {:error, :invalid_multipart_inventory_request} =
+               Storage.list_incomplete_multipart_uploads("projects/1/../snapshot.zip")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.abort_incomplete_multipart_upload("projects/1/private.bin", "upload-id")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.abort_incomplete_multipart_upload(valid_key, "")
+
+      assert {:error, :invalid_multipart_upload_reference} =
+               Storage.incomplete_multipart_upload_state(valid_key, String.duplicate("u", 4_097))
+
+      refute_received {:exact_multipart_inventory_dispatched, _, _}
+      refute_received {:exact_multipart_abort_dispatched, _, _}
+      refute_received {:exact_multipart_state_dispatched, _, _}
+    end
+
+    test "fails closed on malformed, duplicate, or oversized provider inventory" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+
+      invalid_results = [
+        {:ok, %{uploads: [%{key: key, upload_id: "upload-1"}]}},
+        {:ok,
+         %{
+           uploads: [%{key: "projects/2/private.bin", upload_id: "upload-1"}],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads: [
+             %{key: key, upload_id: "duplicate"},
+             %{key: key, upload_id: "duplicate"}
+           ],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads: [%{key: key, upload_id: String.duplicate("u", 4_097)}],
+           inventory_complete: true
+         }},
+        {:ok,
+         %{
+           uploads:
+             Enum.map(1..101, fn index ->
+               %{key: key, upload_id: "upload-#{index}"}
+             end),
+           inventory_complete: false
+         }}
+      ]
+
+      Enum.each(invalid_results, fn result ->
+        Process.put({ExactMultipartAdapter, :inventory_result}, result)
+
+        assert {:error, :invalid_multipart_inventory_response} =
+                 Storage.list_incomplete_multipart_uploads(key)
+      end)
+    end
+
+    test "collapses private provider failures at the neutral boundary" do
+      key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
+      private_value = "private-bucket/#{key}?signature=secret"
+
+      Process.put(
+        {ExactMultipartAdapter, :inventory_result},
+        {:error, {:http_error, 500, %{body: private_value}}}
+      )
+
+      result = Storage.list_incomplete_multipart_uploads(key)
+
+      assert result == {:error, :multipart_inventory_provider_error}
+      refute inspect(result) =~ private_value
     end
   end
 
@@ -405,4 +677,16 @@ defmodule Storyarn.Projects.Assets.StorageTest do
 
   defp restore_env(key, nil), do: Application.delete_env(:storyarn, key)
   defp restore_env(key, value), do: Application.put_env(:storyarn, key, value)
+
+  defp persist_multipart_handoff!(storage_key) when is_binary(storage_key), do: persist_multipart_handoff!([storage_key])
+
+  defp persist_multipart_handoff!(storage_keys) when is_list(storage_keys) do
+    %StorageCleanupRequest{}
+    |> StorageCleanupRequest.changeset(%{
+      storage_keys: storage_keys,
+      provider_namespace_fingerprint: String.duplicate("a", 64),
+      multipart_cleanup_phase: "discover"
+    })
+    |> Repo.insert!()
+  end
 end

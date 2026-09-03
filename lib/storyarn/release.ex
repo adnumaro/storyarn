@@ -13,11 +13,14 @@ defmodule Storyarn.Platform.Release do
   @snapshot_v2_only_migration 20_260_811_180_000
   @snapshot_scaffolding_cleanup_migration 20_260_812_100_000
   @snapshot_scaffolding_cleanup_authorization "20260812100000"
+  @exact_multipart_cleanup_migration 20_260_903_133_000
+  @exact_multipart_cleanup_authorization "20260903133000"
   # Frozen migrations consume this process-local key directly so they can
   # enforce the release gate without calling application code. Keep the atom
   # stable even if this module or its helper functions are renamed.
   @snapshot_lifecycle_migration_authorization_key :storyarn_snapshot_cutover_authorized_v1
   @snapshot_scaffolding_cleanup_authorization_key :storyarn_snapshot_scaffolding_cleanup_authorized_v1
+  @exact_multipart_cleanup_authorization_key :storyarn_exact_multipart_cleanup_cutover_authorized_v1
 
   def migrate do
     load_app()
@@ -62,7 +65,10 @@ defmodule Storyarn.Platform.Release do
     {:ok, _, _} =
       Ecto.Migrator.with_repo(repo, fn started_repo ->
         with_snapshot_lifecycle_migration_authorization(fn ->
-          Ecto.Migrator.run(started_repo, :down, to: version)
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          with_exact_multipart_cleanup_authorization(fn ->
+            Ecto.Migrator.run(started_repo, :down, to: version)
+          end)
         end)
       end)
 
@@ -77,10 +83,13 @@ defmodule Storyarn.Platform.Release do
   @doc false
   def run_project_snapshot_migrations(repo, migrate) when is_atom(repo) and is_function(migrate, 0) do
     ensure_project_snapshot_scaffolding_cleanup_ready!(repo)
+    ensure_exact_multipart_cleanup_ready!(repo)
 
     with_snapshot_lifecycle_migration_authorization(fn ->
       with_snapshot_scaffolding_cleanup_authorization(fn ->
-        migrate.()
+        with_exact_multipart_cleanup_authorization(fn ->
+          migrate.()
+        end)
       end)
     end)
   end
@@ -90,6 +99,46 @@ defmodule Storyarn.Platform.Release do
     enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
 
     if enforced?, do: ensure_snapshot_scaffolding_cleanup_authorized!(repo), else: :ok
+  end
+
+  @doc false
+  def ensure_exact_multipart_cleanup_ready!(repo) when is_atom(repo) do
+    enforced? = Application.get_env(@app, :enforce_snapshot_lifecycle_release_gate, false)
+
+    if enforced?, do: ensure_exact_multipart_cleanup_authorized!(repo), else: :ok
+  end
+
+  defp ensure_exact_multipart_cleanup_authorized!(repo) do
+    case exact_multipart_cleanup_state(repo) do
+      {:ok, state} when state in [:complete, :fresh] ->
+        :ok
+
+      {:ok, :pending} ->
+        assert_exact_multipart_cleanup_acknowledged!()
+
+      {:error, reason} ->
+        raise "Could not verify the exact multipart cleanup cutover preflight: #{inspect(reason)}"
+    end
+  end
+
+  defp exact_multipart_cleanup_state(repo) do
+    prefix = current_snapshot_cutover_prefix!(repo)
+    history = repo |> Ecto.Migrator.migrated_versions(prefix: prefix) |> MapSet.new()
+
+    cond do
+      MapSet.member?(history, @exact_multipart_cleanup_migration) ->
+        {:ok, :complete}
+
+      MapSet.size(history) == 0 ->
+        case no_application_tables?(repo, prefix) do
+          {:ok, true} -> {:ok, :fresh}
+          {:ok, false} -> {:ok, :pending}
+          {:error, reason} -> {:error, reason}
+        end
+
+      true ->
+        {:ok, :pending}
+    end
   end
 
   defp ensure_snapshot_scaffolding_cleanup_authorized!(repo) do
@@ -169,6 +218,17 @@ defmodule Storyarn.Platform.Release do
     end
   end
 
+  defp assert_exact_multipart_cleanup_acknowledged! do
+    configured =
+      Application.get_env(@app, :exact_multipart_cleanup_cutover_authorization)
+
+    if configured == @exact_multipart_cleanup_authorization do
+      :ok
+    else
+      raise "Exact multipart cleanup requires a stop-the-world deployment with no running Fly machines and EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=#{@exact_multipart_cleanup_authorization}"
+    end
+  end
+
   defp no_application_tables?(repo, prefix) do
     case repo.query(
            """
@@ -214,6 +274,10 @@ defmodule Storyarn.Platform.Release do
 
   defp with_snapshot_scaffolding_cleanup_authorization(fun) when is_function(fun, 0) do
     with_process_authorization(@snapshot_scaffolding_cleanup_authorization_key, fun)
+  end
+
+  defp with_exact_multipart_cleanup_authorization(fun) when is_function(fun, 0) do
+    with_process_authorization(@exact_multipart_cleanup_authorization_key, fun)
   end
 
   defp with_process_authorization(key, fun) do

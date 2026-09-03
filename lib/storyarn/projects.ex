@@ -528,6 +528,11 @@ defmodule Storyarn.Projects do
   @doc "Prepares Project-owned data before its parent Workspace is hard-deleted."
   defdelegate prepare_workspace_data_hard_delete(workspace_id), to: Lifecycle
 
+  defdelegate prepare_workspace_data_hard_delete(workspace_id, provider_namespace_fingerprint), to: Lifecycle
+
+  @doc false
+  defdelegate storage_provider_namespace_fingerprint(), to: Assets
+
   @doc "Publishes Project lifecycle facts after the parent Workspace deletion commits."
   defdelegate publish_committed_workspace_data_hard_delete(preparation), to: Lifecycle
 
@@ -600,6 +605,12 @@ defmodule Storyarn.Projects do
 
   @doc false
   defdelegate persist_cleanup_request(cleanup_targets), to: Assets
+
+  @doc false
+  defdelegate enqueue_due_cleanup_request_jobs(), to: Assets
+
+  @doc false
+  defdelegate retry_persisted_cleanup_request_by_id(cleanup_request_id), to: Assets
 
   @doc false
   defdelegate emit_storage_cleanup_request_backlog(), to: Assets

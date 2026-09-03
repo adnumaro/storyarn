@@ -11,6 +11,26 @@ defmodule Storyarn.MultipartStorageSpy do
     {:ok, 17}
   end
 
+  def list_incomplete_multipart_uploads(key, opts) do
+    send(self(), {:exact_multipart_inventory_dispatched, key, opts})
+
+    {:ok,
+     %{
+       uploads: [%{key: key, upload_id: "opaque-upload-id"}],
+       inventory_complete: true
+     }}
+  end
+
+  def abort_incomplete_multipart_upload(key, upload_id) do
+    send(self(), {:exact_multipart_abort_dispatched, key, upload_id})
+    :ok
+  end
+
+  def incomplete_multipart_upload_state(key, upload_id) do
+    send(self(), {:exact_multipart_state_dispatched, key, upload_id})
+    {:ok, :absent_now}
+  end
+
   def incomplete_multipart_upload_count(key, opts) do
     send(self(), {:multipart_inventory_dispatched, key, opts})
     {:ok, 23}
@@ -33,7 +53,7 @@ defmodule Storyarn.MultipartStorageSpy do
   def put_if_absent(_key, _data, _content_type), do: {:error, :not_implemented}
   def delete(_key), do: {:error, :not_implemented}
   def delete_if_matches(_key, _identity), do: {:error, :not_implemented}
-  def namespace_fingerprint, do: {:error, :not_implemented}
+  def namespace_fingerprint, do: {:ok, String.duplicate("a", 64)}
   def get_url(_key), do: ""
   def download(_key), do: {:error, :not_implemented}
   def stat(_key), do: {:error, :not_implemented}

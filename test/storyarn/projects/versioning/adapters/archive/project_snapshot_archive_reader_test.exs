@@ -1,5 +1,5 @@
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReaderTest do
-  use ExUnit.Case, async: false
+  use Storyarn.DataCase, async: false
 
   alias Storyarn.Platform.ObjectStorage.Adapters.Local
   alias Storyarn.Projects.Assets.Asset

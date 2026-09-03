@@ -18,15 +18,23 @@ defmodule Storyarn.Workspaces.Lifecycle.Commands.DeleteWorkspace do
   @spec delete(map(), pos_integer()) :: {:ok, Workspace.t()} | {:error, term()}
   def delete(%{user: %{id: user_id}}, workspace_id) when is_integer(user_id) and user_id > 0 and valid_id(workspace_id) do
     result =
-      Commercial.transact_with_workspace_lock(workspace_id, fn locked_workspace ->
-        with :ok <- lock_and_authorize_owner(locked_workspace, user_id),
-             {:ok, workspace} <- get_locked_workspace(workspace_id),
-             {:ok, project_cleanup} <- Projects.prepare_workspace_data_hard_delete(locked_workspace.id),
-             :ok <- Banner.prepare_hard_delete(workspace),
-             {:ok, deleted_workspace} <- Repo.delete(workspace) do
-          {:ok, {deleted_workspace, project_cleanup}}
-        end
-      end)
+      with {:ok, provider_namespace_fingerprint} <-
+             Projects.storage_provider_namespace_fingerprint() do
+        Commercial.transact_with_workspace_lock(workspace_id, fn locked_workspace ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          with :ok <- lock_and_authorize_owner(locked_workspace, user_id),
+               {:ok, workspace} <- get_locked_workspace(workspace_id),
+               {:ok, project_cleanup} <-
+                 Projects.prepare_workspace_data_hard_delete(
+                   locked_workspace.id,
+                   provider_namespace_fingerprint
+                 ),
+               :ok <- Banner.prepare_hard_delete(workspace),
+               {:ok, deleted_workspace} <- Repo.delete(workspace) do
+            {:ok, {deleted_workspace, project_cleanup}}
+          end
+        end)
+      end
 
     case result do
       {:ok, {deleted_workspace, project_cleanup}} ->

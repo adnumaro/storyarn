@@ -127,9 +127,11 @@ defmodule Storyarn.Scenes.Assets.Adapters.Storage.Compensation do
   end
 
   defp persist_cleanup_request(storage_keys) do
-    %StorageCleanupRequestRecord{}
-    |> StorageCleanupRequestRecord.scene_restore_changeset(storage_keys)
-    |> Repo.insert()
+    StorageKeyLock.with_cleanup_handoff_locks(storage_keys, fn ->
+      %StorageCleanupRequestRecord{}
+      |> StorageCleanupRequestRecord.scene_restore_changeset(storage_keys)
+      |> Repo.insert()
+    end)
   end
 
   defp call_delete(nil, cleanup_target) do

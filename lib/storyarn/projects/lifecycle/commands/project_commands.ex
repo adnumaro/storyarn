@@ -88,14 +88,21 @@ defmodule Storyarn.Projects.Lifecycle.Commands.ProjectCommands do
 
   def permanently_delete_project(%Project{} = project) do
     result =
-      with_project_deletion_lock(project.id, fn locked_project ->
-        with {:ok, cleanup_intents} <- Versioning.prepare_project_snapshot_hard_delete(locked_project),
-             :ok <-
-               Assets.prepare_parent_hard_delete_locked(locked_project.workspace_id, [locked_project.id]),
-             {:ok, deleted_project} <- delete_locked_project(locked_project) do
-          {:ok, {deleted_project, cleanup_intents}}
-        end
-      end)
+      with {:ok, provider_namespace_fingerprint} <- Assets.storage_provider_namespace_fingerprint() do
+        with_project_deletion_lock(project.id, fn locked_project ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          with {:ok, cleanup_intents} <-
+                 Versioning.prepare_project_snapshot_hard_delete(
+                   locked_project,
+                   provider_namespace_fingerprint
+                 ),
+               :ok <-
+                 Assets.prepare_parent_hard_delete_locked(locked_project.workspace_id, [locked_project.id]),
+               {:ok, deleted_project} <- delete_locked_project(locked_project) do
+            {:ok, {deleted_project, cleanup_intents}}
+          end
+        end)
+      end
 
     case result do
       {:ok, {deleted_project, cleanup_intents}} ->

@@ -350,6 +350,71 @@ schema is deliberately incompatible with pre-v2 binaries and rollback to one
 is unsupported. Leave the canonical v2 constraints intact; do not reconstruct
 the retired columns or worker-name fence.
 
+### Exact multipart cleanup one-release cutover
+
+Migration `20260903133000_harden_exact_multipart_cleanup.exs` changes the
+execution contract of existing `storage_cleanup` jobs and requests. A binary
+from before this migration can ignore the new blocked state and run the retired
+aggregate deletion path. Consequently, this migration must never overlap a
+running old application or worker, even though its additive columns are schema
+compatible.
+
+The main deployment workflow queries the production migration history before
+every deploy and enforces the one-release stop-the-world cutover while this
+migration is pending. This state check is deliberate: inspecting only the Git
+push range would skip the cutover after a failed deployment followed by a new
+commit. A fleet with no started Machine, or a failed SSH/RPC state probe, is
+also treated as requiring the cutover because no running application can prove
+the database state.
+
+The cutover pauses every Oban queue, checks the database-wide count of executing
+jobs until it remains zero, scales the application to zero Machines, and proves
+that no Machine remains. Only after that stop-world proof does it stage the
+exact migration-version acknowledgement and deploy the candidate from zero with
+one application Machine. Fly runs the candidate release command before creating
+that Machine, so no old binary is alive while the migration commits. The check
+emits only aggregate counts and the boolean migration state.
+
+The acknowledgement is
+`EXACT_MULTIPART_CLEANUP_CUTOVER_AUTHORIZATION=20260903133000`. It does not
+bypass any database precondition: it records that the external stop-the-world
+step was deliberately executed. Every workflow run checks for the temporary
+secret and stages its removal, including a retry where the migration committed
+but the original retirement step failed. A failed run remains safe across a
+later commit: the next workflow queries the database again and repeats the
+cutover until the migration is actually present.
+
+Run this cutover in a recorded maintenance window with application traffic
+stopped. Queue pause is not an HTTP admission control. Production currently has
+no users, but that operational precondition must be replaced by an explicit
+ingress or maintenance control before the application accepts real traffic.
+
+If queue quiescence, scale-to-zero, migration, or startup fails, do not restart
+an old image. The safe state is downtime with either the old queues paused or
+zero Machines. Fix the failure and redeploy the candidate forward. A workflow
+retry is idempotent when the application is already at zero Machines. After a
+successful cutover, later commits that do not change this migration use the
+normal deployment path.
+
+If a Machine is reported as started but cannot accept the SSH/RPC drain command,
+the workflow deliberately stops before scaling it to zero: it cannot prove that
+an old writer is idle. Restore access to that Machine or establish the same
+global Oban pause and zero-executing-jobs evidence through approved direct
+database operations, then retry. Do not bypass the drain by killing the Machine.
+
+Do not use `fly releases rollback`, redeploy a commit older than this migration,
+or restore an earlier application image after the cutover. The additive schema
+cannot make a pre-ENG-116 worker understand the durable multipart phases, so
+that rollback would reintroduce the retired mutation path. Record the deployed
+commit SHA and Fly image digest in the maintenance evidence and treat them as
+the minimum supported application release; recovery is forward-only.
+
+Before accepting the cutover as evidence, rehearse it outside production with
+one legacy `storage_keys` job and one legacy multipart cleanup request. After
+the migration, prove that the new worker persists a provider-bound exact-key
+receipt before any provider mutation, advances it through the durable FSM, and
+leaves no upload, part, object, overdue receipt, or old application Machine.
+
 ## Real Tigris validation
 
 CI and local-adapter tests do not prove the production bucket, credentials,

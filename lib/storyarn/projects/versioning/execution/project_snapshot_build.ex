@@ -16,6 +16,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.BlobStore
+  alias Storyarn.Projects.Assets.StorageCleanupOwnership
   alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
   alias Storyarn.Projects.Assets.StorageCompensation
   alias Storyarn.Projects.CommercialStorageReservations
@@ -778,7 +779,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
          %StorageReservation{cleanup_status: "owned", cleanup_reference: cleanup_reference} = reservation
        ) do
     with {:ok, cleanup_request_id} <- cleanup_request_id(cleanup_reference),
-         {:ok, receipt_keys} <- StorageCleanupOwnershipReceipt.storage_keys(cleanup_request_id),
+         {:ok, receipt_keys} <- StorageCleanupOwnership.storage_keys(cleanup_request_id),
          {:ok, scope} <- build_cleanup_scope(snapshot),
          true <- reservation.cleanup_inventory_count == length(scope.storage_keys),
          true <- reservation.cleanup_inventory_digest == scope.inventory_digest,

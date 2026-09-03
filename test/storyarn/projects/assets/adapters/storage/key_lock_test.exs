@@ -2,6 +2,8 @@ defmodule Storyarn.Projects.Assets.StorageKeyLockTest do
   use Storyarn.DataCase, async: false
 
   alias Ecto.Adapters.SQL.Sandbox
+  alias Storyarn.Platform.ObjectStorage.KeyLock, as: PlatformKeyLock
+  alias Storyarn.Projects.Assets.StorageCleanupRequest
   alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Repo
 
@@ -267,6 +269,177 @@ defmodule Storyarn.Projects.Assets.StorageKeyLockTest do
              end)
   end
 
+  test "a live generic cleanup request fences later Project asset writers" do
+    asset_key = "projects/42/assets/#{Ecto.UUID.generate()}/handed-off.png"
+
+    assert %StorageCleanupRequest{} =
+             Repo.insert!(%StorageCleanupRequest{storage_keys: [asset_key]})
+
+    assert {:error, :storage_key_cleanup_handed_off} =
+             StorageKeyLock.with_storage_key_lock(asset_key, fn ->
+               flunk("a writer must not adopt a key owned by a live cleanup request")
+             end)
+  end
+
+  test "durable handoff waits for an earlier writer admission before running its database callback" do
+    parent = self()
+    asset_key = "projects/42/assets/#{Ecto.UUID.generate()}/writer-first.png"
+
+    writer =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          PlatformKeyLock.transact_with_storage_key_admission(asset_key, fn ->
+            send(parent, :writer_first_admission_acquired)
+
+            receive do
+              :release_writer_first_admission -> :writer_admitted
+            end
+          end)
+        end)
+      end)
+
+    assert_receive :writer_first_admission_acquired
+
+    handoff =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          PlatformKeyLock.transact_with_storage_handoff(
+            [asset_key],
+            fn ->
+              send(parent, {:handoff_callback_started, Repo.in_transaction?()})
+              :handoff_persisted
+            end,
+            acquisition_timeout: 1_000
+          )
+        end)
+      end)
+
+    refute_receive {:handoff_callback_started, _in_transaction?}, 100
+    send(writer.pid, :release_writer_first_admission)
+
+    assert :writer_admitted = Task.await(writer, @concurrency_timeout)
+    assert_receive {:handoff_callback_started, true}, @concurrency_timeout
+    assert :handoff_persisted = Task.await(handoff, @concurrency_timeout)
+  end
+
+  test "durable handoff keeps a constant advisory-lock footprint for a large inventory" do
+    import_token = Ecto.UUID.generate()
+
+    storage_keys =
+      for index <- 1..7_000 do
+        hash = index |> Integer.to_string(16) |> String.pad_leading(64, "0")
+        "workspace-snapshot-imports/v1/42/#{import_token}/blobs/#{hash}.bin"
+      end
+
+    assert :handoff_persisted =
+             Sandbox.unboxed_run(Repo, fn ->
+               StorageKeyLock.with_multipart_cleanup_handoff(storage_keys, fn ->
+                 assert Repo.in_transaction?()
+
+                 %{rows: [[lock_count]]} =
+                   Repo.query!("""
+                   SELECT count(*)
+                   FROM pg_locks
+                   WHERE locktype = 'advisory' AND pid = pg_backend_pid()
+                   """)
+
+                 assert lock_count == 1
+                 :handoff_persisted
+               end)
+             end)
+  end
+
+  test "a contended global handoff retries without retaining unrelated exact-key locks" do
+    parent = self()
+    [free_key, blocked_key, _unused_key] = ordered_storage_keys()
+
+    owner =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          PlatformKeyLock.transact_with_storage_key_admission(blocked_key, fn ->
+            send(parent, :handoff_blocker_acquired)
+
+            receive do
+              :release_handoff_blocker -> :blocker_released
+            end
+          end)
+        end)
+      end)
+
+    assert_receive :handoff_blocker_acquired
+
+    handoff =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          send(parent, {:handoff_contender_ready, self()})
+
+          receive do
+            :start_handoff_contender -> :ok
+          end
+
+          PlatformKeyLock.transact_with_storage_handoff(
+            [free_key, blocked_key],
+            fn ->
+              send(parent, :handoff_batch_acquired)
+              :handoff_finished
+            end,
+            acquisition_timeout: 1_000
+          )
+        end)
+      end)
+
+    assert_receive {:handoff_contender_ready, handoff_pid}, @concurrency_timeout
+    send(handoff_pid, :start_handoff_contender)
+    Process.sleep(75)
+
+    refute_receive :handoff_batch_acquired, 50
+
+    assert :free_key_available =
+             probe_storage_key_admission(free_key, :free_key_available, 250)
+
+    send(owner.pid, :release_handoff_blocker)
+
+    assert :blocker_released = Task.await(owner, @concurrency_timeout)
+    assert_receive :handoff_batch_acquired, @concurrency_timeout
+    assert :handoff_finished = Task.await(handoff, @concurrency_timeout)
+  end
+
+  test "a global handoff nested in a domain transaction fails closed without retaining the gate" do
+    parent = self()
+    [free_key, blocked_key, _unused_key] = ordered_storage_keys()
+
+    owner =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          PlatformKeyLock.transact_with_storage_key_admission(blocked_key, fn ->
+            send(parent, :nested_handoff_blocker_acquired)
+
+            receive do
+              :release_nested_handoff_blocker -> :ok
+            end
+          end)
+        end)
+      end)
+
+    assert_receive :nested_handoff_blocker_acquired
+
+    assert {:ok, {:error, :storage_key_lock_timeout}} =
+             Repo.transaction(fn ->
+               PlatformKeyLock.transact_with_storage_handoff(
+                 [free_key, blocked_key],
+                 fn -> flunk("a nested handoff must not run with a partial lock set") end
+               )
+             end)
+
+    assert %{rows: [[1]]} = Repo.query!("SELECT 1")
+
+    assert :nested_free_key_available =
+             probe_storage_key_admission(free_key, :nested_free_key_available, 100)
+
+    send(owner.pid, :release_nested_handoff_blocker)
+    assert :ok = Task.await(owner, @concurrency_timeout)
+  end
+
   test "overlapping lock sets do not retain a failed attempt's partial locks" do
     parent = self()
     barrier = make_ref()
@@ -417,6 +590,22 @@ defmodule Storyarn.Projects.Assets.StorageKeyLockTest do
     Sandbox.unboxed_run(Repo, fn ->
       StorageKeyLock.with_storage_key_lock(storage_key, callback, acquisition_timeout: acquisition_timeout)
     end)
+  end
+
+  defp probe_storage_key_admission(storage_key, result, acquisition_timeout) do
+    task =
+      Task.async(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          PlatformKeyLock.transact_with_storage_key_admission(
+            storage_key,
+            # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+            fn -> result end,
+            acquisition_timeout: acquisition_timeout
+          )
+        end)
+      end)
+
+    Task.await(task, @concurrency_timeout)
   end
 
   defp assert_outer_transaction_usable!(statement_timeout) do

@@ -354,16 +354,20 @@ defmodule Storyarn.Projects.Versioning do
     as: :delete
 
   @doc false
-  defdelegate prepare_abandoned_import_snapshot_cleanup_in_transaction(snapshot, workspace_id),
-    to: ProjectSnapshotLifecycle
+  defdelegate prepare_abandoned_import_snapshot_cleanup_in_transaction(
+                snapshot,
+                workspace_id,
+                provider_namespace_fingerprint
+              ),
+              to: ProjectSnapshotLifecycle
 
   @doc false
-  defdelegate prepare_project_snapshot_hard_delete(project),
+  defdelegate prepare_project_snapshot_hard_delete(project, provider_namespace_fingerprint),
     to: ProjectSnapshotLifecycle,
     as: :prepare_project_hard_delete
 
   @doc false
-  defdelegate prepare_workspace_snapshot_hard_delete(workspace),
+  defdelegate prepare_workspace_snapshot_hard_delete(workspace, provider_namespace_fingerprint),
     to: ProjectSnapshotLifecycle,
     as: :prepare_workspace_hard_delete
 
