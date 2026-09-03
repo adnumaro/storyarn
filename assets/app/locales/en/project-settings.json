@@ -486,7 +486,7 @@
       "select_file": "Yarn project",
       "choose_file": "Choose .yarn or .zip",
       "file_help": "Maximum 50 MB. Archives are inspected for unsafe paths and expansion before extraction.",
-      "upload_preview": "Validate and preview",
+      "upload_preview": "Validate and review",
       "preview_title": "Import preview",
       "th_entity": "Content type",
       "th_count": "Found",
@@ -636,7 +636,23 @@
         "assets": "Assets",
         "localization": "Localization"
       },
-      "page_title": "Import"
+      "page_title": "Import",
+      "steps": {
+        "upload": "Upload",
+        "review": "Review",
+        "import": "Import"
+      },
+      "source_section": "Yarn Spinner project",
+      "dropzone_title": "Drop a .yarn file or project .zip",
+      "dropzone_hint": "Up to 50 MB. Archives are inspected for unsafe paths before extraction.",
+      "upload_footer": "Nothing changes until you confirm the review step. Speakers and conflicts are resolved there.",
+      "selected_file": "Selected file",
+      "review_section": "What will be imported",
+      "review_section_hint": "Counts found in the file",
+      "options_section": "Import options",
+      "status_section": "Import status",
+      "result_section": "Result",
+      "locked_section": "Import"
     },
     "export": {
       "title": "Export",
@@ -704,7 +720,7 @@
       "validate_before_description": "Stop the download when blocking project issues are found.",
       "pretty_print": "Pretty print output",
       "pretty_print_description": "Indent generated JSON so it is easier to inspect and version.",
-      "summary": "Export summary",
+      "summary": "Summary",
       "download_file": "Download file",
       "entities": "Items",
       "preflight": "Preflight check",
@@ -717,7 +733,7 @@
       "download_blocked": "Resolve the blocking issues below and validate again before downloading.",
       "download_failed": "The export could not be downloaded. Try again.",
       "download_failed_validation": "The export could not be generated. Validate again and review the blocking findings.",
-      "download_note": "Your project is not modified. Exporting creates a new local file.",
+      "download_note": "Validate first. Exporting never modifies the project.",
       "passed": "Passed",
       "warnings": "Warnings",
       "errors": "Errors",
@@ -736,7 +752,20 @@
       "info_findings": "Additional information",
       "more_findings": "{count} more finding is not shown. | {count} more findings are not shown.",
       "no_issues": "No issues found. Project is ready for export.",
-      "page_title": "Export"
+      "page_title": "Export",
+      "destination": "Destination",
+      "destination_hint": "Each format targets one narrative runtime",
+      "use": "Use",
+      "selected": "Selected",
+      "content_hint": "{selected} of {total} areas selected",
+      "not_supported_by": "Not supported by {format}",
+      "output": "Output",
+      "quality": "Quality",
+      "quality_release": "Release",
+      "quality_preview": "Preview (drafts)",
+      "area_count": "{count} area | {count} areas",
+      "preflight_on": "On",
+      "preflight_off": "Off"
     },
     "templates": {
       "page_title": "Templates",

@@ -49,6 +49,17 @@ defmodule StoryarnWeb.Live.Hooks.SettingsNavTest do
       assert nav.workspace.slug == other.slug
     end
 
+    test "offers the projects of the current workspace the user can act on" do
+      user = user_fixture()
+      workspace = Workspaces.get_default_workspace(user)
+      owned = project_fixture(user, %{workspace: workspace, name: "Veilbreak"})
+
+      nav = SettingsNav.build_nav(account_assigns(user))
+
+      assert nav.project == nil
+      assert Enum.map(nav.projects, &{&1.slug, &1.access}) == [{owned.slug, "owner"}]
+    end
+
     test "hides the workspace group when the scoped workspace is only viewed" do
       user = user_fixture()
       viewer_of = workspace_fixture(user_fixture(), %{name: "Viewer here"})

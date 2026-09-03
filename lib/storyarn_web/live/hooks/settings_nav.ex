@@ -53,7 +53,7 @@ defmodule StoryarnWeb.Live.Hooks.SettingsNav do
       workspace: workspace,
       workspaces: workspaces,
       project: project,
-      projects: project_options(assigns, project)
+      projects: project_options(assigns, workspace, project)
     }
   end
 
@@ -127,24 +127,39 @@ defmodule StoryarnWeb.Live.Hooks.SettingsNav do
     end
   end
 
-  # Viewers have no project settings, so the switcher has nothing to offer them.
-  defp project_options(_assigns, nil), do: []
-  defp project_options(_assigns, %{access: "viewer"}), do: []
+  # The switcher lists every project of the current workspace the user can act
+  # on, whatever page is open: the rail shows the project group on workspace
+  # and personal pages too. Viewers have no project settings, so a viewed
+  # project offers nothing to switch to.
+  defp project_options(_assigns, _workspace, %{access: "viewer"}), do: []
 
-  defp project_options(assigns, _project) do
+  defp project_options(assigns, workspace, project) do
     user = assigns.current_scope.user
 
-    case Map.get(assigns, :project) do
-      %{workspace_id: workspace_id} ->
+    case options_workspace_id(assigns, workspace, project) do
+      nil ->
+        []
+
+      workspace_id ->
         workspace_id
         |> Projects.list_projects_for_workspace(assigns.current_scope)
         |> Enum.reject(&project_viewer?(&1, user))
         |> Enum.map(fn %{project: project} ->
-          %{id: project.id, slug: project.slug, name: project.name}
+          %{
+            id: project.id,
+            slug: project.slug,
+            name: project.name,
+            access: if(project.owner_id == user.id, do: "owner", else: "editor")
+          }
         end)
+    end
+  end
 
-      _ ->
-        []
+  defp options_workspace_id(assigns, workspace, project) do
+    case {project, Map.get(assigns, :project), workspace} do
+      {%{id: _}, %{workspace_id: workspace_id}, _} -> workspace_id
+      {nil, _, %{id: workspace_id}} -> workspace_id
+      _ -> nil
     end
   end
 

@@ -486,7 +486,7 @@
       "select_file": "Proyecto Yarn",
       "choose_file": "Elegir .yarn o .zip",
       "file_help": "Máximo 50 MB. Los archivos comprimidos se inspeccionan antes de extraerlos para evitar rutas o expansiones inseguras.",
-      "upload_preview": "Validar y previsualizar",
+      "upload_preview": "Validar y revisar",
       "preview_title": "Resumen de importación",
       "th_entity": "Tipo de contenido",
       "th_count": "Encontrados",
@@ -636,7 +636,23 @@
         "assets": "Recursos",
         "localization": "Localización"
       },
-      "page_title": "Importar"
+      "page_title": "Importar",
+      "steps": {
+        "upload": "Subir",
+        "review": "Revisar",
+        "import": "Importar"
+      },
+      "source_section": "Proyecto de Yarn Spinner",
+      "dropzone_title": "Suelta un archivo .yarn o un .zip del proyecto",
+      "dropzone_hint": "Hasta 50 MB. Los archivos comprimidos se inspeccionan en busca de rutas inseguras antes de extraerlos.",
+      "upload_footer": "Nada cambia hasta que confirmes el paso de revisión. Los hablantes y los conflictos se resuelven ahí.",
+      "selected_file": "Archivo seleccionado",
+      "review_section": "Qué se importará",
+      "review_section_hint": "Recuentos encontrados en el archivo",
+      "options_section": "Opciones de importación",
+      "status_section": "Estado de la importación",
+      "result_section": "Resultado",
+      "locked_section": "Importar"
     },
     "export": {
       "title": "Exportar",
@@ -704,7 +720,7 @@
       "validate_before_description": "Detiene la descarga si el proyecto contiene problemas bloqueantes.",
       "pretty_print": "Formato legible",
       "pretty_print_description": "Indenta el JSON generado para facilitar su revisión y versionado.",
-      "summary": "Resumen de exportación",
+      "summary": "Resumen",
       "download_file": "Archivo de descarga",
       "entities": "Elementos",
       "preflight": "Comprobación previa",
@@ -717,7 +733,7 @@
       "download_blocked": "Resuelve los problemas bloqueantes y vuelve a validar antes de descargar.",
       "download_failed": "No se ha podido descargar la exportación. Inténtalo de nuevo.",
       "download_failed_validation": "No se ha podido generar la exportación. Vuelve a validar y revisa los hallazgos bloqueantes.",
-      "download_note": "El proyecto no se modifica. La exportación crea un archivo local nuevo.",
+      "download_note": "Valida primero. Exportar nunca modifica el proyecto.",
       "passed": "Correcto",
       "warnings": "Advertencias",
       "errors": "Errores",
@@ -736,7 +752,20 @@
       "info_findings": "Información adicional",
       "more_findings": "No se muestra {count} hallazgo más. | No se muestran {count} hallazgos más.",
       "no_issues": "No se encontraron problemas. El proyecto está listo para exportar.",
-      "page_title": "Exportar"
+      "page_title": "Exportar",
+      "destination": "Destino",
+      "destination_hint": "Cada formato apunta a un runtime narrativo",
+      "use": "Usar",
+      "selected": "Seleccionado",
+      "content_hint": "{selected} de {total} áreas seleccionadas",
+      "not_supported_by": "No compatible con {format}",
+      "output": "Salida",
+      "quality": "Calidad",
+      "quality_release": "Release",
+      "quality_preview": "Preview (borradores)",
+      "area_count": "{count} área | {count} áreas",
+      "preflight_on": "Activada",
+      "preflight_off": "Desactivada"
     },
     "templates": {
       "page_title": "Plantillas",

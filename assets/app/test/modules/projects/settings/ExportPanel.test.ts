@@ -11,6 +11,7 @@ vi.mock("@shared/composables/useLive", () => ({
 
 const { default: ExportPanel } =
   await import("../../../../modules/projects/settings/export-import/components/ExportPanel.vue");
+const { Select } = await import("../../../../components/ui/select");
 
 function baseProps(): ExportPanelProps {
   return {
@@ -69,9 +70,11 @@ describe("ExportPanel", () => {
   it("summarizes only content supported by the selected format", () => {
     const { wrapper } = mountPanel();
 
-    expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("2 sections");
+    expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("2 areas");
     expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("5");
-    expect(wrapper.get('[data-testid="export-section-scenes"]').text()).toContain("Unavailable");
+    expect(wrapper.get('[data-testid="export-section-scenes"]').text()).toContain(
+      "Not supported by Ink",
+    );
     expect(wrapper.get('[data-testid="export-section-sheets"]').text()).toContain("2");
   });
 
@@ -81,11 +84,11 @@ describe("ExportPanel", () => {
     props.sectionConfig.selected = ["sheets"];
     const { wrapper } = mountPanel(props);
 
-    expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("1 section");
-    expect(wrapper.get('[data-testid="export-summary"]').text()).not.toContain("1 sections");
+    expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("1 area");
+    expect(wrapper.get('[data-testid="export-summary"]').text()).not.toContain("1 areas");
   });
 
-  it("associates legends with the format and asset radio groups", () => {
+  it("labels the destination list and the asset mode group", () => {
     const props = baseProps();
     props.formatConfig.selected = "unity";
     props.formatConfig.extension = "json";
@@ -93,7 +96,20 @@ describe("ExportPanel", () => {
     const { wrapper } = mountPanel(props);
 
     expect(wrapper.get("#export-format-options > legend").text()).toContain("Choose a destination");
-    expect(wrapper.get("#export-asset-mode-options > legend").text()).toContain("Assets");
+    expect(wrapper.get("#export-asset-mode-options").text()).toContain("Assets");
+    expect(wrapper.get('[data-testid="export-assets-references"]').attributes("aria-pressed")).toBe(
+      "true",
+    );
+  });
+
+  it("marks the selected destination and offers the others", () => {
+    const { wrapper } = mountPanel();
+
+    expect(wrapper.get('[data-testid="export-format-ink"]').text()).toContain("Selected");
+    expect(wrapper.get('[data-testid="export-format-unity"]').text()).toContain("Use");
+    expect(wrapper.get('[data-testid="export-format-ink"]').attributes("data-selected")).toBe(
+      "true",
+    );
   });
 
   it("sends format changes through LiveView", async () => {
@@ -116,9 +132,7 @@ describe("ExportPanel", () => {
       "Embedded localization",
     );
 
-    await wrapper
-      .get('[data-testid="export-localization-preview"] [role="radio"]')
-      .trigger("click");
+    wrapper.getComponent(Select).vm.$emit("update:modelValue", "preview");
 
     expect(live.pushEvent).toHaveBeenCalledWith("set_localization_policy", {
       policy: "preview",
@@ -233,6 +247,7 @@ describe("ExportPanel", () => {
 
     expect(inkWrapper.find('[data-testid="export-assets-references"]').exists()).toBe(false);
     expect(inkWrapper.find("#pretty-print-output").exists()).toBe(false);
+    expect(inkWrapper.find("#export-localization-policy-options").exists()).toBe(false);
 
     const props = baseProps();
     props.formatConfig.selected = "unity";

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
@@ -9,8 +9,6 @@ import {
   Check,
   ChevronLeft,
   ChevronsUpDown,
-  CircleHelp,
-  Download,
   Gauge,
   GitBranch,
   Languages,
@@ -18,6 +16,7 @@ import {
   LayoutGrid,
   Lock,
   Menu,
+  Package,
   Plug,
   Search,
   Settings,
@@ -63,6 +62,8 @@ interface SettingsNavOption {
   id: number;
   slug: string;
   name: string;
+  /** Project options carry the actor's access so the group can lock pages. */
+  access?: "owner" | "editor";
 }
 
 interface SettingsNav {
@@ -122,6 +123,41 @@ const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
+
+// The page header renders the "View tutorial" action (see SettingsPage
+// consumers); it reaches this layout, a separate Vue app, through the window.
+onMounted(() => window.addEventListener("storyarn:open-tutorial", showTutorial));
+onUnmounted(() => window.removeEventListener("storyarn:open-tutorial", showTutorial));
+
+// The project group stays on workspace and personal pages: the last project
+// opened in this workspace is remembered per browser, else the first one the
+// user can act on. Pure convenience; every link is still authorized on entry.
+const LAST_PROJECT_KEY = "storyarn:settings:last-project";
+
+function rememberedProjectSlug(workspaceSlug: string): string | null {
+  try {
+    return localStorage.getItem(`${LAST_PROJECT_KEY}:${workspaceSlug}`);
+  } catch {
+    return null;
+  }
+}
+
+function rememberProject(workspaceSlug: string, slug: string): void {
+  try {
+    localStorage.setItem(`${LAST_PROJECT_KEY}:${workspaceSlug}`, slug);
+  } catch {
+    // Storage may be unavailable; the first project stays the fallback.
+  }
+}
+
+watch(
+  () => settingsNav?.project,
+  (project) => {
+    if (project && project.access !== "viewer")
+      rememberProject(project.workspaceSlug, project.slug);
+  },
+  { immediate: true },
+);
 
 function openSearch(): void {
   closeSidebar();
@@ -265,12 +301,46 @@ const workspaceGroup = computed<SettingsGroup | null>(() => {
     key: "workspace",
     label: workspace.name,
     items,
-    switcher: options.length > 1 ? { label: t("settings.nav.switch_workspace"), options } : null,
+    switcher: { label: t("settings.nav.switch_workspace"), options },
   };
 });
 
+function pickProjectOption(
+  workspaceSlug: string,
+  options: SettingsNavOption[],
+): SettingsNavOption | undefined {
+  const remembered = rememberedProjectSlug(workspaceSlug);
+  return options.find((candidate) => candidate.slug === remembered) ?? options[0];
+}
+
+function projectFromOption(
+  workspaceSlug: string,
+  option: SettingsNavOption | undefined,
+): SettingsNavProject | null {
+  if (!option) return null;
+
+  return {
+    id: option.id,
+    slug: option.slug,
+    name: option.name,
+    workspaceSlug,
+    access: option.access ?? "editor",
+  };
+}
+
+const currentProject = computed<SettingsNavProject | null>(() => {
+  const nav = settingsNav;
+  if (!nav) return null;
+  if (nav.project) return nav.project;
+
+  const workspaceSlug = nav.workspace?.slug;
+  if (!workspaceSlug) return null;
+
+  return projectFromOption(workspaceSlug, pickProjectOption(workspaceSlug, nav.projects));
+});
+
 const projectGroup = computed<SettingsGroup | null>(() => {
-  const project = settingsNav?.project;
+  const project = currentProject.value;
   if (!project) return null;
 
   const base = `/workspaces/${project.workspaceSlug}/projects/${project.slug}/settings`;
@@ -293,7 +363,7 @@ const projectGroup = computed<SettingsGroup | null>(() => {
   // Viewers may export a read-only copy; every other project page is
   // editor or owner territory and stays out of their rail.
   const items: SettingsItem[] = viewer
-    ? [item("project_export", "export", "/export", Download, false)]
+    ? [item("project_export", "export", "/export", Upload, false)]
     : [
         item("project_general", "general", "", Settings, ownerOnly),
         item("project_members", "members", "/members", Users, ownerOnly),
@@ -306,8 +376,8 @@ const projectGroup = computed<SettingsGroup | null>(() => {
           ownerOnly,
         ),
         item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
-        item("project_export", "export", "/export", Download, false),
-        item("project_import", "import", "/import", Upload, ownerOnly),
+        item("project_export", "export", "/export", Upload, false),
+        item("project_import", "import", "/import", Package, ownerOnly),
         item("project_trash", "trash", "/trash", Trash2, false),
         item("project_localization", "localization", "/localization", Languages, ownerOnly),
         item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
@@ -324,7 +394,7 @@ const projectGroup = computed<SettingsGroup | null>(() => {
     key: "project",
     label: project.name,
     items,
-    switcher: options.length > 1 ? { label: t("settings.nav.switch_project"), options } : null,
+    switcher: options.length > 0 ? { label: t("settings.nav.switch_project"), options } : null,
   };
 });
 
@@ -343,7 +413,7 @@ const activeItem = computed<SettingsItem | null>(
 );
 
 const backPath = computed(() => {
-  const project = settingsNav?.project;
+  const project = currentProject.value;
   if (project) return `/workspaces/${project.workspaceSlug}/projects/${project.slug}`;
 
   const workspace = settingsNav?.workspace;
@@ -515,17 +585,6 @@ watch(
       <main class="min-h-0 flex-1 overflow-y-auto">
         <div class="px-4 py-5 lg:px-12 lg:py-14">
           <div :class="[contentWidthClass, 'mx-auto']" data-testid="settings-content">
-            <div v-if="onboarding" class="flex justify-end pb-4">
-              <button
-                type="button"
-                class="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                @click="showTutorial"
-              >
-                <CircleHelp class="size-4" />
-                {{ t("onboarding.common.view_tutorial") }}
-              </button>
-            </div>
-
             <slot />
           </div>
         </div>

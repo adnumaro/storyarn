@@ -28,7 +28,7 @@ interface Nav {
   workspace: NavWorkspace | null;
   workspaces: NavWorkspace[];
   project: NavProject | null;
-  projects: { id: number; slug: string; name: string }[];
+  projects: { id: number; slug: string; name: string; access?: "owner" | "editor" }[];
 }
 
 const ownerWorkspace: NavWorkspace = {
@@ -157,12 +157,64 @@ describe("SettingsLayout rail", () => {
     expect(aiLink?.find("[data-settings-locked]").exists()).toBe(true);
   });
 
-  it("offers a workspace switcher only when there is more than one workspace", () => {
+  it("always renders the workspace name as a selector", () => {
     const withMany = mountLayout();
     const withOne = mountLayout({ settingsNav: nav({ workspaces: [ownerWorkspace] }) });
 
     expect(withMany.find('[data-settings-group="workspace"] button[title]').exists()).toBe(true);
-    expect(withOne.find('[data-settings-group="workspace"] button[title]').exists()).toBe(false);
+    expect(withOne.find('[data-settings-group="workspace"] button[title]').exists()).toBe(true);
+  });
+
+  it("keeps the project group on workspace and personal pages", () => {
+    const wrapper = mountLayout({
+      currentPath: "/users/settings/workspaces/admin/members",
+      settingsNav: nav({
+        project: null,
+        projects: [
+          { id: 7, slug: "veilbreak", name: "Veilbreak", access: "owner" },
+          { id: 8, slug: "ashfall", name: "Ashfall", access: "editor" },
+        ],
+      }),
+    });
+    const links = hrefs(wrapper);
+
+    expect(wrapper.find('[data-settings-group="project"]').exists()).toBe(true);
+    expect(wrapper.find('[data-settings-group="project"] button[title]').exists()).toBe(true);
+    expect(links).toContain("/workspaces/admin/projects/veilbreak/settings");
+    expect(links).toContain("/workspaces/admin/projects/veilbreak/settings/import");
+  });
+
+  it("remembers the last project opened in the workspace", () => {
+    mountLayout({
+      settingsNav: nav({
+        project: {
+          id: 8,
+          slug: "ashfall",
+          name: "Ashfall",
+          workspaceSlug: "admin",
+          access: "editor",
+        },
+      }),
+      currentPath: "/workspaces/admin/projects/ashfall/settings/trash",
+    });
+
+    const wrapper = mountLayout({
+      currentPath: "/users/settings",
+      settingsNav: nav({
+        project: null,
+        projects: [
+          { id: 7, slug: "veilbreak", name: "Veilbreak", access: "owner" },
+          { id: 8, slug: "ashfall", name: "Ashfall", access: "editor" },
+        ],
+      }),
+    });
+    const links = hrefs(wrapper);
+
+    expect(links).toContain("/workspaces/admin/projects/ashfall/settings/trash");
+    expect(links).not.toContain("/workspaces/admin/projects/veilbreak/settings/trash");
+    expect(wrapper.find('[data-settings-group="project"] [data-settings-locked]').exists()).toBe(
+      true,
+    );
   });
 
   it("lists project settings for an editor with owner-only pages locked", () => {

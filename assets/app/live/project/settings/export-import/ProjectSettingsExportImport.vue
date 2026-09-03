@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { CircleHelp } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import { SettingsPage } from "@components/settings";
+import { Button } from "@components/ui/button";
 import ExportPanel from "@modules/projects/settings/export-import/components/ExportPanel.vue";
 import ImportPanel from "@modules/projects/settings/export-import/components/ImportPanel.vue";
 import type { ExportConfig, ImportState } from "@modules/projects/settings/export-import/types";
@@ -32,6 +34,11 @@ const {
 }>();
 
 const { t } = useI18n();
+
+// The onboarding dialog lives in the settings layout, a separate Vue app.
+function openTutorial(): void {
+  window.dispatchEvent(new CustomEvent("storyarn:open-tutorial"));
+}
 </script>
 
 <template>
@@ -54,6 +61,19 @@ const { t } = useI18n();
     :title="t('project_settings.export.page_title')"
     data-testid="project-settings-export"
   >
+    <template #actions>
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        data-testid="export-view-tutorial"
+        @click="openTutorial"
+      >
+        <CircleHelp class="size-4" aria-hidden="true" />
+        {{ t("onboarding.common.view_tutorial") }}
+      </Button>
+    </template>
+
     <ExportPanel
       :can-export="canEdit"
       :format-config="exportConfig.formatConfig"
