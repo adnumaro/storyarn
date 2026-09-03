@@ -25,14 +25,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       current_scope={@current_scope}
       current_path={@current_path}
       settings_nav={@settings_nav}
-      workspace={@workspace}
-      project={@project}
     >
-      <:title>{dgettext("projects", "Snapshots")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Review snapshot storage, reservations, and integrity")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsSnapshots"
         v-socket={@socket}
@@ -50,6 +43,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         restore-operation-active={project_restore_active?(@snapshot_restores)}
         storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
+        workspace-plan-path={~p"/users/settings/workspaces/#{@workspace.slug}/plan"}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """

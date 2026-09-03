@@ -159,7 +159,14 @@
       "usage_title": "Character usage",
       "usage_description": "Current billing-period usage reported by DeepL.",
       "used": "used",
-      "limit": "limit"
+      "limit": "limit",
+      "page_title": "Localization",
+      "provider_section": "Translation provider",
+      "provider_hint": "DeepL",
+      "connection_row": "Connection",
+      "usage_section": "DeepL usage",
+      "usage_row": "Characters this billing period",
+      "usage_row_hint": "Reported by DeepL when the connection is tested."
     },
     "snapshots": {
       "storage_heading": "Storage counted toward your plan",
@@ -208,15 +215,15 @@
       "create": {
         "heading": "Create a full snapshot",
         "description": "Capture the project and every current asset in a self-contained, independently verified snapshot.",
-        "title": "Snapshot name",
+        "title": "Name",
         "title_placeholder": "Optional milestone name",
         "notes": "Notes",
         "notes_placeholder": "Optional context for your team",
-        "full_mode": "Full snapshot · no external asset dependencies",
-        "reservation_note": "Storyarn measures the exact capture and reserves the required storage.",
-        "slot_usage": "Snapshot slots: {used} of {limit} used",
-        "slot_usage_unknown": "Snapshot slots used: {used} · limit unavailable",
-        "submit": "Create snapshot",
+        "full_mode": "Full backup",
+        "reservation_note": "Includes every current asset. Storyarn measures the capture and reserves the storage it needs.",
+        "slot_usage": "Backup slots: {used} of {limit} used",
+        "slot_usage_unknown": "Backup slots used: {used} · limit unavailable",
+        "submit": "Create backup",
         "submitting": "Capturing…",
         "storage_limit_reached": "This snapshot requires {required}, but only {available} is available.",
         "snapshot_limit_reached": "This project uses {used} of {limit} snapshot slots.",
@@ -224,7 +231,9 @@
         "unauthorized": "You no longer have permission to create snapshots for this project.",
         "request_failed": "The snapshot could not be requested.",
         "connection_failed": "The connection was interrupted. Retry safely to resume the same request.",
-        "cancel_failed": "The snapshot could not be cancelled."
+        "cancel_failed": "The snapshot could not be cancelled.",
+        "section": "Create a backup",
+        "section_hint": "A full, independently verified snapshot"
       },
       "progress": {
         "pending": "Queued",
@@ -319,10 +328,18 @@
         "localized_texts": "{count} localized text | {count} localized texts",
         "glossary_entries": "{count} glossary entry | {count} glossary entries"
       },
-      "snapshots_heading": "Snapshots",
-      "empty_title": "No snapshots yet",
-      "empty_description": "This project has no retained snapshots.",
-      "untitled": "Untitled Snapshot"
+      "snapshots_heading": "Backups",
+      "empty_title": "No backups yet",
+      "empty_description": "Create a backup to keep a verified copy of this project.",
+      "untitled": "Untitled Snapshot",
+      "page_title": "Backups",
+      "count": "No backups | 1 backup | {count} backups",
+      "storage_section": "Storage",
+      "storage_section_hint": "Counted toward the workspace plan",
+      "storage_row": "Workspace storage",
+      "storage_row_hint": "Assets, recoverable trash, backups and active reservations.",
+      "storage_footer": "Full breakdown in",
+      "storage_footer_link": "Workspace › Plan & usage"
     },
     "trash": {
       "title": "Trash",
@@ -359,7 +376,9 @@
       "delete": "Delete",
       "cancel": "Cancel",
       "empty_confirm_title": "Empty trash?",
-      "empty_confirm_description": "All deleted project items will be permanently deleted. This action cannot be undone."
+      "empty_confirm_description": "All deleted project items will be permanently deleted. This action cannot be undone.",
+      "page_title": "Trash",
+      "items_section": "Deleted items"
     },
     "version_control": {
       "auto_versioning": "Auto-versioning",

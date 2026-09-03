@@ -159,7 +159,14 @@
       "usage_title": "Uso de caracteres",
       "usage_description": "Uso del periodo de facturación actual comunicado por DeepL.",
       "used": "usados",
-      "limit": "límite"
+      "limit": "límite",
+      "page_title": "Localización",
+      "provider_section": "Proveedor de traducción",
+      "provider_hint": "DeepL",
+      "connection_row": "Conexión",
+      "usage_section": "Uso de DeepL",
+      "usage_row": "Caracteres en este periodo de facturación",
+      "usage_row_hint": "Lo informa DeepL al probar la conexión."
     },
     "snapshots": {
       "storage_heading": "Almacenamiento contabilizado en tu plan",
@@ -208,15 +215,15 @@
       "create": {
         "heading": "Crear una snapshot completa",
         "description": "Captura el proyecto y todos sus recursos actuales en una snapshot autocontenida y verificable de forma independiente.",
-        "title": "Nombre de la snapshot",
+        "title": "Nombre",
         "title_placeholder": "Nombre opcional del hito",
         "notes": "Notas",
         "notes_placeholder": "Contexto opcional para tu equipo",
-        "full_mode": "Snapshot completa · sin dependencias de recursos externos",
-        "reservation_note": "Storyarn mide la captura exacta y reserva el almacenamiento necesario.",
-        "slot_usage": "Espacios para snapshots: {used} de {limit} usados",
-        "slot_usage_unknown": "Espacios para snapshots usados: {used} · límite no disponible",
-        "submit": "Crear snapshot",
+        "full_mode": "Copia de seguridad completa",
+        "reservation_note": "Incluye todos los recursos actuales. Storyarn mide la captura y reserva el almacenamiento necesario.",
+        "slot_usage": "Huecos de copia de seguridad: {used} de {limit} usados",
+        "slot_usage_unknown": "Huecos de copia de seguridad usados: {used} · límite no disponible",
+        "submit": "Crear copia de seguridad",
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots.",
@@ -224,7 +231,9 @@
         "unauthorized": "Ya no tienes permiso para crear snapshots de este proyecto.",
         "request_failed": "No se ha podido solicitar la snapshot.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
-        "cancel_failed": "No se ha podido cancelar la snapshot."
+        "cancel_failed": "No se ha podido cancelar la snapshot.",
+        "section": "Crear una copia de seguridad",
+        "section_hint": "Una instantánea completa verificada de forma independiente"
       },
       "progress": {
         "pending": "En cola",
@@ -319,10 +328,18 @@
         "localized_texts": "{count} texto localizado | {count} textos localizados",
         "glossary_entries": "{count} entrada de glosario | {count} entradas de glosario"
       },
-      "snapshots_heading": "Snapshots",
-      "empty_title": "Aún no hay snapshots",
-      "empty_description": "Este proyecto no tiene snapshots conservadas.",
-      "untitled": "Snapshot sin título"
+      "snapshots_heading": "Copias de seguridad",
+      "empty_title": "Todavía no hay copias de seguridad",
+      "empty_description": "Crea una copia de seguridad para conservar una copia verificada de este proyecto.",
+      "untitled": "Snapshot sin título",
+      "page_title": "Copias de seguridad",
+      "count": "Sin copias de seguridad | 1 copia de seguridad | {count} copias de seguridad",
+      "storage_section": "Almacenamiento",
+      "storage_section_hint": "Cuenta para el plan del workspace",
+      "storage_row": "Almacenamiento del workspace",
+      "storage_row_hint": "Recursos, papelera recuperable, copias de seguridad y reservas activas.",
+      "storage_footer": "Desglose completo en",
+      "storage_footer_link": "Workspace › Plan y uso"
     },
     "trash": {
       "title": "Papelera",
@@ -359,7 +376,9 @@
       "delete": "Eliminar",
       "cancel": "Cancelar",
       "empty_confirm_title": "¿Vaciar papelera?",
-      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer."
+      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer.",
+      "page_title": "Papelera",
+      "items_section": "Elementos eliminados"
     },
     "version_control": {
       "auto_versioning": "Versionado automático",

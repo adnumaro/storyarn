@@ -1,16 +1,17 @@
 <script setup lang="ts">
-import {
-  CheckCircle2,
-  CircleAlert,
-  ExternalLink,
-  Gauge,
-  KeyRound,
-  LoaderCircle,
-} from "@lucide/vue";
+import { CheckCircle2, CircleAlert, ExternalLink, LoaderCircle } from "@lucide/vue";
 import { computed, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import PasswordInput from "@components/forms/PasswordInput.vue";
+import {
+  SettingsMeterRow,
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+  type SettingsMeterStatus,
+} from "@components/settings";
+import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
-import { Label } from "@components/ui/label";
 import {
   Select,
   SelectContent,
@@ -36,6 +37,7 @@ const {
 }>();
 
 const live = useLive();
+const { locale, t } = useI18n();
 
 const providerApiKey = ref("");
 const providerEndpoint = ref(providerApiEndpoint);
@@ -44,14 +46,6 @@ const saving = ref(false);
 const testing = ref(false);
 const connectionState = ref<"idle" | "success" | "error">("idle");
 const connectionError = ref("");
-
-const usagePercent = computed(() => {
-  if (!effectiveUsage.value || effectiveUsage.value.characterLimit === 0) return 0;
-  return Math.min(
-    100,
-    Math.round((effectiveUsage.value.characterCount / effectiveUsage.value.characterLimit) * 100),
-  );
-});
 
 watch(
   () => providerApiEndpoint,
@@ -67,7 +61,7 @@ watch(
   },
 );
 
-function saveProviderConfig() {
+function saveProviderConfig(): void {
   saving.value = true;
   connectionState.value = "idle";
   live.pushEvent(
@@ -98,7 +92,7 @@ function saveProviderConfig() {
   );
 }
 
-function testProviderConnection() {
+function testProviderConnection(): void {
   testing.value = true;
   connectionState.value = "idle";
   connectionError.value = "";
@@ -124,167 +118,158 @@ function testProviderConnection() {
   );
 }
 
-function formatNumber(n: number | string) {
-  if (typeof n !== "number") return String(n);
-  return n.toLocaleString();
+function formatCount(value: number): string {
+  return new Intl.NumberFormat(locale.value).format(value);
 }
+
+const usagePercent = computed<number | null>(() => {
+  if (!effectiveUsage.value || effectiveUsage.value.characterLimit <= 0) return null;
+
+  return Math.min(
+    100,
+    Math.round((effectiveUsage.value.characterCount / effectiveUsage.value.characterLimit) * 100),
+  );
+});
+
+const usageStatus = computed<SettingsMeterStatus>(() => {
+  if (!effectiveUsage.value || effectiveUsage.value.characterLimit <= 0) return "unknown";
+
+  const ratio = effectiveUsage.value.characterCount / effectiveUsage.value.characterLimit;
+  if (ratio >= 1) return "reached";
+  if (ratio >= 0.8) return "warning";
+
+  return "available";
+});
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div class="overflow-hidden rounded-xl border border-base-300 bg-base-100 shadow-sm">
-      <header
-        class="flex flex-col gap-3 border-b border-base-300 bg-base-200/40 px-5 py-4 sm:flex-row sm:items-center"
-      >
-        <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <KeyRound class="size-5" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex flex-wrap items-center gap-2">
-            <h4 class="font-semibold">{{ $t("project_settings.localization.provider_title") }}</h4>
-            <span
-              :class="[
-                'badge badge-sm',
-                hasApiKey ? 'badge-success badge-outline' : 'badge-warning badge-outline',
-              ]"
-            >
-              {{
-                hasApiKey
-                  ? $t("project_settings.localization.configured")
-                  : $t("project_settings.localization.not_configured")
-              }}
-            </span>
-          </div>
-          <p class="mt-1 text-sm text-base-content/55">
-            {{ $t("project_settings.localization.provider_description") }}
-          </p>
-        </div>
-        <a
-          href="https://developers.deepl.com/docs/getting-started/auth"
-          target="_blank"
-          rel="noreferrer"
-          class="btn btn-ghost btn-sm"
-        >
-          {{ $t("project_settings.localization.api_key_help") }}
-          <ExternalLink class="size-3.5" />
-        </a>
-      </header>
+  <SettingsPage :title="t('project_settings.localization.page_title')">
+    <SettingsSection
+      :title="t('project_settings.localization.provider_section')"
+      :hint="t('project_settings.localization.provider_hint')"
+    >
+      <template #title-extra>
+        <Badge :variant="hasApiKey ? 'secondary' : 'outline'">
+          {{
+            hasApiKey
+              ? t("project_settings.localization.configured")
+              : t("project_settings.localization.not_configured")
+          }}
+        </Badge>
+      </template>
 
-      <form class="space-y-5 p-5" @submit.prevent="saveProviderConfig">
-        <div class="space-y-1.5">
-          <Label for="api-key">{{ $t("project_settings.localization.api_key") }}</Label>
+      <form @submit.prevent="saveProviderConfig">
+        <SettingsRow
+          :label="t('project_settings.localization.api_key')"
+          :hint="
+            hasApiKey
+              ? t('project_settings.localization.api_key_preserved')
+              : t('project_settings.localization.api_key_required')
+          "
+          html-for="api-key"
+          control="input"
+        >
           <PasswordInput
             id="api-key"
             v-model="providerApiKey"
             :placeholder="hasApiKey ? '••••••••' : ''"
             autocomplete="off"
           />
-          <p class="text-xs text-base-content/50">
-            {{
-              hasApiKey
-                ? $t("project_settings.localization.api_key_preserved")
-                : $t("project_settings.localization.api_key_required")
-            }}
-          </p>
-        </div>
+        </SettingsRow>
 
-        <div class="space-y-1.5">
-          <Label for="api-tier">{{ $t("project_settings.localization.api_tier") }}</Label>
+        <SettingsRow
+          :label="t('project_settings.localization.api_tier')"
+          :hint="t('project_settings.localization.tier_help')"
+        >
           <Select v-model="providerEndpoint">
-            <SelectTrigger>
+            <SelectTrigger id="api-tier" class="w-[220px] max-w-full">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="https://api-free.deepl.com">{{
-                $t("project_settings.localization.tier_free")
-              }}</SelectItem>
-              <SelectItem value="https://api.deepl.com">{{
-                $t("project_settings.localization.tier_pro")
-              }}</SelectItem>
+              <SelectItem value="https://api-free.deepl.com">
+                {{ t("project_settings.localization.tier_free") }}
+              </SelectItem>
+              <SelectItem value="https://api.deepl.com">
+                {{ t("project_settings.localization.tier_pro") }}
+              </SelectItem>
             </SelectContent>
           </Select>
-          <p class="text-xs text-base-content/50">
-            {{ $t("project_settings.localization.tier_help") }}
-          </p>
-        </div>
+        </SettingsRow>
 
-        <div
-          v-if="connectionState !== 'idle'"
-          :class="[
-            'alert py-2.5 text-sm',
-            connectionState === 'success' ? 'alert-success' : 'alert-error',
-          ]"
-          role="status"
-        >
-          <CheckCircle2 v-if="connectionState === 'success'" class="size-4" />
-          <CircleAlert v-else class="size-4" />
-          <span>
-            {{
-              connectionState === "success"
-                ? $t("project_settings.localization.connection_success")
-                : $t("project_settings.localization.connection_error", { error: connectionError })
-            }}
-          </span>
-        </div>
-
-        <div
-          class="flex flex-col-reverse gap-2 border-t border-base-300 pt-4 sm:flex-row sm:justify-end"
-        >
+        <SettingsRow :label="t('project_settings.localization.connection_row')">
+          <template #hint>
+            <a
+              href="https://developers.deepl.com/docs/getting-started/auth"
+              target="_blank"
+              rel="noreferrer"
+              class="inline-flex items-center gap-1 underline underline-offset-2"
+            >
+              {{ t("project_settings.localization.api_key_help") }}
+              <ExternalLink class="size-3" aria-hidden="true" />
+            </a>
+          </template>
           <Button
             v-if="hasApiKey"
             type="button"
             data-testid="localization-test-connection"
             variant="outline"
+            size="sm"
             :disabled="testing || saving"
             @click="testProviderConnection"
           >
-            <LoaderCircle v-if="testing" class="size-4 animate-spin" />
-            {{ $t("project_settings.localization.test_connection") }}
+            <LoaderCircle v-if="testing" class="size-4 animate-spin" aria-hidden="true" />
+            {{ t("project_settings.localization.test_connection") }}
           </Button>
           <Button
             type="submit"
+            size="sm"
             data-testid="localization-save-provider"
             :disabled="saving || testing"
           >
-            <LoaderCircle v-if="saving" class="size-4 animate-spin" />
-            {{ $t("project_settings.localization.save") }}
+            <LoaderCircle v-if="saving" class="size-4 animate-spin" aria-hidden="true" />
+            {{ t("project_settings.localization.save") }}
           </Button>
-        </div>
-      </form>
-    </div>
+        </SettingsRow>
 
-    <div v-if="effectiveUsage" class="rounded-xl border border-base-300 bg-base-100 p-5 shadow-sm">
-      <div class="flex items-start gap-3">
-        <div class="flex size-9 items-center justify-center rounded-lg bg-info/10 text-info">
-          <Gauge class="size-4" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <div class="flex items-center justify-between gap-3">
-            <div>
-              <h4 class="font-medium">{{ $t("project_settings.localization.usage_title") }}</h4>
-              <p class="text-xs text-base-content/50">
-                {{ $t("project_settings.localization.usage_description") }}
-              </p>
-            </div>
-            <span class="text-sm font-semibold tabular-nums">{{ usagePercent }}%</span>
-          </div>
-          <progress
-            class="progress progress-info mt-3 h-2 w-full"
-            :value="usagePercent"
-            max="100"
-          />
-          <div class="mt-2 flex items-center justify-between text-xs text-base-content/55">
-            <span
-              >{{ formatNumber(effectiveUsage.characterCount) }}
-              {{ $t("project_settings.localization.used") }}</span
-            >
-            <span
-              >{{ formatNumber(effectiveUsage.characterLimit) }}
-              {{ $t("project_settings.localization.limit") }}</span
-            >
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
+        <p
+          v-if="connectionState !== 'idle'"
+          role="status"
+          data-testid="localization-connection-status"
+          :class="[
+            'mx-4 mb-3.5 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm',
+            connectionState === 'success'
+              ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+              : 'border-destructive/30 bg-destructive/10 text-destructive',
+          ]"
+        >
+          <CheckCircle2 v-if="connectionState === 'success'" class="size-4" aria-hidden="true" />
+          <CircleAlert v-else class="size-4" aria-hidden="true" />
+          <span>
+            {{
+              connectionState === "success"
+                ? t("project_settings.localization.connection_success")
+                : t("project_settings.localization.connection_error", { error: connectionError })
+            }}
+          </span>
+        </p>
+      </form>
+    </SettingsSection>
+
+    <SettingsSection
+      v-if="effectiveUsage"
+      :title="t('project_settings.localization.usage_section')"
+      :hint="t('project_settings.localization.usage_description')"
+    >
+      <SettingsMeterRow
+        data-testid="localization-usage-meter"
+        :label="t('project_settings.localization.usage_row')"
+        :hint="t('project_settings.localization.usage_row_hint')"
+        :used="formatCount(effectiveUsage.characterCount)"
+        :limit="formatCount(effectiveUsage.characterLimit)"
+        :percent="usagePercent"
+        :status="usageStatus"
+        :status-label="t(`project_settings.usage_limits.meter_status.${usageStatus}`)"
+      />
+    </SettingsSection>
+  </SettingsPage>
 </template>

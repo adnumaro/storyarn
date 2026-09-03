@@ -998,7 +998,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "restore-operation-active",
                "snapshot-limit",
                "snapshots",
-               "storage-usage"
+               "storage-usage",
+               "workspace-plan-path"
              ]
 
       assert vue.props["restore-operation-active"] == false

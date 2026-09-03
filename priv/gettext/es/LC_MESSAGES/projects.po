@@ -21,7 +21,7 @@ msgstr "Todas las referencias de variables están actualizadas."
 msgid "Cannot remove the project owner."
 msgstr "No se puede eliminar al propietario del proyecto."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:198
+#: lib/storyarn_web/live/project_settings_live/localization.ex:193
 #, elixir-autogen, elixir-format
 msgid "Connection successful."
 msgstr "Conexión establecida."
@@ -41,11 +41,6 @@ msgstr "Error al eliminar el proyecto."
 msgid "Failed to repair variable references."
 msgstr "Error al reparar las referencias de variables."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:26
-#, elixir-autogen, elixir-format
-msgid "Localization"
-msgstr "Localización"
-
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:350
 #: lib/storyarn_web/live/project_live/components/settings_components.ex:376
 #, elixir-autogen, elixir-format
@@ -58,9 +53,9 @@ msgid "Member removed."
 msgstr "Miembro eliminado."
 
 #: lib/storyarn_web/live/project_settings_live/general.ex:132
-#: lib/storyarn_web/live/project_settings_live/localization.ex:108
+#: lib/storyarn_web/live/project_settings_live/localization.ex:103
 #: lib/storyarn_web/live/project_settings_live/members.ex:95
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:302
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:296
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:120
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:110
 #, elixir-autogen, elixir-format
@@ -72,7 +67,7 @@ msgstr "Configuración del proyecto"
 msgid "Project deleted."
 msgstr "Proyecto eliminado."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:164
+#: lib/storyarn_web/live/project_settings_live/localization.ex:159
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr "Configuración del proveedor guardada."
@@ -113,58 +108,48 @@ msgstr "Guardado"
 msgid "This invitation has already been accepted."
 msgstr "Esta invitación ya fue aceptada."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:255
+#: lib/storyarn_web/live/project_settings_live/trash.ex:257
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr "Papelera vaciada exitosamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:24
-#, elixir-autogen, elixir-format
-msgid "Trash"
-msgstr "Papelera"
-
-#: lib/storyarn_web/live/project_settings_live/trash.ex:26
-#, elixir-autogen, elixir-format
-msgid "Restore deleted project items or remove them permanently."
-msgstr "Restaura elementos eliminados del proyecto o elimínalos permanentemente."
-
-#: lib/storyarn_web/live/project_settings_live/trash.ex:91
+#: lib/storyarn_web/live/project_settings_live/trash.ex:93
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr "Papelera del proyecto"
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:164
-#: lib/storyarn_web/live/project_settings_live/trash.ex:179
+#: lib/storyarn_web/live/project_settings_live/trash.ex:166
+#: lib/storyarn_web/live/project_settings_live/trash.ex:181
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr "Elemento restaurado correctamente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:167
-#: lib/storyarn_web/live/project_settings_live/trash.ex:352
-#: lib/storyarn_web/live/project_settings_live/trash.ex:355
+#: lib/storyarn_web/live/project_settings_live/trash.ex:169
+#: lib/storyarn_web/live/project_settings_live/trash.ex:354
+#: lib/storyarn_web/live/project_settings_live/trash.ex:357
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr "Error al restaurar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:186
-#: lib/storyarn_web/live/project_settings_live/trash.ex:225
+#: lib/storyarn_web/live/project_settings_live/trash.ex:188
+#: lib/storyarn_web/live/project_settings_live/trash.ex:227
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr "Elemento no encontrado."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:203
-#: lib/storyarn_web/live/project_settings_live/trash.ex:218
+#: lib/storyarn_web/live/project_settings_live/trash.ex:205
+#: lib/storyarn_web/live/project_settings_live/trash.ex:220
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr "Elemento eliminado permanentemente."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:221
-#: lib/storyarn_web/live/project_settings_live/trash.ex:377
+#: lib/storyarn_web/live/project_settings_live/trash.ex:223
+#: lib/storyarn_web/live/project_settings_live/trash.ex:379
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr "Error al eliminar el elemento."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:259
+#: lib/storyarn_web/live/project_settings_live/trash.ex:261
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr "Algunos elementos no se pudieron eliminar."
@@ -172,15 +157,16 @@ msgstr "Algunos elementos no se pudieron eliminar."
 #: lib/storyarn_web/live/project_settings_live/general.ex:120
 #: lib/storyarn_web/live/project_settings_live/general.ex:306
 #: lib/storyarn_web/live/project_settings_live/general.ex:335
-#: lib/storyarn_web/live/project_settings_live/localization.ex:270
-#: lib/storyarn_web/live/project_settings_live/localization.ex:291
+#: lib/storyarn_web/live/project_settings_live/localization.ex:265
+#: lib/storyarn_web/live/project_settings_live/localization.ex:286
 #: lib/storyarn_web/live/project_settings_live/members.ex:163
 #: lib/storyarn_web/live/project_settings_live/members.ex:185
 #: lib/storyarn_web/live/project_settings_live/members.ex:289
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:290
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:667
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:284
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:661
 #: lib/storyarn_web/live/project_settings_live/templates.ex:67
 #: lib/storyarn_web/live/project_settings_live/templates.ex:123
+#: lib/storyarn_web/live/project_settings_live/trash.ex:84
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:149
 #: lib/storyarn_web/live/project_settings_live/usage_limits.ex:171
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:234
@@ -219,11 +205,6 @@ msgstr "Tema guardado."
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr "¡Invitación aceptada! Inicia sesión con %{email} para empezar."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:27
-#, elixir-autogen, elixir-format
-msgid "Translation provider configuration"
-msgstr "Configuración del proveedor de traducción"
-
 #: lib/storyarn_web/live/project_settings_live/version_control.ex:159
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
@@ -233,11 +214,6 @@ msgstr "Error al guardar la configuración."
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr "Formato de color no válido. Usa #RRGGBB."
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
-#, elixir-autogen, elixir-format
-msgid "Snapshots"
-msgstr "Snapshots"
 
 #: lib/storyarn_web/live/project_settings_live/general.ex:211
 #, elixir-autogen, elixir-format
@@ -1159,37 +1135,32 @@ msgstr "No se pudo restaurar tu importación anterior. Reiníciala y sube el arc
 msgid "The import could not be dismissed. Try again."
 msgstr "No se pudo descartar la importación. Inténtalo de nuevo."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:33
-#, elixir-autogen, elixir-format
-msgid "Review snapshot storage, reservations, and integrity"
-msgstr "Revisa el almacenamiento, las reservas y la integridad de las snapshots"
-
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:335
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:329
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr "La creación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:395
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:389
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr "No se ha podido cancelar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:421
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:415
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr "La eliminación de la snapshot ha comenzado."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:450
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:444
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr "No se ha podido eliminar la snapshot."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:362
+#: lib/storyarn_web/live/project_settings_live/trash.ex:364
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr "Este elemento hace referencia a contenido no disponible. Si hay elementos referenciados en la Papelera, restáuralos primero y vuelve a intentarlo."
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:371
+#: lib/storyarn_web/live/project_settings_live/trash.ex:373
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr "Este recurso todavía está referenciado por otro contenido. Elimina esas referencias o borra permanentemente de la Papelera los elementos que lo referencian y vuelve a intentarlo."
@@ -1285,12 +1256,12 @@ msgstr "No se pudo transferir la propiedad del proyecto."
 msgid "Project ownership transferred."
 msgstr "Propiedad del proyecto transferida."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:210
+#: lib/storyarn_web/live/project_settings_live/localization.ex:205
 #, elixir-autogen, elixir-format
 msgid "Provider settings could not be saved because project ownership is inconsistent."
 msgstr "No se pudo guardar la configuración del proveedor porque los datos de propiedad del proyecto son incoherentes."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:182
+#: lib/storyarn_web/live/project_settings_live/localization.ex:177
 #, elixir-autogen, elixir-format
 msgid "Provider settings could not be saved."
 msgstr "No se pudo guardar la configuración del proveedor."
@@ -1320,17 +1291,17 @@ msgstr "No se pudo eliminar al miembro porque los datos de propiedad del proyect
 msgid "Version control settings could not be saved because project ownership is inconsistent."
 msgstr "No se pudo guardar la configuración del control de versiones porque los datos de propiedad del proyecto son incoherentes."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:226
+#: lib/storyarn_web/live/project_settings_live/localization.ex:221
 #, elixir-autogen, elixir-format
 msgid "Provider connection could not be tested because project ownership is inconsistent."
 msgstr "No se pudo probar la conexión del proveedor porque los datos de propiedad del proyecto son incoherentes."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:219
+#: lib/storyarn_web/live/project_settings_live/localization.ex:214
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage provider settings for this project."
 msgstr "No tienes permiso para gestionar la configuración del proveedor de este proyecto."
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:235
+#: lib/storyarn_web/live/project_settings_live/localization.ex:230
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to test this project's provider connection."
 msgstr "No tienes permiso para probar la conexión del proveedor de este proyecto."
@@ -1346,7 +1317,7 @@ msgstr "No se pudo completar esta acción porque los datos de propiedad del proy
 msgid "Variable references could not be repaired because project ownership is inconsistent."
 msgstr "No se pudieron reparar las referencias de variables porque los datos de propiedad del proyecto son incoherentes."
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:733
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:727
 #, elixir-autogen, elixir-format
 msgid "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr "No se pudo completar la acción sobre la snapshot porque los datos de propiedad del proyecto son incoherentes. Contacta con soporte antes de volver a intentarlo."

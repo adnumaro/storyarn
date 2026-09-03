@@ -2,26 +2,30 @@
 import {
   Archive,
   Clock3,
-  Database,
   Download,
   FileJson2,
-  HardDrive,
-  Image,
   LoaderCircle,
   Plus,
   RotateCcw,
-  ShieldCheck,
   Trash2,
   X,
 } from "@lucide/vue";
 import { computed, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import {
+  SettingsEmptyState,
+  SettingsMeterRow,
+  SettingsPage,
+  SettingsRow,
+  SettingsSection,
+  type SettingsMeterStatus,
+} from "@components/settings";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { Progress } from "@components/ui/progress";
-import { Separator } from "@components/ui/separator";
 import { Textarea } from "@components/ui/textarea";
 import { useLive } from "@shared/composables/useLive";
 import {
@@ -112,11 +116,13 @@ const {
   storageUsage,
   snapshotLimit,
   restoreOperationActive = false,
+  workspacePlanPath = null,
 } = defineProps<{
   snapshots?: Snapshot[];
   storageUsage: WorkspaceStorageUsage;
   snapshotLimit: SnapshotLimit;
   restoreOperationActive?: boolean;
+  workspacePlanPath?: string | null;
 }>();
 
 const { locale, t } = useI18n();
@@ -481,17 +487,23 @@ function percentageLabel(percentage: ReturnType<typeof storagePercentage>) {
   }
 }
 
-function remainingStorageLabel() {
-  if (storageUsage.limitKind === "unlimited") {
-    return t("project_settings.snapshots.storage_status.unlimited");
-  }
+const storageLimitLabel = computed(() =>
+  storageUsage.limitKind === "limited" && storageUsage.limitBytes !== null
+    ? formatBytes(storageUsage.limitBytes, locale.value)
+    : null,
+);
 
-  if (storageUsage.limitKind === "unknown") {
-    return t("project_settings.snapshots.storage_status.unknown");
-  }
+const storageMeterStatus = computed<SettingsMeterStatus>(() => {
+  const percentage = workspacePercentage.value;
 
-  return formatBytes(storageUsage.remainingBytes, locale.value);
-}
+  if (percentage.state === "unlimited") return "unlimited";
+  if (percentage.state === "unknown") return "unknown";
+  if (percentage.state === "zero" || percentage.state === "over_limit") return "reached";
+  if (percentage.basisPoints !== null && percentage.basisPoints >= 10_000n) return "reached";
+  if (percentage.basisPoints !== null && percentage.basisPoints >= 8_000n) return "warning";
+
+  return "available";
+});
 
 function lifecycleLabel(status: SnapshotLifecycle | null) {
   return t(`project_settings.snapshots.lifecycle.${status ?? "unknown"}`);
@@ -645,220 +657,82 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
 </script>
 
 <template>
-  <div class="space-y-6">
-    <section aria-labelledby="snapshot-storage-heading">
-      <div class="rounded-xl border border-border bg-muted/25 p-4 sm:p-5">
-        <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <div class="flex items-center gap-2">
-              <HardDrive class="size-4 text-primary" aria-hidden="true" />
-              <h3 id="snapshot-storage-heading" class="font-semibold">
-                {{ $t("project_settings.snapshots.storage_heading") }}
-              </h3>
-            </div>
-            <p class="mt-1 text-sm text-muted-foreground">
-              {{ $t("project_settings.snapshots.storage_description") }}
-            </p>
-          </div>
-          <Badge
-            variant="outline"
-            class="w-fit tabular-nums"
-            :aria-label="
-              $t('project_settings.snapshots.accessibility.workspace_percentage', {
-                percent: workspacePercentLabel,
-              })
-            "
-          >
-            {{ workspacePercentLabel }}
-          </Badge>
-        </div>
+  <SettingsPage :title="$t('project_settings.snapshots.page_title')">
+    <SettingsSection
+      :title="$t('project_settings.snapshots.create.section')"
+      :hint="$t('project_settings.snapshots.create.section_hint')"
+    >
+      <form @submit.prevent="createSnapshot">
+        <SettingsRow
+          :label="$t('project_settings.snapshots.create.title')"
+          html-for="snapshot-title"
+          control="input"
+        >
+          <Input
+            id="snapshot-title"
+            v-model="title"
+            :maxlength="255"
+            :placeholder="$t('project_settings.snapshots.create.title_placeholder')"
+            :disabled="isSubmitting"
+          />
+        </SettingsRow>
 
-        <div class="mt-4 flex items-baseline justify-between gap-4 text-sm">
-          <span
-            class="font-semibold tabular-nums"
-            :aria-label="
-              accessibleMeasurement(
-                $t('project_settings.snapshots.storage_heading'),
-                storageUsage.totalAccountedBytes,
-              )
-            "
-          >
-            {{ formatBytes(storageUsage.totalAccountedBytes, locale) }}
-          </span>
-          <span class="text-muted-foreground tabular-nums">
-            <template v-if="storageUsage.limitKind === 'limited'">
-              {{ formatBytes(storageUsage.limitBytes, locale) }}
-            </template>
-            <template v-else>
-              {{ workspacePercentLabel }}
-            </template>
-          </span>
-        </div>
-        <Progress
-          v-if="workspaceHasDeterminateProgress"
-          data-testid="workspace-storage-progress"
-          :model-value="workspacePercentage.progressPercent"
-          class="mt-2"
-          :aria-label="
-            $t('project_settings.snapshots.storage_progress_label', {
-              percent: workspacePercentLabel,
-            })
-          "
-        />
+        <SettingsRow
+          :label="$t('project_settings.snapshots.create.notes')"
+          html-for="snapshot-description"
+          stacked
+        >
+          <Textarea
+            id="snapshot-description"
+            v-model="description"
+            :maxlength="500"
+            :placeholder="$t('project_settings.snapshots.create.notes_placeholder')"
+            :disabled="isSubmitting"
+            class="min-h-20 resize-none"
+          />
+        </SettingsRow>
 
-        <div class="mt-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-          <div class="rounded-md border border-border/60 bg-background/70 p-3">
-            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Image class="size-3.5" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.storage_breakdown.current_assets") }}
-            </div>
-            <div class="mt-1 font-medium tabular-nums">
-              {{ formatBytes(storageUsage.currentAssetsBytes, locale) }}
-            </div>
-          </div>
-          <div class="rounded-md border border-border/60 bg-background/70 p-3">
-            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Trash2 class="size-3.5" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.storage_breakdown.asset_trash") }}
-            </div>
-            <div class="mt-1 font-medium tabular-nums">
-              {{ formatBytes(storageUsage.assetTrashBytes, locale) }}
-            </div>
-          </div>
-          <div class="rounded-md border border-border/60 bg-background/70 p-3">
-            <div class="flex items-center gap-1.5 text-xs text-muted-foreground">
-              <Archive class="size-3.5" aria-hidden="true" />
-              {{ $t("project_settings.snapshots.storage_breakdown.full_snapshots") }}
-            </div>
-            <div class="mt-1 font-medium tabular-nums">
-              {{ formatBytes(storageUsage.fullSnapshotsBytes, locale) }}
-            </div>
-          </div>
-        </div>
-
-        <div class="mt-3 grid gap-2 text-xs text-muted-foreground sm:grid-cols-2">
-          <div class="flex items-center gap-1.5 rounded-md bg-background/55 px-3 py-2">
-            <Database class="size-3.5" aria-hidden="true" />
-            <span>{{ $t("project_settings.snapshots.storage_remaining") }}</span>
-            <span class="ml-auto font-medium text-foreground tabular-nums">
-              {{ remainingStorageLabel() }}
+        <SettingsRow :label="$t('project_settings.snapshots.create.full_mode')">
+          <template #hint>
+            <span>{{ $t("project_settings.snapshots.create.reservation_note") }}</span>
+            <span
+              class="block font-medium"
+              :class="snapshotLimitReached ? 'text-destructive' : 'text-muted-foreground'"
+              data-testid="snapshot-slot-usage"
+            >
+              {{ snapshotLimitLabel }}
             </span>
-          </div>
-          <div class="flex items-center gap-1.5 rounded-md bg-background/55 px-3 py-2">
-            <Clock3 class="size-3.5" aria-hidden="true" />
-            <span>{{ $t("project_settings.snapshots.storage_reservations") }}</span>
-            <span class="ml-auto font-medium text-foreground tabular-nums">
-              {{ formatBytes(storageUsage.activeReservationsBytes, locale) }}
-            </span>
-          </div>
-        </div>
+          </template>
+          <Button type="submit" size="sm" :disabled="isSubmitting || snapshotLimitReached">
+            <LoaderCircle v-if="isSubmitting" class="size-4 animate-spin" aria-hidden="true" />
+            <Plus v-else class="size-4" aria-hidden="true" />
+            {{
+              isSubmitting
+                ? $t("project_settings.snapshots.create.submitting")
+                : $t("project_settings.snapshots.create.submit")
+            }}
+          </Button>
+        </SettingsRow>
 
-        <p class="mt-3 text-xs text-muted-foreground">
-          {{ $t("project_settings.snapshots.storage_counted_note") }}
+        <p
+          v-if="requestError"
+          role="alert"
+          data-testid="snapshot-request-error"
+          class="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        >
+          {{ requestError }}
         </p>
-      </div>
-    </section>
+      </form>
+    </SettingsSection>
 
-    <Separator />
-
-    <section aria-labelledby="create-snapshot-heading">
-      <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-        <div class="border-b border-border bg-muted/30 px-4 py-4 sm:px-5">
-          <div class="flex items-start gap-3">
-            <div class="rounded-lg bg-primary/10 p-2 text-primary">
-              <ShieldCheck class="size-4" aria-hidden="true" />
-            </div>
-            <div>
-              <h3 id="create-snapshot-heading" class="font-semibold">
-                {{ $t("project_settings.snapshots.create.heading") }}
-              </h3>
-              <p class="mt-1 text-sm text-muted-foreground">
-                {{ $t("project_settings.snapshots.create.description") }}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        <form class="space-y-4 p-4 sm:p-5" @submit.prevent="createSnapshot">
-          <div class="grid gap-4 sm:grid-cols-2">
-            <div class="space-y-1.5">
-              <label for="snapshot-title" class="text-sm font-medium">
-                {{ $t("project_settings.snapshots.create.title") }}
-              </label>
-              <Input
-                id="snapshot-title"
-                v-model="title"
-                :maxlength="255"
-                :placeholder="$t('project_settings.snapshots.create.title_placeholder')"
-                :disabled="isSubmitting"
-              />
-            </div>
-            <div class="space-y-1.5">
-              <label for="snapshot-description" class="text-sm font-medium">
-                {{ $t("project_settings.snapshots.create.notes") }}
-              </label>
-              <Textarea
-                id="snapshot-description"
-                v-model="description"
-                :maxlength="500"
-                :placeholder="$t('project_settings.snapshots.create.notes_placeholder')"
-                :disabled="isSubmitting"
-                class="min-h-20 resize-none"
-              />
-            </div>
-          </div>
-
-          <div
-            class="flex flex-col gap-3 rounded-lg border border-border/70 bg-muted/25 p-3 sm:flex-row sm:items-center sm:justify-between"
-          >
-            <div class="text-sm">
-              <p class="font-medium">{{ $t("project_settings.snapshots.create.full_mode") }}</p>
-              <p class="mt-0.5 text-xs text-muted-foreground">
-                {{ $t("project_settings.snapshots.create.reservation_note") }}
-              </p>
-              <p
-                class="mt-1 text-xs font-medium"
-                :class="snapshotLimitReached ? 'text-destructive' : 'text-muted-foreground'"
-                data-testid="snapshot-slot-usage"
-              >
-                {{ snapshotLimitLabel }}
-              </p>
-            </div>
-            <Button type="submit" :disabled="isSubmitting || snapshotLimitReached" class="shrink-0">
-              <LoaderCircle v-if="isSubmitting" class="size-4 animate-spin" aria-hidden="true" />
-              <Plus v-else class="size-4" aria-hidden="true" />
-              {{
-                isSubmitting
-                  ? $t("project_settings.snapshots.create.submitting")
-                  : $t("project_settings.snapshots.create.submit")
-              }}
-            </Button>
-          </div>
-
-          <p
-            v-if="requestError"
-            role="alert"
-            data-testid="snapshot-request-error"
-            class="rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
-          >
-            {{ requestError }}
-          </p>
-        </form>
-      </div>
-    </section>
-
-    <Separator />
-
-    <!-- Snapshot List -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">
-        {{ $t("project_settings.snapshots.snapshots_heading") }}
-      </h3>
-
+    <SettingsSection
+      :title="$t('project_settings.snapshots.snapshots_heading')"
+      :hint="$t('project_settings.snapshots.count', snapshots.length)"
+    >
       <p
         v-if="deleteError"
         role="alert"
-        class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        class="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
       >
         {{ deleteError }}
       </p>
@@ -866,29 +740,25 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
       <p
         v-if="restoreRequestError"
         role="alert"
-        class="mb-4 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+        class="mx-4 my-3 rounded-lg border border-destructive/30 bg-destructive/10 px-3 py-2 text-sm text-destructive"
         data-testid="snapshot-restore-error"
       >
         {{ restoreRequestError }}
       </p>
 
-      <!-- Empty state -->
-      <div v-if="snapshots.length === 0" class="text-center py-12">
-        <Archive class="size-12 mx-auto mb-4 text-muted-foreground/30" />
-        <p class="font-medium text-muted-foreground/70">
-          {{ $t("project_settings.snapshots.empty_title") }}
-        </p>
-        <p class="text-sm text-muted-foreground/50 mt-1">
-          {{ $t("project_settings.snapshots.empty_description") }}
-        </p>
-      </div>
+      <SettingsEmptyState
+        v-if="snapshots.length === 0"
+        :icon="Archive"
+        :title="$t('project_settings.snapshots.empty_title')"
+        :text="$t('project_settings.snapshots.empty_description')"
+      />
 
-      <div v-else class="space-y-3">
+      <div v-else class="divide-y divide-border">
         <div
           v-for="snapshot in snapshots"
           :id="`snapshot-${snapshot.id}`"
           :key="snapshot.id"
-          class="scroll-mt-4 rounded-lg border border-border bg-muted/30 p-4 transition-shadow target:ring-2 target:ring-primary/50 target:ring-offset-2 target:ring-offset-background"
+          class="scroll-mt-4 px-4 py-4 transition-shadow target:ring-2 target:ring-inset target:ring-primary/50"
           :data-testid="`snapshot-card-${snapshot.id}`"
         >
           <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
@@ -1266,7 +1136,34 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
           </div>
         </div>
       </div>
-    </section>
+    </SettingsSection>
+
+    <SettingsSection
+      :title="$t('project_settings.snapshots.storage_section')"
+      :hint="$t('project_settings.snapshots.storage_section_hint')"
+    >
+      <SettingsMeterRow
+        data-testid="backups-storage-meter"
+        :label="$t('project_settings.snapshots.storage_row')"
+        :hint="$t('project_settings.snapshots.storage_row_hint')"
+        :used="formatBytes(storageUsage.totalAccountedBytes, locale)"
+        :limit="storageLimitLabel"
+        :percent="workspaceHasDeterminateProgress ? workspacePercentage.progressPercent : null"
+        :status="storageMeterStatus"
+        :status-label="workspacePercentLabel"
+      />
+
+      <template #footer>
+        {{ $t("project_settings.snapshots.storage_footer") }}
+        <LiveLink
+          v-if="workspacePlanPath"
+          :to="workspacePlanPath"
+          class="underline underline-offset-2"
+        >
+          {{ $t("project_settings.snapshots.storage_footer_link") }}
+        </LiveLink>
+      </template>
+    </SettingsSection>
 
     <ConfirmDialog
       v-model:open="deleteDialogOpen"
@@ -1289,5 +1186,5 @@ function sortedEntityCounts(counts: Record<string, number> | undefined) {
       :icon="RotateCcw"
       @confirm="restoreSnapshot"
     />
-  </div>
+  </SettingsPage>
 </template>
