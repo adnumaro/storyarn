@@ -1,5 +1,5 @@
 defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationMetricsTest do
-  use Storyarn.DataCase, async: true
+  use Storyarn.DataCase, async: false
 
   import ExUnit.CaptureLog
 
