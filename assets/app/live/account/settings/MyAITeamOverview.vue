@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import {
   ArrowRight,
-  Bot,
   Building2,
   CircleAlert,
   CircleCheck,
@@ -11,6 +10,7 @@ import {
 } from "@lucide/vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import { SettingsPage } from "@components/settings";
 
 type RoleSlot = "general_assistant" | "writing_assistant" | "illustrator" | "voice";
 
@@ -87,18 +87,10 @@ function workspaceRoleLabel(role: string | null): string {
 </script>
 
 <template>
-  <div id="settings-ai-team-overview-page" class="space-y-7">
-    <header class="max-w-3xl space-y-1.5">
-      <div class="flex items-center gap-2">
-        <Bot class="size-5 text-primary" aria-hidden="true" />
-        <h1 class="text-2xl font-bold tracking-tight text-foreground">
-          {{ t("integrations.team.overview.title") }}
-        </h1>
-      </div>
-      <p class="text-sm leading-relaxed text-muted-foreground">
-        {{ t("integrations.team.overview.description") }}
-      </p>
-    </header>
+  <SettingsPage id="settings-ai-team-overview-page" :title="t('integrations.team.overview.title')">
+    <p class="-mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+      {{ t("integrations.team.overview.description") }}
+    </p>
 
     <div
       class="flex items-start gap-3 rounded-xl border border-border/60 bg-muted/20 p-4"
@@ -295,5 +287,5 @@ function workspaceRoleLabel(role: string | null): string {
         {{ t("integrations.team.overview.empty.description") }}
       </p>
     </div>
-  </div>
+  </SettingsPage>
 </template>

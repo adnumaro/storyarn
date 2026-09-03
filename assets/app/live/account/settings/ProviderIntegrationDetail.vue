@@ -18,6 +18,7 @@ import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import { SettingsPage } from "@components/settings";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
 import { useLive } from "@shared/composables/useLive";
@@ -388,56 +389,55 @@ function cancelDisconnect(): void {
 </script>
 
 <template>
-  <div id="provider-integration-detail" class="space-y-7" :data-provider="card.provider">
-    <LiveLink
-      id="back-to-integrations"
-      :to="providersPath"
-      class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <ArrowLeft class="size-3.5" aria-hidden="true" />
-      {{ t("integrations.detail.back") }}
-    </LiveLink>
+  <SettingsPage id="provider-integration-detail" :title="card.name" :data-provider="card.provider">
+    <template #eyebrow>
+      <LiveLink
+        id="back-to-integrations"
+        :to="providersPath"
+        class="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft class="size-3.5" aria-hidden="true" />
+        {{ t("integrations.detail.back") }}
+      </LiveLink>
+    </template>
 
-    <header class="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
-      <div class="flex min-w-0 items-start gap-3">
-        <div
-          class="flex size-12 shrink-0 items-center justify-center rounded-xl bg-muted text-sm font-semibold text-muted-foreground"
-          aria-hidden="true"
-        >
-          {{ initials }}
-        </div>
-        <div class="min-w-0">
-          <div class="flex flex-wrap items-center gap-2">
-            <h1 class="text-2xl font-bold tracking-tight text-foreground">{{ card.name }}</h1>
-            <span
-              :class="[
-                'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium',
-                connected
-                  ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
-                  : 'bg-muted text-muted-foreground',
-              ]"
-            >
-              <CheckCircle2 v-if="connected" class="size-3" aria-hidden="true" />
-              {{ t(connected ? "integrations.card.connected" : "integrations.card.not_connected") }}
-            </span>
-          </div>
-          <p class="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
-            {{ t("integrations.detail.description", { name: card.name }) }}
-          </p>
-        </div>
-      </div>
-
+    <template #actions>
       <a
         :href="card.docs_url"
         target="_blank"
         rel="noopener noreferrer"
         data-live-link-exempt="external-provider-docs"
-        class="inline-flex h-8 shrink-0 items-center gap-1.5 self-start rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+        class="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
       >
         {{ t("integrations.card.docs") }}
         <ExternalLink class="size-3" aria-hidden="true" />
       </a>
-    </header>
+    </template>
+
+    <div class="-mt-5 flex min-w-0 items-start gap-3">
+      <div
+        class="flex size-10 shrink-0 items-center justify-center rounded-lg bg-muted text-sm font-semibold text-muted-foreground"
+        aria-hidden="true"
+      >
+        {{ initials }}
+      </div>
+      <div class="min-w-0">
+        <span
+          :class="[
+            'inline-flex items-center gap-1 rounded-full px-2 py-1 text-[11px] font-medium',
+            connected
+              ? 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300'
+              : 'bg-muted text-muted-foreground',
+          ]"
+        >
+          <CheckCircle2 v-if="connected" class="size-3" aria-hidden="true" />
+          {{ t(connected ? "integrations.card.connected" : "integrations.card.not_connected") }}
+        </span>
+        <p class="mt-1 max-w-2xl text-sm leading-relaxed text-muted-foreground">
+          {{ t("integrations.detail.description", { name: card.name }) }}
+        </p>
+      </div>
+    </div>
 
     <div
       v-if="inlineError"
@@ -902,5 +902,5 @@ function cancelDisconnect(): void {
       @confirm="confirmDisconnect"
       @cancel="cancelDisconnect"
     />
-  </div>
+  </SettingsPage>
 </template>

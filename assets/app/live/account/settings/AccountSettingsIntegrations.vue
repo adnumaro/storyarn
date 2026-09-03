@@ -2,6 +2,7 @@
 import { PlugZap } from "@lucide/vue";
 import { computed } from "vue";
 import { useI18n } from "vue-i18n";
+import { SettingsPage } from "@components/settings";
 import IntegrationCard, { type IntegrationCardData } from "./integrations/IntegrationCard.vue";
 
 const { cards = [] } = defineProps<{
@@ -15,15 +16,10 @@ const availableCards = computed(() => cards.filter((card) => card.status === "no
 </script>
 
 <template>
-  <div id="settings-integrations-page" class="space-y-8">
-    <header class="max-w-3xl space-y-1.5">
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">
-        {{ t("integrations.page.title") }}
-      </h1>
-      <p class="text-sm leading-relaxed text-muted-foreground">
-        {{ t("integrations.page.description") }}
-      </p>
-    </header>
+  <SettingsPage id="settings-integrations-page" :title="t('integrations.page.title')">
+    <p class="-mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+      {{ t("integrations.page.description") }}
+    </p>
 
     <template v-if="cards.length > 0">
       <section
@@ -34,7 +30,7 @@ const availableCards = computed(() => cards.filter((card) => card.status === "no
       >
         <div class="flex items-end justify-between gap-4">
           <div class="space-y-1">
-            <h2 id="connected-integrations-title" class="text-sm font-semibold text-foreground">
+            <h2 id="connected-integrations-title" class="text-[15px] font-medium text-foreground">
               {{ t("integrations.page.connected.title") }}
             </h2>
             <p class="text-xs leading-relaxed text-muted-foreground">
@@ -60,7 +56,7 @@ const availableCards = computed(() => cards.filter((card) => card.status === "no
         aria-labelledby="available-integrations-title"
       >
         <div class="space-y-1">
-          <h2 id="available-integrations-title" class="text-sm font-semibold text-foreground">
+          <h2 id="available-integrations-title" class="text-[15px] font-medium text-foreground">
             {{ t("integrations.page.available.title") }}
           </h2>
           <p class="text-xs leading-relaxed text-muted-foreground">
@@ -88,5 +84,5 @@ const availableCards = computed(() => cards.filter((card) => card.status === "no
         {{ t("integrations.empty.description") }}
       </p>
     </div>
-  </div>
+  </SettingsPage>
 </template>

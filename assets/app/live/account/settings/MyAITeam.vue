@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ArrowLeft, Bot, CircleAlert, KeyRound, ShieldCheck } from "@lucide/vue";
+import { ArrowLeft, CircleAlert, KeyRound, ShieldCheck } from "@lucide/vue";
 import { onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
 import LiveLink from "@components/navigation/LiveLink.vue";
+import { SettingsPage } from "@components/settings";
 import { useLive } from "@shared/composables/useLive";
 import PreferenceCard, { type PreferenceSlotData } from "./integrations/PreferenceCard.vue";
 
@@ -113,27 +114,24 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div id="settings-ai-team-page" class="space-y-7">
-    <LiveLink
-      id="back-to-ai-team-overview"
-      :to="overviewPath"
-      class="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
-    >
-      <ArrowLeft class="size-3.5" aria-hidden="true" />
-      {{ t("integrations.team.configuration.back") }}
-    </LiveLink>
+  <SettingsPage
+    id="settings-ai-team-page"
+    :title="t('integrations.team.configuration.title', { workspace: workspace.name })"
+  >
+    <template #eyebrow>
+      <LiveLink
+        id="back-to-ai-team-overview"
+        :to="overviewPath"
+        class="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+      >
+        <ArrowLeft class="size-3.5" aria-hidden="true" />
+        {{ t("integrations.team.configuration.back") }}
+      </LiveLink>
+    </template>
 
-    <header class="max-w-3xl space-y-1.5">
-      <div class="flex items-center gap-2">
-        <Bot class="size-5 text-primary" aria-hidden="true" />
-        <h1 class="text-2xl font-bold tracking-tight text-foreground">
-          {{ t("integrations.team.configuration.title", { workspace: workspace.name }) }}
-        </h1>
-      </div>
-      <p class="text-sm leading-relaxed text-muted-foreground">
-        {{ t("integrations.team.configuration.description") }}
-      </p>
-    </header>
+    <p class="-mt-5 max-w-3xl text-sm leading-relaxed text-muted-foreground">
+      {{ t("integrations.team.configuration.description") }}
+    </p>
 
     <div
       v-if="inlineError"
@@ -206,5 +204,5 @@ onUnmounted(() => {
         {{ t("integrations.team.no_roles") }}
       </div>
     </section>
-  </div>
+  </SettingsPage>
 </template>
