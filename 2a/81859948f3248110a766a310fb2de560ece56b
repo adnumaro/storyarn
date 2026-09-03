@@ -1,0 +1,42 @@
+assets/app/live/project/settings/export-import/ProjectSettingsExportImport.vue
+  s_dc522f884e191b::t_9e326d694c936f 2,5,37-41,64-76
+lib/storyarn_web/live/hooks/settings_nav.ex
+  s_dc522f884e191b::t_583050d625f829 56,130-134,136,139-143,148-153,155-156,158-162
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_dc522f884e191b::t_fefc03a9077284 2-7,11-17,28,101-102,132-134,141-142,145,162-167,170-199,246,249,380,382-386,388-402,406-422,424-428,430-432,435-461,463-464,466,469-508,510-518,522-544,546-549,551-554,557,560-575,577-582,584-590,592-593,595,597-608,610-625,627-638,641-666,668-679,681-687,689-727,729-733,735-777,779-804
+  s_dc522f884e191b::t_1c6951aaeca485 143-144
+assets/app/locales/en/project-settings.json
+  s_dc522f884e191b::t_cd422f57420ef6 489,639-655,723,736,755-768
+assets/app/locales/es/project-settings.json
+  s_dc522f884e191b::t_cd422f57420ef6 489,639-655,723,736,755-768
+assets/app/test/live/layouts/SettingsLayout.test.ts
+  s_dc522f884e191b::t_cd422f57420ef6 160,165-217
+  s_dc522f884e191b::t_2df5b15f66a5f1 31
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_dc522f884e191b::t_1c6951aaeca485 100-102
+  s_dc522f884e191b::t_cd422f57420ef6 14,73,75-77,87-88,91,99,103-112,135,250
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_dc522f884e191b::t_edccca474d3306 3-12,14-16,176-182,441-465,498-524,528-531,533-540,542-545,547-553,555-557,560-564,566-572,574-603,605-620,624-627,630-654,657,659-660,662-666,668-669,671,677-754,769,771,776,779,785,789,798,800,807-814,824-827,837,840,843-846,849,852-855,857-859,864-865,867-869,874-886,889-895,897,906-933,936-939,942,944,948-971,974-977,979,983-986,991
+test/storyarn_web/live/hooks/settings_nav_test.exs
+  s_dc522f884e191b::t_cd422f57420ef6 52-62
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_583050d625f829 2,19,65-66,127-155,158-161,304,312,321-328,340-341,343,366,379-380,397,416
+  s_dc522f884e191b::t_87b9330ef06acf 308-311,313-320,329-339
+  s_dc522f884e191b::t_1c6951aaeca485 156-157
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2a81859948f3248110a766a310fb2de560ece56b",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
