@@ -1,0 +1,57 @@
+lib/storyarn_web/router.ex
+  s_dc522f884e191b::t_861cbafc2d4818 349
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_dc522f884e191b::t_feb15d428bc803 8-38,40-47,66,68-69,71-72,74-75,78-79,84-85,87-89,99,101,116
+assets/app/locales/es/settings.json
+  s_dc522f884e191b::t_69a99fb4bdf19e 19-20,101-104,106-109,124-125,134-135,151,153-154,171-172,189-198,267-272
+  s_dc522f884e191b::t_8073c4e0b0f38f 273
+assets/app/locales/en/settings.json
+  s_dc522f884e191b::t_69a99fb4bdf19e 19-20,101-104,106-109,124-125,134-135,151,153-154,171-172,189-198,267-272
+  s_dc522f884e191b::t_66e07b60336978 273
+assets/app/test/live/workspace/settings/WorkspaceSettingsAI.test.ts
+  s_dc522f884e191b::t_6c324cf832ff21 1-121
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_dc522f884e191b::t_6b9647f14db6b9 262-266
+  s_dc522f884e191b::t_9b409475b89dbc 3-6,8-13,26,35,38,48-49,54-55,60-61,66-67,71,84-97,99,105,109,125,132,135,153-156,158-177,179-183,188-190,192,194-218,220-221,224-225,228,230-237,240-243,246,248,250-252,254,256,258-261,267-269,271-295
+assets/app/components/settings/SettingsEmptyState.vue
+  s_dc522f884e191b::t_6b9647f14db6b9 20-22
+  s_dc522f884e191b::t_4a90f61fbdd89e 1-19,23-27
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_a4d22053691d41 231-241
+assets/app/live/workspace/settings/WorkspaceSettingsAI.vue
+  s_dc522f884e191b::t_4024122d98f646 1-4,11-155
+  s_dc522f884e191b::t_6b9647f14db6b9 5-10
+lib/storyarn_web/live/settings_live/workspace_ai.ex
+  s_dc522f884e191b::t_486ce4b8805756 1-251
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_dc522f884e191b::t_519129203633be 3-4,10,12,38,76,107,220-258,299-300
+test/storyarn_web/live/settings_live/workspace_ai_test.exs
+  s_dc522f884e191b::t_75f20b6d53bc2a 1-210
+assets/app/components/settings/SettingsDeleteDialog.vue
+  s_dc522f884e191b::t_36f737dc430e65 1-90
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_dc522f884e191b::t_75f20b6d53bc2a 227,241,253
+assets/app/live/workspace/settings/WorkspaceSettingsMembers.vue
+  s_dc522f884e191b::t_6b9647f14db6b9 275
+  s_dc522f884e191b::t_6180f289a9519a 341-355
+  s_dc522f884e191b::t_028dbe0e9bbc1c 2,4,6,17,51-52,65-66,69-82,85-91,99,122,137-147,151-152,165-188,190-198,200,202-205,207-222,224-226,228-257,259-264,266-273,276-286,288-294,296-316,320,322,326-327,329,333,339,357
+  s_dc522f884e191b::t_cdc3f74fbbc57e 340
+assets/app/components/settings/index.ts
+  s_dc522f884e191b::t_ee91189ddd5372 1-2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5afc8943394af60af8387cadb148fc0254b22a4a",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
