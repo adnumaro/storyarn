@@ -1,0 +1,21 @@
+lib/storyarn/projects/assets/execution/asset_operations.ex
+  s_6ce2be7da793bc::t_34a85880005c37 2014
+lib/storyarn/projects/assets/adapters/storage/key_lock.ex
+  s_6ce2be7da793bc::t_34a85880005c37 64-66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "c8039bf998f3a0f5effdce24ef9be2e9c48e11d8",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
