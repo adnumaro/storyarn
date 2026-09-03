@@ -1,0 +1,21 @@
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_dc522f884e191b::t_0457e5d983d06f 52-53,62,64,150-151,169
+test/e2e/settings_reauthentication_test.exs
+  s_dc522f884e191b::t_e358e57d20efae 101-102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "74290a70ddeb0f2ce8dcb38d6706ceeedaeacc1a",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
