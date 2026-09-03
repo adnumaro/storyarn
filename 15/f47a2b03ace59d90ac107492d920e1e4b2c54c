@@ -1,0 +1,14 @@
+docs/reference/component-registry.md
+  h_46be6e61f3d9dd 63,112-130,132-133,170-173
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "15f47a2b03ace59d90ac107492d920e1e4b2c54c",
+  "prompts": {},
+  "humans": {
+    "h_46be6e61f3d9dd": {
+      "author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
