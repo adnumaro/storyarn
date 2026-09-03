@@ -1,0 +1,76 @@
+lib/storyarn/projects/assets/adapters/storage/storage.ex
+  s_6ce2be7da793bc::t_ec972faee9d91c 123-127
+  s_6ce2be7da793bc::t_074c1f29706ff3 194,213-215,222-224,226,228
+test/storyarn/workspaces/lifecycle/commands/delete_workspace_test.exs
+  s_6ce2be7da793bc::t_908b05b70a4e20 11,19,22
+  s_6ce2be7da793bc::t_1c47daef7e74cb 1-10,12-18,20-21,23-30
+lib/storyarn/workspaces/lifecycle/commands/delete_workspace.ex
+  s_6ce2be7da793bc::t_95048381fd459d 21-34
+test/storyarn/projects/interchange/imports/commands/replacement_test.exs
+  s_6ce2be7da793bc::t_5e4e45d34b444c 22,41,394-424
+  s_6ce2be7da793bc::t_09b10bd9bad9bf 425-426
+lib/storyarn/projects/interchange/imports/commands/replacement.ex
+  s_6ce2be7da793bc::t_21191721889166 199-200,206
+test/storyarn/projects/assets/execution/storage_compensation_test.exs
+  s_6ce2be7da793bc::t_21191721889166 363-374
+docs/reference/versioning-containment.md
+  s_6ce2be7da793bc::t_b38177c88e0e84 383,418-433
+  s_6ce2be7da793bc::t_320335213638cd 434
+test/storyarn/projects/versioning/commands/project_snapshot_lifecycle_test.exs
+  s_6ce2be7da793bc::t_e69638bcceacc4 365,379-380
+  s_6ce2be7da793bc::t_1c47daef7e74cb 366-378,381-389
+test/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair_test.exs
+  s_6ce2be7da793bc::t_5e4e45d34b444c 529-558
+lib/storyarn/projects/assets/execution/storage_compensation.ex
+  s_6ce2be7da793bc::t_21191721889166 1247
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation_repair.ex
+  s_6ce2be7da793bc::t_21191721889166 642-645,651-658
+  s_6ce2be7da793bc::t_991b2002a60e3c 659-660
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_6ce2be7da793bc::t_e4c5f6d2edb1c6 377-380,401-402
+  s_6ce2be7da793bc::t_beaa8af6fb4124 259-263
+  s_6ce2be7da793bc::t_b54c3c7497ca5f 94-103,109-118,376,381,397-398,410
+  s_6ce2be7da793bc::t_4dc19b9a0388b9 30,193,196,356-375,382-396,399-400,403-409,411-434
+  s_6ce2be7da793bc::t_a919efd97cd32d 104-108
+  s_6ce2be7da793bc::t_a0eea7ebd879c9 435
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_6ce2be7da793bc::t_fc64e46dd3d26d 213,498-499,557-558,644-645,683,1766-1771,1797-1804,1981-1996
+lib/storyarn/projects/versioning/commands/project_snapshot_lifecycle.ex
+  s_6ce2be7da793bc::t_e08e5223ed8431 539,543
+  s_6ce2be7da793bc::t_3cb39c74ad28a9 540-542,575-582
+  s_6ce2be7da793bc::t_9d6304059ae94d 583
+test/storyarn/projects/assets/adapters/storage/storage_test.exs
+  s_6ce2be7da793bc::t_074c1f29706ff3 6,70-73,82-94,249,255,257,261-285
+  s_6ce2be7da793bc::t_9bb27e85ca7dec 74-81
+  s_6ce2be7da793bc::t_ec972faee9d91c 228-248,286,714-721
+  s_6ce2be7da793bc::t_ccae63faf4dd15 287
+lib/storyarn_web/live/settings_live/workspace_imports.ex
+  s_6ce2be7da793bc::t_ec972faee9d91c 5-7,27-29
+test/storyarn/release_snapshot_cutover_test.exs
+  s_6ce2be7da793bc::t_2106463ca57cac 325-370,372-379
+  s_6ce2be7da793bc::t_774f534e7adf54 371
+test/storyarn_web/live/settings_live/workspace_imports_test.exs
+  s_6ce2be7da793bc::t_ec972faee9d91c 2,42-66
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_c5e8ab6a515c5e 115
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_53e2b9a220d3a2 115
+priv/gettext/workspaces.pot
+  s_6ce2be7da793bc::t_1b597efe5804c5 115
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "5e5d514d711dbf791e23139723dc23c8936871a4",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
