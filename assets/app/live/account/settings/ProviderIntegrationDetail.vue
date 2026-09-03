@@ -14,7 +14,7 @@ import {
   ShieldCheck,
   Sparkles,
 } from "@lucide/vue";
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
@@ -137,6 +137,18 @@ let credentialSeq = 0;
 let revalidateSeq = 0;
 let disconnectSeq = 0;
 const assignmentSequences = new Map<number, number>();
+
+// A lapsed sudo window must not keep an API-key form (or a typed key) on
+// the locked surface.
+watch(
+  () => sudoActive,
+  (active) => {
+    if (active) return;
+    credentialMode.value = null;
+    credentialPending.value = false;
+    disconnectOpen.value = false;
+  },
+);
 
 const connected = computed(() => card.status === "connected");
 
@@ -914,25 +926,27 @@ function cancelDisconnect(): void {
       </section>
     </template>
 
-    <ConnectKeyDialog
-      v-if="credentialMode"
-      :open="!!credentialMode"
-      :card="card"
-      :mode="credentialMode"
-      :submitting="credentialPending"
-      @submit="submitCredential"
-      @cancel="closeCredentialDialog"
-    />
+    <template v-if="sudoActive">
+      <ConnectKeyDialog
+        v-if="credentialMode"
+        :open="!!credentialMode"
+        :card="card"
+        :mode="credentialMode"
+        :submitting="credentialPending"
+        @submit="submitCredential"
+        @cancel="closeCredentialDialog"
+      />
 
-    <ConfirmDialog
-      v-model:open="disconnectOpen"
-      :title="disconnectTitle"
-      :description="disconnectDescription"
-      :confirm-text="t('integrations.disconnect.confirm')"
-      :cancel-text="t('integrations.disconnect.cancel')"
-      variant="destructive"
-      @confirm="confirmDisconnect"
-      @cancel="cancelDisconnect"
-    />
+      <ConfirmDialog
+        v-model:open="disconnectOpen"
+        :title="disconnectTitle"
+        :description="disconnectDescription"
+        :confirm-text="t('integrations.disconnect.confirm')"
+        :cancel-text="t('integrations.disconnect.cancel')"
+        variant="destructive"
+        @confirm="confirmDisconnect"
+        @cancel="cancelDisconnect"
+      />
+    </template>
   </SettingsPage>
 </template>

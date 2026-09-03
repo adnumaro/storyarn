@@ -134,7 +134,8 @@
         "owner_only": "Only the workspace owner can allow personal AI for other members.",
         "disclosure": "Authorized project content leaves Storyarn and is processed under each member's provider account. Processing region, retention and possible model-training use depend on that provider and account; Storyarn cannot guarantee zero retention or no training for personal keys. Each member must review the disclosed data scope and consent before first use.",
         "manage_keys": "Manage my provider connections",
-        "data_handling": "Data handling"
+        "data_handling": "Data handling",
+        "connections_title": "Your connections"
       },
       "appearance": {
         "title": "Appearance",

@@ -8,7 +8,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
 
   alias Storyarn.Commercial
   alias Storyarn.Workspaces
-  alias StoryarnWeb.ProjectLive.Components.SettingsComponents
 
   @impl true
   def mount(_params, _session, socket) do
@@ -66,12 +65,47 @@ defmodule StoryarnWeb.SettingsLive.WorkspacePlan do
       plan: %{key: to_string(usage.plan)},
       projects: serialize_count_bucket(usage.projects),
       members: serialize_count_bucket(usage.members),
-      storageBytes: SettingsComponents.serialize_storage_bucket(usage.storage_bytes),
-      storage: SettingsComponents.serialize_storage_usage(usage.storage, usage.storage_bytes.limit)
+      storageBytes: serialize_storage_bucket(usage.storage_bytes),
+      storage: serialize_storage_usage(usage.storage, usage.storage_bytes.limit)
     }
   end
 
   defp serialize_count_bucket(bucket) do
     %{used: bucket.used || 0, limit: bucket.limit}
   end
+
+  # Workspace-owned copy of the storage serializers: the Project settings
+  # components belong to another boundary, and the Plan page must not depend
+  # on them (see `config/architecture_boundaries.exs`).
+  defp serialize_storage_usage(storage, limit) do
+    %{
+      currentAssetsBytes: serialize_byte_count(storage.current_assets.bytes),
+      assetTrashBytes: serialize_byte_count(storage.asset_trash.bytes),
+      fullSnapshotsBytes: serialize_byte_count(storage.full_snapshots.bytes),
+      activeReservationsBytes: serialize_byte_count(storage.active_reservations.bytes),
+      totalAccountedBytes: serialize_byte_count(storage.accounted_bytes),
+      limitBytes: serialized_storage_limit(limit),
+      remainingBytes: remaining_storage_bytes(storage.accounted_bytes, limit),
+      limitKind: storage_limit_kind(limit)
+    }
+  end
+
+  defp serialize_storage_bucket(bucket) do
+    %{used: serialize_byte_count(bucket.used), limit: serialized_storage_limit(bucket.limit)}
+  end
+
+  defp serialize_byte_count(value) when is_integer(value) and value >= 0, do: Integer.to_string(value)
+
+  defp remaining_storage_bytes(used, limit) when is_integer(limit) and limit >= 0 do
+    serialize_byte_count(max(limit - used, 0))
+  end
+
+  defp remaining_storage_bytes(_used, _limit), do: nil
+
+  defp serialized_storage_limit(limit) when is_integer(limit) and limit >= 0, do: serialize_byte_count(limit)
+  defp serialized_storage_limit(_limit), do: nil
+
+  defp storage_limit_kind(limit) when is_integer(limit) and limit >= 0, do: "limited"
+  defp storage_limit_kind(limit) when limit in [:unlimited, :infinity], do: "unlimited"
+  defp storage_limit_kind(_limit), do: "unknown"
 end

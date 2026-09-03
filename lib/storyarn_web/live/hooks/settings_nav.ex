@@ -15,7 +15,8 @@ defmodule StoryarnWeb.Live.Hooks.SettingsNav do
   alias Storyarn.Projects
 
   @settings_prefixes ["StoryarnWeb.SettingsLive.", "StoryarnWeb.ProjectSettingsLive."]
-  @settings_views [StoryarnWeb.ExportImportLive.Index]
+  # Matched by name so the infrastructure hook carries no dependency on the view.
+  @settings_view_names ["StoryarnWeb.ExportImportLive.Index"]
 
   def on_mount(:load_settings_nav, _params, _session, socket) do
     if settings_view?(socket.view) do
@@ -33,7 +34,7 @@ defmodule StoryarnWeb.Live.Hooks.SettingsNav do
   defp settings_view?(view) when is_atom(view) and not is_nil(view) do
     # `inspect/1` drops the `Elixir.` prefix that `Atom.to_string/1` keeps.
     name = inspect(view)
-    view in @settings_views or Enum.any?(@settings_prefixes, &String.starts_with?(name, &1))
+    name in @settings_view_names or Enum.any?(@settings_prefixes, &String.starts_with?(name, &1))
   end
 
   defp settings_view?(_view), do: false

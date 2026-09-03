@@ -35,6 +35,10 @@ const {
   confirmId?: string | null;
 }>();
 
+// The headless DialogRoot renders no element; forward attributes such as
+// `data-testid` to the content that reaches the DOM.
+defineOptions({ inheritAttrs: false });
+
 const open = defineModel<boolean>("open", { required: true });
 const emit = defineEmits<{ confirm: [] }>();
 
@@ -54,7 +58,7 @@ function confirm(): void {
 
 <template>
   <Dialog v-model:open="open">
-    <DialogContent class="sm:max-w-md">
+    <DialogContent class="sm:max-w-md" v-bind="$attrs">
       <DialogHeader>
         <div class="flex items-center gap-2">
           <TriangleAlert class="size-5 text-destructive" />

@@ -81,8 +81,14 @@ function saveWorkspace(): void {
   });
 }
 
-// Text fields save when they lose focus, only if something changed.
+// Text fields save when they lose focus, only if something changed. A cleared
+// name is restored instead of sent: the server would reject it silently here.
 function saveName(): void {
+  if (localName.value.trim().length === 0) {
+    localName.value = workspaceName;
+    return;
+  }
+
   if (localName.value !== workspaceName) saveWorkspace();
 }
 

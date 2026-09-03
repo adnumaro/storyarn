@@ -138,7 +138,12 @@ function updatePersonalAiMembersPolicy(enabled: boolean): void {
             @update:model-value="updatePersonalAiMembersPolicy"
           />
         </SettingsRow>
+      </SettingsSection>
 
+      <SettingsSection
+        id="personal-ai-connections"
+        :title="t('settings.workspace.personal_ai.connections_title')"
+      >
         <SettingsRow
           :label="t('settings.workspace.personal_ai.data_handling')"
           :hint="t('settings.workspace.personal_ai.disclosure')"

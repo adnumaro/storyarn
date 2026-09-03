@@ -275,7 +275,7 @@ Account (`SettingsLive.*`), workspace (`SettingsLive.Workspace*`) and project
   LiveView passes it to `SettingsLayout.settings` and never builds nav data
   itself. Groups are Personal, Workspace and Project; pages the actor cannot
   change render locked with a lock icon, pages they cannot use at all are left
-  out (a project viewer sees only Export).
+  out (a project viewer sees no project group).
 - **Page.** The Vue page renders `SettingsPage` with its own title; sections
   are `SettingsSection` cards of `SettingsRow`s (label + hint left, control
   right), quotas are `SettingsMeterRow`s, destructive actions live in a
@@ -293,7 +293,7 @@ Account (`SettingsLive.*`), workspace (`SettingsLive.Workspace*`) and project
   client instead of navigating away.
 - **Access.** Owner-only pages (project General, Members, Templates, Version
   control, Backups, Localization, Usage, Import) redirect editors and viewers
-  at mount; Trash redirects viewers; Export stays read-only for viewers.
+  at mount; Trash and Export redirect viewers, who have no project settings.
   `/settings/export-import`, `/workspaces/:slug/imports` and
   `/workspaces/:slug/deleted-projects` are redirect-only legacy routes.
 

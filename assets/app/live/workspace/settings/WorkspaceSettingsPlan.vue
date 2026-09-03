@@ -81,7 +81,7 @@ function countMeter(key: string, bucket: CountBucket, hint: string): Meter {
 }
 
 function storageStatus(state: string, progressPercent: number): SettingsMeterStatus {
-  if (state === "over_limit") return "reached";
+  if (state === "over_limit" || state === "zero") return "reached";
   if (state === "unlimited") return "unlimited";
   if (state === "unknown") return "unknown";
   if (progressPercent >= 90) return "warning";

@@ -4,6 +4,7 @@ import type { App } from "vue";
 import ProjectSettingsGeneral from "../../../../live/project/settings/ProjectSettingsGeneral.vue";
 import ConfirmDialog from "../../../../components/ConfirmDialog.vue";
 import LanguagePicker from "../../../../components/language/LanguagePicker.vue";
+import SettingsDeleteDialog from "../../../../components/settings/SettingsDeleteDialog.vue";
 import SettingsSection from "../../../../components/settings/SettingsSection.vue";
 import { createMockLive } from "../../../setup";
 import type { LiveInterface } from "../../../../shared/composables/useLive";
@@ -201,14 +202,13 @@ describe("ProjectSettingsGeneral ownership changes", () => {
     expect(
       wrapper.get('[data-testid="project-repair-confirm-dialog"]').attributes("data-open"),
     ).toBe("true");
-    expect(
-      wrapper.get('[data-testid="project-delete-confirm-dialog"]').attributes("data-open"),
-    ).toBe("true");
+    expect(wrapper.find('[data-testid="project-delete-confirm-dialog"]').exists()).toBe(true);
+    expect(wrapper.getComponent(SettingsDeleteDialog).props("open")).toBe(true);
 
     await wrapper.setProps({ canManageProject: false });
     expect(wrapper.findComponent(ConfirmDialog).exists()).toBe(false);
     expect(wrapper.find('[data-testid="project-repair-confirm-dialog"]').exists()).toBe(false);
-    expect(wrapper.find('[data-testid="project-delete-confirm-dialog"]').exists()).toBe(false);
+    expect(wrapper.findComponent(SettingsDeleteDialog).exists()).toBe(false);
 
     await wrapper.setProps({ canManageProject: true });
     expect(wrapper.getComponent(ConfirmDialog).props("open")).toBe(false);
@@ -216,8 +216,6 @@ describe("ProjectSettingsGeneral ownership changes", () => {
     expect(
       wrapper.get('[data-testid="project-repair-confirm-dialog"]').attributes("data-open"),
     ).toBe("false");
-    expect(
-      wrapper.get('[data-testid="project-delete-confirm-dialog"]').attributes("data-open"),
-    ).toBe("false");
+    expect(wrapper.getComponent(SettingsDeleteDialog).props("open")).toBe(false);
   });
 });

@@ -78,17 +78,21 @@ const entityRows: { key: EntityKey; icon: Component; model: typeof autoFlows }[]
   { key: "sheets", icon: FileText, model: autoSheets },
 ];
 
+// The switch is not flipped locally: the LiveView assigns the saved value and
+// the prop watchers above follow it, so a failed save leaves the server state.
 function toggle(key: EntityKey, value: boolean): void {
-  const row = entityRows.find((candidate) => candidate.key === key);
-  if (!row) return;
-
-  row.model.value = value;
+  const next = {
+    flows: autoFlows.value,
+    scenes: autoScenes.value,
+    sheets: autoSheets.value,
+    [key]: value,
+  };
 
   live.pushEvent("save_version_control", {
     version_control: {
-      auto_version_flows: String(autoFlows.value),
-      auto_version_scenes: String(autoScenes.value),
-      auto_version_sheets: String(autoSheets.value),
+      auto_version_flows: String(next.flows),
+      auto_version_scenes: String(next.scenes),
+      auto_version_sheets: String(next.sheets),
     },
   });
 }

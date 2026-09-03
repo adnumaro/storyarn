@@ -134,7 +134,8 @@
         "owner_only": "Solo el propietario del espacio puede permitir IA personal a otros miembros.",
         "disclosure": "El contenido autorizado del proyecto sale de Storyarn y se procesa con la cuenta de proveedor de cada miembro. La región, la retención y el posible uso para entrenar modelos dependen de ese proveedor y esa cuenta; Storyarn no puede garantizar retención cero ni exclusión del entrenamiento con claves personales. Cada miembro debe revisar el alcance de datos y consentir antes del primer uso.",
         "manage_keys": "Gestionar mis conexiones de proveedor",
-        "data_handling": "Tratamiento de datos"
+        "data_handling": "Tratamiento de datos",
+        "connections_title": "Tus conexiones"
       },
       "appearance": {
         "title": "Apariencia",

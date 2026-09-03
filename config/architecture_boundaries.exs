@@ -1762,6 +1762,7 @@ boundaries = %{
     "lib/storyarn/workers/accounts/",
     "lib/storyarn_web/controllers/user_session_controller.ex",
     "lib/storyarn_web/live/user_live/",
+    "lib/storyarn_web/live/settings_live/preferences.ex",
     "lib/storyarn_web/live/settings_live/profile.ex",
     "lib/storyarn_web/live/settings_live/security.ex"
   ],
@@ -1770,10 +1771,11 @@ boundaries = %{
     "lib/storyarn/workspaces/",
     "lib/storyarn/workers/workspaces/",
     "lib/storyarn_web/live/workspace_live/",
-    "lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex",
+    "lib/storyarn_web/live/settings_live/workspace_ai.ex",
     "lib/storyarn_web/live/settings_live/workspace_general.ex",
-    "lib/storyarn_web/live/settings_live/workspace_imports.ex",
-    "lib/storyarn_web/live/settings_live/workspace_members.ex"
+    "lib/storyarn_web/live/settings_live/workspace_members.ex",
+    "lib/storyarn_web/live/settings_live/workspace_plan.ex",
+    "lib/storyarn_web/live/settings_live/workspace_projects.ex"
   ],
   commercial: [
     "lib/storyarn/commercial.ex",
@@ -1910,7 +1912,6 @@ boundaries = %{
     "lib/storyarn_web/live/landing_live/",
     "lib/storyarn_web/live/legal_live/",
     "lib/storyarn_web/live/presence_live.ex",
-    "lib/storyarn_web/live/settings_live/sudo.ex",
     "lib/storyarn_web/live/settings_live/tutorials.ex",
     "lib/storyarn_web/live/shared/",
     "lib/storyarn_web/live/tree_sidebar_actions.ex",
@@ -4211,6 +4212,18 @@ policy = %{
       reason: "The project scope hook loads the current project through the public Projects facade"
     },
     %{
+      source: "lib/storyarn_web/live/hooks/settings_nav.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The settings rail lists the projects the actor can act on through the public Projects facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/sudo_reauth.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "In-place re-authentication checks the rate limit and the password through the public Accounts facade"
+    },
+    %{
       source: "lib/storyarn/projects/assets/execution/asset_operations.ex",
       target: "lib/storyarn/commercial.ex",
       kinds: ["runtime"],
@@ -4726,22 +4739,23 @@ policy = %{
       reason: "Workspace invitation delivery goes through the application mailer"
     },
     %{
-      source: "lib/storyarn_web/live/settings_live/workspace_deleted_projects.ex",
-      target: "lib/storyarn/projects.ex",
-      kinds: ["runtime"],
-      reason: "The workspace trash settings page lists and restores deleted projects through the public Projects facade"
-    },
-    %{
-      source: "lib/storyarn_web/live/settings_live/workspace_general.ex",
+      source: "lib/storyarn_web/live/settings_live/workspace_ai.ex",
       target: "lib/storyarn/ai.ex",
       kinds: ["runtime"],
-      reason: "Workspace general settings surfaces the AI policy controls through the public AI facade"
+      reason: "Workspace AI settings surface the AI policy controls through the public AI facade"
     },
     %{
-      source: "lib/storyarn_web/live/settings_live/workspace_imports.ex",
+      source: "lib/storyarn_web/live/settings_live/workspace_plan.ex",
+      target: "lib/storyarn/commercial.ex",
+      kinds: ["runtime"],
+      reason: "Workspace plan settings read usage against plan limits through the public Commercial facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/settings_live/workspace_projects.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],
-      reason: "Workspace snapshot imports are requested and tracked through the public Projects facade"
+      reason:
+        "Workspace snapshot imports and deleted projects are requested, tracked and restored through the public Projects facade"
     },
     %{
       source: "lib/storyarn_web/live/workspace_live/invitation.ex",

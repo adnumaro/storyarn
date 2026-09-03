@@ -11,7 +11,7 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/integrations.ex:23
+#: lib/storyarn_web/live/settings_live/integrations.ex:26
 #, elixir-autogen, elixir-format
 msgid "AI Integrations"
 msgstr ""
@@ -21,24 +21,24 @@ msgstr ""
 msgid "This feature is not available for your account."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/ai_team.ex:118
-#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:62
+#: lib/storyarn_web/live/settings_live/ai_team.ex:132
+#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:71
 #, elixir-autogen, elixir-format
 msgid "AI preferences are not available."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/integration_detail.ex:38
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:41
 #, elixir-autogen, elixir-format
 msgid "AI provider not found."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/ai_team.ex:29
-#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:23
+#: lib/storyarn_web/live/settings_live/ai_team.ex:30
+#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:25
 #, elixir-autogen, elixir-format
 msgid "My AI Team"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/ai_team.ex:141
+#: lib/storyarn_web/live/settings_live/ai_team.ex:155
 #, elixir-autogen, elixir-format
 msgid "Workspace-level access is required to configure this AI team."
 msgstr ""

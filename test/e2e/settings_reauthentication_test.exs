@@ -55,6 +55,7 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
     |> refute_has("#confirm-access-vue")
     |> click("a[href='/users/settings/security']")
     |> assert_path("/users/settings/security")
+    |> click("#security-change-password")
     |> assert_has("#security-password")
     |> refute_has("#confirm-access-vue")
     |> evaluate("window.__settingsNavigationBlank", fn value -> assert value == false end)
@@ -88,6 +89,7 @@ defmodule StoryarnWeb.E2E.SettingsReauthenticationTest do
 
     conn
     |> visit("/users/settings/security")
+    |> click("#security-change-password")
     |> assert_has("#security-password")
     |> fill_in("#security-password", "New password", with: new_password)
     |> fill_in("#security-password-confirmation", "Confirm new password", with: new_password)

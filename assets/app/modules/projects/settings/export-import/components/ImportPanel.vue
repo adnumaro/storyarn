@@ -557,19 +557,25 @@ watch(replaceDialogOpen, (open) => {
           </div>
         </div>
 
-        <SettingsRow
+        <div
           v-for="entry in upload?.entries.value"
           :key="entry.ref"
-          :label="entry.client_name"
-          :hint="formatFileSize(entry.client_size)"
+          class="grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+          data-testid="yarn-import-selected-file"
         >
-          <template #leading>
+          <div class="flex min-w-0 items-center gap-3">
             <FileText class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
-          </template>
+            <div class="min-w-0">
+              <span class="block truncate font-medium">{{ entry.client_name }}</span>
+              <span class="text-[13px] text-muted-foreground">
+                {{ formatFileSize(entry.client_size) }}
+              </span>
+            </div>
+          </div>
           <div v-if="entry.errors.length" class="text-[13px] text-destructive">
             <div v-for="(err, ei) in entry.errors" :key="ei">{{ err }}</div>
           </div>
-        </SettingsRow>
+        </div>
 
         <SettingsRow :label="t('project_settings.import.upload_footer')" class="text-[13px]">
           <Button

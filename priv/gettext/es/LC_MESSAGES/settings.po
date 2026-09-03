@@ -41,6 +41,8 @@ msgstr "Configuración de tutoriales"
 msgid "A link to confirm your email change has been sent to the new address."
 msgstr "Hemos enviado un enlace para confirmar el cambio de email a la nueva dirección."
 
+#: lib/storyarn_web/live/settings_live/ai_team.ex:179
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:312
 #: lib/storyarn_web/live/shared/sudo_reauth.ex:83
 #, elixir-autogen, elixir-format
 msgid "Confirm it's you to change these settings."
@@ -51,7 +53,7 @@ msgstr "Confirma que eres tú para cambiar estos ajustes."
 msgid "Could not update the language."
 msgstr "No se pudo actualizar el idioma."
 
-#: lib/storyarn_web/live/settings_live/profile.ex:182
+#: lib/storyarn_web/live/settings_live/profile.ex:190
 #, elixir-autogen, elixir-format
 msgid "Enter a valid email address."
 msgstr "Introduce un email válido."
@@ -60,3 +62,8 @@ msgstr "Introduce un email válido."
 #, elixir-autogen, elixir-format
 msgid "Preferences"
 msgstr "Preferencias"
+
+#: lib/storyarn_web/live/settings_live/profile.ex:172
+#, elixir-autogen, elixir-format
+msgid "The confirmation email could not be sent. Try again."
+msgstr "No se ha podido enviar el correo de confirmación. Inténtalo de nuevo."

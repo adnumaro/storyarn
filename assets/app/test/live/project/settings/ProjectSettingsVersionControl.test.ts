@@ -4,7 +4,7 @@ import ProjectSettingsVersionControl from "../../../../live/project/settings/Pro
 import { createMockLive } from "../../../setup";
 
 describe("ProjectSettingsVersionControl entity auto-versioning", () => {
-  it("saves every toggle with the full entity auto-version state", async () => {
+  it("saves every toggle from the server state without flipping the switch locally", async () => {
     const live = createMockLive();
     const wrapper = mount(ProjectSettingsVersionControl, {
       props: {
@@ -22,17 +22,34 @@ describe("ProjectSettingsVersionControl entity auto-versioning", () => {
     await switches[1].trigger("click");
 
     expect(live.pushEvent).toHaveBeenCalledTimes(2);
-    expect(vi.mocked(live.pushEvent).mock.calls[1]).toEqual([
+    expect(vi.mocked(live.pushEvent).mock.calls[0]).toEqual([
       "save_version_control",
       {
         version_control: {
           auto_version_flows: "false",
+          auto_version_scenes: "false",
+          auto_version_sheets: "false",
+        },
+      },
+      undefined,
+    ]);
+    // The server never acknowledged the first toggle, so the second request
+    // still carries the server's value for flows.
+    expect(vi.mocked(live.pushEvent).mock.calls[1]).toEqual([
+      "save_version_control",
+      {
+        version_control: {
+          auto_version_flows: "true",
           auto_version_scenes: "true",
           auto_version_sheets: "false",
         },
       },
       undefined,
     ]);
+    expect(switches[0].attributes("aria-checked")).toBe("true");
+
+    await wrapper.setProps({ autoVersionFlows: false });
+    expect(wrapper.findAll('[role="switch"]')[0].attributes("aria-checked")).toBe("false");
   });
 
   it("never presents unknown or zero count limits as unlimited", () => {

@@ -246,7 +246,7 @@ describe("SettingsLayout rail", () => {
     expect(trash?.classes()).toContain("font-medium");
   });
 
-  it("shows a project viewer only the Export page", () => {
+  it("hides project settings from a project viewer", () => {
     const wrapper = mountLayout({
       settingsNav: nav({
         project: {
@@ -258,14 +258,22 @@ describe("SettingsLayout rail", () => {
         },
       }),
     });
-    const links = hrefs(wrapper);
-    const base = "/workspaces/admin/projects/veilbreak/settings";
 
-    expect(wrapper.find('[data-settings-group="project"]').exists()).toBe(true);
-    expect(links).toContain(`${base}/export`);
-    expect(links).not.toContain(`${base}/import`);
-    expect(links).not.toContain(`${base}/trash`);
-    expect(links).not.toContain(base);
+    expect(wrapper.find('[data-settings-group="project"]').exists()).toBe(false);
+    expect(hrefs(wrapper)).not.toContain("/workspaces/admin/projects/veilbreak/settings/export");
+  });
+
+  it("sends Back to app to the workspace, not the remembered project, on workspace pages", () => {
+    const wrapper = mountLayout({
+      currentPath: "/users/settings/workspaces/admin/members",
+      settingsNav: nav({
+        project: null,
+        projects: [{ id: 7, slug: "veilbreak", name: "Veilbreak", access: "owner" }],
+      }),
+    });
+
+    const back = wrapper.findAll("a").find((link) => link.text().includes("Back to app"));
+    expect(back?.attributes("href")).toBe("/workspaces/admin");
   });
 
   it("preserves the active sudo grant on sensitive personal links", () => {

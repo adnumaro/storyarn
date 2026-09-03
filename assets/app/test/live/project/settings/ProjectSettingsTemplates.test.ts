@@ -60,7 +60,7 @@ describe("ProjectSettingsTemplates", () => {
     expect(wrapper.text()).toContain("No publications yet");
   });
 
-  it("disables publishing while a publication is active", () => {
+  it("opens the dialog while a publication runs but blocks submitting the same target", async () => {
     const wrapper = mountTemplates({
       projectTemplatePublications: [
         {
@@ -76,8 +76,12 @@ describe("ProjectSettingsTemplates", () => {
     });
 
     const trigger = wrapper.get('[data-testid="open-template-publication-dialog"]');
-    expect(trigger.attributes("disabled")).toBeDefined();
-    expect(trigger.text()).toContain("Publication running");
+    expect(trigger.attributes("disabled")).toBeUndefined();
+
+    await trigger.trigger("click");
+    const submit = wrapper.get('[data-testid="publish-template-submit"]');
+    expect(submit.attributes("disabled")).toBeDefined();
+    expect(submit.text()).toContain("Publication running");
   });
 
   it("disables publishing and explains when the viewer may not publish", () => {

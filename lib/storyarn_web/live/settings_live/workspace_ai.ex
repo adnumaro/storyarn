@@ -149,10 +149,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceAI do
   end
 
   defp update_personal_ai_members_policy(socket, enabled) do
-    lanes =
-      if enabled,
-        do: Enum.uniq(["personal_byok" | socket.assigns.ai_policy_lanes]),
-        else: List.delete(socket.assigns.ai_policy_lanes, "personal_byok")
+    lanes = toggle_lane(current_lanes(socket), "personal_byok", enabled)
 
     case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
       {:ok, _policy} ->
@@ -185,11 +182,21 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceAI do
     end
   end
 
+  # Two owner sessions toggling different switches must not clobber each
+  # other: the lane list is rebuilt from the policy as stored right now, not
+  # from the lanes this page rendered.
+  defp current_lanes(socket) do
+    case AI.get_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id) do
+      {:ok, policy} -> policy.allowed_lanes
+      {:error, _reason} -> socket.assigns.ai_policy_lanes
+    end
+  end
+
+  defp toggle_lane(lanes, lane, true), do: Enum.uniq([lane | lanes])
+  defp toggle_lane(lanes, lane, false), do: List.delete(lanes, lane)
+
   defp update_managed_ai_policy(socket, enabled) do
-    lanes =
-      if enabled,
-        do: Enum.uniq(["managed" | socket.assigns.ai_policy_lanes]),
-        else: List.delete(socket.assigns.ai_policy_lanes, "managed")
+    lanes = toggle_lane(current_lanes(socket), "managed", enabled)
 
     case AI.update_workspace_policy(socket.assigns.current_scope, socket.assigns.workspace.id, lanes) do
       {:ok, _policy} ->

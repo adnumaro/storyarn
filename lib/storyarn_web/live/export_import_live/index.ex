@@ -182,13 +182,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
 
     with {:ok, project, membership} <-
            Projects.reload_project(socket.assigns.current_scope, stale_project.id),
-         true <-
-           socket.assigns.live_action == :export or Projects.can?(membership.role, :edit_content) do
+         true <- Projects.can?(membership.role, :edit_content) do
       mount_project(socket, project, membership)
     else
       false ->
-        # Viewers may export a read-only copy, but they cannot import, so the
-        # Import page stays out of their rail and redirects if reached by URL.
+        # The download controller requires `:edit_content`, so a viewer can
+        # neither export nor import; both pages stay out of their rail and
+        # redirect if reached by URL.
         {:ok,
          socket
          |> put_flash(

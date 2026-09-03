@@ -149,21 +149,29 @@ defmodule StoryarnWeb.SettingsLive.Profile do
 
     case Ecto.Changeset.apply_action(changeset, :update) do
       {:ok, applied_user} ->
-        Accounts.deliver_user_update_email_instructions(
-          applied_user,
-          user.email,
-          &url(~p"/users/settings/confirm-email/#{&1}")
-        )
+        case Accounts.deliver_user_update_email_instructions(
+               applied_user,
+               user.email,
+               &url(~p"/users/settings/confirm-email/#{&1}")
+             ) do
+          {:ok, _delivery} ->
+            {:reply, %{ok: true},
+             put_flash(
+               socket,
+               :info,
+               dgettext(
+                 "settings",
+                 "A link to confirm your email change has been sent to the new address."
+               )
+             )}
 
-        {:reply, %{ok: true},
-         put_flash(
-           socket,
-           :info,
-           dgettext(
-             "settings",
-             "A link to confirm your email change has been sent to the new address."
-           )
-         )}
+          {:error, _reason} ->
+            {:reply,
+             %{
+               ok: false,
+               error: dgettext("settings", "The confirmation email could not be sent. Try again.")
+             }, socket}
+        end
 
       {:error, changeset} ->
         {:reply, %{ok: false, error: first_email_error(changeset)}, socket}

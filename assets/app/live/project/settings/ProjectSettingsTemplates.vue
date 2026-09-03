@@ -73,10 +73,6 @@ const { t } = useI18n();
 
 const activeStatuses = new Set<PublicationStatus>(["queued", "running", "retrying"]);
 
-const hasActivePublication = computed(() =>
-  projectTemplatePublications.some((publication) => activeStatuses.has(publication.status)),
-);
-
 // ---------------------------------------------------------------------------
 // Publish dialog
 // ---------------------------------------------------------------------------
@@ -117,7 +113,7 @@ function syncTemplateFields(template: ProjectTemplate | null): void {
 }
 
 function openTemplateDialog(): void {
-  if (!canPublish || hasActivePublication.value) return;
+  if (!canPublish) return;
 
   const [firstTemplate] = projectTemplates;
   templateMode.value = firstTemplate ? "update" : "new";
@@ -196,14 +192,10 @@ function publicationDate(publication: ProjectTemplatePublication): string | null
           type="button"
           size="sm"
           data-testid="open-template-publication-dialog"
-          :disabled="!canPublish || hasActivePublication"
+          :disabled="!canPublish"
           @click="openTemplateDialog"
         >
-          {{
-            hasActivePublication
-              ? t("project_settings.templates.publication_active")
-              : t("project_settings.templates.publish_template")
-          }}
+          {{ t("project_settings.templates.publish_template") }}
         </Button>
       </SettingsRow>
 
@@ -340,7 +332,12 @@ function publicationDate(publication: ProjectTemplatePublication): string | null
             <Label for="template-description">
               {{ t("project_settings.templates.description") }}
             </Label>
-            <Textarea id="template-description" v-model="templateDescription" :rows="3" />
+            <Textarea
+              id="template-description"
+              v-model="templateDescription"
+              :rows="3"
+              maxlength="1000"
+            />
           </div>
 
           <div class="space-y-1.5">

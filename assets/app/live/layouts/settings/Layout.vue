@@ -341,10 +341,11 @@ const currentProject = computed<SettingsNavProject | null>(() => {
 
 const projectGroup = computed<SettingsGroup | null>(() => {
   const project = currentProject.value;
-  if (!project) return null;
+  // Viewers have no project settings: every page, Export included, needs
+  // edit permission on entry.
+  if (!project || project.access === "viewer") return null;
 
   const base = `/workspaces/${project.workspaceSlug}/projects/${project.slug}/settings`;
-  const viewer = project.access === "viewer";
   const ownerOnly = project.access !== "owner";
   const item = (
     key: string,
@@ -360,28 +361,18 @@ const projectGroup = computed<SettingsGroup | null>(() => {
     locked,
   });
 
-  // Viewers may export a read-only copy; every other project page is
-  // editor or owner territory and stays out of their rail.
-  const items: SettingsItem[] = viewer
-    ? [item("project_export", "export", "/export", Upload, false)]
-    : [
-        item("project_general", "general", "", Settings, ownerOnly),
-        item("project_members", "members", "/members", Users, ownerOnly),
-        item("project_templates", "templates", "/templates", LayoutTemplate, ownerOnly),
-        item(
-          "project_version_control",
-          "version_control",
-          "/version-control",
-          GitBranch,
-          ownerOnly,
-        ),
-        item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
-        item("project_export", "export", "/export", Upload, false),
-        item("project_import", "import", "/import", Package, ownerOnly),
-        item("project_trash", "trash", "/trash", Trash2, false),
-        item("project_localization", "localization", "/localization", Languages, ownerOnly),
-        item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
-      ];
+  const items: SettingsItem[] = [
+    item("project_general", "general", "", Settings, ownerOnly),
+    item("project_members", "members", "/members", Users, ownerOnly),
+    item("project_templates", "templates", "/templates", LayoutTemplate, ownerOnly),
+    item("project_version_control", "version_control", "/version-control", GitBranch, ownerOnly),
+    item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
+    item("project_export", "export", "/export", Upload, false),
+    item("project_import", "import", "/import", Package, ownerOnly),
+    item("project_trash", "trash", "/trash", Trash2, false),
+    item("project_localization", "localization", "/localization", Languages, ownerOnly),
+    item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
+  ];
 
   const options = (settingsNav?.projects ?? []).map((option) => ({
     key: option.slug,
@@ -412,8 +403,10 @@ const activeItem = computed<SettingsItem | null>(
   () => activeGroup.value?.items.find(isActive) ?? null,
 );
 
+// Only the route's own scope drives "Back to app"; a remembered project in the
+// rail must not pull a personal or workspace page back into that project.
 const backPath = computed(() => {
-  const project = currentProject.value;
+  const project = settingsNav?.project;
   if (project) return `/workspaces/${project.workspaceSlug}/projects/${project.slug}`;
 
   const workspace = settingsNav?.workspace;

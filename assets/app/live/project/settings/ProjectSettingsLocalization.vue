@@ -180,6 +180,7 @@ const usageStatus = computed<SettingsMeterStatus>(() => {
         <SettingsRow
           :label="t('project_settings.localization.api_tier')"
           :hint="t('project_settings.localization.tier_help')"
+          html-for="api-tier"
         >
           <Select v-model="providerEndpoint">
             <SelectTrigger id="api-tier" class="w-[220px] max-w-full">

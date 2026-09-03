@@ -5,6 +5,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Workspaces
+  alias StoryarnWeb.Live.Hooks.SettingsNav
 
   @workspace_invite_roles ~w(admin member viewer)
   @max_pg_bigint 9_223_372_036_854_775_807
@@ -210,10 +211,13 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceMembers do
       |> Enum.filter(&Workspaces.can?(&1.role, :access_workspace_general_settings))
       |> MapSet.new(& &1.workspace.slug)
 
-    socket
-    |> assign(:workspaces, Enum.map(workspace_data, & &1.workspace))
-    |> assign(:managed_workspace_slugs, managed_slugs)
-    |> assign(:general_workspace_slugs, general_slugs)
+    socket =
+      socket
+      |> assign(:workspaces, Enum.map(workspace_data, & &1.workspace))
+      |> assign(:managed_workspace_slugs, managed_slugs)
+      |> assign(:general_workspace_slugs, general_slugs)
+
+    assign(socket, :settings_nav, SettingsNav.build_nav(socket.assigns))
   end
 
   defp workspace_settings_unavailable(socket) do

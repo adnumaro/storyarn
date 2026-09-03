@@ -71,9 +71,13 @@ describe("WorkspaceSettingsAI", () => {
     const personal = wrapper.get("#personal-ai-members-policy");
     expect(personal.text()).toContain("Personal AI for members");
     expect(personal.text()).toContain("workspace owner can always");
-    expect(personal.text()).toContain("leaves Storyarn");
-    expect(personal.text()).toContain("cannot guarantee zero retention or no training");
-    expect(personal.get("a").attributes("href")).toBe("/users/settings/integrations");
+    expect(wrapper.get("#personal-ai-connections").text()).toContain("leaves Storyarn");
+    expect(wrapper.get("#personal-ai-connections").text()).toContain(
+      "cannot guarantee zero retention or no training",
+    );
+    expect(wrapper.get("#personal-ai-connections a").attributes("href")).toBe(
+      "/users/settings/integrations",
+    );
 
     const [, personalSwitch] = wrapper.findAllComponents(Switch);
     expect(personalSwitch.props("modelValue")).toBe(false);

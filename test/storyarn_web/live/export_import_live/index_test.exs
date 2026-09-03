@@ -80,14 +80,16 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert path == export_url(project)
     end
 
-    test "redirects viewers away from Import", %{conn: conn, project: project} do
+    test "redirects viewers away from Export and Import", %{conn: conn, project: project} do
       viewer = user_fixture()
       membership_fixture(project, viewer, "viewer")
       conn = log_in_user(conn, viewer)
 
-      assert {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, import_url(project))
-      assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
-      assert flash["error"] =~ "permission"
+      for url <- [export_url(project), import_url(project)] do
+        assert {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, url)
+        assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+        assert flash["error"] =~ "permission"
+      end
     end
 
     test "ownership drift preserves import state and returns explicit action contracts", %{
@@ -2096,7 +2098,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       assert error_msg =~ "access"
     end
 
-    test "viewer can export but receives a read-only importer", %{conn: conn} do
+    test "viewer cannot open the export page because the download requires edit permission", %{
+      conn: conn
+    } do
       viewer = user_fixture()
       conn = log_in_user(conn, viewer)
 
@@ -2104,13 +2108,9 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
       project = owner |> project_fixture() |> Repo.preload(:workspace)
       _membership = membership_fixture(project, viewer, "viewer")
 
-      {:ok, view, html} = live(conn, export_url(project))
-
-      assert html =~ "Export"
-      assert get_export_vue(view).props["can-edit"] == false
-      assert get_export_vue(view).props["upload-config"] == nil
-      assert import_state(view)["step"] == "upload"
-      assert download_url(view) =~ "/export/ink"
+      assert {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, export_url(project))
+      assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] =~ "permission"
     end
   end
 

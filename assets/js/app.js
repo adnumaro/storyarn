@@ -96,6 +96,8 @@ if (!window.__storyarnAppInitialized) {
   window.addEventListener("phx:set-locale", (event) => {
     const locale = event.detail?.locale;
     if (typeof locale === "string" && locale.length > 0) {
+      // The Vue i18n synchronizer prefers the gettext locale over `lang`.
+      document.documentElement.dataset.gettextLocale = locale;
       document.documentElement.lang = locale;
     }
   });

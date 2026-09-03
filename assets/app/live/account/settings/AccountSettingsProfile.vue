@@ -80,16 +80,22 @@ const emailDialogOpen = ref(false);
 const newEmail = ref("");
 const emailError = ref<string | null>(null);
 const sendingEmail = ref(false);
+// Each open of the dialog starts a new request generation; replies from a
+// request made in a previous generation are ignored.
+let emailRequestGeneration = 0;
 
 function openEmailDialog(): void {
+  emailRequestGeneration += 1;
   newEmail.value = "";
   emailError.value = null;
+  sendingEmail.value = false;
   emailDialogOpen.value = true;
 }
 
 function requestEmailChange(): void {
   if (sendingEmail.value || newEmail.value.trim().length === 0) return;
 
+  const generation = emailRequestGeneration;
   sendingEmail.value = true;
   emailError.value = null;
 
@@ -97,6 +103,8 @@ function requestEmailChange(): void {
     "request_email_change",
     { email: newEmail.value.trim() },
     (reply) => {
+      if (generation !== emailRequestGeneration) return;
+
       sendingEmail.value = false;
       const result = reply as { ok?: boolean; error?: string } | null;
 
@@ -107,6 +115,8 @@ function requestEmailChange(): void {
       }
     },
     () => {
+      if (generation !== emailRequestGeneration) return;
+
       sendingEmail.value = false;
       emailError.value = t("settings.profile.change_email_dialog.failed");
     },
