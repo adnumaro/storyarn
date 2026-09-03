@@ -47,6 +47,14 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   end
 
   defp export_url(project) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export"
+  end
+
+  defp import_url(project) do
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/import"
+  end
+
+  defp legacy_url(project) do
     ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
   end
 
@@ -56,14 +64,30 @@ defmodule StoryarnWeb.ExportImportLive.IndexTest do
   end
 
   describe "import and export page" do
-    test "renders the combined import and export workspace", %{conn: conn, project: project} do
-      {:ok, view, _html} = live(conn, export_url(project))
+    test "serves Export and Import as two pages of one LiveView", %{conn: conn, project: project} do
+      {:ok, export_view, _html} = live(conn, export_url(project))
+      assert get_export_vue(export_view).props["mode"] == "export"
+      assert get_settings_layout(export_view).props["onboarding"] == %{"guide" => "export", "autoShow" => true}
 
-      settings_layout = get_settings_layout(view)
-      assert settings_layout.props["title"] == "Import & Export"
+      {:ok, import_view, _html} = live(conn, import_url(project))
+      assert get_export_vue(import_view).props["mode"] == "import"
+      assert get_export_vue(import_view).props["can-import"] == true
+      refute get_settings_layout(import_view).props["onboarding"]["autoShow"]
+    end
 
-      assert String.trim(settings_layout.props["subtitle"]) ==
-               "Move narrative content into or out of this project."
+    test "redirects the legacy combined route to Export", %{conn: conn, project: project} do
+      assert {:error, {:redirect, %{to: path}}} = live(conn, legacy_url(project))
+      assert path == export_url(project)
+    end
+
+    test "redirects viewers away from Import", %{conn: conn, project: project} do
+      viewer = user_fixture()
+      membership_fixture(project, viewer, "viewer")
+      conn = log_in_user(conn, viewer)
+
+      assert {:error, {:redirect, %{to: path, flash: flash}}} = live(conn, import_url(project))
+      assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] =~ "permission"
     end
 
     test "ownership drift preserves import state and returns explicit action contracts", %{

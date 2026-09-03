@@ -186,7 +186,8 @@ describe("SettingsLayout rail", () => {
 
     expect(links).toContain(base);
     expect(links).toContain(`${base}/trash`);
-    expect(links).toContain(`${base}/export-import`);
+    expect(links).toContain(`${base}/export`);
+    expect(links).toContain(`${base}/import`);
 
     const general = wrapper.findAll("a").find((link) => link.attributes("href") === base);
     const trash = wrapper.findAll("a").find((link) => link.attributes("href") === `${base}/trash`);
@@ -196,7 +197,7 @@ describe("SettingsLayout rail", () => {
     expect(trash?.classes()).toContain("font-medium");
   });
 
-  it("hides project settings from a project viewer", () => {
+  it("shows a project viewer only the Export page", () => {
     const wrapper = mountLayout({
       settingsNav: nav({
         project: {
@@ -208,8 +209,14 @@ describe("SettingsLayout rail", () => {
         },
       }),
     });
+    const links = hrefs(wrapper);
+    const base = "/workspaces/admin/projects/veilbreak/settings";
 
-    expect(wrapper.find('[data-settings-group="project"]').exists()).toBe(false);
+    expect(wrapper.find('[data-settings-group="project"]').exists()).toBe(true);
+    expect(links).toContain(`${base}/export`);
+    expect(links).not.toContain(`${base}/import`);
+    expect(links).not.toContain(`${base}/trash`);
+    expect(links).not.toContain(base);
   });
 
   it("preserves the active sudo grant on sensitive personal links", () => {

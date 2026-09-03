@@ -332,9 +332,18 @@ defmodule StoryarnWeb.Router do
            ProjectSettingsLive.UsageLimits,
            :show
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export",
+           ExportImportLive.Index,
+           :export
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/import",
+           ExportImportLive.Index,
+           :import
+
+      # Legacy combined page; redirects to Export.
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
-           :index
+           :legacy
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/trash",
            ProjectSettingsLive.Trash,

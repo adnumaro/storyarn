@@ -32,22 +32,16 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       current_scope={@current_scope}
       current_path={@current_path}
       settings_nav={@settings_nav}
-      workspace={@workspace}
-      project={@project}
       onboarding={@onboarding}
-      onboarding_guide={:export}
-      onboarding_autostart
+      onboarding_guide={if @live_action == :export, do: :export}
+      onboarding_autostart={@live_action == :export}
     >
-      <:title>{dgettext("projects", "Import & Export")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Move narrative content into or out of this project.")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/export-import/ProjectSettingsExportImport"
         v-socket={@socket}
         v-inject="settings-layout"
         id="export-import-vue"
+        mode={Atom.to_string(@live_action)}
         can-edit={@can_edit}
         can-import={@can_import}
         resume-storage-key={Projects.project_import_resume_storage_key(@current_scope, @project)}
@@ -172,6 +166,13 @@ defmodule StoryarnWeb.ExportImportLive.Index do
   # ===========================================================================
 
   @impl true
+  def mount(_params, _session, %{assigns: %{live_action: :legacy, project: project}} = socket) do
+    {:ok,
+     redirect(socket,
+       to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export"
+     )}
+  end
+
   def mount(_params, _session, socket) do
     stale_project = socket.assigns.project
 
@@ -179,9 +180,22 @@ defmodule StoryarnWeb.ExportImportLive.Index do
       :ok = Projects.subscribe_project_ownership_changes(stale_project.id)
     end
 
-    case Projects.reload_project(socket.assigns.current_scope, stale_project.id) do
-      {:ok, project, membership} ->
-        mount_project(socket, project, membership)
+    with {:ok, project, membership} <-
+           Projects.reload_project(socket.assigns.current_scope, stale_project.id),
+         true <-
+           socket.assigns.live_action == :export or Projects.can?(membership.role, :edit_content) do
+      mount_project(socket, project, membership)
+    else
+      false ->
+        # Viewers may export a read-only copy, but they cannot import, so the
+        # Import page stays out of their rail and redirects if reached by URL.
+        {:ok,
+         socket
+         |> put_flash(
+           :error,
+           dgettext("projects", "You don't have permission to manage this project.")
+         )
+         |> redirect(to: ~p"/workspaces/#{stale_project.workspace.slug}/projects/#{stale_project.slug}")}
 
       {:error, _reason} ->
         {:ok,

@@ -461,13 +461,10 @@ watch(replaceDialogOpen, (open) => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-    <div class="mb-5 space-y-1">
-      <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
-      <p class="text-sm text-muted-foreground">
-        {{ $t("project_settings.import.description") }}
-      </p>
-    </div>
+  <section class="rounded-xl border border-border bg-card p-5 shadow-sm">
+    <p class="mb-5 text-sm text-muted-foreground">
+      {{ $t("project_settings.import.description") }}
+    </p>
 
     <template v-if="canImport">
       <!-- Step: Upload -->

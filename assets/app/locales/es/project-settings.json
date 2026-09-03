@@ -14,9 +14,10 @@
         "localization": "Localización",
         "members": "Miembros",
         "snapshots": "Copias de seguridad",
-        "import_export": "Importar y exportar",
         "trash": "Papelera",
-        "templates": "Plantillas"
+        "templates": "Plantillas",
+        "export": "Exportar",
+        "import": "Importar"
       }
     },
     "general": {
@@ -634,7 +635,8 @@
         "scenes": "Escenas",
         "assets": "Recursos",
         "localization": "Localización"
-      }
+      },
+      "page_title": "Importar"
     },
     "export": {
       "title": "Exportar",
@@ -733,7 +735,8 @@
       "warning_findings": "Advertencias",
       "info_findings": "Información adicional",
       "more_findings": "No se muestra {count} hallazgo más. | No se muestran {count} hallazgos más.",
-      "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
+      "no_issues": "No se encontraron problemas. El proyecto está listo para exportar.",
+      "page_title": "Exportar"
     },
     "templates": {
       "page_title": "Plantillas",

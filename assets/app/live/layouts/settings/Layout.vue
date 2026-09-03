@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronsUpDown,
   CircleHelp,
+  Download,
   Gauge,
   GitBranch,
   Languages,
@@ -17,7 +18,6 @@ import {
   LayoutGrid,
   Lock,
   Menu,
-  Package,
   Plug,
   Search,
   Settings,
@@ -25,6 +25,7 @@ import {
   SlidersHorizontal,
   Trash2,
   User,
+  Upload,
   Users,
   X,
 } from "@lucide/vue";
@@ -274,9 +275,10 @@ const workspaceGroup = computed<SettingsGroup | null>(() => {
 
 const projectGroup = computed<SettingsGroup | null>(() => {
   const project = settingsNav?.project;
-  if (!project || project.access === "viewer") return null;
+  if (!project) return null;
 
   const base = `/workspaces/${project.workspaceSlug}/projects/${project.slug}/settings`;
+  const viewer = project.access === "viewer";
   const ownerOnly = project.access !== "owner";
   const item = (
     key: string,
@@ -292,17 +294,28 @@ const projectGroup = computed<SettingsGroup | null>(() => {
     locked,
   });
 
-  const items: SettingsItem[] = [
-    item("project_general", "general", "", Settings, ownerOnly),
-    item("project_members", "members", "/members", Users, ownerOnly),
-    item("project_templates", "templates", "/templates", LayoutTemplate, ownerOnly),
-    item("project_version_control", "version_control", "/version-control", GitBranch, ownerOnly),
-    item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
-    item("project_import_export", "import_export", "/export-import", Package, false),
-    item("project_trash", "trash", "/trash", Trash2, false),
-    item("project_localization", "localization", "/localization", Languages, ownerOnly),
-    item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
-  ];
+  // Viewers may export a read-only copy; every other project page is
+  // editor or owner territory and stays out of their rail.
+  const items: SettingsItem[] = viewer
+    ? [item("project_export", "export", "/export", Download, false)]
+    : [
+        item("project_general", "general", "", Settings, ownerOnly),
+        item("project_members", "members", "/members", Users, ownerOnly),
+        item("project_templates", "templates", "/templates", LayoutTemplate, ownerOnly),
+        item(
+          "project_version_control",
+          "version_control",
+          "/version-control",
+          GitBranch,
+          ownerOnly,
+        ),
+        item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
+        item("project_export", "export", "/export", Download, false),
+        item("project_import", "import", "/import", Upload, ownerOnly),
+        item("project_trash", "trash", "/trash", Trash2, false),
+        item("project_localization", "localization", "/localization", Languages, ownerOnly),
+        item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
+      ];
 
   const options = (settingsNav?.projects ?? []).map((option) => ({
     key: option.slug,
@@ -348,7 +361,7 @@ const pageLabel = computed(() => title ?? activeItem.value?.label ?? "");
 
 const wide = computed(() => {
   const route = routePath(currentPath);
-  return route === "/users/settings/ai-team" || route.endsWith("/settings/export-import");
+  return route === "/users/settings/ai-team" || route.endsWith("/settings/export");
 });
 
 const contentWidthClass = computed(() => (wide.value ? "max-w-[960px]" : "max-w-[720px]"));

@@ -6,7 +6,6 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
-  alias Storyarn.AI
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Repo
   alias Storyarn.Workers.DeleteWorkspaceBannerWorker
@@ -221,8 +220,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
     test "updates workspace name successfully", %{conn: conn, workspace: workspace} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      result =
-        render_click(view, "save", %{"workspace" => %{"name" => "New Workspace Name"}})
+      render_click(view, "save", %{"workspace" => %{"name" => "New Workspace Name"}})
 
       assert get_general_vue(view).props["save-status"] == "saved"
 
@@ -233,10 +231,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
     test "updates workspace description", %{conn: conn, workspace: workspace} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      result =
-        render_click(view, "save", %{
-          "workspace" => %{"description" => "A brand new description"}
-        })
+      render_click(view, "save", %{
+        "workspace" => %{"description" => "A brand new description"}
+      })
 
       assert get_general_vue(view).props["save-status"] == "saved"
 
@@ -247,8 +244,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceGeneralTest do
     test "updates workspace source locale", %{conn: conn, workspace: workspace} do
       {:ok, view, _html} = live(conn, ~p"/users/settings/workspaces/#{workspace.slug}/general")
 
-      result =
-        render_click(view, "save", %{"workspace" => %{"source_locale" => "es"}})
+      render_click(view, "save", %{"workspace" => %{"source_locale" => "es"}})
 
       assert get_general_vue(view).props["save-status"] == "saved"
 

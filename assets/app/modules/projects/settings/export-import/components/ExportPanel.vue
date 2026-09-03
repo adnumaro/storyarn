@@ -394,31 +394,6 @@ function validationIconClass(status: string) {
 <template>
   <section id="export-workspace" class="space-y-5">
     <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <header
-        class="flex flex-col gap-3 border-b border-border bg-muted/40 px-5 py-4 sm:flex-row sm:items-center"
-      >
-        <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Download class="size-5" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">{{ $t("project_settings.export.workspace_title") }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            {{ $t("project_settings.export.workspace_description") }}
-          </p>
-        </div>
-        <span
-          class="inline-flex items-center whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
-        >
-          {{
-            $t(
-              "project_settings.export.format_count",
-              { count: visibleFormats.length },
-              visibleFormats.length,
-            )
-          }}
-        </span>
-      </header>
-
       <fieldset id="export-format-options" class="p-5">
         <legend class="text-sm font-semibold">
           {{ $t("project_settings.export.choose_format") }}

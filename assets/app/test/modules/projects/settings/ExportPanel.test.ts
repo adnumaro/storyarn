@@ -81,8 +81,6 @@ describe("ExportPanel", () => {
     props.sectionConfig.selected = ["sheets"];
     const { wrapper } = mountPanel(props);
 
-    expect(wrapper.get("#export-workspace").text()).toContain("1 export target");
-    expect(wrapper.get("#export-workspace").text()).not.toContain("1 export targets");
     expect(wrapper.get('[data-testid="export-summary"]').text()).toContain("1 section");
     expect(wrapper.get('[data-testid="export-summary"]').text()).not.toContain("1 sections");
   });

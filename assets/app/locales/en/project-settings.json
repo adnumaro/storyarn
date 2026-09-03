@@ -14,9 +14,10 @@
         "localization": "Localization",
         "members": "Members",
         "snapshots": "Backups",
-        "import_export": "Import & Export",
         "trash": "Trash",
-        "templates": "Templates"
+        "templates": "Templates",
+        "export": "Export",
+        "import": "Import"
       }
     },
     "general": {
@@ -634,7 +635,8 @@
         "scenes": "Scenes",
         "assets": "Assets",
         "localization": "Localization"
-      }
+      },
+      "page_title": "Import"
     },
     "export": {
       "title": "Export",
@@ -733,7 +735,8 @@
       "warning_findings": "Warnings",
       "info_findings": "Additional information",
       "more_findings": "{count} more finding is not shown. | {count} more findings are not shown.",
-      "no_issues": "No issues found. Project is ready for export."
+      "no_issues": "No issues found. Project is ready for export.",
+      "page_title": "Export"
     },
     "templates": {
       "page_title": "Templates",
