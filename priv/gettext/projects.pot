@@ -21,7 +21,7 @@ msgstr ""
 msgid "Cannot remove the project owner."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:197
+#: lib/storyarn_web/live/project_settings_live/localization.ex:198
 #, elixir-autogen, elixir-format
 msgid "Connection successful."
 msgstr ""
@@ -31,7 +31,7 @@ msgstr ""
 msgid "Create Project"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:242
+#: lib/storyarn_web/live/project_settings_live/general.ex:243
 #, elixir-autogen, elixir-format
 msgid "Failed to delete project."
 msgstr ""
@@ -41,7 +41,7 @@ msgstr ""
 msgid "Failed to repair variable references."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:25
+#: lib/storyarn_web/live/project_settings_live/localization.ex:26
 #, elixir-autogen, elixir-format
 msgid "Localization"
 msgstr ""
@@ -57,27 +57,27 @@ msgstr ""
 msgid "Member removed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:136
-#: lib/storyarn_web/live/project_settings_live/localization.ex:107
-#: lib/storyarn_web/live/project_settings_live/members.ex:99
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:301
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:125
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:110
+#: lib/storyarn_web/live/project_settings_live/general.ex:137
+#: lib/storyarn_web/live/project_settings_live/localization.ex:108
+#: lib/storyarn_web/live/project_settings_live/members.ex:100
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:302
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:126
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:111
 #, elixir-autogen, elixir-format
 msgid "Project Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:235
+#: lib/storyarn_web/live/project_settings_live/general.ex:236
 #, elixir-autogen, elixir-format
 msgid "Project deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:170
+#: lib/storyarn_web/live/project_settings_live/general.ex:171
 #, elixir-autogen, elixir-format
 msgid "Project updated successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:163
+#: lib/storyarn_web/live/project_settings_live/localization.ex:164
 #, elixir-autogen, elixir-format
 msgid "Provider settings saved."
 msgstr ""
@@ -118,76 +118,76 @@ msgstr ""
 msgid "This invitation has already been accepted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:254
+#: lib/storyarn_web/live/project_settings_live/trash.ex:255
 #, elixir-autogen, elixir-format
 msgid "Trash emptied successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:23
+#: lib/storyarn_web/live/project_settings_live/trash.ex:24
 #, elixir-autogen, elixir-format
 msgid "Trash"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:25
+#: lib/storyarn_web/live/project_settings_live/trash.ex:26
 #, elixir-autogen, elixir-format
 msgid "Restore deleted project items or remove them permanently."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:90
+#: lib/storyarn_web/live/project_settings_live/trash.ex:91
 #, elixir-autogen, elixir-format
 msgid "Project Trash"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:163
-#: lib/storyarn_web/live/project_settings_live/trash.ex:178
+#: lib/storyarn_web/live/project_settings_live/trash.ex:164
+#: lib/storyarn_web/live/project_settings_live/trash.ex:179
 #, elixir-autogen, elixir-format
 msgid "Item restored successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:166
-#: lib/storyarn_web/live/project_settings_live/trash.ex:351
-#: lib/storyarn_web/live/project_settings_live/trash.ex:354
+#: lib/storyarn_web/live/project_settings_live/trash.ex:167
+#: lib/storyarn_web/live/project_settings_live/trash.ex:352
+#: lib/storyarn_web/live/project_settings_live/trash.ex:355
 #, elixir-autogen, elixir-format
 msgid "Failed to restore item."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:185
-#: lib/storyarn_web/live/project_settings_live/trash.ex:224
+#: lib/storyarn_web/live/project_settings_live/trash.ex:186
+#: lib/storyarn_web/live/project_settings_live/trash.ex:225
 #, elixir-autogen, elixir-format
 msgid "Item not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:202
-#: lib/storyarn_web/live/project_settings_live/trash.ex:217
+#: lib/storyarn_web/live/project_settings_live/trash.ex:203
+#: lib/storyarn_web/live/project_settings_live/trash.ex:218
 #, elixir-autogen, elixir-format
 msgid "Item permanently deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:220
-#: lib/storyarn_web/live/project_settings_live/trash.ex:376
+#: lib/storyarn_web/live/project_settings_live/trash.ex:221
+#: lib/storyarn_web/live/project_settings_live/trash.ex:377
 #, elixir-autogen, elixir-format
 msgid "Failed to delete item."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:258
+#: lib/storyarn_web/live/project_settings_live/trash.ex:259
 #, elixir-autogen, elixir-format
 msgid "Some items could not be deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:124
-#: lib/storyarn_web/live/project_settings_live/general.ex:322
-#: lib/storyarn_web/live/project_settings_live/general.ex:353
-#: lib/storyarn_web/live/project_settings_live/localization.ex:269
-#: lib/storyarn_web/live/project_settings_live/localization.ex:290
-#: lib/storyarn_web/live/project_settings_live/members.ex:167
-#: lib/storyarn_web/live/project_settings_live/members.ex:189
-#: lib/storyarn_web/live/project_settings_live/members.ex:293
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:289
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:666
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:154
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:176
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:226
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:238
+#: lib/storyarn_web/live/project_settings_live/general.ex:125
+#: lib/storyarn_web/live/project_settings_live/general.ex:323
+#: lib/storyarn_web/live/project_settings_live/general.ex:354
+#: lib/storyarn_web/live/project_settings_live/localization.ex:270
+#: lib/storyarn_web/live/project_settings_live/localization.ex:291
+#: lib/storyarn_web/live/project_settings_live/members.ex:168
+#: lib/storyarn_web/live/project_settings_live/members.ex:190
+#: lib/storyarn_web/live/project_settings_live/members.ex:294
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:290
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:667
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:155
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:177
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:227
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:239
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this project."
 msgstr ""
@@ -197,22 +197,22 @@ msgstr ""
 msgid "You're already a member of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:291
+#: lib/storyarn_web/live/project_settings_live/general.ex:292
 #, elixir-autogen, elixir-format
 msgid "Failed to reset theme."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:602
+#: lib/storyarn_web/live/project_settings_live/general.ex:603
 #, elixir-autogen, elixir-format
 msgid "Failed to save theme."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:285
+#: lib/storyarn_web/live/project_settings_live/general.ex:286
 #, elixir-autogen, elixir-format
 msgid "Theme reset to default."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:596
+#: lib/storyarn_web/live/project_settings_live/general.ex:597
 #, elixir-autogen, elixir-format
 msgid "Theme saved."
 msgstr ""
@@ -222,78 +222,78 @@ msgstr ""
 msgid "Invitation accepted! Log in with %{email} to get started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:30
+#: lib/storyarn_web/live/project_settings_live/general.ex:31
 #, elixir-autogen, elixir-format
 msgid "General"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:28
+#: lib/storyarn_web/live/project_settings_live/members.ex:29
 #, elixir-autogen, elixir-format
 msgid "Manage project members and invitations"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:27
+#: lib/storyarn_web/live/project_settings_live/members.ex:28
 #, elixir-autogen, elixir-format
 msgid "Members"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:31
+#: lib/storyarn_web/live/project_settings_live/general.ex:32
 #, elixir-autogen, elixir-format
 msgid "Project details, theme, and maintenance"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:26
+#: lib/storyarn_web/live/project_settings_live/localization.ex:27
 #, elixir-autogen, elixir-format
 msgid "Translation provider configuration"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:159
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:160
 #, elixir-autogen, elixir-format
 msgid "Failed to save settings."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:605
+#: lib/storyarn_web/live/project_settings_live/general.ex:606
 #, elixir-autogen, elixir-format
 msgid "Invalid color format. Use #RRGGBB."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:30
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:31
 #, elixir-autogen, elixir-format
 msgid "Snapshots"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:25
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:26
 #, elixir-autogen, elixir-format
 msgid "Version Control"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:147
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:148
 #, elixir-autogen, elixir-format
 msgid "Version control settings saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:215
+#: lib/storyarn_web/live/project_settings_live/general.ex:216
 #, elixir-autogen, elixir-format
 msgid "Could not update the source language."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:205
+#: lib/storyarn_web/live/project_settings_live/general.ex:206
 #, elixir-autogen, elixir-format
 msgid "Source language updated."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:188
+#: lib/storyarn_web/live/export_import_live/index.ex:189
 #: lib/storyarn_web/live/hooks/project_scope.ex:51
 #, elixir-autogen, elixir-format
 msgid "You don't have access to this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:29
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:30
 #, elixir-autogen, elixir-format
 msgid "Review project and workspace usage against plan limits"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:27
+#: lib/storyarn_web/live/project_settings_live/usage_limits.ex:28
 #, elixir-autogen, elixir-format
 msgid "Usage Limits"
 msgstr ""
@@ -400,7 +400,7 @@ msgstr ""
 msgid "Creating project…"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:476
+#: lib/storyarn_web/live/project_settings_live/general.ex:477
 #: lib/storyarn_web/live/template_live/show.ex:517
 #, elixir-autogen, elixir-format
 msgid "A template publication is already running."
@@ -694,7 +694,7 @@ msgstr ""
 msgid "Template could not be installed."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:488
+#: lib/storyarn_web/live/project_settings_live/general.ex:489
 #, elixir-autogen, elixir-format
 msgid "Template could not be queued."
 msgstr ""
@@ -704,7 +704,7 @@ msgstr ""
 msgid "Template could not be restored."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:480
+#: lib/storyarn_web/live/project_settings_live/general.ex:481
 #: lib/storyarn_web/live/template_live/show.ex:523
 #, elixir-autogen, elixir-format
 msgid "Template limit reached for your plan."
@@ -727,7 +727,7 @@ msgstr ""
 msgid "Template publication could not be queued."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:437
+#: lib/storyarn_web/live/project_settings_live/general.ex:438
 #: lib/storyarn_web/live/template_live/show.ex:511
 #, elixir-autogen, elixir-format
 msgid "Template publication queued."
@@ -743,7 +743,7 @@ msgstr ""
 msgid "Template version"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:484
+#: lib/storyarn_web/live/project_settings_live/general.ex:485
 #: lib/storyarn_web/live/template_live/show.ex:520
 #, elixir-autogen, elixir-format
 msgid "Template version limit reached for your plan."
@@ -787,32 +787,32 @@ msgstr ""
 msgid "Versions"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/general.ex:255
+#: lib/storyarn_web/live/project_settings_live/general.ex:256
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to publish templates from this project."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:40
+#: lib/storyarn_web/live/export_import_live/index.ex:41
 #, elixir-autogen, elixir-format
 msgid "Import & Export"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:42
+#: lib/storyarn_web/live/export_import_live/index.ex:43
 #, elixir-autogen, elixir-format
 msgid "Move narrative content into or out of this project."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1469
+#: lib/storyarn_web/live/export_import_live/index.ex:1470
 #, elixir-autogen, elixir-format
 msgid "The selected Yarn project is invalid or exceeds the import safety limits."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1475
+#: lib/storyarn_web/live/export_import_live/index.ex:1476
 #, elixir-autogen, elixir-format
 msgid "The import could not be completed. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1436
+#: lib/storyarn_web/live/export_import_live/index.ex:1437
 #, elixir-autogen, elixir-format
 msgid "This Yarn project uses narrative logic that Storyarn cannot import safely. No project content was changed."
 msgstr ""
@@ -1161,82 +1161,82 @@ msgstr ""
 msgid "\"%{node}\" in flow \"%{flow}\" references a variable that no longer exists"
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1411
+#: lib/storyarn_web/live/export_import_live/index.ex:1412
 #, elixir-autogen, elixir-format
 msgid "The import was cancelled. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1422
+#: lib/storyarn_web/live/export_import_live/index.ex:1423
 #, elixir-autogen, elixir-format
 msgid "This import could not be validated and was discarded. Validate the file again before importing."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:770
+#: lib/storyarn_web/live/export_import_live/index.ex:771
 #, elixir-autogen, elixir-format
 msgid "This import is already running and cannot be dismissed. It will finish in the background."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1429
+#: lib/storyarn_web/live/export_import_live/index.ex:1430
 #, elixir-autogen, elixir-format
 msgid "This import preview expired before the import was started. Upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1365
+#: lib/storyarn_web/live/export_import_live/index.ex:1366
 #, elixir-autogen, elixir-format
 msgid "This project already has a main flow, so the imported one could not be created. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1415
+#: lib/storyarn_web/live/export_import_live/index.ex:1416
 #, elixir-autogen, elixir-format
 msgid "The import could not run before its retention deadline. No project content was changed."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:1085
+#: lib/storyarn_web/live/export_import_live/index.ex:1086
 #, elixir-autogen, elixir-format
 msgid "Your previous import could not be restored. Reset it and upload the file again."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:741
+#: lib/storyarn_web/live/export_import_live/index.ex:742
 #, elixir-autogen, elixir-format
 msgid "The import could not be dismissed. Try again."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:27
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:28
 #, elixir-autogen, elixir-format
 msgid "Configure automatic entity versioning"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:32
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:33
 #, elixir-autogen, elixir-format
 msgid "Review snapshot storage, reservations, and integrity"
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:334
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:335
 #, elixir-autogen, elixir-format
 msgid "Snapshot creation started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:394
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:395
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be cancelled."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:420
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:421
 #, elixir-autogen, elixir-format
 msgid "Snapshot deletion started."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:449
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:450
 #, elixir-autogen, elixir-format
 msgid "The snapshot could not be deleted."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:361
+#: lib/storyarn_web/live/project_settings_live/trash.ex:362
 #, elixir-autogen, elixir-format
 msgid "This item references unavailable content. If any referenced items are in Trash, restore them first and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/trash.ex:370
+#: lib/storyarn_web/live/project_settings_live/trash.ex:371
 #, elixir-autogen, elixir-format
 msgid "This asset is still referenced by other content. Remove those references or permanently delete the referencing items from Trash, then try again."
 msgstr ""
@@ -1298,51 +1298,51 @@ msgstr ""
 msgid "Only the current project owner can revoke invitations."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:228
+#: lib/storyarn_web/live/project_settings_live/members.ex:229
 #, elixir-autogen, elixir-format
 msgid "Only the current project owner can transfer ownership."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:122
-#: lib/storyarn_web/live/project_settings_live/general.ex:185
+#: lib/storyarn_web/live/project_settings_live/general.ex:186
 #, elixir-autogen, elixir-format
 msgid "Only the current project owner can update this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:219
+#: lib/storyarn_web/live/project_settings_live/members.ex:220
 #, elixir-autogen, elixir-format
 msgid "Ownership could not be transferred because the project ownership data is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:527
-#: lib/storyarn_web/live/project_settings_live/members.ex:236
-#: lib/storyarn_web/live/project_settings_live/members.ex:312
+#: lib/storyarn_web/live/export_import_live/index.ex:528
+#: lib/storyarn_web/live/project_settings_live/members.ex:237
+#: lib/storyarn_web/live/project_settings_live/members.ex:313
 #, elixir-autogen, elixir-format
 msgid "Project not found."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:131
-#: lib/storyarn_web/live/project_settings_live/members.ex:240
+#: lib/storyarn_web/live/project_settings_live/members.ex:132
+#: lib/storyarn_web/live/project_settings_live/members.ex:241
 #, elixir-autogen, elixir-format
 msgid "Project ownership could not be transferred."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:210
+#: lib/storyarn_web/live/project_settings_live/members.ex:211
 #, elixir-autogen, elixir-format
 msgid "Project ownership transferred."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:209
+#: lib/storyarn_web/live/project_settings_live/localization.ex:210
 #, elixir-autogen, elixir-format
 msgid "Provider settings could not be saved because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:181
+#: lib/storyarn_web/live/project_settings_live/localization.ex:182
 #, elixir-autogen, elixir-format
 msgid "Provider settings could not be saved."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/members.ex:214
+#: lib/storyarn_web/live/project_settings_live/members.ex:215
 #, elixir-autogen, elixir-format
 msgid "That person is no longer a direct project member."
 msgstr ""
@@ -1362,28 +1362,28 @@ msgstr ""
 msgid "The member could not be removed because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/version_control.ex:248
+#: lib/storyarn_web/live/project_settings_live/version_control.ex:249
 #, elixir-autogen, elixir-format
 msgid "Version control settings could not be saved because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:225
+#: lib/storyarn_web/live/project_settings_live/localization.ex:226
 #, elixir-autogen, elixir-format
 msgid "Provider connection could not be tested because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:218
+#: lib/storyarn_web/live/project_settings_live/localization.ex:219
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage provider settings for this project."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/localization.ex:234
+#: lib/storyarn_web/live/project_settings_live/localization.ex:235
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to test this project's provider connection."
 msgstr ""
 
 #: lib/storyarn_web/live/project_live/form.ex:111
-#: lib/storyarn_web/live/project_settings_live/general.ex:399
+#: lib/storyarn_web/live/project_settings_live/general.ex:400
 #, elixir-autogen, elixir-format
 msgid "This action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
@@ -1393,18 +1393,18 @@ msgstr ""
 msgid "Variable references could not be repaired because project ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/project_settings_live/snapshots.ex:732
+#: lib/storyarn_web/live/project_settings_live/snapshots.ex:733
 #, elixir-autogen, elixir-format
 msgid "The snapshot action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:659
-#: lib/storyarn_web/live/export_import_live/index.ex:1443
+#: lib/storyarn_web/live/export_import_live/index.ex:660
+#: lib/storyarn_web/live/export_import_live/index.ex:1444
 #, elixir-autogen, elixir-format
 msgid "The import action could not be completed because project ownership is inconsistent. Contact support before retrying."
 msgstr ""
 
-#: lib/storyarn_web/live/export_import_live/index.ex:670
+#: lib/storyarn_web/live/export_import_live/index.ex:671
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to import into this project."
 msgstr ""

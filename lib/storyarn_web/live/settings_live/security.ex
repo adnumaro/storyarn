@@ -1,16 +1,18 @@
 defmodule StoryarnWeb.SettingsLive.Security do
   @moduledoc """
-  LiveView for security settings (password management).
+  Personal › Security: password management.
+
+  The password section locks in place when the sudo window has lapsed; the
+  page re-authenticates through `StoryarnWeb.Live.Shared.SudoReauth`. The
+  password change itself is a native POST so the session cookie rotates.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
+  alias StoryarnWeb.Live.Shared.SudoReauth
   alias StoryarnWeb.UserAuth
 
-  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
-
-  @doc false
-  def sudo_return_to(_params, _live_action), do: ~p"/users/settings/security"
+  on_mount {UserAuth, :load_sudo_state}
 
   @impl true
   def mount(_params, _session, socket) do
@@ -24,6 +26,7 @@ defmodule StoryarnWeb.SettingsLive.Security do
       |> assign(:current_email, user.email)
       |> assign(:password_form, to_form(password_changeset))
       |> assign(:trigger_submit, false)
+      |> SudoReauth.assign_reauth(~p"/users/settings/security")
 
     {:ok, socket}
   end
@@ -35,9 +38,6 @@ defmodule StoryarnWeb.SettingsLive.Security do
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      managed_workspace_slugs={@managed_workspace_slugs}
-      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
       settings_nav={@settings_nav}
       sudo_grant={@sudo_grant}
@@ -52,6 +52,8 @@ defmodule StoryarnWeb.SettingsLive.Security do
         trigger-submit={@trigger_submit}
         password-action={~p"/users/update-password"}
         sudo-grant={@sudo_grant}
+        sudo-active={@sudo_active}
+        reauth={SudoReauth.reauth_props(@sudo_return_to, @sudo_handoff, @trigger_sudo_submit)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -69,29 +71,18 @@ defmodule StoryarnWeb.SettingsLive.Security do
   end
 
   def handle_event("update_password", %{"user" => user_params}, socket) do
-    user = socket.assigns.current_scope.user
-
-    if match?(
-         {:ok, _grant},
-         UserAuth.authorize_sudo(
-           user,
-           socket.assigns.sudo_session_token,
-           socket.assigns.sudo_grant
-         )
-       ) do
-      case Accounts.change_user_password(user, user_params) do
+    SudoReauth.with_sudo(socket, fn socket ->
+      case Accounts.change_user_password(socket.assigns.current_scope.user, user_params) do
         %{valid?: true} = changeset ->
           {:noreply, assign(socket, trigger_submit: true, password_form: to_form(changeset))}
 
         changeset ->
           {:noreply, assign(socket, password_form: to_form(changeset, action: :insert))}
       end
-    else
-      {:noreply,
-       push_navigate(socket,
-         to: UserAuth.sudo_confirmation_path(~p"/users/settings/security"),
-         replace: true
-       )}
-    end
+    end)
+  end
+
+  def handle_event("confirm_access", params, socket) do
+    SudoReauth.confirm(socket, params)
   end
 end

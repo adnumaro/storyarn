@@ -60,7 +60,7 @@ msgstr "¡Bienvenido de nuevo!"
 
 #: lib/storyarn_web/live/user_live/confirm_access.ex:56
 #: lib/storyarn_web/user_auth.ex:243
-#: lib/storyarn_web/user_auth.ex:508
+#: lib/storyarn_web/user_auth.ex:531
 #, elixir-autogen, elixir-format
 msgid "You must log in to access this page."
 msgstr "Debes iniciar sesión para acceder a esta página."
@@ -96,6 +96,7 @@ msgstr "No hemos podido procesar tu solicitud para restablecer la contraseña. I
 msgid "We couldn't create your workspace. Please try again."
 msgstr "No hemos podido crear tu espacio de trabajo. Inténtalo de nuevo."
 
+#: lib/storyarn_web/live/shared/sudo_reauth.ex:103
 #: lib/storyarn_web/live/user_live/confirm_access.ex:103
 #, elixir-autogen, elixir-format
 msgid "Your session has expired. Please log in again."

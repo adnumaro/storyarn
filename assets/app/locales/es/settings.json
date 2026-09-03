@@ -15,7 +15,8 @@
         "workspace_general": "General",
         "workspace_members": "Miembros",
         "workspace_imports": "Importaciones",
-        "deleted_projects": "Proyectos eliminados"
+        "deleted_projects": "Proyectos eliminados",
+        "preferences": "Preferencias"
       },
       "search": "Buscar ajustes…",
       "switch_workspace": "Cambiar de workspace",
@@ -39,7 +40,19 @@
       "email_address": "Dirección de correo electrónico",
       "email_description": "Tu correo se usa para iniciar sesión y para notificaciones.",
       "email": "Correo electrónico",
-      "change_email": "Cambiar correo"
+      "change_email": "Cambiar correo",
+      "identity": "Identidad",
+      "display_name_hint": "Se muestra a tu equipo y en los comentarios.",
+      "email_hint": "Se usa para iniciar sesión y para las invitaciones.",
+      "preferences_note": "El idioma y la apariencia están en",
+      "change_email_dialog": {
+        "title": "Cambiar email",
+        "description": "Enviaremos un enlace de confirmación a la nueva dirección. Tu email solo cambia cuando lo abras.",
+        "new_email": "Nuevo email",
+        "cancel": "Cancelar",
+        "send": "Enviar enlace de confirmación",
+        "failed": "No se pudo enviar el enlace de confirmación. Inténtalo de nuevo."
+      }
     },
     "security": {
       "title": "Seguridad",
@@ -53,20 +66,23 @@
         "title": "Sesiones activas",
         "description": "Actualmente has iniciado sesión en este dispositivo.",
         "coming_soon": "La gestión de sesiones estará disponible pronto."
-      }
+      },
+      "password_section": "Contraseña",
+      "cancel": "Cancelar"
     },
     "tutorials": {
       "title": "Tutoriales",
       "subtitle": "Consulta las guías contextuales o elige cuáles deben aparecer de nuevo en tu próxima visita.",
       "restart_all": "Reiniciar todos",
-      "progress": "{completed} de {total} tutoriales completados",
+      "progress": "{completed} de {total} completadas",
       "read_guide": "Leer guía",
       "show_again": "Mostrar de nuevo",
       "show_again_for": "Mostrar de nuevo {tutorial}",
       "states": {
         "pending": "Listo para mostrar",
         "completed": "Completado"
-      }
+      },
+      "guides": "Guías"
     },
     "workspace": {
       "general": {
@@ -227,6 +243,27 @@
           "title": "No hay proyectos eliminados",
           "description": "Los proyectos movidos a la papelera del espacio de trabajo aparecerán aquí."
         }
+      }
+    },
+    "reauth": {
+      "title": "Confirma que eres tú",
+      "description": "Introduce tu contraseña para desbloquear estos ajustes durante 20 minutos.",
+      "password": "Contraseña",
+      "confirm": "Confirmar",
+      "locked": "Confirma que eres tú para cambiar estos ajustes"
+    },
+    "preferences": {
+      "title": "Preferencias",
+      "general": "General",
+      "language": "Idioma",
+      "language_hint": "Idioma de la interfaz para toda la app.",
+      "appearance": "Apariencia",
+      "theme": "Tema",
+      "theme_hint": "Se guarda en este dispositivo.",
+      "themes": {
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Oscuro"
       }
     }
   }

@@ -15,7 +15,8 @@
         "workspace_general": "General",
         "workspace_members": "Members",
         "workspace_imports": "Imports",
-        "deleted_projects": "Deleted Projects"
+        "deleted_projects": "Deleted Projects",
+        "preferences": "Preferences"
       },
       "search": "Search settings…",
       "switch_workspace": "Switch workspace",
@@ -39,7 +40,19 @@
       "email_address": "Email Address",
       "email_description": "Your email is used for login and notifications.",
       "email": "Email",
-      "change_email": "Change Email"
+      "change_email": "Change Email",
+      "identity": "Identity",
+      "display_name_hint": "Shown to your team and in comments.",
+      "email_hint": "Used to sign in and for invitations.",
+      "preferences_note": "Language and appearance live in",
+      "change_email_dialog": {
+        "title": "Change email",
+        "description": "We will send a confirmation link to the new address. Your email only changes once you open it.",
+        "new_email": "New email address",
+        "cancel": "Cancel",
+        "send": "Send confirmation link",
+        "failed": "Could not send the confirmation link. Try again."
+      }
     },
     "security": {
       "title": "Security",
@@ -53,20 +66,23 @@
         "title": "Active Sessions",
         "description": "You are currently logged in on this device.",
         "coming_soon": "Session management coming soon."
-      }
+      },
+      "password_section": "Password",
+      "cancel": "Cancel"
     },
     "tutorials": {
       "title": "Tutorials",
       "subtitle": "Review the contextual guides or choose which ones should appear again on your next visit.",
       "restart_all": "Restart all",
-      "progress": "{completed} of {total} tutorials completed",
+      "progress": "{completed} of {total} completed",
       "read_guide": "Read guide",
       "show_again": "Show again",
       "show_again_for": "Show {tutorial} again",
       "states": {
         "pending": "Ready to show",
         "completed": "Completed"
-      }
+      },
+      "guides": "Guides"
     },
     "workspace": {
       "general": {
@@ -227,6 +243,27 @@
           "title": "No deleted projects",
           "description": "Projects moved to workspace trash will appear here."
         }
+      }
+    },
+    "reauth": {
+      "title": "Confirm it's you",
+      "description": "Enter your password to unlock these settings for 20 minutes.",
+      "password": "Password",
+      "confirm": "Confirm",
+      "locked": "Confirm it's you to change these settings"
+    },
+    "preferences": {
+      "title": "Preferences",
+      "general": "General",
+      "language": "Language",
+      "language_hint": "Interface language for the whole app.",
+      "appearance": "Appearance",
+      "theme": "Theme",
+      "theme_hint": "Saved on this device.",
+      "themes": {
+        "system": "System",
+        "light": "Light",
+        "dark": "Dark"
       }
     }
   }

@@ -21,8 +21,8 @@ msgstr ""
 msgid "This feature is not available for your account."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/ai_team.ex:117
-#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:61
+#: lib/storyarn_web/live/settings_live/ai_team.ex:118
+#: lib/storyarn_web/live/settings_live/ai_team_overview.ex:62
 #, elixir-autogen, elixir-format
 msgid "AI preferences are not available."
 msgstr ""
@@ -38,7 +38,7 @@ msgstr ""
 msgid "My AI Team"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/ai_team.ex:140
+#: lib/storyarn_web/live/settings_live/ai_team.ex:141
 #, elixir-autogen, elixir-format
 msgid "Workspace-level access is required to configure this AI team."
 msgstr ""

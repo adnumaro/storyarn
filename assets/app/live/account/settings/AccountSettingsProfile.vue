@@ -1,72 +1,59 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import SaveIndicator from "@components/SaveIndicator.vue";
+import UserAvatar from "@components/UserAvatar.vue";
+import {
+  SettingsPage,
+  SettingsReauthBanner,
+  SettingsRow,
+  SettingsSection,
+  type SettingsReauthState,
+} from "@components/settings";
 import { Button } from "@components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@components/ui/dialog";
 import { Input } from "@components/ui/input";
 import { Label } from "@components/ui/label";
-import LanguagePicker from "@components/language/LanguagePicker.vue";
-import type { LanguagePickerOption } from "@components/language/types";
+import { useLive } from "@shared/composables/useLive";
 
 interface ProfileFormValues {
   display_name: string;
   locale: string | null;
 }
 
-const { profileForm: profileFormProp, localeOptions: localeOptionsProp = [] } = defineProps<{
+const {
+  profileForm: profileFormProp,
+  email,
+  saveStatus = "idle",
+  sudoActive = true,
+  reauth,
+} = defineProps<{
   profileForm: Form<ProfileFormValues>;
-  localeOptions?: LanguagePickerOption[];
+  email: string;
+  saveStatus?: "idle" | "saving" | "saved";
+  sudoActive?: boolean;
+  reauth: SettingsReauthState;
 }>();
 
-const { availableLocales, locale: currentLocale, t } = useI18n({ useScope: "global" });
-
-function fallbackFlagCode(locale: string): string | null {
-  if (locale === "en") return "gb";
-  if (locale === "es") return "es";
-  return null;
-}
-
-const localeOptions = computed<LanguagePickerOption[]>(() => {
-  const metadata = new Map(localeOptionsProp.map((option) => [option.value, option]));
-
-  return availableLocales.map((value) => {
-    const option = metadata.get(value);
-
-    return {
-      value,
-      label: t(`settings.profile.languages.${value}`),
-      languageTag: option?.languageTag ?? value.replace("_", "-"),
-      flagCode: option?.flagCode ?? fallbackFlagCode(value),
-      shortLabel: option?.shortLabel ?? value.slice(0, 2).toUpperCase(),
-    };
-  });
-});
-
-const fallbackLocale = computed(() =>
-  localeOptions.value.some((option) => option.value === currentLocale.value)
-    ? currentLocale.value
-    : (localeOptions.value[0]?.value ?? "en"),
-);
-
-function normalizeLocale(value: string | null | undefined): string {
-  return localeOptions.value.some((option) => option.value === value)
-    ? (value as string)
-    : fallbackLocale.value;
-}
-
-function prepareProfileData(data: ProfileFormValues): ProfileFormValues {
-  return { ...data, locale: normalizeLocale(data.locale) };
-}
+const { t } = useI18n();
+const live = useLive();
 
 const profileForm = useLiveForm(() => profileFormProp, {
   changeEvent: "validate_profile",
   submitEvent: "update_profile",
   debounceInMiliseconds: 300,
-  prepareData: prepareProfileData,
 });
 
 const displayName = profileForm.field("display_name");
-const locale = profileForm.field("locale");
 
 const displayNameValue = computed({
   get: () => displayName.value.value ?? "",
@@ -84,64 +71,158 @@ function updateDisplayName(value: string | number): void {
   displayNameValue.value = String(value);
 }
 
-const selectedLocale = computed({
-  get: () => normalizeLocale(locale.value.value),
-  set: (value: string) => {
-    locale.value.value = normalizeLocale(value);
-  },
-});
+function saveDisplayName(): void {
+  if (!sudoActive || !displayName.isDirty.value) return;
+  profileForm.submit();
+}
+
+const emailDialogOpen = ref(false);
+const newEmail = ref("");
+const emailError = ref<string | null>(null);
+const sendingEmail = ref(false);
+
+function openEmailDialog(): void {
+  newEmail.value = "";
+  emailError.value = null;
+  emailDialogOpen.value = true;
+}
+
+function requestEmailChange(): void {
+  if (sendingEmail.value || newEmail.value.trim().length === 0) return;
+
+  sendingEmail.value = true;
+  emailError.value = null;
+
+  live.pushEvent(
+    "request_email_change",
+    { email: newEmail.value.trim() },
+    (reply) => {
+      sendingEmail.value = false;
+      const result = reply as { ok?: boolean; error?: string } | null;
+
+      if (result?.ok) {
+        emailDialogOpen.value = false;
+      } else {
+        emailError.value = result?.error ?? t("settings.profile.change_email_dialog.failed");
+      }
+    },
+    () => {
+      sendingEmail.value = false;
+      emailError.value = t("settings.profile.change_email_dialog.failed");
+    },
+  );
+}
 </script>
 
 <template>
-  <div class="space-y-8">
-    <div class="space-y-1.5">
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">
-        {{ $t("settings.profile.title") }}
-      </h1>
-      <p class="text-base text-muted-foreground">
-        {{ $t("settings.profile.subtitle") }}
-      </p>
-    </div>
+  <SettingsPage :title="t('settings.profile.title')">
+    <template #actions>
+      <SaveIndicator :status="saveStatus" />
+    </template>
 
-    <!-- Profile Section -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.profile.personal_info") }}</h3>
+    <SettingsReauthBanner v-if="!sudoActive" :state="reauth" />
 
-      <div class="space-y-4">
-        <div class="space-y-1.5">
-          <Label for="profile-display-name">{{ $t("settings.profile.display_name") }}</Label>
+    <SettingsSection
+      :title="t('settings.profile.identity')"
+      :locked="!sudoActive"
+      :locked-label="t('settings.reauth.locked')"
+    >
+      <SettingsRow
+        :label="t('settings.profile.display_name')"
+        :hint="t('settings.profile.display_name_hint')"
+        control="input"
+        html-for="profile-display-name"
+      >
+        <template #leading>
+          <UserAvatar :email="email" :display-name="displayNameValue" size="md" />
+        </template>
+        <div class="flex w-full flex-col gap-1">
           <Input
             v-bind="displayNameInputAttrs"
             id="profile-display-name"
             :model-value="displayNameValue"
-            :placeholder="$t('settings.profile.display_name_placeholder')"
+            :placeholder="t('settings.profile.display_name_placeholder')"
+            :disabled="!sudoActive"
             @update:model-value="updateDisplayName"
+            @blur="saveDisplayName"
+            @keydown.enter.prevent="saveDisplayName"
           />
-          <p v-if="displayName.errorMessage.value" class="text-sm text-destructive mt-1">
+          <p v-if="displayName.errorMessage.value" class="text-[13px] text-destructive">
             {{ displayName.errorMessage.value }}
           </p>
         </div>
+      </SettingsRow>
 
-        <div class="space-y-1.5">
-          <Label for="profile-locale-trigger">{{ $t("settings.profile.language") }}</Label>
-          <LanguagePicker
-            id="profile-locale"
-            v-model="selectedLocale"
-            :options="localeOptions"
-            :label="$t('settings.profile.language')"
-            :appearance="{ searchable: false, triggerClass: 'w-full' }"
+      <SettingsRow :label="t('settings.profile.email')">
+        <template #hint>{{ email }} · {{ t("settings.profile.email_hint") }}</template>
+        <Button
+          id="profile-change-email"
+          variant="outline"
+          size="sm"
+          :disabled="!sudoActive"
+          @click="openEmailDialog"
+        >
+          {{ t("settings.profile.change_email") }}
+        </Button>
+      </SettingsRow>
+
+      <template #footer>
+        {{ t("settings.profile.preferences_note") }}
+        <LiveLink to="/users/settings/preferences" class="text-primary hover:underline">
+          {{ t("settings.nav.items.preferences") }}
+        </LiveLink>
+      </template>
+    </SettingsSection>
+
+    <Dialog v-model:open="emailDialogOpen">
+      <DialogContent class="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>{{ t("settings.profile.change_email_dialog.title") }}</DialogTitle>
+          <DialogDescription>
+            {{ t("settings.profile.change_email_dialog.description") }}
+          </DialogDescription>
+        </DialogHeader>
+
+        <form
+          id="profile-email-form"
+          class="flex flex-col gap-2"
+          @submit.prevent="requestEmailChange"
+        >
+          <Label for="profile-new-email">{{
+            t("settings.profile.change_email_dialog.new_email")
+          }}</Label>
+          <Input
+            id="profile-new-email"
+            v-model="newEmail"
+            type="email"
+            autocomplete="email"
+            required
+            :aria-invalid="emailError ? true : undefined"
+            :aria-describedby="emailError ? 'profile-new-email-error' : undefined"
           />
-          <p v-if="locale.errorMessage.value" class="text-sm text-destructive mt-1">
-            {{ locale.errorMessage.value }}
+          <p
+            v-if="emailError"
+            id="profile-new-email-error"
+            class="text-[13px] text-destructive"
+            role="alert"
+          >
+            {{ emailError }}
           </p>
-        </div>
+        </form>
 
-        <div class="flex justify-end gap-3">
-          <Button id="profile-save-button" @click="profileForm.submit()">
-            {{ $t("settings.profile.save_profile") }}
+        <DialogFooter>
+          <Button type="button" variant="outline" @click="emailDialogOpen = false">
+            {{ t("settings.profile.change_email_dialog.cancel") }}
           </Button>
-        </div>
-      </div>
-    </section>
-  </div>
+          <Button
+            type="submit"
+            form="profile-email-form"
+            :disabled="sendingEmail || newEmail.trim().length === 0"
+          >
+            {{ t("settings.profile.change_email_dialog.send") }}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  </SettingsPage>
 </template>

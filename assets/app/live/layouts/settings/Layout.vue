@@ -21,6 +21,7 @@ import {
   Search,
   Settings,
   ShieldCheck,
+  SlidersHorizontal,
   Trash2,
   User,
   Users,
@@ -148,6 +149,13 @@ const personalGroup = computed<SettingsGroup>(() => {
       label: t("settings.nav.items.profile"),
       path: sensitiveSettingsPath("/users/settings", sudoGrant),
       icon: User,
+      locked: false,
+    },
+    {
+      key: "preferences",
+      label: t("settings.nav.items.preferences"),
+      path: "/users/settings/preferences",
+      icon: SlidersHorizontal,
       locked: false,
     },
     {

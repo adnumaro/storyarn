@@ -202,6 +202,7 @@ defmodule StoryarnWeb.Router do
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
+      live "/users/settings/preferences", SettingsLive.Preferences, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
       live "/users/settings/integrations", SettingsLive.Integrations, :edit
