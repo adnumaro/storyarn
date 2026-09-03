@@ -13,6 +13,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
   alias Storyarn.Commercial
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageKeyLock
   alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.Memberships
@@ -357,7 +358,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
 
   def recover_abandoned_delivery(%{} = candidate, opts) when is_list(opts) do
     with {:ok, project_id} <- candidate_positive_integer(candidate, :project_id),
-         {:ok, timeout} <- recovery_lock_timeout(opts) do
+         {:ok, timeout} <- recovery_lock_timeout(opts),
+         {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+      opts = Keyword.put(opts, :provider_namespace_fingerprint, provider_namespace_fingerprint)
+
       "project-snapshot-restore:#{project_id}"
       |> StorageKeyLock.with_session_lock(
         fn -> recover_abandoned_delivery_locked(candidate, opts) end,
@@ -420,11 +424,31 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreLifecycle do
     do: terminal_perform_result(restore)
 
   defp perform_restore(restore, requested_generation, executor, opts) do
-    "project-snapshot-restore:#{restore.project_id}"
-    |> StorageKeyLock.with_session_lock(fn ->
-      perform_locked(restore.id, requested_generation, executor, opts)
-    end)
-    |> normalize_lock_result()
+    case provider_namespace_fingerprint() do
+      {:ok, provider_namespace_fingerprint} ->
+        opts = Keyword.put(opts, :provider_namespace_fingerprint, provider_namespace_fingerprint)
+
+        "project-snapshot-restore:#{restore.project_id}"
+        |> StorageKeyLock.with_session_lock(fn ->
+          perform_locked(restore.id, requested_generation, executor, opts)
+        end)
+        |> normalize_lock_result()
+
+      {:error, _reason} ->
+        {:retry, :snapshot_archive_storage_unavailable}
+    end
+  end
+
+  defp provider_namespace_fingerprint do
+    case Storage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) and byte_size(fingerprint) == 64 ->
+        if String.match?(fingerprint, @sha256),
+          do: {:ok, fingerprint},
+          else: {:error, :project_snapshot_restore_provider_namespace_unavailable}
+
+      _unavailable ->
+        {:error, :project_snapshot_restore_provider_namespace_unavailable}
+    end
   end
 
   defp recover_abandoned_delivery_locked(candidate, opts) do

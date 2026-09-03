@@ -160,9 +160,11 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     do: {:ok, String.to_existing_atom(status)}
 
   defp continue_recorded_action(_action, action_id, lock_fun) do
-    lock_fun.("snapshot-reconciliation-repair:#{action_id}", fn ->
-      perform_recorded_action(action_id)
-    end)
+    with {:ok, provider_namespace_fingerprint} <- current_provider_namespace_fingerprint() do
+      lock_fun.("snapshot-reconciliation-repair:#{action_id}", fn ->
+        perform_recorded_action(action_id, provider_namespace_fingerprint)
+      end)
+    end
   end
 
   @doc false
@@ -394,7 +396,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     {action, false}
   end
 
-  defp perform_recorded_action(action_id) do
+  defp perform_recorded_action(action_id, provider_namespace_fingerprint) do
     case Repo.get(ProjectSnapshotReconciliationRepairAction, action_id) do
       nil ->
         {:error, :snapshot_reconciliation_repair_action_not_found}
@@ -404,7 +406,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
         {:ok, String.to_existing_atom(status)}
 
       %ProjectSnapshotReconciliationRepairAction{} = action ->
-        execute_pending_action(action)
+        execute_pending_action(action, provider_namespace_fingerprint)
     end
   end
 
@@ -426,12 +428,13 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     end)
   end
 
-  defp execute_pending_action(action) do
+  defp execute_pending_action(action, provider_namespace_fingerprint) do
     with %ProjectSnapshotReconciliationFinding{} = finding <-
            Repo.get(ProjectSnapshotReconciliationFinding, action.source_finding_id),
          %ProjectSnapshotReconciliationRun{} = run <- Repo.get(ProjectSnapshotReconciliationRun, finding.run_id),
          :ok <- validate_action_identity(action, finding, run),
-         {:ok, outcome, result_code, attrs} <- dispatch_with_namespace(run, action, finding),
+         {:ok, outcome, result_code, attrs} <-
+           dispatch_with_namespace(run, action, finding, provider_namespace_fingerprint),
          {:ok, finished, transitioned?} <- finish_action(action.id, outcome, result_code, attrs) do
       bytes = repair_bytes(finding, action.action_kind, outcome)
       maybe_emit_action(finished, transitioned?, bytes)
@@ -442,16 +445,20 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     end
   end
 
-  defp dispatch_with_namespace(run, action, finding) do
-    case Storage.namespace_fingerprint() do
-      {:ok, fingerprint} when fingerprint == run.provider_namespace_fingerprint ->
+  defp dispatch_with_namespace(run, action, finding, provider_namespace_fingerprint) do
+    case provider_namespace_fingerprint do
+      fingerprint when fingerprint == run.provider_namespace_fingerprint ->
         dispatch(action.action_kind, finding, run.provider_namespace_fingerprint)
 
-      {:ok, _different} ->
+      _different ->
         {:ok, "manual", "provider_namespace_changed", %{}}
+    end
+  end
 
-      {:error, reason} ->
-        {:error, {:snapshot_reconciliation_namespace_unavailable, reason}}
+  defp current_provider_namespace_fingerprint do
+    case Storage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) -> {:ok, fingerprint}
+      {:error, reason} -> {:error, {:snapshot_reconciliation_namespace_unavailable, reason}}
     end
   end
 
@@ -498,15 +505,12 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   end
 
   defp repair_integrity_locked(finding, observed_snapshot, observed_integrity, provider_namespace_fingerprint) do
-    case Storage.namespace_fingerprint() do
-      {:ok, ^provider_namespace_fingerprint} ->
-        apply_locked_integrity(finding, observed_snapshot, observed_integrity)
-
-      {:ok, _different} ->
-        {:ok, {"manual", "provider_namespace_changed", %{}}}
-
-      {:error, reason} ->
-        {:error, {:snapshot_reconciliation_namespace_unavailable, reason}}
+    # Namespace identity is local/config metadata, not remote provider I/O.
+    # Revalidate after inspection before committing its integrity result.
+    case validate_namespace(provider_namespace_fingerprint) do
+      :ok -> apply_locked_integrity(finding, observed_snapshot, observed_integrity)
+      {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, {"manual", "provider_namespace_changed", %{}}}
+      {:error, _reason} = error -> error
     end
   end
 
@@ -600,6 +604,14 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
     do: classify_changed_reservation(finding, provider_namespace_fingerprint)
 
   defp repair_expired_build_candidate(candidate, finding, provider_namespace_fingerprint) do
+    case validate_namespace(provider_namespace_fingerprint) do
+      :ok -> delete_expired_build_candidate(candidate, finding, provider_namespace_fingerprint)
+      {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, "manual", "provider_namespace_changed", %{}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp delete_expired_build_candidate(candidate, finding, provider_namespace_fingerprint) do
     case ProjectSnapshotLifecycle.delete_expired_build_candidate(candidate, provider_namespace_fingerprint) do
       {:ok, %SnapshotCleanupIntent{}} ->
         {:ok, "repaired", "expired_build_cleanup_scheduled", %{}}
@@ -627,15 +639,23 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepair do
   defp classify_changed_reservation(finding, provider_namespace_fingerprint) do
     finding.workspace_id_snapshot
     |> Commercial.transact_with_workspace_lock(fn _workspace ->
-      reservation = lock_reservation(finding.storage_reservation_id_snapshot)
-
-      if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do
-        {:ok, {"repaired", "expired_build_cleanup_already_scheduled", %{}}}
-      else
-        {:ok, {"manual", "expired_build_no_longer_repairable", %{}}}
+      case validate_namespace(provider_namespace_fingerprint) do
+        :ok -> classify_changed_reservation_locked(finding, provider_namespace_fingerprint)
+        {:error, :snapshot_reconciliation_namespace_changed} -> {:ok, {"manual", "provider_namespace_changed", %{}}}
+        {:error, _reason} = error -> error
       end
     end)
     |> flatten_repair_result()
+  end
+
+  defp classify_changed_reservation_locked(finding, provider_namespace_fingerprint) do
+    reservation = lock_reservation(finding.storage_reservation_id_snapshot)
+
+    if exact_expired_build_cleanup?(reservation, finding, provider_namespace_fingerprint) do
+      {:ok, {"repaired", "expired_build_cleanup_already_scheduled", %{}}}
+    else
+      {:ok, {"manual", "expired_build_no_longer_repairable", %{}}}
+    end
   end
 
   defp lock_reservation(reservation_id) do

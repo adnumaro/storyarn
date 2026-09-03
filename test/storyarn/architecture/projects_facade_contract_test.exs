@@ -140,6 +140,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     prepare_project_import: 4,
     prepare_project_import: 5,
     prepare_workspace_data_hard_delete: 1,
+    prepare_workspace_data_hard_delete: 2,
     preview_portable_project_template: 1,
     preview_portable_project_template: 2,
     project_classification_options: 0,
@@ -191,6 +192,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     slugify_project_name: 1,
     start_project_snapshot_reconciliation: 0,
     start_project_snapshot_reconciliation: 1,
+    storage_provider_namespace_fingerprint: 0,
     subscribe_project_imports: 1,
     subscribe_project_ownership_changes: 1,
     subscribe_project_snapshot_restores: 1,
@@ -229,6 +231,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     delete_project_snapshot_retention_candidate: 1,
     delete_storage_keys: 1,
     discard_stale_project_snapshot_maintenance_jobs: 0,
+    enqueue_due_cleanup_request_jobs: 0,
     emit_storage_cleanup_request_backlog: 0,
     expire_stale_imports_batch: 0,
     fail_project_snapshot_reconciliation: 3,
@@ -268,11 +271,12 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     recover_project_snapshot_reconciliation_repair_delivery_page: 1,
     replay_terminal_project_snapshot_cleanup: 1,
     rescue_stale_project_snapshot_cleanup_jobs: 0,
+    retry_persisted_cleanup_request_by_id: 1,
     retry_persisted_cleanup_requests: 0
   ]
 
   @public_types ~w(action attrs changeset invitation membership project role scope user)a
-  @docs_digest "8040142c4fab0a6ad751299aa5df90cb81ebd3c3e4e0651999088aade33083cf"
+  @docs_digest "97d4e95d55529373850e175b9ee37ebd5919fd3f2c1c82b7b903d923255a9ba4"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
   @specs_digest "0e2ca5f35a9a51106f384b5f633a32ea0bd7c364cea1f4c48b8c5c24f7fa9c94"
 
@@ -306,12 +310,12 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
         MapSet.member?(worker_keys, {name, arity})
       end)
 
-    assert length(established_docs) == 184
+    assert length(established_docs) == 186
 
     assert Enum.frequencies_by(established_docs, &doc_status/1) ==
-             %{documented: 76, hidden: 15, none: 93}
+             %{documented: 76, hidden: 16, none: 94}
 
-    assert length(worker_docs) == 45
+    assert length(worker_docs) == 47
     assert Enum.all?(worker_docs, &(doc_status(&1) == :hidden))
 
     assert digest(Enum.sort(established_docs)) == @docs_digest

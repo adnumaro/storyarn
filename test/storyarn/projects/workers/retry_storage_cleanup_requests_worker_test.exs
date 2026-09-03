@@ -6,9 +6,10 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
 
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupRequest
+  alias Storyarn.Workers.DeleteStorageObjectsWorker
   alias Storyarn.Workers.RetryStorageCleanupRequestsWorker
 
-  test "deletes copied objects and their durable cleanup request" do
+  test "enqueues one per-request delivery without touching object storage" do
     storage_key =
       "projects/1/assets/#{Ecto.UUID.generate()}/cleanup-test.png"
 
@@ -32,22 +33,38 @@ defmodule Storyarn.Workers.RetryStorageCleanupRequestsWorkerTest do
     on_exit(fn -> :telemetry.detach(handler_id) end)
 
     assert :ok = perform_job(RetryStorageCleanupRequestsWorker, %{})
-    refute Repo.get(StorageCleanupRequest, request.id)
-    assert {:error, :enoent} = Storage.download(storage_key)
+    assert Repo.get(StorageCleanupRequest, request.id)
+    assert {:ok, "copied asset"} = Storage.download(storage_key)
+    assert_enqueued(worker: DeleteStorageObjectsWorker, args: %{cleanup_request_id: request.id})
 
     assert_receive {
       [:storyarn, :assets, :storage_compensation, :backlog],
       %{
-        pending_count: 0,
-        due_count: 0,
+        pending_count: 1,
+        due_count: 1,
         deferred_multipart_count: 0,
-        oldest_age_seconds: 0,
         observed_at_unix_seconds: observed_at
       },
       %{}
     }
 
     assert is_integer(observed_at)
+  end
+
+  test "does not enqueue a duplicate delivery for the same cleanup request" do
+    storage_key = "projects/1/assets/#{Ecto.UUID.generate()}/deduplicated.png"
+    request = Repo.insert!(%StorageCleanupRequest{storage_keys: [storage_key]})
+
+    assert :ok = perform_job(RetryStorageCleanupRequestsWorker, %{})
+    assert :ok = perform_job(RetryStorageCleanupRequestsWorker, %{})
+
+    assert [job] =
+             all_enqueued(
+               worker: DeleteStorageObjectsWorker,
+               args: %{cleanup_request_id: request.id}
+             )
+
+    assert job.state == "available"
   end
 
   test "collapses retry exceptions before they reach Oban or logs" do

@@ -217,8 +217,21 @@ defmodule Storyarn.Projects.Versioning.SnapshotArchiveStorageTest do
     assert {:ok, manifest} = SnapshotArchiveStorage.inspect_ready_manifest(inspection_metadata)
     assert manifest == Jason.decode!(sidecar)
 
-    assert {:error, :enoent} = Storage.stat(staged.archive_staging_key)
-    assert {:error, :enoent} = Storage.stat(staged.manifest_staging_key)
+    assert is_integer(stored.staging_cleanup_request_id)
+
+    assert %StorageCleanupRequest{
+             owner_kind: "storage_compensation",
+             storage_keys: staging_keys,
+             multipart_cleanup_phase: "discover",
+             provider_namespace_fingerprint: provider_namespace_fingerprint
+           } = Repo.get!(StorageCleanupRequest, stored.staging_cleanup_request_id)
+
+    assert staging_keys ==
+             Enum.sort([staged.archive_staging_key, staged.manifest_staging_key])
+
+    assert is_binary(provider_namespace_fingerprint)
+    assert {:ok, _stat} = Storage.stat(staged.archive_staging_key)
+    assert {:ok, _stat} = Storage.stat(staged.manifest_staging_key)
 
     assert {:ok, reused} =
              SnapshotArchiveStorage.stage_prepared(

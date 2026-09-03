@@ -135,7 +135,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
            ] in [nil, 0]
 
     assert [%StorageCleanupRequest{storage_keys: [archive_key], multipart_quiescence_not_before: not_before}] =
-             Repo.all(StorageCleanupRequest)
+             import_cleanup_requests(upload)
 
     assert String.starts_with?(archive_key, import_prefix(context.workspace.id))
     assert {:error, :enoent} = Storage.stat(archive_key)
@@ -221,6 +221,89 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
     assert {:ok, ^asset_bytes} = Storage.download(recovered_asset.key)
   end
 
+  test "the public server-upload facade streams the archive to R2 and queues one import", context do
+    archive_path = ready_archive_file!(context.scope, context.project)
+    archive_bytes = File.read!(archive_path)
+    bucket = "snapshot-import-test"
+    endpoint = "https://snapshot-import.example"
+
+    config = [
+      {:storyarn, :storage, [adapter: :r2]},
+      {:storyarn, :r2, [bucket: bucket, endpoint_url: endpoint, public_url: nil]},
+      {:ex_aws, :s3, [host: "snapshot-import.example", scheme: "https://", region: "auto"]},
+      {:ex_aws, :access_key_id, "test-access-key"},
+      {:ex_aws, :secret_access_key, "test-secret-key"},
+      {:ex_aws, :req_opts, [plug: {Req.Test, __MODULE__}]}
+    ]
+
+    original_config = Enum.map(config, fn {app, key, _value} -> {app, key, Application.fetch_env(app, key)} end)
+    Enum.each(config, fn {app, key, value} -> Application.put_env(app, key, value) end)
+
+    on_exit(fn ->
+      Enum.each(original_config, fn
+        {app, key, {:ok, value}} -> Application.put_env(app, key, value)
+        {app, key, :error} -> Application.delete_env(app, key)
+      end)
+    end)
+
+    Req.Test.verify_on_exit!()
+    test_process = self()
+
+    Req.Test.expect(__MODULE__, 4, fn conn ->
+      conn = Plug.Conn.fetch_query_params(conn)
+      key = String.replace_prefix(conn.request_path, "/#{bucket}/", "")
+      assert String.starts_with?(key, import_prefix(context.workspace.id))
+      assert String.ends_with?(key, "/snapshot.zip")
+      send(test_process, {:r2_import_request, conn.method, conn.query_params})
+
+      case {conn.method, conn.query_params} do
+        {"POST", %{"uploads" => "1"}} ->
+          Plug.Conn.send_resp(conn, 200, """
+          <InitiateMultipartUploadResult><Bucket>#{bucket}</Bucket><Key>#{key}</Key>
+          <UploadId>server-import</UploadId></InitiateMultipartUploadResult>
+          """)
+
+        {"PUT", %{"partNumber" => "1", "uploadId" => "server-import"}} ->
+          assert {:ok, ^archive_bytes, conn} = Plug.Conn.read_body(conn)
+          conn |> Plug.Conn.put_resp_header("etag", ~s("part-etag")) |> Plug.Conn.send_resp(200, "")
+
+        {"POST", %{"uploadId" => "server-import"}} ->
+          Plug.Conn.send_resp(conn, 200, """
+          <CompleteMultipartUploadResult><Location>#{endpoint}/#{bucket}/#{key}</Location>
+          <Bucket>#{bucket}</Bucket><Key>#{key}</Key><ETag>"archive-etag"</ETag></CompleteMultipartUploadResult>
+          """)
+
+        {"HEAD", %{}} ->
+          conn
+          |> Plug.Conn.put_resp_header("content-length", Integer.to_string(byte_size(archive_bytes)))
+          |> Plug.Conn.put_resp_header("content-type", "application/zip")
+          |> Plug.Conn.put_resp_header("etag", ~s("archive-etag"))
+          |> Plug.Conn.send_resp(200, "")
+      end
+    end)
+
+    assert Storage.external_upload?()
+
+    assert {:ok, accepted} =
+             Projects.request_workspace_snapshot_import(
+               context.scope,
+               context.workspace.id,
+               archive_path,
+               %{original_filename: "server-upload.zip"}
+             )
+
+    assert accepted.status == "queued"
+    assert Repo.get!(WorkspaceSnapshotImport, accepted.id).status == "queued"
+    assert accepted.archive_size_bytes == byte_size(archive_bytes)
+    assert Repo.get!(Oban.Job, accepted.oban_job_id).args == %{"import_id" => accepted.id}
+    assert import_job_count() == 1
+    assert_received {:r2_import_request, "POST", %{"uploads" => "1"}}
+    assert_received {:r2_import_request, "PUT", %{"partNumber" => "1", "uploadId" => "server-import"}}
+    assert_received {:r2_import_request, "POST", %{"uploadId" => "server-import"}}
+    assert_received {:r2_import_request, "HEAD", %{}}
+    refute_received {:r2_import_request, _method, _params}
+  end
+
   test "a transient commit failure preserves its durable plan and succeeds on retry", context do
     asset_bytes = "retryable asset bytes"
     _asset = upload_asset!(context.project, context.user, "retry.png", asset_bytes, "image/png")
@@ -283,11 +366,11 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
                materialize_fun: guarded_commit
              )
 
+    assert completed.status == "completed", "Import failed: #{inspect(completed.failure_code)}"
     assert_received {:stale_cleanup_attempt, {:error, skipped_keys}}
     assert Enum.sort(skipped_keys) == Enum.sort(retrying.materialization_storage_keys)
     assert Repo.get!(StorageCleanupRequest, stale_cleanup.id)
 
-    assert completed.status == "completed"
     assert completed.project_id == retrying.reserved_project_id
     assert completed.reserved_project_id == retrying.reserved_project_id
     assert completed.materialization_storage_keys == retrying.materialization_storage_keys
@@ -489,7 +572,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
 
     refute Repo.get(WorkspaceSnapshotImport, upload.id)
     archive_key = upload.archive_storage_key
-    assert [%StorageCleanupRequest{storage_keys: [^archive_key]}] = Repo.all(StorageCleanupRequest)
+    assert [%StorageCleanupRequest{storage_keys: [^archive_key]}] = import_cleanup_requests(upload)
     assert import_job_count() == 0
 
     {_direct, stale} = prepare_stored_upload!(context, archive_path, "stale.zip")

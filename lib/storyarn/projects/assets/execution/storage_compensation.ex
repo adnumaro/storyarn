@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Assets.MultipartCleanup
   alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Assets.StorageCleanupPersistenceError
   alias Storyarn.Projects.Assets.StorageCleanupRequest
@@ -36,13 +37,13 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   @template_namespace_pattern ~r/\A[a-z0-9][a-z0-9_-]{0,127}\z/
   @template_filename_pattern ~r/\A[\w.-]{1,255}\z/u
   @snapshot_token_pattern ~r/\A[A-Za-z0-9_-]{16}\z/
-  @storage_reservation_kinds ~w(snapshot-build restore-staging snapshot-export)
+  @storage_reservation_path_kinds ~w(snapshot-build restore-staging snapshot-export)
+  @storage_reservation_record_kinds ~w(snapshot_build restore_staging snapshot_export)
   @storage_reservation_lease_pattern ~r/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/
   @storage_reservation_path_segment_pattern ~r/\A[A-Za-z0-9][A-Za-z0-9._-]{0,127}\z/
   @workspace_snapshot_import_key_pattern ~r'\Aworkspace-snapshot-imports/v1/[1-9]\d*/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/(?:snapshot\.zip|blobs/[0-9a-f]{64}\.[a-z0-9][a-z0-9-]{0,31})\z'
   @max_storage_reservation_relative_key_bytes 512
   @max_storage_reservation_path_segments 16
-  @multipart_cleanup_evidence_key {__MODULE__, :multipart_cleanup_aborted_count}
 
   @spec new() :: reference()
   def new do
@@ -113,13 +114,12 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   def pending_cleanup_targets(reference) when is_reference(reference) do
     reference
     |> tracked()
-    |> Enum.filter(&valid_cleanup_target?/1)
-    |> Enum.uniq()
+    |> normalize_cleanup_targets()
   end
 
   @spec cleanup(reference(), keyword()) :: :ok | {:error, term()}
   def cleanup(reference, opts \\ []) when is_reference(reference) do
-    cleanup_targets = reference |> tracked() |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    cleanup_targets = reference |> tracked() |> normalize_cleanup_targets()
     cleanup_storage_keys(reference, cleanup_targets, opts)
   end
 
@@ -134,7 +134,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   """
   @spec cleanup_after_rollback(reference(), keyword()) :: :ok | {:error, term()}
   def cleanup_after_rollback(reference, opts \\ []) when is_reference(reference) do
-    cleanup_targets = reference |> tracked() |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    cleanup_targets = reference |> tracked() |> normalize_cleanup_targets()
     cleanup_storage_keys_after_rollback(reference, cleanup_targets, opts)
   end
 
@@ -229,8 +229,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     reference
     |> tracked()
     |> Enum.reject(&MapSet.member?(retained_keys, cleanup_target_storage_key(&1)))
-    |> Enum.filter(&valid_cleanup_target?/1)
-    |> Enum.uniq()
+    |> normalize_cleanup_targets()
   end
 
   defp persist_cleanup_handoff(cleanup_targets, enqueue_fun, persist_fun) do
@@ -289,8 +288,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
     failed_targets =
       cleanup_targets
-      |> Enum.filter(&valid_cleanup_target?/1)
-      |> Enum.uniq()
+      |> normalize_cleanup_targets()
       |> Enum.filter(fn cleanup_target ->
         case safe_deferred_storage_delete(cleanup_target, restore_cleanup_owner) do
           :ok -> false
@@ -305,16 +303,9 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   @spec delete_storage_keys_with_evidence([String.t()]) ::
           {:ok, %{aborted_count: non_neg_integer()}} | {:error, [String.t()]}
   def delete_storage_keys_with_evidence(cleanup_targets) when is_list(cleanup_targets) do
-    previous = Process.get(@multipart_cleanup_evidence_key, :not_collecting)
-    Process.put(@multipart_cleanup_evidence_key, 0)
-
-    try do
-      case delete_storage_keys(cleanup_targets) do
-        :ok -> {:ok, %{aborted_count: Process.get(@multipart_cleanup_evidence_key, 0)}}
-        {:error, failed_targets} -> {:error, failed_targets}
-      end
-    after
-      restore_multipart_cleanup_evidence(previous)
+    case delete_storage_keys(cleanup_targets) do
+      :ok -> {:ok, %{aborted_count: 0}}
+      {:error, failed_targets} -> {:error, failed_targets}
     end
   end
 
@@ -325,15 +316,23 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   def delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, opts)
       when is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(cleanup_targets) and is_list(opts) do
-    delete_fun = Keyword.get(opts, :delete_fun, &delete_storage_keys_with_evidence/1)
-    inventory_fun = Keyword.get(opts, :inventory_fun, &Storage.incomplete_multipart_upload_count/1)
-    consume? = Keyword.get(opts, :consume?, false) == true
+    cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
-    if Keyword.keyword?(opts) and Enum.all?(Keyword.keys(opts), &(&1 in [:consume?, :delete_fun, :inventory_fun])) and
-         is_function(delete_fun, 1) and is_function(inventory_fun, 1) do
-      do_delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, delete_fun, inventory_fun, consume?)
+    with {:ok, request} <- load_cleanup_request(cleanup_request_id),
+         :ok <- validate_cleanup_request_targets(request, cleanup_targets) do
+      if multipart_cleanup_keys(request.storage_keys) == [] do
+        delete_storage_keys(cleanup_targets, opts)
+      else
+        opts =
+          opts
+          |> Keyword.put_new(:authorize_fun, &authorize_multipart_cleanup_targets/1)
+          |> Keyword.put_new(:object_policy_fun, &multipart_cleanup_object_policy/1)
+          |> Keyword.put_new(:step_limit, 1)
+
+        MultipartCleanup.process(cleanup_request_id, cleanup_targets, opts)
+      end
     else
-      {:error, cleanup_targets}
+      {:error, _reason} -> {:error, cleanup_targets}
     end
   rescue
     error ->
@@ -350,35 +349,6 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   def delete_cleanup_request_keys(_cleanup_request_id, _cleanup_targets, _opts), do: {:error, []}
 
-  defp do_delete_cleanup_request_keys(cleanup_request_id, cleanup_targets, delete_fun, inventory_fun, consume?) do
-    with {:ok, request} <- load_cleanup_request(cleanup_request_id),
-         {:ok, cleanup_targets} <- validate_cleanup_request_targets(request, cleanup_targets) do
-      dispatch_cleanup_request(request, cleanup_targets, delete_fun, inventory_fun, consume?)
-    else
-      {:error, _reason} -> {:error, cleanup_targets}
-    end
-  end
-
-  defp dispatch_cleanup_request(request, cleanup_targets, delete_fun, inventory_fun, consume?) do
-    case multipart_cleanup_keys(request.storage_keys) do
-      [] ->
-        normalize_cleanup_delete(call_multipart_delete(delete_fun, cleanup_targets))
-
-      multipart_keys ->
-        process_multipart_cleanup(
-          request,
-          cleanup_targets,
-          multipart_keys,
-          delete_fun,
-          inventory_fun,
-          consume?
-        )
-    end
-  end
-
-  defp normalize_cleanup_delete({:ok, _evidence}), do: :ok
-  defp normalize_cleanup_delete({:error, failed_targets}), do: {:error, failed_targets}
-
   defp load_cleanup_request(cleanup_request_id) do
     case Repo.get(StorageCleanupRequest, cleanup_request_id) do
       %StorageCleanupRequest{} = request -> {:ok, request}
@@ -386,14 +356,12 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     end
   end
 
+  defp validate_cleanup_request_targets(_request, []), do: {:error, :empty_storage_cleanup_batch}
+
   defp validate_cleanup_request_targets(request, cleanup_targets) do
-    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
     owned_targets = MapSet.new(request.storage_keys)
 
     cond do
-      cleanup_targets == [] ->
-        {:error, :empty_storage_cleanup_batch}
-
       not Enum.all?(cleanup_targets, &MapSet.member?(owned_targets, &1)) ->
         {:error, :storage_cleanup_batch_not_owned}
 
@@ -404,8 +372,20 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
         {:error, :multipart_cleanup_batch_incomplete}
 
       true ->
-        {:ok, cleanup_targets}
+        :ok
     end
+  end
+
+  @doc false
+  @spec reopen_confirmed_cleanup_request(pos_integer()) :: :ok | {:error, term()}
+  def reopen_confirmed_cleanup_request(cleanup_request_id) do
+    MultipartCleanup.reopen_confirmed(cleanup_request_id)
+  end
+
+  @doc false
+  @spec resume_cleanup_request_for_replay(pos_integer()) :: :ok | {:error, term()}
+  def resume_cleanup_request_for_replay(cleanup_request_id) do
+    MultipartCleanup.resume_for_replay(cleanup_request_id)
   end
 
   defp multipart_cleanup_keys(cleanup_targets) do
@@ -415,302 +395,6 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     |> Enum.uniq()
   end
 
-  defp process_multipart_cleanup(request, cleanup_targets, multipart_keys, delete_fun, inventory_fun, consume?) do
-    case cleanup_quiescence_state(request.id) do
-      {:ok, :first_pass} ->
-        run_first_multipart_cleanup(request.id, cleanup_targets, delete_fun)
-
-      {:ok, {:deferred, seconds}} ->
-        {:deferred, seconds}
-
-      {:ok, {:verify, started_at, not_before}} ->
-        verify_multipart_quiescence(
-          request.id,
-          cleanup_targets,
-          multipart_keys,
-          started_at,
-          not_before,
-          delete_fun,
-          inventory_fun,
-          consume?
-        )
-
-      {:error, _reason} ->
-        {:error, cleanup_targets}
-    end
-  end
-
-  defp run_first_multipart_cleanup(cleanup_request_id, cleanup_targets, delete_fun) do
-    case call_multipart_delete(delete_fun, cleanup_targets) do
-      {:ok, _evidence} -> reset_multipart_quiescence_window(cleanup_request_id, nil, nil, cleanup_targets)
-      {:error, _failed_targets} -> {:error, cleanup_targets}
-    end
-  end
-
-  defp verify_multipart_quiescence(
-         cleanup_request_id,
-         cleanup_targets,
-         multipart_keys,
-         started_at,
-         not_before,
-         delete_fun,
-         inventory_fun,
-         consume?
-       ) do
-    case exact_multipart_inventory(multipart_keys, inventory_fun) do
-      {:ok, :empty} ->
-        finish_empty_multipart_inventory(
-          cleanup_request_id,
-          cleanup_targets,
-          started_at,
-          not_before,
-          delete_fun,
-          consume?
-        )
-
-      {:ok, :present} ->
-        clean_late_multipart_inventory(
-          cleanup_request_id,
-          cleanup_targets,
-          started_at,
-          not_before,
-          delete_fun
-        )
-
-      {:error, _reason} ->
-        {:error, cleanup_targets}
-    end
-  end
-
-  defp exact_multipart_inventory(multipart_keys, inventory_fun) do
-    Enum.reduce_while(multipart_keys, {:ok, :empty}, fn storage_key, {:ok, state} ->
-      storage_key
-      |> inventory_fun.()
-      |> reduce_multipart_inventory(state)
-    end)
-  rescue
-    error -> {:error, {:multipart_inventory_exception, error.__struct__}}
-  catch
-    kind, _reason -> {:error, {:multipart_inventory_failure, kind}}
-  end
-
-  defp reduce_multipart_inventory({:ok, count}, state) when is_integer(count) and count >= 0 do
-    next_state = if count > 0, do: :present, else: state
-    {:cont, {:ok, next_state}}
-  end
-
-  defp reduce_multipart_inventory({:error, reason}, _state), do: {:halt, {:error, reason}}
-
-  defp reduce_multipart_inventory(_invalid, _state), do: {:halt, {:error, :invalid_multipart_inventory_result}}
-
-  defp call_multipart_delete(delete_fun, cleanup_targets) do
-    case delete_fun.(cleanup_targets) do
-      :ok ->
-        {:ok, %{aborted_count: 0}}
-
-      {:ok, %{aborted_count: aborted_count}} when is_integer(aborted_count) and aborted_count >= 0 ->
-        {:ok, %{aborted_count: aborted_count}}
-
-      {:error, failed_targets} when is_list(failed_targets) ->
-        {:error, normalize_failed_keys(failed_targets, cleanup_targets)}
-
-      _invalid ->
-        {:error, cleanup_targets}
-    end
-  rescue
-    error ->
-      Logger.error("Durable multipart object deletion raised error=#{safe_error(error)}")
-      {:error, cleanup_targets}
-  catch
-    kind, reason ->
-      Logger.error("Durable multipart object deletion failed error=#{safe_error({kind, reason})}")
-      {:error, cleanup_targets}
-  end
-
-  defp finish_empty_multipart_inventory(cleanup_request_id, cleanup_targets, started_at, not_before, delete_fun, consume?) do
-    case call_multipart_delete(delete_fun, cleanup_targets) do
-      {:ok, %{aborted_count: 0}} ->
-        confirm_multipart_quiescence(
-          cleanup_request_id,
-          started_at,
-          not_before,
-          cleanup_targets,
-          consume?
-        )
-
-      {:ok, %{aborted_count: _positive_count}} ->
-        reset_multipart_quiescence_window(
-          cleanup_request_id,
-          started_at,
-          not_before,
-          cleanup_targets
-        )
-
-      {:error, _failed_targets} ->
-        {:error, cleanup_targets}
-    end
-  end
-
-  defp clean_late_multipart_inventory(cleanup_request_id, cleanup_targets, started_at, not_before, delete_fun) do
-    case call_multipart_delete(delete_fun, cleanup_targets) do
-      {:ok, _evidence} ->
-        reset_multipart_quiescence_window(
-          cleanup_request_id,
-          started_at,
-          not_before,
-          cleanup_targets
-        )
-
-      {:error, _failed_targets} ->
-        {:error, cleanup_targets}
-    end
-  end
-
-  defp cleanup_quiescence_state(cleanup_request_id) do
-    Repo.transact(fn ->
-      case lock_cleanup_request(cleanup_request_id) do
-        %StorageCleanupRequest{} = request ->
-          now = database_clock_now()
-          {:ok, request_quiescence_state(request, now)}
-
-        nil ->
-          {:error, :storage_cleanup_request_not_found}
-      end
-    end)
-  end
-
-  defp request_quiescence_state(
-         %StorageCleanupRequest{multipart_quiescence_started_at: nil, multipart_quiescence_not_before: nil},
-         _now
-       ), do: :first_pass
-
-  defp request_quiescence_state(
-         %StorageCleanupRequest{
-           multipart_quiescence_started_at: %DateTime{} = started_at,
-           multipart_quiescence_not_before: %DateTime{} = not_before
-         },
-         now
-       ) do
-    if DateTime.after?(not_before, now),
-      do: {:deferred, seconds_until(not_before, now)},
-      else: {:verify, started_at, not_before}
-  end
-
-  defp request_quiescence_state(_request, _now), do: {:invalid, :multipart_quiescence_shape}
-
-  defp reset_multipart_quiescence_window(cleanup_request_id, expected_started_at, expected_not_before, cleanup_targets) do
-    fn ->
-      reset_locked_multipart_quiescence(cleanup_request_id, expected_started_at, expected_not_before)
-    end
-    |> Repo.transact()
-    |> normalize_quiescence_result(cleanup_targets)
-  end
-
-  defp reset_locked_multipart_quiescence(cleanup_request_id, expected_started_at, expected_not_before) do
-    case lock_cleanup_request(cleanup_request_id) do
-      %StorageCleanupRequest{} = request ->
-        maybe_reset_multipart_quiescence(request, expected_started_at, expected_not_before)
-
-      nil ->
-        {:error, :storage_cleanup_request_not_found}
-    end
-  end
-
-  defp maybe_reset_multipart_quiescence(request, expected_started_at, expected_not_before) do
-    now = database_clock_now()
-
-    if quiescence_matches?(request, expected_started_at, expected_not_before),
-      do: persist_reset_multipart_quiescence(request, now),
-      else: defer_from_concurrent_quiescence(request, now)
-  end
-
-  defp persist_reset_multipart_quiescence(request, now) do
-    not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
-
-    request
-    |> StorageCleanupRequest.multipart_quiescence_changeset(now, not_before)
-    |> Repo.update()
-    |> case do
-      {:ok, _request} -> {:ok, {:deferred, seconds_until(not_before, now)}}
-      {:error, _changeset} -> {:error, :multipart_quiescence_not_persisted}
-    end
-  end
-
-  defp confirm_multipart_quiescence(cleanup_request_id, started_at, not_before, cleanup_targets, consume?) do
-    fn ->
-      confirm_locked_multipart_quiescence(cleanup_request_id, started_at, not_before, consume?)
-    end
-    |> Repo.transact()
-    |> normalize_confirm_quiescence(cleanup_targets)
-  end
-
-  defp confirm_locked_multipart_quiescence(cleanup_request_id, started_at, not_before, consume?) do
-    case lock_cleanup_request(cleanup_request_id) do
-      %StorageCleanupRequest{} = request ->
-        decide_multipart_quiescence_confirmation(request, started_at, not_before, consume?)
-
-      nil ->
-        {:error, :storage_cleanup_request_not_found}
-    end
-  end
-
-  defp decide_multipart_quiescence_confirmation(request, started_at, not_before, consume?) do
-    now = database_clock_now()
-
-    cond do
-      not quiescence_matches?(request, started_at, not_before) ->
-        defer_from_concurrent_quiescence(request, now)
-
-      DateTime.after?(not_before, now) ->
-        {:ok, {:deferred, seconds_until(not_before, now)}}
-
-      consume? and request.owner_kind == "storage_compensation" ->
-        consume_multipart_cleanup_receipt(request)
-
-      consume? ->
-        {:error, :multipart_cleanup_receipt_not_consumable}
-
-      true ->
-        {:ok, :confirmed}
-    end
-  end
-
-  defp consume_multipart_cleanup_receipt(request) do
-    case Repo.delete(request) do
-      {:ok, _request} -> {:ok, :confirmed}
-      {:error, _changeset} -> {:error, :multipart_cleanup_receipt_not_consumed}
-    end
-  end
-
-  defp normalize_confirm_quiescence({:ok, :confirmed}, _cleanup_targets), do: :ok
-
-  defp normalize_confirm_quiescence({:ok, {:deferred, seconds}}, _cleanup_targets), do: {:deferred, seconds}
-
-  defp normalize_confirm_quiescence({:error, _reason}, cleanup_targets), do: {:error, cleanup_targets}
-
-  defp lock_cleanup_request(cleanup_request_id) do
-    Repo.one(
-      from(request in StorageCleanupRequest,
-        where: request.id == ^cleanup_request_id,
-        lock: "FOR UPDATE"
-      )
-    )
-  end
-
-  defp quiescence_matches?(request, expected_started_at, expected_not_before) do
-    request.multipart_quiescence_started_at == expected_started_at and
-      request.multipart_quiescence_not_before == expected_not_before
-  end
-
-  defp defer_from_concurrent_quiescence(request, now) do
-    case request_quiescence_state(request, now) do
-      {:deferred, seconds} -> {:ok, {:deferred, seconds}}
-      {:verify, _started_at, _not_before} -> {:ok, {:deferred, 1}}
-      :first_pass -> {:error, :multipart_quiescence_changed}
-      {:invalid, reason} -> {:error, reason}
-    end
-  end
-
   defp database_clock_now do
     %Postgrex.Result{rows: [[now]]} = Repo.query!("SELECT clock_timestamp()")
     DateTime.truncate(now, :second)
@@ -718,14 +402,10 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
 
   defp seconds_until(not_before, now), do: max(DateTime.diff(not_before, now, :second), 1)
 
-  defp normalize_quiescence_result({:ok, {:deferred, seconds}}, _cleanup_targets), do: {:deferred, seconds}
-
-  defp normalize_quiescence_result({:error, _reason}, cleanup_targets), do: {:error, cleanup_targets}
-
   @spec enqueue_cleanup([String.t()], keyword()) :: :ok | {:error, term()}
   def enqueue_cleanup(cleanup_targets, opts \\ []) when is_list(cleanup_targets) do
-    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
-    insert_fun = Keyword.get(opts, :insert_fun, &insert_cleanup_job/1)
+    cleanup_targets = normalize_cleanup_targets(cleanup_targets)
+    insert_fun = Keyword.get(opts, :insert_fun)
     attempts = Keyword.get(opts, :attempts, @enqueue_attempts)
     retry_delay_ms = Keyword.get(opts, :retry_delay_ms, @enqueue_retry_delay_ms)
 
@@ -733,8 +413,32 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       [] ->
         :ok
 
-      cleanup_targets ->
+      cleanup_targets when is_function(insert_fun, 1) ->
         enqueue_with_retry(cleanup_targets, insert_fun, attempts, retry_delay_ms)
+
+      cleanup_targets when is_nil(insert_fun) ->
+        persist_then_enqueue_cleanup(cleanup_targets)
+
+      _cleanup_targets ->
+        {:error, :invalid_cleanup_enqueue_options}
+    end
+  end
+
+  defp persist_then_enqueue_cleanup(cleanup_targets) do
+    case persist_planned_cleanup_request(cleanup_targets) do
+      {:ok, request} ->
+        case insert_cleanup_request_job(request.id) do
+          {:ok, _job} ->
+            :ok
+
+          {:error, reason} ->
+            Logger.warning("Durable storage cleanup will rely on reconciliation queue_error=#{safe_error(reason)}")
+
+            :ok
+        end
+
+      {:error, reason} ->
+        {:error, reason}
     end
   end
 
@@ -894,6 +598,12 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     cleanup_requests =
       StorageCleanupRequest
       |> where([request], request.owner_kind == "storage_compensation")
+      |> where([request], is_nil(request.multipart_cleanup_phase) or request.multipart_cleanup_phase != "blocked")
+      |> where(
+        [request],
+        is_nil(request.multipart_cleanup_next_attempt_at) or
+          request.multipart_cleanup_next_attempt_at <= fragment("clock_timestamp()")
+      )
       |> where(
         [request],
         is_nil(request.multipart_quiescence_not_before) or
@@ -916,14 +626,164 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     if failed_count == 0, do: :ok, else: {:error, failed_count}
   end
 
+  @doc false
+  @spec enqueue_due_cleanup_request_jobs(pos_integer(), keyword()) ::
+          :ok | {:error, non_neg_integer()}
+  def enqueue_due_cleanup_request_jobs(limit \\ @persisted_cleanup_batch_size, opts \\ [])
+
+  def enqueue_due_cleanup_request_jobs(limit, opts) when is_integer(limit) and limit > 0 and is_list(opts) do
+    insert_fun = Keyword.get(opts, :insert_fun, &insert_cleanup_request_job/1)
+
+    if is_function(insert_fun, 1) do
+      cleanup_request_ids = due_cleanup_request_ids_without_delivery(limit)
+
+      failed_count =
+        Enum.count(cleanup_request_ids, fn cleanup_request_id ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          case safe_insert_cleanup_request_job(insert_fun, cleanup_request_id) do
+            {:ok, _job} -> false
+            {:error, _reason} -> true
+          end
+        end)
+
+      :telemetry.execute(
+        [:storyarn, :assets, :storage_compensation, :delivery_reconciliation],
+        %{count: length(cleanup_request_ids), failed_count: failed_count},
+        %{}
+      )
+
+      if failed_count == 0, do: :ok, else: {:error, failed_count}
+    else
+      {:error, 1}
+    end
+  end
+
+  def enqueue_due_cleanup_request_jobs(_limit, _opts), do: {:error, 1}
+
+  defp due_cleanup_request_ids_without_delivery(limit) do
+    worker = to_string(DeleteStorageObjectsWorker)
+    incomplete_states = ["available", "scheduled", "executing", "retryable"]
+
+    StorageCleanupRequest
+    |> join(:left, [request], job in Oban.Job,
+      on:
+        job.worker == ^worker and job.state in ^incomplete_states and
+          fragment("?->>'cleanup_request_id' = CAST(? AS text)", job.args, request.id)
+    )
+    |> where([request, _job], request.owner_kind == "storage_compensation")
+    |> where([request, _job], is_nil(request.multipart_cleanup_phase) or request.multipart_cleanup_phase != "blocked")
+    |> where(
+      [request, _job],
+      is_nil(request.multipart_cleanup_next_attempt_at) or
+        request.multipart_cleanup_next_attempt_at <= fragment("clock_timestamp()")
+    )
+    |> where(
+      [request, _job],
+      is_nil(request.multipart_quiescence_not_before) or
+        request.multipart_quiescence_not_before <= fragment("clock_timestamp()")
+    )
+    |> where([_request, job], is_nil(job.id))
+    |> order_by([request, _job], asc: request.inserted_at, asc: request.id)
+    |> limit(^limit)
+    |> select([request, _job], request.id)
+    |> Repo.all()
+  end
+
+  defp safe_insert_cleanup_request_job(insert_fun, cleanup_request_id) do
+    case insert_fun.(cleanup_request_id) do
+      {:ok, %Oban.Job{}} = success -> success
+      {:error, reason} -> {:error, reason}
+      _invalid -> {:error, :invalid_cleanup_delivery_result}
+    end
+  rescue
+    _exception -> {:error, :cleanup_delivery_exception}
+  catch
+    _kind, _reason -> {:error, :cleanup_delivery_failure}
+  end
+
+  @doc false
+  @spec retry_persisted_cleanup_request_by_id(pos_integer(), keyword()) ::
+          :ok | :blocked | {:deferred, pos_integer()} | {:error, term()}
+  def retry_persisted_cleanup_request_by_id(cleanup_request_id, opts \\ [])
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  def retry_persisted_cleanup_request_by_id(cleanup_request_id, opts)
+      when is_integer(cleanup_request_id) and cleanup_request_id > 0 and is_list(opts) do
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{owner_kind: "storage_compensation", multipart_cleanup_phase: "blocked"} ->
+        :blocked
+
+      %StorageCleanupRequest{owner_kind: "storage_compensation"} = request ->
+        case retry_persisted_cleanup_request(request, opts) do
+          :ok -> :ok
+          :deferred -> deferred_request_result(cleanup_request_id)
+          :error -> failed_request_result(cleanup_request_id)
+        end
+
+      %StorageCleanupRequest{} ->
+        {:error, :storage_cleanup_request_not_consumable}
+
+      nil ->
+        :ok
+    end
+  end
+
+  def retry_persisted_cleanup_request_by_id(_cleanup_request_id, _opts), do: {:error, :invalid_storage_cleanup_request}
+
+  defp failed_request_result(cleanup_request_id) do
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{owner_kind: "storage_compensation", multipart_cleanup_phase: "blocked"} ->
+        :blocked
+
+      %StorageCleanupRequest{
+        owner_kind: "storage_compensation",
+        multipart_cleanup_next_attempt_at: %DateTime{} = next_at
+      } ->
+        {:deferred, seconds_until(next_at, TimeHelpers.now())}
+
+      %StorageCleanupRequest{} ->
+        {:error, :storage_cleanup_failed}
+
+      nil ->
+        :ok
+    end
+  end
+
+  defp deferred_request_result(cleanup_request_id) do
+    now = TimeHelpers.now()
+
+    case Repo.get(StorageCleanupRequest, cleanup_request_id) do
+      %StorageCleanupRequest{multipart_cleanup_next_attempt_at: %DateTime{} = next_at} = request ->
+        if DateTime.after?(next_at, now),
+          do: {:deferred, seconds_until(next_at, now)},
+          else: deferred_quiescence_result(request, now)
+
+      %StorageCleanupRequest{} = request ->
+        deferred_quiescence_result(request, now)
+
+      nil ->
+        :ok
+    end
+  end
+
+  defp deferred_quiescence_result(%StorageCleanupRequest{multipart_quiescence_not_before: %DateTime{} = not_before}, now) do
+    if DateTime.after?(not_before, now),
+      do: {:deferred, seconds_until(not_before, now)},
+      else: {:deferred, 1}
+  end
+
+  defp deferred_quiescence_result(%StorageCleanupRequest{}, _now), do: {:deferred, 1}
+
   @doc "Returns aggregate backlog gauges for durable storage-compensation requests."
   @spec cleanup_request_backlog() :: %{
           pending_count: non_neg_integer(),
           due_count: non_neg_integer(),
           deferred_multipart_count: non_neg_integer(),
+          blocked_multipart_count: non_neg_integer(),
           oldest_age_seconds: non_neg_integer(),
           oldest_due_age_seconds: non_neg_integer()
         }
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
   def cleanup_request_backlog do
     now = TimeHelpers.now()
 
@@ -936,10 +796,22 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
             due_count:
               filter(
                 count(request.id),
-                is_nil(request.multipart_quiescence_not_before) or
-                  request.multipart_quiescence_not_before <= ^now
+                (is_nil(request.multipart_cleanup_phase) or request.multipart_cleanup_phase != "blocked") and
+                  (is_nil(request.multipart_cleanup_next_attempt_at) or
+                     request.multipart_cleanup_next_attempt_at <= ^now) and
+                  (is_nil(request.multipart_quiescence_not_before) or
+                     request.multipart_quiescence_not_before <= ^now)
               ),
-            deferred_multipart_count: filter(count(request.id), request.multipart_quiescence_not_before > ^now),
+            deferred_multipart_count:
+              filter(
+                count(request.id),
+                (is_nil(request.multipart_cleanup_phase) or request.multipart_cleanup_phase != "blocked") and
+                  ((not is_nil(request.multipart_cleanup_next_attempt_at) and
+                      request.multipart_cleanup_next_attempt_at > ^now) or
+                     (not is_nil(request.multipart_quiescence_not_before) and
+                        request.multipart_quiescence_not_before > ^now))
+              ),
+            blocked_multipart_count: filter(count(request.id), request.multipart_cleanup_phase == "blocked"),
             oldest_inserted_at: min(request.inserted_at),
             oldest_due_at:
               filter(
@@ -949,8 +821,11 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
                     :utc_datetime
                   )
                 ),
-                is_nil(request.multipart_quiescence_not_before) or
-                  request.multipart_quiescence_not_before <= ^now
+                (is_nil(request.multipart_cleanup_phase) or request.multipart_cleanup_phase != "blocked") and
+                  (is_nil(request.multipart_cleanup_next_attempt_at) or
+                     request.multipart_cleanup_next_attempt_at <= ^now) and
+                  (is_nil(request.multipart_quiescence_not_before) or
+                     request.multipart_quiescence_not_before <= ^now)
               )
           }
         )
@@ -960,6 +835,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       pending_count: stats.pending_count,
       due_count: stats.due_count,
       deferred_multipart_count: stats.deferred_multipart_count,
+      blocked_multipart_count: stats.blocked_multipart_count,
       oldest_age_seconds: age_seconds(stats.oldest_inserted_at, now),
       oldest_due_age_seconds: age_seconds(stats.oldest_due_at, now)
     }
@@ -1113,9 +989,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     end
   end
 
-  defp insert_cleanup_job(storage_keys) do
-    storage_keys
-    |> then(&%{"storage_keys" => &1})
+  defp insert_cleanup_request_job(cleanup_request_id) do
+    %{"cleanup_request_id" => cleanup_request_id}
     |> DeleteStorageObjectsWorker.new()
     |> Oban.insert()
   end
@@ -1192,7 +1067,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   @spec persist_cleanup_request([String.t()]) ::
           {:ok, StorageCleanupRequest.t()} | {:error, term()}
   def persist_cleanup_request(cleanup_targets) when is_list(cleanup_targets) do
-    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
     case cleanup_targets do
       [] -> {:error, :no_valid_storage_keys}
@@ -1209,38 +1084,57 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   @spec persist_planned_cleanup_request([String.t()], keyword()) ::
           {:ok, StorageCleanupRequest.t()} | {:error, term()}
   def persist_planned_cleanup_request(cleanup_targets, opts) when is_list(cleanup_targets) and is_list(opts) do
-    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
-    case cleanup_targets do
-      [] ->
-        {:error, :no_valid_storage_keys}
-
-      cleanup_targets ->
-        cleanup_targets
-        |> insert_cleanup_request(%{}, :planned_handoff)
-        |> defer_planned_cleanup(Keyword.get(opts, :not_before))
+    with true <- Keyword.keyword?(opts),
+         {:ok, attrs} <- planned_cleanup_request_attrs(opts) do
+      case cleanup_targets do
+        [] -> {:error, :no_valid_storage_keys}
+        cleanup_targets -> insert_cleanup_request(cleanup_targets, attrs, :planned_handoff)
+      end
+    else
+      false -> {:error, :invalid_cleanup_options}
+      {:error, _reason} = error -> error
     end
   end
 
-  defp defer_planned_cleanup({:ok, _request} = result, nil), do: result
+  defp planned_cleanup_request_attrs(opts) do
+    with true <- Enum.all?(Keyword.keys(opts), &(&1 in [:not_before, :provider_namespace_fingerprint])),
+         {:ok, attrs} <- planned_namespace_attrs(Keyword.get(opts, :provider_namespace_fingerprint)),
+         {:ok, attrs} <- planned_not_before_attrs(attrs, Keyword.get(opts, :not_before)) do
+      {:ok, attrs}
+    else
+      false -> {:error, :invalid_cleanup_options}
+      {:error, _reason} = error -> error
+    end
+  end
 
-  defp defer_planned_cleanup({:ok, request}, %DateTime{} = not_before) do
+  defp planned_namespace_attrs(nil), do: {:ok, %{}}
+
+  defp planned_namespace_attrs(fingerprint) do
+    if Storage.valid_namespace_fingerprint?(fingerprint),
+      do: {:ok, %{provider_namespace_fingerprint: fingerprint}},
+      else: {:error, :invalid_cleanup_provider_namespace_fingerprint}
+  end
+
+  defp planned_not_before_attrs(attrs, nil), do: {:ok, attrs}
+
+  defp planned_not_before_attrs(attrs, %DateTime{} = not_before) do
     now = database_clock_now()
 
     if DateTime.after?(not_before, now),
-      do: request |> StorageCleanupRequest.multipart_quiescence_changeset(now, not_before) |> Repo.update(),
-      else: {:ok, request}
+      do: {:ok, Map.merge(attrs, %{multipart_quiescence_started_at: now, multipart_quiescence_not_before: not_before})},
+      else: {:ok, attrs}
   end
 
-  defp defer_planned_cleanup({:ok, _request}, _invalid), do: {:error, :invalid_cleanup_not_before}
-  defp defer_planned_cleanup({:error, _reason} = error, _not_before), do: error
+  defp planned_not_before_attrs(_attrs, _invalid), do: {:error, :invalid_cleanup_not_before}
 
   @doc false
   @spec persist_snapshot_lifecycle_cleanup([String.t()], Ecto.UUID.t(), String.t()) ::
           {:ok, StorageCleanupRequest.t()} | {:error, term()}
   def persist_snapshot_lifecycle_cleanup(cleanup_targets, owner_token, provider_namespace_fingerprint)
       when is_list(cleanup_targets) and is_binary(owner_token) and is_binary(provider_namespace_fingerprint) do
-    cleanup_targets = cleanup_targets |> Enum.filter(&valid_cleanup_target?/1) |> Enum.uniq()
+    cleanup_targets = normalize_cleanup_targets(cleanup_targets)
 
     case cleanup_targets do
       [] ->
@@ -1263,16 +1157,10 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     do: {:error, :invalid_snapshot_cleanup_owner}
 
   defp insert_cleanup_request(storage_keys, attrs, persistence_kind) do
-    attrs = Map.put(attrs, :storage_keys, storage_keys)
-
-    case %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert() do
-      {:ok, cleanup_request} = success ->
-        report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
-
-        success
-
-      {:error, _changeset} = error ->
-        error
+    with {:ok, attrs} <- prepare_cleanup_request_attrs(storage_keys, attrs),
+         {:ok, cleanup_request} <- insert_cleanup_request_with_handoff(storage_keys, attrs) do
+      report_cleanup_request_persisted(cleanup_request, storage_keys, persistence_kind)
+      {:ok, cleanup_request}
     end
   rescue
     error ->
@@ -1284,6 +1172,92 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       Logger.error("Could not persist #{cleanup_persistence_label(persistence_kind)} error=#{safe_error({kind, reason})}")
 
       {:error, {kind, safe_error(reason)}}
+  end
+
+  defp insert_cleanup_request_with_handoff(storage_keys, attrs) do
+    with_cleanup_handoff(storage_keys, fn ->
+      with {:ok, attrs} <- finalize_cleanup_request_attrs(storage_keys, attrs) do
+        attrs = Map.put(attrs, :storage_keys, storage_keys)
+        %StorageCleanupRequest{} |> StorageCleanupRequest.changeset(attrs) |> Repo.insert()
+      end
+    end)
+  end
+
+  defp with_cleanup_handoff(storage_keys, fun) do
+    if multipart_cleanup_keys(storage_keys) == [] do
+      StorageKeyLock.with_cleanup_handoff_locks(storage_keys, fun)
+    else
+      # A multipart restore/import cleanup can also own deterministic blob
+      # keys. Their durable owner rows are committed before object I/O and are
+      # rechecked before deletion; ordinary asset keys are non-reusable UUIDs.
+      # Any future reusable writer for one of these keys must join the global
+      # admission gate before it may rely on this mixed-request handoff.
+      StorageKeyLock.with_multipart_cleanup_handoff(storage_keys, fun)
+    end
+  end
+
+  defp prepare_cleanup_request_attrs(storage_keys, attrs) do
+    if multipart_cleanup_keys(storage_keys) == [] do
+      {:ok, drop_unused_provider_namespace(attrs)}
+    else
+      case Map.get(attrs, :provider_namespace_fingerprint) do
+        fingerprint when is_binary(fingerprint) ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          if Storage.valid_namespace_fingerprint?(fingerprint),
+            do: {:ok, Map.put_new(attrs, :multipart_cleanup_phase, "discover")},
+            else: {:error, :invalid_cleanup_provider_namespace_fingerprint}
+
+        nil ->
+          capture_missing_provider_namespace(attrs)
+      end
+    end
+  rescue
+    _exception -> {:error, :multipart_cleanup_provider_namespace_unavailable}
+  catch
+    _kind, _reason -> {:error, :multipart_cleanup_provider_namespace_unavailable}
+  end
+
+  defp drop_unused_provider_namespace(%{owner_kind: "snapshot_lifecycle"} = attrs), do: attrs
+  defp drop_unused_provider_namespace(attrs), do: Map.delete(attrs, :provider_namespace_fingerprint)
+
+  defp finalize_cleanup_request_attrs(storage_keys, attrs) do
+    if multipart_cleanup_keys(storage_keys) == [] do
+      {:ok, attrs}
+    else
+      now = database_clock_now()
+      minimum_not_before = DateTime.add(now, Storage.multipart_cleanup_quiescence_seconds(), :second)
+
+      not_before = cleanup_not_before(Map.get(attrs, :multipart_quiescence_not_before), minimum_not_before)
+
+      {:ok,
+       Map.merge(attrs, %{
+         multipart_quiescence_started_at: now,
+         multipart_quiescence_not_before: not_before
+       })}
+    end
+  end
+
+  defp cleanup_not_before(%DateTime{} = requested, minimum_not_before) do
+    if DateTime.after?(requested, minimum_not_before), do: requested, else: minimum_not_before
+  end
+
+  defp cleanup_not_before(_missing_or_short, minimum_not_before), do: minimum_not_before
+
+  defp capture_missing_provider_namespace(attrs) do
+    if Repo.in_transaction?() do
+      {:error, :multipart_cleanup_provider_namespace_capture_required}
+    else
+      case Storage.namespace_fingerprint() do
+        {:ok, fingerprint} when is_binary(fingerprint) ->
+          {:ok,
+           attrs
+           |> Map.put(:provider_namespace_fingerprint, fingerprint)
+           |> Map.put(:multipart_cleanup_phase, "discover")}
+
+        _unavailable ->
+          {:error, :multipart_cleanup_provider_namespace_unavailable}
+      end
+    end
   end
 
   # Planned handoffs are often inserted inside a wider transaction. Reporting
@@ -1353,11 +1327,88 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   defp persisted_retry_result({:ok, _request}, result), do: result
   defp persisted_retry_result({:error, _changeset}, _result), do: :error
 
+  defp authorize_multipart_cleanup_targets(cleanup_targets) do
+    Enum.reduce_while(cleanup_targets, :ok, fn storage_key, :ok ->
+      case authorize_multipart_cleanup_target(storage_key) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp authorize_multipart_cleanup_target(storage_key) do
+    if Storage.multipart_cleanup_key?(storage_key) do
+      case multipart_cleanup_object_policy(storage_key) do
+        policy when policy in [:delete, :retain] -> :ok
+        {:error, _reason} = error -> error
+      end
+    else
+      {:error, :multipart_cleanup_target_not_deletable}
+    end
+  end
+
+  # credo:disable-for-next-line Credo.Check.Refactor.CyclomaticComplexity
+  defp multipart_cleanup_object_policy(cleanup_target) do
+    storage_key = cleanup_target_storage_key(cleanup_target)
+    force_delete? = force_delete_target?(cleanup_target)
+
+    cond do
+      not valid_cleanup_target?(cleanup_target) ->
+        {:error, :invalid_multipart_cleanup_target}
+
+      active_restore_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_reservation}
+
+      active_workspace_snapshot_import_storage_owner?(storage_key) ->
+        {:error, :storage_key_owned_by_active_workspace_snapshot_import}
+
+      committed_asset_key?(storage_key) ->
+        :retain
+
+      committed_template_storage_key?(storage_key) ->
+        :retain
+
+      committed_snapshot_storage_key?(storage_key) ->
+        :retain
+
+      Storage.multipart_cleanup_key?(storage_key) ->
+        :delete
+
+      match?({:ok, _project_id}, StorageKeyLock.project_blob_id(storage_key)) ->
+        conservative_project_blob_cleanup_policy(storage_key, force_delete?)
+
+      true ->
+        :delete
+    end
+  end
+
+  defp conservative_project_blob_cleanup_policy(storage_key, true) do
+    {:ok, project_id, expected_hash} = StorageKeyLock.project_blob_identity(storage_key)
+
+    case stored_object_hash(storage_key) do
+      {:ok, ^expected_hash} ->
+        if committed_project?(project_id), do: :retain, else: :delete
+
+      {:ok, _invalid_hash} ->
+        :delete
+
+      {:error, reason} ->
+        if storage_not_found?(reason),
+          do: :delete,
+          else: {:error, :force_cleanup_identity_verification_failed}
+    end
+  end
+
+  defp conservative_project_blob_cleanup_policy(storage_key, false) do
+    {:ok, project_id} = StorageKeyLock.project_blob_id(storage_key)
+    if committed_project?(project_id), do: :retain, else: :delete
+  end
+
   defp safe_deferred_storage_delete(cleanup_target, restore_cleanup_owner) do
     storage_key = cleanup_target_storage_key(cleanup_target)
     force_delete? = force_delete_target?(cleanup_target)
 
-    StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+    StorageKeyLock.with_cleanup_storage_key_lock(storage_key, fn ->
       deferred_storage_delete(storage_key, force_delete?, restore_cleanup_owner)
     end)
   rescue
@@ -1374,7 +1425,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     if Repo.in_transaction?() do
       delete_owned_storage_key_in_transaction(storage_key, force_delete?)
     else
-      StorageKeyLock.with_storage_key_lock(storage_key, fn ->
+      StorageKeyLock.with_cleanup_storage_key_lock(storage_key, fn ->
         deferred_storage_delete(storage_key, force_delete?)
       end)
     end
@@ -1487,37 +1538,9 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   # validating the key, fencing it with `StorageKeyLock`, and proving that no
   # committed owner must retain it.
   defp delete_storage_object(storage_key) do
-    with {:ok, aborted_count} <- Storage.abort_incomplete_multipart_uploads(storage_key),
-         :ok <- Storage.delete_after_policy_check(storage_key) do
-      record_multipart_cleanup_evidence(aborted_count)
-      report_aborted_multipart_uploads(aborted_count)
-      :ok
-    end
-  end
-
-  defp record_multipart_cleanup_evidence(aborted_count) when is_integer(aborted_count) and aborted_count >= 0 do
-    case Process.get(@multipart_cleanup_evidence_key, :not_collecting) do
-      count when is_integer(count) and count >= 0 ->
-        Process.put(@multipart_cleanup_evidence_key, count + aborted_count)
-        :ok
-
-      :not_collecting ->
-        :ok
-    end
-  end
-
-  defp restore_multipart_cleanup_evidence(:not_collecting), do: Process.delete(@multipart_cleanup_evidence_key)
-
-  defp restore_multipart_cleanup_evidence(previous), do: Process.put(@multipart_cleanup_evidence_key, previous)
-
-  defp report_aborted_multipart_uploads(0), do: :ok
-
-  defp report_aborted_multipart_uploads(count) when is_integer(count) and count > 0 do
-    :telemetry.execute(
-      [:storyarn, :assets, :storage_compensation, :multipart_aborted],
-      %{count: count},
-      %{}
-    )
+    if Storage.multipart_cleanup_key?(storage_key),
+      do: {:error, :multipart_cleanup_requires_durable_request},
+      else: Storage.delete_after_policy_check(storage_key)
   end
 
   defp committed_asset_key?(storage_key) do
@@ -1536,7 +1559,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
   defp active_restore_storage_owner_query(storage_key) do
     from reservation in StorageReservation,
       where:
-        reservation.kind == "restore_staging" and reservation.status == "active" and
+        reservation.kind in ^@storage_reservation_record_kinds and reservation.status == "active" and
           not is_nil(reservation.storage_started_at) and
           fragment("? @> ARRAY[?]::text[]", reservation.cleanup_storage_keys, ^storage_key)
   end
@@ -1555,7 +1578,8 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
       from import in WorkspaceSnapshotImport,
         where:
           import.status in ^WorkspaceSnapshotImport.active_statuses() and
-            fragment("? @> ARRAY[?]::varchar[]", import.materialization_storage_keys, ^storage_key)
+            (fragment("? @> ARRAY[?]::varchar[]", import.staging_storage_keys, ^storage_key) or
+               fragment("? @> ARRAY[?]::varchar[]", import.materialization_storage_keys, ^storage_key))
     )
   end
 
@@ -1832,7 +1856,7 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     case String.split(storage_key, "/", trim: false) do
       ["projects", project_id, "storage-reservations", "v1", kind, lease_token | tail] ->
         valid_project_id?(project_id) and
-          kind in @storage_reservation_kinds and
+          kind in @storage_reservation_path_kinds and
           String.match?(lease_token, @storage_reservation_lease_pattern) and
           valid_storage_reservation_tail?(tail)
 
@@ -1922,6 +1946,42 @@ defmodule Storyarn.Projects.Assets.StorageCompensation do
     else
       _invalid -> :error
     end
+  end
+
+  # A provider object may only have one cleanup policy in a durable request.
+  # Preserve first-seen provider-key order, while making the stricter
+  # force-delete intent win when callers supplied both representations.
+  defp normalize_cleanup_targets(cleanup_targets) do
+    {provider_keys, targets_by_key} =
+      Enum.reduce(cleanup_targets, {[], %{}}, fn cleanup_target, {provider_keys, targets_by_key} ->
+        if valid_cleanup_target?(cleanup_target) do
+          storage_key = cleanup_target_storage_key(cleanup_target)
+          first_observation? = not Map.has_key?(targets_by_key, storage_key)
+
+          selected_target =
+            case Map.get(targets_by_key, storage_key) do
+              nil ->
+                cleanup_target
+
+              existing ->
+                # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+                cond do
+                  force_delete_target?(existing) -> existing
+                  force_delete_target?(cleanup_target) -> cleanup_target
+                  true -> existing
+                end
+            end
+
+          provider_keys = if first_observation?, do: [storage_key | provider_keys], else: provider_keys
+          {provider_keys, Map.put(targets_by_key, storage_key, selected_target)}
+        else
+          {provider_keys, targets_by_key}
+        end
+      end)
+
+    provider_keys
+    |> Enum.reverse()
+    |> Enum.map(&Map.fetch!(targets_by_key, &1))
   end
 
   defp valid_cleanup_target?(cleanup_target) when is_binary(cleanup_target) do

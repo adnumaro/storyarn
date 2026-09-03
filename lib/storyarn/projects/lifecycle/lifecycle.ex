@@ -40,6 +40,10 @@ defmodule Storyarn.Projects.Lifecycle do
     to: WorkspaceDataLifecycle,
     as: :prepare_hard_delete
 
+  defdelegate prepare_workspace_data_hard_delete(workspace_id, provider_namespace_fingerprint),
+    to: WorkspaceDataLifecycle,
+    as: :prepare_hard_delete
+
   defdelegate publish_committed_workspace_data_hard_delete(preparation),
     to: WorkspaceDataLifecycle,
     as: :publish_committed_hard_delete

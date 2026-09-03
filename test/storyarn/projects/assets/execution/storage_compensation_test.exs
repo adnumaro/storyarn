@@ -337,6 +337,116 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert String.ends_with?(cleanup_target, storage_key)
   end
 
+  test "durable cleanup keeps one provider key and lets force-delete intent win" do
+    storage_key = "projects/1/blobs/#{String.duplicate("d", 64)}.png"
+    force_target = "__storyarn_force_delete__:" <> storage_key
+
+    assert {:ok, %StorageCleanupRequest{storage_keys: [^force_target]}} =
+             StorageCompensation.persist_planned_cleanup_request([
+               storage_key,
+               force_target,
+               storage_key
+             ])
+  end
+
+  test "provider namespace identity is read freshly from local metadata under a database checkout" do
+    assert {:ok, fingerprint} = ObjectStorage.namespace_fingerprint()
+
+    assert {:ok, ^fingerprint} =
+             Repo.transact(fn ->
+               assert Repo.checked_out?()
+               assert ObjectStorage.namespace_fingerprint() == {:ok, fingerprint}
+               Storage.namespace_fingerprint()
+             end)
+  end
+
+  test "multipart handoff captures local provider identity under a checkout without a transaction" do
+    storage_key = "projects/1/snapshots/archives/v2/staging/NamespaceCap0001/snapshot.zip"
+    assert {:ok, fingerprint} = Storage.namespace_fingerprint()
+
+    assert {:ok, %StorageCleanupRequest{provider_namespace_fingerprint: ^fingerprint}} =
+             Repo.checkout(fn ->
+               assert Repo.checked_out?()
+               refute Repo.in_transaction?()
+               StorageCompensation.persist_planned_cleanup_request([storage_key])
+             end)
+  end
+
+  test "multipart handoff requires a previously captured provider namespace inside a transaction" do
+    storage_key =
+      "projects/1/snapshots/archives/v2/staging/NamespaceCap0001/snapshot.zip"
+
+    assert {:error, :multipart_cleanup_provider_namespace_capture_required} =
+             Repo.transact(fn ->
+               StorageCompensation.persist_planned_cleanup_request([storage_key])
+             end)
+
+    fingerprint = String.duplicate("a", 64)
+
+    assert {:ok,
+            %StorageCleanupRequest{
+              storage_keys: [^storage_key],
+              provider_namespace_fingerprint: ^fingerprint
+            }} =
+             Repo.transact(fn ->
+               StorageCompensation.persist_planned_cleanup_request([storage_key],
+                 provider_namespace_fingerprint: fingerprint
+               )
+             end)
+  end
+
+  test "planned multipart deferral clamps a short deadline to the complete writer drain" do
+    storage_key =
+      "projects/1/snapshots/archives/v2/staging/AtomicDefer00001/snapshot.zip"
+
+    fingerprint = String.duplicate("a", 64)
+    quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
+
+    requested_not_before =
+      TimeHelpers.now()
+      |> DateTime.add(max(div(quiescence_seconds, 2), 1), :second)
+      |> DateTime.truncate(:second)
+
+    assert {:ok,
+            %StorageCleanupRequest{
+              provider_namespace_fingerprint: ^fingerprint,
+              multipart_cleanup_phase: "discover",
+              multipart_quiescence_started_at: %DateTime{} = started_at,
+              multipart_quiescence_not_before: %DateTime{} = not_before
+            }} =
+             StorageCompensation.persist_planned_cleanup_request([storage_key],
+               provider_namespace_fingerprint: fingerprint,
+               not_before: requested_not_before
+             )
+
+    assert DateTime.diff(not_before, started_at, :second) == quiescence_seconds
+    assert DateTime.after?(not_before, requested_not_before)
+  end
+
+  test "planned multipart deferral preserves an explicit deadline longer than the writer drain" do
+    storage_key =
+      "projects/1/snapshots/archives/v2/staging/AtomicDefer00002/snapshot.zip"
+
+    fingerprint = String.duplicate("a", 64)
+    quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
+    not_before = TimeHelpers.now() |> DateTime.add(quiescence_seconds + 300, :second) |> DateTime.truncate(:second)
+
+    assert {:ok,
+            %StorageCleanupRequest{
+              provider_namespace_fingerprint: ^fingerprint,
+              multipart_cleanup_phase: "discover",
+              multipart_quiescence_started_at: %DateTime{} = started_at,
+              multipart_quiescence_not_before: ^not_before
+            }} =
+             StorageCompensation.persist_planned_cleanup_request([storage_key],
+               provider_namespace_fingerprint: fingerprint,
+               not_before: not_before
+             )
+
+    assert DateTime.diff(not_before, started_at, :second) >= quiescence_seconds
+    assert DateTime.before?(started_at, not_before)
+  end
+
   test "force cleanup deletes a verified-invalid canonical blob for a committed project" do
     user = user_fixture()
     project = project_fixture(user)
@@ -389,6 +499,93 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:ok, _url} = Storage.upload(storage_key, repaired_content, "image/png")
     assert :ok = StorageCompensation.delete_storage_keys([cleanup_target])
     assert {:ok, ^repaired_content} = Storage.download(storage_key)
+  end
+
+  test "mixed multipart cleanup force-deletes an invalid canonical blob for a committed project" do
+    user = user_fixture()
+    project = project_fixture(user)
+    expected_hash = :sha256 |> :crypto.hash("expected content") |> Base.encode16(case: :lower)
+    blob_key = "projects/#{project.id}/blobs/#{expected_hash}.png"
+    force_target = "__storyarn_force_delete__:" <> blob_key
+
+    multipart_key =
+      "projects/#{project.id}/snapshots/archives/v2/staging/MixedCleanup0001/snapshot.zip"
+
+    assert {:ok, _url} = Storage.upload(blob_key, "invalid content", "image/png")
+    on_exit(fn -> Storage.delete(blob_key) end)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([multipart_key, force_target])
+
+    provider_namespace_fingerprint = request.provider_namespace_fingerprint
+
+    opts = [
+      namespace_fun: fn -> {:ok, provider_namespace_fingerprint} end,
+      list_fun: fn ^multipart_key ->
+        {:ok, %{uploads: [], inventory_complete: true}}
+      end,
+      step_limit: 100
+    ]
+
+    assert {:deferred, handoff_seconds} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys, opts)
+
+    assert handoff_seconds > 1
+    assert Repo.get!(StorageCleanupRequest, request.id).multipart_cleanup_phase == "discover"
+    assert {:ok, _stat} = Storage.stat(blob_key)
+    expire_multipart_quiescence!(request.id)
+
+    assert {:deferred, quiet_seconds} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys, opts)
+
+    assert quiet_seconds > 1
+    assert {:error, :enoent} = Storage.stat(blob_key)
+
+    expire_multipart_quiescence!(request.id)
+
+    assert :ok = StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys, opts)
+
+    assert %StorageCleanupRequest{multipart_cleanup_phase: "confirmed"} =
+             Repo.get!(StorageCleanupRequest, request.id)
+  end
+
+  test "durable ordinary cleanup rejects targets owned by another request" do
+    user = user_fixture()
+    project = project_fixture(user)
+    owned_key = cleanup_asset_key("owned", project.id)
+    unrelated_key = cleanup_asset_key("unrelated", project.id)
+
+    assert {:ok, _url} = Storage.upload(unrelated_key, "keep me", "image/png")
+    on_exit(fn -> Storage.delete(unrelated_key) end)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, [^unrelated_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [unrelated_key])
+
+    assert {:ok, "keep me"} = Storage.download(unrelated_key)
+  end
+
+  test "durable ordinary cleanup rejects a batch without valid targets" do
+    owned_key = cleanup_asset_key("owned")
+    assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([owned_key])
+
+    assert {:error, []} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, ["../invalid"])
+  end
+
+  test "durable mixed cleanup rejects a batch that omits its multipart target" do
+    ordinary_key = cleanup_asset_key("ordinary")
+
+    multipart_key =
+      "projects/1/snapshots/archives/v2/staging/MissingBatch0001/snapshot.zip"
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([ordinary_key, multipart_key])
+
+    assert {:error, [^ordinary_key]} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, [ordinary_key])
   end
 
   test "force cleanup rechecks repaired bytes inside a lock-owned transaction" do
@@ -733,8 +930,32 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     pending_project_snapshot_fixture(project, %{version_number: 1, object_prefix: prefix})
 
     assert {:ok, _url} = Storage.upload(storage_key, "partial", "application/zip")
-    assert :ok = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:error, [^storage_key]} = StorageCompensation.delete_storage_keys([storage_key])
+    assert {:ok, "partial"} = Storage.download(storage_key)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([storage_key])
+
+    expire_multipart_quiescence!(request.id)
+
+    assert {:deferred, seconds} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
+               consume?: true,
+               step_limit: 100
+             )
+
+    assert seconds == Storage.multipart_cleanup_quiescence_seconds()
     assert {:error, :enoent} = Storage.download(storage_key)
+
+    expire_multipart_quiescence!(request.id)
+
+    assert :ok =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
+               consume?: true,
+               step_limit: 100
+             )
+
+    refute Repo.get(StorageCleanupRequest, request.id)
   end
 
   test "deferred cleanup retains ready snapshot objects with durable accounting ownership" do
@@ -811,8 +1032,33 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert :ok = StorageCompensation.delete_storage_keys([published_key])
     assert {:ok, "published"} = Storage.download(published_key)
 
-    assert :ok = StorageCompensation.delete_storage_keys([poisoned_key])
+    assert {:error, [^poisoned_key]} = StorageCompensation.delete_storage_keys([poisoned_key])
+    assert {:ok, "poisoned"} = Storage.download(poisoned_key)
+
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request([published_key, poisoned_key])
+
+    expire_multipart_quiescence!(request.id)
+
+    assert {:deferred, seconds} =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
+               consume?: true,
+               step_limit: 100
+             )
+
+    assert seconds == Storage.multipart_cleanup_quiescence_seconds()
+    assert {:ok, "published"} = Storage.download(published_key)
     assert {:error, :enoent} = Storage.download(poisoned_key)
+
+    expire_multipart_quiescence!(request.id)
+
+    assert :ok =
+             StorageCompensation.delete_cleanup_request_keys(request.id, request.storage_keys,
+               consume?: true,
+               step_limit: 100
+             )
+
+    refute Repo.get(StorageCleanupRequest, request.id)
   end
 
   test "deferred cleanup preserves unique storage adopted by a committed asset" do
@@ -1539,55 +1785,112 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
       "projects/1/snapshots/archives/v2/staging/#{token}/manifest.json"
     ]
 
-    request = Repo.insert!(%StorageCleanupRequest{storage_keys: storage_keys})
+    assert {:ok, request} =
+             StorageCompensation.persist_planned_cleanup_request(storage_keys)
+
+    late_key = List.first(storage_keys)
+    late_upload_id = "late-upload-id"
 
     {:ok, provider} =
       Agent.start_link(fn ->
-        %{aborted_count: 0, delete_calls: 0, inventory_calls: 0, inventory: :empty}
+        %{
+          abort_calls: 0,
+          delete_calls: 0,
+          inventory_calls: 0,
+          state_calls: 0,
+          inventory: :empty,
+          present_keys: MapSet.new(storage_keys)
+        }
       end)
 
-    delete_fun = fn ^storage_keys ->
-      Agent.get_and_update(provider, fn state ->
-        result = {:ok, %{aborted_count: state.aborted_count}}
-        {result, Map.update!(state, :delete_calls, fn count -> count + 1 end)}
-      end)
-    end
-
-    inventory_fun = fn storage_key ->
+    list_fun = fn storage_key ->
       assert storage_key in storage_keys
 
       Agent.get_and_update(provider, fn state ->
         result =
           case state.inventory do
-            :empty -> {:ok, 0}
-            :late -> {:ok, 1}
-            :error -> {:error, :provider_unavailable}
+            :empty ->
+              {:ok, %{uploads: [], inventory_complete: true}}
+
+            :late when storage_key == late_key ->
+              {:ok,
+               %{
+                 uploads: [%{key: late_key, upload_id: late_upload_id}],
+                 inventory_complete: true
+               }}
+
+            :late ->
+              {:ok, %{uploads: [], inventory_complete: true}}
+
+            :error ->
+              {:error, :provider_unavailable}
           end
 
         {result, Map.update!(state, :inventory_calls, fn count -> count + 1 end)}
       end)
     end
 
-    retry_opts = [delete_fun: delete_fun, inventory_fun: inventory_fun]
+    abort_fun = fn ^late_key, ^late_upload_id ->
+      Agent.update(provider, fn state ->
+        state
+        |> Map.put(:inventory, :empty)
+        |> Map.update!(:abort_calls, fn count -> count + 1 end)
+      end)
 
+      :ok
+    end
+
+    state_fun = fn ^late_key, ^late_upload_id ->
+      Agent.update(provider, &Map.update!(&1, :state_calls, fn count -> count + 1 end))
+      {:ok, :absent_now}
+    end
+
+    object_delete_fun = fn storage_key, "provider-etag" ->
+      assert storage_key in storage_keys
+
+      Agent.update(provider, fn state ->
+        state
+        |> Map.update!(:delete_calls, fn count -> count + 1 end)
+        |> Map.update!(:present_keys, &MapSet.delete(&1, storage_key))
+      end)
+
+      :ok
+    end
+
+    retry_opts = [
+      namespace_fun: fn -> {:ok, request.provider_namespace_fingerprint} end,
+      list_fun: list_fun,
+      abort_fun: abort_fun,
+      state_fun: state_fun,
+      object_delete_fun: object_delete_fun,
+      step_limit: 100,
+      stat_fun: fn storage_key ->
+        assert storage_key in storage_keys
+
+        if Agent.get(provider, &MapSet.member?(&1.present_keys, storage_key)) do
+          {:ok, %{size: 1, content_type: "application/octet-stream", identity: "provider-etag"}}
+        else
+          {:error, :enoent}
+        end
+      end
+    ]
+
+    expire_multipart_quiescence!(request.id)
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
 
     assert %StorageCleanupRequest{
+             multipart_cleanup_phase: "quiet",
              multipart_quiescence_started_at: %DateTime{},
              multipart_quiescence_not_before: %DateTime{}
            } = Repo.get!(StorageCleanupRequest, request.id)
 
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 1,
-             inventory_calls: 0
-           }
+    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) ==
+             %{delete_calls: 2, inventory_calls: 2}
 
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
 
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 1,
-             inventory_calls: 0
-           }
+    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) ==
+             %{delete_calls: 2, inventory_calls: 2}
 
     expire_multipart_quiescence!(request.id)
     failed_markers = cleanup_request_quiescence(request.id)
@@ -1596,101 +1899,113 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
     assert {:error, 1} = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
     assert cleanup_request_quiescence(request.id) == failed_markers
 
-    Agent.update(provider, &Map.put(&1, :inventory, :late))
+    make_cleanup_request_due!(request.id)
+
+    Agent.update(provider, fn state ->
+      state
+      |> Map.put(:inventory, :late)
+      |> Map.put(:present_keys, MapSet.new(storage_keys))
+    end)
+
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
 
     reset_markers = cleanup_request_quiescence(request.id)
     refute reset_markers == failed_markers
 
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 2,
-             inventory_calls: 3
-           }
+    assert Agent.get(provider, &Map.take(&1, [:abort_calls, :delete_calls])) ==
+             %{abort_calls: 1, delete_calls: 4}
 
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
 
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 2,
-             inventory_calls: 3
-           }
+    assert cleanup_request_quiescence(request.id) == reset_markers
 
     expire_multipart_quiescence!(request.id)
-    expired_after_late_markers = cleanup_request_quiescence(request.id)
-    Agent.update(provider, &Map.put(&1, :inventory, :empty))
-    Agent.update(provider, &Map.put(&1, :aborted_count, 1))
-
-    assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
-    assert Repo.get(StorageCleanupRequest, request.id)
-
-    post_inventory_abort_markers = cleanup_request_quiescence(request.id)
-    refute post_inventory_abort_markers == expired_after_late_markers
-
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 3,
-             inventory_calls: 5
-           }
-
-    assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
-
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 3,
-             inventory_calls: 5
-           }
-
-    expire_multipart_quiescence!(request.id)
-    Agent.update(provider, &Map.put(&1, :aborted_count, 0))
 
     assert :ok = StorageCompensation.retry_persisted_cleanup_requests(100, retry_opts)
     refute Repo.get(StorageCleanupRequest, request.id)
 
-    assert Agent.get(provider, &Map.take(&1, [:delete_calls, :inventory_calls])) == %{
-             delete_calls: 4,
-             inventory_calls: 7
-           }
+    assert Agent.get(provider, &Map.take(&1, [:abort_calls, :delete_calls, :state_calls])) ==
+             %{abort_calls: 1, delete_calls: 4, state_calls: 1}
   end
 
-  test "does not consume a compensation receipt whose quiescence window resets before confirm" do
+  test "does not consume a compensation receipt whose durable generation restarts during confirmation" do
     key = "projects/1/snapshots/archives/v2/staging/QuiescenceRace01/snapshot.zip"
-    now = TimeHelpers.now()
-
-    request =
-      Repo.insert!(%StorageCleanupRequest{
-        storage_keys: [key],
-        multipart_quiescence_started_at: DateTime.add(now, -2, :second),
-        multipart_quiescence_not_before: DateTime.add(now, -1, :second)
-      })
+    assert {:ok, request} = StorageCompensation.persist_planned_cleanup_request([key])
 
     test_process = self()
+    {:ok, inventory_calls} = Agent.start_link(fn -> 0 end)
+
+    list_fun = fn ^key ->
+      call = Agent.get_and_update(inventory_calls, fn count -> {count + 1, count + 1} end)
+
+      if call == 3 do
+        send(test_process, :multipart_confirmation_inventory_started)
+        receive do: (:confirm -> :ok)
+      end
+
+      {:ok, %{uploads: [], inventory_complete: true}}
+    end
+
+    cleanup_opts = [
+      namespace_fun: fn -> {:ok, request.provider_namespace_fingerprint} end,
+      list_fun: list_fun,
+      object_delete_fun: fn ^key, _identity -> :ok end,
+      stat_fun: fn ^key -> {:error, :enoent} end,
+      step_limit: 100
+    ]
+
+    expire_multipart_quiescence!(request.id)
+
+    assert {:deferred, _seconds} =
+             StorageCompensation.delete_cleanup_request_keys(
+               request.id,
+               request.storage_keys,
+               cleanup_opts
+             )
+
+    expire_multipart_quiescence!(request.id)
 
     cleanup =
       Task.async(fn ->
-        StorageCompensation.delete_cleanup_request_keys(request.id, [key],
-          consume?: true,
-          inventory_fun: fn ^key -> {:ok, 0} end,
-          delete_fun: fn [^key] ->
-            send(test_process, :multipart_delete_ready_to_confirm)
-            receive do: (:confirm -> {:ok, %{aborted_count: 0}})
-          end
+        StorageCompensation.delete_cleanup_request_keys(
+          request.id,
+          request.storage_keys,
+          Keyword.put(cleanup_opts, :consume?, true)
         )
       end)
 
-    assert_receive :multipart_delete_ready_to_confirm
+    assert_receive :multipart_confirmation_inventory_started
 
     reset_started_at = TimeHelpers.now()
     reset_not_before = DateTime.add(reset_started_at, Storage.multipart_cleanup_quiescence_seconds(), :second)
 
-    {1, nil} =
-      Repo.update_all(
-        from(row in StorageCleanupRequest, where: row.id == ^request.id),
-        set: [
-          multipart_quiescence_started_at: reset_started_at,
-          multipart_quiescence_not_before: reset_not_before
-        ]
-      )
+    request.id
+    |> then(&Repo.get!(StorageCleanupRequest, &1))
+    |> StorageCleanupRequest.multipart_cleanup_changeset(%{
+      multipart_cleanup_phase: "quiet",
+      multipart_cleanup_generation: request.multipart_cleanup_generation + 2,
+      multipart_cleanup_cursor: 0,
+      multipart_cleanup_inventory_complete: true,
+      multipart_cleanup_claim_token: nil,
+      multipart_cleanup_claim_expires_at: nil,
+      multipart_cleanup_failure_count: 0,
+      multipart_cleanup_next_attempt_at: nil,
+      multipart_cleanup_last_error_code: nil,
+      multipart_quiescence_started_at: reset_started_at,
+      multipart_quiescence_not_before: reset_not_before
+    })
+    |> Repo.update!()
 
     send(cleanup.pid, :confirm)
 
-    assert {:deferred, seconds} = Task.await(cleanup)
+    assert {:error, [^key]} = Task.await(cleanup)
+
+    assert {:deferred, seconds} =
+             StorageCompensation.delete_cleanup_request_keys(
+               request.id,
+               request.storage_keys,
+               cleanup_opts
+             )
 
     quiescence_seconds = Storage.multipart_cleanup_quiescence_seconds()
     assert seconds in (quiescence_seconds - 1)..quiescence_seconds
@@ -1798,6 +2113,20 @@ defmodule Storyarn.Projects.Assets.StorageCompensationTest do
         set: [
           multipart_quiescence_started_at: DateTime.add(now, -2, :second),
           multipart_quiescence_not_before: DateTime.add(now, -1, :second)
+        ]
+      )
+
+    :ok
+  end
+
+  defp make_cleanup_request_due!(cleanup_request_id) do
+    {1, nil} =
+      Repo.update_all(
+        from(request in StorageCleanupRequest, where: request.id == ^cleanup_request_id),
+        set: [
+          multipart_cleanup_claim_token: nil,
+          multipart_cleanup_claim_expires_at: nil,
+          multipart_cleanup_next_attempt_at: nil
         ]
       )
 

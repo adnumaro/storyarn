@@ -33,6 +33,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   @duplicate_delivery_snooze_seconds 30
   @upload_ttl_seconds 3_600
   @max_live_upload_grants 3
+  @provider_namespace_pattern ~r/\A[0-9a-f]{64}\z/
 
   @doc "Validates and stages a local upload without holding a database checkout during file I/O."
   def request(scope, workspace, uploaded_path, attrs, opts \\ [])
@@ -431,25 +432,33 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp discard_upload(%{user: _} = scope, %{id: _} = workspace, import_id) do
     result =
-      Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
-        with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
-             %WorkspaceSnapshotImport{} = upload <-
-               WorkspaceSnapshotImport
-               |> where(
-                 [import],
-                 import.id == ^import_id and import.workspace_id == ^locked_workspace.id and import.status == "uploading"
-               )
-               |> lock("FOR UPDATE")
-               |> Repo.one(),
-             {:ok, _cleanup_request} <-
-               persist_import_cleanup(upload, upload.staging_storage_keys),
-             {:ok, deleted} <- Repo.delete(upload) do
-          {:ok, deleted}
-        else
-          nil -> {:error, :workspace_snapshot_upload_not_found}
-          {:error, _reason} = error -> error
-        end
-      end)
+      with {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+        Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
+               %WorkspaceSnapshotImport{} = upload <-
+                 WorkspaceSnapshotImport
+                 |> where(
+                   [import],
+                   import.id == ^import_id and import.workspace_id == ^locked_workspace.id and
+                     import.status == "uploading"
+                 )
+                 |> lock("FOR UPDATE")
+                 |> Repo.one(),
+               {:ok, _cleanup_request} <-
+                 persist_import_cleanup(
+                   upload,
+                   upload.staging_storage_keys,
+                   provider_namespace_fingerprint
+                 ),
+               {:ok, deleted} <- Repo.delete(upload) do
+            {:ok, deleted}
+          else
+            nil -> {:error, :workspace_snapshot_upload_not_found}
+            {:error, _reason} = error -> error
+          end
+        end)
+      end
 
     case result do
       {:ok, discarded} ->
@@ -884,34 +893,41 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
 
     result =
-      Commercial.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
-        with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import),
-             %User{} = requester <- Repo.get(User, locked_import.user_id),
-             {:ok, _membership} <-
-               authorize_locked_import_member(%{user: requester}, locked_workspace),
-             :ok <- normalize_project_capacity(Commercial.can_publish_reserved_project?(locked_workspace)),
-             {:ok, unreserved} <- clear_reservation(locked_import),
-             {:ok, %Project{} = project} <-
-               materialize_fun.(locked_workspace.id, plan.project, requester.id,
-                 asset_copy_tracker: tracker,
-                 snapshot_import_asset_catalog_fun: catalog_fun,
-                 snapshot_import_project_id: locked_import.reserved_project_id
-               ),
-             {:ok, completed} <-
-               unreserved
-               |> WorkspaceSnapshotImport.completed_changeset(project)
-               |> Repo.update(),
-             {:ok, _cleanup_request} <-
-               persist_import_cleanup(locked_import, locked_import.staging_storage_keys),
-             {:ok, notification_outcome} <-
-               deliver_result(completed, project, requester, "success"),
-             :ok <- StorageCompensation.prepare_unretained_cleanup(tracker) do
-          {:ok, {completed, notification_outcome}}
-        else
-          nil -> {:error, :workspace_snapshot_import_context_changed}
-          {:error, _reason} = error -> error
-        end
-      end)
+      with {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+        Commercial.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import),
+               %User{} = requester <- Repo.get(User, locked_import.user_id),
+               {:ok, _membership} <-
+                 authorize_locked_import_member(%{user: requester}, locked_workspace),
+               :ok <- normalize_project_capacity(Commercial.can_publish_reserved_project?(locked_workspace)),
+               {:ok, unreserved} <- clear_reservation(locked_import),
+               {:ok, %Project{} = project} <-
+                 materialize_fun.(locked_workspace.id, plan.project, requester.id,
+                   asset_copy_tracker: tracker,
+                   snapshot_import_asset_catalog_fun: catalog_fun,
+                   snapshot_import_project_id: locked_import.reserved_project_id
+                 ),
+               {:ok, completed} <-
+                 unreserved
+                 |> WorkspaceSnapshotImport.completed_changeset(project)
+                 |> Repo.update(),
+               {:ok, _cleanup_request} <-
+                 persist_import_cleanup(
+                   locked_import,
+                   locked_import.staging_storage_keys,
+                   provider_namespace_fingerprint
+                 ),
+               {:ok, notification_outcome} <-
+                 deliver_result(completed, project, requester, "success"),
+               :ok <- StorageCompensation.prepare_unretained_cleanup(tracker) do
+            {:ok, {completed, notification_outcome}}
+          else
+            nil -> {:error, :workspace_snapshot_import_context_changed}
+            {:error, _reason} = error -> error
+          end
+        end)
+      end
 
     case result do
       {:ok, {completed, notification_outcome}} ->
@@ -1011,13 +1027,16 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   end
 
   defp reconcile_abandoned_delivery(%{import_id: import_id, workspace_id: workspace_id, stale_before: stale_before}) do
-    workspace_id
-    |> Commercial.transact_with_workspace_lock(fn _workspace ->
-      import_id
-      |> lock_reconciliation_import()
-      |> reconcile_locked_import(stale_before)
-    end)
-    |> finalize_reconciliation()
+    result =
+      with {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+        Commercial.transact_with_workspace_lock(workspace_id, fn _workspace ->
+          import_id
+          |> lock_reconciliation_import()
+          |> reconcile_locked_import(stale_before, provider_namespace_fingerprint)
+        end)
+      end
+
+    finalize_reconciliation(result)
   end
 
   defp lock_reconciliation_import(import_id) do
@@ -1027,18 +1046,23 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     |> Repo.one()
   end
 
-  defp reconcile_locked_import(nil, _stale_before), do: {:ok, :changed}
+  defp reconcile_locked_import(nil, _stale_before, _provider_namespace_fingerprint), do: {:ok, :changed}
 
-  defp reconcile_locked_import(%WorkspaceSnapshotImport{status: status}, _stale_before)
+  defp reconcile_locked_import(%WorkspaceSnapshotImport{status: status}, _stale_before, _provider_namespace_fingerprint)
        when status not in @active_statuses, do: {:ok, :changed}
 
   defp reconcile_locked_import(
          %WorkspaceSnapshotImport{status: "uploading", updated_at: updated_at} = import,
-         stale_before
+         stale_before,
+         provider_namespace_fingerprint
        ) do
     if DateTime.before?(updated_at, stale_before) do
       with {:ok, _cleanup_request} <-
-             persist_import_cleanup(import, import.staging_storage_keys),
+             persist_import_cleanup(
+               import,
+               import.staging_storage_keys,
+               provider_namespace_fingerprint
+             ),
            {:ok, deleted} <- Repo.delete(import) do
         {:ok, {:discarded_upload, deleted}}
       end
@@ -1047,16 +1071,17 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp reconcile_locked_import(%WorkspaceSnapshotImport{} = import, _stale_before) do
+  defp reconcile_locked_import(%WorkspaceSnapshotImport{} = import, _stale_before, provider_namespace_fingerprint) do
     if abandoned_delivery_job?(get_delivery_job(import.oban_job_id)),
-      do: terminalize_abandoned_import(import),
+      do: terminalize_abandoned_import(import, provider_namespace_fingerprint),
       else: {:ok, :changed}
   end
 
-  defp terminalize_abandoned_import(import) do
+  defp terminalize_abandoned_import(import, provider_namespace_fingerprint) do
     case terminalize_import_locked(
            import,
-           "snapshot_import_delivery_abandoned"
+           "snapshot_import_delivery_abandoned",
+           provider_namespace_fingerprint
          ) do
       {:ok, {failed, notification_outcome}} ->
         {:ok, {:terminalized, failed, notification_outcome}}
@@ -1119,12 +1144,18 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp fail_terminal(import, code) do
     result =
-      Commercial.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
-        case lock_owned_running(import) do
-          %WorkspaceSnapshotImport{} = active -> terminalize_import_locked(active, code)
-          nil -> {:error, :workspace_snapshot_import_context_changed}
-        end
-      end)
+      with {:ok, provider_namespace_fingerprint} <- provider_namespace_fingerprint() do
+        Commercial.transact_with_workspace_lock(import.workspace_id, fn _locked_workspace ->
+          # credo:disable-for-next-line Credo.Check.Refactor.Nesting
+          case lock_owned_running(import) do
+            %WorkspaceSnapshotImport{} = active ->
+              terminalize_import_locked(active, code, provider_namespace_fingerprint)
+
+            nil ->
+              {:error, :workspace_snapshot_import_context_changed}
+          end
+        end)
+      end
 
     case result do
       {:ok, {failed, notification_outcome}} ->
@@ -1140,7 +1171,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp terminalize_import_locked(active, code) do
+  defp terminalize_import_locked(active, code, provider_namespace_fingerprint) do
     requester = Repo.get(User, active.user_id)
 
     with {:ok, failed} <-
@@ -1151,7 +1182,11 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
            })
            |> Repo.update(),
          {:ok, _cleanup_request} <-
-           persist_import_cleanup(active, cleanup_storage_keys(active)),
+           persist_import_cleanup(
+             active,
+             cleanup_storage_keys(active),
+             provider_namespace_fingerprint
+           ),
          {:ok, notification_outcome} <-
            deliver_result(failed, nil, requester, "failure") do
       {:ok, {failed, notification_outcome}}
@@ -1190,7 +1225,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   # A presigned PUT remains reusable until expiry. Keep the durable cleanup
   # receipt asleep beyond that window so cancel, rejection, failure and success
   # cannot consume it before a cooperative browser finishes or aborts the PUT.
-  defp persist_import_cleanup(import, storage_keys) do
+  defp persist_import_cleanup(import, storage_keys, provider_namespace_fingerprint) do
     not_before =
       DateTime.add(
         import.inserted_at,
@@ -1198,7 +1233,22 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
         :second
       )
 
-    StorageCompensation.persist_planned_cleanup_request(storage_keys, not_before: not_before)
+    StorageCompensation.persist_planned_cleanup_request(storage_keys,
+      not_before: not_before,
+      provider_namespace_fingerprint: provider_namespace_fingerprint
+    )
+  end
+
+  defp provider_namespace_fingerprint do
+    case Storage.namespace_fingerprint() do
+      {:ok, fingerprint} when is_binary(fingerprint) ->
+        if Regex.match?(@provider_namespace_pattern, fingerprint),
+          do: {:ok, fingerprint},
+          else: {:error, :snapshot_import_unavailable}
+
+      {:error, _reason} ->
+        {:error, :snapshot_import_unavailable}
+    end
   end
 
   defp delete_provisional_objects(storage_keys), do: Enum.each(storage_keys, &delete_provisional_object/1)

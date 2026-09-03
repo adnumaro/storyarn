@@ -13,9 +13,8 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   alias Storyarn.Platform.ObjectStorage, as: Storage
 
   @conditional_copy_attempts 3
-  @stream_chunk_size 1_048_576
-  @multipart_chunk_size 5 * 1024 * 1024
   @multipart_cleanup_page_size 100
+  @multipart_cleanup_batch_size 100
   @multipart_cleanup_max_uploads 10_000
   @multipart_inventory_max_pages 100
   @multipart_inventory_max_response_bytes 2 * 1024 * 1024
@@ -28,10 +27,15 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   @impl true
   def upload(key, data, content_type) do
     bucket = bucket()
+    deadline = Storage.write_operation_deadline()
+    request = ExAws.S3.put_object(bucket, key, data, content_type: content_type)
 
-    case bucket
-         |> ExAws.S3.put_object(key, data, content_type: content_type)
-         |> ExAws.request() do
+    case request_with_deadline(
+           request,
+           deadline,
+           :object_upload_timeout,
+           :object_upload_task_exit
+         ) do
       {:ok, _response} ->
         {:ok, get_url(key)}
 
@@ -51,9 +55,14 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   end
 
   defp initiate_multipart_upload(key, content_type) do
-    case bucket()
-         |> ExAws.S3.initiate_multipart_upload(key, content_type: content_type)
-         |> ExAws.request() do
+    request = ExAws.S3.initiate_multipart_upload(bucket(), key, content_type: content_type)
+
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :multipart_upload_initiation_timeout,
+           :multipart_upload_initiation_task_exit
+         ) do
       {:ok, %{body: %{upload_id: upload_id}}} when is_binary(upload_id) and upload_id != "" ->
         {:ok, upload_id}
 
@@ -77,9 +86,15 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   end
 
   defp complete_multipart_upload(key, upload_id, parts) do
-    case bucket()
-         |> ExAws.S3.complete_multipart_upload(key, upload_id, parts)
-         |> ExAws.request() do
+    request = ExAws.S3.complete_multipart_upload(bucket(), key, upload_id, parts)
+
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :multipart_upload_completion_timeout,
+           :multipart_upload_completion_task_exit,
+           protocol_undefined_error: :invalid_multipart_upload_completion_response
+         ) do
       {:ok, response} -> validate_multipart_completion(response, key)
       {:error, reason} -> {:error, reason}
     end
@@ -133,45 +148,78 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   end
 
   defp request_upload_part(request) do
-    task = Task.async(fn -> run_upload_part_request(request) end)
-
-    task
-    |> Task.yield(Storage.multipart_upload_part_deadline_ms())
-    |> resolve_upload_part_yield(task)
+    request_with_deadline(
+      request,
+      Storage.write_operation_deadline(),
+      :multipart_upload_part_timeout,
+      :multipart_upload_part_task_exit
+    )
   end
 
-  defp run_upload_part_request(request) do
+  defp request_with_deadline(request, deadline, timeout_error, task_exit_error, opts \\ []) do
+    remaining_ms = deadline - System.monotonic_time(:millisecond)
+    protocol_undefined_error = Keyword.get(opts, :protocol_undefined_error)
+
+    if remaining_ms > 0 do
+      task = Task.async(fn -> run_multipart_request(request, protocol_undefined_error) end)
+
+      task
+      |> Task.yield(remaining_ms)
+      |> resolve_multipart_request_yield(task, timeout_error, task_exit_error)
+    else
+      {:error, timeout_error}
+    end
+  end
+
+  defp run_multipart_request(request, protocol_undefined_error) do
     {:request_result, ExAws.request(request)}
   rescue
-    _exception -> {:request_failed, :exception}
+    Protocol.UndefinedError ->
+      if is_nil(protocol_undefined_error),
+        do: {:request_failed, :exception},
+        else: {:request_error, protocol_undefined_error}
+
+    _exception ->
+      {:request_failed, :exception}
   catch
     kind, _reason -> {:request_failed, kind}
   end
 
-  defp resolve_upload_part_yield({:ok, result}, _task), do: normalize_upload_part_result(result)
+  defp resolve_multipart_request_yield({:ok, result}, _task, _timeout_error, task_exit_error),
+    do: normalize_multipart_request_result(result, task_exit_error)
 
-  defp resolve_upload_part_yield({:exit, _reason}, _task), do: {:error, :multipart_upload_part_task_exit}
+  defp resolve_multipart_request_yield({:exit, _reason}, _task, _timeout_error, task_exit_error),
+    do: {:error, task_exit_error}
 
-  defp resolve_upload_part_yield(nil, task) do
+  defp resolve_multipart_request_yield(nil, task, timeout_error, task_exit_error) do
     task
     |> Task.shutdown(:brutal_kill)
-    |> normalize_upload_part_shutdown()
+    |> normalize_multipart_request_shutdown(timeout_error, task_exit_error)
   end
 
-  defp normalize_upload_part_result({:request_result, result}), do: result
+  defp normalize_multipart_request_result({:request_result, result}, _task_exit_error), do: result
 
-  defp normalize_upload_part_result({:request_failed, _kind}), do: {:error, :multipart_upload_part_task_exit}
+  defp normalize_multipart_request_result({:request_error, reason}, _task_exit_error), do: {:error, reason}
 
-  defp normalize_upload_part_shutdown({:ok, result}), do: normalize_upload_part_result(result)
+  defp normalize_multipart_request_result({:request_failed, _kind}, task_exit_error), do: {:error, task_exit_error}
 
-  defp normalize_upload_part_shutdown({:exit, _reason}), do: {:error, :multipart_upload_part_task_exit}
+  defp normalize_multipart_request_shutdown({:ok, result}, _timeout_error, task_exit_error),
+    do: normalize_multipart_request_result(result, task_exit_error)
 
-  defp normalize_upload_part_shutdown(nil), do: {:error, :multipart_upload_part_timeout}
+  defp normalize_multipart_request_shutdown({:exit, _reason}, _timeout_error, task_exit_error),
+    do: {:error, task_exit_error}
+
+  defp normalize_multipart_request_shutdown(nil, timeout_error, _task_exit_error), do: {:error, timeout_error}
 
   defp abort_failed_multipart_upload(key, upload_id, upload_reason) do
-    case bucket()
-         |> ExAws.S3.abort_multipart_upload(key, upload_id)
-         |> ExAws.request() do
+    request = ExAws.S3.abort_multipart_upload(bucket(), key, upload_id)
+
+    case request_with_deadline(
+           request,
+           Storage.fresh_request_deadline(),
+           :multipart_upload_abort_timeout,
+           :multipart_upload_abort_task_exit
+         ) do
       {:ok, _response} ->
         {:error, upload_reason}
 
@@ -186,6 +234,49 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
          {:ok, max_passes} <- multipart_cleanup_pass_limit(opts) do
       abort_until_multipart_inventory_empty(key, max_uploads, max_passes, 0)
     end
+  end
+
+  @impl true
+  def list_incomplete_multipart_uploads(key, opts) do
+    with true <- Keyword.keyword?(opts),
+         {:ok, batch_size} <- multipart_cleanup_batch_limit(opts),
+         {:ok, page} <- list_multipart_upload_page(key, nil, batch_size),
+         :ok <- validate_multipart_page(page, batch_size),
+         {:ok, uploads} <- exact_multipart_uploads(page.uploads, key) do
+      {:ok,
+       %{
+         uploads: Enum.map(uploads, fn {upload_key, upload_id} -> %{key: upload_key, upload_id: upload_id} end),
+         inventory_complete: exact_multipart_inventory_complete?(page, key)
+       }}
+    else
+      false -> {:error, :invalid_multipart_inventory_request}
+      {:error, _reason} = error -> error
+    end
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
+  end
+
+  @impl true
+  def abort_incomplete_multipart_upload(key, upload_id) do
+    case do_abort_multipart_upload(key, upload_id) do
+      :ok -> :ok
+      {:error, _provider_reason} -> {:error, :multipart_cleanup_provider_error}
+    end
+  rescue
+    _exception -> {:error, :multipart_cleanup_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_cleanup_provider_error}
+  end
+
+  @impl true
+  def incomplete_multipart_upload_state(key, upload_id) do
+    multipart_upload_reference_state(key, upload_id)
+  rescue
+    _exception -> {:error, :multipart_inventory_provider_error}
+  catch
+    _kind, _reason -> {:error, :multipart_inventory_provider_error}
   end
 
   @impl true
@@ -234,6 +325,16 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     case Keyword.get(opts, :max_passes, 3) do
       passes when is_integer(passes) and passes > 0 and passes <= 10 -> {:ok, passes}
       _invalid -> {:error, :invalid_multipart_cleanup_pass_limit}
+    end
+  end
+
+  defp multipart_cleanup_batch_limit(opts) do
+    case Keyword.get(opts, :batch_size, @multipart_cleanup_batch_size) do
+      batch_size when is_integer(batch_size) and batch_size > 0 and batch_size <= @multipart_cleanup_batch_size ->
+        {:ok, batch_size}
+
+      _invalid ->
+        {:error, :invalid_multipart_cleanup_batch_limit}
     end
   end
 
@@ -314,7 +415,12 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
       |> ExAws.S3.list_multipart_uploads(opts)
       |> Map.put(:parser, &parse_multipart_upload_page/1)
 
-    case ExAws.request(request) do
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :multipart_inventory_timeout,
+           :multipart_inventory_task_exit
+         ) do
       {:ok, %{body: page}} when is_map(page) ->
         normalize_multipart_page_encoding(page, encoding)
 
@@ -515,9 +621,16 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     |> Enum.reduce_while({:ok, []}, fn
       %{key: upload_key, upload_id: upload_id}, {:ok, exact}
       when is_binary(upload_key) and is_binary(upload_id) and upload_id != "" ->
-        if upload_key == key,
-          do: {:cont, {:ok, [{upload_key, upload_id} | exact]}},
-          else: {:cont, {:ok, exact}}
+        cond do
+          upload_key == key ->
+            {:cont, {:ok, [{upload_key, upload_id} | exact]}}
+
+          String.starts_with?(upload_key, key) ->
+            {:cont, {:ok, exact}}
+
+          true ->
+            {:halt, {:error, :invalid_multipart_cleanup_response}}
+        end
 
       _invalid, _acc ->
         {:halt, {:error, :invalid_multipart_cleanup_response}}
@@ -526,6 +639,18 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
       {:ok, exact} -> {:ok, Enum.reverse(exact)}
       {:error, _reason} = error -> error
     end
+  end
+
+  # ListMultipartUploads is ordered by key and then upload id. Once a page has
+  # crossed the exact requested key, later truncated pages can contain only
+  # sibling keys and do not keep this exact-key inventory open forever.
+  defp exact_multipart_inventory_complete?(%{is_truncated: "false"}, _key), do: true
+
+  defp exact_multipart_inventory_complete?(%{uploads: uploads}, key) do
+    Enum.any?(uploads, fn
+      %{key: upload_key} when is_binary(upload_key) -> upload_key > key
+      _invalid -> false
+    end)
   end
 
   defp multipart_page_continuation(%{is_truncated: "false"}, _cursor, _seen), do: {:ok, nil}
@@ -557,7 +682,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   defp abort_multipart_upload_until_empty(_key, _upload_id, 0), do: {:error, :multipart_cleanup_not_quiescent}
 
   defp abort_multipart_upload_until_empty(key, upload_id, remaining_passes) do
-    with :ok <- abort_multipart_upload(key, upload_id),
+    with :ok <- do_abort_multipart_upload(key, upload_id),
          {:ok, parts_state} <- multipart_upload_parts_state(key, upload_id) do
       case parts_state do
         :empty -> :ok
@@ -566,31 +691,56 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     end
   end
 
-  defp abort_multipart_upload(key, upload_id) do
-    case bucket() |> ExAws.S3.abort_multipart_upload(key, upload_id) |> ExAws.request() do
+  defp do_abort_multipart_upload(key, upload_id) do
+    request = ExAws.S3.abort_multipart_upload(bucket(), key, upload_id)
+
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :multipart_cleanup_abort_timeout,
+           :multipart_cleanup_abort_task_exit
+         ) do
       {:ok, _response} -> :ok
       {:error, {:http_error, 404, _response}} -> :ok
       {:error, reason} -> {:error, {:multipart_cleanup_abort_failed, reason}}
     end
   end
 
-  defp multipart_upload_parts_state(key, upload_id) do
-    case bucket()
-         |> ExAws.S3.list_parts(key, upload_id, max_parts: 1)
-         |> ExAws.request() do
-      {:ok, %{body: %{parts: []}}} -> {:ok, :empty}
-      {:ok, %{body: %{parts: [_part | _rest]}}} -> {:ok, :present}
-      {:error, {:http_error, 404, _response}} -> {:ok, :empty}
+  defp multipart_upload_reference_state(key, upload_id) do
+    request = ExAws.S3.list_parts(bucket(), key, upload_id, max_parts: 1)
+
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :multipart_inventory_provider_error,
+           :multipart_inventory_provider_error
+         ) do
+      {:ok, %{body: %{parts: parts}}} when is_list(parts) -> {:ok, :present}
+      {:error, {:http_error, 404, _response}} -> {:ok, :absent_now}
       {:ok, _invalid} -> {:error, :invalid_multipart_parts_response}
-      {:error, reason} -> {:error, {:multipart_parts_inventory_failed, reason}}
+      {:error, _reason} -> {:error, :multipart_inventory_provider_error}
+    end
+  end
+
+  defp multipart_upload_parts_state(key, upload_id) do
+    case multipart_upload_reference_state(key, upload_id) do
+      {:ok, :absent_now} -> {:ok, :empty}
+      {:ok, :present} -> {:ok, :present}
+      {:error, _reason} = error -> error
     end
   end
 
   @impl true
   def put_if_absent(key, data, content_type) do
     request = ExAws.S3.put_object(bucket(), key, data, content_type: content_type, if_none_match: "*")
+    deadline = Storage.write_operation_deadline()
 
-    case ExAws.request(request) do
+    case request_with_deadline(
+           request,
+           deadline,
+           :conditional_put_timeout,
+           :conditional_put_task_exit
+         ) do
       {:ok, _response} -> {:ok, get_url(key), true}
       {:error, {:http_error, 412, _response}} -> {:ok, get_url(key), false}
       {:error, reason} -> {:error, reason}
@@ -607,7 +757,36 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
 
   @impl true
   def stat(key) do
-    case bucket() |> ExAws.S3.head_object(key) |> ExAws.request() do
+    case head_object_metadata(key) do
+      {:ok, metadata} -> {:ok, Map.take(metadata, [:size, :etag, :content_type])}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  @impl true
+  def object_probe(key) do
+    case head_object_metadata(key) do
+      {:ok, %{size: size, etag: identity, content_type: content_type}}
+      when is_binary(identity) and identity != "" and is_binary(content_type) and content_type != "" ->
+        {:ok, %{size: size, identity: identity, content_type: content_type}}
+
+      {:ok, _metadata} ->
+        {:error, :invalid_object_probe_response}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
+  end
+
+  defp head_object_metadata(key) do
+    request = ExAws.S3.head_object(bucket(), key)
+
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :object_stat_timeout,
+           :object_stat_task_exit
+         ) do
       {:ok, %{headers: headers}} ->
         with {:ok, size} <- integer_header(headers, "content-length") do
           {:ok,
@@ -666,9 +845,14 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
 
   @impl true
   def delete(key) do
-    bucket = bucket()
+    request = ExAws.S3.delete_object(bucket(), key)
 
-    case bucket |> ExAws.S3.delete_object(key) |> ExAws.request() do
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :object_delete_timeout,
+           :object_delete_task_exit
+         ) do
       {:ok, _response} -> :ok
       {:error, reason} -> {:error, reason}
     end
@@ -680,7 +864,12 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
     request = ExAws.S3.delete_object(bucket(), key)
     request = %{request | headers: Map.put(request.headers, "if-match", expected_identity)}
 
-    case ExAws.request(request) do
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :conditional_delete_timeout,
+           :conditional_delete_task_exit
+         ) do
       {:ok, _response} -> :ok
       {:error, {:http_error, 404, _response}} -> :ok
       {:error, {:http_error, 412, _response}} -> {:error, :object_changed}
@@ -756,8 +945,10 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   @impl true
   def copy(source_key, dest_key) do
     bucket = bucket()
+    deadline = Storage.write_operation_deadline()
+    request = ExAws.S3.put_object_copy(bucket, dest_key, bucket, source_key)
 
-    case bucket |> ExAws.S3.put_object_copy(dest_key, bucket, source_key) |> ExAws.request() do
+    case request_with_deadline(request, deadline, :object_copy_timeout, :object_copy_task_exit) do
       {:ok, response} -> validate_copy_response(response)
       {:error, reason} -> {:error, reason}
     end
@@ -766,11 +957,17 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
   @impl true
   def copy_if_absent(source_key, dest_key) do
     request = conditional_copy_request(source_key, dest_key)
-    execute_conditional_copy(request, @conditional_copy_attempts)
+    execute_conditional_copy(request, @conditional_copy_attempts, Storage.write_operation_deadline())
   end
 
-  defp execute_conditional_copy(request, attempts_left) do
-    case ExAws.request(request) do
+  defp execute_conditional_copy(request, attempts_left, deadline) do
+    case request_with_deadline(
+           request,
+           deadline,
+           :conditional_copy_timeout,
+           :conditional_copy_task_exit,
+           protocol_undefined_error: :invalid_copy_object_response
+         ) do
       {:ok, response} ->
         case validate_copy_response(response) do
           :ok -> {:ok, true}
@@ -781,7 +978,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
         {:ok, false}
 
       {:error, {:http_error, 409, _response}} when attempts_left > 1 ->
-        execute_conditional_copy(request, attempts_left - 1)
+        execute_conditional_copy(request, attempts_left - 1, deadline)
 
       {:error, reason} ->
         {:error, reason}
@@ -864,7 +1061,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
         nil
 
       {chunk_offset, remaining} ->
-        chunk_length = min(remaining, @stream_chunk_size)
+        chunk_length = min(remaining, Storage.multipart_transfer_chunk_size_bytes())
         last_byte = chunk_offset + chunk_length - 1
         bounds = {chunk_offset, last_byte, chunk_length}
         {bounds, {last_byte + 1, remaining - chunk_length}}
@@ -883,7 +1080,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
           new_buffer = [buffer, chunk]
           new_size = size + byte_size(chunk)
 
-          if new_size >= @multipart_chunk_size do
+          if new_size >= Storage.multipart_transfer_chunk_size_bytes() do
             {[IO.iodata_to_binary(new_buffer)], {[], 0}}
           else
             {[], {new_buffer, new_size}}
@@ -905,8 +1102,14 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2 do
 
   defp download_range(key, first_byte, last_byte, expected_length, etag) do
     request_opts = maybe_put_if_match([range: "bytes=#{first_byte}-#{last_byte}"], etag)
+    request = ExAws.S3.get_object(bucket(), key, request_opts)
 
-    case bucket() |> ExAws.S3.get_object(key, request_opts) |> ExAws.request() do
+    case request_with_deadline(
+           request,
+           Storage.write_operation_deadline(),
+           :object_stream_timeout,
+           :object_stream_task_exit
+         ) do
       {:ok, %{body: body}} when byte_size(body) == expected_length ->
         {:ok, body}
 

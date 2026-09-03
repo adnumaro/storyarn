@@ -13,7 +13,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   alias Ecto.Multi
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Storage
-  alias Storyarn.Projects.Assets.StorageCleanupOwnershipReceipt
+  alias Storyarn.Projects.Assets.StorageCleanupOwnership
   alias Storyarn.Projects.CommercialStorageReservations
   alias Storyarn.Projects.Persistence.StorageReservationRecord, as: StorageReservation
   alias Storyarn.Projects.Project
@@ -901,7 +901,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
          true <- snapshot.id == reservation.project_snapshot_id_snapshot,
          true <- snapshot.object_prefix == claim.object_prefix,
          {:ok, cleanup_request_id} <- cleanup_request_id(cleanup_reference),
-         {:ok, receipt_keys} <- StorageCleanupOwnershipReceipt.storage_keys(cleanup_request_id),
+         {:ok, receipt_keys} <- StorageCleanupOwnership.storage_keys(cleanup_request_id),
          {:ok, scope} <- reconciliation_cleanup_scope(snapshot) do
       reservation.cleanup_inventory_count == length(scope.storage_keys) and
         reservation.cleanup_inventory_digest == scope.inventory_digest and

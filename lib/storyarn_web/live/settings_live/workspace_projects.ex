@@ -4,10 +4,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjects do
   workspace, follow the import history, and see the projects retained in the
   workspace trash.
 
-  The browser uploads directly to object storage in production. Admission then
-  validates the bounded archive metadata and reserves workspace capacity before
-  the durable background import starts. The former `/imports` and
-  `/deleted-projects` pages redirect here.
+  The browser uploads through the server, which streams the archive to object
+  storage under the bounded writer protocol. Admission validates the bounded
+  archive metadata and reserves capacity before the durable background import.
+  The former `/imports` and `/deleted-projects` pages redirect here.
   """
 
   use StoryarnWeb, :live_view
@@ -37,7 +37,9 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjects do
         |> assign(:quota_rejection, nil)
         |> assign(:request_error_code, nil)
         |> assign(:upload_error_code, nil)
-        |> assign(:external_upload?, Projects.external_project_storage?())
+        # Bearer PUTs bypass cleanup handoff; use the existing server-streamed
+        # path even when object storage supports direct uploads.
+        |> assign(:external_upload?, false)
         |> allow_snapshot_upload()
         |> reload_imports()
         |> reload_deleted_projects()
