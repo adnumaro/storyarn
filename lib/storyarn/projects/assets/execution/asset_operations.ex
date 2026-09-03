@@ -11,7 +11,6 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
 
   alias Storyarn.Commercial
   alias Storyarn.Platform.Collaboration
-  alias Storyarn.Platform.ObjectStorage
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Assets.Asset
@@ -2012,7 +2011,7 @@ defmodule Storyarn.Projects.Assets.AssetOperations do
     if workspace_snapshot_import_owns_asset_keys?(project, storage_keys) do
       # The held workspace lock keeps this durable owner active through adoption.
       # Retain exact-key exclusion without treating this DB-only adoption as a new object write.
-      ObjectStorage.with_storage_key_locks(storage_keys, fun)
+      StorageKeyLock.with_owned_asset_adoption_locks(storage_keys, fun)
     else
       StorageKeyLock.with_storage_key_locks(storage_keys, fun)
     end

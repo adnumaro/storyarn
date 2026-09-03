@@ -61,6 +61,9 @@ defmodule Storyarn.Projects.Assets.StorageKeyLock do
   @doc false
   defdelegate with_cleanup_storage_key_lock(storage_key, fun, opts), to: KeyLock, as: :with_storage_key_lock
 
+  @doc false
+  defdelegate with_owned_asset_adoption_locks(storage_keys, fun), to: KeyLock, as: :with_storage_key_locks
+
   defdelegate wrapper_owned_transaction_lock_held?(storage_key), to: KeyLock
   defdelegate with_session_lock(lock_name, fun), to: KeyLock
   defdelegate with_session_lock(lock_name, fun, opts), to: KeyLock
