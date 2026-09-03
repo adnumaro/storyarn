@@ -51,6 +51,7 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetail do
       managed_workspace_slugs={@managed_workspace_slugs}
       general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
+      settings_nav={@settings_nav}
       sudo_grant={@sudo_grant}
     >
       <.vue

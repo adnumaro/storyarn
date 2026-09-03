@@ -27,6 +27,11 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     doc: "MapSet of workspace slugs where the user can access general settings"
 
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
+
+  attr :settings_nav, :map,
+    default: nil,
+    doc: "rail context built by StoryarnWeb.Live.Hooks.SettingsNav: current workspace/project, switch options"
+
   attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive settings links"
   attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
@@ -49,12 +54,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         id="settings-layout"
         current-path={@current_path}
         sudo-grant={@sudo_grant}
-        workspaces={settings_workspaces(@workspaces)}
-        workspace-settings-access={
-          settings_workspace_access(@managed_workspace_slugs, @general_workspace_slugs)
-        }
-        workspace={settings_workspace(@workspace)}
-        project={settings_project(@project)}
+        settings-nav={@settings_nav}
         title={slot_to_text(@title)}
         subtitle={slot_to_text(@subtitle)}
         onboarding={
@@ -93,48 +93,5 @@ defmodule StoryarnWeb.Components.SettingsLayout do
       {:ok, html_tree} -> Floki.text(html_tree)
       {:error, _reason} -> slot_html
     end
-  end
-
-  defp settings_workspaces(workspaces) do
-    Enum.map(workspaces, fn workspace ->
-      %{
-        id: Map.get(workspace, :id),
-        name: Map.get(workspace, :name),
-        slug: Map.get(workspace, :slug)
-      }
-    end)
-  end
-
-  defp settings_workspace_access(managed_slugs, general_slugs) do
-    managed_slugs = normalize_workspace_slugs(managed_slugs)
-
-    general_slugs
-    |> normalize_workspace_slugs()
-    |> Map.new(&{&1, "general"})
-    |> Map.merge(Map.new(managed_slugs, &{&1, "manage"}))
-  end
-
-  defp normalize_workspace_slugs(%MapSet{} = slugs), do: MapSet.to_list(slugs)
-  defp normalize_workspace_slugs(slugs) when is_list(slugs), do: slugs
-  defp normalize_workspace_slugs(_slugs), do: []
-
-  defp settings_workspace(nil), do: nil
-
-  defp settings_workspace(workspace) do
-    %{
-      id: Map.get(workspace, :id),
-      name: Map.get(workspace, :name),
-      slug: Map.get(workspace, :slug)
-    }
-  end
-
-  defp settings_project(nil), do: nil
-
-  defp settings_project(project) do
-    %{
-      id: Map.get(project, :id),
-      name: Map.get(project, :name),
-      slug: Map.get(project, :slug)
-    }
   end
 end

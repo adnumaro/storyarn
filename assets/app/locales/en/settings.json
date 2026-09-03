@@ -3,7 +3,8 @@
     "nav": {
       "back_to_app": "Back to app",
       "sections": {
-        "account": "Account"
+        "account": "Account",
+        "personal": "Personal"
       },
       "items": {
         "profile": "Profile",
@@ -15,7 +16,13 @@
         "workspace_members": "Members",
         "workspace_imports": "Imports",
         "deleted_projects": "Deleted Projects"
-      }
+      },
+      "search": "Search settings…",
+      "switch_workspace": "Switch workspace",
+      "switch_project": "Switch project",
+      "locked": "Only the owner can change these settings",
+      "open_navigation": "Open settings navigation",
+      "close_navigation": "Close settings navigation"
     },
     "profile": {
       "title": "Profile",

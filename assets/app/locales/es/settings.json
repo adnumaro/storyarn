@@ -3,7 +3,8 @@
     "nav": {
       "back_to_app": "Volver a la app",
       "sections": {
-        "account": "Cuenta"
+        "account": "Cuenta",
+        "personal": "Personal"
       },
       "items": {
         "profile": "Perfil",
@@ -15,7 +16,13 @@
         "workspace_members": "Miembros",
         "workspace_imports": "Importaciones",
         "deleted_projects": "Proyectos eliminados"
-      }
+      },
+      "search": "Buscar ajustes…",
+      "switch_workspace": "Cambiar de workspace",
+      "switch_project": "Cambiar de proyecto",
+      "locked": "Solo el propietario puede cambiar estos ajustes",
+      "open_navigation": "Abrir la navegación de ajustes",
+      "close_navigation": "Cerrar la navegación de ajustes"
     },
     "profile": {
       "title": "Perfil",

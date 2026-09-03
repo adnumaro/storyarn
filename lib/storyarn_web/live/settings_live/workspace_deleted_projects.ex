@@ -48,6 +48,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceDeletedProjects do
       managed_workspace_slugs={@managed_workspace_slugs}
       general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
+      settings_nav={@settings_nav}
     >
       <.vue
         v-component="live/workspace/settings/WorkspaceSettingsDeletedProjects"

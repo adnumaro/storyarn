@@ -1,57 +1,96 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import type { Component } from "vue";
 import { useI18n } from "vue-i18n";
 import {
   Archive,
   BookOpen,
   Bot,
+  Check,
   ChevronLeft,
+  ChevronsUpDown,
   CircleHelp,
   FileUp,
   Gauge,
   GitBranch,
   Languages,
-  Link,
+  Lock,
+  Menu,
   Package,
-  PanelLeft,
-  PanelLeftClose,
   Plug,
+  Search,
   Settings,
   ShieldCheck,
   Trash2,
   User,
   Users,
+  X,
 } from "@lucide/vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import NotificationBell from "@components/notifications/NotificationBell.vue";
 import OnboardingDialog from "@components/onboarding/OnboardingDialog.vue";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@components/ui/dropdown-menu";
 import { useResponsiveSidebar } from "@shared/composables/useResponsiveSidebar";
 import { sensitiveSettingsPath } from "@shared/navigation/sensitiveSettingsPath";
 
-interface SettingsItem {
-  label: string;
-  path: string;
-  icon: string;
+interface SettingsNavWorkspace {
+  id: number;
+  slug: string;
+  name: string;
+  access: "manage" | "general";
+  owner: boolean;
 }
 
-interface SettingsSection {
+interface SettingsNavProject {
+  id: number;
+  slug: string;
+  name: string;
+  workspaceSlug: string;
+  access: "owner" | "editor" | "viewer";
+}
+
+interface SettingsNavOption {
+  id: number;
+  slug: string;
+  name: string;
+}
+
+interface SettingsNav {
+  workspace: SettingsNavWorkspace | null;
+  workspaces: SettingsNavWorkspace[];
+  project: SettingsNavProject | null;
+  projects: SettingsNavOption[];
+}
+
+interface SettingsItem {
+  key: string;
+  label: string;
+  path: string;
+  icon: Component;
+  locked: boolean;
+  /** Highlight the item for its child routes too (detail pages). */
+  matchPrefix?: boolean;
+}
+
+interface SettingsSwitcherOption {
+  key: string;
+  name: string;
+  path: string;
+  current: boolean;
+}
+
+interface SettingsGroup {
   key: string;
   label: string;
   items: SettingsItem[];
-}
-
-interface SettingsWorkspace {
-  id: number;
-  label?: string;
-  name: string;
-  slug: string;
-}
-
-interface SettingsProject {
-  id: number;
-  name: string;
-  slug: string;
+  switcher: { label: string; options: SettingsSwitcherOption[] } | null;
 }
 
 interface SettingsFeatureFlags {
@@ -60,10 +99,7 @@ interface SettingsFeatureFlags {
 
 const {
   currentPath,
-  workspaces = [],
-  workspaceSettingsAccess = {},
-  workspace = null,
-  project = null,
+  settingsNav = null,
   title = null,
   subtitle = null,
   onboarding = null,
@@ -71,10 +107,7 @@ const {
   featureFlags = {},
 } = defineProps<{
   currentPath: string;
-  workspaces?: SettingsWorkspace[];
-  workspaceSettingsAccess?: Record<string, "manage" | "general">;
-  workspace?: SettingsWorkspace | null;
-  project?: SettingsProject | null;
+  settingsNav?: SettingsNav | null;
   title?: string | null;
   subtitle?: string | null;
   onboarding?: { guide: string; autoShow: boolean } | null;
@@ -84,252 +117,337 @@ const {
 
 const { t } = useI18n();
 
-const iconMap: Record<string, Component> = {
-  archive: Archive,
-  "book-open": BookOpen,
-  bot: Bot,
-  "chevron-left": ChevronLeft,
-  "file-up": FileUp,
-  gauge: Gauge,
-  "git-branch": GitBranch,
-  languages: Languages,
-  link: Link,
-  package: Package,
-  plug: Plug,
-  settings: Settings,
-  "shield-check": ShieldCheck,
-  "trash-2": Trash2,
-  user: User,
-  users: Users,
-};
-
-const navIcon = (name: string): Component => iconMap[name] ?? Settings;
-
-const { sidebarOpen, toggleSidebar } = useResponsiveSidebar();
+const { sidebarOpen, mobileSidebarOpen, closeSidebar, toggleSidebar } = useResponsiveSidebar();
 const onboardingDialog = ref<{ openTutorial: () => void } | null>(null);
 
 function showTutorial(): void {
   onboardingDialog.value?.openTutorial();
 }
 
+function openSearch(): void {
+  closeSidebar();
+  window.dispatchEvent(new CustomEvent("storyarn:open-palette"));
+}
+
 function routePath(path: string): string {
   return path.split("?", 1)[0] ?? path;
 }
 
-function settingsItemActive(path: string): boolean {
+function isActive(item: SettingsItem): boolean {
   const currentRoute = routePath(currentPath);
-  const itemRoute = routePath(path);
+  const itemRoute = routePath(item.path);
 
-  if (itemRoute === "/users/settings/ai-team") {
-    return currentRoute === itemRoute || currentRoute.startsWith(`${itemRoute}/`);
-  }
-
-  return currentRoute === itemRoute;
+  if (currentRoute === itemRoute) return true;
+  return item.matchPrefix === true && currentRoute.startsWith(`${itemRoute}/`);
 }
 
-const projectSettingsBasePath = computed(() => {
-  if (!workspace || !project) return null;
-  return `/workspaces/${workspace.slug}/projects/${project.slug}/settings`;
-});
-
-const backPath = computed(() => {
-  if (!workspace || !project) return "/workspaces";
-  return `/workspaces/${workspace.slug}/projects/${project.slug}`;
-});
-
-const backLabel = computed(() => {
-  if (!workspace || !project) return t("settings.nav.back_to_app");
-  return t("project_settings.nav.back_to_project");
-});
-
-const sections = computed<SettingsSection[]>(() => {
-  if (projectSettingsBasePath.value) {
-    const basePath = projectSettingsBasePath.value;
-
-    return [
-      {
-        key: "project-general",
-        label: t("project_settings.nav.sections.general"),
-        items: [
-          { label: t("project_settings.nav.items.general"), path: basePath, icon: "settings" },
-          {
-            label: t("project_settings.nav.items.version_control"),
-            path: `${basePath}/version-control`,
-            icon: "git-branch",
-          },
-          {
-            label: t("project_settings.nav.items.usage_limits"),
-            path: `${basePath}/usage-limits`,
-            icon: "gauge",
-          },
-        ],
-      },
-      {
-        key: "project-integrations",
-        label: t("project_settings.nav.sections.integrations"),
-        items: [
-          {
-            label: t("project_settings.nav.items.localization"),
-            path: `${basePath}/localization`,
-            icon: "languages",
-          },
-        ],
-      },
-      {
-        key: "project-administration",
-        label: t("project_settings.nav.sections.administration"),
-        items: [
-          {
-            label: t("project_settings.nav.items.members"),
-            path: `${basePath}/members`,
-            icon: "users",
-          },
-          {
-            label: t("project_settings.nav.items.snapshots"),
-            path: `${basePath}/snapshots`,
-            icon: "archive",
-          },
-          {
-            label: t("project_settings.nav.items.import_export"),
-            path: `${basePath}/export-import`,
-            icon: "package",
-          },
-          {
-            label: t("project_settings.nav.items.trash"),
-            path: `${basePath}/trash`,
-            icon: "trash-2",
-          },
-        ],
-      },
-    ];
-  }
-
-  const managedWorkspaces = workspaces.filter(
-    (workspace) => workspaceSettingsAccess[workspace.slug] === "manage",
-  );
-  const readOnlyWorkspaces = workspaces.filter(
-    (workspace) => workspaceSettingsAccess[workspace.slug] === "general",
-  );
-
-  const accountItems = [
+const personalGroup = computed<SettingsGroup>(() => {
+  const items: SettingsItem[] = [
     {
+      key: "profile",
       label: t("settings.nav.items.profile"),
       path: sensitiveSettingsPath("/users/settings", sudoGrant),
-      icon: "user",
+      icon: User,
+      locked: false,
     },
     {
+      key: "security",
       label: t("settings.nav.items.security"),
       path: sensitiveSettingsPath("/users/settings/security", sudoGrant),
-      icon: "shield-check",
-    },
-    {
-      label: t("settings.nav.items.tutorials"),
-      path: "/users/settings/tutorials",
-      icon: "book-open",
+      icon: ShieldCheck,
+      locked: false,
     },
   ];
 
   if (featureFlags.aiIntegrations) {
-    accountItems.push({
-      label: t("settings.nav.items.integrations"),
-      path: sensitiveSettingsPath("/users/settings/integrations", sudoGrant),
-      icon: "plug",
-    });
-
-    accountItems.push({
-      label: t("settings.nav.items.ai_team"),
-      path: sensitiveSettingsPath("/users/settings/ai-team", sudoGrant),
-      icon: "bot",
-    });
+    items.push(
+      {
+        key: "integrations",
+        label: t("settings.nav.items.integrations"),
+        path: sensitiveSettingsPath("/users/settings/integrations", sudoGrant),
+        icon: Plug,
+        locked: false,
+        matchPrefix: true,
+      },
+      {
+        key: "ai_team",
+        label: t("settings.nav.items.ai_team"),
+        path: sensitiveSettingsPath("/users/settings/ai-team", sudoGrant),
+        icon: Bot,
+        locked: false,
+        matchPrefix: true,
+      },
+    );
   }
 
-  return [
-    {
-      key: "account",
-      label: t("settings.nav.sections.account"),
-      items: accountItems,
-    },
-    ...managedWorkspaces.map((workspace) => ({
-      key: `workspace:${workspace.slug}`,
-      label: workspace.name,
-      items: [
-        {
-          label: t("settings.nav.items.workspace_general"),
-          path: `/users/settings/workspaces/${workspace.slug}/general`,
-          icon: "settings",
-        },
-        {
-          label: t("settings.nav.items.workspace_members"),
-          path: `/users/settings/workspaces/${workspace.slug}/members`,
-          icon: "users",
-        },
-        {
-          label: t("settings.nav.items.workspace_imports"),
-          path: `/users/settings/workspaces/${workspace.slug}/imports`,
-          icon: "file-up",
-        },
-        {
-          label: t("settings.nav.items.deleted_projects"),
-          path: `/users/settings/workspaces/${workspace.slug}/deleted-projects`,
-          icon: "trash-2",
-        },
-      ],
-    })),
-    ...readOnlyWorkspaces.map((workspace) => ({
-      key: `workspace:${workspace.slug}`,
-      label: workspace.name,
-      items: [
-        {
-          label: t("settings.nav.items.workspace_general"),
-          path: `/users/settings/workspaces/${workspace.slug}/general`,
-          icon: "settings",
-        },
-      ],
-    })),
-  ];
+  items.push({
+    key: "tutorials",
+    label: t("settings.nav.items.tutorials"),
+    path: "/users/settings/tutorials",
+    icon: BookOpen,
+    locked: false,
+  });
+
+  return {
+    key: "personal",
+    label: t("settings.nav.sections.personal"),
+    items,
+    switcher: null,
+  };
 });
 
-const contentWidthClass = computed(() =>
-  routePath(currentPath) === "/users/settings/ai-team" ? "max-w-6xl" : "max-w-3xl",
+const workspaceGroup = computed<SettingsGroup | null>(() => {
+  const workspace = settingsNav?.workspace;
+  if (!workspace) return null;
+
+  const base = `/users/settings/workspaces/${workspace.slug}`;
+  const general: SettingsItem = {
+    key: "workspace_general",
+    label: t("settings.nav.items.workspace_general"),
+    path: `${base}/general`,
+    icon: Settings,
+    locked: !workspace.owner,
+  };
+
+  const items: SettingsItem[] =
+    workspace.access === "manage"
+      ? [
+          general,
+          {
+            key: "workspace_members",
+            label: t("settings.nav.items.workspace_members"),
+            path: `${base}/members`,
+            icon: Users,
+            locked: false,
+          },
+          {
+            key: "workspace_imports",
+            label: t("settings.nav.items.workspace_imports"),
+            path: `${base}/imports`,
+            icon: FileUp,
+            locked: false,
+          },
+          {
+            key: "deleted_projects",
+            label: t("settings.nav.items.deleted_projects"),
+            path: `${base}/deleted-projects`,
+            icon: Trash2,
+            locked: false,
+          },
+        ]
+      : [general];
+
+  const options = (settingsNav?.workspaces ?? []).map((option) => ({
+    key: option.slug,
+    name: option.name,
+    path: `/users/settings/workspaces/${option.slug}/general`,
+    current: option.slug === workspace.slug,
+  }));
+
+  return {
+    key: "workspace",
+    label: workspace.name,
+    items,
+    switcher: options.length > 1 ? { label: t("settings.nav.switch_workspace"), options } : null,
+  };
+});
+
+const projectGroup = computed<SettingsGroup | null>(() => {
+  const project = settingsNav?.project;
+  if (!project || project.access === "viewer") return null;
+
+  const base = `/workspaces/${project.workspaceSlug}/projects/${project.slug}/settings`;
+  const ownerOnly = project.access !== "owner";
+  const item = (
+    key: string,
+    labelKey: string,
+    suffix: string,
+    icon: Component,
+    locked: boolean,
+  ): SettingsItem => ({
+    key,
+    label: t(`project_settings.nav.items.${labelKey}`),
+    path: `${base}${suffix}`,
+    icon,
+    locked,
+  });
+
+  const items: SettingsItem[] = [
+    item("project_general", "general", "", Settings, ownerOnly),
+    item("project_members", "members", "/members", Users, ownerOnly),
+    item("project_version_control", "version_control", "/version-control", GitBranch, ownerOnly),
+    item("project_snapshots", "snapshots", "/snapshots", Archive, ownerOnly),
+    item("project_import_export", "import_export", "/export-import", Package, false),
+    item("project_trash", "trash", "/trash", Trash2, false),
+    item("project_localization", "localization", "/localization", Languages, ownerOnly),
+    item("project_usage_limits", "usage_limits", "/usage-limits", Gauge, ownerOnly),
+  ];
+
+  const options = (settingsNav?.projects ?? []).map((option) => ({
+    key: option.slug,
+    name: option.name,
+    path: `/workspaces/${project.workspaceSlug}/projects/${option.slug}/settings`,
+    current: option.slug === project.slug,
+  }));
+
+  return {
+    key: "project",
+    label: project.name,
+    items,
+    switcher: options.length > 1 ? { label: t("settings.nav.switch_project"), options } : null,
+  };
+});
+
+const groups = computed<SettingsGroup[]>(() =>
+  [personalGroup.value, workspaceGroup.value, projectGroup.value].filter(
+    (group): group is SettingsGroup => group !== null,
+  ),
+);
+
+const activeGroup = computed<SettingsGroup | null>(
+  () => groups.value.find((group) => group.items.some(isActive)) ?? null,
+);
+
+const activeItem = computed<SettingsItem | null>(
+  () => activeGroup.value?.items.find(isActive) ?? null,
+);
+
+const backPath = computed(() => {
+  const project = settingsNav?.project;
+  if (project) return `/workspaces/${project.workspaceSlug}/projects/${project.slug}`;
+
+  const workspace = settingsNav?.workspace;
+  if (workspace && activeGroup.value?.key === "workspace") return `/workspaces/${workspace.slug}`;
+
+  return "/workspaces";
+});
+
+const scopeLabel = computed(() => activeGroup.value?.label ?? t("settings.nav.sections.personal"));
+const pageLabel = computed(() => title ?? activeItem.value?.label ?? "");
+
+const wide = computed(() => {
+  const route = routePath(currentPath);
+  return route === "/users/settings/ai-team" || route.endsWith("/settings/export-import");
+});
+
+const contentWidthClass = computed(() => (wide.value ? "max-w-[960px]" : "max-w-[720px]"));
+
+watch(
+  () => currentPath,
+  () => closeSidebar(),
 );
 </script>
 
 <template>
-  <div class="relative h-screen w-screen overflow-hidden bg-surface">
+  <div class="flex h-dvh w-full overflow-hidden bg-background text-foreground">
+    <div
+      v-if="mobileSidebarOpen"
+      class="fixed inset-0 z-30 bg-black/55 lg:hidden"
+      aria-hidden="true"
+      @click="closeSidebar"
+    />
+
     <aside
       :aria-hidden="!sidebarOpen"
       :inert="!sidebarOpen"
-      class="absolute inset-y-0 left-0 z-0 w-[calc(100vw-4rem)] sm:w-63 overflow-hidden flex flex-col"
+      :class="[
+        'fixed inset-y-0 left-0 z-40 flex w-[300px] flex-col overflow-hidden border-r border-border bg-card text-[13px] shadow-2xl transition-transform duration-200 ease-out',
+        'lg:static lg:z-auto lg:w-60 lg:shrink-0 lg:translate-x-0 lg:shadow-none',
+        mobileSidebarOpen ? 'translate-x-0' : '-translate-x-full',
+      ]"
     >
-      <div class="px-2 pt-3 pb-3 border-b border-border/10">
+      <div class="flex items-center gap-2 px-4 pb-2.5 pt-4">
         <LiveLink
           :to="backPath"
-          class="flex items-center gap-2 px-2 py-1.5 rounded-lg text-sm font-medium text-foreground/70 hover:bg-black/5 hover:text-foreground dark:hover:bg-white/5 transition-colors"
+          class="flex min-w-0 items-center gap-2 text-[13px] text-muted-foreground transition-colors hover:text-foreground"
         >
-          <ChevronLeft class="size-4" />
-          {{ backLabel }}
+          <ChevronLeft class="size-3.5 shrink-0" />
+          <span class="truncate">{{ t("settings.nav.back_to_app") }}</span>
         </LiveLink>
+        <button
+          type="button"
+          class="ml-auto inline-flex size-8 items-center justify-center rounded-lg text-muted-foreground hover:bg-accent hover:text-foreground lg:hidden"
+          :aria-label="t('settings.nav.close_navigation')"
+          @click="closeSidebar"
+        >
+          <X class="size-[18px]" />
+        </button>
       </div>
 
-      <nav class="flex-1 overflow-y-auto p-3 space-y-5">
-        <div v-for="section in sections" :key="section.key">
-          <h3 class="text-xs font-semibold uppercase text-foreground/50 px-2 mb-2 tracking-wider">
-            {{ section.label }}
-          </h3>
-          <ul class="space-y-0.5">
-            <li v-for="item in section.items" :key="item.path">
+      <div class="px-3 pb-1.5">
+        <button
+          type="button"
+          class="flex w-full items-center gap-2 rounded-md border border-border bg-background px-2.5 py-1.5 text-left text-muted-foreground transition-colors hover:text-foreground"
+          @click="openSearch"
+        >
+          <Search class="size-3.5 shrink-0" />
+          <span class="min-w-0 flex-1 truncate">{{ t("settings.nav.search") }}</span>
+          <kbd class="rounded border border-border px-1 font-sans text-[11px]">⌘K</kbd>
+        </button>
+      </div>
+
+      <nav class="flex-1 overflow-y-auto px-3 pb-3 pt-1">
+        <div v-for="group in groups" :key="group.key" :data-settings-group="group.key">
+          <div class="flex items-center gap-1.5 px-2.5 pb-1 pt-3.5 text-xs text-muted-foreground">
+            <DropdownMenu v-if="group.switcher">
+              <DropdownMenuTrigger as-child>
+                <button
+                  type="button"
+                  class="flex min-w-0 flex-1 items-center gap-1.5 rounded text-left text-xs text-muted-foreground transition-colors hover:text-foreground"
+                  :title="group.switcher.label"
+                >
+                  <span class="min-w-0 flex-1 truncate">{{ group.label }}</span>
+                  <ChevronsUpDown class="size-3 shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" :side-offset="4" class="w-56">
+                <DropdownMenuLabel>{{ group.switcher.label }}</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  v-for="option in group.switcher.options"
+                  :key="option.key"
+                  as-child
+                >
+                  <a
+                    :href="option.path"
+                    data-phx-link="redirect"
+                    data-phx-link-state="push"
+                    class="flex items-center gap-2"
+                  >
+                    <span class="min-w-0 flex-1 truncate">{{ option.name }}</span>
+                    <Check v-if="option.current" class="size-3.5 shrink-0" />
+                  </a>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            <span v-else class="min-w-0 flex-1 truncate">{{ group.label }}</span>
+          </div>
+
+          <ul class="space-y-px">
+            <li v-for="item in group.items" :key="item.key">
               <LiveLink
                 :to="item.path"
                 :class="[
-                  'flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors',
-                  settingsItemActive(item.path) &&
-                    'bg-black/5 dark:bg-white/10 font-medium text-foreground',
-                  !settingsItemActive(item.path) &&
-                    'text-foreground/80 hover:bg-black/5 dark:hover:bg-white/5 hover:text-foreground',
+                  'flex items-center gap-2 rounded-md px-2.5 py-[5px] transition-colors',
+                  isActive(item)
+                    ? 'bg-accent font-medium text-foreground'
+                    : 'text-foreground/85 hover:bg-accent/60 hover:text-foreground',
                 ]"
+                :aria-current="isActive(item) ? 'page' : undefined"
+                @click="closeSidebar"
               >
-                <component :is="navIcon(item.icon)" class="size-4 opacity-70" />
-                {{ item.label }}
+                <component
+                  :is="item.icon"
+                  :class="['size-[15px] shrink-0', isActive(item) ? '' : 'text-muted-foreground']"
+                />
+                <span class="min-w-0 flex-1 truncate">{{ item.label }}</span>
+                <Lock
+                  v-if="item.locked"
+                  class="size-3 shrink-0 text-muted-foreground"
+                  data-settings-locked
+                  :aria-label="t('settings.nav.locked')"
+                  :title="t('settings.nav.locked')"
+                />
               </LiveLink>
             </li>
           </ul>
@@ -337,66 +455,57 @@ const contentWidthClass = computed(() =>
       </nav>
     </aside>
 
-    <main
-      :class="[
-        'relative z-10 h-full min-dvh-100 min-w-0 w-full bg-background transition-[margin-left,width,border-radius,box-shadow] duration-300 ease-out will-change-[margin-left,width] flex flex-col overflow-hidden',
-        sidebarOpen
-          ? 'ml-[calc(100vw-4rem)] w-16 sm:ml-63 sm:w-[calc(100%-15.75rem)] shadow-xl rounded-l-2xl'
-          : 'ml-0 w-full',
-      ]"
-    >
-      <div class="flex h-12 shrink-0 items-center border-b border-border/70 bg-background/95 px-3">
-        <button
-          type="button"
-          class="toolbar-btn size-9 lg:hidden"
-          :aria-label="
-            sidebarOpen
-              ? $t('layout.main_sidebar.hide_panel')
-              : $t('layout.main_sidebar.show_panel')
-          "
-          :title="
-            sidebarOpen
-              ? $t('layout.main_sidebar.hide_panel')
-              : $t('layout.main_sidebar.show_panel')
-          "
-          :aria-pressed="sidebarOpen"
-          @click="toggleSidebar"
-        >
-          <PanelLeftClose v-if="sidebarOpen" class="size-4" />
-          <PanelLeft v-else class="size-4" />
-        </button>
-
-        <div class="flex-1" />
-
-        <div :class="sidebarOpen && 'hidden lg:block'">
-          <NotificationBell />
-        </div>
+    <div class="relative flex min-w-0 flex-1 flex-col">
+      <div class="absolute right-3 top-2.5 z-10 lg:right-4 lg:top-4">
+        <NotificationBell />
       </div>
 
-      <div class="flex-1 min-h-0 overflow-y-auto p-4 lg:p-8">
-        <div :class="[contentWidthClass, 'mx-auto']">
-          <header v-if="title" class="flex items-start justify-between gap-4 pb-4">
-            <div>
-              <h1 class="text-lg font-semibold leading-8">{{ title }}</h1>
-              <p v-if="subtitle" class="text-sm text-muted-foreground">{{ subtitle }}</p>
-            </div>
-            <button
-              v-if="onboarding"
-              type="button"
-              class="inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              @click="showTutorial"
-            >
-              <CircleHelp class="size-4" />
-              {{ t("onboarding.common.view_tutorial") }}
-            </button>
-          </header>
+      <header
+        class="flex h-14 shrink-0 items-center gap-3 border-b border-border bg-card pl-3 pr-14 lg:hidden"
+      >
+        <button
+          type="button"
+          class="inline-flex size-9 items-center justify-center rounded-lg text-foreground hover:bg-accent"
+          :aria-label="
+            mobileSidebarOpen
+              ? t('settings.nav.close_navigation')
+              : t('settings.nav.open_navigation')
+          "
+          :aria-pressed="mobileSidebarOpen"
+          @click="toggleSidebar"
+        >
+          <Menu class="size-5" />
+        </button>
+        <div class="min-w-0 flex-1">
+          <div class="truncate text-[11px] text-muted-foreground">{{ scopeLabel }}</div>
+          <div class="truncate text-[15px] font-semibold leading-tight">{{ pageLabel }}</div>
+        </div>
+      </header>
 
-          <div>
+      <main class="min-h-0 flex-1 overflow-y-auto">
+        <div class="px-4 py-5 lg:px-12 lg:py-14">
+          <div :class="[contentWidthClass, 'mx-auto']" data-testid="settings-content">
+            <header v-if="title" class="flex items-start justify-between gap-4 pb-6">
+              <div>
+                <h1 class="text-2xl font-semibold leading-tight tracking-[-0.01em]">{{ title }}</h1>
+                <p v-if="subtitle" class="mt-1 text-sm text-muted-foreground">{{ subtitle }}</p>
+              </div>
+              <button
+                v-if="onboarding"
+                type="button"
+                class="inline-flex h-8 shrink-0 items-center gap-2 rounded-md border border-border px-3 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                @click="showTutorial"
+              >
+                <CircleHelp class="size-4" />
+                {{ t("onboarding.common.view_tutorial") }}
+              </button>
+            </header>
+
             <slot />
           </div>
         </div>
-      </div>
-    </main>
+      </main>
+    </div>
 
     <OnboardingDialog
       v-if="onboarding"

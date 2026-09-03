@@ -42,7 +42,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert settings.props["current-path"] ==
                "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
 
-      assert settings.props["project"]["slug"] == project.slug
+      assert settings.props["settings-nav"]["project"]["slug"] == project.slug
+      assert settings.props["settings-nav"]["project"]["access"] == "owner"
 
       vue = get_trash_vue(view)
       assert vue.component == "live/project/settings/ProjectSettingsTrash"

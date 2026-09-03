@@ -21,6 +21,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
       socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
+      settings_nav={@settings_nav}
       workspace={@workspace}
       project={@project}
     >

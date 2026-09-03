@@ -197,7 +197,8 @@ defmodule StoryarnWeb.Router do
             {StoryarnWeb.Live.Hooks.Onboarding, :load_onboarding},
             {StoryarnWeb.Live.Hooks.Palette, :setup_palette},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
-            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
+            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace},
+            {StoryarnWeb.Live.Hooks.SettingsNav, :load_settings_nav}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
