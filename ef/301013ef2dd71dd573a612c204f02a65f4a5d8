@@ -1,0 +1,137 @@
+assets/app/test/live/account/settings/AccountSettingsPreferences.test.ts
+  s_dc522f884e191b::t_45bb923554f0df 1-43,45-64
+  s_dc522f884e191b::t_9c051c437aef41 44
+assets/app/test/live/account/settings/AccountSettingsSecurity.test.ts
+  s_dc522f884e191b::t_9c051c437aef41 13-19
+  s_dc522f884e191b::t_5123726d654633 42-46,52,54-57,65-71,91
+assets/app/components/settings/SettingsReauthBanner.vue
+  s_dc522f884e191b::t_b8798b4df16d06 43,45
+  s_dc522f884e191b::t_5ae54d140ead55 1-13,15-17,23-42,44,46-141,146-148
+  s_dc522f884e191b::t_eaa45b6315221e 14,18-22
+  s_dc522f884e191b::t_0364d31c27369f 142-145
+assets/app/components/settings/index.ts
+  s_dc522f884e191b::t_bbb328648f7a3c 3
+  s_dc522f884e191b::t_7c8a5f8808cb93 1-2,4-5
+test/e2e/settings_reauthentication_test.exs
+  s_dc522f884e191b::t_11eb963cfb02f1 36-39,44-45,48
+assets/app/live/account/settings/AccountSettingsPreferences.vue
+  s_dc522f884e191b::t_75b8f799cca029 1-146
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 63,99
+priv/gettext/es/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 131-134
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 63,99
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 24,34,44,60-65,70,75,80,121,126,131,136,141-142,147-149,154-155,160-161,166-167,172,177-190,200,205,210,215,225,230,235,240,245,250,255,260,265,270,275,280,285,291,296,403,697,707,730,746,790,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1204,1209,1214,1219,1224,1229,1234,1239,1301,1307,1312,1317-1319,1324-1325,1330,1335,1340,1345,1365,1370,1375,1380,1386,1396,1401-1402,1407
+priv/gettext/settings.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,38-62
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_dc522f884e191b::t_018894855d2309 67-69
+  s_dc522f884e191b::t_d92170ab1f6f01 2,5,51-52,57,63,65-66,70-71,74-75,77-88,90-111
+priv/gettext/projects.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 24,34,44,60-65,70,75,80,121,126,131,136,141-142,147-149,154-155,160-161,166-167,172,177-190,200,205,210,215,225,230,235,240,245,250,255,260,265,270,275,280,285,291,296,403,697,707,730,746,790,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1204,1209,1214,1219,1224,1229,1234,1239,1301,1307,1312,1317-1319,1324-1325,1330,1335,1340,1345,1365,1370,1375,1380,1386,1396,1401-1402,1407
+assets/app/locales/es/settings.json
+  s_dc522f884e191b::t_cbe20497db8420 18-19,43-55,69-71,77,84-85,247-267
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_dc522f884e191b::t_bb87d42d8c81c9 44
+  s_dc522f884e191b::t_2e50b137e691d2 14-18,31-33,36,41-43,46,58-65,68,70-71,73-78,80-83,86-100,105,114,123,136,139,141,143,164,177-202
+  s_dc522f884e191b::t_2dd070b66ac136 66,79,84
+  s_dc522f884e191b::t_a2d6d6cc8de7ad 67,85
+assets/app/test/live/account/settings/AccountSettingsProfile.test.ts
+  s_dc522f884e191b::t_e5e021683eb44c 2-3,6,8,10,14,18,26,37,43-45,48-58,60-68,71-72,74-78,80-82,84-85,87-88,90-101
+  s_dc522f884e191b::t_9c051c437aef41 19-25
+priv/gettext/en/LC_MESSAGES/default.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 131-134
+priv/gettext/identity.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 63,99
+assets/app/components/settings/SettingsPage.vue
+  s_dc522f884e191b::t_4a534215fb7c2c 1-21
+lib/storyarn_web/live/settings_live/security.ex
+  s_dc522f884e191b::t_e1af60d1d4b9ca 3-7,12,15,29,55,74-75,82-86
+  s_dc522f884e191b::t_3b880d8be784dd 56
+priv/gettext/integrations.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 24-25,41
+assets/app/components/settings/SettingsRow.vue
+  s_dc522f884e191b::t_59be5ca68e844e 1-51
+priv/gettext/default.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 131-134
+priv/gettext/en/LC_MESSAGES/integrations.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 24-25,41
+lib/storyarn_web/user_auth.ex
+  s_dc522f884e191b::t_6f39cf4950e5bb 296-300
+  s_dc522f884e191b::t_ea05455a7fc9c1 301-318
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,34-37,42,52-53,58-59,69,94,101,107,114,117,145,150,155,160,167,174,181,191,196,222,227,232,237,242,247,252,257,262,272-274,279,284,289,294-296,301,306,311,321,336,341-342,347,352,357,362,367-368,373,378,383-384,389,394
+assets/app/locales/en/settings.json
+  s_dc522f884e191b::t_cbe20497db8420 18-19,43-55,69-71,77,84-85,247-267
+assets/app/live/account/settings/AccountSettingsProfile.vue
+  s_dc522f884e191b::t_018894855d2309 186-193,203-208
+  s_dc522f884e191b::t_83fc76ceeb5133 38,44
+  s_dc522f884e191b::t_ea9b0fbb42343a 123
+  s_dc522f884e191b::t_8d0e3666b27bb5 3,5-12,14,16-23,26,33-37,39,41-43,47-48,74-114,118-122,124-139,144-145,147-148,150,154-185,194-201,209,211,213-215,217-227
+  s_dc522f884e191b::t_407d97735ade23 13
+test/storyarn_web/live/settings_live/preferences_test.exs
+  s_dc522f884e191b::t_724c1e8598c713 1-87
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,34-37,42,52-53,58-59,69,94,101,107,114,117,145,150,155,160,167,174,181,191,196,222,227,232,237,242,247,252,257,262,272-274,279,284,289,294-296,301,306,311,321,336,341-342,347,352,357,362,367-368,373,378,383-384,389,394
+lib/storyarn_web/router.ex
+  s_dc522f884e191b::t_3ae752ca68ae7f 205
+assets/app/components/settings/SettingsSection.vue
+  s_dc522f884e191b::t_6adb9bd081061e 1-58
+priv/gettext/es/LC_MESSAGES/integrations.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 24-25,41
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_dc522f884e191b::t_ce639648ced1dd 57
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,38-41,43-46,48-51,53-56,58-61
+  s_dc522f884e191b::t_58e64b183c8be4 62
+  s_dc522f884e191b::t_1de01b7beb282c 47
+  s_dc522f884e191b::t_01fe4fa102ca91 42
+  s_dc522f884e191b::t_03a46ad641c606 52
+priv/gettext/workspaces.pot
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,34-37,42,52-53,58-59,69,94,101,107,114,117,145,150,155,160,167,174,181,191,196,222,227,232,237,242,247,252,257,262,272-274,279,284,289,294-296,301,306,311,321,336,341-342,347,352,357,362,367-368,373,378,383-384,389,394
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_dc522f884e191b::t_faeaac92efb7c8 11
+  s_dc522f884e191b::t_6aab4b8b24a314 29,37
+  s_dc522f884e191b::t_ac0a7809465e1e 4,6-10,12,28,36,40-41,115-118,123-124,134,136,145-163,165-173,176-177,186,191-194,202,207-208,210-212
+  s_dc522f884e191b::t_018894855d2309 164
+  s_dc522f884e191b::t_feee9e47fa7e18 135,138
+lib/storyarn_web/live/settings_live/profile.ex
+  s_dc522f884e191b::t_bba9e13e897da2 3-6,11-12,15,17-27,30-31,33-45,80-82,101-114,116-121,137-138,140,147-166,168-170,173-178,180-182
+  s_dc522f884e191b::t_b6b5e7b252a0e8 83
+lib/storyarn_web/live/settings_live/preferences.ex
+  s_dc522f884e191b::t_4340fc0e0c777a 1-94
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 14,19,24,29,38-62
+test/storyarn_web/live/settings_live/security_test.exs
+  s_dc522f884e191b::t_943076e6cf3d9a 80,106
+  s_dc522f884e191b::t_3e64a9bd2021ba 69,75,77-78,81-105
+  s_dc522f884e191b::t_e3212e87e85886 107
+  s_dc522f884e191b::t_9f2eeaf5766f88 79
+assets/app/live/layouts/settings/Layout.vue
+  s_dc522f884e191b::t_8273754074a4bf 24
+  s_dc522f884e191b::t_b1f65f95803e66 155-160
+  s_dc522f884e191b::t_16845e08191836 154
+lib/storyarn_web/live/shared/sudo_reauth.ex
+  s_dc522f884e191b::t_1483b8707709cd 1-13,15-36,52-111
+  s_dc522f884e191b::t_bf165fb49f321c 37-51
+  s_dc522f884e191b::t_fbcf7a90137ebb 14
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_dc522f884e191b::t_ff8efb1553cbdd 24,34,44,60-65,70,75,80,121,126,131,136,141-142,147-149,154-155,160-161,166-167,172,177-190,200,205,210,215,225,230,235,240,245,250,255,260,265,270,275,280,285,291,296,403,697,707,730,746,790,795,800,805,810,815,1164,1169,1174,1179,1184,1189,1194,1199,1204,1209,1214,1219,1224,1229,1234,1239,1301,1307,1312,1317-1319,1324-1325,1330,1335,1340,1345,1365,1370,1375,1380,1386,1396,1401-1402,1407
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "ef301013ef2dd71dd573a612c204f02a65f4a5d8",
+  "prompts": {},
+  "sessions": {
+    "s_dc522f884e191b": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "20d1ff02-69c6-4ff0-95dc-64b4210ca330",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
