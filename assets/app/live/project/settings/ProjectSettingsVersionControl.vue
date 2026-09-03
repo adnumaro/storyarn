@@ -72,29 +72,48 @@ watch(
   },
 );
 
-const entityRows: { key: EntityKey; icon: Component; model: typeof autoFlows }[] = [
-  { key: "flows", icon: Workflow, model: autoFlows },
-  { key: "scenes", icon: Clapperboard, model: autoScenes },
-  { key: "sheets", icon: FileText, model: autoSheets },
+const entityRows: { key: EntityKey; icon: Component }[] = [
+  { key: "flows", icon: Workflow },
+  { key: "scenes", icon: Clapperboard },
+  { key: "sheets", icon: FileText },
 ];
 
-// The switch is not flipped locally: the LiveView assigns the saved value and
-// the prop watchers above follow it, so a failed save leaves the server state.
+// A toggle is pending until the LiveView answers: the switch shows the pending
+// value meanwhile, later toggles build their payload from the pending state,
+// and a rejected or lost save drops the pending value so the server state
+// shows again.
+const pending = ref<Partial<Record<EntityKey, boolean>>>({});
+
+function serverValue(key: EntityKey): boolean {
+  if (key === "flows") return autoFlows.value;
+  if (key === "scenes") return autoScenes.value;
+  return autoSheets.value;
+}
+
+function displayedValue(key: EntityKey): boolean {
+  return pending.value[key] ?? serverValue(key);
+}
+
+function clearPending(key: EntityKey): void {
+  const { [key]: _cleared, ...rest } = pending.value;
+  pending.value = rest;
+}
+
 function toggle(key: EntityKey, value: boolean): void {
-  const next = {
-    flows: autoFlows.value,
-    scenes: autoScenes.value,
-    sheets: autoSheets.value,
-    [key]: value,
+  pending.value = { ...pending.value, [key]: value };
+
+  const payload = {
+    auto_version_flows: String(displayedValue("flows")),
+    auto_version_scenes: String(displayedValue("scenes")),
+    auto_version_sheets: String(displayedValue("sheets")),
   };
 
-  live.pushEvent("save_version_control", {
-    version_control: {
-      auto_version_flows: String(next.flows),
-      auto_version_scenes: String(next.scenes),
-      auto_version_sheets: String(next.sheets),
-    },
-  });
+  live.pushEvent(
+    "save_version_control",
+    { version_control: payload },
+    () => clearPending(key),
+    () => clearPending(key),
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -193,7 +212,7 @@ function statusLabel(status: SettingsMeterStatus): string {
         </template>
         <Switch
           :id="`auto-version-${row.key}`"
-          :model-value="row.model.value"
+          :model-value="displayedValue(row.key)"
           @update:model-value="(value) => toggle(row.key, value)"
         />
       </SettingsRow>

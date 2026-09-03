@@ -137,7 +137,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
           {:ok, project} ->
             track_version_control_settings(socket, project, attrs)
 
-            {:noreply,
+            {:reply, %{ok: true},
              socket
              |> assign(:project, project)
              |> assign(
@@ -156,7 +156,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.VersionControl do
             ownership_invariant_error(socket)
 
           {:error, _reason} ->
-            {:noreply, put_flash(socket, :error, dgettext("projects", "Failed to save settings."))}
+            {:reply, %{ok: false}, put_flash(socket, :error, dgettext("projects", "Failed to save settings."))}
         end
       end,
       fn
