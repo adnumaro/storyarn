@@ -1,0 +1,209 @@
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_b4109cfaf1e401 933-947
+assets/app/modules/flows/editor/lib/flowCommentUi.ts
+  s_11667293ceac35::t_f20e3dae7ee10d 1-19
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_aca2bebe7529c0 935-939,954-958,967-969,984-985
+assets/app/components/comments/CommentConversation.vue
+  s_11667293ceac35::t_0c18c7db03e56c 16,20-22,29,31,39-40,49,100,106
+  s_11667293ceac35::t_f920c01fc1f28f 24-28,179
+  s_11667293ceac35::t_c80c6232eb74e4 1-15,17-19,23,30,32-38,41-48,50-99,101-105,107-112,114-129,131-135,138-142,144-148,150-158,160-170,176-178,180-181,183-222,224,226-234,236-240,242-248,253-255,257,259-261,265-271,273-274,278-280,282-283,285-290,293-297,299-315,317-326,328-340,342-344,346-350,353-358,360-363,365-368,370-374,376-378
+  s_11667293ceac35::t_6946ccf3c3373b 113,130,136-137,143,149,159,171-175,182,223,225,235,241,249-252,256,258,262-264,272,275-277,281,284,291-292,298,316,327,341,345,351-352,359,364,369,375
+assets/app/modules/scenes/editor/components/panels/SceneCommentsPanel.vue
+  s_11667293ceac35::t_31d95d7c74fe55 1-17
+assets/app/live/scene/show/SceneHeader.vue
+  s_11667293ceac35::t_74423606c9cad9 4,30,57-63
+lib/storyarn/projects/comments/rules/dto.ex
+  s_11667293ceac35::t_16672509a2ca54 34,54-66
+assets/app/test/live/scene/show/SceneCanvasComments.test.ts
+  s_11667293ceac35::t_f920c01fc1f28f 5
+  s_11667293ceac35::t_2c795cfdacaee8 56-63,70,249-250,255-256,260-261,263,269-270,273-274,278-287
+  s_11667293ceac35::t_6b5d97547b2776 3,100
+  s_11667293ceac35::t_8b900f24f9e094 1-2,4,6-55,64-69,71-99,101-197,229-244,290-327,370-448
+  s_11667293ceac35::t_b631a25823d938 198-228,328-369
+  s_11667293ceac35::t_540bb13e4ead9a 245-248,251-254,257-259,262,264-268,271-272,275-277,288-289
+assets/app/locales/en/scenes.json
+  s_11667293ceac35::t_bef24e4a3cbc2c 475-518
+assets/app/test/live/scene/show/SceneCommentsChrome.test.ts
+  s_11667293ceac35::t_366d06c04f859b 1-133,135-183,185-186
+  s_11667293ceac35::t_3580a99ae91a70 134,184
+assets/app/live/scene/show/ScenePanels.vue
+  s_11667293ceac35::t_acf58654acf3e1 2,4,7,44,53-56,61-64,67,85,99
+assets/app/modules/flows/editor/components/panels/comments/FlowCommentComposer.vue
+  s_11667293ceac35::t_f20e3dae7ee10d 2,4,28-38
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_11667293ceac35::t_e34c1418632a63 48-52,54,56-63,85,99,129,211-232,252,301,307-315
+  s_11667293ceac35::t_f7f094120c1216 53,55
+  s_11667293ceac35::t_bd2c4a4a4729c7 119,132-139,316
+  s_11667293ceac35::t_fe743788cf580e 140
+test/storyarn/repo/migrations/scene_comment_anchors_migration_test.exs
+  s_11667293ceac35::t_b44e9c5ebbbbe7 1-101
+assets/app/modules/scenes/editor/lib/comment-geometry.ts
+  s_11667293ceac35::t_f920c01fc1f28f 15
+  s_11667293ceac35::t_3288ca7be2bfe7 1-14,16-79
+assets/app/test/modules/scenes/editor/scenePlacementLifecycle.test.ts
+  s_11667293ceac35::t_85e6bfed84792a 7,10
+  s_11667293ceac35::t_868f65eea6bd7e 1-6,8-9,11-108
+lib/storyarn_web/live/scene_live/show.ex
+  s_11667293ceac35::t_0ed55e27030e57 502-503,519
+  s_11667293ceac35::t_678c5840f524b7 463,475,487-494,734-749,1895-1898
+  s_11667293ceac35::t_e521f180b8df6e 508
+  s_11667293ceac35::t_708b4a862a13e4 218-219,458
+  s_11667293ceac35::t_5fcba69f231d7a 177-183,236-238
+  s_11667293ceac35::t_bbb456653fcc60 202
+  s_11667293ceac35::t_a615ec7e89f282 750-753,759,824,837,872,896,952,957,965
+  s_11667293ceac35::t_5df6be8592dc47 38
+  s_11667293ceac35::t_537d9ead6de600 1784-1791,1841,1899
+  s_11667293ceac35::t_4b0133816b784f 1900
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_11667293ceac35::t_1f6545812dcec3 54,56-58
+assets/app/modules/scenes/editor/components/chrome/SceneCanvasComments.vue
+  s_11667293ceac35::t_f920c01fc1f28f 14-23
+  s_11667293ceac35::t_637039541d0a2d 1-13,24-225
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_da321c7d2521d3 149-151,237-238,240-248
+  s_11667293ceac35::t_fe2f6e6cf1759d 14-24,65-70,98-107,134,162,169-182,210,216-236,249-252
+  s_11667293ceac35::t_6d7a3a6a6474e6 239
+config/architecture_boundaries.exs
+  s_11667293ceac35::t_364b7fd593bb5e 3951-3955
+  s_11667293ceac35::t_1c358e92aceb73 3950
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_11667293ceac35::t_b4109cfaf1e401 933-947
+test/storyarn/projects/comments/scene_comments_test.exs
+  s_11667293ceac35::t_268d7e7b9c877e 44-49
+  s_11667293ceac35::t_f5dd9738fa6d75 1-43,50-307,309-311,314-340
+  s_11667293ceac35::t_a0df7c236f3fbd 308,312-313
+assets/app/components/comments/types.ts
+  s_11667293ceac35::t_5f3566c68ba4a5 1-80
+assets/app/live/scene/show/SceneSurface.vue
+  s_11667293ceac35::t_f920c01fc1f28f 14
+  s_11667293ceac35::t_3fb8436a14ee81 181-183
+  s_11667293ceac35::t_41f6622aa2d9ac 28-30
+lib/storyarn/projects/comments/queries/queries.ex
+  s_11667293ceac35::t_5fb281dcb3a62f 95
+  s_11667293ceac35::t_d7e482dc034c11 10,40-45,65-67,73,75,78-87,90-91,98,107,109-110,141,159,162,221,223-225,228-231,239-240,247,256-266,270-271
+  s_11667293ceac35::t_cb211e7063e3a2 245,248
+  s_11667293ceac35::t_6d7a3a6a6474e6 92-94
+  s_11667293ceac35::t_a3d2ed4aa539dd 272
+lib/storyarn/projects/comments/README.md
+  s_11667293ceac35::t_3a5c2e3c88981b 5-6,13,30,32-33,44,51,65-67,76-77,96-97
+assets/app/modules/scenes/editor/composables/useSceneCanvasComments.ts
+  s_11667293ceac35::t_fec11221c09bdf 277-288,291-296
+  s_11667293ceac35::t_85e53c62bccaea 91-92,198,200-201,232-233,238-239,413-430,493
+  s_11667293ceac35::t_e3efaaa4389892 1-85,87-90,96-169,192-197,209-210,240-241,248,253-255,260,266,268-269,289-290,299-316,318-339,344-346,348-357,362-371,381-412,431-452,471-472,482-492,495,505-520,522-524,526-527
+  s_11667293ceac35::t_d42dfa5c60ace7 175,185-186,202-204,206-208,476-477,499-500
+  s_11667293ceac35::t_f920c01fc1f28f 272,347,464-470
+  s_11667293ceac35::t_1361b8fd59a227 86,242-245,247,249-252,261-265,267,270-271,273-276,297-298,480-481,503-504,521,525
+  s_11667293ceac35::t_ea53800e4ba692 93-95,170,172-174,176-178,183-184,187-191,211-231,234-237,473-475,478-479,494,496-498,501-502
+  s_11667293ceac35::t_e616f7feb44935 179-182,256,317
+  s_11667293ceac35::t_cf27310c7a3afc 199,246,257-259,340-343,358-361,372-380,453-463
+  s_11667293ceac35::t_3cccad9c8bfdd5 171
+  s_11667293ceac35::t_850518dc0f2754 205
+assets/app/modules/scenes/editor/composables/useZoneDrawing.ts
+  s_11667293ceac35::t_84b5cf9e29dbc9 1,157-159
+  s_11667293ceac35::t_340e3461f627cb 160
+test/storyarn/projects/comments/integration/source_lifecycle_test.exs
+  s_11667293ceac35::t_21a5d663a7199d 7,14-15,124-155
+  s_11667293ceac35::t_0212dcf661ee5c 156-157
+assets/app/modules/scenes/editor/composables/useCanvasCreation.ts
+  s_11667293ceac35::t_84b5cf9e29dbc9 1,47,50,55-63
+  s_11667293ceac35::t_9e2038bcff919a 64
+assets/app/modules/flows/editor/components/panels/comments/FlowCommentConversation.vue
+  s_11667293ceac35::t_f20e3dae7ee10d 2-5,12,16
+assets/app/components/comments/CommentComposer.vue
+  s_11667293ceac35::t_f920c01fc1f28f 222
+  s_11667293ceac35::t_1e839288a2dcad 1-109,111-120,122-126,128-221,223-230
+  s_11667293ceac35::t_0bd2ac469a01a0 110,121,127
+assets/app/modules/scenes/editor/lib/sceneCommentUi.ts
+  s_11667293ceac35::t_3288ca7be2bfe7 1-18
+assets/app/modules/scenes/types/comments.ts
+  s_11667293ceac35::t_3288ca7be2bfe7 1-17
+  s_11667293ceac35::t_f920c01fc1f28f 18-21
+priv/gettext/scenes.pot
+  s_11667293ceac35::t_10ce5b5339577c 35,234,251-252,273,289,368,385,658-659,664,669,674,684,743,748,753,764,769,774,832,848,858,934,939,944
+  s_11667293ceac35::t_b4109cfaf1e401 933,935-938,940-943,945-947
+assets/app/modules/scenes/editor/components/chrome/header/SceneCommentsHeaderControls.vue
+  s_11667293ceac35::t_74423606c9cad9 1-5,12-53
+  s_11667293ceac35::t_f920c01fc1f28f 6-11
+assets/app/modules/flows/editor/lib/comment-geometry.ts
+  s_11667293ceac35::t_5f3566c68ba4a5 2
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_86c0847571dc3c 28,51,57
+  s_11667293ceac35::t_4f9b8222853f71 289-290,292,303,354-355,357,415,418,421
+  s_11667293ceac35::t_6707394639af93 47,49
+  s_11667293ceac35::t_678c5840f524b7 48
+  s_11667293ceac35::t_3dd3900e33b258 2-6,8-24,26-27,29-31,36-46,50,52-54,56,58-67,69,71-83,85-126,128-129,131,133-152,154-159,168-171,194,199-204,206-221,223-224,228-232,234-250,252-279,281-288,291,293-302,304-353,356,358-374,383,386-414,416-417,419-420,422-441
+  s_11667293ceac35::t_5c67dd74366c40 7,55,84,160-167,280,375-382
+  s_11667293ceac35::t_5056a1557e1009 68,70,127,130,132,153,205,222,225-227,233,251
+  s_11667293ceac35::t_91629b7862b06a 1,25,32-35
+  s_11667293ceac35::t_6d7a3a6a6474e6 172-193,195-198,384-385
+test/e2e/workspaces/projects/scenes/comments_test.exs
+  s_11667293ceac35::t_2624eb7c52134a 1-95
+priv/gettext/assets.pot
+  s_11667293ceac35::t_10ce5b5339577c 57
+test/storyarn_web/live/scene_live/comments_test.exs
+  s_11667293ceac35::t_1df4b9bff0f44c 240
+  s_11667293ceac35::t_d9f011e930ef48 9,260,263-267,271-281
+  s_11667293ceac35::t_2328747d139216 10,215-239,241-247,285,288-291,302-309
+  s_11667293ceac35::t_2624eb7c52134a 1-8,11-214,248-259,261-262,268-270,282-284,286-287,292-301,310-311
+assets/app/modules/flows/types/comments.ts
+  s_11667293ceac35::t_f20e3dae7ee10d 1-12,14,19-21
+  s_11667293ceac35::t_f920c01fc1f28f 23-26
+assets/app/modules/flows/editor/components/panels/FlowCommentsPanel.vue
+  s_11667293ceac35::t_f20e3dae7ee10d 2-3,5,11-12,16
+assets/app/modules/scenes/editor/composables/useConnectionDrawing.ts
+  s_11667293ceac35::t_84b5cf9e29dbc9 1,171-173
+  s_11667293ceac35::t_d729d76cc342d0 174
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_35cd042b8bd988 282-283,288,291,299-301
+test/storyarn_web/live/shared/notification_helpers_test.exs
+  s_11667293ceac35::t_b3d3303061c87c 7,71-86
+  s_11667293ceac35::t_e94f05af1a881a 87-88
+assets/app/modules/scenes/editor/components/canvas/SceneCanvas.vue
+  s_11667293ceac35::t_d91e74152b51a5 559,562
+  s_11667293ceac35::t_7b97fa55ffc598 33,167,184-185,556-558,563,696,698-701,705
+  s_11667293ceac35::t_1686dee14812d3 560-561
+  s_11667293ceac35::t_3fb8436a14ee81 114-115,128-130,142-144,697,702-704
+  s_11667293ceac35::t_70c3980cd04a5a 116,146
+  s_11667293ceac35::t_f920c01fc1f28f 6
+  s_11667293ceac35::t_c5d327792cd9d4 706
+priv/repo/migrations/20260904210000_add_scene_comment_anchors.exs
+  s_11667293ceac35::t_16672509a2ca54 1-51
+lib/storyarn/projects/comments/projections/scene_record.ex
+  s_11667293ceac35::t_16672509a2ca54 1-11
+assets/app/locales/es/scenes.json
+  s_11667293ceac35::t_bef24e4a3cbc2c 475-518
+assets/app/components/comments/commentGeometry.ts
+  s_11667293ceac35::t_5f3566c68ba4a5 1-16
+assets/app/modules/scenes/canvas/composables/useKonvaStage.ts
+  s_11667293ceac35::t_abb2952ee39c2b 84,133,137,142,148,359
+.dependency-cruiser.cjs
+  s_11667293ceac35::t_5f3566c68ba4a5 37
+assets/app/test/modules/scenes/editor/sceneCommentGeometry.test.ts
+  s_11667293ceac35::t_a1b9fc709df4a2 1-39,45-109
+  s_11667293ceac35::t_f920c01fc1f28f 40-44
+lib/storyarn/projects/comments/rules/payload.ex
+  s_11667293ceac35::t_16672509a2ca54 37-45
+lib/storyarn/projects/comments/entities/thread.ex
+  s_11667293ceac35::t_16672509a2ca54 12
+assets/app/components/comments/CommentsPanel.vue
+  s_11667293ceac35::t_a30914eb53fbed 1-5,8,15,17-18,20-25,27-31,33-35,37-39,41-44,46,48-60,62-63,65-67,69-73,75-76
+  s_11667293ceac35::t_f920c01fc1f28f 9-13,61,74
+  s_11667293ceac35::t_5cedadd60accd6 6-7,14,16,19,26,32,36,40,45,47,64,68
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "69c0f4e347087ca412303382e6478b96472811ed",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
