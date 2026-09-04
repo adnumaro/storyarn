@@ -287,6 +287,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     list_comment_members: 2,
     flow_comment_counts: 3,
     comment_destination: 3,
+    comment_destinations: 2,
     subscribe_flow_comments: 3,
     unsubscribe_flow_comments: 2
   ]

@@ -10,6 +10,7 @@ defmodule Storyarn.Projects.Comments.Queries do
   alias Storyarn.Projects.Comments.Projections.UserRecord
   alias Storyarn.Projects.Comments.Projections.WorkspaceMembershipRecord
   alias Storyarn.Projects.Comments.Thread
+  alias Storyarn.Projects.Project
   alias Storyarn.Repo
 
   def thread(project_id, thread_id, opts \\ []) do
@@ -86,6 +87,49 @@ defmodule Storyarn.Projects.Comments.Queries do
     Repo.one(from(m in Message, where: m.id == ^message_id and m.project_id == ^project_id))
   end
 
+  def destinations(_user_id, []), do: []
+
+  def destinations(user_id, message_ids) do
+    Repo.all(
+      from([m, t, n, f] in destination_sources(message_ids),
+        join: p in Project,
+        on: p.id == t.project_id,
+        join: w in assoc(p, :workspace),
+        left_join: pm in ProjectMembershipRecord,
+        on: pm.project_id == p.id and pm.user_id == ^user_id,
+        left_join: wm in WorkspaceMembershipRecord,
+        on: wm.workspace_id == p.workspace_id and wm.user_id == ^user_id,
+        where: is_nil(p.deleted_at),
+        where: not is_nil(pm.id) or not is_nil(wm.id),
+        select: %{
+          message_id: m.id,
+          project_role: pm.role,
+          workspace_role: wm.role,
+          destination: %{
+            project_id: p.id,
+            project_slug: p.slug,
+            workspace_slug: w.slug,
+            flow_id: f.id,
+            node_id: n.id,
+            thread_id: t.id
+          }
+        }
+      )
+    )
+  end
+
+  defp destination_sources(message_ids) do
+    from(m in Message,
+      join: t in Thread,
+      on: t.id == m.thread_id and t.project_id == m.project_id,
+      join: n in FlowNodeRecord,
+      on: t.flow_node_id == n.id and t.source_id == n.id and t.source_inserted_at == n.inserted_at,
+      join: f in FlowRecord,
+      on: f.id == n.flow_id and f.id == t.container_id and f.project_id == t.project_id,
+      where: m.id in ^message_ids and is_nil(f.deleted_at) and is_nil(n.deleted_at)
+    )
+  end
+
   def existing_request(project_id, author_id, request_id) do
     Repo.get_by(Message, project_id: project_id, author_id: author_id, client_request_id: request_id)
   end
@@ -117,7 +161,7 @@ defmodule Storyarn.Projects.Comments.Queries do
   def open_counts(project_id, flow_id) do
     from(t in Thread,
       join: n in FlowNodeRecord,
-      on: t.flow_node_id == n.id and t.source_inserted_at == n.inserted_at,
+      on: t.flow_node_id == n.id and t.source_id == n.id and t.source_inserted_at == n.inserted_at,
       join: f in FlowRecord,
       on: f.id == n.flow_id,
       where: t.project_id == ^project_id and t.container_id == ^flow_id and t.status == "open",

@@ -88,6 +88,23 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
+  def destinations(%{user: %{id: user_id}}, comment_ids) when is_list(comment_ids) do
+    if Payload.valid_id?(user_id) do
+      comment_ids
+      |> Enum.filter(&Payload.valid_id?/1)
+      |> Enum.uniq()
+      |> then(&Queries.destinations(user_id, &1))
+      |> Enum.filter(fn row ->
+        row.project_role |> Access.effective_role(row.workspace_role) |> Access.can?(:view)
+      end)
+      |> Map.new(fn row -> {{row.destination.project_id, row.message_id}, row.destination} end)
+    else
+      %{}
+    end
+  end
+
+  def destinations(_scope, _comment_ids), do: %{}
+
   def subscribe_flow(scope, project_id, flow_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do

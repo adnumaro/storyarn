@@ -21,14 +21,17 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
         unread_only: filter == :unread
       )
 
+    comment_ids = for %{entity_type: "comment", entity_id: id} <- notifications, do: id
+    destinations = Projects.comment_destinations(scope, comment_ids)
+
     %{
       filter: Atom.to_string(filter),
-      items: Enum.map(notifications, &serialize(&1, scope)),
+      items: Enum.map(notifications, &serialize(&1, destinations)),
       unreadCount: Platform.unread_notification_count(scope)
     }
   end
 
-  defp serialize(%{id: _} = notification, scope) do
+  defp serialize(%{id: _} = notification, destinations) do
     %{
       id: notification.id,
       kind: notification.kind,
@@ -39,16 +42,17 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
       readAt: iso8601(notification.read_at),
       actorName: actor_name(notification.actor),
       projectName: project_name(notification.project),
-      href: destination(notification, scope)
+      href: destination(notification, destinations)
     }
   end
 
-  defp destination(%{entity_type: "comment", entity_id: comment_id, project_id: project_id}, scope) do
-    with {:ok, destination} <- Projects.comment_destination(scope, project_id, comment_id),
-         {:ok, project, _membership} <- Projects.reload_project(scope, project_id) do
-      ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{destination.flow_id}?#{%{thread: destination.thread_id}}"
-    else
-      _unavailable -> nil
+  defp destination(%{entity_type: "comment", entity_id: comment_id, project_id: project_id}, destinations) do
+    case destinations[{project_id, comment_id}] do
+      nil ->
+        nil
+
+      destination ->
+        ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/flows/#{destination.flow_id}?#{%{thread: destination.thread_id}}"
     end
   end
 

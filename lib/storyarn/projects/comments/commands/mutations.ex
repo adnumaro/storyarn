@@ -13,6 +13,8 @@ defmodule Storyarn.Projects.Comments.Mutations do
   alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Repo
 
+  defguardp valid_thread_id?(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807
+
   def create(scope, project_id, flow_id, node_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
          true <- Payload.valid_id?(flow_id) and Payload.valid_id?(node_id) do
@@ -40,7 +42,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def set_status(scope, project_id, thread_id, status, expected_revision)
       when status in ["open", "resolved"] and is_integer(expected_revision) and expected_revision > 0 and
-             is_integer(thread_id) and thread_id > 0 do
+             valid_thread_id?(thread_id) do
     transact(scope, project_id, fn project, actor_id ->
       thread = lock_available_thread!(project.id, thread_id)
       if thread.revision != expected_revision, do: Repo.rollback(:stale)

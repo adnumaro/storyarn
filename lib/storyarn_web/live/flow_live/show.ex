@@ -1462,7 +1462,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:remote_change, action, payload}, socket) do
     result = CollaborationEventHandlers.handle_remote_change(action, payload, socket)
 
-    if action in [:node_deleted, :node_removed, :node_restored, :flow_updated] do
+    if action in [:node_deleted, :node_removed, :node_restored, :flow_updated, :flow_refresh] do
       CommentHandlers.refresh_result(result)
     else
       result

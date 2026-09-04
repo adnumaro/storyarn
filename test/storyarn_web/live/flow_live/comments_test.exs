@@ -6,6 +6,7 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Repo
@@ -131,6 +132,31 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
     assert panel(view)["thread"]["message_count"] == 2
     assert List.last(panel(view)["messages"])["body"] == "Another window replied"
+  end
+
+  test "a remote graph refresh updates comment counts and source availability after deletion", context do
+    hub = node_fixture(context.flow, %{type: "hub", data: %{"hub_id" => "reviewed_hub", "label" => "Reviewed hub"}})
+    jump = node_fixture(context.flow, %{type: "jump", data: %{"target_hub_id" => "reviewed_hub"}})
+    detail = create_comment(%{context | node: hub})
+    view = open_flow(context, "?thread=#{detail.thread.id}")
+
+    assert panel(view)["thread"]["source"]["status"] == "available"
+    surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+    assert surface.props["surface"]["canvas"]["commentCounts"][to_string(hub.id)] == 1
+
+    assert {:ok, _deleted, %{graph_changed?: true, orphaned_jumps: 1}} = Flows.delete_node(hub)
+    assert Flows.get_node(context.flow.id, jump.id).data["target_hub_id"] == ""
+
+    send(view.pid, {:remote_change, :flow_refresh, %{node_id: hub.id}})
+
+    state = panel(view)
+    assert state["thread"]["id"] == detail.thread.id
+    assert state["thread"]["source"]["status"] == "unavailable"
+    assert [%{"body" => "Review this beat"}] = state["messages"]
+
+    surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+    assert surface.props["surface"]["canvas"]["commentCounts"] == %{}
+    assert surface.props["surface"]["canvas"]["commentFocusNodeId"] == nil
   end
 
   test "malformed node and revision payloads fail without crashing", context do

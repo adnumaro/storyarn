@@ -952,6 +952,7 @@ defmodule Storyarn.Projects do
   defdelegate list_comment_members(scope, project_id), to: Comments, as: :list_members
   defdelegate flow_comment_counts(scope, project_id, flow_id), to: Comments, as: :flow_counts
   defdelegate comment_destination(scope, project_id, comment_id), to: Comments, as: :destination
+  defdelegate comment_destinations(scope, comment_ids), to: Comments, as: :destinations
   defdelegate subscribe_flow_comments(scope, project_id, flow_id), to: Comments, as: :subscribe_flow
   defdelegate unsubscribe_flow_comments(project_id, flow_id), to: Comments, as: :unsubscribe_flow
 end

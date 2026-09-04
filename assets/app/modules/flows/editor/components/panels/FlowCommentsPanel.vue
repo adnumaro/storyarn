@@ -27,6 +27,7 @@ const { t, locale } = useI18n();
 const replyToId = ref<number | null>(null);
 const statusPending = ref(false);
 const localError = ref<string | null>(null);
+let statusRequestToken: symbol | null = null;
 const filter = computed(() => state.statusFilter ?? "open");
 const sourceAvailable = computed(() => !state.thread || state.thread.source.status === "available");
 const composerEnabled = computed(
@@ -46,10 +47,12 @@ const replyTo = computed(() => state.messages.find((message) => message.id === r
 watch(
   () => state.thread?.id,
   () => {
+    statusRequestToken = null;
     replyToId.value = null;
     localError.value = null;
     statusPending.value = false;
   },
+  { flush: "sync" },
 );
 
 function formatDate(value: string) {
@@ -69,20 +72,24 @@ function selectFilter(event: Event) {
 function changeStatus(status: CommentStatus) {
   const thread = state.thread;
   if (!thread || !state.canComment || !sourceAvailable.value || statusPending.value) return;
+  const requestToken = Symbol();
+  statusRequestToken = requestToken;
   statusPending.value = true;
   localError.value = null;
   live.pushEvent(
     "comments_set_status",
     { thread_id: thread.id, status, expected_revision: thread.revision },
     (reply) => {
-      if (state.thread?.id !== thread.id) return;
+      if (statusRequestToken !== requestToken || state.thread?.id !== thread.id) return;
+      statusRequestToken = null;
       statusPending.value = false;
       if (reply.ok !== true)
         localError.value =
           typeof reply.error === "string" ? reply.error : t("flows.comments.update_failed");
     },
     () => {
-      if (state.thread?.id !== thread.id) return;
+      if (statusRequestToken !== requestToken || state.thread?.id !== thread.id) return;
+      statusRequestToken = null;
       statusPending.value = false;
       localError.value = t("flows.comments.update_failed");
     },

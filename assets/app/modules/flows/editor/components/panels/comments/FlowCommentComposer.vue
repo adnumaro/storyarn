@@ -85,7 +85,9 @@ function submit() {
   if (!canSend.value) return;
   const current = draft.value;
   const body = current.body.trim();
-  const mentionIds = current.mentionIds.filter((id) => members.some((member) => member.id === id));
+  const mentionIds = [
+    ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
+  ].sort((left, right) => left - right);
   const fingerprint = JSON.stringify({ nodeId, threadId, parentId, body, mentionIds });
   if (current.fingerprint !== fingerprint || !current.requestId) {
     current.requestId = crypto.randomUUID();

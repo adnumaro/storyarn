@@ -151,6 +151,49 @@ describe("Flow comments panel", () => {
     );
   });
 
+  it.each(["reply", "transport"] as const)(
+    "ignores a stale %s callback after navigating A to B to A during a newer request",
+    async (failureKind) => {
+      const wrapper = panel({ thread, messages: [message] });
+      await wrapper.get("#flow-comment-status").trigger("click");
+      const oldRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+      await wrapper.setProps({ state: { ...base, thread: { ...thread, id: 13 } } });
+      await wrapper.setProps({ state: { ...base, thread, messages: [message] } });
+      await wrapper.get("#flow-comment-status").trigger("click");
+      const currentRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+
+      if (failureKind === "reply") oldRequest[2]!({ ok: false, error: "Old response" });
+      else oldRequest[3]!(new Error("Old transport failure"));
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.get("#flow-comment-status").attributes("disabled")).toBeDefined();
+      expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+      currentRequest[2]!({ ok: true });
+      await wrapper.vm.$nextTick();
+      expect(wrapper.get("#flow-comment-status").attributes("disabled")).toBeUndefined();
+    },
+  );
+
+  it.each(["reply", "transport"] as const)(
+    "preserves the newer error when a stale %s callback returns after navigating A to B to A",
+    async (failureKind) => {
+      const wrapper = panel({ thread, messages: [message] });
+      await wrapper.get("#flow-comment-status").trigger("click");
+      const oldRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+      await wrapper.setProps({ state: { ...base, thread: { ...thread, id: 13 } } });
+      await wrapper.setProps({ state: { ...base, thread, messages: [message] } });
+      await wrapper.get("#flow-comment-status").trigger("click");
+      lastReply()({ ok: false, error: "Current request failed" });
+      await wrapper.vm.$nextTick();
+
+      if (failureKind === "reply") oldRequest[2]!({ ok: false, error: "Old response" });
+      else oldRequest[3]!(new Error("Old transport failure"));
+      await wrapper.vm.$nextTick();
+
+      expect(wrapper.get('[role="alert"]').text()).toBe("Current request failed");
+    },
+  );
+
   it("submits an explicit reply to the chosen message", async () => {
     const reply: FlowCommentMessage = {
       ...message,
@@ -227,6 +270,34 @@ describe("Flow comment composer delivery", () => {
     expect(vi.mocked(mockLive.pushEvent).mock.calls[1][1]?.client_request_id).not.toBe(
       first?.client_request_id,
     );
+  });
+
+  it("reuses the same request after a lost response and reordering the same mentions", async () => {
+    const wrapper = composer();
+    const thirdMember = { id: 20, display_name: "Lin", avatar_url: null };
+    await wrapper.setProps({ members: [author, member, thirdMember] });
+    for (const name of ["Ada", "Grace", "Lin"]) {
+      await wrapper
+        .findAll("button[aria-pressed]")
+        .find((button) => button.text() === name)!
+        .trigger("click");
+    }
+    await wrapper.get("textarea").setValue("Please review this scene.");
+    await wrapper.get("form").trigger("submit");
+    const originalRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+    originalRequest[3]!(new Error("Response lost after commit"));
+    await wrapper.vm.$nextTick();
+
+    await wrapper.get('button[aria-label="Remove mention of Ada"]').trigger("click");
+    await wrapper
+      .findAll("button[aria-pressed]")
+      .find((button) => button.text() === "Ada")!
+      .trigger("click");
+    await wrapper.get("form").trigger("submit");
+    const retry = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+
+    expect(retry[1]).toEqual(originalRequest[1]);
+    expect(retry[1]?.mention_user_ids).toEqual([4, 8, 20]);
   });
 
   it("clears only the submitted draft if context changes before acknowledgment", async () => {

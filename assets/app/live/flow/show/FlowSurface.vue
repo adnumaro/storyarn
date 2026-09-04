@@ -33,6 +33,12 @@ interface FlowSurface {
   dock: FlowDockSurface;
 }
 
+interface FlowCanvasComments {
+  enabled: boolean;
+  counts: Record<string, number>;
+  focusNodeId: number | null;
+}
+
 const { surface: initialSurface } = defineProps<{
   surface: FlowSurface;
 }>();
@@ -42,6 +48,15 @@ const live = useLiveVue();
 const surface = computed(
   () => (live.vue?.props?.surface as FlowSurface | undefined) ?? initialSurface,
 );
+const emptyCommentCounts: Record<string, number> = {};
+const comments = computed<FlowCanvasComments>((previous) => {
+  const counts = surface.value.canvas.commentCounts ?? emptyCommentCounts;
+  const focusNodeId = surface.value.canvas.commentFocusNodeId ?? null;
+  if (previous && previous.counts === counts && previous.focusNodeId === focusNodeId) {
+    return previous;
+  }
+  return { enabled: true, counts, focusNodeId };
+});
 </script>
 
 <template>
@@ -56,11 +71,7 @@ const surface = computed(
         :user-color="surface.canvas.userColor"
         :canvas-id="surface.canvas.canvasId"
         :toolbar-data="surface.canvas.toolbarData"
-        :comments="{
-          enabled: true,
-          counts: surface.canvas.commentCounts ?? {},
-          focusNodeId: surface.canvas.commentFocusNodeId ?? null,
-        }"
+        :comments="comments"
       />
     </div>
 
