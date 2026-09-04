@@ -1,0 +1,252 @@
+lib/storyarn/projects/comments/projections/flow_node_record.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-7,9-12
+  s_11667293ceac35::t_d6b16635fe69a8 8
+lib/storyarn/platform/notifications/notifications.ex
+  s_11667293ceac35::t_29e8a73c76a5fb 22-31
+  s_11667293ceac35::t_d2b9eb2e013cc9 32
+priv/repo/migrations/20260904150000_create_project_comments.exs
+  s_11667293ceac35::t_237a2f693387cd 10,34
+  s_11667293ceac35::t_ee842ccfdda6f7 28
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-9,11-27,29-33,35-52
+  s_11667293ceac35::t_438e4a6a8571ad 53-64
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_11667293ceac35::t_d84ef962ab608b 1-40
+  s_11667293ceac35::t_93ce5855ae07ae 41-66
+test/storyarn/architecture/platform_facade_contract_test.exs
+  s_11667293ceac35::t_bcaa82268fc69b 37-38,55,88-92,94,109,111-117,152-165
+  s_11667293ceac35::t_4eccf158f6e82a 166
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_996ff04bbc04ed 48,107,210,220,366,399,404,409,414,486-500
+lib/storyarn/projects/comments/projections/user_record.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-9
+test/storyarn/platform/notifications/integration/comment_notifications_test.exs
+  s_11667293ceac35::t_707abc5b5aed70 1-78,80-93,95-126,130-132,134-135
+  s_11667293ceac35::t_f4d2a37d2b29bf 79,94,127-129,133
+  s_11667293ceac35::t_3aee00a7eb3089 136-137
+assets/app/live/flow/show/FlowPanels.vue
+  s_11667293ceac35::t_0aa6ccfee82ffe 82,97,106,119,127,135,143
+  s_11667293ceac35::t_90a44e6b3d0cb2 3-4,60,77-79
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_6f475b6e513c48 929-955
+  s_11667293ceac35::t_d6b16635fe69a8 956
+  s_11667293ceac35::t_99c22e664250d0 17
+assets/app/modules/flows/editor/services/navigation.ts
+  s_11667293ceac35::t_90a44e6b3d0cb2 38,152-157
+assets/app/modules/flows/editor/composables/flowCanvasServerEvents.ts
+  s_11667293ceac35::t_90a44e6b3d0cb2 150-152
+assets/app/modules/flows/editor/components/panels/comments/FlowCommentComposer.vue
+  s_11667293ceac35::t_a5e9ffe5a24ef4 42-44
+  s_11667293ceac35::t_bc88be2f95f131 1-41,45-128
+  s_11667293ceac35::t_78e1803b4db0d8 129-200
+lib/storyarn/projects/comments/rules/payload.ex
+  s_11667293ceac35::t_237a2f693387cd 1-8,10,13-31,36
+  s_11667293ceac35::t_b5a40f2dc627ac 9,12,32-35
+  s_11667293ceac35::t_1ea04c1b693f62 11
+lib/storyarn/projects/comments/entities/thread.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-9,11-22
+  s_11667293ceac35::t_237a2f693387cd 10
+assets/app/test/modules/flows/components/FlowCommentsPanel.test.ts
+  s_11667293ceac35::t_12665bf7d9180b 1-49,51-139,141-159
+  s_11667293ceac35::t_8e4dce36b12fdb 140
+  s_11667293ceac35::t_a5e9ffe5a24ef4 50
+  s_11667293ceac35::t_9c30254b54b455 160-245
+test/storyarn/projects/comments/comments_concurrency_test.exs
+  s_11667293ceac35::t_1ea04c1b693f62 36-42,56,64-79
+  s_11667293ceac35::t_e3fb1fcd247037 1-35,43-55,57-63,80-98
+assets/app/modules/flows/editor/components/entities/nodes/SequenceNode.vue
+  s_11667293ceac35::t_5ab2a227e191e0 40,165
+  s_11667293ceac35::t_de2328613f1b93 157,169
+  s_11667293ceac35::t_90a44e6b3d0cb2 32,39,164,166-168,170
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_6a78d1baa1efd4 279-292,298
+lib/storyarn/projects/comments/README.md
+  s_11667293ceac35::t_b1afbfd1e86ac2 1-69,73-74
+  s_11667293ceac35::t_ee842ccfdda6f7 70-72,75-79
+lib/storyarn/projects/comments/entities/message.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-15
+lib/storyarn/platform/notifications/entities/notification.ex
+  s_11667293ceac35::t_29e8a73c76a5fb 18,29,40,137
+assets/app/components/notifications/NotificationBell.vue
+  s_11667293ceac35::t_e4328fcc6bb179 162-164
+  s_11667293ceac35::t_9cf63746a15482 8,15,27,105,161,165-167,186-192,256,374,378-379,390-405
+  s_11667293ceac35::t_d57ced2c728d34 185,193-196,201-203,375-377
+test/storyarn_web/live/shared/notification_helpers_test.exs
+  s_11667293ceac35::t_124eed68a5eafc 11,45-48,62
+  s_11667293ceac35::t_6a3a5b34359b0a 1-10,12-44,49-61,63-75
+test/storyarn_web/live/hooks/notifications_test.exs
+  s_11667293ceac35::t_124eed68a5eafc 124
+  s_11667293ceac35::t_d59e2029f386d6 6,113-123,125-140
+  s_11667293ceac35::t_60bb6decb120f9 141-142
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_11667293ceac35::t_ad8263a54fff0f 248-255
+  s_11667293ceac35::t_86bfb6696e25d3 4-5,42,73-80,90,126-130,132-134,168-169,181-192,256,320,324
+  s_11667293ceac35::t_e690c9aeb2bcb3 23-24,36-40,228,261,317-318
+  s_11667293ceac35::t_e728b690026e39 1-3,6-22,25-35,41,45-72,81-89,91-125,159-161,165-167,170-180,193-227,229-232,234-247,257-260,262-263,277-316,319,321-323,325-340,342-369
+  s_11667293ceac35::t_bd16aa01580631 43-44,264-276,341
+  s_11667293ceac35::t_5f17390a13a151 162-164,233
+  s_11667293ceac35::t_c9c71c795bc64d 131,135-158
+  s_11667293ceac35::t_838d9798dfb11e 370-371
+test/storyarn/projects/comments/comments_test.exs
+  s_11667293ceac35::t_b5a40f2dc627ac 323,327-330
+  s_11667293ceac35::t_1ea04c1b693f62 13,26,48,50,58,60,62-73,81-85,87-98,106,115,118,123,128-129,131-134,145,147-165,169-181,192,197,209,215-218,220-224,228-232,234-242,246,251-260,269,279-284,286-289,293-296,299-302,308,314,324,326,331,336,338-348,355
+  s_11667293ceac35::t_64a94e2e4cd464 10,200-208,210-214,219,225-227,233
+  s_11667293ceac35::t_288fc748e8865b 1-9,11-12,14-17,20-21,23-25,27-45,47,49,51-57,59,61,74-80,86,99-105,107-114,116-117,119-122,124-127,130,135-144,146,166-168,182-187,189-191,193-196,198-199,243-245,248-250,261-262,264-268,271-272,274-278,285,290-292,297-298,303-307,309-313,315-322,325,332-335,337,349-354,356-366
+  s_11667293ceac35::t_e3fb1fcd247037 18-19,22,46,188
+  s_11667293ceac35::t_12f7fe9787a9e6 247,263,273
+  s_11667293ceac35::t_cd379102d121e6 270
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_bd16aa01580631 27-32,109-115,125-130,144-168,170-175
+  s_11667293ceac35::t_dd3721aad6a96d 1-26,33-108,116-124,131-143,169,176-190
+assets/app/modules/flows/types/comments.ts
+  s_11667293ceac35::t_a5e9ffe5a24ef4 2,30,46,49
+  s_11667293ceac35::t_bc88be2f95f131 1,3-29,31-45,47-48,50-56
+lib/storyarn/projects/comments/projections/flow_record.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-9
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_11667293ceac35::t_9cf63746a15482 10-11,13,26,31,41-42,46-55
+  s_11667293ceac35::t_640bf9e3e3a921 56
+assets/app/locales/en/notifications.json
+  s_11667293ceac35::t_9cf63746a15482 14,40-41,44-45
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_11667293ceac35::t_f8388bd379a5a1 172-173
+  s_11667293ceac35::t_1ea04c1b693f62 10,19-20,32-33,74-82,84-122,130-132,137-138,157,161-170,191-192
+  s_11667293ceac35::t_4161c0aefadc6e 1-7,9,11-18,21-31,34-41,44-73,83,123-129,133-136,139-156,158-160,171,174-190,193-195
+  s_11667293ceac35::t_d6b16635fe69a8 8
+  s_11667293ceac35::t_b1afbfd1e86ac2 42-43
+test/storyarn/projects/comments/integration/source_lifecycle_test.exs
+  s_11667293ceac35::t_6129caa41d9607 8,40-81
+  s_11667293ceac35::t_12f7fe9787a9e6 1-7,9-39,82-83
+  s_11667293ceac35::t_d26f2a592c23c8 84-89
+lib/storyarn/projects/README.md
+  s_11667293ceac35::t_e690c9aeb2bcb3 13,29,56
+lib/storyarn/projects/comments/projections/workspace_membership_record.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-10
+assets/app/live/flow/show/FlowHeader.vue
+  s_11667293ceac35::t_90a44e6b3d0cb2 213-217,219,221,223-225,227-228
+  s_11667293ceac35::t_37c97955a90a02 2-11,58,69,218,220,222,226
+  s_11667293ceac35::t_1966f0bcefa96a 229
+assets/app/live/flow/show/FlowSurface.vue
+  s_11667293ceac35::t_90a44e6b3d0cb2 18-19
+  s_11667293ceac35::t_37c97955a90a02 59
+  s_11667293ceac35::t_690c89179f47f7 60-63
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_d6b16635fe69a8 26-27,99-102,113-122
+  s_11667293ceac35::t_4161c0aefadc6e 1-25,28-98,103-112,123-137
+  s_11667293ceac35::t_9aee36d8f04990 138
+assets/app/locales/es/notifications.json
+  s_11667293ceac35::t_9cf63746a15482 14,40-41,44-45
+assets/app/modules/flows/editor/components/entities/rete/FlowNode.vue
+  s_11667293ceac35::t_90a44e6b3d0cb2 19,30,112,114-116,118
+  s_11667293ceac35::t_de2328613f1b93 108,117
+  s_11667293ceac35::t_5ab2a227e191e0 31,113
+lib/storyarn/platform/notifications/execution/delivery.ex
+  s_11667293ceac35::t_29e8a73c76a5fb 29-32,43-72,451-494
+  s_11667293ceac35::t_5b3c2c843ef66c 495
+lib/storyarn/platform/notifications/projections/project_record.ex
+  s_11667293ceac35::t_ad270162e0ee97 14
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_11667293ceac35::t_0aa6ccfee82ffe 1-41,43-47
+  s_11667293ceac35::t_356cbb2504fc5b 42
+test/storyarn/architecture/projects_internal_structure_test.exs
+  s_11667293ceac35::t_02c7071bd86f2e 10,34,93,107,158,176
+  s_11667293ceac35::t_a9b23b52ee6273 22
+config/architecture_boundaries.exs
+  s_11667293ceac35::t_e690c9aeb2bcb3 2123,2129,2248
+  s_11667293ceac35::t_3f00cb0b0c6a0e 3944-3968
+lib/storyarn/projects/comments/entities/mention.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-9
+lib/storyarn/platform.ex
+  s_11667293ceac35::t_29e8a73c76a5fb 107-112
+lib/storyarn/projects/comments/rules/dto.ex
+  s_11667293ceac35::t_237a2f693387cd 1-2,4-10,19-23,26-34,37-55
+  s_11667293ceac35::t_d6b16635fe69a8 3,11-18,24-25,35-36
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_11667293ceac35::t_6c59574070ddc4 155-159,204-208
+lib/storyarn/projects/comments/queries/queries.ex
+  s_11667293ceac35::t_b1afbfd1e86ac2 43-51,53-54,56-57
+  s_11667293ceac35::t_237a2f693387cd 1-41,58-76,78-155
+  s_11667293ceac35::t_d6b16635fe69a8 42,52,55,77
+  s_11667293ceac35::t_c276512d73ea54 156-159
+assets/app/test/live/flow/show/FlowHeader.test.ts
+  s_11667293ceac35::t_12665bf7d9180b 53-58
+assets/app/components/notifications/types.ts
+  s_11667293ceac35::t_9cf63746a15482 5-10,18
+lib/storyarn/projects/comments/projections/project_membership_record.ex
+  s_11667293ceac35::t_10bcd5cbe1c90d 1-10
+assets/app/live/flow/show/FlowCanvas.vue
+  s_11667293ceac35::t_5ab2a227e191e0 78,80
+  s_11667293ceac35::t_37c97955a90a02 18,28,57-58,73-74,77
+  s_11667293ceac35::t_90a44e6b3d0cb2 36,72,75-76,81
+  s_11667293ceac35::t_d84ef962ab608b 34,55,79
+  s_11667293ceac35::t_73d1fa0ad5ef83 82
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_11667293ceac35::t_90a44e6b3d0cb2 56
+  s_11667293ceac35::t_5ab2a227e191e0 57
+assets/app/test/modules/flows/components/NodeCommentBadge.test.ts
+  s_11667293ceac35::t_12665bf7d9180b 1-10,12-24
+  s_11667293ceac35::t_8e4dce36b12fdb 11
+  s_11667293ceac35::t_c4896bd633c202 25
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_11667293ceac35::t_90a44e6b3d0cb2 119
+  s_11667293ceac35::t_5ab2a227e191e0 120
+assets/app/modules/flows/editor/components/panels/FlowCommentsPanel.vue
+  s_11667293ceac35::t_bc88be2f95f131 1,12-17,23-31,44-45,54-56,62-73,90-96,109-112,120-122,130,158-159,167,175,194,215-216,231-234,268-269,304,313-315,339,349-351
+  s_11667293ceac35::t_f69e5a8eb8de82 2-11,18-22,32-43,46-53,57-61,74-89,97-108,113-119,123-129,131-157,160-166,168-174,176-193,195-214,217-230,235-267,270-303,305-312,316-338,340-348
+assets/app/modules/flows/editor/composables/flowCanvasTypes.ts
+  s_11667293ceac35::t_5ab2a227e191e0 110
+  s_11667293ceac35::t_8e4dce36b12fdb 111
+lib/storyarn_web/live/flow_live/show.ex
+  s_11667293ceac35::t_86bfb6696e25d3 439,537,541,545,549-550,563,567-568,588-589,756-757,764-765,1048,1382,1390
+  s_11667293ceac35::t_5f17390a13a151 9,234,319-322,367,430-433,758,766,1362,1383-1389,1462-1470,1573,1588-1589
+  s_11667293ceac35::t_e690c9aeb2bcb3 88,383
+assets/app/test/modules/flows/editor/navigation.test.ts
+  s_11667293ceac35::t_12665bf7d9180b 56,58-59,161-171
+  s_11667293ceac35::t_626c2b23604c45 172-178
+priv/repo/migrations/20260904130000_extend_notifications_for_comments.exs
+  s_11667293ceac35::t_29e8a73c76a5fb 1-29
+assets/app/modules/flows/editor/components/entities/node-shell/NodeCommentBadge.vue
+  s_11667293ceac35::t_bc88be2f95f131 1-4,6-13,15-25
+  s_11667293ceac35::t_de2328613f1b93 5,14
+  s_11667293ceac35::t_8f5bec9a7b8af9 26-37
+lib/storyarn_web/live/hooks/notifications.ex
+  s_11667293ceac35::t_e4328fcc6bb179 75-78
+  s_11667293ceac35::t_ce5d91945dd0ee 79-80
+assets/app/test/components/notifications/NotificationBell.test.ts
+  s_11667293ceac35::t_707abc5b5aed70 150-161,163-165,171-174,176,180-186,220-221
+  s_11667293ceac35::t_ad270162e0ee97 162,166-170,177-179
+  s_11667293ceac35::t_9cf63746a15482 24,37
+  s_11667293ceac35::t_d59e2029f386d6 175,187-219
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_11667293ceac35::t_5ab2a227e191e0 834-838
+  s_11667293ceac35::t_90a44e6b3d0cb2 839-844,863-864
+assets/app/locales/en/flows.json
+  s_11667293ceac35::t_1d5bf44184d46e 464-499
+assets/app/locales/es/flows.json
+  s_11667293ceac35::t_af8068513e977d 464-499
+priv/gettext/default.pot
+  s_11667293ceac35::t_b1f3e58389951f 53
+priv/gettext/en/LC_MESSAGES/default.po
+  s_11667293ceac35::t_208a619046197e 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_11667293ceac35::t_8815501724041e 48,107,210,220,366,399,404,409,414,486-500
+priv/gettext/es/LC_MESSAGES/default.po
+  s_11667293ceac35::t_223a25023e5c01 53
+priv/gettext/flows.pot
+  s_11667293ceac35::t_35be962046b68b 48,107,210,220,366,399,404,409,414,486-500
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "6c34d63f27de8d02be71986da8765b95d87529f7",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
