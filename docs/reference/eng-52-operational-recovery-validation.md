@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-03
+> Last reviewed: 2026-09-04
 >
 > Source of truth: ENG-52, `docs/reference/versioning-containment.md`, dated
 > deployed-release and provider validation, and the evidence links recorded
@@ -56,10 +56,17 @@ ENG-52:
 - After ENG-116 is deployed, run exact-key multipart cleanup through the
   application path, prove the durable receipt survives the complete quiescence
   protocol, and finish with no overdue cleanup backlog or provider residue.
-- After ENG-117 is deployed, exercise direct-upload success, replay, expiry,
-  cancellation, and both upload/cleanup race orders. Verify that every outcome
-  converges to one accepted object or an absent key with durable cleanup
-  ownership.
+- For ENG-117, validate the server-controlled upload path merged in PR #115:
+  success, repeated cancellation, interrupted transfer, expiry, and both
+  upload/cleanup race orders. Verify that every outcome converges to one accepted
+  object or an absent key with durable cleanup ownership. New uploads no longer
+  issue protected presigned PUTs, so browser `If-Match`, CORS and bearer replay
+  are not acceptance criteria for this path. Previously issued URLs still need
+  the containment described in `versioning-containment.md`. Verify that cleanup
+  retains the original provider namespace and refuses a different one.
+  Upload owners created before namespace pinning remain blocked if their original
+  identity is unknown; do not backfill it from current configuration or delete
+  their records before verifying ownership of the retained bytes.
 - Restore a disposable project exactly after removing its live asset bytes, and
   compare the complete project and asset inventory.
 - Exercise recovery ZIP import and verify its cleanup on success, cancellation,

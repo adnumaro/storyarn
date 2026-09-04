@@ -35,6 +35,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
           original_filename: String.t() | nil,
           project_name: String.t() | nil,
           archive_storage_key: String.t() | nil,
+          provider_namespace_fingerprint: String.t() | nil,
           archive_size_bytes: pos_integer() | nil,
           archive_checksum: String.t() | nil,
           manifest_checksum: String.t() | nil,
@@ -61,6 +62,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
     field :original_filename, :string
     field :project_name, :string
     field :archive_storage_key, :string
+    field :provider_namespace_fingerprint, :string
     field :archive_size_bytes, :integer
     field :archive_checksum, :string
     field :manifest_checksum, :string
@@ -93,7 +95,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
   def active_statuses, do: @active_statuses
   def stages, do: @stages
 
-  @doc "Owns a direct-upload key before any snapshot payload is trusted."
+  @doc "Owns an upload key and its provider namespace before any snapshot payload is trusted."
   def upload_changeset(import, attrs) when is_map(attrs) do
     import
     |> cast(attrs, [
@@ -111,6 +113,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
     |> validate_required([
       :workspace_id,
       :user_id,
+      :provider_namespace_fingerprint,
       :original_filename,
       :project_name,
       :archive_storage_key,
@@ -288,6 +291,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
     |> validate_length(:project_name, min: 1, max: 255)
     |> validate_length(:archive_storage_key, min: 1, max: 520)
     |> validate_format(:archive_checksum, @sha256_regex)
+    |> validate_format(:provider_namespace_fingerprint, @sha256_regex)
     |> validate_format(:manifest_checksum, @sha256_regex)
     |> validate_format(:project_checksum, @sha256_regex)
     |> validate_length(:failure_code, max: 100)
@@ -313,6 +317,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImport do
     |> check_constraint(:status, name: :workspace_snapshot_imports_lifecycle_check)
     |> check_constraint(:archive_checksum, name: :workspace_snapshot_imports_identity_check)
     |> check_constraint(:failure_details, name: :workspace_snapshot_imports_payload_check)
+    |> check_constraint(:provider_namespace_fingerprint,
+      name: :workspace_snapshot_imports_provider_namespace_check
+    )
   end
 
   defp validate_progress_bounds(changeset) do

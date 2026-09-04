@@ -69,7 +69,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   def request(%{user: _}, %{id: _}, _uploaded_path, _attrs, _opts), do: {:error, :unauthorized}
   def request(_scope, _workspace, _uploaded_path, _attrs, _opts), do: {:error, :invalid_snapshot_import_request}
 
-  @doc "Creates the durable owner of one direct-upload key before bytes leave the browser."
+  @doc "Pins the durable owner and provider namespace before uploading archive bytes."
   def prepare_upload(%{user: %{id: _}} = scope, %{id: _} = workspace, attrs) when is_map(attrs),
     do: prepare_upload(scope, workspace, attrs, false)
 
@@ -132,6 +132,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     reader = Keyword.get(opts, :archive_reader, ProjectSnapshotArchiveReader)
 
     with {:ok, upload} <- owned_upload(scope, workspace, import_id),
+         :ok <- validate_import_namespace(upload),
          {:ok, preflight} <-
            reader.preflight_archive(%{
              archive_storage_key: upload.archive_storage_key,
@@ -269,7 +270,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     Commercial.transact_with_workspace_lock(workspace.id, fn locked_workspace ->
       with {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
            :ok <- normalize_project_capacity(Commercial.can_create_project?(locked_workspace)),
-           :ok <- maybe_enforce_upload_grant_limit(locked_workspace.id, enforce_grant_limit?) do
+           :ok <- maybe_enforce_upload_grant_limit(locked_workspace.id, enforce_grant_limit?),
+           {:ok, fingerprint} <- provider_namespace_fingerprint() do
         token = Ecto.UUID.generate()
         archive_storage_key = archive_key(locked_workspace.id, token)
 
@@ -285,7 +287,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
           max_attempts: ImportProjectSnapshotWorker.max_attempts()
         }
 
-        %WorkspaceSnapshotImport{}
+        %WorkspaceSnapshotImport{provider_namespace_fingerprint: fingerprint}
         |> WorkspaceSnapshotImport.upload_changeset(attrs)
         |> Repo.insert()
         |> normalize_active_import_insert()
@@ -394,6 +396,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
       with %WorkspaceSnapshotImport{} = locked_upload <- locked_upload,
            {:ok, _membership} <- authorize_locked_import_member(scope, locked_workspace),
+           :ok <- validate_import_namespace(locked_upload),
            :ok <- normalize_project_capacity(Commercial.can_publish_reserved_project?(locked_workspace)),
            :ok <-
              normalize_storage_capacity(Commercial.can_upload_asset?(locked_workspace, preflight.logical_asset_bytes)),
@@ -462,7 +465,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
     case result do
       {:ok, discarded} ->
-        delete_provisional_objects(discarded.staging_storage_keys)
+        delete_provisional_objects(discarded, discarded.staging_storage_keys)
         publish(discarded)
         {:ok, discarded}
 
@@ -489,7 +492,9 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   defp normalize_active_import_insert(result), do: result
 
   defp upload_archive(path, import, storage) do
-    upload_archive(path, import.archive_storage_key, import.archive_size_bytes, storage)
+    with :ok <- validate_import_namespace(import) do
+      upload_archive(path, import.archive_storage_key, import.archive_size_bytes, storage)
+    end
   end
 
   defp upload_archive(path, archive_storage_key, archive_size_bytes, storage) do
@@ -573,9 +578,11 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
        )
        when status in ["queued", "retrying", "running"] and is_integer(attempt) and attempt > stored_attempt and
               is_integer(max_attempts) and attempt <= max_attempts do
-    active
-    |> WorkspaceSnapshotImport.running_changeset(attempt, max_attempts)
-    |> Repo.update()
+    with :ok <- validate_import_namespace(active) do
+      active
+      |> WorkspaceSnapshotImport.running_changeset(attempt, max_attempts)
+      |> Repo.update()
+    end
   end
 
   defp transition_claim(%WorkspaceSnapshotImport{}, _job_id, _attempt, _max_attempts),
@@ -588,7 +595,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     Process.put(progress_key, %{current: 0, persisted: 0})
 
     result =
-      with {:ok, plan} <-
+      with :ok <- validate_import_namespace(import),
+           {:ok, plan} <-
              tag_error(
                verify_archive(
                  reader,
@@ -867,9 +875,14 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     tracker = StorageCompensation.new()
     asset_materializer = Keyword.get(opts, :asset_materializer, ProjectSnapshotAssetMaterializer)
 
-    case stage_destination_objects(asset_materializer, asset_plan, tracker) do
+    result =
+      with :ok <- validate_import_namespace(import) do
+        stage_destination_objects(asset_materializer, asset_plan, tracker)
+      end
+
+    case result do
       :ok -> materialize(import, archive_plan, asset_plan, tracker, opts)
-      {:error, reason} -> cleanup_materialization_rollback(tracker, {:asset_provider_staging, reason})
+      {:error, reason} -> cleanup_materialization_rollback(import, tracker, {:asset_provider_staging, reason})
     end
   end
 
@@ -897,6 +910,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
         Commercial.transact_with_workspace_lock(import.workspace_id, fn locked_workspace ->
           # credo:disable-for-next-line Credo.Check.Refactor.Nesting
           with %WorkspaceSnapshotImport{} = locked_import <- lock_running_import(import),
+               :ok <- validate_import_namespace(locked_import),
                %User{} = requester <- Repo.get(User, locked_import.user_id),
                {:ok, _membership} <-
                  authorize_locked_import_member(%{user: requester}, locked_workspace),
@@ -932,14 +946,14 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     case result do
       {:ok, {completed, notification_outcome}} ->
         StorageCompensation.discard(tracker)
-        delete_provisional_objects(completed.staging_storage_keys)
+        delete_provisional_objects(completed, completed.staging_storage_keys)
         Platform.publish_notification_delivery(notification_outcome)
         completed = Repo.preload(completed, :project, force: true)
         publish(completed)
         {:ok, completed}
 
       {:error, reason} ->
-        cleanup_materialization_rollback(tracker, reason)
+        cleanup_materialization_rollback(import, tracker, reason)
     end
   end
 
@@ -1007,7 +1021,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
         {:error, terminal_reason} ->
           Logger.error(
-            "Snapshot import could not persist terminal state import_id=#{import.id} " <>
+            "Snapshot import could not persist terminal state " <>
               "error=#{safe_error(terminal_reason)}"
           )
 
@@ -1092,14 +1106,14 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
   end
 
   defp finalize_reconciliation({:ok, {:terminalized, failed, notification_outcome}}) do
-    delete_provisional_objects(cleanup_storage_keys(failed))
+    delete_provisional_objects(failed, cleanup_storage_keys(failed))
     Platform.publish_notification_delivery(notification_outcome)
     publish(failed)
     {:ok, :terminalized}
   end
 
   defp finalize_reconciliation({:ok, {:discarded_upload, upload}}) do
-    delete_provisional_objects(upload.staging_storage_keys)
+    delete_provisional_objects(upload, upload.staging_storage_keys)
     publish(upload)
     {:ok, :changed}
   end
@@ -1159,7 +1173,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
     case result do
       {:ok, {failed, notification_outcome}} ->
-        delete_provisional_objects(cleanup_storage_keys(failed))
+        delete_provisional_objects(failed, cleanup_storage_keys(failed))
         Platform.publish_notification_delivery(notification_outcome)
         publish(failed)
         {:ok, failed}
@@ -1209,10 +1223,19 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp deliver_result(_import, _project, nil, _status), do: {:ok, :suppressed}
 
-  defp cleanup_materialization_rollback(tracker, reason) do
-    case StorageCompensation.cleanup(tracker) do
-      :ok -> {:error, reason}
-      {:error, cleanup_reason} -> {:error, {:asset_storage_cleanup_failed, cleanup_reason}}
+  defp cleanup_materialization_rollback(import, tracker, reason) do
+    case validate_import_namespace(import) do
+      :ok ->
+        case StorageCompensation.cleanup(tracker) do
+          :ok -> {:error, reason}
+          {:error, cleanup_reason} -> {:error, {:asset_storage_cleanup_failed, cleanup_reason}}
+        end
+
+      {:error, _reason} = error ->
+        # The durable import plan still owns the staged destinations. Do not
+        # create a compensation receipt attributed to a different provider.
+        StorageCompensation.discard(tracker)
+        error
     end
   end
 
@@ -1222,9 +1245,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     |> Enum.sort()
   end
 
-  # A presigned PUT remains reusable until expiry. Keep the durable cleanup
-  # receipt asleep beyond that window so cancel, rejection, failure and success
-  # cannot consume it before a cooperative browser finishes or aborts the PUT.
+  # Retain the quiet window for in-flight writes, including URLs issued by an
+  # older release. Cleanup must never relabel old bytes with a new provider.
   defp persist_import_cleanup(import, storage_keys, provider_namespace_fingerprint) do
     not_before =
       DateTime.add(
@@ -1233,10 +1255,12 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
         :second
       )
 
-    StorageCompensation.persist_planned_cleanup_request(storage_keys,
-      not_before: not_before,
-      provider_namespace_fingerprint: provider_namespace_fingerprint
-    )
+    with :ok <- validate_import_namespace(import, provider_namespace_fingerprint) do
+      StorageCompensation.persist_planned_cleanup_request(storage_keys,
+        not_before: not_before,
+        provider_namespace_fingerprint: import.provider_namespace_fingerprint
+      )
+    end
   end
 
   defp provider_namespace_fingerprint do
@@ -1251,10 +1275,25 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
     end
   end
 
-  defp delete_provisional_objects(storage_keys), do: Enum.each(storage_keys, &delete_provisional_object/1)
+  defp validate_import_namespace(import) do
+    with {:ok, fingerprint} <- provider_namespace_fingerprint() do
+      validate_import_namespace(import, fingerprint)
+    end
+  end
 
-  defp delete_provisional_object(storage_key) do
-    Storage.delete(storage_key)
+  defp validate_import_namespace(%{provider_namespace_fingerprint: fingerprint}, fingerprint) when is_binary(fingerprint),
+    do: :ok
+
+  defp validate_import_namespace(_import, _fingerprint),
+    do: {:error, :workspace_snapshot_import_storage_namespace_mismatch}
+
+  defp delete_provisional_objects(import, storage_keys),
+    do: Enum.each(storage_keys, &delete_provisional_object(import, &1))
+
+  defp delete_provisional_object(import, storage_key) do
+    with :ok <- validate_import_namespace(import) do
+      Storage.delete(storage_key)
+    end
   rescue
     _error -> :ok
   catch
