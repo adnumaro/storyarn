@@ -1,0 +1,36 @@
+assets/app/test/modules/flows/editor/initialFlowCanvasSetup.test.ts
+  s_11667293ceac35::t_46f9a4c2a4f570 1-33,35,37,54-71,73-81,83-88
+  s_11667293ceac35::t_7a33e1f7cfa04b 38-53
+  s_11667293ceac35::t_14829f5d98d092 34,36,72,82
+assets/app/live/flow/show/FlowCanvas.vue
+  s_11667293ceac35::t_46f9a4c2a4f570 61
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_11667293ceac35::t_14829f5d98d092 407,409
+  s_11667293ceac35::t_46f9a4c2a4f570 445
+test/e2e/workspaces/projects/flows/comments_test.exs
+  s_11667293ceac35::t_db0ed651f8f109 35
+assets/app/modules/flows/editor/composables/flowCanvasTypes.ts
+  s_11667293ceac35::t_46f9a4c2a4f570 28
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_11667293ceac35::t_46f9a4c2a4f570 62-63,69-78,95
+  s_11667293ceac35::t_7a33e1f7cfa04b 64-68
+assets/app/modules/flows/editor/services/reteSetup.ts
+  s_11667293ceac35::t_46f9a4c2a4f570 314-316,319,322-323
+  s_11667293ceac35::t_14829f5d98d092 237,317,320
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "a563179f68d7e6eb79244d80a38fe804aeaf8cef",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
