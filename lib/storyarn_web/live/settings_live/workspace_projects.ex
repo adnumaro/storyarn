@@ -116,13 +116,15 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjects do
   end
 
   def handle_event("cancel-upload", %{"ref" => ref}, socket) do
-    meta = upload_meta(socket, ref)
-    maybe_cancel_upload_owner(socket, meta)
+    socket =
+      if Enum.any?(socket.assigns.uploads.snapshot_zip.entries, &(&1.ref == ref and not &1.cancelled?)) do
+        maybe_cancel_upload_owner(socket, upload_meta(socket, ref))
+        cancel_upload(socket, :snapshot_zip, ref)
+      else
+        socket
+      end
 
-    {:noreply,
-     socket
-     |> cancel_upload(:snapshot_zip, ref)
-     |> reload_imports()}
+    {:noreply, reload_imports(socket)}
   end
 
   def handle_event("cancel_snapshot_upload", %{"id" => import_id}, socket) do

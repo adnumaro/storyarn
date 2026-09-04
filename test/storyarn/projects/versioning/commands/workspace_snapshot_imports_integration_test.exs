@@ -149,6 +149,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
 
     {_direct, upload} = prepare_stored_upload!(context, archive_path, "durable.zip")
     assert {:ok, first} = WorkspaceSnapshotImports.request_stored(context.scope, context.workspace, upload.id)
+    assert {:ok, fingerprint} = Storage.namespace_fingerprint()
+    assert first.provider_namespace_fingerprint == fingerprint
 
     assert import_job_count() == 1
     assert first.status == "queued"
@@ -173,6 +175,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
 
     completed = Repo.get!(WorkspaceSnapshotImport, first.id)
     assert completed.status == "completed"
+    assert completed.provider_namespace_fingerprint == fingerprint
     assert completed.reserved_bytes == 0
     assert completed.progress_bytes == completed.progress_total_bytes
     assert completed.project_id
@@ -381,6 +384,90 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
       assert {:ok, %{size: size}} = Storage.stat(storage_key)
       assert size > 0
     end)
+  end
+
+  test "rollback after namespace drift preserves the durable plan without rebinding cleanup", context do
+    original_storage = Application.get_env(:storyarn, :storage, [])
+    root_b = Path.join([File.cwd!(), "test", "tmp", "import-namespace-#{Ecto.UUID.generate()}"])
+    File.mkdir_p!(root_b)
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+      File.rm_rf!(root_b)
+    end)
+
+    storage_b = Keyword.merge(original_storage, adapter: :local, upload_dir: root_b)
+    asset_bytes = "namespace-bound retry asset"
+    _asset = upload_asset!(context.project, context.user, "namespace.png", asset_bytes, "image/png")
+    archive_path = ready_archive_file!(context.scope, context.project)
+    assert {:ok, fingerprint_a} = Storage.namespace_fingerprint()
+
+    assert {:ok, accepted} =
+             Versioning.request_workspace_snapshot_import(
+               context.scope,
+               context.workspace,
+               archive_path,
+               %{original_filename: "namespace.zip"}
+             )
+
+    job = import_job!(accepted)
+    test_process = self()
+
+    interrupted_commit = fn _workspace_id, _snapshot, _user_id, _opts ->
+      staged = Repo.get!(WorkspaceSnapshotImport, accepted.id)
+      assert staged.materialization_storage_keys != []
+      send(test_process, {:namespace_drift_plan, staged.reserved_project_id, staged.materialization_storage_keys})
+      Application.put_env(:storyarn, :storage, storage_b)
+      {:error, %DBConnection.ConnectionError{message: "transient"}}
+    end
+
+    assert {:retry, _reason} =
+             Versioning.perform_workspace_snapshot_import(
+               accepted.id,
+               job_id: job.id,
+               attempt: 1,
+               max_attempts: ImportProjectSnapshotWorker.max_attempts(),
+               materialize_fun: interrupted_commit
+             )
+
+    assert_received {:namespace_drift_plan, reserved_project_id, materialization_storage_keys}
+    assert {:ok, fingerprint_b} = Storage.namespace_fingerprint()
+    refute fingerprint_b == fingerprint_a
+
+    retained = Repo.get!(WorkspaceSnapshotImport, accepted.id)
+    assert retained.status in ["running", "retrying"]
+    assert retained.provider_namespace_fingerprint == fingerprint_a
+    assert retained.reserved_bytes == byte_size(asset_bytes)
+    assert retained.reserved_project_id == reserved_project_id
+    assert retained.materialization_storage_keys == materialization_storage_keys
+    refute Repo.get(Project, reserved_project_id)
+    assert import_notification_count(context.user.id) == 0
+
+    refute Enum.any?(Repo.all(StorageCleanupRequest), fn request ->
+             request.provider_namespace_fingerprint == fingerprint_b and
+               Enum.any?(request.storage_keys, &(&1 in materialization_storage_keys))
+           end)
+
+    Application.put_env(:storyarn, :storage, original_storage)
+
+    Enum.each(materialization_storage_keys, fn key ->
+      assert {:ok, %{size: size}} = Storage.stat(key)
+      assert size > 0
+    end)
+
+    assert {:ok, completed} =
+             Versioning.perform_workspace_snapshot_import(
+               accepted.id,
+               job_id: job.id,
+               attempt: 2,
+               max_attempts: ImportProjectSnapshotWorker.max_attempts()
+             )
+
+    assert completed.status == "completed"
+    assert completed.provider_namespace_fingerprint == fingerprint_a
+    assert completed.project_id == reserved_project_id
+    assert completed.materialization_storage_keys == materialization_storage_keys
+    assert completed.reserved_bytes == 0
   end
 
   test "reconciliation terminalizes an active import whose final delivery was discarded exactly once", context do

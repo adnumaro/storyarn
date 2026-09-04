@@ -110,7 +110,7 @@ msgstr ""
 #: lib/storyarn_web/live/settings_live/workspace_general.ex:245
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:46
 #: lib/storyarn_web/live/settings_live/workspace_members.ex:228
-#: lib/storyarn_web/live/settings_live/workspace_plan.ex:36
+#: lib/storyarn_web/live/settings_live/workspace_plan.ex:35
 #: lib/storyarn_web/live/settings_live/workspace_projects.ex:57
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to manage this workspace."
@@ -154,38 +154,38 @@ msgstr ""
 msgid "Invalid file data or upload failed."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:366
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:368
 #, elixir-autogen, elixir-format
 msgid "%{count} day ago"
 msgid_plural "%{count} days ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:363
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:365
 #, elixir-autogen, elixir-format
 msgid "%{count} hour ago"
 msgid_plural "%{count} hours ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:360
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:362
 #, elixir-autogen, elixir-format
 msgid "%{count} minute ago"
 msgid_plural "%{count} minutes ago"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:343
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:345
 #, elixir-autogen, elixir-format
 msgid "Deleted %{time_ago}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:346
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:348
 #, elixir-autogen, elixir-format
 msgid "by %{email}"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_projects.ex:357
+#: lib/storyarn_web/live/settings_live/workspace_projects.ex:359
 #, elixir-autogen, elixir-format
 msgid "just now"
 msgstr ""
@@ -383,7 +383,7 @@ msgstr ""
 msgid "The member role could not be updated because workspace ownership is inconsistent."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/workspace_plan.ex:27
+#: lib/storyarn_web/live/settings_live/workspace_plan.ex:26
 #, elixir-autogen, elixir-format
 msgid "Plan & usage"
 msgstr ""

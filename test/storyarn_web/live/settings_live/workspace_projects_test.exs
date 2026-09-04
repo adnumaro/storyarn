@@ -6,8 +6,14 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
   import Storyarn.AccountsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Phoenix.LiveView.Channel
+  alias Phoenix.LiveView.Socket
+  alias Storyarn.Projects.Assets.Storage
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Repo
+  alias StoryarnWeb.SettingsLive.WorkspaceProjects
+
+  require Phoenix.ChannelTest
 
   defp get_imports_vue(view) do
     LiveVue.Test.get_vue(view, name: "live/workspace/settings/WorkspaceSettingsProjects")
@@ -15,6 +21,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
 
   defp workspace_import_fixture(user, workspace, attrs \\ %{}) do
     checksum = String.duplicate("a", 64)
+    {:ok, fingerprint} = Storage.namespace_fingerprint()
 
     defaults = %{
       workspace_id: workspace.id,
@@ -32,7 +39,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
       max_attempts: 3
     }
 
-    %WorkspaceSnapshotImport{}
+    %WorkspaceSnapshotImport{provider_namespace_fingerprint: fingerprint}
     |> WorkspaceSnapshotImport.upload_changeset(Map.merge(defaults, attrs))
     |> WorkspaceSnapshotImport.admit_changeset(Map.merge(defaults, attrs))
     |> Repo.insert!()
@@ -57,7 +64,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
         |> log_in_user(user)
         |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
 
-      assert {:ok, upload} = Phoenix.LiveView.Channel.fetch_upload_config(view.pid, :snapshot_zip, nil)
+      assert {:ok, upload} = Channel.fetch_upload_config(view.pid, :snapshot_zip, nil)
       assert upload.external == false
       assert upload.max_entries == 1
       assert upload.max_file_size == Storyarn.Projects.project_snapshot_archive_max_size_bytes()
@@ -128,6 +135,69 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
     end
   end
 
+  describe "upload cancellation" do
+    setup %{conn: conn} do
+      user = user_fixture()
+      workspace = workspace_fixture(user)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(user)
+        |> live(~p"/users/settings/workspaces/#{workspace.slug}/projects")
+
+      %{view: view, user: user, workspace: workspace}
+    end
+
+    test "ignores unknown upload references", %{view: view} do
+      render_hook(view, "cancel-upload", %{"ref" => "missing-upload"})
+      render_hook(view, "cancel-upload", %{"ref" => "missing-upload"})
+
+      assert Process.alive?(view.pid)
+      assert get_imports_vue(view).props["imports"] == []
+      assert Repo.aggregate(WorkspaceSnapshotImport, :count) == 0
+    end
+
+    test "does not cancel an already cancelled upload channel again", %{user: user, workspace: workspace} do
+      entry = %Phoenix.LiveView.UploadEntry{ref: "cancelled-upload", cancelled?: true}
+
+      upload = %Phoenix.LiveView.UploadConfig{
+        name: :snapshot_zip,
+        entries: [entry],
+        entry_refs_to_pids: %{entry.ref => self()}
+      }
+
+      socket = %Socket{
+        assigns: %{
+          __changed__: %{},
+          current_scope: user_scope_fixture(user),
+          workspace: workspace,
+          uploads: %{snapshot_zip: upload}
+        }
+      }
+
+      assert {:noreply, updated} = WorkspaceProjects.handle_event("cancel-upload", %{"ref" => entry.ref}, socket)
+      assert updated.assigns.uploads.snapshot_zip == upload
+      assert updated.assigns.imports == []
+    end
+
+    test "repeated cancellation removes the local temporary upload without creating an import or job", %{view: view} do
+      job_count = Repo.aggregate(Oban.Job, :count)
+      {entry_ref, channel, path} = start_partial_snapshot_upload(view)
+      channel_monitor = Process.monitor(channel.channel_pid)
+
+      assert File.read!(path) == "partial archive"
+      render_hook(view, "cancel-upload", %{"ref" => entry_ref})
+      render_hook(view, "cancel-upload", %{"ref" => entry_ref})
+
+      assert_receive {:DOWN, ^channel_monitor, :process, _pid, _reason}, 1_000
+      assert_file_removed(path)
+      assert Process.alive?(view.pid)
+      assert get_imports_vue(view).props["imports"] == []
+      assert Repo.aggregate(WorkspaceSnapshotImport, :count) == 0
+      assert Repo.aggregate(Oban.Job, :count) == job_count
+    end
+  end
+
   test "reloads the durable DB list instead of trusting the PubSub payload", %{conn: conn} do
     user = user_fixture()
     workspace = workspace_fixture(user)
@@ -150,5 +220,34 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceProjectsTest do
 
     assert [serialized] = get_imports_vue(view).props["imports"]
     assert serialized["projectName"] == "Persisted DB name"
+  end
+
+  defp start_partial_snapshot_upload(view) do
+    {:ok, upload} = Channel.fetch_upload_config(view.pid, :snapshot_zip, nil)
+    ref = "partial-upload"
+    entry = %{"ref" => ref, "name" => "project.zip", "size" => 1_024, "type" => "application/zip"}
+    {_proxy_ref, topic, proxy_pid} = view.proxy
+
+    # LiveVue creates the file input in the browser, so there is no server-rendered
+    # input for file_input/4. Use its same preflight protocol and a real upload channel.
+    assert {:ok, %{entries: %{^ref => token}}} =
+             GenServer.call(proxy_pid, {:render_allow_upload, topic, upload.ref, {[entry], nil}})
+
+    {:ok, socket} = Phoenix.ChannelTest.connect(Socket, %{})
+    {:ok, _reply, channel} = Phoenix.ChannelTest.subscribe_and_join(socket, "lvu:partial-upload", %{"token" => token})
+    Process.unlink(channel.channel_pid)
+    chunk_ref = Phoenix.ChannelTest.push(channel, "chunk", {:binary, "partial archive"})
+    assert_receive %Phoenix.Socket.Reply{ref: ^chunk_ref, status: :ok}, 1_000
+
+    {ref, channel, channel.assigns.writer_state.path}
+  end
+
+  defp assert_file_removed(path, attempts \\ 100) do
+    if File.exists?(path) and attempts > 0 do
+      Process.sleep(10)
+      assert_file_removed(path, attempts - 1)
+    else
+      refute File.exists?(path)
+    end
   end
 end
