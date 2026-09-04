@@ -1,0 +1,26 @@
+assets/app/modules/flows/editor/services/flowPlacement.ts
+  s_11667293ceac35::t_5bade5fe45580e 21,38,42,63-75,88,90-91,245
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_11667293ceac35::t_5bade5fe45580e 86-89,414,418-425
+assets/app/test/modules/flows/editor/flowCanvasPlacementReadiness.test.ts
+  s_11667293ceac35::t_bb8b69b2f72d19 131-138
+  s_11667293ceac35::t_e1157ece30eeb3 43
+  s_11667293ceac35::t_62bddbfa8915de 12-16,31-39,42,46-48,67,69,72,91,93-101,106-113,129,178-211
+  s_11667293ceac35::t_632eaa3dda4a82 102-105
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "780868289df6dba7c19810d96385cdba5bc1488f",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
