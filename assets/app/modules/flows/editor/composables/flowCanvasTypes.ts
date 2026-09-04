@@ -25,6 +25,7 @@ export interface ToolbarState {
 }
 
 export interface InitOpts {
+  commentsEnabled?: boolean;
   skipInitialFit?: boolean;
   sheetsMap?: Record<string, SheetMapEntry>;
   readonly?: boolean;

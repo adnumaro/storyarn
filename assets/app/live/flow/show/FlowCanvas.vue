@@ -58,6 +58,7 @@ async function initCanvas() {
     readonly,
     userId: Number(userId),
     userColor,
+    commentsEnabled: comments != null,
     skipInitialFit: comments?.focusThreadId != null,
   });
 

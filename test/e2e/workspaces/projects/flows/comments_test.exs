@@ -32,6 +32,7 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
     conn
     |> authenticate(user)
     |> visit(path)
+    |> assert_has("[data-testid='flow-canvas-comments']", timeout: 20_000)
     |> assert_has("[data-flow-comment-node='#{node.id}']", timeout: 20_000)
     |> right_click("[data-flow-comment-node='#{node.id}']")
     |> click("[data-testid='flow-context-menu'] [data-key='add_comment']")

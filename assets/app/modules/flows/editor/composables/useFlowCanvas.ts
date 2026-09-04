@@ -404,7 +404,9 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
       runtime.editor!,
       (flowData.nodes?.length ?? 0) > 0 && !skipInitialFit,
       hookProxy._flowContext,
+      () => runtime.destroyed,
     );
+    if (runtime.destroyed) return;
     await recalculateAllSockets();
 
     // Marquee selection (drag-rectangle). Only active while the dock's tool
@@ -440,6 +442,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
     initPlugins(containerEl);
     hookProxy._flowContext.canEdit = !hookProxy._readonly;
+    hookProxy._flowContext.commentsEnabled = opts.commentsEnabled ?? false;
 
     if (!hookProxy._readonly) {
       initHandlers();

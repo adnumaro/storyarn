@@ -59,6 +59,23 @@ beforeEach(() => {
 });
 
 describe("FlowCanvas spatial comment boundary", () => {
+  it("enables comment menus before asynchronous node loading finishes", async () => {
+    let finish!: () => void;
+    init.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finish = resolve;
+      }),
+    );
+    const wrapper = mount(FlowCanvas, {
+      props: { ...props, comments: { state: comments, pins: [], focusThreadId: null } },
+    });
+    expect(init.mock.calls[0][2]).toMatchObject({ commentsEnabled: true });
+    expect(setCommentCounts).not.toHaveBeenCalled();
+    finish();
+    await flushPromises();
+    wrapper.unmount();
+  });
+
   it("skips the initial auto-fit when a thread deep link owns the viewport", async () => {
     init.mockResolvedValue(undefined);
     const wrapper = mount(FlowCanvas, {
@@ -75,6 +92,7 @@ describe("FlowCanvas spatial comment boundary", () => {
     const wrapper = mount(FlowCanvas, { props });
     await flushPromises();
     expect(setCommentCounts).toHaveBeenCalledWith({}, false);
+    expect(init.mock.calls[0][2]).toMatchObject({ commentsEnabled: false });
     expect(wrapper.findComponent({ name: "FlowCanvasComments" }).exists()).toBe(false);
     wrapper.unmount();
   });
