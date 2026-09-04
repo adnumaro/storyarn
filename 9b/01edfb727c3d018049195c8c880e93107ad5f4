@@ -1,0 +1,41 @@
+test/storyarn/projects/versioning/commands/workspace_snapshot_import_namespace_test.exs
+  s_6ce2be7da793bc::t_67c3bc894a8d32 1-17,19-153
+  s_6ce2be7da793bc::t_8309e29c184e86 18
+lib/storyarn/projects/versioning/entities/workspace_snapshot_import.ex
+  s_6ce2be7da793bc::t_c2298a68facf71 38,65,98,116,294,320-322
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_6ce2be7da793bc::t_c0becfb5d80ae8 885,913,956,1226-1238,1284-1285
+  s_6ce2be7da793bc::t_a96e1836d3b6de 878-883,1024
+  s_6ce2be7da793bc::t_d941d6cc425996 72,135,273-274,290,399,468,495-497,581-585,598-599,949,1109,1116,1176,1248-1249,1258-1263,1278-1283,1287-1288,1290-1296
+  s_6ce2be7da793bc::t_5ffa2fae9e0428 1286
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_6ce2be7da793bc::t_5d86ae4f8acc40 152-153,178,389-470
+  s_6ce2be7da793bc::t_cc13f9c9dd7c4d 471-472
+test/storyarn_web/live/settings_live/workspace_imports_test.exs
+  s_6ce2be7da793bc::t_a9bffb64de1697 9-11,14-16,24,42,67,138-200,224-250
+  s_6ce2be7da793bc::t_d50d6874f18a68 251-252
+lib/storyarn_web/live/settings_live/workspace_imports.ex
+  s_6ce2be7da793bc::t_a9bffb64de1697 106-112,114
+priv/repo/migrations/20260904060000_pin_workspace_snapshot_import_namespace.exs
+  s_6ce2be7da793bc::t_c2298a68facf71 1-15
+  s_6ce2be7da793bc::t_a253876957d0c6 16-18
+docs/reference/eng-52-operational-recovery-validation.md
+  s_6ce2be7da793bc::t_043647a26af637 5,59-66
+  s_6ce2be7da793bc::t_9f9c12809f46d2 67-69
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "9b01edfb727c3d018049195c8c880e93107ad5f4",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
