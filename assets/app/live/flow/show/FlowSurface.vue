@@ -4,6 +4,7 @@ import { computed } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
 import FlowCanvas from "./FlowCanvas.vue";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 
 interface FlowSurfaceCanvasData {
   key: string;
@@ -15,8 +16,9 @@ interface FlowSurfaceCanvasData {
   userColor: string;
   canvasId: string;
   toolbarData: string;
-  commentCounts?: Record<string, number>;
-  commentFocusNodeId?: number | null;
+  commentPins?: FlowCommentThread[];
+  comments?: FlowCommentsPanelState | null;
+  commentFocusThreadId?: number | null;
 }
 
 interface FlowDockSurface {
@@ -33,12 +35,6 @@ interface FlowSurface {
   dock: FlowDockSurface;
 }
 
-interface FlowCanvasComments {
-  enabled: boolean;
-  counts: Record<string, number>;
-  focusNodeId: number | null;
-}
-
 const { surface: initialSurface } = defineProps<{
   surface: FlowSurface;
 }>();
@@ -48,14 +44,14 @@ const live = useLiveVue();
 const surface = computed(
   () => (live.vue?.props?.surface as FlowSurface | undefined) ?? initialSurface,
 );
-const emptyCommentCounts: Record<string, number> = {};
-const comments = computed<FlowCanvasComments>((previous) => {
-  const counts = surface.value.canvas.commentCounts ?? emptyCommentCounts;
-  const focusNodeId = surface.value.canvas.commentFocusNodeId ?? null;
-  if (previous && previous.counts === counts && previous.focusNodeId === focusNodeId) {
-    return previous;
-  }
-  return { enabled: true, counts, focusNodeId };
+const comments = computed(() => {
+  const canvas = surface.value.canvas;
+  if (!canvas.comments) return null;
+  return {
+    state: canvas.comments,
+    pins: canvas.commentPins ?? [],
+    focusThreadId: canvas.commentFocusThreadId ?? null,
+  };
 });
 </script>
 

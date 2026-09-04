@@ -463,6 +463,14 @@
       }
     },
     "comments": {
+      "new_comment_tool": "Nuevo comentario",
+      "add_comment": "Añadir comentario",
+      "canvas_label": "Lienzo del flow",
+      "canvas_unavailable": "Este flow ya no está disponible. La conversación se conserva como referencia.",
+      "place_hint": "Colocar un comentario en el lienzo (C)",
+      "placing_hint": "Haz clic donde quieras colocar el comentario. Pulsa Esc para cancelar.",
+      "pin_label": "Comentario de {author}",
+      "move_pin": "Mover comentario",
       "title": "Comentarios",
       "close": "Cerrar comentarios",
       "new_thread": "Nuevo hilo",
@@ -492,7 +500,7 @@
       "node_label": "Nodo {id}",
       "filter": "Filtrar hilos",
       "empty": "Todavía no hay hilos aquí",
-      "empty_hint": "Abre el botón de comentarios de un nodo para iniciar una conversación.",
+      "empty_hint": "Elige Nuevo comentario para iniciar una conversación en cualquier lugar del lienzo.",
       "readonly_hint": "Puedes leer las conversaciones. Se necesitan permisos de edición para comentar.",
       "threads": "Hilos de comentarios",
       "load_threads": "Cargar más hilos",

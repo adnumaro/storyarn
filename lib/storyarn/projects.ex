@@ -941,6 +941,19 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :create
 
+  @doc "Creates a conversation at an explicit position on a Flow canvas."
+  defdelegate create_flow_canvas_comment(scope, project_id, flow_id, attrs),
+    to: Comments,
+    as: :create_canvas
+
+  @doc "Moves a comment pin, preserving its source identity and checking the expected revision."
+  defdelegate move_comment_thread(scope, project_id, thread_id, position, expected_revision),
+    to: Comments,
+    as: :move
+
+  @doc "Lists every open comment pin whose Flow source is currently available."
+  defdelegate list_flow_comment_pins(scope, project_id, flow_id), to: Comments, as: :list_pins
+
   defdelegate reply_to_comment_thread(scope, project_id, thread_id, attrs),
     to: Comments,
     as: :reply

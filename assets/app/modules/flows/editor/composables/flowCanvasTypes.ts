@@ -25,6 +25,7 @@ export interface ToolbarState {
 }
 
 export interface InitOpts {
+  skipInitialFit?: boolean;
   sheetsMap?: Record<string, SheetMapEntry>;
   readonly?: boolean;
   userId?: number;

@@ -54,6 +54,26 @@ describe("FlowHeader", () => {
     const { live, wrapper } = mountHeader();
     await wrapper.get("#flow-comments-toggle").trigger("click");
     expect(live.pushEvent).toHaveBeenCalledWith("comments_open", {}, undefined);
+    expect(wrapper.find("#flow-comments-create-mode").exists()).toBe(false);
+  });
+
+  it("toggles canvas comment placement separately from the comments list", async () => {
+    const { live, wrapper } = mountHeader();
+    await wrapper.setProps({
+      comments: { count: 2, open: false, canComment: true, placing: false },
+    });
+    const toggle = wrapper.get("#flow-comments-create-mode");
+    expect(toggle.attributes("aria-pressed")).toBe("false");
+    await toggle.trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("comments_mode", { active: true }, undefined);
+    await wrapper.setProps({
+      comments: { count: 2, open: false, canComment: true, placing: true },
+    });
+    expect(toggle.attributes("aria-pressed")).toBe("true");
+    await toggle.trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("comments_mode", { active: false }, undefined);
+    await wrapper.get("#flow-comments-toggle").trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("comments_open", {}, undefined);
   });
 
   it("renders the word count", () => {

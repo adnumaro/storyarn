@@ -20,8 +20,31 @@ defmodule Storyarn.Projects.Comments.Payload do
 
   def normalize(_), do: {:error, :invalid_comment}
 
+  def position(value, opts \\ [])
+  def position(nil, opts), do: if(opts[:required], do: {:error, :invalid_position}, else: {:ok, nil})
+
+  def position(position, _opts) when is_map(position) do
+    x = value(position, :x)
+    y = value(position, :y)
+
+    if valid_coordinate?(x) and valid_coordinate?(y),
+      do: {:ok, %{x: x / 1, y: y / 1}},
+      else: {:error, :invalid_position}
+  end
+
+  def position(_position, _opts), do: {:error, :invalid_position}
+
   def fingerprint(payload, target) do
-    {target, payload.body, payload.mention_user_ids}
+    content = {target, payload.body, payload.mention_user_ids}
+
+    # Keep the original fingerprint for legacy node creates without a pin.
+    case_result =
+      case Map.get(payload, :position) do
+        nil -> content
+        position -> {content, position}
+      end
+
+    case_result
     |> :erlang.term_to_binary()
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
@@ -29,6 +52,8 @@ defmodule Storyarn.Projects.Comments.Payload do
 
   def value(attrs, key), do: Map.get(attrs, key, Map.get(attrs, Atom.to_string(key)))
   def valid_id?(id), do: is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807
+
+  defp valid_coordinate?(value), do: is_number(value) and value >= -10_000_000 and value <= 10_000_000
 
   defp valid_text?(text, max_bytes) do
     is_binary(text) and byte_size(text) in 1..max_bytes and String.valid?(text) and not String.contains?(text, <<0>>)

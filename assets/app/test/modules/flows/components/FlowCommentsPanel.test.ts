@@ -3,6 +3,7 @@ import { mount } from "@vue/test-utils";
 import { createMockLive } from "@app/test/setup";
 import type {
   FlowCommentMessage,
+  FlowCommentPosition,
   FlowCommentsPanelState,
   FlowCommentThread,
 } from "@modules/flows/types/comments";
@@ -59,9 +60,9 @@ const stubs = {
   PopoverTrigger: passthrough,
 };
 
-function panel(overrides: Partial<FlowCommentsPanelState> = {}) {
+function panel(overrides: Partial<FlowCommentsPanelState> = {}, embedded = false) {
   return mount(FlowCommentsPanel, {
-    props: { state: { ...base, ...overrides } },
+    props: { state: { ...base, ...overrides }, embedded },
     global: { stubs },
   });
 }
@@ -71,6 +72,8 @@ function composer(
     nodeId: number | null;
     threadId: number | null;
     parentId: number | null;
+    position: FlowCommentPosition | null;
+    draftId: string | null;
     disabled: boolean;
   }> = {},
 ) {
@@ -92,6 +95,53 @@ describe("Flow comments panel", () => {
     expect(wrapper.get("#flow-comment-thread-12").text()).toContain(thread.preview);
     await wrapper.get("#flow-comment-thread-12").trigger("click");
     expect(mockLive.pushEvent).toHaveBeenCalledWith("comments_select_thread", { thread_id: 12 });
+  });
+
+  it("renders a compact canvas draft without the sidebar or thread index", async () => {
+    const position = { x: -240.5, y: 180 };
+    const wrapper = panel({ presentation: "canvas", draftPosition: position }, true);
+    expect(wrapper.find("aside").exists()).toBe(false);
+    expect(wrapper.find("#flow-comments-filter").exists()).toBe(false);
+    expect(wrapper.find("#flow-comment-thread-12").exists()).toBe(false);
+    await wrapper.get("textarea").setValue("Connect these two branches.");
+    await wrapper.get("form").trigger("submit");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "comments_create",
+      expect.objectContaining({ node_id: null, position, body: "Connect these two branches." }),
+      expect.any(Function),
+      expect.any(Function),
+    );
+    await wrapper.get("#flow-comment-popover-close").trigger("click");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("comments_close", {});
+  });
+
+  it("keeps canvas threads readable and resolvable in the floating conversation", async () => {
+    const wrapper = panel(
+      {
+        presentation: "canvas",
+        thread: { ...thread, source: { ...thread.source, type: "flow_canvas", id: 7 } },
+        messages: [message],
+      },
+      true,
+    );
+    expect(wrapper.text()).toContain("Flow canvas");
+    expect(wrapper.text()).toContain(message.body);
+    expect(wrapper.text()).toContain(member.display_name);
+    expect(wrapper.text()).not.toContain("All threads");
+    await wrapper.get("#flow-comment-status").trigger("click");
+    expect(mockLive.pushEvent).toHaveBeenCalledWith(
+      "comments_set_status",
+      { thread_id: 12, status: "resolved", expected_revision: 3 },
+      expect.any(Function),
+      expect.any(Function),
+    );
+  });
+
+  it("does not duplicate the conversation in the sidebar while it is on the canvas", () => {
+    const wrapper = panel({ presentation: "canvas", thread, messages: [message] });
+    expect(wrapper.find("#flow-comments-content").exists()).toBe(false);
+    expect(wrapper.find("textarea").exists()).toBe(false);
+    expect(wrapper.get("aside").attributes("open")).toBe("false");
   });
 
   it("filters resolved discussions and loads subsequent thread pages", async () => {
@@ -239,6 +289,73 @@ describe("Flow comment composer delivery", () => {
     lastReply()({ ok: true });
     await wrapper.vm.$nextTick();
     expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
+  });
+
+  it("preserves independent drafts and retry ids for free canvas positions", async () => {
+    const firstPosition = { x: -125.5, y: 250 };
+    const secondPosition = { x: 80, y: 250 };
+    const wrapper = composer({ nodeId: null, position: firstPosition });
+    await wrapper.get("textarea").setValue("First canvas draft");
+    await wrapper.get("form").trigger("submit");
+    const request = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+    request[3]!(new Error("Response lost"));
+    await wrapper.setProps({ position: secondPosition });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
+    await wrapper.get("textarea").setValue("Second canvas draft");
+    await wrapper.setProps({ nodeId: 42, position: null });
+    await wrapper.get("textarea").setValue("Node draft");
+    await wrapper.setProps({ nodeId: null, position: { ...firstPosition } });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "First canvas draft",
+    );
+    await wrapper.get("form").trigger("submit");
+    expect(vi.mocked(mockLive.pushEvent).mock.calls.at(-1)![1]).toEqual(request[1]);
+    await wrapper.setProps({ position: secondPosition });
+    lastReply()({ ok: true });
+    await wrapper.vm.$nextTick();
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "Second canvas draft",
+    );
+    expect(wrapper.emitted("sent")).toBeUndefined();
+    await wrapper.setProps({ nodeId: 42, position: null });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("Node draft");
+  });
+
+  it("does not send an unplaced draft or include a position in replies", async () => {
+    const wrapper = composer({ nodeId: null });
+    await wrapper.get("textarea").setValue("Needs a position");
+    await wrapper.get("form").trigger("submit");
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
+    await wrapper.setProps({ threadId: 12, parentId: 21, position: { x: 50, y: 60 } });
+    await wrapper.get("textarea").setValue("A reply");
+    await wrapper.get("form").trigger("submit");
+    expect(vi.mocked(mockLive.pushEvent).mock.calls.at(-1)![1]).not.toHaveProperty("position");
+  });
+
+  it("keeps the same draft when its pin moves and uses the new position when sending", async () => {
+    const firstPosition = { x: 20, y: 30 };
+    const movedPosition = { x: 90, y: 110 };
+    const wrapper = composer({ nodeId: null, position: firstPosition, draftId: "draft-a" });
+    await wrapper.get("textarea").setValue("Move this comment closer to the ending.");
+    await wrapper.setProps({ position: movedPosition });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "Move this comment closer to the ending.",
+    );
+    await wrapper.get("form").trigger("submit");
+    const movedRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+    expect(movedRequest[1]).toMatchObject({ node_id: null, position: movedPosition });
+    movedRequest[2]!({ ok: false });
+    await wrapper.setProps({ position: firstPosition });
+    await wrapper.get("form").trigger("submit");
+    const nextRequest = vi.mocked(mockLive.pushEvent).mock.calls.at(-1)!;
+    expect(nextRequest[1]?.client_request_id).not.toBe(movedRequest[1]?.client_request_id);
+    expect(nextRequest[1]?.position).toEqual(firstPosition);
+    await wrapper.setProps({ draftId: "draft-b" });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe("");
+    await wrapper.setProps({ draftId: "draft-a" });
+    expect((wrapper.get("textarea").element as HTMLTextAreaElement).value).toBe(
+      "Move this comment closer to the ending.",
+    );
   });
 
   it("keeps drafts for different nodes separate and survives transport errors", async () => {

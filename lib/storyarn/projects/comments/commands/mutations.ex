@@ -17,9 +17,27 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def create(scope, project_id, flow_id, node_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, position} <- Payload.position(Payload.value(attrs, :position)),
          true <- Payload.valid_id?(flow_id) and Payload.valid_id?(node_id) do
+      payload = Map.put(payload, :position, position)
+
       transact_request(scope, project_id, payload, {:create, flow_id, node_id}, fn project, actor_id, request_hash ->
         create_thread!(project, actor_id, flow_id, node_id, payload, request_hash)
+      end)
+    else
+      false -> {:error, :not_found}
+      {:error, _} = error -> error
+    end
+  end
+
+  def create_canvas(scope, project_id, flow_id, attrs) do
+    with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, position} <- Payload.position(Payload.value(attrs, :position), required: true),
+         true <- Payload.valid_id?(flow_id) do
+      payload = Map.put(payload, :position, position)
+
+      transact_request(scope, project_id, payload, {:create_canvas, flow_id}, fn project, actor_id, request_hash ->
+        create_canvas_thread!(project, actor_id, flow_id, payload, request_hash)
       end)
     else
       false -> {:error, :not_found}
@@ -69,6 +87,31 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   def set_status(_scope, _project_id, _thread_id, _status, _revision), do: {:error, :invalid_status}
 
+  def move(scope, project_id, thread_id, position, expected_revision)
+      when valid_thread_id?(thread_id) and is_integer(expected_revision) and expected_revision > 0 do
+    with {:ok, position} <- Payload.position(position, required: true) do
+      transact(scope, project_id, fn project, _actor_id ->
+        move_thread!(project.id, thread_id, position, expected_revision)
+      end)
+    end
+  end
+
+  def move(_scope, _project_id, _thread_id, _position, _revision), do: {:error, :invalid_position}
+
+  defp move_thread!(project_id, thread_id, position, expected_revision) do
+    thread = lock_available_thread!(project_id, thread_id)
+    if thread.revision != expected_revision, do: Repo.rollback(:stale)
+    changed? = thread.position_x != position.x or thread.position_y != position.y
+
+    if changed? do
+      thread
+      |> change(position_x: position.x, position_y: position.y, revision: thread.revision + 1)
+      |> Repo.update!()
+    end
+
+    %{thread_id: thread.id, flow_id: thread.container_id, notification: nil, changed?: changed?}
+  end
+
   defp transact(scope, project_id, fun) do
     if Repo.in_transaction?() do
       {:error, :comment_requires_outer_transaction}
@@ -109,6 +152,30 @@ defmodule Storyarn.Projects.Comments.Mutations do
         container_id: flow_id,
         source_inserted_at: node.inserted_at,
         source_label: DTO.source_label(node),
+        position_x: payload.position && payload.position.x,
+        position_y: payload.position && payload.position.y,
+        last_activity_at: TimeHelpers.now()
+      })
+
+    insert_message(thread, actor_id, nil, payload, request_hash, [])
+  end
+
+  defp create_canvas_thread!(project, actor_id, flow_id, payload, request_hash) do
+    flow = Queries.flow_source(project.id, flow_id, lock: :share) || Repo.rollback(:source_unavailable)
+    validate_mentions!(project, payload.mention_user_ids)
+
+    thread =
+      Repo.insert!(%Thread{
+        project_id: project.id,
+        author_id: actor_id,
+        source_type: "flow_canvas",
+        source_id: flow.id,
+        flow_canvas_id: flow.id,
+        container_id: flow.id,
+        source_inserted_at: flow.inserted_at,
+        source_label: DTO.source_label(flow),
+        position_x: payload.position.x,
+        position_y: payload.position.y,
         last_activity_at: TimeHelpers.now()
       })
 
@@ -144,12 +211,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
   defp lock_available_thread!(project_id, thread_id) do
     thread = Queries.thread(project_id, thread_id) || Repo.rollback(:not_found)
 
-    node =
-      if thread.flow_node_id,
-        do: Queries.source(project_id, thread.container_id, thread.flow_node_id, lock: :share)
-
-    if is_nil(node) or node.id != thread.source_id or node.inserted_at != thread.source_inserted_at,
-      do: Repo.rollback(:source_unavailable)
+    Queries.available_source(thread, lock: :share) || Repo.rollback(:source_unavailable)
 
     Queries.thread(project_id, thread_id, lock: :update) || Repo.rollback(:not_found)
   end

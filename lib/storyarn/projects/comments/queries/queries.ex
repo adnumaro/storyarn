@@ -19,9 +19,7 @@ defmodule Storyarn.Projects.Comments.Queries do
   end
 
   def source(project_id, flow_id, node_id, opts \\ []) do
-    flow_query = from(f in FlowRecord, where: f.id == ^flow_id and f.project_id == ^project_id and is_nil(f.deleted_at))
-
-    case flow_query |> maybe_lock(opts) |> Repo.one() do
+    case flow_source(project_id, flow_id, opts) do
       %FlowRecord{} ->
         from(n in FlowNodeRecord, where: n.id == ^node_id and n.flow_id == ^flow_id and is_nil(n.deleted_at))
         |> maybe_lock(opts)
@@ -32,39 +30,65 @@ defmodule Storyarn.Projects.Comments.Queries do
     end
   end
 
-  def source_available?(%Thread{flow_node_id: nil}), do: false
+  def flow_source(project_id, flow_id, opts \\ []) do
+    from(f in FlowRecord, where: f.id == ^flow_id and f.project_id == ^project_id and is_nil(f.deleted_at))
+    |> maybe_lock(opts)
+    |> Repo.one()
+  end
 
-  def source_available?(thread) do
-    case source(thread.project_id, thread.container_id, thread.flow_node_id) do
-      %FlowNodeRecord{id: id, inserted_at: inserted_at} ->
-        id == thread.source_id and inserted_at == thread.source_inserted_at
+  def source_available?(thread), do: not is_nil(available_source(thread))
 
-      _ ->
-        false
+  def available_source(thread, opts \\ []) do
+    case anchored_source(thread, opts) do
+      %{id: id, inserted_at: inserted_at} = source
+      when id == thread.source_id and inserted_at == thread.source_inserted_at ->
+        source
+
+      _unavailable ->
+        nil
     end
   end
+
+  defp anchored_source(%Thread{source_type: "flow_node", flow_node_id: id} = thread, opts) when is_integer(id),
+    do: source(thread.project_id, thread.container_id, id, opts)
+
+  defp anchored_source(%Thread{source_type: "flow_canvas", flow_canvas_id: id, container_id: id} = thread, opts)
+       when is_integer(id), do: flow_source(thread.project_id, id, opts)
+
+  defp anchored_source(_thread, _opts), do: nil
 
   def available_sources(threads) do
     ids = Enum.map(threads, & &1.id)
 
-    from(t in Thread,
-      join: n in FlowNodeRecord,
-      on: t.flow_node_id == n.id and t.source_id == n.id and t.source_inserted_at == n.inserted_at,
-      join: f in FlowRecord,
-      on: f.id == n.flow_id and f.id == t.container_id and f.project_id == t.project_id,
-      where: t.id in ^ids and is_nil(n.deleted_at) and is_nil(f.deleted_at),
-      select: {t.id, n}
+    from([thread: t, node: n, flow: f] in available_threads(Thread),
+      where: t.id in ^ids,
+      select: {t.id, t.source_type, n, f}
     )
     |> Repo.all()
-    |> Map.new()
+    |> Map.new(fn {id, type, node, flow} -> {id, if(type == "flow_node", do: node, else: flow)} end)
   end
 
   def list_threads(project_id, flow_id, opts) do
     query = from(t in Thread, where: t.project_id == ^project_id and t.container_id == ^flow_id)
-    query = if opts[:node_id], do: where(query, [t], t.source_id == ^opts[:node_id]), else: query
+
+    query =
+      if opts[:node_id],
+        do: where(query, [t], t.source_type == "flow_node" and t.source_id == ^opts[:node_id]),
+        else: query
+
     query = if opts[:status] in ["open", "resolved"], do: where(query, [t], t.status == ^opts[:status]), else: query
     query = if cursor(opts), do: where(query, [t], t.id < ^cursor(opts)), else: query
     page(query, opts)
+  end
+
+  def list_pins(project_id, flow_id) do
+    Repo.all(
+      from([thread: t] in available_threads(Thread),
+        where: t.project_id == ^project_id and t.container_id == ^flow_id and t.status == "open",
+        order_by: [asc: t.id],
+        select: t
+      )
+    )
   end
 
   def list_messages(thread_id, opts) do
@@ -91,7 +115,7 @@ defmodule Storyarn.Projects.Comments.Queries do
 
   def destinations(user_id, message_ids) do
     Repo.all(
-      from([m, t, n, f] in destination_sources(message_ids),
+      from([message: m, thread: t, node: n, flow: f] in destination_sources(message_ids),
         join: p in Project,
         on: p.id == t.project_id,
         join: w in assoc(p, :workspace),
@@ -119,14 +143,11 @@ defmodule Storyarn.Projects.Comments.Queries do
   end
 
   defp destination_sources(message_ids) do
-    from(m in Message,
-      join: t in Thread,
+    from([thread: t] in available_threads(Thread),
+      join: m in Message,
+      as: :message,
       on: t.id == m.thread_id and t.project_id == m.project_id,
-      join: n in FlowNodeRecord,
-      on: t.flow_node_id == n.id and t.source_id == n.id and t.source_inserted_at == n.inserted_at,
-      join: f in FlowRecord,
-      on: f.id == n.flow_id and f.id == t.container_id and f.project_id == t.project_id,
-      where: m.id in ^message_ids and is_nil(f.deleted_at) and is_nil(n.deleted_at)
+      where: m.id in ^message_ids
     )
   end
 
@@ -159,18 +180,50 @@ defmodule Storyarn.Projects.Comments.Queries do
   end
 
   def open_counts(project_id, flow_id) do
-    from(t in Thread,
-      join: n in FlowNodeRecord,
-      on: t.flow_node_id == n.id and t.source_id == n.id and t.source_inserted_at == n.inserted_at,
-      join: f in FlowRecord,
-      on: f.id == n.flow_id,
+    from([thread: t] in available_threads(Thread),
       where: t.project_id == ^project_id and t.container_id == ^flow_id and t.status == "open",
-      where: f.project_id == ^project_id and f.id == ^flow_id and is_nil(f.deleted_at) and is_nil(n.deleted_at),
+      where: t.source_type == "flow_node",
       group_by: t.source_id,
       select: {t.source_id, count(t.id)}
     )
     |> Repo.all()
     |> Map.new()
+  end
+
+  defp available_threads(query) do
+    from(t in query,
+      as: :thread,
+      join: f in FlowRecord,
+      as: :flow,
+      on: f.id == t.container_id and f.project_id == t.project_id,
+      left_join: n in FlowNodeRecord,
+      as: :node,
+      on: n.id == t.flow_node_id and n.flow_id == f.id,
+      where: is_nil(f.deleted_at),
+      where: ^available_anchor()
+    )
+  end
+
+  defp available_anchor do
+    node = available_node_anchor()
+    canvas = available_canvas_anchor()
+    dynamic(^node or ^canvas)
+  end
+
+  defp available_node_anchor do
+    dynamic(
+      [thread: t, node: n],
+      t.source_type == "flow_node" and t.source_id == n.id and
+        t.source_inserted_at == n.inserted_at and is_nil(n.deleted_at)
+    )
+  end
+
+  defp available_canvas_anchor do
+    dynamic(
+      [thread: t, flow: f],
+      t.source_type == "flow_canvas" and t.flow_canvas_id == f.id and
+        t.source_id == f.id and t.source_inserted_at == f.inserted_at
+    )
   end
 
   defp maybe_lock(query, opts) do

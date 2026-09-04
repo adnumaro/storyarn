@@ -38,6 +38,7 @@ import type {
 } from "./flowCanvasTypes";
 import { createFlowSequenceGeometry, type FlowSequenceFitOptions } from "./flowSequenceGeometry";
 import { createFlowMarquee } from "../services/flowMarquee";
+import { commentPointFromClient } from "../lib/comment-geometry";
 
 export type { FlowCanvasReturn } from "./flowCanvasTypes";
 
@@ -81,6 +82,7 @@ export function buildHubsMap(
 }
 
 export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
+  let skipInitialFit = false;
   const runtime = createFlowCanvasRuntime(
     { pushEvent, handleEvent },
     {
@@ -238,6 +240,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function setupCanvasClickHandler(containerEl: HTMLElement): void {
     runtime.canvasClickController = new AbortController();
+    // Capture coordinates only; the existing Rete plugin owns the context menu.
+    containerEl.addEventListener(
+      "contextmenu",
+      (event) => {
+        hookProxy._commentContextPoint = commentPointFromClient(
+          { x: event.clientX, y: event.clientY },
+          containerEl.getBoundingClientRect(),
+          runtime.area!.area.transform,
+        );
+      },
+      { capture: true, signal: runtime.canvasClickController.signal },
+    );
     containerEl.addEventListener(
       "pointerdown",
       (e: PointerEvent) => {
@@ -374,6 +388,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   // --- Init ---
 
   function applyInitOpts(containerEl: HTMLElement, opts: InitOpts): void {
+    skipInitialFit = opts.skipInitialFit ?? false;
     hookProxy._containerEl = containerEl;
     hookProxy._sheetsMap = opts.sheetsMap || {};
     hookProxy._readonly = opts.readonly || false;
@@ -387,7 +402,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     const selection = await finalizeSetup(
       runtime.area!,
       runtime.editor!,
-      (flowData.nodes?.length ?? 0) > 0,
+      (flowData.nodes?.length ?? 0) > 0 && !skipInitialFit,
       hookProxy._flowContext,
     );
     await recalculateAllSockets();

@@ -8,6 +8,9 @@ defmodule Storyarn.Projects.Comments.Thread do
     field :source_type, :string
     field :source_id, :integer
     field :flow_node_id, :integer
+    field :flow_canvas_id, :integer
+    field :position_x, :float
+    field :position_y, :float
     field :container_id, :integer
     field :source_inserted_at, :utc_datetime
     field :source_label, :string

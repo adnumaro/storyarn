@@ -5,7 +5,7 @@ export interface CommentMember {
 }
 
 export interface FlowCommentSource {
-  type: "flow_node";
+  type: "flow_node" | "flow_canvas";
   id: number;
   flow_id: number;
   label: string;
@@ -14,6 +14,11 @@ export interface FlowCommentSource {
 
 export type CommentStatus = "open" | "resolved";
 export type CommentStatusFilter = CommentStatus | "all";
+
+export interface FlowCommentPosition {
+  x: number;
+  y: number;
+}
 
 export interface FlowCommentThread {
   id: number;
@@ -28,6 +33,7 @@ export interface FlowCommentThread {
   author: CommentMember;
   preview?: string;
   root_message_id?: number;
+  position?: FlowCommentPosition | null;
 }
 
 export interface FlowCommentMessage {
@@ -42,6 +48,10 @@ export interface FlowCommentMessage {
 
 export interface FlowCommentsPanelState {
   open: boolean;
+  presentation?: "panel" | "canvas";
+  placing?: boolean;
+  draftPosition?: FlowCommentPosition | null;
+  draftId?: string | null;
   threads: FlowCommentThread[];
   nextCursor: number | null;
   thread: FlowCommentThread | null;

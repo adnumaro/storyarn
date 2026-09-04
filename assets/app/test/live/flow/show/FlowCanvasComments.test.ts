@@ -1,13 +1,13 @@
 import { mount, flushPromises } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { isReactive, reactive, ref } from "vue";
+import { reactive, ref } from "vue";
 import { FLOW_CONTEXT_KEY } from "@modules/flows/editor/lib/flow-context";
 import { FlowNode as ReteFlowNode } from "@modules/flows/editor/lib/flow-node";
+import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
 
 const init = vi.fn();
 const setToolbarProps = vi.fn();
 const setCommentCounts = vi.fn();
-const focusCommentNode = vi.fn();
 vi.mock("live_vue", () => ({ useLiveVue: () => liveProjection }));
 vi.mock("@modules/flows/editor/composables/useFlowCanvas", () => ({
   useFlowCanvas: () => ({
@@ -16,7 +16,6 @@ vi.mock("@modules/flows/editor/composables/useFlowCanvas", () => ({
     area: ref(null),
     setToolbarProps,
     setCommentCounts,
-    focusCommentNode,
   }),
 }));
 const { default: FlowCanvas } = await import("@app/live/flow/show/FlowCanvas.vue");
@@ -29,7 +28,6 @@ type SurfaceData = InstanceType<typeof FlowSurface>["$props"]["surface"];
 const liveProjection = reactive<{ vue: { props: { surface?: SurfaceData } } }>({
   vue: { props: {} },
 });
-
 const props = {
   flowData: '{"nodes":[],"connections":[]}',
   variableMap: "{}",
@@ -40,47 +38,51 @@ const props = {
   canvasId: "test-canvas",
   toolbarData: "{}",
 };
+const comments: FlowCommentsPanelState = {
+  open: false,
+  presentation: "panel",
+  threads: [],
+  thread: null,
+  messages: [],
+  nextCursor: null,
+  messageNextCursor: null,
+  members: [],
+  canComment: false,
+  selectedNodeId: null,
+  error: null,
+};
 
-describe("FlowCanvas comment projection", () => {
-  beforeEach(() => {
-    init.mockReset();
-    setCommentCounts.mockClear();
-    focusCommentNode.mockClear();
-    liveProjection.vue.props.surface = undefined;
-  });
+beforeEach(() => {
+  init.mockReset();
+  setCommentCounts.mockClear();
+  liveProjection.vue.props.surface = undefined;
+});
 
-  it("waits for canvas readiness and uses the latest deep-link target", async () => {
-    let ready!: () => void;
-    init.mockReturnValue(
-      new Promise<void>((resolve) => {
-        ready = resolve;
-      }),
-    );
+describe("FlowCanvas spatial comment boundary", () => {
+  it("skips the initial auto-fit when a thread deep link owns the viewport", async () => {
+    init.mockResolvedValue(undefined);
     const wrapper = mount(FlowCanvas, {
-      props: { ...props, comments: { enabled: true, counts: { 42: 1 }, focusNodeId: 42 } },
+      props: { ...props, comments: { state: comments, pins: [], focusThreadId: 12 } },
     });
-    await wrapper.setProps({ comments: { enabled: true, counts: { 43: 2 }, focusNodeId: 43 } });
-    expect(focusCommentNode).not.toHaveBeenCalled();
-    ready();
     await flushPromises();
-    expect(focusCommentNode).toHaveBeenCalledExactlyOnceWith(43);
-    expect(setCommentCounts).toHaveBeenLastCalledWith({ 43: 2 }, true);
+    expect(init.mock.calls[0][2]).toMatchObject({ skipInitialFit: true });
+    expect(setCommentCounts).toHaveBeenLastCalledWith({}, true);
     wrapper.unmount();
   });
 
-  it("leaves comments disabled in standalone compact and version canvases", async () => {
+  it("leaves comments disabled in compact and version canvases", async () => {
     init.mockResolvedValue(undefined);
     const wrapper = mount(FlowCanvas, { props });
     await flushPromises();
     expect(setCommentCounts).toHaveBeenCalledWith({}, false);
-    expect(focusCommentNode).not.toHaveBeenCalled();
+    expect(wrapper.findComponent({ name: "FlowCanvasComments" }).exists()).toBe(false);
     wrapper.unmount();
   });
 
-  it("does not resync comment counts for unrelated live surface updates", async () => {
+  it("projects in-place LiveVue changes without reinstalling the Rete bridge", async () => {
     init.mockResolvedValue(undefined);
     const surface: SurfaceData = {
-      canvas: { ...props, key: "flow-7", commentCounts: { 42: 1 }, commentFocusNodeId: null },
+      canvas: { ...props, key: "flow-7", comments, commentPins: [], commentFocusThreadId: null },
       dock: {
         canEdit: false,
         compact: false,
@@ -97,51 +99,18 @@ describe("FlowCanvas comment projection", () => {
     });
     await flushPromises();
     setCommentCounts.mockClear();
-
-    liveProjection.vue.props.surface!.canvas.toolbarData = '{"hubs":[]}';
+    liveProjection.vue.props.surface!.canvas.comments!.placing = true;
+    liveProjection.vue.props.surface!.canvas.commentFocusThreadId = 12;
     await wrapper.vm.$nextTick();
-    liveProjection.vue.props.surface!.dock.debugPanelOpen = true;
-    await wrapper.vm.$nextTick();
-    liveProjection.vue.props.surface!.canvas = {
-      ...liveProjection.vue.props.surface!.canvas,
-      userColor: "#abcdef",
-    };
-    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(FlowCanvas).props("comments")?.state.placing).toBe(true);
+    expect(wrapper.getComponent(FlowCanvas).props("comments")?.focusThreadId).toBe(12);
     expect(setCommentCounts).not.toHaveBeenCalled();
-
-    liveProjection.vue.props.surface!.canvas.commentCounts = { 42: 2 };
-    await wrapper.vm.$nextTick();
-    expect(setCommentCounts).toHaveBeenCalledExactlyOnceWith({ 42: 2 }, true);
     wrapper.unmount();
   });
 
-  it("updates both node renderers when LiveVue patches counts in place", async () => {
-    init.mockResolvedValue(undefined);
-    const surface: SurfaceData = {
-      canvas: { ...props, key: "flow-7", commentCounts: { 42: 1 }, commentFocusNodeId: null },
-      dock: {
-        canEdit: false,
-        compact: false,
-        debugPanelOpen: false,
-        workspaceSlug: "team",
-        projectSlug: "story",
-        flowId: 7,
-      },
-    };
-    liveProjection.vue.props.surface = surface;
-    const wrapper = mount(FlowSurface, {
-      props: { surface },
-      global: { stubs: { FlowDock: true, FlowCollabToast: true } },
-    });
-    await flushPromises();
-
-    const counts = liveProjection.vue.props.surface!.canvas.commentCounts!;
-    const installedCounts = setCommentCounts.mock.lastCall![0] as Record<string, number>;
-    expect(installedCounts).toBe(counts);
-    expect(isReactive(installedCounts)).toBe(true);
-    // The Rete bridge assigns this same map to its reactive, provided context.
+  it("exposes node hit targets without duplicate legacy badges, including sequences", () => {
     const context = reactive({
-      commentCounts: installedCounts,
+      commentCounts: { 42: 3 },
       commentsEnabled: true,
       sheetsMap: {},
       hubsMap: {},
@@ -167,25 +136,9 @@ describe("FlowCanvas comment projection", () => {
       mount(SequenceNode, { props: { data: sequence }, global }),
     ];
     for (const node of nodes) {
-      expect(node.get("#flow-node-comments-42").text()).toBe("1");
-    }
-    setCommentCounts.mockClear();
-
-    // LiveVue's JSON Patch replace/remove mutate nested reactive maps in place.
-    counts[42] = 2;
-    await wrapper.vm.$nextTick();
-    for (const node of nodes) {
-      expect(node.get("#flow-node-comments-42").text()).toBe("2");
-    }
-    delete counts[42];
-    await wrapper.vm.$nextTick();
-    for (const node of nodes) {
-      expect(node.get("#flow-node-comments-42").attributes("aria-label")).toBe("New thread");
-      expect(node.get("#flow-node-comments-42").find("span").exists()).toBe(false);
+      expect(node.attributes("data-flow-comment-node")).toBe("42");
+      expect(node.find("#flow-node-comments-42").exists()).toBe(false);
       node.unmount();
     }
-    expect(context.commentCounts).toBe(counts);
-    expect(setCommentCounts).not.toHaveBeenCalled();
-    wrapper.unmount();
   });
 });

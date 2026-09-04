@@ -19,13 +19,15 @@
  */
 
 import type { Component } from "vue";
-import { Clapperboard, Copy, LayoutGrid, StickyNote, Trash2 } from "@lucide/vue";
+import { Clapperboard, Copy, LayoutGrid, MessageCircle, StickyNote, Trash2 } from "@lucide/vue";
 
 import { i18n } from "@/app/i18n";
 import { FlowNode } from "./flow-node";
 import { createFlowGraphQueries } from "./flowGraphQueries";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH, SEQUENCE_PADDING } from "./sequence-layout";
 import type { HookProxy } from "../services/editorHandlers";
+import { commentPlacement } from "./comment-geometry";
+import { cancelFlowPlacement } from "./flow-placement-state";
 
 // Extended item shape: adds an optional Vue icon component. Base shape (label,
 // key, handler, subitems) matches rete-context-menu-plugin's `Item` type.
@@ -50,15 +52,28 @@ export function createContextMenuItems(hook: HookProxy) {
 
   return function items(context: ContextArg): FlowContextMenuItemsCollection {
     const selectedIds = getSelectedNodeDbIds(hook);
+    let menu: FlowContextMenuItemsCollection;
+    if (selectedIds.length >= 1) menu = selectionMenu(hook, selectedIds, t);
+    else if (context === "root") menu = rootMenu(hook, t);
+    else menu = nodeMenu(hook, context, t);
 
-    if (selectedIds.length >= 1) {
-      return selectionMenu(hook, selectedIds, t);
+    // A comment belongs to the click target, even when graph actions operate
+    // on a different current selection. Snapshot before the pointer enters the menu.
+    if (hook._flowContext?.commentsEnabled && !hook.readonly) {
+      const point = hook._commentContextPoint ?? getAreaPointer(hook);
+      const nodeId = context === "root" ? null : Number(context.nodeId);
+      const placement = commentPlacement(point, nodeId, hook.area.nodeViews);
+      menu.list.unshift({
+        key: "add_comment",
+        label: t("flows.comments.add_comment"),
+        icon: MessageCircle,
+        handler: () => {
+          cancelFlowPlacement();
+          hook.pushEvent("comments_place", placement);
+        },
+      });
     }
-
-    if (context === "root") {
-      return rootMenu(hook, t);
-    }
-    return nodeMenu(hook, context, t);
+    return menu;
   };
 }
 

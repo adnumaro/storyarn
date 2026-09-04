@@ -6,6 +6,7 @@ import {
   ChevronDown,
   Map as MapIcon,
   MessageCircle,
+  MessageSquarePlus,
   Text,
   X,
 } from "@lucide/vue";
@@ -66,7 +67,7 @@ const {
   flowHealth: FlowHealthProp;
   sceneSelected: SceneSelected;
   projectScenes: ProjectScene[];
-  comments?: { count: number; open: boolean };
+  comments?: { count: number; open: boolean; placing?: boolean; canComment?: boolean };
 }>();
 
 const live = useLive();
@@ -209,6 +210,25 @@ function selectScene(sceneId: number | string | null): void {
       <!-- Flow health: the shared popover, same as sheets and scenes -->
       <FlowHealthStatus :health="flowHealth.health" />
     </div>
+
+    <ToolbarTooltip
+      v-if="comments.canComment"
+      :label="$t('flows.comments.place_hint')"
+      side="bottom"
+    >
+      <button
+        id="flow-comments-create-mode"
+        type="button"
+        class="toolbar-btn h-full gap-1.5 px-2 transition-colors"
+        :class="comments.placing ? 'bg-primary/10 text-primary' : 'text-muted-foreground'"
+        :aria-label="$t('flows.comments.new_comment_tool')"
+        :aria-pressed="comments.placing ?? false"
+        @click="live.pushEvent('comments_mode', { active: !comments.placing })"
+      >
+        <MessageSquarePlus class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t("flows.comments.new_comment_tool") }}</span>
+      </button>
+    </ToolbarTooltip>
 
     <ToolbarTooltip :label="$t('flows.comments.title')" side="bottom">
       <button

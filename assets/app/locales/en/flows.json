@@ -463,6 +463,14 @@
       }
     },
     "comments": {
+      "new_comment_tool": "New comment",
+      "add_comment": "Add comment",
+      "canvas_label": "Flow canvas",
+      "canvas_unavailable": "This flow is no longer available. Its discussion is preserved for reference.",
+      "place_hint": "Place a comment on the canvas (C)",
+      "placing_hint": "Click anywhere to place a comment. Press Esc to cancel.",
+      "pin_label": "Comment by {author}",
+      "move_pin": "Move comment",
       "title": "Comments",
       "close": "Close comments",
       "new_thread": "New thread",
@@ -492,7 +500,7 @@
       "node_label": "Node {id}",
       "filter": "Filter threads",
       "empty": "No threads here yet",
-      "empty_hint": "Open the comment button on a node to start a conversation.",
+      "empty_hint": "Choose New comment to start a conversation anywhere on the canvas.",
       "readonly_hint": "You can read discussions. Editing access is required to comment.",
       "threads": "Comment threads",
       "load_threads": "Load more threads",

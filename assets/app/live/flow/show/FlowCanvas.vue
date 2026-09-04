@@ -5,6 +5,14 @@ import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useFlowCanvas } from "@modules/flows/editor/composables/useFlowCanvas";
 import FlowCursors from "@modules/flows/editor/components/chrome/FlowCursors.vue";
 import FlowMinimapToggle from "@modules/flows/editor/components/chrome/FlowMinimapToggle.vue";
+import FlowCanvasComments from "@modules/flows/editor/components/chrome/FlowCanvasComments.vue";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
+
+interface CanvasComments {
+  state: FlowCommentsPanelState;
+  pins: FlowCommentThread[];
+  focusThreadId: number | null;
+}
 
 const {
   flowData = null,
@@ -15,7 +23,7 @@ const {
   userColor = "#3b82f6",
   canvasId = "flow-canvas",
   toolbarData = "{}",
-  comments = { enabled: false, counts: {}, focusNodeId: null },
+  comments = null,
 } = defineProps<{
   flowData: string | null;
   variableMap: string | null;
@@ -25,15 +33,15 @@ const {
   userColor: string;
   canvasId: string;
   toolbarData: string;
-  comments?: { enabled: boolean; counts: Record<string, number>; focusNodeId: number | null };
+  comments?: CanvasComments | null;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
-let canvasReady = false;
+const canvasReady = ref(false);
 
-const { init, editor, area, setToolbarProps, setCommentCounts, focusCommentNode } = useFlowCanvas({
+const { init, editor, area, setToolbarProps, setCommentCounts } = useFlowCanvas({
   pushEvent: live.pushEvent,
   handleEvent: live.handleEvent,
 });
@@ -50,12 +58,12 @@ async function initCanvas() {
     readonly,
     userId: Number(userId),
     userColor,
+    skipInitialFit: comments?.focusThreadId != null,
   });
 
-  canvasReady = true;
+  canvasReady.value = true;
   setToolbarProps(safeParse(toolbarData));
-  setCommentCounts(comments.counts, comments.enabled);
-  if (comments.focusNodeId != null) focusCommentNode(comments.focusNodeId);
+  setCommentCounts({}, comments != null);
 }
 
 watch(
@@ -70,14 +78,8 @@ onMounted(() => {
 });
 
 watch(
-  () => comments,
-  (value) => setCommentCounts(value.counts, value.enabled),
-);
-watch(
-  () => comments.focusNodeId,
-  (nodeId) => {
-    if (canvasReady && nodeId != null) focusCommentNode(nodeId);
-  },
+  () => comments != null,
+  (enabled) => setCommentCounts({}, enabled),
 );
 
 watch(
@@ -115,6 +117,15 @@ function safeParse(json: string, fallback: Record<string, unknown> = {}): Record
       :area-transform="area?.area?.transform || { x: 0, y: 0, k: 1 }"
       :current-user-id="userId"
       :container-el="containerRef"
+    />
+
+    <FlowCanvasComments
+      v-if="canvasReady && area && containerRef && comments"
+      :area="area"
+      :container="containerRef"
+      :state="comments.state"
+      :comment-pins="comments.pins"
+      :focus-thread-id="comments.focusThreadId"
     />
 
     <FlowMinimapToggle

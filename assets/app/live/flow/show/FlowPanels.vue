@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { computed } from "vue";
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
 import FlowCommentsPanel from "@modules/flows/editor/components/panels/FlowCommentsPanel.vue";
 import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
@@ -70,6 +71,10 @@ interface FlowPanels {
 const { panels } = defineProps<{
   panels: FlowPanels;
 }>();
+
+const commentsPanelOpen = computed(
+  () => panels.comments?.open && panels.comments.presentation !== "canvas",
+);
 </script>
 
 <template>
@@ -79,7 +84,7 @@ const { panels } = defineProps<{
     </div>
     <div id="flow-versions-panel" class="contents">
       <FlowVersionHistoryPanel
-        :open="panels.versions.open && !panels.comments?.open"
+        :open="panels.versions.open && !commentsPanelOpen"
         :versions="panels.versions.versions"
         :named-versions="panels.versions.namedVersions"
         :auto-versions="panels.versions.autoVersions"
@@ -94,7 +99,7 @@ const { panels } = defineProps<{
 
     <div id="flow-debug-panel" class="contents">
       <FlowDebugPanel
-        :open="panels.debug.open && !panels.comments?.open"
+        :open="panels.debug.open && !commentsPanelOpen"
         :state="panels.debug.state"
         :nodes="panels.debug.nodes"
         :controls="panels.debug.controls"
@@ -103,7 +108,7 @@ const { panels } = defineProps<{
 
     <div id="flow-builder-panel" class="contents">
       <FlowBuilderPanel
-        :open="panels.builder.open && !panels.comments?.open"
+        :open="panels.builder.open && !commentsPanelOpen"
         :node-type="panels.builder.nodeType"
         :node-id="panels.builder.nodeId"
         :condition="panels.builder.condition"
@@ -116,7 +121,7 @@ const { panels } = defineProps<{
 
     <div id="flow-dialogue-panel" class="contents">
       <FlowDialoguePanel
-        :open="panels.dialogue.open && !panels.comments?.open"
+        :open="panels.dialogue.open && !commentsPanelOpen"
         :data="panels.dialogue.data"
         :can-edit="panels.dialogue.canEdit"
       />
@@ -124,7 +129,7 @@ const { panels } = defineProps<{
 
     <div id="flow-dialogue-fullscreen" class="contents">
       <FlowDialogueFullscreenEditor
-        :open="panels.dialogueFullscreen.open && !panels.comments?.open"
+        :open="panels.dialogueFullscreen.open && !commentsPanelOpen"
         :data="panels.dialogueFullscreen.data"
         :can-edit="panels.dialogueFullscreen.canEdit"
       />
@@ -132,7 +137,7 @@ const { panels } = defineProps<{
 
     <div id="flow-sequence-config-panel" class="contents">
       <FlowSequenceConfigPanel
-        :open="panels.sequence.open && !panels.comments?.open"
+        :open="panels.sequence.open && !commentsPanelOpen"
         :data="panels.sequence.data"
         :can-edit="panels.sequence.canEdit"
       />
@@ -140,7 +145,7 @@ const { panels } = defineProps<{
 
     <div id="flow-preview" class="contents">
       <FlowPreview
-        :open="panels.preview.open && !panels.comments?.open"
+        :open="panels.preview.open && !commentsPanelOpen"
         :current-node="panels.preview.currentNode"
         :responses="panels.preview.responses"
         :has-next="panels.preview.hasNext"

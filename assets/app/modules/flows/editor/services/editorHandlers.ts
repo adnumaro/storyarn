@@ -170,6 +170,7 @@ export interface HookProxy {
   _speakerPopover: unknown;
   _eventBindingsController: AbortController | null;
   _flowContext: FlowContext;
+  _commentContextPoint?: { x: number; y: number };
   _historyTriggeredDelete?: string | number | null;
   _throttleTimers?: Record<string | number, ReturnType<typeof setTimeout>>;
   _pendingPositions?: Record<string | number, { x: number; y: number }>;

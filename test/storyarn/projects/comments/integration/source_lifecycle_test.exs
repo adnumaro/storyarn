@@ -9,6 +9,7 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Thread
+  alias Storyarn.Projects.Persistence.FlowRecord
 
   test "hard deletion retains the discussion and never rebinds an identical reused ID" do
     owner = user_fixture()
@@ -85,5 +86,36 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
     assert retained.thread.message_count == 2
     assert retained.thread.source.status == "unavailable"
     assert Repo.get!(Thread, original.thread.id).flow_node_id == nil
+  end
+
+  test "canvas discussions do not rebind when project reconstitution replaces the Flow row" do
+    owner = user_fixture()
+    scope = user_scope_fixture(owner)
+    project = project_fixture(owner)
+    flow = flow_fixture(project)
+    attrs = %{body: "Keep this canvas discussion", client_request_id: Ecto.UUID.generate(), position: %{x: 5, y: 10}}
+    assert {:ok, detail} = Projects.create_flow_canvas_comment(scope, project.id, flow.id, attrs)
+
+    # The Project-owned materialization record models exact reconstitution;
+    # Comments' own read-only source projection is never used as a writer.
+    flow_record = Repo.get!(FlowRecord, flow.id)
+    Repo.delete!(flow_record)
+
+    Repo.insert!(%FlowRecord{
+      id: flow.id,
+      project_id: project.id,
+      name: flow.name,
+      shortcut: flow.shortcut,
+      inserted_at: flow.inserted_at,
+      updated_at: flow.updated_at
+    })
+
+    assert {:ok, retained} = Projects.get_comment_thread(scope, project.id, detail.thread.id)
+    assert retained.thread.source.status == "unavailable"
+    assert retained.thread.position == %{x: 5.0, y: 10.0}
+    assert [%{body: "Keep this canvas discussion"}] = retained.messages
+    assert Repo.get!(Thread, detail.thread.id).flow_canvas_id == nil
+    assert {:ok, []} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert Projects.comment_destinations(scope, [detail.thread.root_message_id]) == %{}
   end
 end

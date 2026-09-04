@@ -85,7 +85,14 @@ defmodule StoryarnWeb.FlowLive.Show do
         flow-shortcut={@flow.shortcut}
         is-main={@flow.is_main}
         can-edit={@can_edit}
-        comments={%{count: @comment_counts |> Map.values() |> Enum.sum(), open: @comments.open}}
+        comments={
+          %{
+            count: length(@comment_pins),
+            open: @comments.open && @comments.presentation == "panel",
+            placing: @comments.placing,
+            canComment: @comments.canComment
+          }
+        }
         save-status={to_string(@save_status)}
         nav-history={
           %{
@@ -1587,6 +1594,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       canvasId: "flow-canvas-#{assigns.flow.id}",
       commentCounts: assigns.comment_counts,
       commentFocusNodeId: assigns.comment_focus_node_id,
+      commentPins: assigns.comment_pins,
+      commentFocusThreadId: assigns.comment_focus_thread_id,
+      comments: assigns.comments,
       toolbarData: Jason.encode!(toolbar_data(assigns))
     }
   end

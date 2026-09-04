@@ -46,6 +46,12 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def create_canvas(scope, project_id, flow_id, attrs) do
+    scope
+    |> Mutations.create_canvas(project_id, flow_id, attrs)
+    |> publish_and_read(scope, project_id)
+  end
+
   def reply(scope, project_id, thread_id, attrs) do
     scope
     |> Mutations.reply(project_id, thread_id, attrs)
@@ -58,6 +64,24 @@ defmodule Storyarn.Projects.Comments do
            |> Mutations.set_status(project_id, thread_id, status, expected_revision)
            |> publish_and_read(scope, project_id) do
       {:ok, thread}
+    end
+  end
+
+  def move(scope, project_id, thread_id, position, expected_revision) do
+    with {:ok, %{thread: thread}} <-
+           scope
+           |> Mutations.move(project_id, thread_id, position, expected_revision)
+           |> publish_and_read(scope, project_id) do
+      {:ok, thread}
+    end
+  end
+
+  def list_pins(scope, project_id, flow_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(flow_id) do
+      {:ok, project_id |> Queries.list_pins(flow_id) |> thread_dtos()}
+    else
+      _ -> {:error, :not_found}
     end
   end
 
@@ -82,7 +106,8 @@ defmodule Storyarn.Projects.Comments do
          message when not is_nil(message) <- Queries.message(project_id, comment_id),
          thread when not is_nil(thread) <- Queries.thread(project_id, message.thread_id),
          true <- Queries.source_available?(thread) do
-      {:ok, %{flow_id: thread.container_id, node_id: thread.source_id, thread_id: thread.id}}
+      node_id = if thread.source_type == "flow_node", do: thread.source_id
+      {:ok, %{flow_id: thread.container_id, node_id: node_id, thread_id: thread.id}}
     else
       _ -> {:error, :not_found}
     end

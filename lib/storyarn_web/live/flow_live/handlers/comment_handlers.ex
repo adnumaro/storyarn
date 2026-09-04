@@ -10,13 +10,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   alias Storyarn.Projects
   alias StoryarnWeb.Helpers.Authorize
 
-  @mutations ~w(create reply set_status)
+  @mutations ~w(create reply set_status mode place move)
 
   def init(socket) do
     socket
     |> assign(:comments, empty_state())
     |> assign(:comment_counts, %{})
+    |> assign(:comment_pins, [])
     |> assign(:comment_focus_node_id, nil)
+    |> assign(:comment_focus_thread_id, nil)
     |> assign(:pending_comment_thread_id, nil)
   end
 
@@ -31,7 +33,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
     case socket.assigns.pending_comment_thread_id do
       nil -> socket
-      thread_id -> socket |> assign(:pending_comment_thread_id, nil) |> select_thread(thread_id)
+      thread_id -> socket |> assign(:pending_comment_thread_id, nil) |> open_linked_thread(thread_id)
     end
   end
 
@@ -40,14 +42,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     socket
   end
 
-  def close(%{assigns: %{comments: _state}} = socket), do: put_state(socket, %{open: false, error: nil})
+  def close(%{assigns: %{comments: _state}} = socket) do
+    socket
+    |> put_state(%{open: false, placing: false, draftPosition: nil, draftId: nil, error: nil})
+    |> assign(:comment_focus_thread_id, nil)
+    |> assign(:comment_focus_node_id, nil)
+  end
+
   def close(socket), do: socket
 
   def handle_params(socket, %{"thread" => thread_id}) do
     if socket.assigns.loading do
       assign(socket, :pending_comment_thread_id, positive_id(thread_id))
     else
-      select_thread(socket, positive_id(thread_id))
+      open_linked_thread(socket, positive_id(thread_id))
     end
   end
 
@@ -72,12 +80,17 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
         socket
         |> put_state(%{
           open: true,
+          presentation: "panel",
+          placing: false,
+          draftPosition: nil,
+          draftId: nil,
           selectedNodeId: node_id,
           thread: nil,
           messages: [],
           messageNextCursor: nil,
           error: nil
         })
+        |> assign(:comment_focus_thread_id, nil)
         |> refresh()
         |> focus_node(node_id)
 
@@ -90,6 +103,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   def handle("close", _params, socket), do: {:noreply, close(socket)}
 
   def handle("select_thread", params, socket) do
+    presentation = if params["presentation"] == "canvas", do: "canvas", else: "panel"
+    socket = put_state(socket, %{presentation: presentation})
     {:noreply, select_thread(socket, positive_id(params["thread_id"]))}
   end
 
@@ -123,10 +138,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   def refresh(socket) do
     %{current_scope: scope, project: project, flow: flow, comments: state} = socket.assigns
 
-    case Projects.flow_comment_counts(scope, project.id, flow.id) do
-      {:ok, counts} ->
+    case Projects.list_flow_comment_pins(scope, project.id, flow.id) do
+      {:ok, pins} ->
+        counts = pins |> Enum.filter(&(&1.source.type == "flow_node")) |> Enum.frequencies_by(& &1.source.id)
         can_comment = match?({:ok, _, _}, Projects.authorize(scope, project.id, :edit_content))
-        socket = socket |> assign(:comment_counts, counts) |> put_state(%{canComment: can_comment})
+
+        socket =
+          socket
+          |> assign(:comment_counts, counts)
+          |> assign(:comment_pins, pins)
+          |> put_state(%{canComment: can_comment, placing: can_comment && state.placing})
 
         refresh_open(socket, state)
 
@@ -157,24 +178,84 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
       _unavailable ->
         socket
         |> assign(:comment_focus_node_id, nil)
-        |> put_state(%{selectedNodeId: nil, error: error_message(:source_unavailable)})
+        |> put_state(%{
+          selectedNodeId: nil,
+          draftPosition: nil,
+          draftId: nil,
+          presentation: "panel",
+          error: error_message(:source_unavailable)
+        })
     end
   end
 
   def refresh_result({:noreply, socket}), do: {:noreply, refresh(socket)}
   def refresh_result({:reply, reply, socket}), do: {:reply, reply, refresh(socket)}
 
+  defp mutate("mode", params, socket) do
+    socket = socket |> close() |> put_state(%{placing: params["active"] == true})
+    {:reply, %{ok: true}, socket}
+  end
+
+  defp mutate("place", params, socket) do
+    with {:ok, node_id} <- optional_node(socket, params["node_id"]),
+         {:ok, position} <- position(params) do
+      draft_id =
+        if params["moving_draft"] == true && socket.assigns.comments.draftId,
+          do: socket.assigns.comments.draftId,
+          else: Ecto.UUID.generate()
+
+      socket =
+        socket
+        |> close()
+        |> put_state(%{
+          open: true,
+          presentation: "canvas",
+          selectedNodeId: node_id,
+          draftPosition: position,
+          draftId: draft_id,
+          thread: nil,
+          messages: [],
+          messageNextCursor: nil
+        })
+        |> refresh()
+
+      {:reply, %{ok: true}, socket}
+    else
+      {:error, reason} -> failure(socket, reason)
+    end
+  end
+
+  defp mutate("move", params, socket) do
+    thread_id = positive_id(params["thread_id"])
+
+    with {:ok, _detail} <- current_flow_thread(socket, thread_id),
+         {:ok, position} <- position(params),
+         {:ok, thread} <-
+           Projects.move_comment_thread(
+             socket.assigns.current_scope,
+             socket.assigns.project.id,
+             thread_id,
+             position,
+             positive_id(params["expected_revision"])
+           ) do
+      {:reply, %{ok: true, thread: thread}, refresh(socket)}
+    else
+      {:error, reason} -> failure(refresh(socket), reason)
+    end
+  end
+
   defp mutate("create", params, socket) do
     %{current_scope: scope, project: project, flow: flow} = socket.assigns
+    attrs = Map.take(params, ~w(body client_request_id mention_user_ids position))
 
-    scope
-    |> Projects.create_flow_node_comment(
-      project.id,
-      flow.id,
-      positive_id(params["node_id"]),
-      Map.take(params, ~w(body client_request_id mention_user_ids))
-    )
-    |> mutation_result(socket)
+    result =
+      case {params["node_id"], positive_id(params["node_id"])} do
+        {nil, _id} -> Projects.create_flow_canvas_comment(scope, project.id, flow.id, attrs)
+        {_raw, id} when is_integer(id) -> Projects.create_flow_node_comment(scope, project.id, flow.id, id, attrs)
+        _invalid -> {:error, :not_found}
+      end
+
+    mutation_result(result, socket)
   end
 
   defp mutate("reply", params, socket) do
@@ -219,11 +300,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
 
   defp mutation_result({:error, reason}, socket), do: failure(socket, reason)
 
+  defp open_linked_thread(socket, thread_id) do
+    socket |> put_state(%{presentation: "canvas"}) |> select_thread(thread_id)
+  end
+
   defp select_thread(socket, nil), do: put_state(socket, %{error: error_message(:not_found)})
 
   defp select_thread(socket, thread_id) do
     socket
-    |> put_state(%{open: true, error: nil})
+    |> put_state(%{open: true, placing: false, draftPosition: nil, draftId: nil, error: nil})
     |> load_threads()
     |> load_members()
     |> load_detail(thread_id)
@@ -256,21 +341,36 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
             messages
           end
 
-        node_id = if thread.source.status == "available", do: thread.source.id
+        available? = thread.source.status == "available"
+        node_id = if available? && thread.source.type == "flow_node", do: thread.source.id
+        presentation = if available?, do: socket.assigns.comments.presentation, else: "panel"
 
         socket
-        |> put_state(%{thread: thread, messages: messages, messageNextCursor: next_cursor, selectedNodeId: node_id})
+        |> put_state(%{
+          thread: thread,
+          messages: messages,
+          messageNextCursor: next_cursor,
+          selectedNodeId: node_id,
+          draftPosition: nil,
+          draftId: nil,
+          presentation: presentation
+        })
         |> assign(:comment_focus_node_id, node_id)
+        |> assign(:comment_focus_thread_id, if(available?, do: socket.assigns.comment_focus_thread_id))
 
       _error ->
         if match?({:ok, _, _}, authorize_read(socket)) do
           socket
           |> assign(:comment_focus_node_id, nil)
+          |> assign(:comment_focus_thread_id, nil)
           |> put_state(%{
             thread: nil,
             messages: [],
             messageNextCursor: nil,
             selectedNodeId: nil,
+            draftPosition: nil,
+            draftId: nil,
+            presentation: "panel",
             error: error_message(:not_found)
           })
         else
@@ -317,7 +417,20 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     |> push_event("focus_comment_node", %{node_db_id: node_id})
   end
 
-  defp focus_selected_thread(socket), do: focus_node(socket, socket.assigns.comment_focus_node_id)
+  defp focus_selected_thread(socket) do
+    thread_id =
+      case socket.assigns.comments.thread do
+        %{id: id, source: %{status: "available"}} -> id
+        _thread -> nil
+      end
+
+    assign(socket, :comment_focus_thread_id, thread_id)
+  end
+
+  defp position(%{"x" => x, "y" => y})
+       when is_number(x) and is_number(y) and abs(x) <= 10_000_000 and abs(y) <= 10_000_000, do: {:ok, %{x: x, y: y}}
+
+  defp position(_params), do: {:error, :invalid_position}
 
   defp positive_id(id) when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807, do: id
 
@@ -336,7 +449,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
     socket
     |> assign(:comments, %{empty_state() | open: socket.assigns.comments.open, error: error_message(:not_found)})
     |> assign(:comment_counts, %{})
+    |> assign(:comment_pins, [])
     |> assign(:comment_focus_node_id, nil)
+    |> assign(:comment_focus_thread_id, nil)
   end
 
   defp failure(socket, reason) do
@@ -356,6 +471,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   defp empty_state do
     %{
       open: false,
+      presentation: "panel",
+      placing: false,
+      draftPosition: nil,
+      draftId: nil,
       threads: [],
       nextCursor: nil,
       thread: nil,

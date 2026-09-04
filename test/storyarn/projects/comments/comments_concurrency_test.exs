@@ -49,6 +49,25 @@ defmodule Storyarn.Projects.CommentsConcurrencyTest do
     end)
   end
 
+  test "simultaneous moves from one revision have exactly one winner" do
+    with_project(fn ctx ->
+      attrs = %{body: "Move this pin", client_request_id: Ecto.UUID.generate(), position: %{x: 0, y: 0}}
+      {:ok, detail} = Projects.create_flow_canvas_comment(ctx.scope, ctx.project.id, ctx.flow.id, attrs)
+
+      operations =
+        Enum.map([%{x: 10, y: 20}, %{x: 30, y: 40}], &move_operation(ctx, detail, &1))
+
+      results = concurrently(operations)
+      assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+      assert Enum.count(results, &match?({:error, :stale}, &1)) == 1
+      assert Repo.get!(Thread, detail.thread.id).revision == detail.thread.revision + 1
+    end)
+  end
+
+  defp move_operation(ctx, detail, position) do
+    fn -> Projects.move_comment_thread(ctx.scope, ctx.project.id, detail.thread.id, position, detail.thread.revision) end
+  end
+
   defp concurrently(operations) do
     parent = self()
     reference = make_ref()

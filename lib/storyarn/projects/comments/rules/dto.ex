@@ -8,6 +8,8 @@ defmodule Storyarn.Projects.Comments.DTO do
     %{id: user.id, display_name: user.display_name || "Member", avatar_url: user.avatar_url}
   end
 
+  def source_label(%{name: name}) when is_binary(name), do: HtmlUtils.strip_and_truncate(name, 120)
+
   def source_label(node) do
     data = node.data || %{}
     candidate = data["name"] || data["text"] || data["label"]
@@ -21,6 +23,7 @@ defmodule Storyarn.Projects.Comments.DTO do
       status: thread.status,
       revision: thread.revision,
       message_count: thread.message_count,
+      position: position(thread),
       root_message_id: if(root_message, do: root_message.id),
       preview: if(root_message, do: String.slice(root_message.body, 0, 160), else: ""),
       created_at: timestamp(thread.inserted_at),
@@ -52,4 +55,6 @@ defmodule Storyarn.Projects.Comments.DTO do
 
   defp timestamp(nil), do: nil
   defp timestamp(value), do: DateTime.to_iso8601(value)
+  defp position(%{position_x: nil}), do: nil
+  defp position(thread), do: %{x: thread.position_x, y: thread.position_y}
 end

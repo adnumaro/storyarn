@@ -58,8 +58,114 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
 
     surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
     assert surface.props["surface"]["canvas"]["commentFocusNodeId"] == context.node.id
+    assert surface.props["surface"]["canvas"]["commentFocusThreadId"] == detail.thread.id
+    assert panel(view)["presentation"] == "canvas"
     assert surface.props["surface"]["canvas"]["commentCounts"][to_string(context.node.id)] == 1
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
+  end
+
+  test "a canvas comment is placed, moved and restored by its deep link", context do
+    view = open_flow(context)
+    render_hook(view, "comments_mode", %{active: true})
+    assert panel(view)["placing"]
+    render_hook(view, "comments_place", %{node_id: nil, x: 140.5, y: -80})
+    assert panel(view)["draftPosition"] == %{"x" => 140.5, "y" => -80}
+    assert panel(view)["presentation"] == "canvas"
+    refute panel(view)["placing"]
+
+    attrs = %{
+      node_id: nil,
+      position: %{x: 140.5, y: -80},
+      body: "Explore another path here",
+      client_request_id: Ecto.UUID.generate()
+    }
+
+    render_hook(view, "comments_create", attrs)
+    thread = panel(view)["thread"]
+    assert thread["source"]["type"] == "flow_canvas"
+    assert panel(view)["selectedNodeId"] == nil
+    assert panel(view)["draftPosition"] == nil
+    assert [pin] = canvas(view)["commentPins"]
+    assert pin["id"] == thread["id"]
+    assert canvas(view)["commentCounts"] == %{}
+
+    render_hook(view, "comments_close", %{})
+    render_hook(view, "comments_move", %{thread_id: thread["id"], x: 300, y: 120, expected_revision: thread["revision"]})
+    refute panel(view)["open"]
+    assert canvas(view)["commentFocusThreadId"] == nil
+    assert [%{"position" => %{"x" => 300.0, "y" => 120.0}}] = canvas(view)["commentPins"]
+
+    render_hook(view, "comments_move", %{thread_id: thread["id"], x: 1, y: 2, expected_revision: thread["revision"]})
+    assert is_binary(panel(view)["error"])
+    assert [%{"position" => %{"x" => 300.0, "y" => 120.0}}] = canvas(view)["commentPins"]
+
+    reloaded = open_flow(context, "?thread=#{thread["id"]}")
+    assert canvas(reloaded)["commentFocusThreadId"] == thread["id"]
+    assert canvas(reloaded)["commentFocusNodeId"] == nil
+    assert panel(reloaded)["thread"]["position"] == %{"x" => 300.0, "y" => 120.0}
+  end
+
+  test "node placement retains its relative anchor and Escape cancels placement", context do
+    view = open_flow(context)
+    render_hook(view, "comments_place", %{node_id: context.node.id, x: 25, y: 30})
+    assert panel(view)["selectedNodeId"] == context.node.id
+    assert panel(view)["draftPosition"] == %{"x" => 25, "y" => 30}
+
+    render_hook(view, "comments_create", %{
+      node_id: context.node.id,
+      position: %{x: 25, y: 30},
+      body: "Review this exact point",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    assert [%{"source" => %{"type" => "flow_node"}, "position" => %{"x" => 25.0, "y" => 30.0}}] =
+             canvas(view)["commentPins"]
+
+    render_hook(view, "comments_mode", %{active: true})
+    render_hook(view, "comments_mode", %{active: false})
+    refute panel(view)["placing"]
+    refute panel(view)["open"]
+    assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
+  end
+
+  test "forged placement and movement cannot cross Flow boundaries or bypass viewer permissions", context do
+    other_flow = flow_fixture(context.project)
+    other_node = node_fixture(other_flow)
+    other = create_comment(%{context | flow: other_flow, node: other_node})
+    view = open_flow(context)
+    render_hook(view, "comments_place", %{node_id: other_node.id, x: 10, y: 20})
+    assert panel(view)["draftPosition"] == nil
+    render_hook(view, "comments_place", %{node_id: nil, x: 100_000_000, y: 20})
+    assert panel(view)["draftPosition"] == nil
+
+    render_hook(view, "comments_move", %{
+      thread_id: other.thread.id,
+      x: 10,
+      y: 20,
+      expected_revision: other.thread.revision
+    })
+
+    assert {:ok, %{thread: %{position: nil}}} =
+             Projects.get_comment_thread(context.scope, context.project.id, other.thread.id)
+
+    own = create_comment(context)
+    viewer = user_fixture()
+    membership_fixture(context.project, viewer, "viewer")
+    viewer_view = open_flow(%{context | conn: log_in_user(build_conn(), viewer)})
+    render_hook(viewer_view, "comments_mode", %{active: true})
+    refute panel(viewer_view)["placing"]
+    render_hook(viewer_view, "comments_place", %{node_id: nil, x: 10, y: 20})
+    assert panel(viewer_view)["draftPosition"] == nil
+
+    render_hook(viewer_view, "comments_move", %{
+      thread_id: own.thread.id,
+      x: 10,
+      y: 20,
+      expected_revision: own.thread.revision
+    })
+
+    assert {:ok, %{thread: %{position: nil}}} =
+             Projects.get_comment_thread(context.scope, context.project.id, own.thread.id)
   end
 
   test "another Flow's thread cannot be read or mutated through this Flow", context do
@@ -190,6 +296,8 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert %{"thread" => nil, "threads" => [], "messages" => [], "members" => [], "canComment" => false} = panel(view)
     surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
     assert surface.props["surface"]["canvas"]["commentCounts"] == %{}
+    assert surface.props["surface"]["canvas"]["commentPins"] == []
+    assert surface.props["surface"]["canvas"]["commentFocusThreadId"] == nil
   end
 
   defp create_comment(context) do
@@ -212,5 +320,10 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
   defp panel(view) do
     render(view)
     LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]["comments"]
+  end
+
+  defp canvas(view) do
+    render(view)
+    LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface").props["surface"]["canvas"]
   end
 end

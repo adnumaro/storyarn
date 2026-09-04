@@ -5,7 +5,7 @@ import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
-import type { CommentMember } from "../../../../types/comments";
+import type { CommentMember, FlowCommentPosition } from "../../../../types/comments";
 
 interface Draft {
   body: string;
@@ -20,12 +20,16 @@ const {
   nodeId,
   threadId = null,
   parentId = null,
+  position = null,
+  draftId = null,
   members,
   disabled = false,
 } = defineProps<{
   nodeId: number | null;
   threadId?: number | null;
   parentId?: number | null;
+  position?: FlowCommentPosition | null;
+  draftId?: string | null;
   members: CommentMember[];
   disabled?: boolean;
 }>();
@@ -36,8 +40,15 @@ const { t } = useI18n();
 const drafts = reactive(new Map<string, Draft>());
 const memberSearch = ref("");
 const mentionOpen = ref(false);
+const draftKey = computed(() => {
+  if (threadId != null) return `thread:${threadId}:parent:${parentId}`;
+  if (draftId) return `draft:${draftId}`;
+  if (nodeId != null) return `node:${nodeId}`;
+  if (position) return `canvas:${position.x}:${position.y}`;
+  return "canvas:unplaced";
+});
 const draft = computed(() => {
-  const key = threadId == null ? `node:${nodeId}` : `thread:${threadId}:parent:${parentId}`;
+  const key = draftKey.value;
   let value = drafts.get(key);
   if (!value) {
     drafts.set(key, {
@@ -68,7 +79,7 @@ const canSend = computed(
     !disabled &&
     !draft.value.pending &&
     draft.value.body.trim().length > 0 &&
-    (threadId != null ? parentId != null : nodeId != null),
+    (threadId != null ? parentId != null : nodeId != null || position != null),
 );
 
 function toggleMention(memberId: number) {
@@ -88,7 +99,15 @@ function submit() {
   const mentionIds = [
     ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
   ].sort((left, right) => left - right);
-  const fingerprint = JSON.stringify({ nodeId, threadId, parentId, body, mentionIds });
+  const createPosition = threadId == null && position ? { x: position.x, y: position.y } : null;
+  const fingerprint = JSON.stringify({
+    nodeId,
+    threadId,
+    parentId,
+    position: createPosition,
+    body,
+    mentionIds,
+  });
   if (current.fingerprint !== fingerprint || !current.requestId) {
     current.requestId = crypto.randomUUID();
     current.fingerprint = fingerprint;
@@ -97,7 +116,9 @@ function submit() {
     body,
     mention_user_ids: mentionIds,
     client_request_id: current.requestId,
-    ...(threadId == null ? { node_id: nodeId } : { thread_id: threadId, parent_id: parentId }),
+    ...(threadId == null
+      ? { node_id: nodeId, ...(createPosition ? { position: createPosition } : {}) }
+      : { thread_id: threadId, parent_id: parentId }),
   };
   current.pending = true;
   current.error = null;
@@ -111,7 +132,7 @@ function submit() {
         current.mentionIds = [];
         current.requestId = null;
         current.fingerprint = null;
-        emit("sent");
+        if (draft.value === current) emit("sent");
       } else {
         current.error =
           typeof reply.error === "string" ? reply.error : t("flows.comments.send_failed");
