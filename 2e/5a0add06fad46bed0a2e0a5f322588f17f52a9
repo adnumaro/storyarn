@@ -1,0 +1,291 @@
+test/storyarn_web/live/settings_live/workspace_projects_test.exs
+  s_6ce2be7da793bc::t_8c41b2b93a1d88 1-253
+test/storyarn/projects/versioning/commands/workspace_snapshot_import_namespace_test.exs
+  s_6ce2be7da793bc::t_b3994828d47dcf 122-123
+  s_6ce2be7da793bc::t_98c61d30697f95 15,121,124-175
+  s_6ce2be7da793bc::t_7fb95724475406 176-178
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_6ce2be7da793bc::t_8c41b2b93a1d88 1258-1259
+CLAUDE.md
+  s_6ce2be7da793bc::t_0bee2f2308a2e2 125
+assets/app/components/command-palette/CommandPalette.vue
+  s_6ce2be7da793bc::t_75ac8df43e5ea4 626-633,637
+assets/app/components/settings/SettingsDeleteDialog.vue
+  s_6ce2be7da793bc::t_ba61ac4cf0210a 1-94
+assets/app/components/settings/SettingsEmptyState.vue
+  s_6ce2be7da793bc::t_808c8003a97456 1-27
+assets/app/components/settings/SettingsMeterRow.vue
+  s_6ce2be7da793bc::t_71070f4da62177 2-4,6,8-28,30-36,40-54,57,59-63
+assets/app/components/settings/SettingsPage.vue
+  s_6ce2be7da793bc::t_daf9ea3ba9ca1d 1-21
+assets/app/components/settings/SettingsReauthBanner.vue
+  s_6ce2be7da793bc::t_210a5d3aa09cea 1-148
+assets/app/components/settings/SettingsRow.vue
+  s_6ce2be7da793bc::t_ba5572fbd580a7 1-51
+assets/app/components/settings/SettingsSection.vue
+  s_6ce2be7da793bc::t_7d4449a341f444 1-58
+assets/app/components/settings/index.ts
+  s_6ce2be7da793bc::t_4650db25c1eea7 1-9
+assets/app/live/account/settings/AccountSettingsIntegrations.vue
+  s_6ce2be7da793bc::t_546366d2a66efd 5-10,13-17,19-21,31-48,50,59,85,113
+assets/app/live/account/settings/AccountSettingsPreferences.vue
+  s_6ce2be7da793bc::t_b9a2af3f7e27b8 1-146
+assets/app/live/account/settings/AccountSettingsProfile.vue
+  s_6ce2be7da793bc::t_2016680117f5e9 3,5-14,16-23,26,33-39,41-44,47-48,74-124,128-149,154-155,157-158,160,164-211,213-219,221,223-225,227-237
+assets/app/live/account/settings/AccountSettingsSecurity.vue
+  s_6ce2be7da793bc::t_038a94ad4ec5a1 4,6-12,28-29,36-37,40-41,115-118,123-124,134-136,138,145-173,176-177,186,191-194,202,207-208,210-212
+assets/app/live/account/settings/AccountSettingsTutorials.vue
+  s_6ce2be7da793bc::t_c5205c1c947406 2,5,51-52,57,63,65-71,74-75,77-88,90-111
+assets/app/live/account/settings/MyAITeam.vue
+  s_6ce2be7da793bc::t_1f1ceb5e96c704 2,6-11,32-33,40-42,127-144,146-153,155-156,158-164,166-167,170-181,185,187-200,202-233
+assets/app/live/account/settings/MyAITeamOverview.vue
+  s_6ce2be7da793bc::t_dfc7d35adbc7f9 13-18,48-52,54-56,102-105,107,109-114,116-119,121,123-124,126-129,132-144,146-194,196-200,202-209,211-229,231-259,261-262,264,267-271,273-278,282-292,294-300,303-305,307-317,319-320
+assets/app/live/account/settings/ProviderIntegrationDetail.vue
+  s_6ce2be7da793bc::t_fe0a9bb9fe3574 17,21-26,110-115,118-120,141-152,417-427,429,435,440,442-464,467,469-474,476-477,479,481,483-485,487-560,564-572,574,577,580,583-604,606-672,674-677,679-684,686-691,693-694,697,702-703,705-723,725-734,738-739,741-742,746,750,752-756,758-764,768-769,771-776,780,782,784-799,803-804,806-814,816-819,822-843,846-868,870-891,895-899,901,903-913,916-945,947-951
+assets/app/live/layouts/project/Layout.vue
+  s_6ce2be7da793bc::t_95b6d5ac92394f 94-95
+assets/app/live/layouts/settings/Layout.vue
+  s_6ce2be7da793bc::t_bc1ac466e3cd20 2,9,11,15-18,21,24,27,29,34-41,45-50,53-58,61,64-66,69-87,89-97,106,112,120,127-142,145-149,151-160,162-164,167-169,171-173,175-177,179-202,204-205,207-212,215-220,222-257,259-263,265-275,277-281,284-288,290-306,308-314,316-329,331-334,336-374,376-389,392-430,435-442,446-450,452,455,457-458,460-479,482-520,524-527,529-530,532-543,551-558,561,563-565,567,570,572-574,576,578-580,584-585
+assets/app/live/project/settings/ProjectSettingsGeneral.vue
+  s_6ce2be7da793bc::t_68c0081f95b5dc 2,4,9-15,62,72,76,78-80,98-100,103-104,113-120,122-123,136-140,143-145,148-149,152-156,158-159,161-162,165-166,168-172,175,178-180,197,204,211,216,221-223,226,235,253-256,260-264,271,274-292,294-346,349,351-375,382,384-385,387,390-412,414-425,427-466,475,477,481-484,492,494,498,504,508-517
+assets/app/live/project/settings/ProjectSettingsLocalization.vue
+  s_6ce2be7da793bc::t_9cd73b60aae210 2,4,6-13,40,64,95,121-122,124-142,146-159,161-171,178,180-184,186,190-195,198,200-211,217,221-222,226,230-231,233-255,257,259-275
+assets/app/live/project/settings/ProjectSettingsMembers.vue
+  s_6ce2be7da793bc::t_35e84d8634aeec 2-4,6,18,48,61-68,70,78,101,116-137,141-147,150,154-160,162,166-167,172-173,175,180,183,190,195-240,242,244,246-249,251-257,260-288,290-292,296,298,302-303,305,309,315-330,332
+assets/app/live/project/settings/ProjectSettingsSnapshots.vue
+  s_6ce2be7da793bc::t_32843be78a8d08 16-24,119,125,490-494,496-497,499-506,660-703,705-723,725-726,728-731,735,743,749-754,756,761,1139-1166,1189
+assets/app/live/project/settings/ProjectSettingsTemplates.vue
+  s_6ce2be7da793bc::t_07549d61d74a35 1-375
+assets/app/live/project/settings/ProjectSettingsTrash.vue
+  s_6ce2be7da793bc::t_cb9a1c5828b503 2,5-6,8,65,69,73,77,105-108,110,116,130,134,138,142,155,161,168,177,202,206,210,220,238,243,247,250,263-290,293-313,317-319,321-328,332,337,341,345-346,349,356,358-367,373,377,384,390,394,400-464
+assets/app/live/project/settings/ProjectSettingsUsageLimits.vue
+  s_6ce2be7da793bc::t_abb973345855fd 4,6-11,18-22,41,44-48,51,53,58-59,62-65,67,70-71,73,76-88,91-97,100-119,121-122,127-165,167-171
+assets/app/live/project/settings/ProjectSettingsVersionControl.vue
+  s_6ce2be7da793bc::t_c5fddb2f805289 2-13,33-34,40-41,45-50,75-105,108-123,126-136,139-192,197-217,219-254
+assets/app/live/project/settings/export-import/ProjectSettingsExportImport.vue
+  s_6ce2be7da793bc::t_b5a39cbfc793f5 2-5,11-41,45-49,57,59-75,85
+assets/app/live/project/sidebar/ProjectSidebar.vue
+  s_6ce2be7da793bc::t_bd70c0156cb44e 88
+assets/app/live/workspace/settings/WorkspaceDeletedProjectsList.vue
+  s_6ce2be7da793bc::t_6ff77cb49506dd 1-49
+assets/app/live/workspace/settings/WorkspaceSettingsAI.vue
+  s_6ce2be7da793bc::t_32f73fe619e223 1-160
+assets/app/live/workspace/settings/WorkspaceSettingsGeneral.vue
+  s_6ce2be7da793bc::t_c208d501c3edbe 3-6,8-13,26,35,38,48-49,54-55,60-61,66-67,71,84-103,105,111,115,131,138,141,159-162,164-183,185-189,194-196,198,200-224,226-227,230-231,234,236-243,246-249,252,254,256-258,260,262,264-275,277-301
+assets/app/live/workspace/settings/WorkspaceSettingsMembers.vue
+  s_6ce2be7da793bc::t_482e421062b471 2,4,6,17,51-52,65-66,69-82,85-91,99,122,137-147,151-152,165-188,190-198,200,202-205,207-222,224-226,228-257,259-264,266-273,275-286,288-294,296-316,320,322,326-327,329,333,339-355,357
+assets/app/live/workspace/settings/WorkspaceSettingsPlan.vue
+  s_6ce2be7da793bc::t_85af4bf7513272 1-171
+assets/app/live/workspace/settings/WorkspaceSettingsProjects.vue
+  s_6ce2be7da793bc::t_16b35a51394202 3,7-12,25-27,54-61,67,177-183,216-228,230-231,246-271,273-278,281-308,310-316,319-323,333-338,344-388,437
+assets/app/locales/en/project-settings.json
+  s_6ce2be7da793bc::t_1c2f17e63eaa0c 12-13,16-20,24,80-98,121-138,163-170,219,223-227,235-237,332-343,380-382,385-386,393-403,460-480,489,638-655,723,736,754-802
+assets/app/locales/en/settings.json
+  s_6ce2be7da793bc::t_7f4ef2a0df91ee 6-7,18-29,46-58,72-74,80,87-88,103-106,108-111,126-127,136-138,154,156-157,174-175,192-201,270-334
+assets/app/locales/es/project-settings.json
+  s_6ce2be7da793bc::t_6e7470ed8f9cb0 13,16-20,24,80-98,121-138,163-170,219,223-227,235-237,332-343,380-382,386,393-403,460-480,489,638-655,723,736,754-802
+assets/app/locales/es/settings.json
+  s_6ce2be7da793bc::t_4fb6ebdd9f5764 6-7,18-29,46-58,72-74,80,87-88,103-106,108-111,126-127,136-138,154,156-157,174-175,192-201,270-334
+assets/app/modules/projects/settings/export-import/components/ExportPanel.vue
+  s_6ce2be7da793bc::t_aecedac2c67929 2-7,11-17,28,101-102,132-134,141-145,162-167,170-199,246,249,380,382-386,388-402,406-414,416-422,424-428,430-432,435-461,463-464,466,469-508,510-518,522-544,546-549,551-554,557,560-575,577-582,584-590,592-593,595,597-608,610-625,627-638,641-644,646-679,681-687,689-727,729-733,735-777,779-804
+assets/app/modules/projects/settings/export-import/components/ImportPanel.vue
+  s_6ce2be7da793bc::t_4e9cf99a70db2a 3-12,14-16,176-182,441-465,498-524,528-531,533-540,542-545,547-553,555-557,561-564,566-577,580-609,611-626,630-633,636-660,663,665-666,668-672,674-675,677,683-760,775,777,782,785,791,795,804,806,813-820,830-833,843,846,849-852,855,858-861,863-865,870-871,873-875,880-892,895-901,903,912-939,942-945,948,950,954-977,980-983,985,989-992,997
+assets/app/test/components/versioning/RestoreContainment.test.ts
+  s_6ce2be7da793bc::t_ec5dc1282e53c6 4,152,155,161,169,172
+assets/app/test/live/account/settings/AISettingsReauth.test.ts
+  s_6ce2be7da793bc::t_de11fed017a021 1-103
+assets/app/test/live/account/settings/AccountSettingsPreferences.test.ts
+  s_6ce2be7da793bc::t_895641c5a9c299 1-64
+assets/app/test/live/account/settings/AccountSettingsProfile.test.ts
+  s_6ce2be7da793bc::t_4ffe47a75bee4f 2-3,6,8,10,14,18-26,37,43-45,48-58,60-68,71-72,74-78,80-82,84-85,87-88,90-101
+assets/app/test/live/account/settings/AccountSettingsSecurity.test.ts
+  s_6ce2be7da793bc::t_6622bd7c9ff915 13-19,42-46,52,54-57,65-71,91
+assets/app/test/live/layouts/SettingsLayout.test.ts
+  s_6ce2be7da793bc::t_f80b1a7909fd36 11-62,65-70,83,95-99,102-111,113-133,135-139,141-154,156-157,160-216,218-242,244-246,249-260,262-263,266-273,275-276,279-280,282-284,287-288,290,293-300,303,309-334
+assets/app/test/live/project/settings/ProjectSettingsExportImport.test.ts
+  s_6ce2be7da793bc::t_71deeef20018ac 69
+assets/app/test/live/project/settings/ProjectSettingsGeneral.test.ts
+  s_6ce2be7da793bc::t_695ab7fee7a2e0 7-8,20-36,77-78,82-86,89,91-92,94-97,102-118,150-166,168-169,179-187,205-206,211,219
+assets/app/test/live/project/settings/ProjectSettingsLocalization.test.ts
+  s_6ce2be7da793bc::t_c67dda537254f6 1-84
+assets/app/test/live/project/settings/ProjectSettingsSnapshots.test.ts
+  s_6ce2be7da793bc::t_f1998849502d4e 133,146,148-154,156-159,190,192,349-351,389,478
+assets/app/test/live/project/settings/ProjectSettingsTemplates.test.ts
+  s_6ce2be7da793bc::t_5dccb7fef548a8 1-142
+assets/app/test/live/project/settings/ProjectSettingsUsageLimits.test.ts
+  s_6ce2be7da793bc::t_594f8f1b43a3e2 13,18-24,26,28-31,33-43,46-47,49-53,58-64,69,72-80,83,85-88,92-95
+assets/app/test/live/project/settings/ProjectSettingsVersionControl.test.ts
+  s_6ce2be7da793bc::t_3c8f89085bd0d2 2,7,24-38,40-77,87,97-124
+assets/app/test/live/workspace/settings/WorkspaceSettingsAI.test.ts
+  s_6ce2be7da793bc::t_6599a99785b582 1-125
+assets/app/test/live/workspace/settings/WorkspaceSettingsGeneral.test.ts
+  s_6ce2be7da793bc::t_7db06e7ded30ae 8-38,40-47,66,68-69,71-72,74-75,78-79,84-85,87-89,99,101,116
+assets/app/test/live/workspace/settings/WorkspaceSettingsPlan.test.ts
+  s_6ce2be7da793bc::t_44ccb126a93577 1-80
+assets/app/test/live/workspace/settings/WorkspaceSettingsProjects.test.ts
+  s_6ce2be7da793bc::t_f23bff9ed6b8ae 4,28,54,73
+assets/app/test/modules/projects/settings/ExportPanel.test.ts
+  s_6ce2be7da793bc::t_333f8107700276 14,73,75-77,87-88,91,99-112,135,250
+assets/js/app.js
+  s_6ce2be7da793bc::t_b035db5cefe297 99-100
+config/architecture_boundaries.exs
+  s_6ce2be7da793bc::t_174d0de77595a0 1765,1774,1776-1778,4214-4225,4742-4743,4745,4748-4749,4751,4754,4757-4758
+docs/reference/component-registry.md
+  s_6ce2be7da793bc::t_fa0de80a3f8110 63,112-133,170-174,180-186
+docs/reference/domain-patterns.md
+  s_6ce2be7da793bc::t_42a00ab9e9905d 269-299
+lib/storyarn/commercial.ex
+  s_6ce2be7da793bc::t_815a0f9ab16561 106-109
+lib/storyarn_web/components/settings_layout.ex
+  s_6ce2be7da793bc::t_1b0c6c1b18ea00 5-7,18,20-22,44,60,68-69
+lib/storyarn_web/live/export_import_live/index.ex
+  s_6ce2be7da793bc::t_5ecd64e7ac3780 34,36-37,44,169-175,183-198
+lib/storyarn_web/live/hooks/settings_nav.ex
+  s_6ce2be7da793bc::t_b661c979a9746a 1-173
+lib/storyarn_web/live/project_settings_live/general.ex
+  s_6ce2be7da793bc::t_f36a4bde125e35 2-6,15,30,45,110,166,280-285
+lib/storyarn_web/live/project_settings_live/localization.ex
+  s_6ce2be7da793bc::t_db0f7e3b9ad26b 22
+lib/storyarn_web/live/project_settings_live/members.ex
+  s_6ce2be7da793bc::t_fc09642faf79e2 24
+lib/storyarn_web/live/project_settings_live/snapshots.ex
+  s_6ce2be7da793bc::t_4c84f8959b171a 27,46,777-784
+lib/storyarn_web/live/project_settings_live/templates.ex
+  s_6ce2be7da793bc::t_5b20b54343e6e4 1-296
+lib/storyarn_web/live/project_settings_live/trash.ex
+  s_6ce2be7da793bc::t_f6b9fb7947f34a 20,62-68,70-86
+lib/storyarn_web/live/project_settings_live/usage_limits.ex
+  s_6ce2be7da793bc::t_fb602d2bea741f 24,32,175-182
+lib/storyarn_web/live/project_settings_live/version_control.ex
+  s_6ce2be7da793bc::t_d977441410c729 9,23,34-37,95,140,147,159,182-189
+lib/storyarn_web/live/settings_live/ai_team.ex
+  s_6ce2be7da793bc::t_49b81ba808d7c4 8-10,16,20,34,48,61-62,69-72,112-121,163-164,166-180,207
+lib/storyarn_web/live/settings_live/ai_team_overview.ex
+  s_6ce2be7da793bc::t_8a04c19d376d32 7-9,15,19,27,33-37,46,55-56,62-63
+lib/storyarn_web/live/settings_live/integration_detail.ex
+  s_6ce2be7da793bc::t_24b1fb72ef8ea6 8-11,16,20,33,54,64-65,72-75,192-216,296-297,299-305,307-314,349
+lib/storyarn_web/live/settings_live/integrations.ex
+  s_6ce2be7da793bc::t_864d9e3a6b9ad3 8-11,16,20,28,34-38,47,56-57,63-66
+lib/storyarn_web/live/settings_live/preferences.ex
+  s_6ce2be7da793bc::t_6c35c53e03722f 1,3,5-6,10-13,17,19-25,27,38,41,44-47,53-55,57-62,64-69,71,73-76,78-83,86-93
+lib/storyarn_web/live/settings_live/profile.ex
+  s_6ce2be7da793bc::t_ecbc88158b766f 3-6,11-12,15,17-27,30-31,33-45,71,80-83,101-114,116-121,137-138,140,147-174,176-178,181-186,188-190
+lib/storyarn_web/live/settings_live/security.ex
+  s_6ce2be7da793bc::t_30260d437e6699 3-7,12,15,29,42,55-56,74-75,82-86
+lib/storyarn_web/live/settings_live/tutorials.ex
+  s_6ce2be7da793bc::t_6d37120a4bce88 29
+lib/storyarn_web/live/settings_live/workspace_ai.ex
+  s_6ce2be7da793bc::t_f564af3a98c476 1-258
+lib/storyarn_web/live/settings_live/workspace_general.ex
+  s_6ce2be7da793bc::t_605f51c32a9523 3-4,10,12,38,59,76,107,220-258,299-300
+lib/storyarn_web/live/settings_live/workspace_members.ex
+  s_6ce2be7da793bc::t_f3184eae214a9b 8,72,214-220
+lib/storyarn_web/live/settings_live/workspace_plan.ex
+  s_6ce2be7da793bc::t_c0769624f94cc3 1-111
+lib/storyarn_web/live/settings_live/workspace_projects.ex
+  s_6ce2be7da793bc::t_880febd774642d 1,3-5,10,15,20-28,35-36,45,71,74,77,83,160,312-315,340-371
+lib/storyarn_web/live/shared/sudo_reauth.ex
+  s_6ce2be7da793bc::t_d810f0fc582a4a 1-4,6-20,23-70,81-83,86-110
+lib/storyarn_web/router.ex
+  s_6ce2be7da793bc::t_c3afdb623ac598 200-201,205,319-322,335-343,346,362-364,366,368-369,372-373
+lib/storyarn_web/user_auth.ex
+  s_6ce2be7da793bc::t_48357d7466392c 296-318
+priv/gettext/default.pot
+  s_6ce2be7da793bc::t_eae1873551a6e4 131-132,134
+priv/gettext/en/LC_MESSAGES/default.po
+  s_6ce2be7da793bc::t_9102f1d98b5aee 131-132,134
+priv/gettext/en/LC_MESSAGES/identity.po
+  s_6ce2be7da793bc::t_5d9e1232274623 63,99
+priv/gettext/en/LC_MESSAGES/integrations.po
+  s_6ce2be7da793bc::t_e2d68c76b68e7f 14,24-25,30,35-36,41
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_39ae1fe91fa1fd 24,34,55-59,65,70,111,116,121-122,127,129,134-135,140-141,146-147,152,157-174,184,189,194,199,214,219,224,229,337,631,641,664,680,691,725,730,735,740,1089,1094,1099,1104,1109,1114,1119,1124,1129,1134,1139,1144,1149,1154,1216,1222,1227,1232-1234,1239-1240,1245,1250,1255,1260,1280,1285,1290,1295,1301,1311,1316-1317,1322
+priv/gettext/en/LC_MESSAGES/settings.po
+  s_6ce2be7da793bc::t_d1385d56d2a88a 14,19,24,29,38-69
+priv/gettext/en/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_0c8284e88e7e35 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,101,107-114,142,147,152,157,164,171,178,183,188,214,219,224,229,234,239,244,249,254,264-266,271,276,281,286-288,293,298,303,308,323,328-329,334,339,344,349,354-355,360,365,370-371,376,381,385-399
+priv/gettext/es/LC_MESSAGES/default.po
+  s_6ce2be7da793bc::t_5d37d416599cdc 131-132,134
+priv/gettext/es/LC_MESSAGES/identity.po
+  s_6ce2be7da793bc::t_811f2d98d4627e 63,99
+priv/gettext/es/LC_MESSAGES/integrations.po
+  s_6ce2be7da793bc::t_59ea2ecee5f52f 14,24-25,30,35-36,41
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_6ce2be7da793bc::t_61f740f959e4c5 24,34,55-59,65,70,111,116,121-122,127,129,134-135,140-141,146-147,152,157-174,184,189,194,199,214,219,224,229,337,631,641,664,680,691,725,730,735,740,1089,1094,1099,1104,1109,1114,1119,1124,1129,1134,1139,1144,1149,1154,1216,1222,1227,1232-1234,1239-1240,1245,1250,1255,1260,1280,1285,1290,1295,1301,1311,1316-1317,1322
+priv/gettext/es/LC_MESSAGES/settings.po
+  s_6ce2be7da793bc::t_d1d4fde011d60b 14,19,24,29,38-69
+priv/gettext/es/LC_MESSAGES/workspaces.po
+  s_6ce2be7da793bc::t_7741d43c45feaa 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,101,107-114,142,147,152,157,164,171,178,183,188,214,219,224,229,234,239,244,249,254,264-266,271,276,281,286-288,293,298,303,308,323,328-329,334,339,344,349,354-355,360,365,370-371,376,381,385-399
+priv/gettext/identity.pot
+  s_6ce2be7da793bc::t_b5cf8eecfd8330 63,99
+priv/gettext/integrations.pot
+  s_6ce2be7da793bc::t_20a51dc6c1b792 14,24-25,30,35-36,41
+priv/gettext/projects.pot
+  s_6ce2be7da793bc::t_4b6aab893744d1 24,34,55-59,65,70,111,116,121-122,127,129,134-135,140-141,146-147,152,157-174,184,189,194,199,214,219,224,229,337,631,641,664,680,691,725,730,735,740,1089,1094,1099,1104,1109,1114,1119,1124,1129,1134,1139,1144,1149,1154,1216,1222,1227,1232-1234,1239-1240,1245,1250,1255,1260,1280,1285,1290,1295,1301,1311,1316-1317,1322
+priv/gettext/settings.pot
+  s_6ce2be7da793bc::t_f4380a186800fa 14,19,24,29,38-69
+priv/gettext/workspaces.pot
+  s_6ce2be7da793bc::t_e46c542221379e 14,19,24,29,34-37,42,52-53,58-59,69,79,84,94,101,107-114,142,147,152,157,164,171,178,183,188,214,219,224,229,234,239,244,249,254,264-266,271,276,281,286-288,293,298,303,308,323,328-329,334,339,344,349,354-355,360,365,370-371,376,381,385-399
+test/e2e/import_resume_test.exs
+  s_6ce2be7da793bc::t_5351f83afe3a41 46,134
+test/e2e/settings_form_focus_test.exs
+  s_6ce2be7da793bc::t_6f4dcdeae0c1b6 36-37
+test/e2e/settings_reauthentication_test.exs
+  s_6ce2be7da793bc::t_26e40738323296 36-39,44-45,48,58,92-94,101-102
+test/e2e/workspaces/projects/projects_test.exs
+  s_6ce2be7da793bc::t_3483935636b3cd 164-166,186
+test/storyarn/architecture/accounts_web_facade_boundary_test.exs
+  s_6ce2be7da793bc::t_eaf2c579f3f221 7,10
+test/storyarn/architecture/commercial_facade_contract_test.exs
+  s_6ce2be7da793bc::t_f2081e816189e5 52-53,62,64,150-151,169
+test/storyarn_web/layouts_test.exs
+  s_6ce2be7da793bc::t_1714c751e87f6e 48-53
+test/storyarn_web/live/export_import_live/index_test.exs
+  s_6ce2be7da793bc::t_e13cb6df0b91e8 50-57,67-70,72-76,78-92,2101-2103,2111-2113
+test/storyarn_web/live/hooks/settings_nav_test.exs
+  s_6ce2be7da793bc::t_798265a6163a4c 1-155
+test/storyarn_web/live/onboarding_integration_test.exs
+  s_6ce2be7da793bc::t_93c181dce0cc1b 91
+test/storyarn_web/live/project_live/settings_test.exs
+  s_6ce2be7da793bc::t_08137f5227c634 255,257,332-340,342,1001-1002
+test/storyarn_web/live/project_settings_live/template_publication_test.exs
+  s_6ce2be7da793bc::t_5ae51f9d87b23b 17,20-21,24,38,68
+test/storyarn_web/live/project_settings_live/trash_test.exs
+  s_6ce2be7da793bc::t_4ef56e8dad59ec 45-46,519,524,526,532-533
+test/storyarn_web/live/settings_live/ai_team_test.exs
+  s_6ce2be7da793bc::t_4730db21cb2db9 64,72,74-78,80-81,83-92
+test/storyarn_web/live/settings_live/integration_detail_test.exs
+  s_6ce2be7da793bc::t_77b0be3986cf98 40,45,47-62
+test/storyarn_web/live/settings_live/integrations_test.exs
+  s_6ce2be7da793bc::t_610fe3b6b7b250 32,37,39-51
+test/storyarn_web/live/settings_live/preferences_test.exs
+  s_6ce2be7da793bc::t_841a48f84b157b 1-87
+test/storyarn_web/live/settings_live/profile_test.exs
+  s_6ce2be7da793bc::t_e004f8aa550bc1 14-18,31-33,36,41-44,46,58-68,70-71,73-100,105,114,123,136,139,141,143,164,177-202
+test/storyarn_web/live/settings_live/security_test.exs
+  s_6ce2be7da793bc::t_d73fcbab55744e 69,75,77-107
+test/storyarn_web/live/settings_live/workspace_ai_test.exs
+  s_6ce2be7da793bc::t_55804d926f0669 1-210
+test/storyarn_web/live/settings_live/workspace_general_test.exs
+  s_6ce2be7da793bc::t_41dce3d2c6436b 223,225,234-236,238,247,249
+test/storyarn_web/live/settings_live/workspace_plan_test.exs
+  s_6ce2be7da793bc::t_39d71f6ee34c44 1-66
+test/storyarn_web/live/settings_live/workspace_projects_page_test.exs
+  s_6ce2be7da793bc::t_2445bc45e676a2 1-52
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "2e5a0add06fad46bed0a2e0a5f322588f17f52a9",
+  "prompts": {},
+  "sessions": {
+    "s_6ce2be7da793bc": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "019f5b48-ed5a-71b3-916d-5a5630eac623",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
