@@ -35,6 +35,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   alias StoryarnWeb.PrivateMedia
   alias StoryarnWeb.SceneLive.Handlers.CanvasEventHandlers
   alias StoryarnWeb.SceneLive.Handlers.CollaborationHandlers
+  alias StoryarnWeb.SceneLive.Handlers.CommentHandlers
   alias StoryarnWeb.SceneLive.Handlers.ElementHandlers
   alias StoryarnWeb.SceneLive.Handlers.LayerHandlers
   alias StoryarnWeb.SceneLive.Handlers.TreeHandlers
@@ -173,7 +174,13 @@ defmodule StoryarnWeb.SceneLive.Show do
         searchFilter: assigns.search_filter,
         searchResults: assigns.search_results
       },
-      health: assigns.scene_health
+      health: assigns.scene_health,
+      comments: %{
+        count: length(assigns.comment_pins),
+        open: assigns.comments.open && assigns.comments.presentation == "panel",
+        placing: assigns.comments.placing,
+        canComment: assigns.comments.canComment
+      }
     }
   end
 
@@ -192,6 +199,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       canvas:
         assigns
         |> scene_surface_canvas()
+        |> Map.drop([:commentPins, :commentFocusThreadId, :comments])
         |> Map.merge(%{
           id: "scene-canvas-compact-#{assigns.scene.id}",
           mountId: "scene-canvas-compact-mount-#{assigns.scene.id}"
@@ -207,7 +215,8 @@ defmodule StoryarnWeb.SceneLive.Show do
     %{
       versions: scene_panels_versions(assigns),
       element: scene_panels_element(assigns),
-      settings: scene_panels_settings(assigns)
+      settings: scene_panels_settings(assigns),
+      comments: assigns.comments
     }
   end
 
@@ -224,6 +233,9 @@ defmodule StoryarnWeb.SceneLive.Show do
       connections: prepare_connections_for_vue(assigns.connections),
       annotations: prepare_annotations_for_vue(assigns.annotations),
       layers: prepare_layers_for_vue(assigns.layers),
+      commentPins: assigns.comment_pins,
+      commentFocusThreadId: assigns.comment_focus_thread_id,
+      comments: assigns.comments,
       activeTool: to_string(assigns.active_tool),
       editMode: assigns.edit_mode,
       canEdit: assigns.can_edit,
@@ -443,11 +455,12 @@ defmodule StoryarnWeb.SceneLive.Show do
       |> assign(:pending_delete_id, nil)
       |> maybe_allow_background_upload(can_edit)
 
-    {:ok, socket}
+    {:ok, CommentHandlers.init(socket)}
   end
 
   @impl true
   def handle_params(%{"id" => scene_id} = params, _url, socket) do
+    previous_compact = socket.assigns.compact
     compact = params["layout"] == "compact"
 
     socket = assign(socket, :compact, compact)
@@ -459,7 +472,7 @@ defmodule StoryarnWeb.SceneLive.Show do
       end
 
     socket =
-      if scene_id == current_id do
+      if scene_id == current_id && compact == previous_compact do
         socket
       else
         load_scene(socket, scene_id)
@@ -471,7 +484,14 @@ defmodule StoryarnWeb.SceneLive.Show do
       {:active_scene, scene_id}
     )
 
-    socket = apply_highlight(socket, params["highlight"])
+    socket =
+      if socket.assigns.scene do
+        socket
+        |> apply_highlight(params["highlight"])
+        |> CommentHandlers.handle_params(params)
+      else
+        socket
+      end
 
     {:noreply, socket}
   end
@@ -479,12 +499,13 @@ defmodule StoryarnWeb.SceneLive.Show do
   defp load_scene(socket, scene_id) do
     %{project: project, can_edit: can_edit} = socket.assigns
 
-    # Teardown previous scene collaboration
-    socket = teardown_scene_collab(socket)
+    # Teardown previous scene collaboration and its comment subscription.
+    socket = socket |> teardown_scene_collab() |> CommentHandlers.unload() |> CommentHandlers.init()
 
     case Scenes.get_scene(project.id, scene_id) do
       nil ->
         socket
+        |> assign(:scene, nil)
         |> put_flash(:error, dgettext("scenes", "Scene not found."))
         |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/scenes")
 
@@ -495,6 +516,7 @@ defmodule StoryarnWeb.SceneLive.Show do
         |> setup_scene_collab(scene)
         |> assign_scene_state(scene, can_edit)
         |> maybe_load_sidebar(has_tree, project)
+        |> CommentHandlers.loaded()
     end
   end
 
@@ -709,11 +731,32 @@ defmodule StoryarnWeb.SceneLive.Show do
   @valid_tools ~w(select pan rectangle triangle circle freeform pin annotation connector ruler)
 
   @impl true
+  def handle_event("comments_open", params, socket) do
+    CommentHandlers.handle("open", params, prepare_for_comments(socket))
+  end
+
+  def handle_event("comments_mode", %{"active" => true} = params, socket) do
+    CommentHandlers.handle("mode", params, prepare_for_comments(socket))
+  end
+
+  def handle_event("comments_place", params, socket) do
+    CommentHandlers.handle("place", params, prepare_for_comments(socket))
+  end
+
+  def handle_event("comments_select_thread", params, socket) do
+    CommentHandlers.handle("select_thread", params, prepare_for_comments(socket))
+  end
+
+  def handle_event("comments_" <> action, params, socket) do
+    CommentHandlers.handle(action, params, socket)
+  end
+
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    socket = CommentHandlers.close(socket)
     maybe_track_version_panel_opened(socket)
 
     socket =
@@ -778,7 +821,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("set_tool", %{"type" => tool}, socket) when tool in @valid_tools do
-    CanvasEventHandlers.handle_set_tool(tool, socket)
+    CanvasEventHandlers.handle_set_tool(tool, CommentHandlers.close(socket))
   end
 
   def handle_event("set_tool", _params, socket), do: {:noreply, socket}
@@ -791,7 +834,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("toggle_edit_mode", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      CanvasEventHandlers.handle_toggle_edit_mode(socket, params)
+      CanvasEventHandlers.handle_toggle_edit_mode(CommentHandlers.close(socket), params)
     end)
   end
 
@@ -826,7 +869,7 @@ defmodule StoryarnWeb.SceneLive.Show do
     release_element_lock(socket)
 
     params
-    |> CanvasEventHandlers.handle_select_element(socket)
+    |> CanvasEventHandlers.handle_select_element(CommentHandlers.close(socket))
     |> maybe_acquire_lock(id)
   end
 
@@ -850,7 +893,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   def handle_event("deselect", _params, socket) do
     release_element_lock(socket)
-    CanvasEventHandlers.handle_deselect(socket)
+    CanvasEventHandlers.handle_deselect(CommentHandlers.close(socket))
   end
 
   # ---------------------------------------------------------------------------
@@ -906,12 +949,12 @@ defmodule StoryarnWeb.SceneLive.Show do
   # ---------------------------------------------------------------------------
 
   def handle_event("open_element_panel", _params, socket) do
-    {:noreply, assign(socket, :right_panel, :element)}
+    {:noreply, socket |> CommentHandlers.close() |> assign(:right_panel, :element)}
   end
 
   def handle_event("toggle_element_panel", _params, socket) do
     target = if socket.assigns.right_panel == :element, do: nil, else: :element
-    {:noreply, assign(socket, :right_panel, target)}
+    {:noreply, socket |> CommentHandlers.close() |> assign(:right_panel, target)}
   end
 
   def handle_event("close_element_panel", _params, socket) do
@@ -919,7 +962,7 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   def handle_event("open_scene_settings", _params, socket) do
-    {:noreply, assign(socket, :right_panel, :settings)}
+    {:noreply, socket |> CommentHandlers.close() |> assign(:right_panel, :settings)}
   end
 
   def handle_event("close_scene_settings", _params, socket) do
@@ -1738,6 +1781,14 @@ defmodule StoryarnWeb.SceneLive.Show do
     |> refresh_scene_health_result()
   end
 
+  def handle_info({:scene_comments_changed, scene_id}, socket) do
+    if socket.assigns.scene && socket.assigns.scene.id == scene_id && !socket.assigns.compact do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   # ---------------------------------------------------------------------------
   # Shell topic messages (ProjectLayout + SceneSidebarLive)
   # ---------------------------------------------------------------------------
@@ -1787,7 +1838,7 @@ defmodule StoryarnWeb.SceneLive.Show do
 
   @impl true
   def terminate(_reason, socket) do
-    teardown_scene_collab(socket)
+    socket |> CommentHandlers.unload() |> teardown_scene_collab()
   end
 
   # ---------------------------------------------------------------------------
@@ -1839,6 +1890,12 @@ defmodule StoryarnWeb.SceneLive.Show do
     end
 
     :ok
+  end
+
+  defp prepare_for_comments(socket) do
+    release_element_lock(socket)
+    {:noreply, socket} = CanvasEventHandlers.handle_deselect(socket)
+    socket
   end
 
   defp parse_element_id(id) when is_integer(id), do: id

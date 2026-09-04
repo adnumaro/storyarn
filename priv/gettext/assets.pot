@@ -54,7 +54,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/asset_live/index.ex:312
 #: lib/storyarn_web/live/scene_live/handlers/tree_handlers.ex:60
-#: lib/storyarn_web/live/scene_live/show.ex:2040
+#: lib/storyarn_web/live/scene_live/show.ex:2097
 #, elixir-autogen, elixir-format
 msgid "Storage limit reached. Upgrade your plan."
 msgstr ""

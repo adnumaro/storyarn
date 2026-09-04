@@ -31,13 +31,7 @@ defmodule Storyarn.Projects.Comments.DTO do
       resolved_at: timestamp(thread.resolved_at),
       resolved_by: if(thread.resolved_by_id, do: member(authors[thread.resolved_by_id])),
       author: member(authors[thread.author_id]),
-      source: %{
-        type: thread.source_type,
-        id: thread.source_id,
-        flow_id: thread.container_id,
-        label: if(source, do: source_label(source), else: thread.source_label),
-        status: if(source, do: "available", else: "unavailable")
-      }
+      source: thread_source(thread, source)
     }
   end
 
@@ -57,4 +51,17 @@ defmodule Storyarn.Projects.Comments.DTO do
   defp timestamp(value), do: DateTime.to_iso8601(value)
   defp position(%{position_x: nil}), do: nil
   defp position(thread), do: %{x: thread.position_x, y: thread.position_y}
+
+  defp thread_source(thread, source) do
+    base = %{
+      type: thread.source_type,
+      id: thread.source_id,
+      label: if(source, do: source_label(source), else: thread.source_label),
+      status: if(source, do: "available", else: "unavailable")
+    }
+
+    if thread.source_type == "scene_canvas",
+      do: Map.put(base, :scene_id, thread.container_id),
+      else: Map.put(base, :flow_id, thread.container_id)
+  end
 end

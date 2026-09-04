@@ -1,4 +1,4 @@
-import { onMounted, ref, type Ref } from "vue";
+import { onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
 
@@ -44,11 +44,22 @@ export function useCanvasCreation({
 }: UseCanvasCreationOpts) {
   const live = useLive();
   const hasPendingSheet = ref(false);
+  let pendingSheetEventRef: number | undefined;
 
   onMounted(() => {
-    live.handleEvent("pending_sheet_changed", (payload) => {
+    pendingSheetEventRef = live.handleEvent("pending_sheet_changed", (payload) => {
       hasPendingSheet.value = !!payload.active;
     });
+  });
+
+  onUnmounted(() => {
+    if (pendingSheetEventRef != null) live.removeHandleEvent(pendingSheetEventRef);
+  });
+
+  watch(activeTool, (tool) => {
+    if (tool === "pin" || !hasPendingSheet.value) return;
+    hasPendingSheet.value = false;
+    live.pushEvent("cancel_sheet_picker", {});
   });
 
   /**

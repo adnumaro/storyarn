@@ -930,3 +930,18 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "The End"
 msgstr ""
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Review the latest state and try again."
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "This conversation or its source is no longer available."
+msgstr ""
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save the comment. Check the text and selected mentions."
+msgstr ""

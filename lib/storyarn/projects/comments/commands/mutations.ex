@@ -45,6 +45,22 @@ defmodule Storyarn.Projects.Comments.Mutations do
     end
   end
 
+  def create_scene_canvas(scope, project_id, scene_id, attrs) do
+    with {:ok, payload} <- Payload.normalize(attrs),
+         {:ok, position} <- Payload.scene_position(Payload.value(attrs, :position)),
+         true <- Payload.valid_id?(scene_id) do
+      payload = Map.put(payload, :position, position)
+      target = {:create_scene_canvas, scene_id}
+
+      transact_request(scope, project_id, payload, target, fn project, actor_id, request_hash ->
+        create_scene_canvas_thread!(project, actor_id, scene_id, payload, request_hash)
+      end)
+    else
+      false -> {:error, :not_found}
+      {:error, _} = error -> error
+    end
+  end
+
   def reply(scope, project_id, thread_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
          parent_id = Payload.value(attrs, :parent_id),
@@ -66,7 +82,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
       if thread.revision != expected_revision, do: Repo.rollback(:stale)
 
       if thread.status == status do
-        %{thread_id: thread.id, flow_id: thread.container_id, notification: nil, changed?: false}
+        result(thread, nil, false)
       else
         now = TimeHelpers.now()
 
@@ -80,7 +96,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
         })
         |> Repo.update!()
 
-        %{thread_id: thread.id, flow_id: thread.container_id, notification: nil, changed?: true}
+        result(thread, nil, true)
       end
     end)
   end
@@ -100,6 +116,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
   defp move_thread!(project_id, thread_id, position, expected_revision) do
     thread = lock_available_thread!(project_id, thread_id)
+    validate_position_for_thread!(thread, position)
     if thread.revision != expected_revision, do: Repo.rollback(:stale)
     changed? = thread.position_x != position.x or thread.position_y != position.y
 
@@ -109,8 +126,17 @@ defmodule Storyarn.Projects.Comments.Mutations do
       |> Repo.update!()
     end
 
-    %{thread_id: thread.id, flow_id: thread.container_id, notification: nil, changed?: changed?}
+    result(thread, nil, changed?)
   end
+
+  defp validate_position_for_thread!(%Thread{source_type: "scene_canvas"}, position) do
+    case Payload.scene_position(position) do
+      {:ok, _position} -> :ok
+      {:error, :invalid_position} -> Repo.rollback(:invalid_position)
+    end
+  end
+
+  defp validate_position_for_thread!(_thread, _position), do: :ok
 
   defp transact(scope, project_id, fun) do
     if Repo.in_transaction?() do
@@ -182,6 +208,28 @@ defmodule Storyarn.Projects.Comments.Mutations do
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end
 
+  defp create_scene_canvas_thread!(project, actor_id, scene_id, payload, request_hash) do
+    scene = Queries.scene_source(project.id, scene_id, lock: :share) || Repo.rollback(:source_unavailable)
+    validate_mentions!(project, payload.mention_user_ids)
+
+    thread =
+      Repo.insert!(%Thread{
+        project_id: project.id,
+        author_id: actor_id,
+        source_type: "scene_canvas",
+        source_id: scene.id,
+        scene_canvas_id: scene.id,
+        container_id: scene.id,
+        source_inserted_at: scene.inserted_at,
+        source_label: DTO.source_label(scene),
+        position_x: payload.position.x,
+        position_y: payload.position.y,
+        last_activity_at: TimeHelpers.now()
+      })
+
+    insert_message(thread, actor_id, nil, payload, request_hash, [])
+  end
+
   defp reply_to_thread!(project, actor_id, thread_id, parent_id, payload, request_hash) do
     thread = lock_available_thread!(project.id, thread_id)
     if thread.status != "open", do: Repo.rollback(:thread_resolved)
@@ -201,7 +249,7 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
       %Message{request_hash: ^request_hash} = message ->
         thread = Queries.thread(project_id, message.thread_id)
-        %{thread_id: thread.id, flow_id: thread.container_id, notification: nil, changed?: false}
+        result(thread, nil, false)
 
       _ ->
         Repo.rollback(:idempotency_conflict)
@@ -250,10 +298,20 @@ defmodule Storyarn.Projects.Comments.Mutations do
 
     case Platform.deliver_comment_activity(actor_id, thread.project_id, message.id, recipients) do
       {:ok, notification} ->
-        %{thread_id: thread.id, flow_id: thread.container_id, notification: notification, changed?: true}
+        result(thread, notification, true)
 
       {:error, reason} ->
         Repo.rollback(reason)
     end
+  end
+
+  defp result(thread, notification, changed?) do
+    %{
+      thread_id: thread.id,
+      source_type: thread.source_type,
+      container_id: thread.container_id,
+      notification: notification,
+      changed?: changed?
+    }
   end
 end

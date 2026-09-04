@@ -3,6 +3,7 @@ import type { KonvaEventObject } from "konva/lib/Node";
 import { Maximize2 } from "@lucide/vue";
 import { computed, onUnmounted, ref, toRef } from "vue";
 import type { SceneRouteConnection } from "@modules/scenes/types/routes";
+import type { SceneCommentsPanelState, SceneCommentThread } from "@modules/scenes/types/comments";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useAnnotationEditing } from "../../composables/useAnnotationEditing";
 import { useAnnotations, type AnnotationConfig } from "../../composables/useAnnotations";
@@ -29,6 +30,7 @@ import VertexEditorLayer from "./layers/VertexEditorLayer.vue";
 import WaypointEditorLayer from "./layers/WaypointEditorLayer.vue";
 import ZoneConnectionLayer from "./layers/ZoneConnectionLayer.vue";
 import SceneFloatingToolbar from "../toolbar/SceneFloatingToolbar.vue";
+import SceneCanvasComments from "../chrome/SceneCanvasComments.vue";
 
 interface SceneDataProps {
   width: number;
@@ -109,6 +111,9 @@ interface CollaborationData {
   locks: Record<string, EntityLock>;
 }
 
+// The editor boundary mirrors the explicit Scene surface projection, including
+// the three optional comment ports, so callers do not need a second adapter contract.
+/* oxlint-disable vue/max-props */
 const {
   sceneData = null,
   pins = [],
@@ -120,6 +125,9 @@ const {
   editMode = true,
   canEdit = false,
   collaboration = { userId: 0, locks: {} },
+  comments = null,
+  commentPins = [],
+  commentFocusThreadId = null,
 } = defineProps<{
   sceneData: SceneDataProps | null;
   pins: PinData[];
@@ -131,7 +139,11 @@ const {
   editMode: boolean;
   canEdit: boolean;
   collaboration: CollaborationData;
+  comments?: SceneCommentsPanelState | null;
+  commentPins?: SceneCommentThread[];
+  commentFocusThreadId?: number | null;
 }>();
+/* oxlint-enable vue/max-props */
 
 const {
   annotationItems,
@@ -152,6 +164,7 @@ const activeToolRef = toRef(() => activeTool);
 const {
   stageConfig,
   stageRef,
+  backgroundSettled,
   backgroundConfig,
   gridRectConfig,
   gridLines,
@@ -167,6 +180,8 @@ const {
   activeTool: activeToolRef,
   editMode: toRef(() => editMode),
 });
+
+const commentProjection = { percentToPixel, pixelToPercent };
 
 const unregisterPaletteCommands = registerPaletteCommands("scenes", [
   {
@@ -538,7 +553,14 @@ const LABEL_COLOR = "#d1d5db";
 </script>
 
 <template>
-  <div ref="containerRef" class="w-full h-full relative" :style="{ cursor: cursorStyle }">
+  <div
+    ref="containerRef"
+    class="w-full h-full relative"
+    :style="{
+      cursor:
+        comments?.placing && comments.canComment && backgroundSettled ? 'crosshair' : cursorStyle,
+    }"
+  >
     <v-stage
       ref="stageRef"
       :config="stageConfig"
@@ -670,6 +692,17 @@ const LABEL_COLOR = "#d1d5db";
       <!-- Drawing overlay layer (freeform zone creation) -->
       <DrawingOverlayLayer :drawing-overlay="drawingOverlay" />
     </v-stage>
+
+    <SceneCanvasComments
+      v-if="containerRef && stageRef && comments"
+      :container="containerRef"
+      :stage="stageConfig"
+      :projection="commentProjection"
+      :background-settled="backgroundSettled"
+      :state="comments"
+      :comment-pins="commentPins"
+      :focus-thread-id="commentFocusThreadId"
+    />
 
     <!-- Floating toolbar (HTML overlay above canvas) -->
     <SceneFloatingToolbar

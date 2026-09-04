@@ -930,3 +930,18 @@ msgstr "Sesión de depuración iniciada"
 #, elixir-autogen, elixir-format
 msgid "The End"
 msgstr "Fin"
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Review the latest state and try again."
+msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "This conversation or its source is no longer available."
+msgstr "Esta conversación o su origen ya no está disponible."
+
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+#, elixir-autogen, elixir-format
+msgid "Could not save the comment. Check the text and selected mentions."
+msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."

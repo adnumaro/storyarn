@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import type { KonvaEventObject } from "konva/lib/Node";
 
@@ -167,6 +167,10 @@ export function useConnectionDrawing({
     cursorPos.value = null;
     hoveredPinId.value = null;
   }
+
+  watch(activeTool, (tool) => {
+    if (tool !== "connector") cancel();
+  });
 
   function routePoint(point: PixelPoint): Record<string, number | boolean> {
     return {

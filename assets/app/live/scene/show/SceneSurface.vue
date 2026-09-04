@@ -11,6 +11,7 @@ import SceneDock from "@modules/scenes/editor/components/chrome/dock/SceneDock.v
 import LayerListPopover from "@modules/scenes/editor/components/chrome/layers/LayerListPopover.vue";
 import Legend from "@modules/scenes/editor/components/chrome/layers/Legend.vue";
 import SceneCollabToast from "@modules/scenes/editor/components/collab/CollabToast.vue";
+import type { SceneCommentsPanelState, SceneCommentThread } from "@modules/scenes/types/comments";
 
 type ServerPayload = any;
 
@@ -24,6 +25,9 @@ interface SceneSurfaceCanvas {
   connections: ServerPayload[];
   annotations: ServerPayload[];
   layers: ServerPayload[];
+  commentPins?: SceneCommentThread[];
+  comments?: SceneCommentsPanelState | null;
+  commentFocusThreadId?: number | null;
   activeTool: string;
   editMode: boolean;
   canEdit: boolean;
@@ -105,7 +109,6 @@ const {
 const { t } = useI18n();
 
 const uploadErrorMessage = computed(() => formatUploadError(uploadError.value));
-
 function formatUploadError(value: string | null): string | null {
   switch (value) {
     case null:
@@ -175,6 +178,9 @@ async function uploadBackground(file: File | null): Promise<void> {
           :edit-mode="surface.canvas.editMode"
           :can-edit="surface.canvas.canEdit"
           :collaboration="surface.canvas.collaboration"
+          :comment-pins="surface.canvas.commentPins ?? []"
+          :comments="surface.canvas.comments ?? null"
+          :comment-focus-thread-id="surface.canvas.commentFocusThreadId ?? null"
         />
       </div>
 
