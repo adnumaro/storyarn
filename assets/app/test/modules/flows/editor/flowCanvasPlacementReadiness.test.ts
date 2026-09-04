@@ -9,7 +9,11 @@ import { useFlowCanvas } from "@modules/flows/editor/composables/useFlowCanvas";
 import type { HookProxy } from "@modules/flows/editor/services/editorHandlers";
 import type { App } from "vue";
 
-const mocks = vi.hoisted(() => ({ createPlugins: vi.fn(), finalizeSetup: vi.fn() }));
+const mocks = vi.hoisted(() => ({
+  createPlugins: vi.fn(),
+  finalizeSetup: vi.fn(),
+  fitSequencesToChildren: vi.fn(),
+}));
 vi.mock("@modules/flows/editor/services/reteSetup", () => mocks);
 vi.mock("@modules/flows/editor/services/editorHandlers", () => ({
   editorHandlers: () => ({ init: vi.fn(), destroy: vi.fn() }),
@@ -24,10 +28,24 @@ vi.mock("@modules/flows/editor/services/lod", () => ({
 vi.mock("@modules/flows/editor/services/flowMarquee", () => ({
   createFlowMarquee: vi.fn(() => vi.fn()),
 }));
+vi.mock("@modules/flows/editor/composables/flowSequenceGeometry", () => ({
+  createFlowSequenceGeometry: () => ({
+    fitSequencesToChildren: mocks.fitSequencesToChildren,
+    handleSequenceResize: vi.fn(),
+    nodeView: vi.fn(),
+    expandParentSequenceForNode: vi.fn(),
+    flushPendingSequenceGeometry: vi.fn(),
+  }),
+}));
 
 let mounted: App[] = [];
+let nodes: Array<Record<string, unknown>> = [];
+let nodeViews = new Map<string, { position: { x: number; y: number }; element: HTMLElement }>();
 beforeEach(() => {
   vi.clearAllMocks();
+  nodes = [];
+  nodeViews = new Map();
+  mocks.fitSequencesToChildren.mockResolvedValue(undefined);
   vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
     queueMicrotask(() => callback(0));
     return 1;
@@ -46,11 +64,12 @@ beforeEach(() => {
       toolbarProps: {},
       zoom: 1,
     };
+    const getNode = (id: string) => nodes.find((node) => node.id === id);
     return {
-      editor: { getNodes: () => [], getConnections: () => [], addPipe: vi.fn() },
+      editor: { getNodes: () => nodes, getNode, getConnections: () => [], addPipe: vi.fn() },
       area: {
         container,
-        nodeViews: new Map(),
+        nodeViews,
         area: { transform: { x: 0, y: 0, k: 1 } },
         addPipe: vi.fn(),
         destroy: vi.fn(),
@@ -69,8 +88,29 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-async function beginLoading() {
+async function beginLoading(options: { holdGeometry?: boolean; sequence?: boolean } = {}) {
   let finishFit!: () => void;
+  let finishGeometry = () => {};
+  if (options.sequence) {
+    nodes.push({
+      id: "node-10",
+      nodeId: 10,
+      nodeType: "sequence",
+      width: 100,
+      height: 100,
+    });
+    nodeViews.set("node-10", {
+      position: { x: 0, y: 0 },
+      element: document.createElement("div"),
+    });
+  }
+  if (options.holdGeometry) {
+    mocks.fitSequencesToChildren.mockReturnValue(
+      new Promise<void>((resolve) => {
+        finishGeometry = resolve;
+      }),
+    );
+  }
   mocks.finalizeSetup.mockReturnValue(
     new Promise((resolve) => {
       finishFit = () => resolve({ selector: {}, select: vi.fn(), unselect: vi.fn() });
@@ -86,9 +126,16 @@ async function beginLoading() {
     ready = true;
   });
   await flushPromises();
-  expect(mocks.finalizeSetup).toHaveBeenCalledOnce();
+  if (!options.holdGeometry) expect(mocks.finalizeSetup).toHaveBeenCalledOnce();
   expect(ready).toBe(false);
-  return { app, container, pushEvent, finishFit, initialized };
+  return {
+    app,
+    container,
+    pushEvent,
+    finishGeometry: () => finishGeometry(),
+    finishFit: () => finishFit(),
+    initialized,
+  };
 }
 
 function place(container: HTMLElement) {
@@ -127,5 +174,39 @@ describe("dock placement before initial viewport readiness", () => {
     await setup.initialized;
     place(setup.container);
     expect(setup.pushEvent).not.toHaveBeenCalled();
+  });
+
+  it("waits for fitted sequence bounds before resolving parent_id", async () => {
+    const setup = await beginLoading({ holdGeometry: true, sequence: true });
+    place(setup.container);
+    expect(setup.pushEvent).not.toHaveBeenCalled();
+
+    Object.assign(nodes[0], { width: 300, height: 300 });
+    setup.finishGeometry();
+    await flushPromises();
+    expect(setup.pushEvent).toHaveBeenCalledWith("add_node", {
+      type: "dialogue",
+      position_x: 180,
+      position_y: 160,
+      parent_id: 10,
+    });
+
+    setup.finishFit();
+    await setup.initialized;
+  });
+
+  it("invalidates a captured sequence placement when unmounted during geometry fitting", async () => {
+    const setup = await beginLoading({ holdGeometry: true, sequence: true });
+    place(setup.container);
+    setup.app.unmount();
+    mounted = [];
+
+    Object.assign(nodes[0], { width: 300, height: 300 });
+    setup.finishGeometry();
+    await flushPromises();
+    expect(setup.pushEvent).not.toHaveBeenCalled();
+
+    setup.finishFit();
+    await setup.initialized;
   });
 });

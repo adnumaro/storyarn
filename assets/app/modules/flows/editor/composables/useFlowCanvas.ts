@@ -83,6 +83,10 @@ export function buildHubsMap(
 
 export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
   let skipInitialFit = false;
+  let settleInitialGeometry: (ready: boolean) => void = () => {};
+  const initialGeometryReady = new Promise<boolean>((resolve) => {
+    settleInitialGeometry = resolve;
+  });
   const runtime = createFlowCanvasRuntime(
     { pushEvent, handleEvent },
     {
@@ -407,11 +411,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         editor: runtime.editor!,
         area: runtime.area!,
         pushEvent,
+        beforeResolveParent: () => initialGeometryReady,
       });
     }
 
-    await syncAllNodeSizes();
-    await fitSequencesToChildren();
+    let geometryReady = false;
+    try {
+      await syncAllNodeSizes();
+      await fitSequencesToChildren();
+      geometryReady = true;
+    } finally {
+      settleInitialGeometry(geometryReady);
+    }
     const selection = await finalizeSetup(
       runtime.area!,
       runtime.editor!,
