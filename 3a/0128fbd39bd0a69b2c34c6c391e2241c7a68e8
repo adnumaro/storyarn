@@ -1,0 +1,58 @@
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_11667293ceac35::t_7489ec5c5d1444 3-5,115-190
+  s_11667293ceac35::t_25682985b6e95a 11,23,28-31,49,79-83,92-114
+  s_11667293ceac35::t_ed60d103b3cea3 24-27
+  s_11667293ceac35::t_5a8e89538a7411 84-91
+lib/storyarn/projects/comments/commands/mutations.ex
+  s_11667293ceac35::t_2a243f31f826eb 16-17,45
+lib/storyarn_web/live/flow_live/show.ex
+  s_11667293ceac35::t_5243dde67bd3c8 1465
+assets/app/live/flow/show/FlowSurface.vue
+  s_11667293ceac35::t_990b4a6b422d55 36-41,51-59,74
+assets/app/test/modules/flows/components/FlowCommentsPanel.test.ts
+  s_11667293ceac35::t_25682985b6e95a 154-196,275-300
+  s_11667293ceac35::t_f679b6ec755f02 301-302
+lib/storyarn/projects.ex
+  s_11667293ceac35::t_360644bdcbbe4d 955
+test/storyarn/projects/comments/comments_test.exs
+  s_11667293ceac35::t_3f5508c2cf4419 54-70,203-223
+  s_11667293ceac35::t_22a3a5ff0e9ae8 224
+lib/storyarn_web/live/shared/notification_helpers.ex
+  s_11667293ceac35::t_d35a2744c68783 24-26,29,34,45,49-55
+test/storyarn_web/live/shared/notification_helpers_test.exs
+  s_11667293ceac35::t_d8b58586693bad 81,96
+  s_11667293ceac35::t_47e007680a4234 25,40,99-124
+  s_11667293ceac35::t_40d719e4c5f7e8 76-80,82-95,97-98,125-150
+lib/storyarn/projects/comments/queries/queries.ex
+  s_11667293ceac35::t_2d7673e89c1dc6 94,102,118-129,131
+  s_11667293ceac35::t_360644bdcbbe4d 13,90-92,95-101,103-116,130
+  s_11667293ceac35::t_70ca87d9f3417a 164
+  s_11667293ceac35::t_57e48264b8c5c6 93,117,132
+assets/app/modules/flows/editor/components/panels/comments/FlowCommentComposer.vue
+  s_11667293ceac35::t_990b4a6b422d55 88-90
+lib/storyarn/projects/comments/comments.ex
+  s_11667293ceac35::t_360644bdcbbe4d 91-107
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_11667293ceac35::t_d35a2744c68783 290
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_03f91d784b116f 9,137-159
+  s_11667293ceac35::t_82e4f0b6dfb0fe 160-161
+assets/app/modules/flows/editor/components/panels/FlowCommentsPanel.vue
+  s_11667293ceac35::t_990b4a6b422d55 30,50,55,75-76,83-84,91-92
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "3a0128fbd39bd0a69b2c34c6c391e2241c7a68e8",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
