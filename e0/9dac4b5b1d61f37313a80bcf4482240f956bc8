@@ -1,0 +1,46 @@
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_11667293ceac35::t_d5ef88197256f0 67-81
+test/storyarn/projects/comments/comments_test.exs
+  s_11667293ceac35::t_f710ec3c64717b 54,58-63,65-67,69
+assets/app/test/live/flow/show/FlowCanvasComments.test.ts
+  s_11667293ceac35::t_ad42d0fe93a04b 97-100,123-126
+  s_11667293ceac35::t_e18d978ad05634 6,54-66,95-96,101-106,114-122,127-135
+  s_11667293ceac35::t_66779207a586f3 136-138
+assets/app/test/modules/flows/editor/flowCanvasPlacementReadiness.test.ts
+  s_11667293ceac35::t_32d5782032cc16 50
+  s_11667293ceac35::t_c159015dc0cbc5 4-48,51-115,118,130
+  s_11667293ceac35::t_2dd4de29fae065 1-3,49,116-117,119-129,131
+assets/app/test/modules/flows/editor/canvasComments.test.ts
+  s_11667293ceac35::t_c56e36c94ec7ed 134,140-147
+  s_11667293ceac35::t_c159015dc0cbc5 12-16
+assets/app/modules/flows/editor/composables/useFlowCanvas.ts
+  s_11667293ceac35::t_a3881a0c4724b3 401,418,436
+  s_11667293ceac35::t_c56e36c94ec7ed 400,402-412
+config/test.exs
+  s_11667293ceac35::t_d4b3cffc2f0374 34
+test/storyarn/repo/migrations/spatial_comment_anchors_migration_test.exs
+  s_11667293ceac35::t_f710ec3c64717b 1-104
+priv/repo/migrations/20260904170000_add_spatial_comment_anchors.exs
+  s_11667293ceac35::t_f710ec3c64717b 33-35
+lib/storyarn/projects/comments/README.md
+  s_11667293ceac35::t_db9a124ba0d628 38-42,69-71
+  s_11667293ceac35::t_09e3875f93b973 72
+priv/repo/migrations/20260904203000_enforce_comment_anchor_identity.exs
+  s_11667293ceac35::t_f710ec3c64717b 1-11
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "e09dac4b5b1d61f37313a80bcf4482240f956bc8",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
