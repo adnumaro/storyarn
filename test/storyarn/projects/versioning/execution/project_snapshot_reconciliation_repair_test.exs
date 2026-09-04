@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
   import ExUnit.CaptureLog
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.SnapshotReconciliationTestHelpers, only: [process_cleanup_until_boundary: 2]
 
   alias Storyarn.Commercial.Billing
   alias Storyarn.Commercial.Billing.StorageReservation
@@ -1029,20 +1030,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationRepairTest d
     assert completed.status == "completed"
     completed
   end
-
-  # Exact multipart cleanup performs at most one provider operation per
-  # delivery. Drive only immediate continuations and fail if the FSM loops.
-  defp process_cleanup_until_boundary(intent_id, opts, attempts_left \\ 100)
-
-  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
-    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
-      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
-      result -> result
-    end
-  end
-
-  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
-    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp start_run do
     Storyarn.SnapshotReconciliationTestHelpers.start_run(

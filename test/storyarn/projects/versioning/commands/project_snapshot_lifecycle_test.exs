@@ -5,6 +5,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
   import Storyarn.AccountsFixtures
   import Storyarn.ProjectsFixtures
 
+  import Storyarn.SnapshotReconciliationTestHelpers,
+    only: [process_cleanup_until_boundary: 1, process_cleanup_until_boundary: 2]
+
   alias Storyarn.Commercial.Billing
   alias Storyarn.Commercial.Billing.StorageReservation
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -1742,21 +1745,6 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotLifecycleTest do
 
     on_exit(fn -> Application.put_env(:storyarn, :snapshot_lifecycle, original) end)
   end
-
-  # Exact multipart cleanup intentionally performs at most one provider
-  # operation per delivery. These lifecycle tests drive consecutive deliveries
-  # until the workflow reaches a real wait, terminal result, or completion.
-  defp process_cleanup_until_boundary(intent_id, opts \\ [], attempts_left \\ 100)
-
-  defp process_cleanup_until_boundary(intent_id, opts, attempts_left) when attempts_left > 0 do
-    case Versioning.process_project_snapshot_cleanup_intent(intent_id, opts) do
-      {:ok, {:deferred, 1}} -> process_cleanup_until_boundary(intent_id, opts, attempts_left - 1)
-      result -> result
-    end
-  end
-
-  defp process_cleanup_until_boundary(_intent_id, _opts, 0),
-    do: flunk("exact multipart cleanup did not reach a durable delivery boundary")
 
   defp expire_multipart_quiescence!(cleanup_request_id) do
     now = TimeHelpers.now()
