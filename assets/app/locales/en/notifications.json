@@ -11,6 +11,7 @@
     "retry": "Try again",
     "actor_fallback": "A teammate",
     "project_context": "Project: {project}",
+    "comment_unavailable": "This conversation is no longer available.",
     "filters": {
       "label": "Filter notifications",
       "all": "All",
@@ -36,9 +37,12 @@
       "sheet": "sheet",
       "flow": "flow",
       "scene": "scene",
-      "localization_language": "localization language"
+      "localization_language": "localization language",
+      "comment": "comment"
     },
     "messages": {
+      "comment_mention": "{actor} mentioned you in a comment",
+      "comment_reply": "{actor} replied to your comment",
       "created_named": "{actor} created {entity}: {name}",
       "created": "{actor} created {entity}",
       "deleted_named": "{actor} deleted {entity}: {name}",

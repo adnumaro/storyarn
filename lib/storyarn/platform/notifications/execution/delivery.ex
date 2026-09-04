@@ -26,6 +26,10 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
   @max_limit 100
   @content_entity_types ~w(sheet flow scene localization_language)
   @content_activity_marker_table "notification_content_activity_markers"
+  @comment_kinds ~w(comment_mention comment_reply)
+  @max_pg_bigint 9_223_372_036_854_775_807
+
+  defguardp valid_id(id) when is_integer(id) and id > 0 and id <= @max_pg_bigint
 
   @type delivery_outcome ::
           {:created, Notification.t()}
@@ -35,6 +39,36 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
 
   @type delivery_error :: :not_found | Changeset.t()
   @type content_action :: :created | :deleted
+
+  @doc """
+  Persists mentions and replies for recipients selected by the comment owner.
+
+  This joins the source transaction. Overlapping reasons use a single stable
+  comment key per recipient, with mention taking precedence over reply.
+  Missing recipients and revoked access are suppressed; an unauthorized actor
+  or invalid producer payload fails the source operation.
+  """
+  @spec deliver_comment_activity(pos_integer(), pos_integer(), pos_integer(), [map()]) ::
+          {:ok, delivery_outcome()} | {:error, term()}
+  def deliver_comment_activity(actor_id, project_id, comment_id, recipients)
+      when valid_id(actor_id) and valid_id(project_id) and valid_id(comment_id) and is_list(recipients) do
+    ensure_inside_transaction!("deliver_comment_activity/4")
+
+    with {:ok, recipient_kinds} <- comment_recipient_kinds(recipients),
+         %Project{} = project <- lock_async_project(project_id),
+         %User{} = actor <- lock_async_requester(actor_id),
+         {:ok, authorized_project} <- authorize_project(%{user: actor}, project) do
+      insert_comment_notifications(actor, authorized_project, comment_id, recipient_kinds)
+    else
+      nil -> {:error, :not_found}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  def deliver_comment_activity(_actor_id, _project_id, _comment_id, _recipients) do
+    ensure_inside_transaction!("deliver_comment_activity/4")
+    {:error, :invalid_comment_activity}
+  end
 
   @doc """
   Inserts one notification for the scoped recipient without broadcasting.
@@ -412,6 +446,51 @@ defmodule Storyarn.Platform.Notifications.Execution.Delivery do
       {:ok, %Notification{} = notification} -> {:ok, {:created, notification}}
       {:error, changeset} -> {:error, changeset}
     end
+  end
+
+  defp comment_recipient_kinds(recipients) do
+    Enum.reduce_while(recipients, {:ok, %{}}, fn
+      %{user_id: user_id, kind: kind}, {:ok, kinds} when valid_id(user_id) and kind in @comment_kinds ->
+        preferred_kind = if kinds[user_id] == "comment_mention", do: "comment_mention", else: kind
+        {:cont, {:ok, Map.put(kinds, user_id, preferred_kind)}}
+
+      _invalid, _acc ->
+        {:halt, {:error, :invalid_comment_activity}}
+    end)
+  end
+
+  defp insert_comment_notifications(actor, project, comment_id, recipient_kinds) do
+    selected_ids = Map.keys(recipient_kinds)
+
+    recipient_ids =
+      project
+      |> effective_recipient_ids(actor.id)
+      |> where([recipient], recipient.user_id in ^selected_ids)
+      |> select([recipient], recipient.user_id)
+
+    recipients =
+      Repo.all(
+        from(user in User,
+          where: user.id in subquery(recipient_ids),
+          order_by: [asc: user.id],
+          lock: "FOR KEY SHARE"
+        )
+      )
+
+    Enum.reduce_while(recipients, {:ok, {:created, []}}, fn recipient, {:ok, {:created, notifications}} ->
+      attrs = %{
+        kind: Map.fetch!(recipient_kinds, recipient.id),
+        entity_type: "comment",
+        entity_id: comment_id,
+        dedupe_key: "comment:v1:#{project.id}:#{comment_id}"
+      }
+
+      case insert_one(recipient, actor, project, attrs) do
+        {:ok, {:created, notification}} -> {:cont, {:ok, {:created, [notification | notifications]}}}
+        {:ok, :deduplicated} -> {:cont, {:ok, {:created, notifications}}}
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
   end
 
   defp lock_async_project(project_id) when is_integer(project_id) and project_id > 0 do

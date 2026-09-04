@@ -11,6 +11,7 @@
     "retry": "Reintentar",
     "actor_fallback": "Alguien del equipo",
     "project_context": "Proyecto: {project}",
+    "comment_unavailable": "Esta conversación ya no está disponible.",
     "filters": {
       "label": "Filtrar notificaciones",
       "all": "Todas",
@@ -36,9 +37,12 @@
       "sheet": "ficha",
       "flow": "flujo",
       "scene": "escena",
-      "localization_language": "idioma de localización"
+      "localization_language": "idioma de localización",
+      "comment": "comentario"
     },
     "messages": {
+      "comment_mention": "{actor} te mencionó en un comentario",
+      "comment_reply": "{actor} respondió a tu comentario",
       "created_named": "{actor} creó {entity}: {name}",
       "created": "{actor} creó {entity}",
       "deleted_named": "{actor} eliminó {entity}: {name}",

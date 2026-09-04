@@ -26,6 +26,8 @@ interface FlowNodeData {
 }
 
 interface FlowContextValue {
+  commentCounts?: Record<string, number>;
+  commentsEnabled?: boolean;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   lod: string;
@@ -103,6 +105,7 @@ const nodeId = computed(() => {
 <template>
   <div
     class="relative rounded-lg transition-shadow"
+    :data-flow-comment-node="nodeId"
     :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
     style="overflow: visible"
   >

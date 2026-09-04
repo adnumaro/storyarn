@@ -4,6 +4,7 @@ import { computed } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
 import FlowCanvas from "./FlowCanvas.vue";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 
 interface FlowSurfaceCanvasData {
   key: string;
@@ -15,6 +16,9 @@ interface FlowSurfaceCanvasData {
   userColor: string;
   canvasId: string;
   toolbarData: string;
+  commentPins?: FlowCommentThread[];
+  comments?: FlowCommentsPanelState | null;
+  commentFocusThreadId?: number | null;
 }
 
 interface FlowDockSurface {
@@ -40,6 +44,15 @@ const live = useLiveVue();
 const surface = computed(
   () => (live.vue?.props?.surface as FlowSurface | undefined) ?? initialSurface,
 );
+const comments = computed(() => {
+  const canvas = surface.value.canvas;
+  if (!canvas.comments) return null;
+  return {
+    state: canvas.comments,
+    pins: canvas.commentPins ?? [],
+    focusThreadId: canvas.commentFocusThreadId ?? null,
+  };
+});
 </script>
 
 <template>
@@ -54,6 +67,7 @@ const surface = computed(
         :user-color="surface.canvas.userColor"
         :canvas-id="surface.canvas.canvasId"
         :toolbar-data="surface.canvas.toolbarData"
+        :comments="comments"
       />
     </div>
 

@@ -2120,12 +2120,13 @@ workspace_worker_facade_denial = %{
 # entities and contracts may cross capability lines;
 # operational role folders remain private unless an existing workflow requires
 # one of the explicit seams below.
-project_capabilities = ~w(lifecycle access assets overview trash references interchange templates versioning)
+project_capabilities = ~w(lifecycle access assets comments overview trash references interchange templates versioning)
 
 project_private_role_roots = %{
   "lifecycle" => ~w(commands events projections queries reference_data rules),
   "access" => ~w(adapters commands delivery queries rules),
   "assets" => ~w(adapters commands execution projections queries rules),
+  "comments" => ~w(commands entities projections queries rules),
   "overview" => ~w(execution queries rules),
   "trash" => ~w(execution),
   "references" => ~w(adapters commands execution projections queries records reference_data rules),
@@ -2244,7 +2245,7 @@ project_lifecycle_language_record_denial = %{
 # snapshot entities and queries keep their observed orchestration until a
 # separate behavioral migration can remove it safely.
 project_role_scopes =
-  ~w(lifecycle access assets overview trash references templates versioning) ++
+  ~w(lifecycle access assets comments overview trash references templates versioning) ++
     ~w(interchange/imports interchange/exports)
 
 # Consumer-local overview schemas use their capability's deterministic naming
@@ -3940,6 +3941,31 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The Flow editor reads and mutates contextual conversations through the public Projects facade"
+    },
+    %{
+      source: "lib/storyarn/projects/comments/commands/mutations.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Project comments persist mention and reply notifications atomically through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn/projects/comments/comments.ex",
+      target: "lib/storyarn/platform.ex",
+      kinds: ["runtime"],
+      reason: "Project comments publish notification updates after commit through the public Platform facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/shared/notification_helpers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The notification interface resolves authorized conversation destinations through the public Projects facade"
+    },
     %{
       source: "lib/storyarn/application.ex",
       target: "lib/storyarn/platform/object_storage.ex",

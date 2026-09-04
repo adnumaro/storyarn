@@ -7,7 +7,10 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
   current access.
   """
 
+  use StoryarnWeb, :verified_routes
+
   alias Storyarn.Platform
+  alias Storyarn.Projects
 
   @type filter :: :all | :unread
 
@@ -18,14 +21,17 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
         unread_only: filter == :unread
       )
 
+    comment_ids = for %{entity_type: "comment", entity_id: id} <- notifications, do: id
+    destinations = Projects.comment_destinations(scope, comment_ids)
+
     %{
       filter: Atom.to_string(filter),
-      items: Enum.map(notifications, &serialize/1),
+      items: Enum.map(notifications, &serialize(&1, destinations)),
       unreadCount: Platform.unread_notification_count(scope)
     }
   end
 
-  defp serialize(%{id: _} = notification) do
+  defp serialize(%{id: _} = notification, destinations) do
     %{
       id: notification.id,
       kind: notification.kind,
@@ -35,9 +41,22 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
       createdAt: DateTime.to_iso8601(notification.inserted_at),
       readAt: iso8601(notification.read_at),
       actorName: actor_name(notification.actor),
-      projectName: project_name(notification.project)
+      projectName: project_name(notification.project),
+      href: destination(notification, destinations)
     }
   end
+
+  defp destination(%{entity_type: "comment", entity_id: comment_id, project_id: project_id}, destinations) do
+    case destinations[{project_id, comment_id}] do
+      nil ->
+        nil
+
+      destination ->
+        ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/flows/#{destination.flow_id}?#{%{thread: destination.thread_id}}"
+    end
+  end
+
+  defp destination(_notification, _scope), do: nil
 
   defp actor_name(%{display_name: name}) when is_binary(name) and name != "", do: name
   defp actor_name(_actor), do: nil

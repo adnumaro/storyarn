@@ -14,6 +14,7 @@ defmodule Storyarn.Projects do
   alias Storyarn.Projects.Access
   alias Storyarn.Projects.Assets
   alias Storyarn.Projects.Assets.Asset
+  alias Storyarn.Projects.Comments
   alias Storyarn.Projects.Interchange
   alias Storyarn.Projects.Lifecycle
   alias Storyarn.Projects.Overview
@@ -925,4 +926,46 @@ defmodule Storyarn.Projects do
 
   defdelegate tool_health_summary(findings_by_tool), to: Overview
   defdelegate recent_activity(project_id, limit \\ 10), to: Overview
+
+  @doc "Lists project-owned review threads in a Flow, newest threads first."
+  defdelegate list_flow_comment_threads(scope, project_id, flow_id, opts \\ []),
+    to: Comments,
+    as: :list_flow_threads
+
+  @doc "Reads a discussion and its newest message page; cursor loads older messages."
+  defdelegate get_comment_thread(scope, project_id, thread_id, opts \\ []),
+    to: Comments,
+    as: :get_thread
+
+  defdelegate create_flow_node_comment(scope, project_id, flow_id, node_id, attrs),
+    to: Comments,
+    as: :create
+
+  @doc "Creates a conversation at an explicit position on a Flow canvas."
+  defdelegate create_flow_canvas_comment(scope, project_id, flow_id, attrs),
+    to: Comments,
+    as: :create_canvas
+
+  @doc "Moves a comment pin, preserving its source identity and checking the expected revision."
+  defdelegate move_comment_thread(scope, project_id, thread_id, position, expected_revision),
+    to: Comments,
+    as: :move
+
+  @doc "Lists every open comment pin whose Flow source is currently available."
+  defdelegate list_flow_comment_pins(scope, project_id, flow_id), to: Comments, as: :list_pins
+
+  defdelegate reply_to_comment_thread(scope, project_id, thread_id, attrs),
+    to: Comments,
+    as: :reply
+
+  defdelegate set_comment_thread_status(scope, project_id, thread_id, status, expected_revision),
+    to: Comments,
+    as: :set_status
+
+  defdelegate list_comment_members(scope, project_id), to: Comments, as: :list_members
+  defdelegate flow_comment_counts(scope, project_id, flow_id), to: Comments, as: :flow_counts
+  defdelegate comment_destination(scope, project_id, comment_id), to: Comments, as: :destination
+  defdelegate comment_destinations(scope, comment_ids), to: Comments, as: :destinations
+  defdelegate subscribe_flow_comments(scope, project_id, flow_id), to: Comments, as: :subscribe_flow
+  defdelegate unsubscribe_flow_comments(project_id, flow_id), to: Comments, as: :unsubscribe_flow
 end

@@ -1,5 +1,15 @@
 <script setup lang="ts">
-import { ArrowLeft, ArrowRight, Check, ChevronDown, Map as MapIcon, Text, X } from "@lucide/vue";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  Map as MapIcon,
+  MessageCircle,
+  MessageSquarePlus,
+  Text,
+  X,
+} from "@lucide/vue";
 import { computed, ref } from "vue";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -46,6 +56,7 @@ const {
   },
   sceneSelected = { name: null, inherited: false },
   projectScenes = [],
+  comments = { count: 0, open: false },
 } = defineProps<{
   flowName: string;
   flowShortcut: string;
@@ -56,6 +67,7 @@ const {
   flowHealth: FlowHealthProp;
   sceneSelected: SceneSelected;
   projectScenes: ProjectScene[];
+  comments?: { count: number; open: boolean; placing?: boolean; canComment?: boolean };
 }>();
 
 const live = useLive();
@@ -198,6 +210,42 @@ function selectScene(sceneId: number | string | null): void {
       <!-- Flow health: the shared popover, same as sheets and scenes -->
       <FlowHealthStatus :health="flowHealth.health" />
     </div>
+
+    <ToolbarTooltip
+      v-if="comments.canComment"
+      :label="$t('flows.comments.place_hint')"
+      side="bottom"
+    >
+      <button
+        id="flow-comments-create-mode"
+        type="button"
+        class="toolbar-btn h-full gap-1.5 px-2 transition-colors"
+        :class="comments.placing ? 'bg-primary/10 text-primary' : 'text-muted-foreground'"
+        :aria-label="$t('flows.comments.new_comment_tool')"
+        :aria-pressed="comments.placing ?? false"
+        @click="live.pushEvent('comments_mode', { active: !comments.placing })"
+      >
+        <MessageSquarePlus class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t("flows.comments.new_comment_tool") }}</span>
+      </button>
+    </ToolbarTooltip>
+
+    <ToolbarTooltip :label="$t('flows.comments.title')" side="bottom">
+      <button
+        id="flow-comments-toggle"
+        type="button"
+        class="toolbar-btn h-full gap-1.5 px-2"
+        :class="comments.open ? 'text-primary' : 'text-muted-foreground'"
+        :aria-label="$t('flows.comments.title')"
+        :aria-expanded="comments.open"
+        aria-controls="flow-comments-panel"
+        @click="live.pushEvent(comments.open ? 'comments_close' : 'comments_open', {})"
+      >
+        <MessageCircle class="size-3.5" />
+        <span class="hidden sm:inline">{{ $t("flows.comments.title") }}</span>
+        <span v-if="comments.count" class="text-xs tabular-nums">{{ comments.count }}</span>
+      </button>
+    </ToolbarTooltip>
 
     <!-- Save indicator -->
     <div

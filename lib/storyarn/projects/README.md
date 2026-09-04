@@ -10,6 +10,7 @@ named bounded context.
 | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
 | `lifecycle/`   | Project identity, creation, Project-owned configuration, update, soft deletion and Workspace-owned hard-delete coordination.                |
 | `access/`      | Project memberships, roles, authorization and invitations, including Project-owned invitation intent and copy.                              |
+| `comments/`    | Project conversations, contextual anchors, replies, mentions and resolution; review metadata independent of narrative content.              |
 | `assets/`      | Project assets, upload and trash lifecycle, blob identity, storage compensation, image processing and Project-owned storage policy.         |
 | `overview/`    | Project-wide dashboards, activity, statistics, health findings and structural analysis. It does not own the shared Project content records. |
 | `trash/`       | Cross-tool Project trash, restore, hard deletion and retention workflows.                                                                   |
@@ -25,7 +26,7 @@ canonical Project snapshot with its durability and fencing guarantees.
 
 ## Closed Project content model
 
-`content/` is not a tenth capability, a shared layer or another bounded
+`content/` is not an additional capability, a shared layer or another bounded
 context. It is the closed Project-owned interpretation of Flow, Sheet, Scene
 and Localization content needed by several Project capabilities.
 
@@ -52,7 +53,7 @@ not be merged merely to reduce line count.
 
 ## Closed Project reconstitution boundary
 
-`reconstitution/` is not a tenth capability or another bounded context. It is a
+`reconstitution/` is not an additional capability or another bounded context. It is a
 closed routing boundary that makes every privileged whole-Project import,
 template and snapshot materialization enter through one reviewed module. It is
 deliberately absent from the public `Storyarn.Projects` facade.

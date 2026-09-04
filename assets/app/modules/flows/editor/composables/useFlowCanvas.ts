@@ -38,6 +38,7 @@ import type {
 } from "./flowCanvasTypes";
 import { createFlowSequenceGeometry, type FlowSequenceFitOptions } from "./flowSequenceGeometry";
 import { createFlowMarquee } from "../services/flowMarquee";
+import { commentPointFromClient } from "../lib/comment-geometry";
 
 export type { FlowCanvasReturn } from "./flowCanvasTypes";
 
@@ -81,6 +82,11 @@ export function buildHubsMap(
 }
 
 export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowCanvasReturn {
+  let skipInitialFit = false;
+  let settleInitialGeometry: (ready: boolean) => void = () => {};
+  const initialGeometryReady = new Promise<boolean>((resolve) => {
+    settleInitialGeometry = resolve;
+  });
   const runtime = createFlowCanvasRuntime(
     { pushEvent, handleEvent },
     {
@@ -238,6 +244,18 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
   function setupCanvasClickHandler(containerEl: HTMLElement): void {
     runtime.canvasClickController = new AbortController();
+    // Capture coordinates only; the existing Rete plugin owns the context menu.
+    containerEl.addEventListener(
+      "contextmenu",
+      (event) => {
+        hookProxy._commentContextPoint = commentPointFromClient(
+          { x: event.clientX, y: event.clientY },
+          containerEl.getBoundingClientRect(),
+          runtime.area!.area.transform,
+        );
+      },
+      { capture: true, signal: runtime.canvasClickController.signal },
+    );
     containerEl.addEventListener(
       "pointerdown",
       (e: PointerEvent) => {
@@ -374,6 +392,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   // --- Init ---
 
   function applyInitOpts(containerEl: HTMLElement, opts: InitOpts): void {
+    skipInitialFit = opts.skipInitialFit ?? false;
     hookProxy._containerEl = containerEl;
     hookProxy._sheetsMap = opts.sheetsMap || {};
     hookProxy._readonly = opts.readonly || false;
@@ -382,14 +401,36 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   async function finalizeInit(flowData: FlowData): Promise<void> {
-    await syncAllNodeSizes();
-    await fitSequencesToChildren();
+    if (runtime.destroyed) return;
+    const hasNodes = Boolean(flowData.nodes?.length);
+    // The dock is already interactive. Placement needs the editor/area but
+    // does not depend on selection or the pending initial viewport fit.
+    if (!hookProxy._readonly && hookProxy._containerEl) {
+      runtime.placementTeardown = createFlowPlacement({
+        containerEl: hookProxy._containerEl,
+        editor: runtime.editor!,
+        area: runtime.area!,
+        pushEvent,
+        beforeResolveParent: () => initialGeometryReady,
+      });
+    }
+
+    let geometryReady = false;
+    try {
+      await syncAllNodeSizes();
+      await fitSequencesToChildren();
+      geometryReady = true;
+    } finally {
+      settleInitialGeometry(geometryReady);
+    }
     const selection = await finalizeSetup(
       runtime.area!,
       runtime.editor!,
-      (flowData.nodes?.length ?? 0) > 0,
+      hasNodes && !skipInitialFit,
       hookProxy._flowContext,
+      () => runtime.destroyed,
     );
+    if (runtime.destroyed) return;
     await recalculateAllSockets();
 
     // Marquee selection (drag-rectangle). Only active while the dock's tool
@@ -401,15 +442,9 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         editor: runtime.editor!,
         selection,
       });
-      runtime.placementTeardown = createFlowPlacement({
-        containerEl: hookProxy._containerEl,
-        editor: runtime.editor!,
-        area: runtime.area!,
-        pushEvent,
-      });
     }
 
-    if ((flowData.nodes?.length ?? 0) > 0) {
+    if (hasNodes) {
       await rebuildHubsMap();
     }
 
@@ -425,6 +460,7 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
 
     initPlugins(containerEl);
     hookProxy._flowContext.canEdit = !hookProxy._readonly;
+    hookProxy._flowContext.commentsEnabled = opts.commentsEnabled ?? false;
 
     if (!hookProxy._readonly) {
       initHandlers();
@@ -831,6 +867,17 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
   }
 
+  function setCommentCounts(counts: Record<string, number>, enabled: boolean): void {
+    if (hookProxy._flowContext) {
+      hookProxy._flowContext.commentCounts = counts;
+      hookProxy._flowContext.commentsEnabled = enabled;
+    }
+  }
+
+  function focusCommentNode(nodeId: number): void {
+    runtime.navigationHandler?.focusCommentNode(nodeId);
+  }
+
   async function performAutoLayout(): Promise<void> {
     await performFlowCanvasAutoLayout(runtime, {
       fitSequencesToChildren,
@@ -849,6 +896,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     rebuildHubsMap,
     syncNodeSize,
     setToolbarProps,
+    setCommentCounts,
+    focusCommentNode,
     destroy,
   };
 }

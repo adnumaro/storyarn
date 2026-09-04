@@ -25,6 +25,8 @@ export interface ToolbarState {
 }
 
 export interface InitOpts {
+  commentsEnabled?: boolean;
+  skipInitialFit?: boolean;
   sheetsMap?: Record<string, SheetMapEntry>;
   readonly?: boolean;
   userId?: number;
@@ -107,6 +109,8 @@ export interface NodeBounds {
 }
 
 export interface FlowCanvasReturn {
+  setCommentCounts(counts: Record<string, number>, enabled: boolean): void;
+  focusCommentNode(nodeId: number): void;
   editor: ShallowRef<NodeEditor<FlowSchemes> | null>;
   area: ShallowRef<AreaPlugin<FlowSchemes, FlowAreaExtra> | null>;
   loading: Ref<boolean>;

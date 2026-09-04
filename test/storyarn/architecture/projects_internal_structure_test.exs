@@ -7,6 +7,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
   @capability_roles %{
     "access" => ~w(adapters commands delivery entities queries rules),
     "assets" => ~w(adapters commands contracts entities execution projections queries rules),
+    "comments" => ~w(commands entities projections queries rules),
     "interchange" => ~w(exports imports),
     "lifecycle" => ~w(commands entities events projections queries reference_data rules),
     "overview" => ~w(contracts execution queries rules),
@@ -18,6 +19,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
   @capability_root_files %{
     "access" => ~w(access.ex invitations.ex memberships.ex),
     "assets" => ~w(assets.ex project_assets.ex),
+    "comments" => ~w(README.md comments.ex),
     "interchange" => ~w(interchange.ex),
     "lifecycle" => ~w(lifecycle.ex project_crud.ex),
     "overview" => ~w(overview.ex),
@@ -29,6 +31,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
   @private_role_roots %{
     "access" => ~w(adapters commands delivery queries rules),
     "assets" => ~w(adapters commands execution projections queries rules),
+    "comments" => ~w(commands entities projections queries rules),
     "interchange" => ~w(
       imports/adapters imports/commands imports/execution imports/queries imports/rules
       exports/adapters exports/queries exports/rules
@@ -87,6 +90,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     Storyarn.Projects.Access
     Storyarn.Projects.Assets
     Storyarn.Projects.Assets.Asset
+    Storyarn.Projects.Comments
     Storyarn.Projects.Interchange
     Storyarn.Projects.Lifecycle
     Storyarn.Projects.Overview
@@ -100,7 +104,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     Storyarn.Projects.Trash
     Storyarn.Projects.Versioning
   )
-  @role_scopes ~w(lifecycle access assets overview trash references templates versioning) ++
+  @role_scopes ~w(lifecycle access assets comments overview trash references templates versioning) ++
                  ~w(interchange/imports interchange/exports)
   @forbidden_role_edges [
     {"queries", "commands"},
@@ -151,7 +155,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
                         {"interchange/imports", "rules", "adapters"}
                       ])
 
-  test "Projects exposes the nine agreed capabilities with their role layout" do
+  test "Projects exposes the agreed capabilities with their role layout" do
     assert directories_in(@root) ==
              @capability_roles
              |> Map.keys()
@@ -169,7 +173,7 @@ defmodule Storyarn.Architecture.ProjectsInternalStructureTest do
     end)
   end
 
-  test "reconstitution is a closed internal boundary, not a tenth capability facade" do
+  test "reconstitution is a closed internal boundary, not another capability facade" do
     reconstitution_root = Path.join(@root, "reconstitution")
 
     assert File.dir?(reconstitution_root)

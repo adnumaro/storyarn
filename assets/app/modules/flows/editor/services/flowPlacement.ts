@@ -18,6 +18,7 @@ interface FlowPlacementOptions {
   editor: NodeEditor<FlowSchemes>;
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
   pushEvent: (event: string, payload: Record<string, unknown>) => void;
+  beforeResolveParent?: () => Promise<boolean>;
 }
 
 interface PlacementSize {
@@ -34,9 +35,11 @@ export function createFlowPlacement({
   editor,
   area,
   pushEvent,
+  beforeResolveParent,
 }: FlowPlacementOptions): () => void {
   let shadow: HTMLDivElement | null = null;
   let latestPointer: PointerEvent | null = null;
+  let destroyed = false;
 
   function onPointerMove(event: PointerEvent): void {
     latestPointer = event;
@@ -57,6 +60,19 @@ export function createFlowPlacement({
     event.stopImmediatePropagation();
 
     const position = canvasPointFromEvent(event);
+    // The click is accepted immediately. Geometry-dependent resolution may
+    // finish later, so clear the tool now and prevent a duplicate placement.
+    cancelFlowPlacement();
+    void commitPlacement(target, position);
+  }
+
+  async function commitPlacement(target: FlowPlacementTarget, position: { x: number; y: number }) {
+    if (beforeResolveParent && hasSequence()) {
+      const geometryReady = await beforeResolveParent();
+      if (!geometryReady) return;
+    }
+    if (destroyed) return;
+
     const payload = {
       position_x: Math.round(position.x),
       position_y: Math.round(position.y),
@@ -69,8 +85,10 @@ export function createFlowPlacement({
     } else {
       pushEvent("add_node", { ...eventPayload, type: target.type });
     }
+  }
 
-    cancelFlowPlacement();
+  function hasSequence(): boolean {
+    return editor.getNodes().some((node) => node.nodeType === "sequence");
   }
 
   function onKeyDown(event: KeyboardEvent): void {
@@ -224,6 +242,7 @@ export function createFlowPlacement({
   document.addEventListener("keydown", onKeyDown);
 
   return () => {
+    destroyed = true;
     stopWatch();
     containerEl.classList.remove("flow-placement-active");
     containerEl.removeEventListener("pointermove", onPointerMove, { capture: true });

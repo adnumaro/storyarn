@@ -53,6 +53,8 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   const minimap = new MinimapPlugin<FlowSchemes>();
   // Shared reactive context available to all node/socket/connection Vue instances
   const flowContext: FlowContext = reactive({
+    commentCounts: {},
+    commentsEnabled: false,
     sheetsMap: hook.sheetsMap || {},
     hubsMap: hook.hubsMap || {},
     lod: "full",
@@ -232,6 +234,7 @@ export async function finalizeSetup(
   editor: NodeEditor<FlowSchemes>,
   hasNodes: boolean,
   flowContext?: FlowContext,
+  isDestroyed: () => boolean = () => Boolean((area as { destroyed?: boolean }).destroyed),
 ): Promise<SelectionHandles> {
   const selector = AreaExtensions.selector();
 
@@ -308,14 +311,16 @@ export async function finalizeSetup(
   });
 
   if (hasNodes) {
-    setTimeout(async () => {
-      if (!area || (area as { destroyed?: boolean }).destroyed) return;
+    // Readiness includes both existing fit passes: a menu opened once the
+    // canvas is ready must not be displaced by a still-pending initial fit.
+    await new Promise<void>((resolve) => setTimeout(resolve, 100));
+    if (!isDestroyed()) {
       await AreaExtensions.zoomAt(area, editor.getNodes());
-      requestAnimationFrame(async () => {
-        if (!area || (area as { destroyed?: boolean }).destroyed) return;
+      await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+      if (!isDestroyed()) {
         await AreaExtensions.zoomAt(area, editor.getNodes());
-      });
-    }, 100);
+      }
+    }
   }
 
   return { selector, select, unselect };

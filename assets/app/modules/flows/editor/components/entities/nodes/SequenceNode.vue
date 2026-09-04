@@ -35,6 +35,8 @@ import { reparentGestureActive } from "../../../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../../../lib/sequence-layout";
 
 interface FlowContextValue {
+  commentCounts?: Record<string, number>;
+  commentsEnabled?: boolean;
   selectedReteIds: Set<string | number>;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
@@ -152,6 +154,7 @@ function startResize(event: PointerEvent) {
 <template>
   <div
     class="flow-sequence"
+    :data-flow-comment-node="nodeId"
     :class="{
       'flow-sequence--selected': isSelected,
       'flow-sequence--drop-target': isDropTarget,
