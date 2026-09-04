@@ -461,6 +461,42 @@
         "empty_instruction": "Empty instruction",
         "empty_condition": "Empty condition"
       }
+    },
+    "comments": {
+      "title": "Comments",
+      "close": "Close comments",
+      "new_thread": "New thread",
+      "reply": "Reply",
+      "placeholder": "Share feedback or ask a question…",
+      "send": "Send",
+      "mention": "Mention people",
+      "search_people": "Search project members",
+      "no_people": "No matching members.",
+      "remove_mention": "Remove mention of {name}",
+      "send_failed": "Could not confirm delivery. Your draft is saved; retry to check and send it.",
+      "update_failed": "Could not update the thread. Please try again.",
+      "all_threads": "All threads",
+      "open": "Open",
+      "resolved": "Resolved",
+      "all": "All",
+      "resolve": "Resolve",
+      "reopen": "Reopen",
+      "unavailable": "This node is no longer available. Its discussion is preserved for reference.",
+      "source_unavailable": "Node unavailable",
+      "messages": "Thread messages",
+      "reply_to": "Reply to {name}",
+      "cancel_reply": "Cancel reply to this message",
+      "load_messages": "Load earlier messages",
+      "resolved_hint": "This thread is resolved. Reopen it to continue the conversation.",
+      "flow_threads": "Threads in this flow",
+      "node_label": "Node {id}",
+      "filter": "Filter threads",
+      "empty": "No threads here yet",
+      "empty_hint": "Open the comment button on a node to start a conversation.",
+      "readonly_hint": "You can read discussions. Editing access is required to comment.",
+      "threads": "Comment threads",
+      "load_threads": "Load more threads",
+      "node_count": "{count} open thread | {count} open threads"
     }
   }
 }

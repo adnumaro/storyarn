@@ -50,6 +50,12 @@ function mountHeader(health: FlowHealth = EMPTY_HEALTH, wordCount = 330) {
 }
 
 describe("FlowHeader", () => {
+  it("opens comments for a read-only viewer", async () => {
+    const { live, wrapper } = mountHeader();
+    await wrapper.get("#flow-comments-toggle").trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledWith("comments_open", {}, undefined);
+  });
+
   it("renders the word count", () => {
     const { wrapper } = mountHeader();
 

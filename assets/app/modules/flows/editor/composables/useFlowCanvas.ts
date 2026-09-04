@@ -831,6 +831,17 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     }
   }
 
+  function setCommentCounts(counts: Record<string, number>, enabled: boolean): void {
+    if (hookProxy._flowContext) {
+      hookProxy._flowContext.commentCounts = counts;
+      hookProxy._flowContext.commentsEnabled = enabled;
+    }
+  }
+
+  function focusCommentNode(nodeId: number): void {
+    runtime.navigationHandler?.focusCommentNode(nodeId);
+  }
+
   async function performAutoLayout(): Promise<void> {
     await performFlowCanvasAutoLayout(runtime, {
       fitSequencesToChildren,
@@ -849,6 +860,8 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
     rebuildHubsMap,
     syncNodeSize,
     setToolbarProps,
+    setCommentCounts,
+    focusCommentNode,
     destroy,
   };
 }

@@ -5,12 +5,14 @@ import {
   CheckCircle2,
   CircleAlert,
   LoaderCircle,
+  MessageSquare,
   Plus,
   Trash2,
   XCircle,
 } from "@lucide/vue";
 import { computed, onMounted, onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
+import LiveLink from "@components/navigation/LiveLink.vue";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
 import type { NotificationCenterState, NotificationFilter, NotificationItem } from "./types";
@@ -22,6 +24,7 @@ const filters: NotificationFilter[] = ["all", "unread"];
 const pending = ref(false);
 const error = ref(false);
 const loaded = ref(false);
+const open = ref(false);
 const now = ref(Date.now());
 
 interface PendingRequest {
@@ -99,6 +102,7 @@ function validItem(item: unknown): item is NotificationItem {
     typeof candidate.id === "number" &&
     typeof candidate.kind === "string" &&
     typeof candidate.createdAt === "string" &&
+    (candidate.href === null || typeof candidate.href === "string") &&
     (candidate.readAt === null || typeof candidate.readAt === "string")
   );
 }
@@ -154,6 +158,13 @@ function markAllRead(): void {
   runRequest("mark_all_notifications_read", {});
 }
 
+function handleNotificationOpen(notification: NotificationItem): void {
+  if (notification.readAt === null) {
+    runRequest("mark_notification_read", { id: notification.id });
+  }
+  open.value = false;
+}
+
 function refreshNotifications(): void {
   if (pending.value) return;
   runRequest("refresh_notifications", { filter: center.value.filter });
@@ -171,10 +182,25 @@ function entityLabel(notification: NotificationItem): string {
   return translated === key ? t("notifications.entities.content") : translated;
 }
 
+function commentText(notification: NotificationItem, actor: string): string | null {
+  if (notification.kind === "comment_mention") {
+    return t("notifications.messages.comment_mention", { actor });
+  }
+
+  if (notification.kind === "comment_reply") {
+    return t("notifications.messages.comment_reply", { actor });
+  }
+
+  return null;
+}
+
 function notificationText(notification: NotificationItem): string {
   const actor = notification.actorName || t("notifications.actor_fallback");
   const entity = entityLabel(notification);
   const name = notification.entityName;
+  const comment = commentText(notification, actor);
+
+  if (comment) return comment;
 
   if (notification.kind === "content_created") {
     return name
@@ -227,7 +253,7 @@ function relativeTime(isoDate: string): string {
 </script>
 
 <template>
-  <Popover @update:open="handlePopoverOpen">
+  <Popover v-model:open="open" @update:open="handlePopoverOpen">
     <PopoverTrigger as-child>
       <button
         id="notification-bell-trigger"
@@ -345,6 +371,12 @@ function relativeTime(isoDate: string): string {
             <XCircle v-if="notification.status === 'failure'" class="size-4" />
             <CheckCircle2 v-else-if="notification.kind === 'async_operation'" class="size-4" />
             <Plus v-else-if="notification.kind === 'content_created'" class="size-4" />
+            <MessageSquare
+              v-else-if="
+                notification.kind === 'comment_mention' || notification.kind === 'comment_reply'
+              "
+              class="size-4"
+            />
             <Trash2 v-else class="size-4" />
           </div>
 
@@ -355,7 +387,22 @@ function relativeTime(isoDate: string): string {
                 notification.readAt === null ? 'font-medium text-foreground' : 'text-foreground/80',
               ]"
             >
-              {{ notificationText(notification) }}
+              <LiveLink
+                v-if="notification.href"
+                :id="`notification-link-${notification.id}`"
+                :to="notification.href"
+                class="rounded-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                @click="handleNotificationOpen(notification)"
+              >
+                {{ notificationText(notification) }}
+              </LiveLink>
+              <span v-else>{{ notificationText(notification) }}</span>
+            </p>
+            <p
+              v-if="notification.entityType === 'comment' && !notification.href"
+              class="mt-1 text-xs text-muted-foreground"
+            >
+              {{ t("notifications.comment_unavailable") }}
             </p>
             <div class="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
               <span v-if="notification.projectName" class="truncate">

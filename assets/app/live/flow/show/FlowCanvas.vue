@@ -15,6 +15,7 @@ const {
   userColor = "#3b82f6",
   canvasId = "flow-canvas",
   toolbarData = "{}",
+  comments = { enabled: false, counts: {}, focusNodeId: null },
 } = defineProps<{
   flowData: string | null;
   variableMap: string | null;
@@ -24,13 +25,15 @@ const {
   userColor: string;
   canvasId: string;
   toolbarData: string;
+  comments?: { enabled: boolean; counts: Record<string, number>; focusNodeId: number | null };
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
 const live = useLive();
 let initialized = false;
+let canvasReady = false;
 
-const { init, editor, area, setToolbarProps } = useFlowCanvas({
+const { init, editor, area, setToolbarProps, setCommentCounts, focusCommentNode } = useFlowCanvas({
   pushEvent: live.pushEvent,
   handleEvent: live.handleEvent,
 });
@@ -49,7 +52,10 @@ async function initCanvas() {
     userColor,
   });
 
+  canvasReady = true;
   setToolbarProps(safeParse(toolbarData));
+  setCommentCounts(comments.counts, comments.enabled);
+  if (comments.focusNodeId != null) focusCommentNode(comments.focusNodeId);
 }
 
 watch(
@@ -62,6 +68,17 @@ watch(
 onMounted(() => {
   if (flowData) initCanvas();
 });
+
+watch(
+  () => comments,
+  (value) => setCommentCounts(value.counts, value.enabled),
+);
+watch(
+  () => comments.focusNodeId,
+  (nodeId) => {
+    if (canvasReady && nodeId != null) focusCommentNode(nodeId);
+  },
+);
 
 watch(
   () => toolbarData,

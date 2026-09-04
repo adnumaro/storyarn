@@ -11,6 +11,7 @@ defmodule Storyarn.Platform.Notifications.Projections.ProjectRecord do
   @type t :: %__MODULE__{}
 
   schema "projects" do
+    field :name, :string
     field :workspace_id, :id
     field :owner_id, :id
     field :deleted_at, :utc_datetime

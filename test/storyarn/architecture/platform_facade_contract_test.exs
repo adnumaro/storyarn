@@ -34,6 +34,8 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
     unread_notification_count: 1
   ]
 
+  @comment_contract [deliver_comment_activity: 4]
+
   @public_types ~w(notification_delivery_outcome onboarding_summary)a
 
   # Advanced deliberately when ENG-112 moved the complete commercial contract
@@ -50,7 +52,7 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       |> Enum.reject(fn {name, _arity} -> name in [:module_info, :__info__] end)
       |> MapSet.new()
 
-    assert public_functions == MapSet.new(@public_contract)
+    assert public_functions == MapSet.new(@public_contract ++ @comment_contract)
   end
 
   test "the root facade is declarative and enters implementation through capability facades" do
@@ -83,8 +85,13 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
           []
       end)
 
+    {comment_docs, established_docs} =
+      Enum.split_with(function_docs, fn {name, arity, _signatures, _doc, _defaults} ->
+        {name, arity} in @comment_contract
+      end)
+
     status_counts =
-      Enum.frequencies_by(function_docs, fn {_name, _arity, _signatures, doc, _defaults} ->
+      Enum.frequencies_by(established_docs, fn {_name, _arity, _signatures, doc, _defaults} ->
         case doc do
           :hidden -> :hidden
           :none -> :none
@@ -99,10 +106,15 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 26
+    assert length(established_docs) == 26
     assert status_counts == %{documented: 26}
-    assert represented_arities == MapSet.new(@public_contract)
-    assert digest(Enum.sort(function_docs)) == @docs_digest
+    assert represented_arities == MapSet.new(@public_contract ++ @comment_contract)
+    assert digest(Enum.sort(established_docs)) == @docs_digest
+
+    assert comment_docs == [
+             {:deliver_comment_activity, 4, ["deliver_comment_activity(actor_id, project_id, comment_id, recipients)"],
+              %{"en" => "Persists comment mentions and replies for the producer's selected recipients."}, 0}
+           ]
   end
 
   test "the compiled facade preserves its stable public types" do
@@ -137,8 +149,21 @@ defmodule Storyarn.Architecture.PlatformFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 26
-    assert digest(normalized_specs) == @specs_digest
+    {comment_specs, established_specs} =
+      Enum.split_with(normalized_specs, fn {name, arity, _spec} ->
+        {name, arity} in @comment_contract
+      end)
+
+    assert length(established_specs) == 26
+    assert digest(established_specs) == @specs_digest
+
+    comment_spec =
+      quote do
+        deliver_comment_activity(pos_integer(), pos_integer(), pos_integer(), [map()]) ::
+          {:ok, notification_delivery_outcome()} | {:error, term()}
+      end
+
+    assert comment_specs == [{:deliver_comment_activity, 4, Macro.to_string(comment_spec)}]
   end
 
   defp digest(term) do

@@ -116,6 +116,8 @@ export interface HubMapEntry {
 // ---------------------------------------------------------------------------
 
 export interface FlowContext {
+  commentCounts?: Record<string, number>;
+  commentsEnabled?: boolean;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   lod: string;

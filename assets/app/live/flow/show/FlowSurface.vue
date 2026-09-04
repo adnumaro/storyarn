@@ -15,6 +15,8 @@ interface FlowSurfaceCanvasData {
   userColor: string;
   canvasId: string;
   toolbarData: string;
+  commentCounts?: Record<string, number>;
+  commentFocusNodeId?: number | null;
 }
 
 interface FlowDockSurface {
@@ -54,6 +56,11 @@ const surface = computed(
         :user-color="surface.canvas.userColor"
         :canvas-id="surface.canvas.canvasId"
         :toolbar-data="surface.canvas.toolbarData"
+        :comments="{
+          enabled: true,
+          counts: surface.canvas.commentCounts ?? {},
+          focusNodeId: surface.canvas.commentFocusNodeId ?? null,
+        }"
       />
     </div>
 

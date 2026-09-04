@@ -29,12 +29,15 @@
 import { computed, inject } from "vue";
 
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import NodeCommentBadge from "../node-shell/NodeCommentBadge.vue";
 import type { FlowNode } from "../../../lib/flow-node";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import { reparentGestureActive } from "../../../lib/flow-reparent-state";
 import { SEQUENCE_MIN_HEIGHT, SEQUENCE_MIN_WIDTH } from "../../../lib/sequence-layout";
 
 interface FlowContextValue {
+  commentCounts?: Record<string, number>;
+  commentsEnabled?: boolean;
   selectedReteIds: Set<string | number>;
   canEdit: boolean;
   toolbarProps: Record<string, unknown>;
@@ -151,13 +154,20 @@ function startResize(event: PointerEvent) {
 
 <template>
   <div
-    class="flow-sequence"
+    class="flow-sequence group/comment-node"
     :class="{
       'flow-sequence--selected': isSelected,
       'flow-sequence--drop-target': isDropTarget,
     }"
     data-testid="flow-sequence"
   >
+    <NodeCommentBadge
+      v-if="ctx.commentsEnabled"
+      :node-id="nodeId"
+      :count="ctx.commentCounts?.[nodeId] ?? 0"
+      :zoom="ctx.zoom"
+      :revealed="isSelected"
+    />
     <FlowNodeToolbar
       v-if="showToolbar"
       node-type="sequence"

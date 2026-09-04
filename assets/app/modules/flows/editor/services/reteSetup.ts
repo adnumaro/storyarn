@@ -53,6 +53,8 @@ export function createPlugins(container: HTMLElement, hook: HookProxy): PluginSe
   const minimap = new MinimapPlugin<FlowSchemes>();
   // Shared reactive context available to all node/socket/connection Vue instances
   const flowContext: FlowContext = reactive({
+    commentCounts: {},
+    commentsEnabled: false,
     sheetsMap: hook.sheetsMap || {},
     hubsMap: hook.hubsMap || {},
     lod: "full",

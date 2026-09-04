@@ -72,7 +72,12 @@ defmodule StoryarnWeb.Live.Hooks.Notifications do
       {state, socket} = refresh(socket)
       {:halt, state, socket}
     else
-      _error -> {:halt, %{error: "not_found"}, socket}
+      {:error, :not_found} ->
+        {state, socket} = refresh(socket)
+        {:halt, state, socket}
+
+      _error ->
+        {:halt, %{error: "not_found"}, socket}
     end
   end
 

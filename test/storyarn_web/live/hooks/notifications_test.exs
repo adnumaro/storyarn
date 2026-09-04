@@ -3,6 +3,7 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Platform.Notifications
@@ -107,6 +108,36 @@ defmodule StoryarnWeb.Live.Hooks.NotificationsTest do
       items: [%{id: ^notification_id, readAt: nil}],
       unreadCount: 1
     })
+  end
+
+  test "refreshes the authorized inbox when a mark-read target lost access", %{
+    conn: conn,
+    scope: scope,
+    user: user,
+    workspace: workspace
+  } do
+    project_owner = user_fixture()
+    project = project_fixture(project_owner)
+    membership = membership_fixture(project, user, "viewer")
+
+    assert {:ok, {:created, notification}} =
+             Notifications.deliver(scope, nil, project, %{
+               kind: "async_operation",
+               entity_type: "project_snapshot",
+               entity_id: System.unique_integer([:positive]),
+               status: "success",
+               dedupe_key: "notifications-hook:revoked-access"
+             })
+
+    {:ok, view, _html} = live(conn, ~p"/workspaces/#{workspace.slug}")
+    render_hook(view, "refresh_notifications", %{"filter" => "unread"})
+    assert_reply(view, %{items: [_notification], unreadCount: 1})
+
+    Repo.delete!(membership)
+    render_hook(view, "mark_notification_read", %{"id" => notification.id})
+
+    assert_reply(view, %{filter: "unread", items: [], unreadCount: 0})
+    assert is_nil(Repo.get!(Notification, notification.id).read_at)
   end
 
   test "subscribes the LiveView and pushes refreshed state after a PubSub invalidation", %{

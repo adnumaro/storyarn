@@ -53,8 +53,10 @@ function setup(nodes: FlowNode[], connections: FlowConnection[]) {
   const editor = { getNodes: () => nodes, getConnections: () => connections } as never;
   const nodeMap = new Map<string | number, FlowNode>(nodes.map((n) => [n.nodeId, n]));
 
+  const pushEvent = vi.fn();
   return {
-    handler: navigation(area, nodeMap, vi.fn(), editor),
+    handler: navigation(area, nodeMap, pushEvent, editor),
+    pushEvent,
     connectionViews,
     nodeViews,
   };
@@ -154,5 +156,23 @@ describe("navigation.navigateToConnection", () => {
 
     expect(el.style.getPropertyValue("--conn-stroke")).toBe("debug-color");
     expect(el.style.getPropertyValue("--conn-evidence-stroke")).toBe("");
+  });
+});
+
+describe("navigation.focusCommentNode", () => {
+  it("focuses the node without acquiring selection or editing state", () => {
+    zoomAt.mockClear();
+    const dialogue = node("dialogue", 42);
+    const { handler, pushEvent, nodeViews } = setup([dialogue], []);
+    handler.focusCommentNode(42);
+    expect(zoomAt).toHaveBeenCalled();
+    expect(pushEvent).not.toHaveBeenCalled();
+    expect(
+      nodeViews
+        .get("node-42")!
+        .element.querySelector("[data-testid='node']")!
+        .classList.contains("nav-highlight"),
+    ).toBe(true);
+    handler.destroy();
   });
 });

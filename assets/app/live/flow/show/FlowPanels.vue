@@ -1,5 +1,7 @@
 <script setup lang="ts">
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
+import FlowCommentsPanel from "@modules/flows/editor/components/panels/FlowCommentsPanel.vue";
+import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
 import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
 import FlowDialoguePanel from "@modules/flows/editor/components/panels/FlowDialoguePanel.vue";
@@ -55,6 +57,7 @@ interface FlowPreviewPanel {
 }
 
 interface FlowPanels {
+  comments?: FlowCommentsPanelState;
   versions: FlowVersionsPanel;
   debug: FlowDebugPanelState;
   builder: FlowBuilderPanelState;
@@ -71,9 +74,12 @@ const { panels } = defineProps<{
 
 <template>
   <div class="contents">
+    <div v-if="panels.comments" id="flow-comments-panel" class="contents">
+      <FlowCommentsPanel :state="panels.comments" />
+    </div>
     <div id="flow-versions-panel" class="contents">
       <FlowVersionHistoryPanel
-        :open="panels.versions.open"
+        :open="panels.versions.open && !panels.comments?.open"
         :versions="panels.versions.versions"
         :named-versions="panels.versions.namedVersions"
         :auto-versions="panels.versions.autoVersions"
@@ -88,7 +94,7 @@ const { panels } = defineProps<{
 
     <div id="flow-debug-panel" class="contents">
       <FlowDebugPanel
-        :open="panels.debug.open"
+        :open="panels.debug.open && !panels.comments?.open"
         :state="panels.debug.state"
         :nodes="panels.debug.nodes"
         :controls="panels.debug.controls"
@@ -97,7 +103,7 @@ const { panels } = defineProps<{
 
     <div id="flow-builder-panel" class="contents">
       <FlowBuilderPanel
-        :open="panels.builder.open"
+        :open="panels.builder.open && !panels.comments?.open"
         :node-type="panels.builder.nodeType"
         :node-id="panels.builder.nodeId"
         :condition="panels.builder.condition"
@@ -110,7 +116,7 @@ const { panels } = defineProps<{
 
     <div id="flow-dialogue-panel" class="contents">
       <FlowDialoguePanel
-        :open="panels.dialogue.open"
+        :open="panels.dialogue.open && !panels.comments?.open"
         :data="panels.dialogue.data"
         :can-edit="panels.dialogue.canEdit"
       />
@@ -118,7 +124,7 @@ const { panels } = defineProps<{
 
     <div id="flow-dialogue-fullscreen" class="contents">
       <FlowDialogueFullscreenEditor
-        :open="panels.dialogueFullscreen.open"
+        :open="panels.dialogueFullscreen.open && !panels.comments?.open"
         :data="panels.dialogueFullscreen.data"
         :can-edit="panels.dialogueFullscreen.canEdit"
       />
@@ -126,7 +132,7 @@ const { panels } = defineProps<{
 
     <div id="flow-sequence-config-panel" class="contents">
       <FlowSequenceConfigPanel
-        :open="panels.sequence.open"
+        :open="panels.sequence.open && !panels.comments?.open"
         :data="panels.sequence.data"
         :can-edit="panels.sequence.canEdit"
       />
@@ -134,7 +140,7 @@ const { panels } = defineProps<{
 
     <div id="flow-preview" class="contents">
       <FlowPreview
-        :open="panels.preview.open"
+        :open="panels.preview.open && !panels.comments?.open"
         :current-node="panels.preview.currentNode"
         :responses="panels.preview.responses"
         :has-next="panels.preview.hasNext"

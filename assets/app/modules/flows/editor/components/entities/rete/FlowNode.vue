@@ -16,6 +16,7 @@ import JumpNode from "../nodes/JumpNode.vue";
 import SubflowNode from "../nodes/SubflowNode.vue";
 import { FLOW_CONTEXT_KEY } from "../../../lib/flow-context";
 import FlowNodeToolbar from "@modules/flows/editor/components/entities/toolbar/FlowNodeToolbar.vue";
+import NodeCommentBadge from "../node-shell/NodeCommentBadge.vue";
 
 interface FlowNodeData {
   id: string | number;
@@ -26,6 +27,8 @@ interface FlowNodeData {
 }
 
 interface FlowContextValue {
+  commentCounts?: Record<string, number>;
+  commentsEnabled?: boolean;
   sheetsMap: Record<string, SheetMapEntry>;
   hubsMap: Record<string, HubMapEntry>;
   lod: string;
@@ -102,10 +105,17 @@ const nodeId = computed(() => {
 
 <template>
   <div
-    class="relative rounded-lg transition-shadow"
+    class="group/comment-node relative rounded-lg transition-shadow"
     :class="{ 'ring-2 ring-primary ring-offset-2 ring-offset-background': isSelected }"
     style="overflow: visible"
   >
+    <NodeCommentBadge
+      v-if="ctx.commentsEnabled"
+      :node-id="nodeId"
+      :count="ctx.commentCounts?.[nodeId] ?? 0"
+      :zoom="ctx.zoom"
+      :revealed="isSelected"
+    />
     <FlowNodeToolbar
       v-if="showToolbar"
       :node-type="nodeType"

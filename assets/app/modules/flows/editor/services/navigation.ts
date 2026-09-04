@@ -35,6 +35,7 @@ export interface ConnectionRef {
 }
 
 export interface NavigationHandler {
+  focusCommentNode(nodeDbId: number): void;
   navigateToHub(jumpDbId: number): void;
   navigateToNode(nodeDbId: number): void;
   navigateToJumps(hubDbId: number): void;
@@ -148,6 +149,12 @@ export function navigation(
   }
 
   return {
+    focusCommentNode(nodeDbId: number): void {
+      const node = nodeMap.get(nodeDbId);
+      if (!node) return;
+      AreaExtensions.zoomAt(area, [node]);
+      highlightNodes([node.id], nodeColor(node));
+    },
     navigateToHub(jumpDbId: number): void {
       const jumpNode = nodeMap.get(jumpDbId);
       if (!jumpNode) {

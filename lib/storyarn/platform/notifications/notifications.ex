@@ -20,6 +20,17 @@ defmodule Storyarn.Platform.Notifications do
   @type content_action :: :created | :deleted
 
   @doc """
+  Persists a context-owned comment activity inside its source transaction.
+
+  The producer selects the recipients and mention/reply reasons. Platform
+  checks current project access, excludes the actor, and deduplicates delivery.
+  Publish the returned outcome only after the outer transaction commits.
+  """
+  @spec deliver_comment_activity(pos_integer(), pos_integer(), pos_integer(), [map()]) ::
+          {:ok, delivery_outcome()} | {:error, term()}
+  defdelegate deliver_comment_activity(actor_id, project_id, comment_id, recipients), to: Delivery
+
+  @doc """
   Inserts one notification for the scoped recipient without broadcasting.
 
   Pass `nil` as the actor for system-generated results, including asynchronous

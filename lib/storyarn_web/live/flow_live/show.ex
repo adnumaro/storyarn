@@ -6,6 +6,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
+  alias StoryarnWeb.FlowLive.Handlers.CommentHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
@@ -84,6 +85,7 @@ defmodule StoryarnWeb.FlowLive.Show do
         flow-shortcut={@flow.shortcut}
         is-main={@flow.is_main}
         can-edit={@can_edit}
+        comments={%{count: @comment_counts |> Map.values() |> Enum.sum(), open: @comments.open}}
         save-status={to_string(@save_status)}
         nav-history={
           %{
@@ -229,7 +231,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:preview_has_next, false)
       |> assign(:preview_history, [])
 
-    {:ok, socket}
+    {:ok, CommentHandlers.init(socket)}
   end
 
   defp maybe_restore_debug_session(socket) do
@@ -314,7 +316,10 @@ defmodule StoryarnWeb.FlowLive.Show do
       {:active_flow, flow_id}
     )
 
-    {:noreply, apply_highlight(socket, params["highlight"])}
+    {:noreply,
+     socket
+     |> apply_highlight(params["highlight"])
+     |> CommentHandlers.handle_params(params)}
   end
 
   # The flows dashboard links a node-level health finding as
@@ -359,6 +364,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       flow ->
         socket
         |> teardown_previous_flow(flow)
+        |> CommentHandlers.init()
         |> assign(:loading, true)
         |> assign(:flow, flow)
         |> maybe_start_flow_load(flow)
@@ -374,6 +380,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     )
 
     socket
+    |> CommentHandlers.unload()
     |> assign(:locked_node_id, nil)
     |> assign(:lock_heartbeat_ref, nil)
     |> assign(:collab_scope, nil)
@@ -420,11 +427,16 @@ defmodule StoryarnWeb.FlowLive.Show do
   # ===========================================================================
 
   @impl true
+  def handle_event("comments_" <> action, params, socket) do
+    CommentHandlers.handle(action, params, socket)
+  end
+
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
   end
 
   def handle_event("open_versions_panel", _params, socket) do
+    socket = CommentHandlers.close(socket)
     maybe_track_version_panel_opened(socket, "flow")
 
     socket =
@@ -522,18 +534,20 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("node_selected", params, socket) do
-    GenericNodeHandlers.handle_node_selected(params, socket)
+    GenericNodeHandlers.handle_node_selected(params, CommentHandlers.close(socket))
   end
 
   def handle_event("node_double_clicked", params, socket) do
-    GenericNodeHandlers.handle_node_double_clicked(params, socket)
+    GenericNodeHandlers.handle_node_double_clicked(params, CommentHandlers.close(socket))
   end
 
   def handle_event("open_dialogue_panel", params, socket) do
-    Dialogue.Node.handle_open_dialogue_panel(params, socket)
+    Dialogue.Node.handle_open_dialogue_panel(params, CommentHandlers.close(socket))
   end
 
   def handle_event("open_dialogue_fullscreen", _params, socket) do
+    socket = CommentHandlers.close(socket)
+
     if socket.assigns[:selected_node] do
       {:noreply, assign(socket, :editing_mode, :dialogue_fullscreen)}
     else
@@ -546,10 +560,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_sidebar", _params, socket) do
-    GenericNodeHandlers.handle_open_sidebar(socket)
+    GenericNodeHandlers.handle_open_sidebar(CommentHandlers.close(socket))
   end
 
   def handle_event("open_builder", _params, socket) do
+    socket = CommentHandlers.close(socket)
+
     case socket.assigns.selected_node do
       nil ->
         {:noreply, socket}
@@ -569,8 +585,8 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("open_sequence_config", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      GenericNodeHandlers.handle_open_sequence_config(socket)
+    Authorize.with_authorization(socket, :edit_content, fn current ->
+      GenericNodeHandlers.handle_open_sequence_config(CommentHandlers.close(current))
     end)
   end
 
@@ -737,13 +753,17 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   def handle_event("delete_node", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      GenericNodeHandlers.handle_delete_node(params, socket)
+      params
+      |> GenericNodeHandlers.handle_delete_node(socket)
+      |> CommentHandlers.refresh_result()
     end)
   end
 
   def handle_event("restore_node", %{"id" => node_id}, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
-      NodeHelpers.restore_node(socket, node_id)
+      socket
+      |> NodeHelpers.restore_node(node_id)
+      |> CommentHandlers.refresh_result()
     end)
   end
 
@@ -1025,7 +1045,7 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Debug
   def handle_event("debug_start", _params, socket) do
-    DebugHandlers.handle_debug_start(socket)
+    DebugHandlers.handle_debug_start(CommentHandlers.close(socket))
   end
 
   def handle_event("debug_step", _params, socket) do
@@ -1339,6 +1359,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     |> maybe_restore_nav_history()
     |> maybe_restore_debug_session()
     |> flush_pending_highlight()
+    |> CommentHandlers.loaded()
   end
 
   defp stale_flow_load?(socket, loaded_flow) do
@@ -1358,6 +1379,15 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:active_sheet, _sheet_id}, socket), do: {:noreply, socket}
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
+
+  def handle_info({:flow_comments_changed, flow_id}, socket) do
+    if socket.assigns.flow && socket.assigns.flow.id == flow_id && !socket.assigns.loading do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_info({:open_flow, _flow_id}, socket), do: {:noreply, socket}
   # Health is recomputed from this flow's own data on every edit, like sheets
   # and scenes. A cross-flow mutation can change this flow's stale-reference
@@ -1429,8 +1459,15 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:lock_change, action, payload}, socket),
     do: CollaborationEventHandlers.handle_lock_change(action, payload, socket)
 
-  def handle_info({:remote_change, action, payload}, socket),
-    do: CollaborationEventHandlers.handle_remote_change(action, payload, socket)
+  def handle_info({:remote_change, action, payload}, socket) do
+    result = CollaborationEventHandlers.handle_remote_change(action, payload, socket)
+
+    if action in [:node_deleted, :node_removed, :node_restored, :flow_updated] do
+      CommentHandlers.refresh_result(result)
+    else
+      result
+    end
+  end
 
   def handle_info({:audio_picker, :selected, asset_id}, socket) do
     case socket.assigns.selected_node do
@@ -1533,6 +1570,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),
       sequence: flow_panels_sequence(assigns),
+      comments: assigns.comments,
       preview: PreviewHandlers.serialize_preview_state(assigns)
     }
   end
@@ -1547,6 +1585,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       userId: assigns.current_scope.user.id,
       userColor: Collaboration.user_color(assigns.current_scope.user.id),
       canvasId: "flow-canvas-#{assigns.flow.id}",
+      commentCounts: assigns.comment_counts,
+      commentFocusNodeId: assigns.comment_focus_node_id,
       toolbarData: Jason.encode!(toolbar_data(assigns))
     }
   end

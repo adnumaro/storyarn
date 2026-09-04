@@ -152,6 +152,11 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects",
       "Storyarn.Scenes"
     ],
+    # The Flow editor mounts a project-owned conversation surface through its
+    # public facade; this integration test checks authorization and event wiring.
+    "test/storyarn_web/live/flow_live/comments_test.exs" => [
+      "Storyarn.Projects"
+    ],
     "test/storyarn_web/live/flow_live/player/player_live_test.exs" => [
       "Storyarn.Sheets"
     ]
@@ -195,6 +200,11 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Flows.Versioning.Projections.SheetRecord",
       "Storyarn.Flows.Versioning.Projections.UserRecord",
       "Storyarn.Flows.Versioning.EntityVersionRecord"
+    ],
+    # Comments retain a tombstone when a Flow row is hard-deleted. Reusing the
+    # exact ID and timestamp requires a deliberate persistence integration seam.
+    "test/storyarn/projects/comments/integration/source_lifecycle_test.exs" => [
+      "Storyarn.Flows.FlowNode"
     ],
     "test/storyarn/scenes/exploration/execution/formula_runtime_test.exs" => [
       "Storyarn.Flows.FormulaRuntime"

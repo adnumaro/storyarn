@@ -147,6 +147,9 @@ function setupNavigationEvents(runtime: FlowCanvasRuntime): void {
   }
 
   const { handleEvent } = runtime.hookProxy;
+  handleEvent("focus_comment_node", (data) =>
+    runtime.navigationHandler!.focusCommentNode(data.node_db_id as number),
+  );
   handleEvent("navigate_to_hub", (data) =>
     runtime.navigationHandler!.navigateToHub(data.jump_db_id as number),
   );

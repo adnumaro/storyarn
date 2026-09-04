@@ -21,6 +21,7 @@ const unreadNotification: NotificationItem = {
   readAt: null,
   actorName: "Ana",
   projectName: "Veilbreak",
+  href: null,
 };
 
 const readNotification: NotificationItem = {
@@ -33,6 +34,7 @@ const readNotification: NotificationItem = {
   readAt: "2026-08-11T12:05:00Z",
   actorName: null,
   projectName: "Veilbreak",
+  href: null,
 };
 
 function center(overrides: Partial<NotificationCenterState> = {}): NotificationCenterState {
@@ -143,6 +145,78 @@ describe("NotificationBell", () => {
     );
 
     expect(wrapper.text()).toContain("snapshot import: Recovered story completed");
+  });
+
+  it("opens a mentioned conversation through a live link and marks it as read", async () => {
+    const href = "/workspaces/team/projects/story/flows/42?thread=9";
+    const { wrapper, pushEvent } = await mountBell(
+      center({
+        items: [{ ...unreadNotification, kind: "comment_mention", entityType: "comment", href }],
+      }),
+    );
+
+    const link = wrapper.get("#notification-link-17");
+    expect(link.text()).toBe("Ana mentioned you in a comment");
+    expect(link.attributes("href")).toBe(href);
+    expect(link.attributes("data-phx-link")).toBe("redirect");
+    link.element.addEventListener("click", (event) => event.preventDefault(), { once: true });
+
+    await link.trigger("click");
+
+    expect(pushEvent).toHaveBeenCalledWith(
+      "mark_notification_read",
+      { id: 17 },
+      expect.any(Function),
+    );
+  });
+
+  it("renders replies in Spanish and explains when their destination is unavailable", async () => {
+    setTestLocale("es");
+    const { wrapper, pushEvent } = await mountBell(
+      center({
+        items: [
+          { ...unreadNotification, kind: "comment_reply", entityType: "comment", href: null },
+        ],
+      }),
+    );
+
+    expect(wrapper.text()).toContain("Ana respondió a tu comentario");
+    expect(wrapper.text()).toContain("Esta conversación ya no está disponible.");
+    expect(wrapper.find("#notification-link-17").exists()).toBe(false);
+    expect(wrapper.find('button[aria-label="Marcar como leído"]').exists()).toBe(true);
+
+    await wrapper.get('button[aria-label="Marcar como leído"]').trigger("click");
+
+    expect(pushEvent).toHaveBeenCalledWith(
+      "mark_notification_read",
+      { id: 17 },
+      expect.any(Function),
+    );
+  });
+
+  it("marks a conversation read even while an earlier inbox request is pending", async () => {
+    const href = "/workspaces/team/projects/story/flows/42?thread=9";
+    const initialState = center({
+      items: [{ ...unreadNotification, kind: "comment_mention", entityType: "comment", href }],
+    });
+    const { live, wrapper, pushEvent } = await mountBell(initialState);
+
+    await buttonWithText(wrapper, "Unread").trigger("click");
+    const link = wrapper.get("#notification-link-17");
+    link.element.addEventListener("click", (event) => event.preventDefault(), { once: true });
+    await link.trigger("click");
+
+    expect(pushEvent.mock.calls.map((call) => call[0])).toEqual([
+      "notification_filter_changed",
+      "mark_notification_read",
+    ]);
+
+    replyTo(live, 1, center({ filter: "unread", items: [], unreadCount: 0 }));
+    replyTo(live, 0, { ...initialState, filter: "unread" });
+    await nextTick();
+
+    expect(wrapper.find("#notification-link-17").exists()).toBe(false);
+    expect(wrapper.text()).toContain("No unread notifications");
   });
 
   it("requests and applies the unread filter", async () => {
