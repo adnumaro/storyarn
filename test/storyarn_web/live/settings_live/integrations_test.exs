@@ -8,7 +8,6 @@ defmodule StoryarnWeb.SettingsLive.IntegrationsTest do
   alias Storyarn.AI
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Workspace
-  alias StoryarnWeb.UserAuth
 
   @stub StoryarnTest.AI.OpenAI
 
@@ -30,15 +29,26 @@ defmodule StoryarnWeb.SettingsLive.IntegrationsTest do
              |> live(~p"/users/settings/integrations")
   end
 
-  test "requires fresh sudo authentication before exposing credential summaries", %{conn: conn} do
+  test "mounts locked without credential summaries until the password is confirmed", %{conn: conn} do
     user = with_ai_flag(user_fixture())
     stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
     conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
 
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/users/settings/integrations")
+    {:ok, view, _html} = live(conn, ~p"/users/settings/integrations")
 
-    assert to == UserAuth.sudo_confirmation_path(~p"/users/settings/integrations")
+    vue = get_vue(view)
+    assert vue.props["sudo-active"] == false
+    assert vue.props["cards"] == []
+    assert vue.props["reauth"]["returnTo"] == ~p"/users/settings/integrations"
+
+    render_click(view, "confirm_access", %{"password" => "wrong password"})
+    assert get_vue(view).props["reauth"]["sudoHandoff"] == nil
+
+    render_click(view, "confirm_access", %{"password" => valid_user_password()})
+
+    reauth = get_vue(view).props["reauth"]
+    assert is_binary(reauth["sudoHandoff"])
+    assert reauth["triggerSubmit"] == true
   end
 
   test "renders a compact read-only provider catalog with detail destinations", %{conn: conn} do

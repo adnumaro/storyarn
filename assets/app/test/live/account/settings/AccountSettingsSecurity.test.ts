@@ -10,6 +10,13 @@ function mountSecurity(props: Record<string, unknown> = {}) {
       currentEmail: "ada@example.com",
       triggerSubmit: false,
       passwordAction: "/users/update-password",
+      reauth: {
+        confirmAction: "/users/confirm-access",
+        csrfToken: "",
+        returnTo: "/users/settings/security",
+        sudoHandoff: null,
+        triggerSubmit: false,
+      },
       passwordForm: {
         name: "user",
         values: {
@@ -32,18 +39,34 @@ function mountSecurity(props: Record<string, unknown> = {}) {
   });
 }
 
+async function openPasswordForm(wrapper: ReturnType<typeof mountSecurity>) {
+  await wrapper.get("#security-change-password").trigger("click");
+  await nextTick();
+}
+
 describe("AccountSettingsSecurity", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
 
-  it("does not show untouched password errors on initial render", () => {
+  it("reveals the password fields on demand without untouched errors", async () => {
     const wrapper = mountSecurity();
+
+    expect(wrapper.find("#security-password").exists()).toBe(false);
+
+    await openPasswordForm(wrapper);
     const passwordInput = wrapper.get("#security-password");
 
     expect(wrapper.text()).not.toContain("can't be blank");
     expect(passwordInput.attributes("aria-invalid")).not.toBe("true");
     expect(passwordInput.attributes("aria-describedby")).toBeUndefined();
+  });
+
+  it("locks the password section until the user re-authenticates", () => {
+    const wrapper = mountSecurity({ sudoActive: false });
+
+    expect(wrapper.find('[data-testid="settings-reauth"]').exists()).toBe(true);
+    expect(wrapper.get("#security-change-password").attributes("disabled")).toBeDefined();
   });
 
   it("submits the hidden password form with the updated password fields", async () => {
@@ -65,6 +88,7 @@ describe("AccountSettingsSecurity", () => {
     ).toBe(false);
     expect(hiddenForm.get('input[name="_csrf_token"]').attributes("name")).toBe("_csrf_token");
 
+    await openPasswordForm(wrapper);
     await wrapper.get("#security-password").setValue("new-password-123");
     await wrapper.get("#security-password-confirmation").setValue("new-password-123");
     await wrapper.setProps({

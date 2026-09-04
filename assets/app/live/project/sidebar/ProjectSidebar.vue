@@ -85,7 +85,7 @@ const settingsLinks: SidebarLink[] = [
   },
   {
     key: "export-import",
-    href: `${projectBaseUrl}/settings/export-import`,
+    href: `${projectBaseUrl}/settings/export`,
     icon: UploadCloud,
     labelKey: "layout.project_sidebar.export_import",
   },

@@ -1,21 +1,23 @@
 <script setup lang="ts">
 import { useLiveUpload, type UploadConfig } from "live_vue";
-import { AlertTriangle, CheckCircle, Clock3, Eye, Lock, ShieldCheck, Upload } from "@lucide/vue";
+import {
+  AlertTriangle,
+  Check,
+  CheckCircle,
+  Clock3,
+  FileText,
+  Lock,
+  ShieldCheck,
+  Upload,
+} from "@lucide/vue";
 import { computed, ref, toRef, watch } from "vue";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import { SettingsRow, SettingsSection } from "@components/settings";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
-import ConfirmDialog from "@components/ConfirmDialog.vue";
 import { Label } from "@components/ui/label";
-import LiveLink from "@components/navigation/LiveLink.vue";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@components/ui/table";
 import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
 import ImportCompatibilitySummary from "@modules/projects/settings/export-import/components/ImportCompatibilitySummary.vue";
@@ -170,6 +172,13 @@ const upload = uploadConfig
       },
     )
   : null;
+
+const dragging = ref(false);
+
+function onDrop(event: DragEvent) {
+  dragging.value = false;
+  if (event.dataTransfer && upload) upload.addFiles(event.dataTransfer);
+}
 
 const strategyOptions = computed(() => [
   {
@@ -429,6 +438,31 @@ function formatFileSize(bytes: number) {
   return `${bytes} B`;
 }
 
+// ---------------------------------------------------------------------------
+// Step header: Upload → Review → Import
+// ---------------------------------------------------------------------------
+type StepKey = "upload" | "review" | "import";
+
+const STEPS: StepKey[] = ["upload", "review", "import"];
+
+const currentStepIndex = computed(() => {
+  switch (importState.step) {
+    case "upload":
+      return 0;
+    case "preview":
+      return 1;
+    default:
+      return 2;
+  }
+});
+
+function stepState(index: number): "done" | "current" | "todo" {
+  if (importState.step === "done" && index === 2) return "done";
+  if (index < currentStepIndex.value) return "done";
+  if (index === currentStepIndex.value) return "current";
+  return "todo";
+}
+
 watch(
   () =>
     [
@@ -461,222 +495,269 @@ watch(replaceDialogOpen, (open) => {
 </script>
 
 <template>
-  <section class="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-    <div class="mb-5 space-y-1">
-      <h2 class="text-lg font-semibold">{{ $t("project_settings.import.title") }}</h2>
-      <p class="text-sm text-muted-foreground">
-        {{ $t("project_settings.import.description") }}
-      </p>
-    </div>
+  <div id="import-workspace" class="flex flex-col gap-8" :data-step="importState.step">
+    <ol class="flex items-center gap-2 text-[13px]" data-testid="import-steps">
+      <template v-for="(step, index) in STEPS" :key="step">
+        <li
+          class="flex items-center gap-2"
+          :class="stepState(index) === 'todo' ? 'text-muted-foreground' : ''"
+          :data-step-state="stepState(index)"
+          :aria-current="stepState(index) === 'current' ? 'step' : undefined"
+        >
+          <span
+            :class="[
+              'inline-flex size-[22px] items-center justify-center rounded-full text-xs',
+              stepState(index) === 'todo'
+                ? 'border border-border'
+                : 'bg-primary font-semibold text-primary-foreground',
+            ]"
+          >
+            <Check v-if="stepState(index) === 'done'" class="size-3" aria-hidden="true" />
+            <template v-else>{{ index + 1 }}</template>
+          </span>
+          <span :class="stepState(index) === 'current' ? 'font-medium' : ''">
+            {{ t(`project_settings.import.steps.${step}`) }}
+          </span>
+        </li>
+        <li v-if="index < STEPS.length - 1" class="h-px flex-1 bg-border" aria-hidden="true" />
+      </template>
+    </ol>
 
     <template v-if="canImport">
       <!-- Step: Upload -->
-      <div v-if="importState.step === 'upload'" class="space-y-3">
-        <div class="space-y-2">
-          <Label>{{ $t("project_settings.import.select_file") }}</Label>
-          <Button
-            id="yarn-import-file-picker"
-            variant="outline"
-            size="sm"
-            class="transition-transform hover:-translate-y-0.5"
-            @click="upload?.showFilePicker()"
-          >
-            {{ $t("project_settings.import.choose_file") }}
-          </Button>
-          <p class="text-xs text-muted-foreground">
-            {{ $t("project_settings.import.file_help") }}
-          </p>
-        </div>
-
-        <div v-for="entry in upload?.entries.value" :key="entry.ref" class="text-sm">
-          <span>{{ entry.client_name }}</span>
-          <span class="text-muted-foreground"> ({{ formatFileSize(entry.client_size) }}) </span>
-          <div v-for="(err, ei) in entry.errors" :key="ei" class="text-sm text-destructive">
-            {{ err }}
+      <SettingsSection
+        v-if="importState.step === 'upload'"
+        :title="t('project_settings.import.source_section')"
+      >
+        <div
+          :class="[
+            'm-4 flex flex-col items-center gap-1.5 rounded-md border border-dashed px-4 py-8 text-center transition-colors',
+            dragging ? 'border-primary bg-primary/5' : 'border-input',
+          ]"
+          data-testid="yarn-import-dropzone"
+          @dragover.prevent="dragging = true"
+          @dragleave="dragging = false"
+          @drop.prevent="onDrop"
+        >
+          <Upload class="size-[22px] text-muted-foreground" aria-hidden="true" />
+          <div class="mt-1.5 font-medium">{{ t("project_settings.import.dropzone_title") }}</div>
+          <div class="text-[13px] text-muted-foreground">
+            {{ t("project_settings.import.dropzone_hint") }}
+          </div>
+          <div class="mt-2.5">
+            <Button
+              id="yarn-import-file-picker"
+              type="button"
+              variant="outline"
+              size="sm"
+              @click="upload?.showFilePicker()"
+            >
+              {{ t("project_settings.import.choose_file") }}
+            </Button>
           </div>
         </div>
 
-        <Button
-          id="yarn-import-preview"
-          size="sm"
-          :disabled="!hasUploadEntries"
-          @click="handleUploadSubmit"
-        >
-          <Eye class="size-4" />
-          {{ $t("project_settings.import.upload_preview") }}
-        </Button>
-      </div>
-
-      <!-- Step: Preview -->
-      <div v-if="importState.step === 'preview'" class="space-y-4">
-        <h3 class="text-base font-medium">{{ $t("project_settings.import.preview_title") }}</h3>
-
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
-              <TableHead class="text-right">{{ $t("project_settings.import.th_count") }}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="row in entityCountRows" :key="row.entity">
-              <TableCell class="capitalize">{{ row.entity }}</TableCell>
-              <TableCell class="text-right">{{ row.count }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-
-        <ImportCompatibilitySummary
-          :summary="review.issueSummary.value"
-          :warning-codes="importState.warningCodes ?? []"
-        />
-
         <div
-          v-if="importState.replaceEligible"
-          data-testid="yarn-import-mode-selector"
-          class="space-y-3 rounded-xl border border-border bg-muted/30 p-4"
+          v-for="entry in upload?.entries.value"
+          :key="entry.ref"
+          class="grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]"
+          data-testid="yarn-import-selected-file"
         >
-          <div class="space-y-1">
-            <Label id="yarn-import-mode-label" class="text-sm font-medium">
-              {{ $t("project_settings.import.mode_title") }}
-            </Label>
-            <p class="text-xs text-muted-foreground">
-              {{ $t("project_settings.import.mode_description") }}
-            </p>
-          </div>
-
-          <RadioGroup
-            :model-value="currentImportMode"
-            aria-labelledby="yarn-import-mode-label"
-            class="grid gap-2"
-            @update:model-value="setImportMode"
-          >
-            <label
-              data-testid="yarn-import-mode-additive"
-              class="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-background p-3 transition-colors hover:border-primary/40"
-            >
-              <RadioGroupItem value="additive" class="mt-0.5" />
-              <span class="space-y-1">
-                <span class="block text-sm font-medium">
-                  {{ $t("project_settings.import.mode_additive") }}
-                </span>
-                <span class="block text-xs leading-5 text-muted-foreground">
-                  {{ $t("project_settings.import.mode_additive_description") }}
-                </span>
+          <div class="flex min-w-0 items-center gap-3">
+            <FileText class="size-4 shrink-0 text-muted-foreground" aria-hidden="true" />
+            <div class="min-w-0">
+              <span class="block truncate font-medium">{{ entry.client_name }}</span>
+              <span class="text-[13px] text-muted-foreground">
+                {{ formatFileSize(entry.client_size) }}
               </span>
-            </label>
-
-            <label
-              data-testid="yarn-import-mode-replace"
-              class="flex items-start gap-3 rounded-lg border bg-background p-3 transition-colors"
-              :class="[
-                replacementEligible
-                  ? 'cursor-pointer hover:border-destructive/50'
-                  : 'cursor-not-allowed opacity-60',
-                replacementSelected && replacementEligible
-                  ? 'border-destructive/50 bg-destructive/5'
-                  : 'border-border',
-              ]"
-            >
-              <RadioGroupItem
-                value="replace_project"
-                class="mt-0.5"
-                :disabled="!replacementEligible"
-                aria-describedby="yarn-import-mode-replace-description"
-              />
-              <span class="space-y-1">
-                <span class="flex items-center gap-1.5 text-sm font-medium">
-                  <ShieldCheck class="size-4 text-destructive" aria-hidden="true" />
-                  {{ $t("project_settings.import.mode_replace") }}
-                </span>
-                <span
-                  id="yarn-import-mode-replace-description"
-                  class="block text-xs leading-5 text-muted-foreground"
-                >
-                  {{ $t("project_settings.import.mode_replace_description") }}
-                </span>
-              </span>
-            </label>
-          </RadioGroup>
-        </div>
-
-        <div
-          v-if="mainFlowOutcomeKey"
-          data-testid="yarn-import-main-flow-outcome"
-          role="status"
-          aria-live="polite"
-          aria-atomic="true"
-          class="rounded-xl border border-border bg-muted/30 p-4"
-        >
-          <p class="text-sm font-medium">
-            {{ $t("project_settings.import.main_flow_title") }}
-          </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            {{ $t(mainFlowOutcomeKey) }}
-          </p>
-          <p class="mt-1 text-xs leading-5 text-muted-foreground">
-            {{ $t("project_settings.import.main_flow_rechecked") }}
-          </p>
-        </div>
-
-        <YarnSpeakerReview :review="review" />
-
-        <!-- Conflicts -->
-        <div v-if="showConflictStrategies" class="space-y-2">
-          <template v-if="importState.preview?.has_conflicts">
-            <h4 class="text-sm font-medium text-yellow-600 dark:text-yellow-500">
-              {{ $t("project_settings.import.conflicts_title") }}
-            </h4>
-            <div
-              v-for="([type, shortcuts], ci) in Object.entries(importState.preview.conflicts ?? {})"
-              :key="ci"
-              class="text-sm"
-            >
-              <span class="font-medium capitalize">{{ type }}:</span>
-              <span class="text-muted-foreground">{{ shortcuts.join(", ") }}</span>
             </div>
-          </template>
+          </div>
+          <div v-if="entry.errors.length" class="text-[13px] text-destructive">
+            <div v-for="(err, ei) in entry.errors" :key="ei">{{ err }}</div>
+          </div>
+        </div>
 
-          <div class="space-y-2">
-            <Label id="yarn-import-conflict-strategy-label">
-              {{ $t("project_settings.import.conflict_strategy") }}
-            </Label>
+        <SettingsRow :label="t('project_settings.import.upload_footer')" class="text-[13px]">
+          <Button
+            id="yarn-import-preview"
+            type="button"
+            size="sm"
+            :disabled="!hasUploadEntries"
+            @click="handleUploadSubmit"
+          >
+            {{ t("project_settings.import.upload_preview") }}
+          </Button>
+        </SettingsRow>
+      </SettingsSection>
+
+      <!-- Step: Review -->
+      <template v-if="importState.step === 'preview'">
+        <SettingsSection
+          :title="t('project_settings.import.review_section')"
+          :hint="t('project_settings.import.review_section_hint')"
+        >
+          <SettingsRow v-for="row in entityCountRows" :key="row.entity" :label="row.entity">
+            <span class="tabular-nums">{{ row.count }}</span>
+          </SettingsRow>
+
+          <div class="px-4 py-3">
+            <ImportCompatibilitySummary
+              :summary="review.issueSummary.value"
+              :warning-codes="importState.warningCodes ?? []"
+            />
+          </div>
+        </SettingsSection>
+
+        <SettingsSection
+          v-if="importState.replaceEligible || mainFlowOutcomeKey || showConflictStrategies"
+          :title="t('project_settings.import.options_section')"
+        >
+          <div
+            v-if="importState.replaceEligible"
+            data-testid="yarn-import-mode-selector"
+            class="flex flex-col gap-3 px-4 py-3.5"
+          >
+            <div class="flex flex-col gap-0.5">
+              <Label id="yarn-import-mode-label" class="font-medium">
+                {{ t("project_settings.import.mode_title") }}
+              </Label>
+              <p class="text-[13px] text-muted-foreground">
+                {{ t("project_settings.import.mode_description") }}
+              </p>
+            </div>
+
             <RadioGroup
-              :model-value="importState.conflictStrategy"
-              aria-labelledby="yarn-import-conflict-strategy-label"
-              class="flex flex-col gap-1"
-              @update:model-value="setStrategy"
+              :model-value="currentImportMode"
+              aria-labelledby="yarn-import-mode-label"
+              class="grid gap-2"
+              @update:model-value="setImportMode"
             >
               <label
-                v-for="opt in strategyOptions"
-                :key="opt.value"
-                :data-testid="`yarn-import-strategy-${opt.value}`"
-                class="flex items-start gap-2 py-1"
-                :class="opt.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                data-testid="yarn-import-mode-additive"
+                class="flex cursor-pointer items-start gap-3 rounded-md border border-border bg-background p-3 transition-colors hover:border-primary/40"
+              >
+                <RadioGroupItem value="additive" class="mt-0.5" />
+                <span class="space-y-1">
+                  <span class="block text-sm font-medium">
+                    {{ t("project_settings.import.mode_additive") }}
+                  </span>
+                  <span class="block text-[13px] leading-5 text-muted-foreground">
+                    {{ t("project_settings.import.mode_additive_description") }}
+                  </span>
+                </span>
+              </label>
+
+              <label
+                data-testid="yarn-import-mode-replace"
+                class="flex items-start gap-3 rounded-md border bg-background p-3 transition-colors"
+                :class="[
+                  replacementEligible
+                    ? 'cursor-pointer hover:border-destructive/50'
+                    : 'cursor-not-allowed opacity-60',
+                  replacementSelected && replacementEligible
+                    ? 'border-destructive/50 bg-destructive/5'
+                    : 'border-border',
+                ]"
               >
                 <RadioGroupItem
-                  :value="opt.value"
+                  value="replace_project"
                   class="mt-0.5"
-                  :disabled="opt.disabled"
-                  :aria-describedby="
-                    opt.description ? `yarn-import-strategy-${opt.value}-description` : undefined
-                  "
+                  :disabled="!replacementEligible"
+                  aria-describedby="yarn-import-mode-replace-description"
                 />
-                <span class="space-y-0.5 text-sm">
-                  <span class="block">{{ opt.label }}</span>
+                <span class="space-y-1">
+                  <span class="flex items-center gap-1.5 text-sm font-medium">
+                    <ShieldCheck class="size-4 text-destructive" aria-hidden="true" />
+                    {{ t("project_settings.import.mode_replace") }}
+                  </span>
                   <span
-                    v-if="opt.description"
-                    :id="`yarn-import-strategy-${opt.value}-description`"
-                    data-testid="yarn-import-strategy-overwrite-unavailable"
-                    class="block text-xs leading-5 text-muted-foreground"
+                    id="yarn-import-mode-replace-description"
+                    class="block text-[13px] leading-5 text-muted-foreground"
                   >
-                    {{ opt.description }}
+                    {{ t("project_settings.import.mode_replace_description") }}
                   </span>
                 </span>
               </label>
             </RadioGroup>
           </div>
-        </div>
+
+          <div
+            v-if="mainFlowOutcomeKey"
+            data-testid="yarn-import-main-flow-outcome"
+            role="status"
+            aria-live="polite"
+            aria-atomic="true"
+            class="px-4 py-3.5"
+          >
+            <p class="font-medium">{{ t("project_settings.import.main_flow_title") }}</p>
+            <p class="mt-1 text-[13px] leading-5 text-muted-foreground">
+              {{ t(mainFlowOutcomeKey) }}
+            </p>
+            <p class="mt-1 text-[13px] leading-5 text-muted-foreground">
+              {{ t("project_settings.import.main_flow_rechecked") }}
+            </p>
+          </div>
+
+          <div v-if="showConflictStrategies" class="flex flex-col gap-3 px-4 py-3.5">
+            <template v-if="importState.preview?.has_conflicts">
+              <p class="font-medium text-amber-700 dark:text-amber-300">
+                {{ t("project_settings.import.conflicts_title") }}
+              </p>
+              <div
+                v-for="([type, shortcuts], ci) in Object.entries(
+                  importState.preview.conflicts ?? {},
+                )"
+                :key="ci"
+                class="text-[13px]"
+              >
+                <span class="font-medium capitalize">{{ type }}:</span>
+                <span class="text-muted-foreground">{{ shortcuts.join(", ") }}</span>
+              </div>
+            </template>
+
+            <div class="flex flex-col gap-2">
+              <Label id="yarn-import-conflict-strategy-label" class="font-medium">
+                {{ t("project_settings.import.conflict_strategy") }}
+              </Label>
+              <RadioGroup
+                :model-value="importState.conflictStrategy"
+                aria-labelledby="yarn-import-conflict-strategy-label"
+                class="flex flex-col gap-1"
+                @update:model-value="setStrategy"
+              >
+                <label
+                  v-for="opt in strategyOptions"
+                  :key="opt.value"
+                  :data-testid="`yarn-import-strategy-${opt.value}`"
+                  class="flex items-start gap-2 py-1"
+                  :class="opt.disabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'"
+                >
+                  <RadioGroupItem
+                    :value="opt.value"
+                    class="mt-0.5"
+                    :disabled="opt.disabled"
+                    :aria-describedby="
+                      opt.description ? `yarn-import-strategy-${opt.value}-description` : undefined
+                    "
+                  />
+                  <span class="space-y-0.5 text-sm">
+                    <span class="block">{{ opt.label }}</span>
+                    <span
+                      v-if="opt.description"
+                      :id="`yarn-import-strategy-${opt.value}-description`"
+                      data-testid="yarn-import-strategy-overwrite-unavailable"
+                      class="block text-[13px] leading-5 text-muted-foreground"
+                    >
+                      {{ opt.description }}
+                    </span>
+                  </span>
+                </label>
+              </RadioGroup>
+            </div>
+          </div>
+        </SettingsSection>
+
+        <YarnSpeakerReview :review="review" />
 
         <label
           v-if="showAcknowledgement"
@@ -691,26 +772,27 @@ watch(replaceDialogOpen, (open) => {
             @update:model-value="review.setAcknowledged"
           />
           <span class="text-sm leading-5">
-            <span>{{ $t("project_settings.import.review_acknowledgement") }}</span>
+            <span>{{ t("project_settings.import.review_acknowledgement") }}</span>
             <span v-if="review.hasCompatibilityWarnings.value" class="mt-1 block font-medium">
-              {{ $t("project_settings.import.compatibility_acknowledgement") }}
+              {{ t("project_settings.import.compatibility_acknowledgement") }}
             </span>
           </span>
         </label>
 
-        <div class="flex items-center gap-2">
+        <div class="flex flex-wrap items-center gap-2">
           <Button
             id="yarn-import-validate"
+            type="button"
             variant="outline"
             size="sm"
             :disabled="!review.canValidate.value || review.pendingOperation.value !== null"
             @click="review.validate"
           >
-            <Eye class="size-4" />
-            {{ $t("project_settings.import.review_validate") }}
+            {{ t("project_settings.import.review_validate") }}
           </Button>
           <Button
             id="yarn-import-confirm"
+            type="button"
             size="sm"
             :disabled="
               !review.canExecute.value ||
@@ -719,17 +801,23 @@ watch(replaceDialogOpen, (open) => {
             "
             @click="startImport"
           >
-            <Upload class="size-4" />
+            <Upload class="size-4" aria-hidden="true" />
             {{
-              $t(
+              t(
                 replacementSelected
                   ? "project_settings.import.replace_button"
                   : "project_settings.import.import_button",
               )
             }}
           </Button>
-          <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
-            {{ $t("project_settings.import.cancel") }}
+          <Button
+            data-testid="yarn-import-reset"
+            type="button"
+            variant="ghost"
+            size="sm"
+            @click="resetImport"
+          >
+            {{ t("project_settings.import.cancel") }}
           </Button>
         </div>
 
@@ -739,7 +827,10 @@ watch(replaceDialogOpen, (open) => {
           role="alert"
           class="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground"
         >
-          <AlertTriangle class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400" />
+          <AlertTriangle
+            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden="true"
+          />
           <span>{{ preflightErrorMessage }}</span>
         </div>
 
@@ -749,61 +840,67 @@ watch(replaceDialogOpen, (open) => {
           role="alert"
           class="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"
         >
-          <AlertTriangle class="mt-0.5 size-4 shrink-0" />
+          <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>{{ reviewErrorMessage }}</span>
         </div>
-      </div>
+      </template>
 
       <!-- Step: Queued / running -->
-      <div v-if="importState.step === 'queued'" class="space-y-3">
+      <SettingsSection
+        v-if="importState.step === 'queued'"
+        :title="t('project_settings.import.status_section')"
+      >
         <div
           v-if="awaitingSnapshot"
-          class="flex items-start gap-3 rounded-lg border border-amber-500/25 bg-amber-500/10 p-3 text-sm text-foreground"
+          class="flex items-start gap-3 px-4 py-3.5"
           data-testid="yarn-import-awaiting-snapshot"
         >
-          <ShieldCheck class="size-5 shrink-0 text-amber-600 dark:text-amber-400" />
+          <ShieldCheck
+            class="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-400"
+            aria-hidden="true"
+          />
           <div>
-            <p class="font-medium">{{ $t("project_settings.import.snapshot_preparing") }}</p>
-            <p class="text-xs leading-5 opacity-75">
-              {{ $t("project_settings.import.snapshot_preparing_description") }}
+            <p class="font-medium">{{ t("project_settings.import.snapshot_preparing") }}</p>
+            <p class="text-[13px] leading-5 text-muted-foreground">
+              {{ t("project_settings.import.snapshot_preparing_description") }}
             </p>
           </div>
         </div>
 
-        <div
-          v-else
-          class="flex items-start gap-3 rounded-lg border border-sky-500/25 bg-sky-500/10 p-3 text-sm text-foreground"
-          data-testid="yarn-import-processing"
-        >
-          <Clock3 class="size-5 shrink-0 animate-pulse" />
+        <div v-else class="flex items-start gap-3 px-4 py-3.5" data-testid="yarn-import-processing">
+          <Clock3 class="mt-0.5 size-4 shrink-0 animate-pulse text-primary" aria-hidden="true" />
           <div>
-            <p class="font-medium">{{ $t("project_settings.import.processing") }}</p>
-            <p class="text-xs opacity-75">
-              {{ $t("project_settings.import.processing_description") }}
+            <p class="font-medium">{{ t("project_settings.import.processing") }}</p>
+            <p class="text-[13px] leading-5 text-muted-foreground">
+              {{ t("project_settings.import.processing_description") }}
             </p>
           </div>
         </div>
 
-        <Button
-          v-if="canReset"
-          data-testid="yarn-import-reset"
-          variant="ghost"
-          size="sm"
-          @click="resetImport"
-        >
-          {{ $t("project_settings.import.cancel") }}
-        </Button>
-      </div>
+        <template v-if="canReset" #footer>
+          <Button
+            data-testid="yarn-import-reset"
+            type="button"
+            variant="ghost"
+            size="sm"
+            class="h-auto p-0 text-xs"
+            @click="resetImport"
+          >
+            {{ t("project_settings.import.cancel") }}
+          </Button>
+        </template>
+      </SettingsSection>
 
       <!-- Step: Done -->
-      <div v-if="importState.step === 'done'" class="space-y-3">
-        <div
-          class="flex items-center gap-2 rounded-md border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200"
-        >
-          <CheckCircle class="size-5 shrink-0" />
-          <span>
+      <SettingsSection
+        v-if="importState.step === 'done'"
+        :title="t('project_settings.import.result_section')"
+      >
+        <div class="flex items-start gap-3 px-4 py-3.5 text-emerald-700 dark:text-emerald-300">
+          <CheckCircle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          <span class="text-sm">
             {{
-              $t(
+              t(
                 replacementSelected
                   ? "project_settings.import.replace_success"
                   : "project_settings.import.success",
@@ -812,82 +909,90 @@ watch(replaceDialogOpen, (open) => {
           </span>
         </div>
 
-        <LiveLink
-          v-if="recoverySnapshotUrl"
-          :to="recoverySnapshotUrl"
-          data-testid="yarn-import-recovery-snapshot-link"
-          class="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-        >
-          <ShieldCheck class="size-4" />
-          {{ $t("project_settings.import.recovery_snapshot_link") }}
-        </LiveLink>
+        <SettingsRow v-for="row in entityCountRows" :key="row.entity" :label="row.entity">
+          <span class="tabular-nums">{{ row.count }}</span>
+        </SettingsRow>
 
-        <Table v-if="entityCountRows.length">
-          <TableHeader>
-            <TableRow>
-              <TableHead>{{ $t("project_settings.import.th_entity") }}</TableHead>
-              <TableHead class="text-right">
-                {{ $t("project_settings.import.th_imported") }}
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="row in entityCountRows" :key="row.entity">
-              <TableCell class="capitalize">{{ row.entity }}</TableCell>
-              <TableCell class="text-right">{{ row.count }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-
-        <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
-          {{ $t("project_settings.import.import_another") }}
-        </Button>
-      </div>
+        <template #footer>
+          <span class="flex flex-wrap items-center gap-3">
+            <LiveLink
+              v-if="recoverySnapshotUrl"
+              :to="recoverySnapshotUrl"
+              data-testid="yarn-import-recovery-snapshot-link"
+              class="inline-flex items-center gap-1.5 font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              <ShieldCheck class="size-3.5" aria-hidden="true" />
+              {{ t("project_settings.import.recovery_snapshot_link") }}
+            </LiveLink>
+            <Button
+              data-testid="yarn-import-reset"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="h-auto p-0 text-xs"
+              @click="resetImport"
+            >
+              {{ t("project_settings.import.import_another") }}
+            </Button>
+          </span>
+        </template>
+      </SettingsSection>
 
       <!-- Step: Error -->
-      <div v-if="importState.step === 'error'" class="space-y-3">
+      <SettingsSection
+        v-if="importState.step === 'error'"
+        :title="t('project_settings.import.result_section')"
+      >
         <div
           data-testid="yarn-import-terminal-error"
-          class="flex items-center gap-2 rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+          class="flex items-start gap-3 px-4 py-3.5 text-sm text-destructive"
         >
-          <AlertTriangle class="size-5 shrink-0" />
+          <AlertTriangle class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
           <span>{{ terminalErrorMessage }}</span>
         </div>
 
-        <LiveLink
-          v-if="recoverySnapshotUrl"
-          :to="recoverySnapshotUrl"
-          data-testid="yarn-import-recovery-snapshot-link"
-          class="inline-flex items-center gap-2 text-sm font-medium text-primary transition-colors hover:text-primary/80"
-        >
-          <ShieldCheck class="size-4" />
-          {{ $t("project_settings.import.recovery_snapshot_link") }}
-        </LiveLink>
-
-        <Button data-testid="yarn-import-reset" variant="ghost" size="sm" @click="resetImport">
-          {{ $t("project_settings.import.try_again") }}
-        </Button>
-      </div>
+        <template #footer>
+          <span class="flex flex-wrap items-center gap-3">
+            <LiveLink
+              v-if="recoverySnapshotUrl"
+              :to="recoverySnapshotUrl"
+              data-testid="yarn-import-recovery-snapshot-link"
+              class="inline-flex items-center gap-1.5 font-medium text-primary transition-colors hover:text-primary/80"
+            >
+              <ShieldCheck class="size-3.5" aria-hidden="true" />
+              {{ t("project_settings.import.recovery_snapshot_link") }}
+            </LiveLink>
+            <Button
+              data-testid="yarn-import-reset"
+              type="button"
+              variant="ghost"
+              size="sm"
+              class="h-auto p-0 text-xs"
+              @click="resetImport"
+            >
+              {{ t("project_settings.import.try_again") }}
+            </Button>
+          </span>
+        </template>
+      </SettingsSection>
     </template>
 
-    <template v-else>
-      <div
-        class="flex items-center gap-2 rounded-md border bg-muted p-3 text-sm text-muted-foreground"
-      >
-        <Lock class="size-4 shrink-0" />
-        <span>{{ $t("project_settings.import.no_permission") }}</span>
+    <SettingsSection v-else :title="t('project_settings.import.locked_section')" locked>
+      <div class="flex items-start gap-3 px-4 py-3.5 text-sm text-muted-foreground">
+        <Lock class="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+        <span>{{ t("project_settings.import.no_permission") }}</span>
       </div>
-    </template>
+    </SettingsSection>
 
     <ConfirmDialog
       v-model:open="replaceDialogOpen"
-      :title="$t('project_settings.import.replace_confirm_title')"
-      :description="$t('project_settings.import.replace_confirm_description')"
-      :confirm-text="$t('project_settings.import.replace_confirm_action')"
-      :cancel-text="$t('project_settings.import.replace_confirm_cancel')"
+      :title="t('project_settings.import.replace_confirm_title')"
+      :description="t('project_settings.import.replace_confirm_description')"
+      :confirm-text="t('project_settings.import.replace_confirm_action')"
+      :cancel-text="t('project_settings.import.replace_confirm_cancel')"
       variant="destructive"
       :icon="AlertTriangle"
       @confirm="confirmReplacement"
     />
-  </section>
+  </div>
 </template>

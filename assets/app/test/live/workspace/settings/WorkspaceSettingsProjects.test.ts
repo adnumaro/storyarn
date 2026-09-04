@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { computed, ref } from "vue";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import WorkspaceSettingsImports from "../../../../live/workspace/settings/WorkspaceSettingsImports.vue";
+import WorkspaceSettingsProjects from "../../../../live/workspace/settings/WorkspaceSettingsProjects.vue";
 import { createMockLive, setTestLocale } from "../../../setup";
 
 const { mockUseLiveUpload } = vi.hoisted(() => ({ mockUseLiveUpload: vi.fn() }));
@@ -25,6 +25,7 @@ const uploadConfig = {
 
 const baseProps = {
   imports: [],
+  deletedProjects: [],
   quotaRejection: null,
   requestErrorCode: null,
   uploadErrorCode: null,
@@ -50,7 +51,7 @@ function configureUpload(initialEntries: FakeUploadEntry[] = []) {
 }
 
 function mountImports(props: Record<string, unknown> = {}) {
-  return mount(WorkspaceSettingsImports, {
+  return mount(WorkspaceSettingsProjects, {
     props: { ...baseProps, ...props },
     global: {
       provide: { _live_vue: mockLive },
@@ -69,7 +70,7 @@ function mountImports(props: Record<string, unknown> = {}) {
   });
 }
 
-describe("WorkspaceSettingsImports", () => {
+describe("WorkspaceSettingsProjects", () => {
   beforeEach(() => {
     setTestLocale("en");
     vi.clearAllMocks();

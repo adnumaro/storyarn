@@ -623,9 +623,18 @@ function prepareOperationForQueryChange(): boolean {
   return true;
 }
 
+// Chrome outside the palette (the settings rail search box) asks it to open
+// through this window event instead of reaching into its state.
+function handleOpenRequest(): void {
+  if (!open.value && !anotherDialogOpen()) openPalette();
+}
+
+window.addEventListener("storyarn:open-palette", handleOpenRequest);
+
 onUnmounted(() => {
   if (navDebounce) clearTimeout(navDebounce);
   clearMutationTimeout();
+  window.removeEventListener("storyarn:open-palette", handleOpenRequest);
 });
 
 function openPalette(): void {

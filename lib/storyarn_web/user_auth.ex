@@ -293,6 +293,29 @@ defmodule StoryarnWeb.UserAuth do
     end
   end
 
+  # Loads the sudo state without redirecting, so a settings page can render its
+  # sensitive sections locked and re-authenticate in place. Assigns
+  # `sudo_active`, the validated `sudo_grant` (or `nil`) and the
+  # `sudo_session_token` the page needs to authorize events and to issue a
+  # handoff from its own re-authentication banner.
+  def on_mount(:load_sudo_state, params, session, socket) do
+    socket = mount_current_scope(socket, session)
+
+    user = socket.assigns.current_scope.user
+    session_token = session["user_token"]
+
+    assigns =
+      case authorize_sudo(user, session_token, params[@sudo_grant_param]) do
+        {:ok, valid_grant} ->
+          [sudo_active: true, sudo_grant: valid_grant, sudo_session_token: session_token]
+
+        :error ->
+          [sudo_active: false, sudo_grant: nil, sudo_session_token: session_token]
+      end
+
+    {:cont, Phoenix.Component.assign(socket, assigns)}
+  end
+
   # Loads workspaces for the current user into socket assigns.
   # This is used to populate the sidebar with the user's workspaces.
   # Should be called after mount_current_scope.

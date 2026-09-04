@@ -91,7 +91,8 @@ const settingsSections: Array<{ key: string; suffix: string; icon: PaletteComman
   { key: "snapshots", suffix: "/snapshots", icon: Settings },
   { key: "version_control", suffix: "/version-control", icon: Settings },
   { key: "usage_limits", suffix: "/usage-limits", icon: Settings },
-  { key: "import_export", suffix: "/export-import", icon: Settings },
+  { key: "export", suffix: "/export", icon: Settings },
+  { key: "import", suffix: "/import", icon: Settings },
   { key: "trash", suffix: "/trash", icon: Trash2 },
 ];
 

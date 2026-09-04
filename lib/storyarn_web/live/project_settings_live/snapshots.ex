@@ -24,14 +24,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      workspace={@workspace}
-      project={@project}
+      settings_nav={@settings_nav}
     >
-      <:title>{dgettext("projects", "Snapshots")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Review snapshot storage, reservations, and integrity")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsSnapshots"
         v-socket={@socket}
@@ -49,6 +43,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
         restore-operation-active={project_restore_active?(@snapshot_restores)}
         storage-usage={serialize_storage_usage(@storage_usage, @storage_limit)}
         snapshot-limit={serialize_snapshot_limit(@snapshot_slots_used, @snapshot_slots_limit)}
+        workspace-plan-path={workspace_plan_path(@settings_nav)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -779,4 +774,12 @@ defmodule StoryarnWeb.ProjectSettingsLive.Snapshots do
       :error -> nil
     end
   end
+
+  # Only workspace owners and admins can open Plan & usage; everyone else gets
+  # no link rather than an authorization redirect.
+  defp workspace_plan_path(%{workspace: %{access: "manage", slug: slug}}) do
+    ~p"/users/settings/workspaces/#{slug}/plan"
+  end
+
+  defp workspace_plan_path(_settings_nav), do: nil
 end

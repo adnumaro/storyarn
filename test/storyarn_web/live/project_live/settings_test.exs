@@ -252,10 +252,9 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
-      html =
-        render_click(view, "update_project", %{"project" => %{"name" => "New Name"}})
+      render_click(view, "update_project", %{"project" => %{"name" => "New Name"}})
 
-      assert html =~ "updated successfully"
+      assert get_general_vue(view).props["save-status"] == "saved"
 
       vue = get_general_vue(view)
       assert vue.props["project-details"]["name"] == "New Name"
@@ -330,18 +329,17 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
-      html =
-        render_click(view, "update_project", %{
-          "project" => %{
-            "name" => "Typed Project",
-            "description" => project.description || "",
-            "project_type" => "film",
-            "project_subtype" => "short_film",
-            "project_type_other" => ""
-          }
-        })
+      render_click(view, "update_project", %{
+        "project" => %{
+          "name" => "Typed Project",
+          "description" => project.description || "",
+          "project_type" => "film",
+          "project_subtype" => "short_film",
+          "project_type_other" => ""
+        }
+      })
 
-      assert html =~ "updated successfully"
+      assert get_general_vue(view).props["save-status"] == "saved"
 
       project = Repo.get!(Project, project.id)
       assert project.project_type == "film"
@@ -1000,7 +998,8 @@ defmodule StoryarnWeb.ProjectLive.SettingsTest do
                "restore-operation-active",
                "snapshot-limit",
                "snapshots",
-               "storage-usage"
+               "storage-usage",
+               "workspace-plan-path"
              ]
 
       assert vue.props["restore-operation-active"] == false

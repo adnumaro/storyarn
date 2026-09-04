@@ -103,6 +103,10 @@ defmodule Storyarn.Commercial do
   @spec workspace_storage_usage(pos_integer()) :: map()
   defdelegate workspace_storage_usage(workspace_id), to: Billing
 
+  @doc "Returns the plan and the workspace-wide usage buckets (projects, members, storage) for one workspace."
+  @spec workspace_usage(map()) :: map()
+  defdelegate workspace_usage(workspace), to: Billing, as: :usage
+
   @doc "Returns stored snapshots plus active build reservations for one Project."
   @spec project_snapshot_slot_usage(pos_integer()) :: non_neg_integer()
   defdelegate project_snapshot_slot_usage(project_id), to: Billing

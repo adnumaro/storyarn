@@ -1,11 +1,12 @@
 <script setup lang="ts">
-import { Clock3, Crown, Loader2, Trash2, UserPlus, X } from "@lucide/vue";
+import { Crown, Loader2, Mail, Trash2 } from "@lucide/vue";
 import { ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import ConfirmDialog from "@components/ConfirmDialog.vue";
+import { SettingsPage, SettingsRow, SettingsSection } from "@components/settings";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Input } from "@components/ui/input";
-import { Label } from "@components/ui/label";
 import {
   Select,
   SelectContent,
@@ -13,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@components/ui/select";
+import UserAvatar from "@components/UserAvatar.vue";
 import { useMemberInvitations } from "@shared/composables/useMemberInvitations";
 
 interface WorkspaceMember {
@@ -46,11 +48,8 @@ const {
   canTransferOwnership?: boolean;
 }>();
 
-const transferTarget = ref<WorkspaceMember | null>(null);
-const transferDialogOpen = ref(false);
-const transferPending = ref(false);
-const transferTransportFailed = ref(false);
-let transferAttempt = 0;
+const { t } = useI18n();
+const roles = ["admin", "member", "viewer"] as const;
 
 const {
   live,
@@ -63,15 +62,33 @@ const {
   formatExpiry,
 } = useMemberInvitations("member");
 
-function removeMember(id: number) {
-  live.pushEvent("remove_member", { id: String(id) });
-}
-
-function changeRole(id: number, role: string) {
+function changeRole(id: number, role: string): void {
   live.pushEvent("change_role", { "member-id": String(id), role });
 }
 
-function requestOwnershipTransfer(member: WorkspaceMember) {
+// Removal asks for confirmation; ownership transfer keeps its pending-aware dialog.
+const removeTarget = ref<WorkspaceMember | null>(null);
+const removeDialogOpen = ref(false);
+
+function requestRemoval(member: WorkspaceMember): void {
+  if (!canManage) return;
+  removeTarget.value = member;
+  removeDialogOpen.value = true;
+}
+
+function removeMember(): void {
+  if (!canManage || !removeTarget.value) return;
+  live.pushEvent("remove_member", { id: String(removeTarget.value.id) });
+  removeTarget.value = null;
+}
+
+const transferTarget = ref<WorkspaceMember | null>(null);
+const transferDialogOpen = ref(false);
+const transferPending = ref(false);
+const transferTransportFailed = ref(false);
+let transferAttempt = 0;
+
+function requestOwnershipTransfer(member: WorkspaceMember): void {
   if (!canTransferOwnership) return;
 
   transferTarget.value = member;
@@ -79,7 +96,7 @@ function requestOwnershipTransfer(member: WorkspaceMember) {
   transferDialogOpen.value = true;
 }
 
-function transferOwnership() {
+function transferOwnership(): void {
   if (!canTransferOwnership || !transferTarget.value || transferPending.value) return;
 
   const targetUserId = transferTarget.value.user_id;
@@ -102,11 +119,7 @@ function transferOwnership() {
   );
 }
 
-function cancelOwnershipTransfer() {
-  resetOwnershipTransfer();
-}
-
-function resetOwnershipTransfer() {
+function resetOwnershipTransfer(): void {
   transferAttempt += 1;
   transferTarget.value = null;
   transferDialogOpen.value = false;
@@ -121,13 +134,22 @@ watch(
   },
 );
 
-function memberDisplayName(member: WorkspaceMember) {
+watch(
+  () => canManage,
+  (manage) => {
+    if (!manage) {
+      removeDialogOpen.value = false;
+      removeTarget.value = null;
+    }
+  },
+);
+
+function memberDisplayName(member: WorkspaceMember): string {
   return member.display_name || member.email;
 }
 
-function memberInitials(member: WorkspaceMember) {
-  const name = member.display_name || member.email;
-  return name.substring(0, 2).toUpperCase();
+function manageable(member: WorkspaceMember): boolean {
+  return canManage && member.role !== "owner" && member.user_id !== currentUserId;
 }
 
 type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
@@ -140,266 +162,197 @@ const roleBadgeVariant: Record<string, BadgeVariant> = {
 </script>
 
 <template>
-  <div class="space-y-8">
-    <div class="space-y-1.5">
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">
-        {{ $t("settings.workspace.members.title") }}
-      </h1>
-      <p class="text-base text-muted-foreground">
-        {{ $t("settings.workspace.members.subtitle") }}
-      </p>
-    </div>
-
-    <!-- Invite Member Card -->
-    <section
-      v-if="canInvite"
-      class="border border-border/80 bg-card shadow-sm rounded-xl overflow-hidden"
-    >
-      <div class="px-6 py-5 border-b border-border/50 bg-muted/10 flex flex-col gap-1">
-        <h3 class="text-lg font-semibold flex items-center gap-2">
-          <UserPlus class="size-4 text-primary" />
-          {{ $t("settings.workspace.members.invitation.title") }}
-        </h3>
-        <p class="text-sm text-muted-foreground">
-          {{ $t("settings.workspace.members.invitation.description") }}
-        </p>
-      </div>
-      <div class="p-6">
-        <form
-          id="workspace-invite-form"
-          @submit.prevent="sendInvitation"
-          class="flex flex-col sm:flex-row gap-4 items-start sm:items-end"
-        >
-          <div class="flex-1 w-full space-y-1.5">
-            <Label
-              for="invite-email"
-              class="text-xs font-semibold uppercase text-muted-foreground tracking-wider"
-              >{{ $t("settings.workspace.members.invitation.email") }}</Label
+  <SettingsPage :title="t('settings.workspace.members.page_title')">
+    <SettingsSection v-if="canInvite" :title="t('settings.workspace.members.invitation.title')">
+      <form
+        id="workspace-invite-form"
+        class="flex flex-wrap items-center gap-2 px-4 py-3.5"
+        @submit.prevent="sendInvitation"
+      >
+        <div class="min-w-0 flex-[1_1_220px]">
+          <Input
+            id="invite-email"
+            v-model="inviteEmail"
+            type="email"
+            :placeholder="t('settings.workspace.members.invitation.email_placeholder')"
+            :aria-label="t('settings.workspace.members.invitation.email')"
+            maxlength="160"
+            required
+          />
+        </div>
+        <div class="ml-auto flex items-center gap-2">
+          <Select v-model="inviteRole">
+            <SelectTrigger
+              id="invite-role"
+              class="w-32"
+              :aria-label="t('settings.workspace.members.invitation.role')"
             >
-            <Input
-              id="invite-email"
-              type="email"
-              v-model="inviteEmail"
-              :placeholder="$t('settings.workspace.members.invitation.email_placeholder')"
-              maxlength="160"
-              required
-              class="bg-background"
-            />
-          </div>
-          <div class="w-full sm:w-40 space-y-1.5">
-            <Label
-              for="invite-role"
-              class="text-xs font-semibold uppercase text-muted-foreground tracking-wider"
-              >{{ $t("settings.workspace.members.invitation.role") }}</Label
-            >
-            <Select v-model="inviteRole">
-              <SelectTrigger id="invite-role" class="w-full h-10! bg-background mb-0">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="admin">{{
-                  $t("settings.workspace.members.roles.admin")
-                }}</SelectItem>
-                <SelectItem value="member">{{
-                  $t("settings.workspace.members.roles.member")
-                }}</SelectItem>
-                <SelectItem value="viewer">{{
-                  $t("settings.workspace.members.roles.viewer")
-                }}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <Button
-            type="submit"
-            :disabled="invitationPending"
-            class="w-full sm:w-auto h-10 px-6 font-medium shadow-sm transition-transform active:scale-[0.98]"
-          >
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem v-for="role in roles" :key="role" :value="role">
+                {{ t(`settings.workspace.members.roles.${role}`) }}
+              </SelectItem>
+            </SelectContent>
+          </Select>
+          <Button type="submit" :disabled="invitationPending">
             <Loader2 v-if="invitationPending" class="size-4 animate-spin" aria-hidden="true" />
-            {{ $t("settings.workspace.members.invitation.submit") }}
+            {{ t("settings.workspace.members.invitation.submit") }}
           </Button>
-        </form>
+        </div>
+      </form>
+      <div class="px-4 pb-3.5 text-[13px] text-muted-foreground">
+        {{ t("settings.workspace.members.invitation.roles_hint") }}
       </div>
-    </section>
+    </SettingsSection>
 
-    <section v-if="canInvite && pendingInvitations.length > 0" id="workspace-pending-invitations">
-      <h3 class="mb-1 text-lg font-semibold">
-        {{ $t("settings.workspace.members.pending_title") }}
-      </h3>
-      <p class="mb-4 text-sm text-muted-foreground">
-        {{ $t("settings.workspace.members.pending_description") }}
-      </p>
-      <div
-        class="divide-y divide-border/60 overflow-hidden rounded-xl border border-border/80 bg-card shadow-sm"
+    <SettingsSection
+      v-if="canInvite && pendingInvitations.length > 0"
+      id="workspace-pending-invitations"
+      :title="t('settings.workspace.members.pending_title')"
+      :hint="t('settings.workspace.members.pending_hint')"
+    >
+      <SettingsRow
+        v-for="invitation in pendingInvitations"
+        :id="`workspace-pending-invitation-${invitation.id}`"
+        :key="invitation.id"
+        :label="invitation.email"
+        :hint="
+          t('settings.workspace.members.expires', { date: formatExpiry(invitation.expires_at) })
+        "
       >
-        <div
-          v-for="invitation in pendingInvitations"
-          :key="invitation.id"
-          :id="`workspace-pending-invitation-${invitation.id}`"
-          class="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between"
-        >
-          <div class="min-w-0">
-            <p class="truncate font-medium">{{ invitation.email }}</p>
-            <div class="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Badge variant="outline">
-                {{ $t("settings.workspace.members.roles." + invitation.role) }}
-              </Badge>
-              <span class="inline-flex items-center gap-1">
-                <Clock3 class="size-3.5" />
-                {{
-                  $t("settings.workspace.members.expires", {
-                    date: formatExpiry(invitation.expires_at),
-                  })
-                }}
-              </span>
-            </div>
-          </div>
-          <Button
-            :id="`revoke-workspace-invitation-${invitation.id}`"
-            type="button"
-            variant="ghost"
-            size="sm"
-            class="text-destructive hover:text-destructive"
-            :disabled="revokingInvitationId !== null"
-            @click="revokeInvitation(invitation.id)"
+        <template #leading>
+          <span
+            class="flex size-8 shrink-0 items-center justify-center rounded-full border border-dashed border-input text-muted-foreground"
           >
-            <Loader2
-              v-if="revokingInvitationId === invitation.id"
-              class="size-4 animate-spin"
-              aria-hidden="true"
-            />
-            <X v-else class="size-4" aria-hidden="true" />
-            {{ $t("settings.workspace.members.revoke") }}
-          </Button>
-        </div>
-      </div>
-    </section>
+            <Mail class="size-3.5" aria-hidden="true" />
+          </span>
+        </template>
+        <Badge variant="secondary">
+          {{ t(`settings.workspace.members.roles.${invitation.role}`) }}
+        </Badge>
+        <Button
+          :id="`revoke-workspace-invitation-${invitation.id}`"
+          type="button"
+          variant="ghost"
+          size="sm"
+          :disabled="revokingInvitationId !== null"
+          @click="revokeInvitation(invitation.id)"
+        >
+          <Loader2
+            v-if="revokingInvitationId === invitation.id"
+            class="size-4 animate-spin"
+            aria-hidden="true"
+          />
+          {{ t("settings.workspace.members.revoke") }}
+        </Button>
+      </SettingsRow>
+    </SettingsSection>
 
-    <!-- Active Members -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">
-        {{ $t("settings.workspace.members.active_members") }}
-      </h3>
-      <div
-        class="border border-border/80 bg-card rounded-xl shadow-sm overflow-hidden divide-y divide-border/60"
+    <SettingsSection
+      :title="t('settings.workspace.members.active_members')"
+      :hint="t('settings.workspace.members.count', { count: members.length })"
+    >
+      <div v-if="members.length === 0" class="px-4 py-8 text-center text-sm text-muted-foreground">
+        {{ t("settings.workspace.members.no_members") }}
+      </div>
+
+      <SettingsRow
+        v-for="member in members"
+        :key="member.id"
+        :label="memberDisplayName(member)"
+        :hint="member.display_name ? member.email : null"
       >
-        <!-- Empty state fallback although usually there is at least one owner -->
-        <div
-          v-if="!members || members.length === 0"
-          class="p-8 text-center text-muted-foreground text-sm"
+        <template #leading>
+          <UserAvatar :email="member.email" :display-name="member.display_name" size="sm" />
+        </template>
+
+        <Select
+          v-if="manageable(member)"
+          :model-value="member.role"
+          @update:model-value="(value) => changeRole(member.id, String(value))"
         >
-          {{ $t("settings.workspace.members.no_members") }}
-        </div>
+          <SelectTrigger class="w-32" :aria-label="t('settings.workspace.members.invitation.role')">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem v-for="role in roles" :key="role" :value="role">
+              {{ t(`settings.workspace.members.roles.${role}`) }}
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <Badge v-else :variant="roleBadgeVariant[member.role] || 'outline'">
+          {{ member.role ? t(`settings.workspace.members.roles.${member.role}`) : "" }}
+        </Badge>
 
-        <div
-          v-for="member in members"
-          :key="member.id"
-          class="flex flex-col sm:flex-row sm:items-center justify-between p-4 bg-card hover:bg-muted/30 transition-colors gap-4"
+        <Button
+          v-if="canTransferOwnership && member.role !== 'owner' && member.user_id !== currentUserId"
+          :id="`transfer-workspace-ownership-${member.user_id}`"
+          type="button"
+          variant="outline"
+          size="sm"
+          @click="requestOwnershipTransfer(member)"
         >
-          <div class="flex items-center gap-4">
-            <div
-              class="size-10 rounded-full bg-primary/10 text-primary border border-primary/20 flex shrink-0 items-center justify-center text-sm font-semibold tracking-wide shadow-sm"
-            >
-              {{ memberInitials(member) }}
-            </div>
-            <div class="flex flex-col min-w-0">
-              <span class="font-medium text-sm leading-tight truncate">{{
-                memberDisplayName(member)
-              }}</span>
-              <span
-                v-if="member.display_name"
-                class="text-xs text-muted-foreground mt-0.5 truncate"
-              >
-                {{ member.email }}
-              </span>
-            </div>
-          </div>
+          <Crown class="size-3.5" aria-hidden="true" />
+          {{ t("settings.workspace.members.transfer.action") }}
+        </Button>
 
-          <div class="flex w-full flex-wrap items-center gap-3 sm:ml-auto sm:w-auto sm:justify-end">
-            <template
-              v-if="canManage && member.role !== 'owner' && member.user_id !== currentUserId"
-            >
-              <Select
-                :model-value="member.role"
-                @update:model-value="(val) => changeRole(member.id, String(val))"
-              >
-                <SelectTrigger class="w-27.5 h-8 text-xs bg-muted/40 border-border/60 focus:ring-0">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">{{
-                    $t("settings.workspace.members.roles.admin")
-                  }}</SelectItem>
-                  <SelectItem value="member">{{
-                    $t("settings.workspace.members.roles.member")
-                  }}</SelectItem>
-                  <SelectItem value="viewer">{{
-                    $t("settings.workspace.members.roles.viewer")
-                  }}</SelectItem>
-                </SelectContent>
-              </Select>
-            </template>
-            <template v-else>
-              <Badge
-                :variant="roleBadgeVariant[member.role] || 'outline'"
-                class="px-2.5 font-medium shadow-sm"
-              >
-                {{ member.role ? $t("settings.workspace.members.roles." + member.role) : "" }}
-              </Badge>
-            </template>
+        <Button
+          v-if="manageable(member)"
+          :id="`remove-workspace-member-${member.id}`"
+          type="button"
+          variant="ghost"
+          size="icon"
+          class="size-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+          :title="t('settings.workspace.members.remove_member')"
+          :aria-label="t('settings.workspace.members.remove_member')"
+          @click="requestRemoval(member)"
+        >
+          <Trash2 class="size-4" aria-hidden="true" />
+        </Button>
+      </SettingsRow>
 
-            <Button
-              v-if="
-                canTransferOwnership && member.role !== 'owner' && member.user_id !== currentUserId
-              "
-              :id="`transfer-workspace-ownership-${member.user_id}`"
-              variant="outline"
-              size="sm"
-              class="h-8 gap-1.5"
-              @click="requestOwnershipTransfer(member)"
-            >
-              <Crown class="size-3.5" aria-hidden="true" />
-              {{ $t("settings.workspace.members.transfer.action") }}
-            </Button>
-
-            <Button
-              v-if="canManage && member.role !== 'owner' && member.user_id !== currentUserId"
-              variant="ghost"
-              size="icon"
-              class="size-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 transition-colors"
-              @click="removeMember(member.id)"
-              :title="$t('settings.workspace.members.remove_member')"
-            >
-              <Trash2 class="size-4" />
-            </Button>
-            <!-- visual placeholder for alignment when trash is not present -->
-            <div v-else class="w-8 hidden sm:block"></div>
-          </div>
-        </div>
-      </div>
-    </section>
+      <template #footer>{{ t("settings.workspace.members.owner_note") }}</template>
+    </SettingsSection>
 
     <ConfirmDialog
       v-model:open="transferDialogOpen"
-      :title="$t('settings.workspace.members.transfer.title')"
+      :title="t('settings.workspace.members.transfer.title')"
       :description="
-        $t('settings.workspace.members.transfer.description', {
+        t('settings.workspace.members.transfer.description', {
           name: transferTarget ? memberDisplayName(transferTarget) : '',
         })
       "
-      :confirm-text="$t('settings.workspace.members.transfer.confirm')"
-      :cancel-text="$t('settings.workspace.members.transfer.cancel')"
+      :confirm-text="t('settings.workspace.members.transfer.confirm')"
+      :cancel-text="t('settings.workspace.members.transfer.cancel')"
       :pending="transferPending"
-      :pending-text="$t('settings.workspace.members.transfer.pending')"
+      :pending-text="t('settings.workspace.members.transfer.pending')"
       :close-on-confirm="false"
       :error="
         transferTransportFailed
-          ? $t('settings.workspace.members.transfer.connection_unconfirmed')
+          ? t('settings.workspace.members.transfer.connection_unconfirmed')
           : undefined
       "
       variant="warning"
       :icon="Crown"
       @confirm="transferOwnership"
-      @cancel="cancelOwnershipTransfer"
+      @cancel="resetOwnershipTransfer"
     />
-  </div>
+
+    <ConfirmDialog
+      v-if="canManage"
+      v-model:open="removeDialogOpen"
+      :title="t('settings.workspace.members.remove_dialog.title')"
+      :description="
+        t('settings.workspace.members.remove_dialog.description', {
+          name: removeTarget ? memberDisplayName(removeTarget) : '',
+        })
+      "
+      :confirm-text="t('settings.workspace.members.remove_dialog.confirm')"
+      :cancel-text="t('settings.workspace.members.remove_dialog.cancel')"
+      variant="destructive"
+      :icon="Trash2"
+      @confirm="removeMember"
+    />
+  </SettingsPage>
 </template>

@@ -1,26 +1,39 @@
-defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
+defmodule StoryarnWeb.SettingsLive.WorkspaceProjects do
   @moduledoc """
-  Imports a downloaded project snapshot into the current workspace.
+  Workspace › Projects: import a downloaded project snapshot into the
+  workspace, follow the import history, and see the projects retained in the
+  workspace trash.
 
   The browser uploads through the server, which streams the archive to object
   storage under the bounded writer protocol. Admission validates the bounded
   archive metadata and reserves capacity before the durable background import.
+  The former `/imports` and `/deleted-projects` pages redirect here.
   """
 
   use StoryarnWeb, :live_view
 
+  alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
   alias Storyarn.Workspaces
 
   @impl true
+  def mount(_params, _session, %{assigns: %{live_action: action}} = socket)
+      when action in [:legacy_imports, :legacy_deleted_projects] do
+    {:ok,
+     push_navigate(socket,
+       to: ~p"/users/settings/workspaces/#{socket.assigns.workspace.slug}/projects",
+       replace: true
+     )}
+  end
+
   def mount(_params, _session, socket) do
     %{workspace: workspace, membership: membership} = socket.assigns
 
     if Workspaces.can?(membership.role, :access_workspace_settings) do
       socket =
         socket
-        |> assign(:page_title, dgettext("workspaces", "Imports"))
-        |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/imports")
+        |> assign(:page_title, dgettext("workspaces", "Projects"))
+        |> assign(:current_path, ~p"/users/settings/workspaces/#{workspace.slug}/projects")
         |> assign(:quota_rejection, nil)
         |> assign(:request_error_code, nil)
         |> assign(:upload_error_code, nil)
@@ -29,6 +42,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
         |> assign(:external_upload?, false)
         |> allow_snapshot_upload()
         |> reload_imports()
+        |> reload_deleted_projects()
 
       if connected?(socket) do
         :ok = Projects.subscribe_workspace_snapshot_imports(workspace.id)
@@ -53,21 +67,20 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      managed_workspace_slugs={@managed_workspace_slugs}
-      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
+      settings_nav={@settings_nav}
     >
       <.vue
-        v-component="live/workspace/settings/WorkspaceSettingsImports"
+        v-component="live/workspace/settings/WorkspaceSettingsProjects"
         v-socket={@socket}
         v-inject="settings-layout"
-        id="workspace-settings-imports"
+        id="workspace-settings-projects"
         imports={serialize_imports(@workspace, @imports)}
         quota-rejection={serialize_quota_rejection(@quota_rejection)}
         request-error-code={@request_error_code}
         upload-error-code={@upload_error_code}
         upload-config={@uploads.snapshot_zip}
+        deleted-projects={serialize_deleted_projects(@deleted_projects)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -142,7 +155,7 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
   end
 
   def handle_info({:workspace_snapshot_import_updated, _import}, socket) do
-    {:noreply, reload_imports(socket)}
+    {:noreply, socket |> reload_imports() |> reload_deleted_projects()}
   end
 
   def handle_info(_message, socket), do: {:noreply, socket}
@@ -294,6 +307,10 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
     assign(socket, :imports, imports)
   end
 
+  defp reload_deleted_projects(socket) do
+    assign(socket, :deleted_projects, Projects.list_deleted_projects(socket.assigns.workspace.id))
+  end
+
   defp serialize_imports(workspace, imports) do
     Enum.map(imports, &serialize_import(workspace, &1))
   end
@@ -316,6 +333,38 @@ defmodule StoryarnWeb.SettingsLive.WorkspaceImports do
       failureCode: Map.get(import, :failure_code),
       projectPath: project_path(workspace, project)
     }
+  end
+
+  defp serialize_deleted_projects(projects) do
+    Enum.map(projects, fn project ->
+      %{
+        id: project.id,
+        name: project.name,
+        deletedTimeAgo: dgettext("workspaces", "Deleted %{time_ago}", time_ago: format_time_ago(project.deleted_at)),
+        deletedByText:
+          if(project.deleted_by,
+            do: dgettext("workspaces", "by %{email}", email: project.deleted_by.email)
+          )
+      }
+    end)
+  end
+
+  defp format_time_ago(datetime) do
+    diff = DateTime.diff(TimeHelpers.now(), datetime, :second)
+
+    cond do
+      diff < 60 ->
+        dgettext("workspaces", "just now")
+
+      diff < 3600 ->
+        dngettext("workspaces", "%{count} minute ago", "%{count} minutes ago", div(diff, 60), count: div(diff, 60))
+
+      diff < 86_400 ->
+        dngettext("workspaces", "%{count} hour ago", "%{count} hours ago", div(diff, 3600), count: div(diff, 3600))
+
+      true ->
+        dngettext("workspaces", "%{count} day ago", "%{count} days ago", div(diff, 86_400), count: div(diff, 86_400))
+    end
   end
 
   defp serialize_quota_rejection(nil), do: nil

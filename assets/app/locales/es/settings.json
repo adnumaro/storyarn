@@ -3,7 +3,8 @@
     "nav": {
       "back_to_app": "Volver a la app",
       "sections": {
-        "account": "Cuenta"
+        "account": "Cuenta",
+        "personal": "Personal"
       },
       "items": {
         "profile": "Perfil",
@@ -14,8 +15,18 @@
         "workspace_general": "General",
         "workspace_members": "Miembros",
         "workspace_imports": "Importaciones",
-        "deleted_projects": "Proyectos eliminados"
-      }
+        "deleted_projects": "Proyectos eliminados",
+        "preferences": "Preferencias",
+        "workspace_ai": "IA",
+        "workspace_projects": "Proyectos",
+        "workspace_plan": "Plan y uso"
+      },
+      "search": "Buscar ajustes…",
+      "switch_workspace": "Cambiar de workspace",
+      "switch_project": "Cambiar de proyecto",
+      "locked": "Solo el propietario puede cambiar estos ajustes",
+      "open_navigation": "Abrir la navegación de ajustes",
+      "close_navigation": "Cerrar la navegación de ajustes"
     },
     "profile": {
       "title": "Perfil",
@@ -32,7 +43,19 @@
       "email_address": "Dirección de correo electrónico",
       "email_description": "Tu correo se usa para iniciar sesión y para notificaciones.",
       "email": "Correo electrónico",
-      "change_email": "Cambiar correo"
+      "change_email": "Cambiar correo",
+      "identity": "Identidad",
+      "display_name_hint": "Se muestra a tu equipo y en los comentarios.",
+      "email_hint": "Se usa para iniciar sesión y para las invitaciones.",
+      "preferences_note": "El idioma y la apariencia están en",
+      "change_email_dialog": {
+        "title": "Cambiar email",
+        "description": "Enviaremos un enlace de confirmación a la nueva dirección. Tu email solo cambia cuando lo abras.",
+        "new_email": "Nuevo email",
+        "cancel": "Cancelar",
+        "send": "Enviar enlace de confirmación",
+        "failed": "No se pudo enviar el enlace de confirmación. Inténtalo de nuevo."
+      }
     },
     "security": {
       "title": "Seguridad",
@@ -46,20 +69,23 @@
         "title": "Sesiones activas",
         "description": "Actualmente has iniciado sesión en este dispositivo.",
         "coming_soon": "La gestión de sesiones estará disponible pronto."
-      }
+      },
+      "password_section": "Contraseña",
+      "cancel": "Cancelar"
     },
     "tutorials": {
       "title": "Tutoriales",
       "subtitle": "Consulta las guías contextuales o elige cuáles deben aparecer de nuevo en tu próxima visita.",
       "restart_all": "Reiniciar todos",
-      "progress": "{completed} de {total} tutoriales completados",
+      "progress": "{completed} de {total} completadas",
       "read_guide": "Leer guía",
       "show_again": "Mostrar de nuevo",
       "show_again_for": "Mostrar de nuevo {tutorial}",
       "states": {
         "pending": "Listo para mostrar",
         "completed": "Completado"
-      }
+      },
+      "guides": "Guías"
     },
     "workspace": {
       "general": {
@@ -74,9 +100,15 @@
           "upload_banner": "Subir imagen",
           "source_language": "Idioma origen predeterminado",
           "select_language": "Seleccionar idioma...",
-          "source_language_hint": "Idioma origen predeterminado para los nuevos proyectos en este espacio."
+          "source_language_hint": "Idioma origen predeterminado para los nuevos proyectos en este espacio.",
+          "description_placeholder": "Para qué es este workspace",
+          "banner_hint": "Se muestra en la parte superior del panel del workspace. PNG o JPG, hasta 2 MB.",
+          "upload": "Subir"
         },
-        "save_changes": "Guardar cambios"
+        "save_changes": "Guardar cambios",
+        "page_title": "General",
+        "details": "Detalles",
+        "owner_only": "Solo el propietario del workspace puede cambiar estos ajustes"
       },
       "storyarn_ai": {
         "title": "Storyarn AI",
@@ -91,7 +123,8 @@
           "active": "Asignación activa",
           "paused": "Asignación pausada",
           "unavailable": "Sin asignación"
-        }
+        },
+        "units_left": "{count} unidades restantes"
       },
       "personal_ai": {
         "title": "IA personal para miembros",
@@ -100,7 +133,9 @@
         "toggle_label": "Permitir que otros miembros usen sus claves personales de IA en este espacio",
         "owner_only": "Solo el propietario del espacio puede permitir IA personal a otros miembros.",
         "disclosure": "El contenido autorizado del proyecto sale de Storyarn y se procesa con la cuenta de proveedor de cada miembro. La región, la retención y el posible uso para entrenar modelos dependen de ese proveedor y esa cuenta; Storyarn no puede garantizar retención cero ni exclusión del entrenamiento con claves personales. Cada miembro debe revisar el alcance de datos y consentir antes del primer uso.",
-        "manage_keys": "Gestionar mis conexiones de proveedor"
+        "manage_keys": "Gestionar mis conexiones de proveedor",
+        "data_handling": "Tratamiento de datos",
+        "connections_title": "Tus conexiones"
       },
       "appearance": {
         "title": "Apariencia",
@@ -116,9 +151,10 @@
       },
       "delete_modal": {
         "title": "¿Eliminar espacio de trabajo?",
-        "description": "Esta acción no se puede deshacer.",
+        "description": "Elimina todos sus proyectos. Esta acción no se puede deshacer.",
         "cancel": "Cancelar",
-        "delete": "Eliminar"
+        "delete": "Eliminar",
+        "type_name": "Escribe el nombre del workspace para confirmar"
       },
       "members": {
         "title": "Miembros del equipo",
@@ -135,7 +171,8 @@
           "email": "Dirección de correo electrónico",
           "email_placeholder": "colega{'@'}ejemplo.com",
           "role": "Rol",
-          "submit": "Enviar invitación"
+          "submit": "Enviar invitación",
+          "roles_hint": "Los administradores gestionan miembros y proyectos. Los miembros editan. Los lectores solo leen."
         },
         "pending_title": "Invitaciones pendientes",
         "pending_description": "Las invitaciones pendientes reservan una plaza hasta que se aceptan, revocan o caducan.",
@@ -152,6 +189,16 @@
           "pending": "Transfiriendo la propiedad del espacio…",
           "cancel": "Cancelar",
           "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+        },
+        "page_title": "Miembros",
+        "count": "{count} personas",
+        "pending_hint": "Reservan un asiento hasta que se acepten, se revoquen o caduquen",
+        "owner_note": "Solo el propietario puede cambiar roles, transferir la propiedad o eliminar miembros.",
+        "remove_dialog": {
+          "title": "¿Eliminar del workspace?",
+          "description": "{name} perderá el acceso a todos los proyectos de este workspace. Puedes invitarle de nuevo más adelante.",
+          "confirm": "Eliminar",
+          "cancel": "Cancelar"
         }
       },
       "imports": {
@@ -220,6 +267,71 @@
           "title": "No hay proyectos eliminados",
           "description": "Los proyectos movidos a la papelera del espacio de trabajo aparecerán aquí."
         }
+      },
+      "ai": {
+        "title": "IA",
+        "unavailable": {
+          "title": "La IA no está activada para este workspace",
+          "text": "Storyarn AI es una beta con invitación. Cuando se active, aquí verás la asignación y las políticas de este workspace."
+        }
+      },
+      "projects": {
+        "title": "Proyectos",
+        "import_section": "Importar",
+        "deleted_empty_text": "Los proyectos enviados a la papelera del workspace aparecen aquí con quién los eliminó y cuándo. Un snapshot descargado siempre se puede volver a importar arriba."
+      },
+      "plan": {
+        "title": "Plan y uso",
+        "plan_section": "Plan",
+        "current_plan": "Plan actual",
+        "plan_hint": "Los límites combinan las cuotas de cada proyecto con las cuotas compartidas del workspace.",
+        "talk_to_us": "Habla con nosotros",
+        "limits_section": "Límites del workspace",
+        "limits_hint": "Compartidos por todos los proyectos",
+        "meters": {
+          "projects": "Proyectos",
+          "members": "Miembros",
+          "storage": "Almacenamiento"
+        },
+        "hints": {
+          "projects": "Proyectos activos en este workspace.",
+          "members": "Miembros únicos del workspace y de sus proyectos. Las invitaciones nuevas se bloquean hasta que se libere un asiento."
+        },
+        "storage_breakdown": "Assets {assets} · Papelera recuperable {trash} · Copias de seguridad {backups} · Reservas {reservations}",
+        "status": {
+          "available": "Disponible",
+          "warning": "Casi lleno",
+          "reached": "Límite alcanzado",
+          "unlimited": "Sin límite",
+          "unknown": "Desconocido"
+        },
+        "footer": "Los límites por proyecto (elementos, copias de seguridad, versiones con nombre) están en la página Uso de cada proyecto.",
+        "plans": {
+          "free": "Free"
+        }
+      }
+    },
+    "reauth": {
+      "title": "Confirma que eres tú",
+      "description": "Introduce tu contraseña para desbloquear estos ajustes durante 20 minutos.",
+      "password": "Contraseña",
+      "confirm": "Confirmar",
+      "locked": "Confirma que eres tú para cambiar estos ajustes",
+      "locked_title": "Bloqueado hasta que confirmes",
+      "locked_hint": "Tus conexiones, claves y roles de IA se cargan después de confirmar tu contraseña."
+    },
+    "preferences": {
+      "title": "Preferencias",
+      "general": "General",
+      "language": "Idioma",
+      "language_hint": "Idioma de la interfaz para toda la app.",
+      "appearance": "Apariencia",
+      "theme": "Tema",
+      "theme_hint": "Se guarda en este dispositivo.",
+      "themes": {
+        "system": "Sistema",
+        "light": "Claro",
+        "dark": "Oscuro"
       }
     }
   }

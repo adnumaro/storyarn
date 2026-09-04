@@ -43,7 +43,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     yarn_path = space_journey_fixture()
 
     import_path =
-      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/import"
 
     navigation_path = "/users/settings"
     resume_storage_key = Imports.resume_storage_key(Scope.for_user(user), project)
@@ -131,7 +131,7 @@ defmodule StoryarnWeb.E2E.ImportResumeTest do
     yarn_path = yarn_project_fixture()
 
     import_path =
-      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+      "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/import"
 
     recovery_path =
       "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/snapshots"

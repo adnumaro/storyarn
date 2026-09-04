@@ -88,7 +88,7 @@ defmodule StoryarnWeb.OnboardingIntegrationTest do
     {:ok, view, _html} =
       live(
         conn,
-        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export-import"
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/export"
       )
 
     layout = LiveVue.Test.get_vue(view, name: "live/layouts/settings/Layout")

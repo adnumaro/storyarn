@@ -1,7 +1,7 @@
 import { mount } from "@vue/test-utils";
 import { describe, expect, it } from "vitest";
 import VersionHistory from "../../../components/versioning/history/VersionHistory.vue";
-import WorkspaceSettingsDeletedProjects from "../../../live/workspace/settings/WorkspaceSettingsDeletedProjects.vue";
+import WorkspaceDeletedProjectsList from "../../../live/workspace/settings/WorkspaceDeletedProjectsList.vue";
 import { createMockLive } from "../../setup";
 
 const dialogStubs = {
@@ -149,30 +149,27 @@ describe("restore containment", () => {
     );
   });
 
-  it("links deleted-project recovery to the managed workspace imports page", () => {
+  it("lists deleted projects without any in-place recovery action", () => {
     const { live, global } = liveGlobal();
 
-    const wrapper = mount(WorkspaceSettingsDeletedProjects, {
+    const wrapper = mount(WorkspaceDeletedProjectsList, {
       props: {
-        importsPath: "/users/settings/workspaces/story-room/imports",
         deletedProjects: [
           {
             id: 31,
             name: "Deleted story",
-            deleted_time_ago: "Deleted today",
+            deletedTimeAgo: "Deleted today",
           },
         ],
       },
       global,
     });
 
-    expect(wrapper.text()).toContain("Recover a project from a snapshot");
     expect(wrapper.text()).toContain("Deleted story");
-    expect(wrapper.get('[data-testid="open-workspace-imports"]').attributes("href")).toBe(
-      "/users/settings/workspaces/story-room/imports",
-    );
+    expect(wrapper.text()).toContain("import that ZIP");
     expect(wrapper.find('[data-testid="recover-deleted-project"]').exists()).toBe(false);
     expect(wrapper.find("button").exists()).toBe(false);
+    expect(wrapper.find("a").exists()).toBe(false);
     expect(live.pushEvent).not.toHaveBeenCalled();
   });
 });

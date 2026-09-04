@@ -197,10 +197,12 @@ defmodule StoryarnWeb.Router do
             {StoryarnWeb.Live.Hooks.Onboarding, :load_onboarding},
             {StoryarnWeb.Live.Hooks.Palette, :setup_palette},
             {StoryarnWeb.Live.Hooks.ProjectScope, :load_project},
-            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace}
+            {StoryarnWeb.Live.Hooks.WorkspaceScope, :load_workspace},
+            {StoryarnWeb.Live.Hooks.SettingsNav, :load_settings_nav}
           ] do
       # User Settings (Linear-style)
       live "/users/settings", SettingsLive.Profile, :edit
+      live "/users/settings/preferences", SettingsLive.Preferences, :edit
       live "/users/settings/security", SettingsLive.Security, :edit
       live "/users/settings/tutorials", SettingsLive.Tutorials, :edit
       live "/users/settings/integrations", SettingsLive.Integrations, :edit
@@ -314,6 +316,10 @@ defmodule StoryarnWeb.Router do
            ProjectSettingsLive.Members,
            :edit
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/templates",
+           ProjectSettingsLive.Templates,
+           :edit
+
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/snapshots",
            ProjectSettingsLive.Snapshots,
            :edit
@@ -326,9 +332,18 @@ defmodule StoryarnWeb.Router do
            ProjectSettingsLive.UsageLimits,
            :show
 
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/export",
+           ExportImportLive.Index,
+           :export
+
+      live "/workspaces/:workspace_slug/projects/:project_slug/settings/import",
+           ExportImportLive.Index,
+           :import
+
+      # Legacy combined page; redirects to Export.
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/export-import",
            ExportImportLive.Index,
-           :index
+           :legacy
 
       live "/workspaces/:workspace_slug/projects/:project_slug/settings/trash",
            ProjectSettingsLive.Trash,
@@ -344,14 +359,18 @@ defmodule StoryarnWeb.Router do
 
       live "/users/settings/workspaces/:slug/general", SettingsLive.WorkspaceGeneral, :edit
       live "/users/settings/workspaces/:slug/members", SettingsLive.WorkspaceMembers, :edit
+      live "/users/settings/workspaces/:slug/ai", SettingsLive.WorkspaceAI, :edit
+      live "/users/settings/workspaces/:slug/projects", SettingsLive.WorkspaceProjects, :index
+      live "/users/settings/workspaces/:slug/plan", SettingsLive.WorkspacePlan, :show
 
+      # Former pages, merged into Projects. Kept so old links keep working.
       live "/users/settings/workspaces/:slug/imports",
-           SettingsLive.WorkspaceImports,
-           :index
+           SettingsLive.WorkspaceProjects,
+           :legacy_imports
 
       live "/users/settings/workspaces/:slug/deleted-projects",
-           SettingsLive.WorkspaceDeletedProjects,
-           :index
+           SettingsLive.WorkspaceProjects,
+           :legacy_deleted_projects
     end
 
     post "/users/confirm-access", UserSessionController, :confirm_access

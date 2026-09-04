@@ -11,27 +11,22 @@ msgstr ""
 "Language: en\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: lib/storyarn_web/live/settings_live/profile.ex:32
+#: lib/storyarn_web/live/settings_live/profile.ex:55
 #, elixir-autogen, elixir-format
 msgid "Email change link is invalid or it has expired."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:26
+#: lib/storyarn_web/live/settings_live/profile.ex:49
 #, elixir-autogen, elixir-format
 msgid "Email changed successfully."
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:47
+#: lib/storyarn_web/live/settings_live/profile.ex:35
 #, elixir-autogen, elixir-format
 msgid "Profile Settings"
 msgstr ""
 
-#: lib/storyarn_web/live/settings_live/profile.ex:123
-#, elixir-autogen, elixir-format
-msgid "Profile updated successfully."
-msgstr ""
-
-#: lib/storyarn_web/live/settings_live/security.ex:22
+#: lib/storyarn_web/live/settings_live/security.ex:24
 #, elixir-autogen, elixir-format
 msgid "Security Settings"
 msgstr ""
@@ -39,4 +34,36 @@ msgstr ""
 #: lib/storyarn_web/live/settings_live/tutorials.ex:16
 #, elixir-autogen, elixir-format
 msgid "Tutorial Settings"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:162
+#, elixir-autogen, elixir-format
+msgid "A link to confirm your email change has been sent to the new address."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/ai_team.ex:179
+#: lib/storyarn_web/live/settings_live/integration_detail.ex:312
+#: lib/storyarn_web/live/shared/sudo_reauth.ex:83
+#, elixir-autogen, elixir-format
+msgid "Confirm it's you to change these settings."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/preferences.ex:74
+#, elixir-autogen, elixir-format
+msgid "Could not update the language."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:190
+#, elixir-autogen, elixir-format
+msgid "Enter a valid email address."
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/preferences.ex:21
+#, elixir-autogen, elixir-format
+msgid "Preferences"
+msgstr ""
+
+#: lib/storyarn_web/live/settings_live/profile.ex:172
+#, elixir-autogen, elixir-format
+msgid "The confirmation email could not be sent. Try again."
 msgstr ""

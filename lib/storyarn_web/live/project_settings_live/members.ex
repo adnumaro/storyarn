@@ -21,12 +21,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Members do
       socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      workspace={@workspace}
-      project={@project}
+      settings_nav={@settings_nav}
     >
-      <:title>{dgettext("projects", "Members")}</:title>
-      <:subtitle>{dgettext("projects", "Manage project members and invitations")}</:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsMembers"
         v-socket={@socket}
