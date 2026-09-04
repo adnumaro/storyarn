@@ -64,6 +64,21 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     assert {:error, :not_locked} = Collaboration.get_lock({:flow, context.flow.id}, context.node.id)
   end
 
+  test "a cold link to a deleted node keeps the normal viewport fit and opens the readable conversation", context do
+    detail = create_comment(context)
+    Repo.delete!(context.node)
+
+    view = open_flow(context, "?thread=#{detail.thread.id}")
+
+    assert panel(view)["thread"]["id"] == detail.thread.id
+    assert panel(view)["thread"]["source"]["status"] == "unavailable"
+    assert panel(view)["presentation"] == "panel"
+    assert [%{"body" => "Review this beat"}] = panel(view)["messages"]
+    assert canvas(view)["commentFocusThreadId"] == nil
+    assert canvas(view)["commentFocusNodeId"] == nil
+    assert canvas(view)["commentPins"] == []
+  end
+
   test "a canvas comment is placed, moved and restored by its deep link", context do
     view = open_flow(context)
     render_hook(view, "comments_mode", %{active: true})

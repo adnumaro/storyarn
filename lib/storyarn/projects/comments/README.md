@@ -35,6 +35,11 @@ later reused, the null pointer prevents automatic rebinding, even when text,
 coordinates or creation timestamps match. Source projections are read-only and
 do not grant Comments permission to write Flow content.
 
+The database requires each non-null anchor reference to equal its immutable
+source ID. The follow-up identity migration validates existing rows and rejects
+inconsistent data without repairing or deleting conversations. Null references
+remain valid after a source is hard-deleted.
+
 Soft deletion makes a source unavailable. Restoring the same existing node makes
 it available again. Hard deletion, replacement import or snapshot reconstitution
 that creates new rows does not attach old discussions to the replacement. A Flow
@@ -60,6 +65,10 @@ Both coordinates must be finite numbers between -10,000,000 and 10,000,000.
 Existing node threads keep `nil` positions for the editor's default placement;
 new canvas threads require a position. Moving a pin changes its position and
 revision, never its source identity, messages, author or discussion activity time.
+
+The spatial-anchor migration is explicitly irreversible: removing its columns or
+canvas source type would lose persisted anchors and pin positions. Schema changes
+must roll forward while preserving the conversation history.
 
 The pin-list API returns every available open thread without a pagination cutoff;
 root messages, authors and source availability are fetched in batches. The ordinary

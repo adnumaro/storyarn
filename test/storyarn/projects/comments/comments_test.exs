@@ -51,21 +51,22 @@ defmodule Storyarn.Projects.CommentsTest do
     assert {:ok, %{threads: [_]}} = Projects.list_flow_comment_threads(member_scope, ctx.project.id, ctx.flow.id)
   end
 
-  test "open counts exclude a stored anchor whose source ID disagrees with its node pointer", ctx do
+  test "the database rejects a source ID that disagrees with its node pointer", ctx do
     {:ok, detail} = create_comment(ctx)
     other_node = node_fixture(ctx.flow)
 
-    # Simulate an inconsistent stored anchor; the public comment API never
-    # changes either source identity after creation.
-    Thread
-    |> Repo.get!(detail.thread.id)
-    |> change(source_id: other_node.id)
-    |> Repo.update!()
+    assert {:error, %Postgrex.Error{postgres: %{code: :check_violation, constraint: "comment_threads_anchor_identity"}}} =
+             Repo.query(
+               "UPDATE comment_threads SET source_id = $1 WHERE id = $2",
+               [other_node.id, detail.thread.id],
+               mode: :savepoint
+             )
 
-    assert {:ok, unavailable} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
-    assert unavailable.thread.source.status == "unavailable"
+    assert {:ok, unchanged} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
+    assert unchanged.thread.source.id == ctx.node.id
+    assert unchanged.thread.source.status == "available"
     assert {:ok, counts} = Projects.flow_comment_counts(ctx.scope, ctx.project.id, ctx.flow.id)
-    assert counts == %{}
+    assert counts == %{ctx.node.id => 1}
   end
 
   test "viewer reads but cannot create, reply, resolve or reopen", ctx do

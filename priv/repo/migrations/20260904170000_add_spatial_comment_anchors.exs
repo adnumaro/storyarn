@@ -30,20 +30,8 @@ defmodule Storyarn.Repo.Migrations.AddSpatialCommentAnchors do
   end
 
   def down do
-    drop constraint(:comment_threads, :comment_threads_position)
-    drop constraint(:comment_threads, :comment_threads_anchor_shape)
-    drop constraint(:comment_threads, :comment_threads_source_type)
-
-    create constraint(:comment_threads, :comment_threads_source_type,
-             check: "source_type = 'flow_node'"
-           )
-
-    drop index(:comment_threads, [:flow_canvas_id])
-
-    alter table(:comment_threads) do
-      remove :flow_canvas_id
-      remove :position_x
-      remove :position_y
-    end
+    raise Ecto.MigrationError,
+          "AddSpatialCommentAnchors is irreversible: rollback would remove canvas comment anchors and spatial metadata. " <>
+            "Preserve comment threads and their history by rolling forward with a compatible migration."
   end
 end

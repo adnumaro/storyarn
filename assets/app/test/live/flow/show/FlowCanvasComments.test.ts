@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { reactive, ref } from "vue";
 import { FLOW_CONTEXT_KEY } from "@modules/flows/editor/lib/flow-context";
 import { FlowNode as ReteFlowNode } from "@modules/flows/editor/lib/flow-node";
-import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 
 const init = vi.fn();
 const setToolbarProps = vi.fn();
@@ -51,6 +51,19 @@ const comments: FlowCommentsPanelState = {
   selectedNodeId: null,
   error: null,
 };
+const linkedThread: FlowCommentThread = {
+  id: 12,
+  status: "open",
+  revision: 1,
+  message_count: 1,
+  created_at: "2026-09-04T09:00:00Z",
+  last_activity_at: "2026-09-04T09:00:00Z",
+  resolved_at: null,
+  resolved_by: null,
+  author: { id: 4, display_name: "Ada", avatar_url: null },
+  source: { type: "flow_node", id: 42, flow_id: 7, label: "Dialogue", status: "available" },
+  position: { x: 10, y: 20 },
+};
 
 beforeEach(() => {
   init.mockReset();
@@ -79,11 +92,47 @@ describe("FlowCanvas spatial comment boundary", () => {
   it("skips the initial auto-fit when a thread deep link owns the viewport", async () => {
     init.mockResolvedValue(undefined);
     const wrapper = mount(FlowCanvas, {
-      props: { ...props, comments: { state: comments, pins: [], focusThreadId: 12 } },
+      props: {
+        ...props,
+        flowData: JSON.stringify({
+          nodes: [{ id: 42, type: "dialogue", data: {}, position: { x: 300, y: 400 } }],
+          connections: [],
+        }),
+        comments: {
+          state: { ...comments, open: true, presentation: "canvas", thread: linkedThread },
+          pins: [linkedThread],
+          focusThreadId: 12,
+        },
+      },
     });
     await flushPromises();
     expect(init.mock.calls[0][2]).toMatchObject({ skipInitialFit: true });
     expect(setCommentCounts).toHaveBeenLastCalledWith({}, true);
+    wrapper.unmount();
+  });
+
+  it("keeps the normal initial fit for the server's unavailable-anchor deep-link contract", async () => {
+    init.mockResolvedValue(undefined);
+    const unavailable: FlowCommentThread = {
+      ...linkedThread,
+      source: { ...linkedThread.source, status: "unavailable" },
+    };
+    const wrapper = mount(FlowCanvas, {
+      props: {
+        ...props,
+        flowData: JSON.stringify({
+          nodes: [{ id: 50, type: "dialogue", data: {}, position: { x: 3000, y: 4000 } }],
+          connections: [],
+        }),
+        comments: {
+          state: { ...comments, open: true, presentation: "panel", thread: unavailable },
+          pins: [],
+          focusThreadId: null,
+        },
+      },
+    });
+    await flushPromises();
+    expect(init.mock.calls[0][2]).toMatchObject({ skipInitialFit: false });
     wrapper.unmount();
   });
 

@@ -31,6 +31,7 @@ config :phoenix_test,
   playwright: [
     assets_dir: ".",
     browser: :chromium,
+    browser_launch_timeout: to_timeout(second: 15),
     headless: System.get_env("PLAYWRIGHT_HEADLESS", "true") in ~w(t true 1),
     ecto_sandbox_stop_owner_delay: 1000,
     timeout: to_timeout(second: 10)

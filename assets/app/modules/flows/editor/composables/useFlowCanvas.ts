@@ -397,12 +397,25 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
   }
 
   async function finalizeInit(flowData: FlowData): Promise<void> {
+    if (runtime.destroyed) return;
+    const hasNodes = Boolean(flowData.nodes?.length);
+    // The dock is already interactive. Placement needs the editor/area but
+    // does not depend on selection or the pending initial viewport fit.
+    if (!hookProxy._readonly && hookProxy._containerEl) {
+      runtime.placementTeardown = createFlowPlacement({
+        containerEl: hookProxy._containerEl,
+        editor: runtime.editor!,
+        area: runtime.area!,
+        pushEvent,
+      });
+    }
+
     await syncAllNodeSizes();
     await fitSequencesToChildren();
     const selection = await finalizeSetup(
       runtime.area!,
       runtime.editor!,
-      (flowData.nodes?.length ?? 0) > 0 && !skipInitialFit,
+      hasNodes && !skipInitialFit,
       hookProxy._flowContext,
       () => runtime.destroyed,
     );
@@ -418,15 +431,9 @@ export function useFlowCanvas({ pushEvent, handleEvent }: FlowCanvasOpts): FlowC
         editor: runtime.editor!,
         selection,
       });
-      runtime.placementTeardown = createFlowPlacement({
-        containerEl: hookProxy._containerEl,
-        editor: runtime.editor!,
-        area: runtime.area!,
-        pushEvent,
-      });
     }
 
-    if ((flowData.nodes?.length ?? 0) > 0) {
+    if (hasNodes) {
       await rebuildHubsMap();
     }
 

@@ -9,6 +9,11 @@ import {
 } from "@modules/flows/editor/lib/comment-geometry";
 import { createContextMenuItems } from "@modules/flows/editor/lib/context_menu_items";
 import { FlowNode } from "@modules/flows/editor/lib/flow-node";
+import {
+  activeFlowPlacement,
+  startFlowPlacement,
+  cancelFlowPlacement,
+} from "@modules/flows/editor/lib/flow-placement-state";
 
 const live = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
@@ -126,11 +131,20 @@ beforeEach(() => {
 afterEach(() => {
   for (const wrapper of wrappers) wrapper.unmount();
   wrappers = [];
+  cancelFlowPlacement();
   document.body.innerHTML = "";
   vi.unstubAllGlobals();
 });
 
 describe("spatial comment geometry and interactions", () => {
+  it("preserves a pending dock placement when the comments overlay mounts", async () => {
+    startFlowPlacement({ kind: "node", type: "dialogue" });
+    setup();
+    await nextTick();
+    expect(activeFlowPlacement.value).toEqual({ kind: "node", type: "dialogue" });
+    expect(live.pushEvent).not.toHaveBeenCalled();
+  });
+
   it("uses absolute Rete origins for nested nodes and follows pan, zoom, and node movement", async () => {
     const { wrapper, area, pipes } = setup();
     await nextTick();
