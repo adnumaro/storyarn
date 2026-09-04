@@ -12,6 +12,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportNamespaceTest do
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImport
   alias Storyarn.Projects.Versioning.WorkspaceSnapshotImports
   alias Storyarn.Repo
+  alias Storyarn.SnapshotReadSwitchStorage
 
   setup do
     original_storage = Application.get_env(:storyarn, :storage, [])
@@ -115,6 +116,64 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportNamespaceTest do
     assert is_nil(Repo.get!(WorkspaceSnapshotImport, upload.id).provider_namespace_fingerprint)
     assert cleanup_requests(upload.archive_storage_key) == []
     assert archive_exists?(context.root_a, upload.archive_storage_key)
+  end
+
+  for operation <- [:cancel, :ttl] do
+    @tag operation: operation
+    test "#{operation} rejects namespace drift after the initial cleanup observation",
+         %{operation: operation} = context do
+      {upload, fingerprint_a} = prepare_upload_in_namespace_a!(context)
+      put_archive!(upload.archive_storage_key, "namespace-a")
+
+      if operation == :ttl do
+        Repo.update_all(
+          Ecto.Query.from(import in WorkspaceSnapshotImport, where: import.id == ^upload.id),
+          set: [updated_at: ~U[2020-01-01 00:00:00Z]]
+        )
+      end
+
+      configure_local(context.root_b)
+      assert {:ok, fingerprint_b} = ObjectStorage.namespace_fingerprint()
+      refute fingerprint_b == fingerprint_a
+      put_archive!(upload.archive_storage_key, "namespace-b")
+
+      configure_local(context.root_a)
+      {:ok, _pid} = SnapshotReadSwitchStorage.start_link(%{})
+
+      on_exit(fn ->
+        if Process.whereis(SnapshotReadSwitchStorage), do: Agent.stop(SnapshotReadSwitchStorage)
+      end)
+
+      Application.put_env(
+        :storyarn,
+        :storage,
+        Keyword.put(Application.fetch_env!(:storyarn, :storage), :adapter, SnapshotReadSwitchStorage)
+      )
+
+      test_process = self()
+
+      SnapshotReadSwitchStorage.observe_namespace(fn observed ->
+        assert observed == fingerprint_a
+        configure_local(context.root_b)
+        send(test_process, :cleanup_namespace_switched)
+      end)
+
+      case operation do
+        :cancel ->
+          assert {:error, :workspace_snapshot_import_storage_namespace_mismatch} =
+                   Projects.cancel_workspace_snapshot_upload(context.scope, context.workspace.id, upload.id)
+
+        :ttl ->
+          assert %{candidate_count: 1, changed_count: 0, failure_count: 1} =
+                   Versioning.reconcile_abandoned_workspace_snapshot_import_deliveries(upload_ttl_seconds: 1)
+      end
+
+      assert_received :cleanup_namespace_switched
+      assert Repo.get!(WorkspaceSnapshotImport, upload.id).provider_namespace_fingerprint == fingerprint_a
+      assert cleanup_requests(upload.archive_storage_key) == []
+      assert File.read!(Path.join(context.root_a, upload.archive_storage_key)) == "namespace-a"
+      assert File.read!(Path.join(context.root_b, upload.archive_storage_key)) == "namespace-b"
+    end
   end
 
   defp prepare_upload_in_namespace_a!(context) do

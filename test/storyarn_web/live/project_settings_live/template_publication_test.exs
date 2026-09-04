@@ -14,14 +14,14 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
   alias Storyarn.Repo
 
   defp settings_path(project) do
-    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings"
+    ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/templates"
   end
 
-  defp get_general_vue(view) do
-    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsGeneral")
+  defp get_templates_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/project/settings/ProjectSettingsTemplates")
   end
 
-  describe "template publication in project settings" do
+  describe "template publication on the Templates page" do
     setup :register_and_log_in_user
 
     test "passes existing private template publications for the project", %{conn: conn, user: user, scope: scope} do
@@ -35,7 +35,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
 
       {:ok, view, _html} = live(conn, settings_path(project))
 
-      vue = get_general_vue(view)
+      vue = get_templates_vue(view)
       template_ids = Enum.map(vue.props["project-templates"], & &1["id"])
 
       assert template.id in template_ids
@@ -65,7 +65,7 @@ defmodule StoryarnWeb.ProjectSettingsLive.TemplatePublicationTest do
       assert publication.version_notes == "Settings v1 notes"
       assert publication.oban_job_id
 
-      vue = get_general_vue(view)
+      vue = get_templates_vue(view)
       publication_ids = Enum.map(vue.props["project-template-publications"], & &1["id"])
       assert publication.id in publication_ids
     end

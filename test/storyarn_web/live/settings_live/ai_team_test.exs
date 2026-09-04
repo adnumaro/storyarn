@@ -10,7 +10,6 @@ defmodule StoryarnWeb.SettingsLive.AITeamTest do
   alias Storyarn.AI.ModelCatalog
   alias Storyarn.AI.PersonalPreference
   alias Storyarn.Repo
-  alias StoryarnWeb.UserAuth
 
   @stub StoryarnTest.AI.OpenAI
   @model "personal-deterministic-v1"
@@ -62,7 +61,7 @@ defmodule StoryarnWeb.SettingsLive.AITeamTest do
              |> live(~p"/users/settings/ai-team")
   end
 
-  test "requires recent authentication for the personal routing screen", %{conn: conn} do
+  test "mounts the routing screens locked until the password is confirmed", %{conn: conn} do
     user = with_ai_flag(user_fixture())
     workspace = workspace_fixture(user)
     stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
@@ -70,17 +69,27 @@ defmodule StoryarnWeb.SettingsLive.AITeamTest do
     conn =
       log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
 
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/users/settings/ai-team/#{workspace.slug}")
+    {:ok, editor, _html} = live(conn, ~p"/users/settings/ai-team/#{workspace.slug}")
 
-    assert to ==
-             UserAuth.sudo_confirmation_path(~p"/users/settings/ai-team/#{workspace.slug}")
+    editor_vue = get_vue(editor)
+    assert editor_vue.props["sudo-active"] == false
+    assert editor_vue.props["slots"] == []
+    assert editor_vue.props["workspace"]["slug"] == workspace.slug
+    assert editor_vue.props["reauth"]["returnTo"] == ~p"/users/settings/ai-team/#{workspace.slug}"
 
-    assert {:error, {:live_redirect, %{to: overview_to}}} =
-             live(conn, ~p"/users/settings/ai-team")
+    assert render_click(editor, "delete_preference", %{"slot" => "general_assistant"}) =~ "Confirm it"
+    refute_redirected(editor)
 
-    assert overview_to ==
-             UserAuth.sudo_confirmation_path(~p"/users/settings/ai-team")
+    {:ok, overview, _html} = live(conn, ~p"/users/settings/ai-team")
+
+    overview_vue = get_overview_vue(overview)
+    assert overview_vue.props["sudo-active"] == false
+    assert overview_vue.props["workspaces"] == []
+
+    render_click(overview, "confirm_access", %{"password" => valid_user_password()})
+
+    reauth = get_overview_vue(overview).props["reauth"]
+    assert is_binary(reauth["sudoHandoff"])
   end
 
   test "renders the visible personal roles without Translator or DeepL", %{

@@ -2,8 +2,9 @@ defmodule StoryarnWeb.Components.SettingsLayout do
   @moduledoc """
   LiveVue layout boundary for account, workspace, and project settings pages.
 
-  The route LiveView owns authorization and page data. This wrapper serializes
-  settings navigation context and mounts the public Vue layout boundary.
+  The route LiveView owns authorization and page data; the rail context comes
+  from `StoryarnWeb.Live.Hooks.SettingsNav` as `@settings_nav`. Page titles
+  belong to the injected Vue page (`SettingsPage`), not to this wrapper.
   """
 
   use StoryarnWeb, :html
@@ -14,26 +15,17 @@ defmodule StoryarnWeb.Components.SettingsLayout do
   attr :flash, :map, required: true, doc: "the map of flash messages"
   attr :socket, :any, required: true, doc: "the LiveView socket (needed for LiveVue)"
   attr :current_scope, :map, required: true, doc: "the current scope"
-  attr :workspaces, :list, default: [], doc: "list of workspaces for settings nav data"
-  attr :workspace, :map, default: nil, doc: "current workspace for project settings"
-  attr :project, :map, default: nil, doc: "current project for project settings"
-
-  attr :managed_workspace_slugs, :any,
-    default: MapSet.new(),
-    doc: "MapSet of workspace slugs where the user can access administrative settings"
-
-  attr :general_workspace_slugs, :any,
-    default: MapSet.new(),
-    doc: "MapSet of workspace slugs where the user can access general settings"
-
   attr :current_path, :string, required: true, doc: "current settings path for nav highlighting"
+
+  attr :settings_nav, :map,
+    default: nil,
+    doc: "rail context built by StoryarnWeb.Live.Hooks.SettingsNav: current workspace/project, switch options"
+
   attr :sudo_grant, :string, default: nil, doc: "validated grant for sensitive settings links"
   attr :onboarding, :map, default: %{guides: %{}}
   attr :onboarding_guide, :atom, default: nil
   attr :onboarding_autostart, :boolean, default: false
 
-  slot :title
-  slot :subtitle
   slot :inner_block, required: true
 
   def settings(assigns) do
@@ -49,14 +41,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
         id="settings-layout"
         current-path={@current_path}
         sudo-grant={@sudo_grant}
-        workspaces={settings_workspaces(@workspaces)}
-        workspace-settings-access={
-          settings_workspace_access(@managed_workspace_slugs, @general_workspace_slugs)
-        }
-        workspace={settings_workspace(@workspace)}
-        project={settings_project(@project)}
-        title={slot_to_text(@title)}
-        subtitle={slot_to_text(@subtitle)}
+        settings-nav={@settings_nav}
         onboarding={
           OnboardingHelpers.client_config(
             @onboarding,
@@ -72,7 +57,7 @@ defmodule StoryarnWeb.Components.SettingsLayout do
       <Layouts.command_palette
         socket={@socket}
         current_scope={@current_scope}
-        project_context={not is_nil(@project)}
+        project_context={project_context?(@settings_nav)}
         sudo_grant={@sudo_grant}
       />
       <Layouts.flash_group flash={@flash} socket={@socket} />
@@ -80,61 +65,6 @@ defmodule StoryarnWeb.Components.SettingsLayout do
     """
   end
 
-  defp slot_to_text([]), do: nil
-
-  defp slot_to_text(slot) do
-    slot_html =
-      %{}
-      |> Phoenix.Component.__render_slot__(slot, nil)
-      |> Phoenix.HTML.Safe.to_iodata()
-      |> IO.iodata_to_binary()
-
-    case Floki.parse_fragment(slot_html) do
-      {:ok, html_tree} -> Floki.text(html_tree)
-      {:error, _reason} -> slot_html
-    end
-  end
-
-  defp settings_workspaces(workspaces) do
-    Enum.map(workspaces, fn workspace ->
-      %{
-        id: Map.get(workspace, :id),
-        name: Map.get(workspace, :name),
-        slug: Map.get(workspace, :slug)
-      }
-    end)
-  end
-
-  defp settings_workspace_access(managed_slugs, general_slugs) do
-    managed_slugs = normalize_workspace_slugs(managed_slugs)
-
-    general_slugs
-    |> normalize_workspace_slugs()
-    |> Map.new(&{&1, "general"})
-    |> Map.merge(Map.new(managed_slugs, &{&1, "manage"}))
-  end
-
-  defp normalize_workspace_slugs(%MapSet{} = slugs), do: MapSet.to_list(slugs)
-  defp normalize_workspace_slugs(slugs) when is_list(slugs), do: slugs
-  defp normalize_workspace_slugs(_slugs), do: []
-
-  defp settings_workspace(nil), do: nil
-
-  defp settings_workspace(workspace) do
-    %{
-      id: Map.get(workspace, :id),
-      name: Map.get(workspace, :name),
-      slug: Map.get(workspace, :slug)
-    }
-  end
-
-  defp settings_project(nil), do: nil
-
-  defp settings_project(project) do
-    %{
-      id: Map.get(project, :id),
-      name: Map.get(project, :name),
-      slug: Map.get(project, :slug)
-    }
-  end
+  defp project_context?(%{project: %{}}), do: true
+  defp project_context?(_settings_nav), do: false
 end

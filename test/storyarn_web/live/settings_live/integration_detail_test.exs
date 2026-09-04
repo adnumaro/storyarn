@@ -9,7 +9,6 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetailTest do
   alias Storyarn.AI
   alias Storyarn.AI.IntegrationWorkspaceAssignment
   alias Storyarn.Repo
-  alias StoryarnWeb.UserAuth
 
   @stub StoryarnTest.AI.OpenAI
   @model "personal-deterministic-v1"
@@ -38,16 +37,29 @@ defmodule StoryarnWeb.SettingsLive.IntegrationDetailTest do
              |> live(~p"/users/settings/integrations/openai")
   end
 
-  test "requires recent authentication for provider configuration", %{conn: conn} do
+  test "mounts locked with public provider metadata only and issues a handoff on confirmation", %{conn: conn} do
     user = with_ai_flag(user_fixture())
     stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
     conn = log_in_user(conn, user, token_authenticated_at: stale_authenticated_at)
 
-    assert {:error, {:live_redirect, %{to: to}}} =
-             live(conn, ~p"/users/settings/integrations/openai")
+    {:ok, view, _html} = live(conn, ~p"/users/settings/integrations/openai")
 
-    assert to ==
-             UserAuth.sudo_confirmation_path(~p"/users/settings/integrations/openai")
+    vue = get_vue(view)
+    assert vue.props["sudo-active"] == false
+    assert vue.props["card"]["provider"] == "openai"
+    assert vue.props["card"]["key_last_four"] == nil
+    assert vue.props["card"]["models"] == []
+    assert vue.props["card"]["workspace_assignments"] == []
+    assert vue.props["reauth"]["returnTo"] == ~p"/users/settings/integrations/openai"
+
+    # A lapsed window locks the page in place and answers the client.
+    assert render_click(view, "connect", %{"api_key" => "sk-test-key"}) =~ "Confirm it"
+    refute_redirected(view)
+
+    render_click(view, "confirm_access", %{"password" => valid_user_password()})
+
+    reauth = get_vue(view).props["reauth"]
+    assert is_binary(reauth["sudoHandoff"])
   end
 
   test "redirects unknown providers back to the catalog", %{conn: conn} do

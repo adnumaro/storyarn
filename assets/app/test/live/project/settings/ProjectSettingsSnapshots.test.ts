@@ -130,6 +130,7 @@ function mountSnapshots(
       snapshots: [snapshot],
       storageUsage: workspaceStorage,
       snapshotLimit: { used: 2, limit: 10 },
+      workspacePlanPath: "/users/settings/workspaces/alpha/plan",
     },
     global: {
       provide: { _live_vue: live },
@@ -142,21 +143,20 @@ function mountSnapshots(
 afterEach(() => setTestLocale("en"));
 
 describe("ProjectSettingsSnapshots storage accounting", () => {
-  it("renders plan-counted workspace usage and its mutually exclusive categories", () => {
+  it("renders one plan-counted workspace storage meter and points to Plan & usage", () => {
     const wrapper = mountSnapshots();
-    const text = wrapper.text();
+    const meter = wrapper.get('[data-testid="backups-storage-meter"]');
 
-    expect(text).toContain("Storage counted toward your plan");
-    expect(text).toContain("960 KB");
-    expect(text).toContain("23.44%");
-    expect(text).toContain("512 KB");
-    expect(text).toContain("Recoverable asset trash");
-    expect(text).toContain("128 KB");
-    expect(text).toContain("256 KB");
-    expect(text).toContain("64 KB");
-    expect(text).toContain("3.1 MB");
-    expect(text).toContain("Active reservations");
-    wrapper.get('[data-testid="workspace-storage-progress"]');
+    expect(meter.text()).toContain("960 KB");
+    expect(meter.text()).toContain("4 MB");
+    expect(meter.text()).toContain("23.44%");
+    expect(meter.attributes("data-meter-status")).toBe("available");
+    meter.get('[role="progressbar"]');
+
+    expect(wrapper.text()).not.toContain("Recoverable asset trash");
+    expect(wrapper.get('a[href="/users/settings/workspaces/alpha/plan"]').text()).toContain(
+      "Plan & usage",
+    );
   });
 
   it("renders canonical snapshot size, exact percentage, breakdown, inventory, and states", () => {
@@ -187,9 +187,9 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
 
     expect(wrapper.get("form").element).toBeTruthy();
     expect(wrapper.get('[data-testid="snapshot-slot-usage"]').text()).toContain(
-      "Snapshot slots: 2 of 10 used",
+      "Backup slots: 2 of 10 used",
     );
-    expect(wrapper.get('button[type="submit"]').text()).toContain("Create snapshot");
+    expect(wrapper.get('button[type="submit"]').text()).toContain("Create backup");
     const download = wrapper.get('[data-testid="download-snapshot-21"]');
     expect(download.attributes("href")).toBe(
       "/workspaces/alpha/projects/veilbreak/snapshots/21/download",
@@ -346,7 +346,9 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
       totalAccountedBytes: limitState.limitBytes === "0" ? "0" : storageUsage.totalAccountedBytes,
     });
 
-    expect(wrapper.find('[data-testid="workspace-storage-progress"]').exists()).toBe(false);
+    expect(
+      wrapper.find('[data-testid="backups-storage-meter"] [role="progressbar"]').exists(),
+    ).toBe(false);
   });
 
   it("formats snapshot dates with the active locale", () => {
@@ -384,7 +386,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
     });
 
     expect(wrapper.get('[data-testid="snapshot-slot-usage"]').text()).toContain(
-      "Snapshot slots: 10 of 10 used",
+      "Backup slots: 10 of 10 used",
     );
     expect(wrapper.get('button[type="submit"]').attributes("disabled")).toBeDefined();
   });
@@ -473,6 +475,7 @@ describe("ProjectSettingsSnapshots storage accounting", () => {
         ],
         storageUsage,
         snapshotLimit: { used: 2, limit: 10 },
+        workspacePlanPath: "/users/settings/workspaces/alpha/plan",
         restoreOperationActive: true,
       },
     });

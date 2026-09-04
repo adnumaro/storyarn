@@ -1,11 +1,17 @@
 <script setup lang="ts">
 import { useLiveForm, type Form } from "live_vue";
-import { Info } from "@lucide/vue";
 import { computed, nextTick, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
 import PasswordInput from "@components/forms/PasswordInput.vue";
+import {
+  SettingsPage,
+  SettingsReauthBanner,
+  SettingsRow,
+  SettingsSection,
+  type SettingsReauthState,
+} from "@components/settings";
 import { Button } from "@components/ui/button";
 import { Label } from "@components/ui/label";
-import { Separator } from "@components/ui/separator";
 
 interface PasswordFormValues {
   email: string;
@@ -19,13 +25,19 @@ const {
   triggerSubmit = false,
   passwordAction,
   sudoGrant = null,
+  sudoActive = true,
+  reauth,
 } = defineProps<{
   passwordForm: Form<PasswordFormValues>;
   currentEmail: string;
   triggerSubmit?: boolean;
   passwordAction: string;
   sudoGrant?: string | null;
+  sudoActive?: boolean;
+  reauth: SettingsReauthState;
 }>();
+
+const { t } = useI18n();
 
 const passwordForm = useLiveForm(() => passwordFormProp, {
   changeEvent: "validate_password",
@@ -100,16 +112,16 @@ function updatePasswordConfirmation(value: string | number): void {
   passwordConfirmationValue.value = String(value);
 }
 
-// For the form action POST, we use a hidden form that triggers on valid submit
+const editingPassword = ref(false);
+
+// The password change is a native POST so the session cookie rotates; the
+// LiveView validates first and flips `triggerSubmit` when the form is valid.
 const hiddenFormRef = ref<HTMLFormElement | null>(null);
-const csrfToken = ref(
-  document.querySelector("meta[name=csrf-token]")?.getAttribute("content") ?? "",
-);
 
 watch(
   () => triggerSubmit,
-  async (val) => {
-    if (val && hiddenFormRef.value) {
+  async (value) => {
+    if (value && hiddenFormRef.value) {
       await nextTick();
       hiddenFormRef.value.submit();
     }
@@ -119,35 +131,50 @@ watch(
 </script>
 
 <template>
-  <div class="space-y-8">
-    <div class="space-y-1.5">
-      <h1 class="text-2xl font-bold tracking-tight text-foreground">
-        {{ $t("settings.security.title") }}
-      </h1>
-      <p class="text-base text-muted-foreground">{{ $t("settings.security.subtitle") }}</p>
-    </div>
+  <SettingsPage :title="t('settings.security.title')">
+    <SettingsReauthBanner v-if="!sudoActive" :state="reauth" />
 
-    <!-- Hidden form for password action POST -->
     <form ref="hiddenFormRef" :action="passwordAction" method="post" class="hidden">
-      <input type="hidden" name="_csrf_token" :value="csrfToken" />
+      <input type="hidden" name="_csrf_token" :value="reauth.csrfToken" />
       <input v-if="sudoGrant" type="hidden" name="sudo_grant" :value="sudoGrant" />
       <input name="user[email]" type="hidden" autocomplete="username" :value="currentEmail" />
       <input name="user[password]" type="hidden" :value="passwordValue" />
       <input name="user[password_confirmation]" type="hidden" :value="passwordConfirmationValue" />
     </form>
 
-    <!-- Password Section -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">{{ $t("settings.security.change_password") }}</h3>
-      <p class="text-sm text-muted-foreground mb-4">
-        {{ $t("settings.security.change_password_description") }}
-      </p>
+    <SettingsSection
+      :title="t('settings.security.password_section')"
+      :locked="!sudoActive"
+      :locked-label="t('settings.reauth.locked')"
+    >
+      <SettingsRow
+        :label="t('settings.security.change_password')"
+        :hint="t('settings.security.change_password_description')"
+      >
+        <Button
+          v-if="!editingPassword"
+          id="security-change-password"
+          variant="outline"
+          size="sm"
+          :disabled="!sudoActive"
+          @click="editingPassword = true"
+        >
+          {{ t("settings.security.change_password") }}
+        </Button>
+        <Button v-else variant="ghost" size="sm" @click="editingPassword = false">
+          {{ t("settings.security.cancel") }}
+        </Button>
+      </SettingsRow>
 
-      <div class="space-y-4">
+      <form
+        v-if="editingPassword"
+        class="flex flex-col gap-4 px-4 py-3.5"
+        @submit.prevent="passwordForm.submit()"
+      >
         <input type="hidden" autocomplete="username" :value="currentEmail" />
 
-        <div class="space-y-1.5">
-          <Label for="security-password">{{ $t("settings.security.new_password") }}</Label>
+        <div class="flex flex-col gap-1.5">
+          <Label for="security-password">{{ t("settings.security.new_password") }}</Label>
           <PasswordInput
             v-bind="passwordInputAttrs"
             id="security-password"
@@ -156,15 +183,15 @@ watch(
             required
             @update:model-value="updatePassword"
           />
-          <p v-if="showPasswordError" class="text-sm text-destructive mt-1">
+          <p v-if="showPasswordError" class="text-[13px] text-destructive">
             {{ password.errorMessage.value }}
           </p>
         </div>
 
-        <div class="space-y-1.5">
-          <Label for="security-password-confirmation">{{
-            $t("settings.security.confirm_password")
-          }}</Label>
+        <div class="flex flex-col gap-1.5">
+          <Label for="security-password-confirmation">
+            {{ t("settings.security.confirm_password") }}
+          </Label>
           <PasswordInput
             v-bind="passwordConfirmationInputAttrs"
             id="security-password-confirmation"
@@ -172,35 +199,15 @@ watch(
             autocomplete="new-password"
             @update:model-value="updatePasswordConfirmation"
           />
-          <p v-if="showPasswordConfirmationError" class="text-sm text-destructive mt-1">
+          <p v-if="showPasswordConfirmationError" class="text-[13px] text-destructive">
             {{ passwordConfirmation.errorMessage.value }}
           </p>
         </div>
 
-        <div class="flex justify-end gap-3">
-          <Button @click="passwordForm.submit()">
-            {{ $t("settings.security.update_password") }}
-          </Button>
+        <div class="flex justify-end">
+          <Button type="submit" size="sm">{{ t("settings.security.update_password") }}</Button>
         </div>
-      </div>
-    </section>
-
-    <Separator />
-
-    <!-- Sessions Section (future) -->
-    <section>
-      <h3 class="text-lg font-semibold mb-4">
-        {{ $t("settings.security.active_sessions.title") }}
-      </h3>
-      <p class="text-sm text-muted-foreground mb-4">
-        {{ $t("settings.security.active_sessions.description") }}
-      </p>
-      <div
-        class="flex items-center gap-2 rounded-md border border-border bg-muted/50 p-3 text-sm text-muted-foreground"
-      >
-        <Info class="size-5 shrink-0" />
-        <span>{{ $t("settings.security.active_sessions.coming_soon") }}</span>
-      </div>
-    </section>
-  </div>
+      </form>
+    </SettingsSection>
+  </SettingsPage>
 </template>

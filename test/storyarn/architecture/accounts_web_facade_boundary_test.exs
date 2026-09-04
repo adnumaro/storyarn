@@ -4,9 +4,10 @@ defmodule Storyarn.Architecture.AccountsWebFacadeBoundaryTest do
   @accounts_web_sources ["lib/storyarn_web/controllers/user_session_controller.ex"] ++
                           Path.wildcard("lib/storyarn_web/live/user_live/**/*.ex") ++
                           [
+                            "lib/storyarn_web/live/settings_live/preferences.ex",
                             "lib/storyarn_web/live/settings_live/profile.ex",
                             "lib/storyarn_web/live/settings_live/security.ex",
-                            "lib/storyarn_web/live/settings_live/sudo.ex"
+                            "lib/storyarn_web/live/shared/sudo_reauth.ex"
                           ]
 
   @accounts_domain_sources [

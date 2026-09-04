@@ -42,7 +42,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert settings.props["current-path"] ==
                "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
 
-      assert settings.props["project"]["slug"] == project.slug
+      assert settings.props["settings-nav"]["project"]["slug"] == project.slug
+      assert settings.props["settings-nav"]["project"]["access"] == "owner"
 
       vue = get_trash_vue(view)
       assert vue.component == "live/project/settings/ProjectSettingsTrash"
@@ -515,33 +516,21 @@ defmodule StoryarnWeb.ProjectSettingsLive.TrashTest do
       assert Repo.get(Asset, asset.id) == nil
     end
 
-    test "viewer cannot forge asset restore, purge, or empty-trash events", %{conn: conn, user: viewer} do
+    test "viewer is redirected away from the trash and cannot mutate it", %{conn: conn, user: viewer} do
       owner = user_fixture()
       project = owner |> project_fixture() |> Repo.preload(:workspace)
       membership_fixture(project, viewer, "viewer")
       asset = image_asset_fixture(project, owner)
-      {:ok, trashed} = Assets.move_asset_to_trash(project.id, asset.id, owner.id)
+      {:ok, _trashed} = Assets.move_asset_to_trash(project.id, asset.id, owner.id)
 
-      {:ok, view, _html} =
+      {:error, {:redirect, %{to: path, flash: flash}}} =
         live(
           conn,
           ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/settings/trash"
         )
 
-      assert get_trash_vue(view).props["can-manage"] == false
-
-      for event <- ["restore_item", "delete_item"] do
-        html =
-          render_hook(view, event, %{
-            "type" => "asset",
-            "id" => asset.id,
-            "generation" => trashed.deletion_generation
-          })
-
-        assert html =~ "permission"
-      end
-
-      assert render_hook(view, "empty_trash", %{}) =~ "permission"
+      assert path == "/workspaces/#{project.workspace.slug}/projects/#{project.slug}"
+      assert flash["error"] =~ "permission"
       assert %Asset{deleted_at: %DateTime{}} = Repo.get!(Asset, asset.id)
     end
 

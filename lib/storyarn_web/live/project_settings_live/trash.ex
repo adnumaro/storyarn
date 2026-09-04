@@ -17,14 +17,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
       socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      workspace={@workspace}
-      project={@project}
+      settings_nav={@settings_nav}
     >
-      <:title>{dgettext("projects", "Trash")}</:title>
-      <:subtitle>
-        {dgettext("projects", "Restore deleted project items or remove them permanently.")}
-      </:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsTrash"
         v-socket={@socket}
@@ -65,22 +59,31 @@ defmodule StoryarnWeb.ProjectSettingsLive.Trash do
     %{project: project, membership: membership} = socket.assigns
     can_manage = Projects.can?(membership.role, :edit_content)
 
-    if connected?(socket) do
-      Phoenix.PubSub.subscribe(
-        Storyarn.PubSub,
-        StoryarnWeb.Live.Shared.ProjectChromeHelpers.shell_topic(project.id)
-      )
-    end
+    if can_manage do
+      if connected?(socket) do
+        Phoenix.PubSub.subscribe(
+          Storyarn.PubSub,
+          StoryarnWeb.Live.Shared.ProjectChromeHelpers.shell_topic(project.id)
+        )
+      end
 
-    {:ok,
-     socket
-     |> assign(:current_workspace, project.workspace)
-     |> assign(:can_manage, can_manage)
-     |> assign(:trash_page, 1)
-     |> assign(:trash_page_size, @page_size)
-     |> assign(:trash_search, "")
-     |> assign(:trash_type, "all")
-     |> load_trashed_items()}
+      {:ok,
+       socket
+       |> assign(:current_workspace, project.workspace)
+       |> assign(:can_manage, can_manage)
+       |> assign(:trash_page, 1)
+       |> assign(:trash_page_size, @page_size)
+       |> assign(:trash_search, "")
+       |> assign(:trash_type, "all")
+       |> load_trashed_items()}
+    else
+      # Viewers cannot restore or purge anything, so the trash stays out of
+      # their settings rail and redirects if reached by URL.
+      {:ok,
+       socket
+       |> put_flash(:error, dgettext("projects", "You don't have permission to manage this project."))
+       |> redirect(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}")}
+    end
   end
 
   @impl true

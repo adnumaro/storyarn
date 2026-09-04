@@ -1255,7 +1255,8 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
         :second
       )
 
-    with :ok <- validate_import_namespace(import, provider_namespace_fingerprint) do
+    with :ok <- validate_import_namespace(import, provider_namespace_fingerprint),
+         :ok <- validate_import_namespace(import) do
       StorageCompensation.persist_planned_cleanup_request(storage_keys,
         not_before: not_before,
         provider_namespace_fingerprint: import.provider_namespace_fingerprint

@@ -19,12 +19,8 @@ defmodule StoryarnWeb.ProjectSettingsLive.Localization do
       socket={@socket}
       current_scope={@current_scope}
       current_path={@current_path}
-      workspace={@workspace}
-      project={@project}
+      settings_nav={@settings_nav}
     >
-      <:title>{dgettext("projects", "Localization")}</:title>
-      <:subtitle>{dgettext("projects", "Translation provider configuration")}</:subtitle>
-
       <.vue
         v-component="live/project/settings/ProjectSettingsLocalization"
         v-socket={@socket}

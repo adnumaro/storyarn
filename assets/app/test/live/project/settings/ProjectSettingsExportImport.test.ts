@@ -66,6 +66,7 @@ const uploadConfig = { entries: [] } as never;
 function mountPage(canImport: boolean) {
   return mount(ProjectSettingsExportImport, {
     props: {
+      mode: "import" as const,
       exportConfig,
       canEdit: true,
       canImport,

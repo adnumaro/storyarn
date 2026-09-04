@@ -10,16 +10,18 @@
       "items": {
         "general": "General",
         "version_control": "Control de versiones",
-        "usage_limits": "Límites de uso",
+        "usage_limits": "Uso",
         "localization": "Localización",
         "members": "Miembros",
-        "snapshots": "Snapshots",
-        "import_export": "Importar y exportar",
-        "trash": "Papelera"
+        "snapshots": "Copias de seguridad",
+        "trash": "Papelera",
+        "templates": "Plantillas",
+        "export": "Exportar",
+        "import": "Importar"
       }
     },
     "general": {
-      "owner_controls_unavailable": "Solo la persona propietaria actual puede editar los detalles, el idioma de origen, el tema, el mantenimiento o la eliminación del proyecto. Todavía puedes publicar plantillas y cambiar tu apariencia.",
+      "owner_controls_unavailable": "Solo el propietario actual del proyecto puede cambiar estos ajustes. Puedes seguir publicando plantillas desde la página Plantillas.",
       "project_name": "Nombre del proyecto",
       "project_type": "Tipo de proyecto",
       "project_type_placeholder": "Selecciona un tipo",
@@ -75,8 +77,25 @@
       "cancel": "Cancelar",
       "continue": "Continuar",
       "delete_confirm_title": "¿Eliminar proyecto?",
-      "delete_confirm_description": "Esta acción no se puede deshacer.",
-      "delete": "Eliminar"
+      "delete_confirm_description": "Elimina todos los flujos, escenas, fichas, recursos y copias de seguridad del proyecto. El proyecto se puede recuperar desde la papelera del workspace durante un tiempo limitado.",
+      "delete": "Eliminar",
+      "page_title": "General",
+      "owner_only_label": "Solo el propietario del proyecto puede cambiar esto",
+      "details": "Detalles",
+      "type_hint": "Ajusta las plantillas y los preajustes de exportación.",
+      "description_hint": "Se muestra en el panel del workspace y en las plantillas.",
+      "language": "Idioma",
+      "source_language_row_hint": "Idioma base del texto original. Cambiarlo reinicia todas las traducciones existentes.",
+      "theme_colors": "Colores del tema",
+      "theme_colors_hint": "Lienzos y acentos de este proyecto",
+      "primary_hint": "Nodos, pines y selección.",
+      "accent_hint": "Resaltados y avisos.",
+      "theme_apply_row": "Aplicar colores",
+      "theme_apply_hint": "Previsualiza los colores de arriba y aplícalos al proyecto.",
+      "repair_action": "Reparar",
+      "delete_row": "Eliminar este proyecto",
+      "delete_hint": "Elimina flujos, escenas, fichas y copias de seguridad. Te pediremos que escribas el nombre del proyecto.",
+      "delete_type_name": "Escribe el nombre del proyecto para confirmar"
     },
     "members": {
       "invite_title": "Invitar a un miembro del proyecto",
@@ -99,6 +118,24 @@
         "pending": "Transfiriendo la propiedad del proyecto…",
         "cancel": "Cancelar",
         "connection_unconfirmed": "La conexión se ha interrumpido y Storyarn no ha podido confirmar el resultado. Vuelve a conectarte y actualiza esta página antes de intentarlo de nuevo."
+      },
+      "page_title": "Miembros",
+      "invite_section": "Invitar",
+      "roles_hint": "Los editores cambian el contenido. Los lectores solo leen.",
+      "members_section": "Miembros",
+      "count": "Sin miembros | 1 miembro | {count} miembros",
+      "owner_note": "Solo el propietario puede transferir la propiedad o quitar miembros.",
+      "roles": {
+        "owner": "Propietario",
+        "editor": "Editor",
+        "viewer": "Lector"
+      },
+      "remove": {
+        "action": "Quitar del proyecto",
+        "title": "¿Quitar a {name} de este proyecto?",
+        "description": "Perderá el acceso de inmediato. Puedes volver a invitarle más adelante.",
+        "confirm": "Quitar",
+        "cancel": "Cancelar"
       }
     },
     "localization": {
@@ -123,7 +160,14 @@
       "usage_title": "Uso de caracteres",
       "usage_description": "Uso del periodo de facturación actual comunicado por DeepL.",
       "used": "usados",
-      "limit": "límite"
+      "limit": "límite",
+      "page_title": "Localización",
+      "provider_section": "Proveedor de traducción",
+      "provider_hint": "DeepL",
+      "connection_row": "Conexión",
+      "usage_section": "Uso de DeepL",
+      "usage_row": "Caracteres en este periodo de facturación",
+      "usage_row_hint": "Lo informa DeepL al probar la conexión."
     },
     "snapshots": {
       "storage_heading": "Almacenamiento contabilizado en tu plan",
@@ -172,15 +216,15 @@
       "create": {
         "heading": "Crear una snapshot completa",
         "description": "Captura el proyecto y todos sus recursos actuales en una snapshot autocontenida y verificable de forma independiente.",
-        "title": "Nombre de la snapshot",
+        "title": "Nombre",
         "title_placeholder": "Nombre opcional del hito",
         "notes": "Notas",
         "notes_placeholder": "Contexto opcional para tu equipo",
-        "full_mode": "Snapshot completa · sin dependencias de recursos externos",
-        "reservation_note": "Storyarn mide la captura exacta y reserva el almacenamiento necesario.",
-        "slot_usage": "Espacios para snapshots: {used} de {limit} usados",
-        "slot_usage_unknown": "Espacios para snapshots usados: {used} · límite no disponible",
-        "submit": "Crear snapshot",
+        "full_mode": "Copia de seguridad completa",
+        "reservation_note": "Incluye todos los recursos actuales. Storyarn mide la captura y reserva el almacenamiento necesario.",
+        "slot_usage": "Huecos de copia de seguridad: {used} de {limit} usados",
+        "slot_usage_unknown": "Huecos de copia de seguridad usados: {used} · límite no disponible",
+        "submit": "Crear copia de seguridad",
         "submitting": "Capturando…",
         "storage_limit_reached": "Esta snapshot necesita {required}, pero solo hay {available} disponibles.",
         "snapshot_limit_reached": "Este proyecto usa {used} de {limit} espacios para snapshots.",
@@ -188,7 +232,9 @@
         "unauthorized": "Ya no tienes permiso para crear snapshots de este proyecto.",
         "request_failed": "No se ha podido solicitar la snapshot.",
         "connection_failed": "La conexión se ha interrumpido. Puedes reintentar con seguridad la misma solicitud.",
-        "cancel_failed": "No se ha podido cancelar la snapshot."
+        "cancel_failed": "No se ha podido cancelar la snapshot.",
+        "section": "Crear una copia de seguridad",
+        "section_hint": "Una instantánea completa verificada de forma independiente"
       },
       "progress": {
         "pending": "En cola",
@@ -283,10 +329,18 @@
         "localized_texts": "{count} texto localizado | {count} textos localizados",
         "glossary_entries": "{count} entrada de glosario | {count} entradas de glosario"
       },
-      "snapshots_heading": "Snapshots",
-      "empty_title": "Aún no hay snapshots",
-      "empty_description": "Este proyecto no tiene snapshots conservadas.",
-      "untitled": "Snapshot sin título"
+      "snapshots_heading": "Copias de seguridad",
+      "empty_title": "Todavía no hay copias de seguridad",
+      "empty_description": "Crea una copia de seguridad para conservar una copia verificada de este proyecto.",
+      "untitled": "Snapshot sin título",
+      "page_title": "Copias de seguridad",
+      "count": "Sin copias de seguridad | 1 copia de seguridad | {count} copias de seguridad",
+      "storage_section": "Almacenamiento",
+      "storage_section_hint": "Cuenta para el plan del workspace",
+      "storage_row": "Almacenamiento del workspace",
+      "storage_row_hint": "Recursos, papelera recuperable, copias de seguridad y reservas activas.",
+      "storage_footer": "Desglose completo en",
+      "storage_footer_link": "Workspace › Plan y uso"
     },
     "trash": {
       "title": "Papelera",
@@ -323,18 +377,30 @@
       "delete": "Eliminar",
       "cancel": "Cancelar",
       "empty_confirm_title": "¿Vaciar papelera?",
-      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer."
+      "empty_confirm_description": "Todos los elementos eliminados del proyecto se eliminarán permanentemente. Esta acción no se puede deshacer.",
+      "page_title": "Papelera",
+      "items_section": "Elementos eliminados"
     },
     "version_control": {
       "auto_versioning": "Versionado automático",
-      "auto_versioning_description": "Crear versiones automáticamente al editar entidades.",
+      "auto_versioning_description": "Crea versiones de las entidades mientras editas",
       "flows": "Flujos",
       "scenes": "Escenas",
       "sheets": "Fichas",
       "save_changes": "Guardar cambios",
       "usage": "Uso",
       "project_snapshots": "Snapshots del proyecto",
-      "named_versions": "Versiones con nombre"
+      "named_versions": "Versiones con nombre",
+      "page_title": "Control de versiones",
+      "flows_hint": "Grafos de diálogo y lógica.",
+      "scenes_hint": "Mapas y exploración.",
+      "sheets_hint": "Personajes, objetos y variables.",
+      "quota": "Cuota",
+      "quota_hint": "Cuenta para el plan",
+      "backups": "Copias de seguridad",
+      "backups_hint": "Instantáneas completas del proyecto, incluidas las que están en curso.",
+      "named_versions_hint": "Versiones de entidades promocionadas.",
+      "view_usage": "Ver uso"
     },
     "usage_limits": {
       "current_plan": "Plan actual",
@@ -391,6 +457,27 @@
       },
       "accessibility": {
         "status": "Estado de {label}: {status}"
+      },
+      "page_title": "Uso",
+      "project_limits_hint": "Bloquean nuevas entidades o versiones en este proyecto",
+      "items_breakdown": "Fichas {sheets} · Flujos {flows} · Escenas {scenes} · Nodos de flujo {nodes}",
+      "backups": "Copias de seguridad",
+      "backups_hint": "Instantáneas completas del proyecto, incluidas las que están en curso.",
+      "named_versions_hint": "Versiones de entidades promocionadas.",
+      "reached_hint": {
+        "items": "Elimina fichas, flujos o escenas, o amplía el límite del plan para crear más.",
+        "backups": "Elimina una copia de seguridad o amplía el límite del plan para crear otra.",
+        "named_versions": "Elimina una versión con nombre o amplía el límite del plan para promocionar otra."
+      },
+      "plan_link": "Plan y uso",
+      "workspace_note": "Los límites del workspace (proyectos, miembros, almacenamiento) están en",
+      "workspace_note_link": "Workspace › Plan y uso",
+      "meter_status": {
+        "available": "Disponible",
+        "warning": "Cerca del límite",
+        "reached": "Límite alcanzado",
+        "unlimited": "Sin límite",
+        "unknown": "Desconocido"
       }
     },
     "import": {
@@ -399,7 +486,7 @@
       "select_file": "Proyecto Yarn",
       "choose_file": "Elegir .yarn o .zip",
       "file_help": "Máximo 50 MB. Los archivos comprimidos se inspeccionan antes de extraerlos para evitar rutas o expansiones inseguras.",
-      "upload_preview": "Validar y previsualizar",
+      "upload_preview": "Validar y revisar",
       "preview_title": "Resumen de importación",
       "th_entity": "Tipo de contenido",
       "th_count": "Encontrados",
@@ -548,7 +635,24 @@
         "scenes": "Escenas",
         "assets": "Recursos",
         "localization": "Localización"
-      }
+      },
+      "page_title": "Importar",
+      "steps": {
+        "upload": "Subir",
+        "review": "Revisar",
+        "import": "Importar"
+      },
+      "source_section": "Proyecto de Yarn Spinner",
+      "dropzone_title": "Suelta un archivo .yarn o un .zip del proyecto",
+      "dropzone_hint": "Hasta 50 MB. Los archivos comprimidos se inspeccionan en busca de rutas inseguras antes de extraerlos.",
+      "upload_footer": "Nada cambia hasta que confirmes el paso de revisión. Los hablantes y los conflictos se resuelven ahí.",
+      "selected_file": "Archivo seleccionado",
+      "review_section": "Qué se importará",
+      "review_section_hint": "Recuentos encontrados en el archivo",
+      "options_section": "Opciones de importación",
+      "status_section": "Estado de la importación",
+      "result_section": "Resultado",
+      "locked_section": "Importar"
     },
     "export": {
       "title": "Exportar",
@@ -616,7 +720,7 @@
       "validate_before_description": "Detiene la descarga si el proyecto contiene problemas bloqueantes.",
       "pretty_print": "Formato legible",
       "pretty_print_description": "Indenta el JSON generado para facilitar su revisión y versionado.",
-      "summary": "Resumen de exportación",
+      "summary": "Resumen",
       "download_file": "Archivo de descarga",
       "entities": "Elementos",
       "preflight": "Comprobación previa",
@@ -629,7 +733,7 @@
       "download_blocked": "Resuelve los problemas bloqueantes y vuelve a validar antes de descargar.",
       "download_failed": "No se ha podido descargar la exportación. Inténtalo de nuevo.",
       "download_failed_validation": "No se ha podido generar la exportación. Vuelve a validar y revisa los hallazgos bloqueantes.",
-      "download_note": "El proyecto no se modifica. La exportación crea un archivo local nuevo.",
+      "download_note": "Valida primero. Exportar nunca modifica el proyecto.",
       "passed": "Correcto",
       "warnings": "Advertencias",
       "errors": "Errores",
@@ -647,7 +751,55 @@
       "warning_findings": "Advertencias",
       "info_findings": "Información adicional",
       "more_findings": "No se muestra {count} hallazgo más. | No se muestran {count} hallazgos más.",
-      "no_issues": "No se encontraron problemas. El proyecto está listo para exportar."
+      "no_issues": "No se encontraron problemas. El proyecto está listo para exportar.",
+      "page_title": "Exportar",
+      "destination": "Destino",
+      "destination_hint": "Cada formato apunta a un runtime narrativo",
+      "use": "Usar",
+      "selected": "Seleccionado",
+      "content_hint": "{selected} de {total} áreas seleccionadas",
+      "not_supported_by": "No compatible con {format}",
+      "output": "Salida",
+      "quality": "Calidad",
+      "quality_release": "Release",
+      "quality_preview": "Preview (borradores)",
+      "area_count": "{count} área | {count} áreas",
+      "preflight_on": "Activada",
+      "preflight_off": "Desactivada"
+    },
+    "templates": {
+      "page_title": "Plantillas",
+      "publish_section": "Publicar",
+      "publish_row": "Publicar este proyecto como plantilla",
+      "publish_hint": "Crea una plantilla privada para nuevos proyectos de este workspace. Volver a publicar añade una versión.",
+      "no_permission": "Solo el propietario del proyecto o un administrador del workspace pueden publicar plantillas.",
+      "published_templates": "Plantillas publicadas",
+      "publish_template": "Publicar plantilla",
+      "publication_active": "Publicación en curso",
+      "history": "Historial",
+      "history_hint": "Últimas 10 publicaciones",
+      "empty_title": "Todavía no hay publicaciones",
+      "empty_text": "Publica este proyecto para crear una plantilla privada para este workspace.",
+      "dialog_title": "Publicar plantilla del proyecto",
+      "dialog_description": "Crea una versión inmutable a partir del estado actual del proyecto cuando la auditoría de plantilla se supere.",
+      "mode_new": "Nueva plantilla",
+      "mode_update": "Actualizar existente",
+      "existing": "Plantilla",
+      "existing_placeholder": "Selecciona una plantilla",
+      "existing_option": "{name} · v{version}",
+      "name": "Nombre de la plantilla",
+      "description": "Descripción de la plantilla",
+      "version_notes": "Notas de la versión",
+      "publication_new": "Publicación de nueva plantilla",
+      "publication_update": "Publicación de versión de plantilla",
+      "cancel": "Cancelar",
+      "status": {
+        "queued": "En cola",
+        "running": "Publicando",
+        "retrying": "Reintentando",
+        "published": "Publicada",
+        "failed": "Fallida"
+      }
     }
   }
 }

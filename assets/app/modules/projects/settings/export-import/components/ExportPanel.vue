@@ -1,34 +1,21 @@
 <script setup lang="ts">
-import {
-  AlertTriangle,
-  Boxes,
-  Braces,
-  Check,
-  CheckCircle2,
-  CircleX,
-  Download,
-  Feather,
-  FileText,
-  Gamepad2,
-  GitBranch,
-  Info,
-  Layers3,
-  Link2,
-  LoaderCircle,
-  Map,
-  MessageSquareText,
-  Network,
-  Package,
-  ShieldCheck,
-  Table2,
-} from "@lucide/vue";
-import { computed, onUnmounted, ref, watch, type Component } from "vue";
+import { AlertTriangle, CheckCircle2, CircleX, Download, Info, LoaderCircle } from "@lucide/vue";
+import { computed, onUnmounted, ref, watch } from "vue";
+import { useI18n } from "vue-i18n";
+import LiveLink from "@components/navigation/LiveLink.vue";
+import { SettingsRow, SettingsSection } from "@components/settings";
+import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
-import LiveLink from "@components/navigation/LiveLink.vue";
 import { RadioGroup, RadioGroupItem } from "@components/ui/radio-group";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@components/ui/select";
 import { Switch } from "@components/ui/switch";
-import { useI18n } from "vue-i18n";
 import { useLive } from "@shared/composables/useLive";
 import { capture } from "@/js/utils/posthog";
 import type {
@@ -38,14 +25,11 @@ import type {
   LocalizationMode,
   LocalizationPolicy,
   SectionConfig,
+  ValidationFinding,
   ValidationResult,
 } from "../types";
 
 const { t } = useI18n();
-
-interface FormatVisual {
-  icon: Component;
-}
 
 const {
   canExport,
@@ -71,41 +55,26 @@ const VALIDATION_TIMEOUT_MS = 15_000;
 let validationTimer: ReturnType<typeof setTimeout> | null = null;
 let validationEpoch = 0;
 
-const formatVisuals: Record<string, FormatVisual> = {
-  ink: { icon: Feather },
-  yarn: { icon: MessageSquareText },
-  unity: { icon: Boxes },
-  godot: { icon: Gamepad2 },
-  unreal: { icon: Braces },
-  articy: { icon: GitBranch },
-};
-
-const fallbackFormatVisual: FormatVisual = { icon: FileText };
-
 const sectionOptions = computed(() => [
   {
     key: "sheets",
     label: t("project_settings.export.sections.sheets"),
     description: t("project_settings.export.section_descriptions.sheets"),
-    icon: Table2,
   },
   {
     key: "flows",
     label: t("project_settings.export.sections.flows"),
     description: t("project_settings.export.section_descriptions.flows"),
-    icon: Network,
   },
   {
     key: "scenes",
     label: t("project_settings.export.sections.scenes"),
     description: t("project_settings.export.section_descriptions.scenes"),
-    icon: Map,
   },
   {
     key: "localization",
     label: t("project_settings.export.sections.localization"),
     description: t("project_settings.export.section_descriptions.localization"),
-    icon: MessageSquareText,
   },
 ]);
 
@@ -114,26 +83,23 @@ const assetModeOptions = computed(() => [
     value: "references",
     label: t("project_settings.export.asset_modes.references.title"),
     description: t("project_settings.export.asset_modes.references.description"),
-    icon: Link2,
   },
   {
     value: "embedded",
     label: t("project_settings.export.asset_modes.embedded.title"),
     description: t("project_settings.export.asset_modes.embedded.description"),
-    icon: Layers3,
   },
   {
     value: "bundled",
     label: t("project_settings.export.asset_modes.bundled.title"),
     description: t("project_settings.export.asset_modes.bundled.description"),
-    icon: Package,
   },
 ]);
 
 const localizationPolicyOptions = computed<Array<{ value: LocalizationPolicy; label: string }>>(
   () => [
-    { value: "release", label: t("project_settings.export.localization_release") },
-    { value: "preview", label: t("project_settings.export.localization_preview") },
+    { value: "release", label: t("project_settings.export.quality_release") },
+    { value: "preview", label: t("project_settings.export.quality_preview") },
   ],
 );
 
@@ -163,11 +129,19 @@ const includedEntityCount = computed(() =>
   ),
 );
 const assetsSupported = computed(() => supportedSet.value.has("assets"));
+const localizationIncluded = computed(
+  () => supportedSet.value.has("localization") && sectionsSet.value.has("localization"),
+);
 const prettyPrintSupported = computed(() => formatConfig.selected === "unity");
 const selectedAssetMode = computed(
   () =>
     assetModeOptions.value.find((assetMode) => assetMode.value === options.assetMode) ??
     assetModeOptions.value[0],
+);
+const selectedPolicy = computed(
+  () =>
+    localizationPolicyOptions.value.find((policy) => policy.value === options.localizationPolicy) ??
+    localizationPolicyOptions.value[0],
 );
 const hasExportableContent = computed(() => includedSections.value.length > 0);
 const validationIsStale = computed(() => validation?.stale === true);
@@ -184,16 +158,45 @@ const validationCounts = computed(() => ({
   info: validation?.info?.length ?? 0,
 }));
 const MAX_VISIBLE_FINDINGS = 50;
-const visibleErrors = computed(() => validation?.errors?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
-const visibleWarnings = computed(() => validation?.warnings?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
-const visibleInfo = computed(() => validation?.info?.slice(0, MAX_VISIBLE_FINDINGS) ?? []);
+
+interface FindingGroup {
+  key: "errors" | "warnings" | "info";
+  label: string;
+  tone: string;
+  findings: ValidationFinding[];
+  hidden: number;
+}
+
+const findingGroups = computed<FindingGroup[]>(() => {
+  const groups: FindingGroup[] = [
+    {
+      key: "errors",
+      label: t("project_settings.export.error_findings"),
+      tone: "text-destructive",
+      findings: validation?.errors?.slice(0, MAX_VISIBLE_FINDINGS) ?? [],
+      hidden: hiddenFindingCount(validationCounts.value.errors),
+    },
+    {
+      key: "warnings",
+      label: t("project_settings.export.warning_findings"),
+      tone: "text-amber-700 dark:text-amber-300",
+      findings: validation?.warnings?.slice(0, MAX_VISIBLE_FINDINGS) ?? [],
+      hidden: hiddenFindingCount(validationCounts.value.warnings),
+    },
+    {
+      key: "info",
+      label: t("project_settings.export.info_findings"),
+      tone: "text-sky-700 dark:text-sky-300",
+      findings: validation?.info?.slice(0, MAX_VISIBLE_FINDINGS) ?? [],
+      hidden: hiddenFindingCount(validationCounts.value.info),
+    },
+  ];
+
+  return groups.filter((group) => group.findings.length > 0);
+});
 
 function hiddenFindingCount(total: number) {
   return Math.max(0, total - MAX_VISIBLE_FINDINGS);
-}
-
-function formatVisual(format: string) {
-  return formatVisuals[format] ?? fallbackFormatVisual;
 }
 
 function formatName(format: FormatOption | null) {
@@ -240,10 +243,10 @@ function toggleSection(section: string) {
 }
 
 function setAssetMode(mode: string) {
-  if (canExport) live.pushEvent("set_asset_mode", { mode });
+  if (canExport && mode !== options.assetMode) live.pushEvent("set_asset_mode", { mode });
 }
 
-function setLocalizationPolicy(policy: string) {
+function setLocalizationPolicy(policy: unknown) {
   if (canExport && (policy === "release" || policy === "preview")) {
     live.pushEvent("set_localization_policy", { policy });
   }
@@ -374,691 +377,429 @@ function validationDescription(status: string) {
   });
 }
 
-function validationPanelClass(status: string) {
-  if (validationIsStale.value) return "border-amber-500/30 bg-amber-500/5";
-  if (status === "passed") return "border-emerald-500/30 bg-emerald-500/5";
-  if (status === "warnings") return "border-amber-500/30 bg-amber-500/5";
-  if (status === "errors") return "border-destructive/30 bg-destructive/5";
-  return "border-border bg-card";
+type BadgeVariant = "default" | "secondary" | "destructive" | "outline";
+
+function validationBadgeVariant(status: string): BadgeVariant {
+  if (validationIsStale.value) return "outline";
+  if (status === "errors") return "destructive";
+  if (status === "warnings") return "default";
+  return "secondary";
 }
 
-function validationIconClass(status: string) {
-  if (validationIsStale.value) return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
-  if (status === "passed") return "bg-emerald-500/15 text-emerald-700 dark:text-emerald-300";
-  if (status === "warnings") return "bg-amber-500/15 text-amber-700 dark:text-amber-300";
-  if (status === "errors") return "bg-destructive/15 text-destructive";
-  return "bg-sky-500/15 text-sky-700 dark:text-sky-300";
-}
+const contentHint = computed(() =>
+  t("project_settings.export.content_hint", {
+    selected: includedSections.value.length,
+    total: sectionOptions.value.length,
+  }),
+);
+
+const downloadHint = computed(() => {
+  if (!canExport || !hasExportableContent.value || !options.validateBeforeExport) return null;
+  if (!validation || validationIsStale.value) return t("project_settings.export.validate_before");
+  if (validation.status === "errors") return t("project_settings.export.download_blocked");
+
+  return null;
+});
 </script>
 
 <template>
-  <section id="export-workspace" class="space-y-5">
-    <div class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-      <header
-        class="flex flex-col gap-3 border-b border-border bg-muted/40 px-5 py-4 sm:flex-row sm:items-center"
+  <div
+    id="export-workspace"
+    class="grid gap-8 xl:grid-cols-[minmax(0,1fr)_300px] xl:items-start"
+    :data-format="formatConfig.selected"
+  >
+    <div class="flex min-w-0 flex-col gap-8">
+      <SettingsSection
+        :title="t('project_settings.export.destination')"
+        :hint="t('project_settings.export.destination_hint')"
       >
-        <div class="flex size-11 items-center justify-center rounded-xl bg-primary/10 text-primary">
-          <Download class="size-5" />
-        </div>
-        <div class="min-w-0 flex-1">
-          <h2 class="font-semibold">{{ $t("project_settings.export.workspace_title") }}</h2>
-          <p class="mt-1 text-sm text-muted-foreground">
-            {{ $t("project_settings.export.workspace_description") }}
-          </p>
-        </div>
-        <span
-          class="inline-flex items-center whitespace-nowrap rounded-full border border-border px-2 py-0.5 text-xs font-medium text-muted-foreground"
-        >
-          {{
-            $t(
-              "project_settings.export.format_count",
-              { count: visibleFormats.length },
-              visibleFormats.length,
-            )
-          }}
-        </span>
-      </header>
-
-      <fieldset id="export-format-options" class="p-5">
-        <legend class="text-sm font-semibold">
-          {{ $t("project_settings.export.choose_format") }}
-        </legend>
-        <p class="mt-1 text-xs text-muted-foreground">
-          {{ $t("project_settings.export.choose_format_description") }}
-        </p>
-
-        <RadioGroup
-          :model-value="formatConfig.selected"
-          :disabled="!canExport"
-          class="mt-3 grid gap-2 sm:grid-cols-2"
-          @update:model-value="setFormat"
-        >
-          <label
-            v-for="format in visibleFormats"
-            :key="format.format"
-            :data-testid="`export-format-${format.format}`"
-            :class="[
-              'group relative flex cursor-pointer items-start gap-3 rounded-xl border p-3.5 transition-all duration-200 focus-within:ring-2 focus-within:ring-primary/30',
-              formatConfig.selected === format.format
-                ? 'border-primary/45 bg-primary/5 shadow-sm'
-                : 'border-border bg-background hover:-translate-y-0.5 hover:border-foreground/25 hover:shadow-sm',
-            ]"
+        <fieldset id="export-format-options" class="min-w-0">
+          <legend class="sr-only">{{ t("project_settings.export.choose_format") }}</legend>
+          <RadioGroup
+            :model-value="formatConfig.selected"
+            :disabled="!canExport"
+            class="divide-y divide-border"
+            @update:model-value="setFormat"
           >
-            <RadioGroupItem
-              :value="format.format"
-              :disabled="!canExport"
-              :aria-label="format.label"
-              class="absolute size-px opacity-0"
-            />
-            <span
+            <label
+              v-for="format in visibleFormats"
+              :key="format.format"
+              :data-testid="`export-format-${format.format}`"
+              :data-selected="formatConfig.selected === format.format ? 'true' : 'false'"
               :class="[
-                'flex size-9 shrink-0 items-center justify-center rounded-lg transition-colors',
-                formatConfig.selected === format.format
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground group-hover:bg-accent',
+                'group grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3 transition-colors sm:grid-cols-[minmax(0,1fr)_auto]',
+                canExport ? 'cursor-pointer hover:bg-accent/40' : 'cursor-default',
+                'focus-within:bg-accent/40',
               ]"
             >
-              <component :is="formatVisual(format.format).icon" class="size-4" />
-            </span>
-            <span class="min-w-0 flex-1">
-              <span class="flex items-center gap-2">
-                <span class="truncate text-sm font-medium">{{ formatName(format) }}</span>
-                <span
-                  v-if="format.extension"
-                  class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium uppercase text-muted-foreground"
-                >
-                  {{ extensionLabel(format.extension) }}
-                </span>
-              </span>
-              <span class="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                {{ formatDescription(format.format) }}
-              </span>
-              <span
-                class="mt-2 inline-flex rounded-full bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
-              >
-                {{ localizationModeLabel(format.localizationMode) }}
-              </span>
-            </span>
-            <Check
-              v-if="formatConfig.selected === format.format"
-              class="mt-0.5 size-4 shrink-0 text-primary"
-            />
-          </label>
-        </RadioGroup>
-      </fieldset>
-    </div>
-
-    <template v-if="selectedFormatVisible">
-      <div class="grid gap-5 xl:grid-cols-[minmax(0,1fr)_18rem] xl:items-start">
-        <div class="space-y-5">
-          <section class="rounded-xl border border-border bg-card p-5 shadow-sm">
-            <div class="flex items-start justify-between gap-4">
-              <div>
-                <h3 class="font-semibold">{{ $t("project_settings.export.content") }}</h3>
-                <p class="mt-1 text-xs text-muted-foreground">
-                  {{ $t("project_settings.export.content_description") }}
-                </p>
-              </div>
-              <span
-                class="inline-flex items-center whitespace-nowrap rounded-full border border-primary/30 px-2 py-0.5 text-xs font-medium text-primary"
-              >
-                {{
-                  $t(
-                    "project_settings.export.selected_count",
-                    { count: includedSections.length },
-                    includedSections.length,
-                  )
-                }}
-              </span>
-            </div>
-
-            <div class="mt-4 grid gap-2 sm:grid-cols-2">
-              <label
-                v-for="section in sectionOptions"
-                :key="section.key"
-                :data-testid="`export-section-${section.key}`"
-                :class="[
-                  'flex items-start gap-3 rounded-lg border p-3 transition-colors',
-                  supportedSet.has(section.key)
-                    ? 'cursor-pointer border-border hover:bg-muted/45'
-                    : 'cursor-not-allowed border-border/60 bg-muted/30 opacity-55',
-                ]"
-              >
-                <Checkbox
-                  :model-value="supportedSet.has(section.key) && sectionsSet.has(section.key)"
-                  :disabled="!canExport || !supportedSet.has(section.key)"
-                  :aria-label="section.label"
-                  class="mt-0.5"
-                  @update:model-value="toggleSection(section.key)"
-                />
-                <component
-                  :is="section.icon"
-                  class="mt-0.5 size-4 shrink-0 text-muted-foreground"
-                />
-                <span class="min-w-0 flex-1">
-                  <span class="flex items-center justify-between gap-2">
-                    <span class="text-sm font-medium">{{ section.label }}</span>
-                    <span
-                      v-if="supportedSet.has(section.key)"
-                      class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium tabular-nums text-muted-foreground"
-                    >
-                      {{
-                        hasEntityCount(section.key) ? sectionConfig.entityCounts[section.key] : "—"
-                      }}
-                    </span>
-                    <span
-                      v-else
-                      class="inline-flex rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground"
-                    >
-                      {{ $t("project_settings.export.not_supported") }}
-                    </span>
-                  </span>
-                  <span class="mt-0.5 block text-xs leading-relaxed text-muted-foreground">
-                    {{ section.description }}
-                  </span>
-                </span>
-              </label>
-            </div>
-
-            <div
-              v-if="!hasExportableContent"
-              class="mt-4 flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-sm text-foreground"
-              role="alert"
-            >
-              <AlertTriangle class="size-4" />
-              <span>{{ $t("project_settings.export.select_content_warning") }}</span>
-            </div>
-          </section>
-
-          <section class="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
-            <div class="border-b border-border px-5 py-4">
-              <h3 class="font-semibold">{{ $t("project_settings.export.output_settings") }}</h3>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ $t("project_settings.export.output_settings_description") }}
-              </p>
-            </div>
-
-            <fieldset
-              v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
-              id="export-localization-policy-options"
-              class="border-b border-border p-5"
-            >
-              <legend class="text-sm font-medium">
-                {{ $t("project_settings.export.localization_policy") }}
-              </legend>
-              <RadioGroup
-                :model-value="options.localizationPolicy"
+              <RadioGroupItem
+                :value="format.format"
                 :disabled="!canExport"
-                class="mt-3 grid gap-2 sm:grid-cols-2"
-                @update:model-value="setLocalizationPolicy"
+                :aria-label="format.label"
+                class="sr-only"
+              />
+              <span class="min-w-0">
+                <span class="flex min-w-0 flex-wrap items-center gap-2">
+                  <span class="font-medium">{{ formatName(format) }}</span>
+                  <code
+                    v-if="format.extension"
+                    class="rounded border border-border px-1 font-mono text-[11px] leading-5 text-muted-foreground"
+                  >
+                    {{ extensionLabel(format.extension) }}
+                  </code>
+                  <Badge variant="outline" class="font-normal text-muted-foreground">
+                    {{ localizationModeLabel(format.localizationMode) }}
+                  </Badge>
+                </span>
+                <span class="block text-[13px] text-muted-foreground">
+                  {{ formatDescription(format.format) }}
+                </span>
+              </span>
+              <span class="flex items-center justify-end">
+                <Badge v-if="formatConfig.selected === format.format">
+                  {{ t("project_settings.export.selected") }}
+                </Badge>
+                <span
+                  v-else
+                  class="inline-flex h-8 items-center rounded-md px-2.5 text-[13px] font-medium text-muted-foreground transition-colors group-hover:text-foreground"
+                >
+                  {{ t("project_settings.export.use") }}
+                </span>
+              </span>
+            </label>
+          </RadioGroup>
+        </fieldset>
+      </SettingsSection>
+
+      <template v-if="selectedFormatVisible">
+        <SettingsSection :title="t('project_settings.export.content')" :hint="contentHint">
+          <label
+            v-for="section in sectionOptions"
+            :key="section.key"
+            :data-testid="`export-section-${section.key}`"
+            :class="[
+              'grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]',
+              supportedSet.has(section.key)
+                ? canExport
+                  ? 'cursor-pointer hover:bg-accent/40'
+                  : 'cursor-default'
+                : 'cursor-not-allowed opacity-55',
+            ]"
+          >
+            <span class="min-w-0">
+              <span class="flex min-w-0 flex-wrap items-center gap-2">
+                <span class="font-medium">{{ section.label }}</span>
+                <span
+                  v-if="supportedSet.has(section.key) && hasEntityCount(section.key)"
+                  class="text-[13px] tabular-nums text-muted-foreground"
+                >
+                  {{ sectionConfig.entityCounts[section.key] }}
+                </span>
+                <Badge
+                  v-if="!supportedSet.has(section.key)"
+                  variant="outline"
+                  class="font-normal text-muted-foreground"
+                >
+                  {{
+                    t("project_settings.export.not_supported_by", {
+                      format: formatName(selectedFormat),
+                    })
+                  }}
+                </Badge>
+              </span>
+              <span class="block text-[13px] text-muted-foreground">{{ section.description }}</span>
+            </span>
+            <span class="flex items-center justify-end">
+              <Checkbox
+                :model-value="supportedSet.has(section.key) && sectionsSet.has(section.key)"
+                :disabled="!canExport || !supportedSet.has(section.key)"
+                :aria-label="section.label"
+                @update:model-value="toggleSection(section.key)"
+              />
+            </span>
+          </label>
+
+          <template v-if="!hasExportableContent" #footer>
+            <span class="inline-flex items-start gap-1.5 text-amber-700 dark:text-amber-300">
+              <AlertTriangle class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+              <span role="alert">{{ t("project_settings.export.select_content_warning") }}</span>
+            </span>
+          </template>
+        </SettingsSection>
+
+        <SettingsSection :title="t('project_settings.export.output')">
+          <SettingsRow
+            v-if="localizationIncluded"
+            id="export-localization-policy-options"
+            :label="t('project_settings.export.localization_policy')"
+            :hint="
+              options.localizationPolicy === 'release'
+                ? t('project_settings.export.localization_release')
+                : t('project_settings.export.localization_preview')
+            "
+          >
+            <Select
+              :model-value="options.localizationPolicy"
+              :disabled="!canExport"
+              @update:model-value="setLocalizationPolicy"
+            >
+              <SelectTrigger
+                id="export-localization-policy"
+                class="w-[170px]"
+                :aria-label="t('project_settings.export.localization_policy')"
               >
-                <label
+                <SelectValue>{{ selectedPolicy.label }}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem
                   v-for="policy in localizationPolicyOptions"
                   :key="policy.value"
+                  :value="policy.value"
                   :data-testid="`export-localization-${policy.value}`"
-                  :class="[
-                    'relative flex cursor-pointer items-start gap-3 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary/30',
-                    options.localizationPolicy === policy.value
-                      ? 'border-primary/45 bg-primary/5'
-                      : 'border-border hover:bg-muted/40',
-                  ]"
                 >
-                  <RadioGroupItem
-                    :value="policy.value"
-                    :disabled="!canExport"
-                    :aria-label="policy.label"
-                    class="absolute size-px opacity-0"
-                  />
-                  <span class="text-sm leading-relaxed">{{ policy.label }}</span>
-                  <Check
-                    v-if="options.localizationPolicy === policy.value"
-                    class="ml-auto mt-0.5 size-3.5 shrink-0 text-primary"
-                  />
-                </label>
-              </RadioGroup>
-            </fieldset>
+                  {{ policy.label }}
+                </SelectItem>
+              </SelectContent>
+            </Select>
+          </SettingsRow>
 
-            <fieldset
-              v-if="assetsSupported"
-              id="export-asset-mode-options"
-              class="border-b border-border p-5"
+          <SettingsRow
+            v-if="assetsSupported"
+            id="export-asset-mode-options"
+            :label="t('project_settings.export.assets')"
+            :hint="selectedAssetMode.description"
+          >
+            <div
+              class="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-1"
+              role="group"
+              :aria-label="t('project_settings.export.assets')"
             >
-              <legend class="text-sm font-medium">
-                {{ $t("project_settings.export.assets") }}
-              </legend>
-              <p class="mt-1 text-xs text-muted-foreground">
-                {{ $t("project_settings.export.assets_description") }}
-              </p>
-              <RadioGroup
-                :model-value="options.assetMode"
-                :disabled="!canExport"
-                class="mt-3 grid gap-2 sm:grid-cols-3"
-                @update:model-value="setAssetMode"
-              >
-                <label
-                  v-for="assetMode in assetModeOptions"
-                  :key="assetMode.value"
-                  :data-testid="`export-assets-${assetMode.value}`"
-                  :class="[
-                    'relative flex cursor-pointer flex-col gap-2 rounded-lg border p-3 transition-colors focus-within:ring-2 focus-within:ring-primary/30',
-                    options.assetMode === assetMode.value
-                      ? 'border-primary/45 bg-primary/5'
-                      : 'border-border hover:bg-muted/40',
-                  ]"
-                >
-                  <RadioGroupItem
-                    :value="assetMode.value"
-                    :disabled="!canExport"
-                    :aria-label="assetMode.label"
-                    class="absolute size-px opacity-0"
-                  />
-                  <span class="flex items-center gap-2">
-                    <component :is="assetMode.icon" class="size-4 text-muted-foreground" />
-                    <span class="text-sm font-medium">{{ assetMode.label }}</span>
-                    <Check
-                      v-if="options.assetMode === assetMode.value"
-                      class="ml-auto size-3.5 text-primary"
-                    />
-                  </span>
-                  <span class="text-xs leading-relaxed text-muted-foreground">
-                    {{ assetMode.description }}
-                  </span>
-                </label>
-              </RadioGroup>
-            </fieldset>
-
-            <div class="divide-y divide-border px-5">
-              <div class="flex items-center gap-3 py-4">
-                <div
-                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/10 text-sky-700 dark:text-sky-300"
-                >
-                  <ShieldCheck class="size-4" />
-                </div>
-                <label for="validate-before-export" class="min-w-0 flex-1 cursor-pointer">
-                  <span class="block text-sm font-medium">
-                    {{ $t("project_settings.export.validate_before") }}
-                  </span>
-                  <span class="mt-0.5 block text-xs text-muted-foreground">
-                    {{ $t("project_settings.export.validate_before_description") }}
-                  </span>
-                </label>
-                <Switch
-                  id="validate-before-export"
-                  :model-value="options.validateBeforeExport"
-                  :disabled="!canExport"
-                  @update:model-value="toggleOption('validate_before_export')"
-                />
-              </div>
-
-              <div v-if="prettyPrintSupported" class="flex items-center gap-3 py-4">
-                <div
-                  class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-secondary text-secondary-foreground"
-                >
-                  <Braces class="size-4" />
-                </div>
-                <label for="pretty-print-output" class="min-w-0 flex-1 cursor-pointer">
-                  <span class="block text-sm font-medium">
-                    {{ $t("project_settings.export.pretty_print") }}
-                  </span>
-                  <span class="mt-0.5 block text-xs text-muted-foreground">
-                    {{ $t("project_settings.export.pretty_print_description") }}
-                  </span>
-                </label>
-                <Switch
-                  id="pretty-print-output"
-                  :model-value="options.prettyPrint"
-                  :disabled="!canExport"
-                  @update:model-value="toggleOption('pretty_print')"
-                />
-              </div>
-            </div>
-          </section>
-        </div>
-
-        <aside
-          data-testid="export-summary"
-          class="rounded-xl border border-border bg-card shadow-sm xl:sticky xl:top-5"
-        >
-          <div class="border-b border-border px-4 py-3.5">
-            <p class="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              {{ $t("project_settings.export.summary") }}
-            </p>
-          </div>
-
-          <div class="space-y-4 p-4">
-            <div class="flex items-center gap-3">
-              <div
-                class="flex size-10 items-center justify-center rounded-lg bg-primary text-primary-foreground"
-              >
-                <component :is="formatVisual(formatConfig.selected).icon" class="size-4" />
-              </div>
-              <div class="min-w-0 flex-1">
-                <p class="truncate text-sm font-semibold">{{ formatName(selectedFormat) }}</p>
-                <p class="text-xs text-muted-foreground">
-                  {{ $t("project_settings.export.download_file") }}
-                  <span class="font-medium uppercase">.{{ formatConfig.extension }}</span>
-                </p>
-              </div>
-            </div>
-
-            <dl class="space-y-2.5 border-y border-border py-3 text-xs">
-              <div class="flex items-center justify-between gap-3">
-                <dt class="text-muted-foreground">{{ $t("project_settings.export.content") }}</dt>
-                <dd class="font-medium">
-                  {{
-                    $t(
-                      "project_settings.export.section_count",
-                      { count: includedSections.length },
-                      includedSections.length,
-                    )
-                  }}
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="text-muted-foreground">{{ $t("project_settings.export.entities") }}</dt>
-                <dd class="font-medium tabular-nums">{{ includedEntityCount }}</dd>
-              </div>
-              <div v-if="assetsSupported" class="flex items-center justify-between gap-3">
-                <dt class="text-muted-foreground">{{ $t("project_settings.export.assets") }}</dt>
-                <dd class="truncate font-medium">{{ selectedAssetMode.label }}</dd>
-              </div>
-              <div
-                v-if="supportedSet.has('localization') && sectionsSet.has('localization')"
-                class="flex items-center justify-between gap-3"
-              >
-                <dt class="text-muted-foreground">
-                  {{ $t("project_settings.export.localization_policy") }}
-                </dt>
-                <dd class="truncate font-medium">
-                  {{
-                    localizationPolicyOptions.find(
-                      (policy) => policy.value === options.localizationPolicy,
-                    )?.label
-                  }}
-                </dd>
-              </div>
-              <div class="flex items-center justify-between gap-3">
-                <dt class="text-muted-foreground">{{ $t("project_settings.export.preflight") }}</dt>
-                <dd class="flex items-center gap-1.5 font-medium">
-                  <CheckCircle2
-                    v-if="options.validateBeforeExport"
-                    class="size-3.5 text-emerald-600 dark:text-emerald-400"
-                  />
-                  <CircleX v-else class="size-3.5 text-muted-foreground" />
-                  {{
-                    options.validateBeforeExport
-                      ? $t("project_settings.export.enabled")
-                      : $t("project_settings.export.disabled")
-                  }}
-                </dd>
-              </div>
-            </dl>
-
-            <div class="space-y-2">
-              <p
-                v-if="!canExport"
-                data-testid="export-no-permission"
-                class="flex items-start gap-2 rounded-lg border border-border bg-muted p-3 text-xs text-muted-foreground"
-                role="status"
-              >
-                <ShieldCheck class="mt-0.5 size-3.5 shrink-0" />
-                <span>{{ $t("project_settings.export.no_permission") }}</span>
-              </p>
-              <Button
+              <button
+                v-for="assetMode in assetModeOptions"
+                :key="assetMode.value"
                 type="button"
-                variant="outline"
-                class="w-full"
-                :disabled="!canExport || validating || !hasExportableContent"
-                data-testid="validate-export"
-                @click="validateExport"
+                :data-testid="`export-assets-${assetMode.value}`"
+                :aria-pressed="options.assetMode === assetMode.value"
+                :disabled="!canExport"
+                :class="[
+                  'inline-flex h-7 items-center rounded-md px-2.5 text-xs font-medium transition-colors disabled:cursor-not-allowed',
+                  options.assetMode === assetMode.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground',
+                ]"
+                @click="setAssetMode(assetMode.value)"
               >
-                <LoaderCircle v-if="validating" class="size-4 animate-spin" />
-                <ShieldCheck v-else class="size-4" />
-                {{
-                  validating
-                    ? $t("project_settings.export.validating")
-                    : $t("project_settings.export.validate")
-                }}
-              </Button>
-
-              <Button v-if="canDownload" class="w-full" as-child>
-                <a
-                  :href="exportDownloadUrl"
-                  :aria-busy="downloading"
-                  data-live-link-exempt="download"
-                  data-testid="download-export"
-                  @click.prevent="downloadExport"
-                >
-                  <LoaderCircle v-if="downloading" class="size-4 animate-spin" />
-                  <Download v-else class="size-4" />
-                  {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
-                </a>
-              </Button>
-              <Button v-else class="w-full" disabled>
-                <Download class="size-4" />
-                {{ $t("project_settings.export.download", { ext: formatConfig.extension }) }}
-              </Button>
+                {{ assetMode.label }}
+              </button>
             </div>
+          </SettingsRow>
 
-            <p
-              v-if="
-                canExport &&
-                hasExportableContent &&
-                options.validateBeforeExport &&
-                (!validation || validationIsStale || validation.status === 'errors')
-              "
-              :class="[
-                'flex items-start gap-2 text-xs leading-relaxed',
-                !validation || validationIsStale
-                  ? 'text-amber-700 dark:text-amber-300'
-                  : 'text-destructive',
-              ]"
-              role="alert"
-            >
-              <AlertTriangle
-                v-if="!validation || validationIsStale"
-                class="mt-0.5 size-3.5 shrink-0"
-              />
-              <CircleX v-else class="mt-0.5 size-3.5 shrink-0" />
-              <span>
-                {{
-                  !validation || validationIsStale
-                    ? $t("project_settings.export.validate_before")
-                    : $t("project_settings.export.download_blocked")
-                }}
-              </span>
-            </p>
+          <SettingsRow
+            :label="t('project_settings.export.validate_before')"
+            :hint="t('project_settings.export.validate_before_description')"
+            html-for="validate-before-export"
+          >
+            <Switch
+              id="validate-before-export"
+              :model-value="options.validateBeforeExport"
+              :disabled="!canExport"
+              @update:model-value="toggleOption('validate_before_export')"
+            />
+          </SettingsRow>
 
-            <p
-              v-if="downloadError"
-              id="export-download-error"
-              class="flex items-start gap-2 text-xs leading-relaxed text-destructive"
-              role="alert"
-            >
-              <CircleX class="mt-0.5 size-3.5 shrink-0" />
-              <span>{{ downloadError }}</span>
-            </p>
+          <SettingsRow
+            v-if="prettyPrintSupported"
+            :label="t('project_settings.export.pretty_print')"
+            :hint="t('project_settings.export.pretty_print_description')"
+            html-for="pretty-print-output"
+          >
+            <Switch
+              id="pretty-print-output"
+              :model-value="options.prettyPrint"
+              :disabled="!canExport"
+              @update:model-value="toggleOption('pretty_print')"
+            />
+          </SettingsRow>
+        </SettingsSection>
+      </template>
+    </div>
 
-            <p class="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
-              <Info class="mt-0.5 size-3.5 shrink-0" />
-              <span>{{ $t("project_settings.export.download_note") }}</span>
-            </p>
-          </div>
-        </aside>
+    <aside
+      v-if="selectedFormatVisible"
+      data-testid="export-summary"
+      class="flex flex-col rounded-lg border border-border bg-card xl:sticky xl:top-6"
+    >
+      <div class="border-b border-border px-4 py-3.5">
+        <div class="text-[11px] uppercase tracking-[0.06em] text-muted-foreground">
+          {{ t("project_settings.export.summary") }}
+        </div>
+        <div class="mt-1.5 text-base font-medium">
+          {{ formatName(selectedFormat) }} · .{{ formatConfig.extension.toLowerCase() }}
+        </div>
       </div>
 
-      <section
-        v-if="validation"
-        id="export-validation-results"
-        :data-status="validation.status"
-        :data-stale="validationIsStale ? 'true' : 'false'"
-        :class="[
-          'overflow-hidden rounded-xl border shadow-sm',
-          validationPanelClass(validation.status),
-        ]"
-        aria-live="polite"
-      >
-        <div class="flex flex-col gap-3 p-5 sm:flex-row sm:items-start">
-          <div
-            :class="[
-              'flex size-10 shrink-0 items-center justify-center rounded-xl',
-              validationIconClass(validation.status),
-            ]"
+      <dl class="flex flex-col gap-2 px-4 py-3 text-[13px]">
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-muted-foreground">{{ t("project_settings.export.content") }}</dt>
+          <dd>{{ t("project_settings.export.area_count", includedSections.length) }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-muted-foreground">{{ t("project_settings.export.entities") }}</dt>
+          <dd class="tabular-nums">{{ includedEntityCount }}</dd>
+        </div>
+        <div v-if="assetsSupported" class="flex items-center justify-between gap-3">
+          <dt class="text-muted-foreground">{{ t("project_settings.export.assets") }}</dt>
+          <dd class="truncate">{{ selectedAssetMode.label }}</dd>
+        </div>
+        <div v-if="localizationIncluded" class="flex items-center justify-between gap-3">
+          <dt class="text-muted-foreground">{{ t("project_settings.export.quality") }}</dt>
+          <dd class="truncate">{{ selectedPolicy.label }}</dd>
+        </div>
+        <div class="flex items-center justify-between gap-3">
+          <dt class="text-muted-foreground">{{ t("project_settings.export.preflight") }}</dt>
+          <dd>
+            {{
+              options.validateBeforeExport
+                ? t("project_settings.export.preflight_on")
+                : t("project_settings.export.preflight_off")
+            }}
+          </dd>
+        </div>
+      </dl>
+
+      <div class="flex flex-col gap-2 border-t border-border px-4 pb-4 pt-3">
+        <p
+          v-if="!canExport"
+          data-testid="export-no-permission"
+          class="flex items-start gap-2 rounded-md border border-border bg-muted px-3 py-2 text-xs text-muted-foreground"
+          role="status"
+        >
+          <Info class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{{ t("project_settings.export.no_permission") }}</span>
+        </p>
+
+        <Button
+          type="button"
+          variant="outline"
+          class="w-full"
+          :disabled="!canExport || validating || !hasExportableContent"
+          data-testid="validate-export"
+          @click="validateExport"
+        >
+          <LoaderCircle v-if="validating" class="size-4 animate-spin" aria-hidden="true" />
+          {{
+            validating
+              ? t("project_settings.export.validating")
+              : t("project_settings.export.validate")
+          }}
+        </Button>
+
+        <Button v-if="canDownload" class="w-full" as-child>
+          <a
+            :href="exportDownloadUrl"
+            :aria-busy="downloading"
+            data-live-link-exempt="download"
+            data-testid="download-export"
+            @click.prevent="downloadExport"
           >
-            <AlertTriangle v-if="validationIsStale" class="size-5" />
-            <CheckCircle2 v-else-if="validation.status === 'passed'" class="size-5" />
-            <AlertTriangle v-else-if="validation.status === 'warnings'" class="size-5" />
-            <CircleX v-else class="size-5" />
-          </div>
-          <div class="min-w-0 flex-1">
-            <div class="flex flex-wrap items-center gap-2">
-              <h3 class="font-semibold">
-                {{
-                  validationIsStale
-                    ? $t("project_settings.export.validate_before")
-                    : validationTitle(validation.status)
-                }}
-              </h3>
-              <span
-                :class="[
-                  'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
-                  validationIsStale && 'border-amber-500/30 text-amber-700 dark:text-amber-300',
-                  !validationIsStale &&
-                    validation.status === 'passed' &&
-                    'border-emerald-500/30 text-emerald-700 dark:text-emerald-300',
-                  !validationIsStale &&
-                    validation.status === 'warnings' &&
-                    'border-amber-500/30 text-amber-700 dark:text-amber-300',
-                  !validationIsStale &&
-                    validation.status === 'errors' &&
-                    'border-destructive/30 text-destructive',
-                ]"
-              >
-                {{
-                  validationIsStale
-                    ? $t("project_settings.export.validate")
-                    : validationStatusLabel(validation.status)
-                }}
-              </span>
-            </div>
-            <p v-if="!validationIsStale" class="mt-1 text-sm text-muted-foreground">
-              {{ validationDescription(validation.status) }}
-            </p>
-          </div>
-        </div>
+            <LoaderCircle v-if="downloading" class="size-4 animate-spin" aria-hidden="true" />
+            <Download v-else class="size-4" aria-hidden="true" />
+            {{ t("project_settings.export.download", { ext: formatConfig.extension }) }}
+          </a>
+        </Button>
+        <Button v-else class="w-full" disabled>
+          <Download class="size-4" aria-hidden="true" />
+          {{ t("project_settings.export.download", { ext: formatConfig.extension }) }}
+        </Button>
 
-        <div
-          v-if="validation.errors?.length || validation.warnings?.length || validation.info?.length"
-          class="grid gap-3 border-t border-current/10 p-5 lg:grid-cols-2"
+        <p
+          v-if="downloadHint"
+          :class="[
+            'flex items-start gap-1.5 text-xs leading-relaxed',
+            validation && !validationIsStale && validation.status === 'errors'
+              ? 'text-destructive'
+              : 'text-amber-700 dark:text-amber-300',
+          ]"
+          role="alert"
         >
-          <div v-if="validation.errors?.length" class="space-y-2 lg:col-span-2">
-            <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-destructive"
-            >
-              <CircleX class="size-3.5" />
-              {{ $t("project_settings.export.error_findings") }}
-            </h4>
-            <div
-              v-for="(finding, index) in visibleErrors"
-              :key="`error-${index}`"
-              class="rounded-lg border border-destructive/20 bg-card/65 px-3 py-2.5 text-sm"
-            >
-              <LiveLink
-                v-if="finding.href"
-                :to="finding.href"
-                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
-              >
-                {{ finding.message }}
-              </LiveLink>
-              <template v-else>{{ finding.message }}</template>
-            </div>
-            <p
-              v-if="hiddenFindingCount(validationCounts.errors)"
-              class="text-xs text-muted-foreground"
-            >
-              {{
-                $t("project_settings.export.more_findings", {
-                  count: hiddenFindingCount(validationCounts.errors),
-                })
-              }}
-            </p>
-          </div>
+          <AlertTriangle class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{{ downloadHint }}</span>
+        </p>
 
-          <div v-if="validation.warnings?.length" class="space-y-2">
-            <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300"
-            >
-              <AlertTriangle class="size-3.5" />
-              {{ $t("project_settings.export.warning_findings") }}
-            </h4>
-            <div
-              v-for="(finding, index) in visibleWarnings"
-              :key="`warning-${index}`"
-              class="rounded-lg border border-amber-500/20 bg-card/65 px-3 py-2.5 text-sm"
-            >
-              <LiveLink
-                v-if="finding.href"
-                :to="finding.href"
-                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
-              >
-                {{ finding.message }}
-              </LiveLink>
-              <template v-else>{{ finding.message }}</template>
-            </div>
-            <p
-              v-if="hiddenFindingCount(validationCounts.warnings)"
-              class="text-xs text-muted-foreground"
-            >
-              {{
-                $t("project_settings.export.more_findings", {
-                  count: hiddenFindingCount(validationCounts.warnings),
-                })
-              }}
-            </p>
-          </div>
-
-          <div v-if="validation.info?.length" class="space-y-2">
-            <h4
-              class="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-sky-700 dark:text-sky-300"
-            >
-              <Info class="size-3.5" />
-              {{ $t("project_settings.export.info_findings") }}
-            </h4>
-            <div
-              v-for="(finding, index) in visibleInfo"
-              :key="`info-${index}`"
-              class="rounded-lg border border-sky-500/20 bg-card/65 px-3 py-2.5 text-sm"
-            >
-              <LiveLink
-                v-if="finding.href"
-                :to="finding.href"
-                class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
-              >
-                {{ finding.message }}
-              </LiveLink>
-              <template v-else>{{ finding.message }}</template>
-            </div>
-            <p
-              v-if="hiddenFindingCount(validationCounts.info)"
-              class="text-xs text-muted-foreground"
-            >
-              {{
-                $t("project_settings.export.more_findings", {
-                  count: hiddenFindingCount(validationCounts.info),
-                })
-              }}
-            </p>
-          </div>
-        </div>
-
-        <div
-          v-if="!validationIsStale && validation.status === 'passed' && !validation.info?.length"
-          class="flex items-center gap-2 border-t border-emerald-500/15 px-5 py-3 text-sm text-emerald-700 dark:text-emerald-300"
+        <p
+          v-if="downloadError"
+          id="export-download-error"
+          class="flex items-start gap-1.5 text-xs leading-relaxed text-destructive"
+          role="alert"
         >
-          <CheckCircle2 class="size-4" />
-          <span>{{ $t("project_settings.export.no_issues") }}</span>
+          <CircleX class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{{ downloadError }}</span>
+        </p>
+
+        <p class="flex items-start gap-1.5 text-xs leading-relaxed text-muted-foreground">
+          <Info class="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          <span>{{ t("project_settings.export.download_note") }}</span>
+        </p>
+      </div>
+    </aside>
+
+    <SettingsSection
+      v-if="validation && selectedFormatVisible"
+      id="export-validation-results"
+      class="xl:col-span-2"
+      :data-status="validation.status"
+      :data-stale="validationIsStale ? 'true' : 'false'"
+      :title="
+        validationIsStale
+          ? t('project_settings.export.validate_before')
+          : validationTitle(validation.status)
+      "
+      :hint="validationIsStale ? null : validationDescription(validation.status)"
+      aria-live="polite"
+    >
+      <template #title-extra>
+        <Badge :variant="validationBadgeVariant(validation.status)">
+          {{
+            validationIsStale
+              ? t("project_settings.export.validate")
+              : validationStatusLabel(validation.status)
+          }}
+        </Badge>
+      </template>
+
+      <div
+        v-for="group in findingGroups"
+        :key="group.key"
+        :data-findings="group.key"
+        class="px-4 py-3"
+      >
+        <div :class="['text-xs font-semibold uppercase tracking-wide', group.tone]">
+          {{ group.label }}
         </div>
-      </section>
-    </template>
-  </section>
+        <ul class="mt-2 flex flex-col gap-1.5 text-sm">
+          <li v-for="(finding, index) in group.findings" :key="`${group.key}-${index}`">
+            <LiveLink
+              v-if="finding.href"
+              :to="finding.href"
+              class="font-medium underline decoration-current/30 underline-offset-4 transition hover:decoration-current"
+            >
+              {{ finding.message }}
+            </LiveLink>
+            <template v-else>{{ finding.message }}</template>
+          </li>
+        </ul>
+        <p v-if="group.hidden" class="mt-2 text-xs text-muted-foreground">
+          {{ t("project_settings.export.more_findings", { count: group.hidden }) }}
+        </p>
+      </div>
+
+      <div
+        v-if="!validationIsStale && validation.status === 'passed' && findingGroups.length === 0"
+        class="flex items-center gap-2 px-4 py-3 text-sm text-emerald-700 dark:text-emerald-300"
+      >
+        <CheckCircle2 class="size-4" aria-hidden="true" />
+        <span>{{ t("project_settings.export.no_issues") }}</span>
+      </div>
+    </SettingsSection>
+  </div>
 </template>

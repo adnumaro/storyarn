@@ -1,25 +1,11 @@
 <script setup lang="ts">
-import {
-  AlertTriangle,
-  File,
-  FileText,
-  GitBranch,
-  Map as MapIcon,
-  Search,
-  Trash2,
-  Undo2,
-} from "@lucide/vue";
+import { File, FileText, GitBranch, Map as MapIcon, Search, Trash2, Undo2 } from "@lucide/vue";
 import { computed, ref, watch, type Component } from "vue";
 import { useI18n } from "vue-i18n";
+import ConfirmDialog from "@components/ConfirmDialog.vue";
+import { SettingsEmptyState, SettingsPage, SettingsSection } from "@components/settings";
 import { Button } from "@components/ui/button";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@components/ui/dialog";
+import { Input } from "@components/ui/input";
 import { useLive } from "@shared/composables/useLive";
 
 type TrashItemType = "sheet" | "flow" | "scene" | "asset";
@@ -76,19 +62,19 @@ const filters: TrashFilter[] = ["all", "sheet", "flow", "scene", "asset"];
 const typeConfig = {
   sheet: {
     icon: FileText,
-    class: "border-sky-500/20 bg-sky-500/10 text-sky-400",
+    class: "border-sky-500/20 bg-sky-500/10 text-sky-600 dark:text-sky-400",
   },
   flow: {
     icon: GitBranch,
-    class: "border-violet-500/20 bg-violet-500/10 text-violet-400",
+    class: "border-violet-500/20 bg-violet-500/10 text-violet-600 dark:text-violet-400",
   },
   scene: {
     icon: MapIcon,
-    class: "border-emerald-500/20 bg-emerald-500/10 text-emerald-400",
+    class: "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
   },
   asset: {
     icon: File,
-    class: "border-amber-500/20 bg-amber-500/10 text-amber-400",
+    class: "border-amber-500/20 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
 } satisfies Record<TrashItemType, { icon: Component; class: string }>;
 
@@ -116,14 +102,18 @@ const hasToolbar = computed(
   () => itemCounts.value.all > 0 || localSearchQuery.value !== "" || activeFilter !== "all",
 );
 
+const pristine = computed(
+  () => itemCounts.value.all === 0 && localSearchQuery.value === "" && activeFilter === "all",
+);
+
 const emptyTitle = computed(() =>
-  itemCounts.value.all === 0 && localSearchQuery.value === "" && activeFilter === "all"
+  pristine.value
     ? t("project_settings.trash.empty_title")
     : t("project_settings.trash.no_results_title"),
 );
 
 const emptyDescription = computed(() =>
-  itemCounts.value.all === 0 && localSearchQuery.value === "" && activeFilter === "all"
+  pristine.value
     ? t("project_settings.trash.empty_description")
     : t("project_settings.trash.no_results_description"),
 );
@@ -137,19 +127,19 @@ const deleteConfirmDescription = computed(() => {
   });
 });
 
-function typeLabel(type: TrashItemType) {
+function typeLabel(type: TrashItemType): string {
   return t(`project_settings.trash.types.${type}`);
 }
 
-function filterLabel(filter: TrashFilter) {
+function filterLabel(filter: TrashFilter): string {
   return filter === "all" ? t("project_settings.trash.filters.all") : typeLabel(filter);
 }
 
-function itemName(item: TrashedItem) {
+function itemName(item: TrashedItem): string {
   return item.name || t("project_settings.trash.untitled");
 }
 
-function formatRelativeTime(datetime: string | null) {
+function formatRelativeTime(datetime: string | null): string {
   if (!datetime) return "";
 
   const diffSeconds = Math.max(0, Math.floor((Date.now() - new Date(datetime).getTime()) / 1000));
@@ -162,20 +152,20 @@ function formatRelativeTime(datetime: string | null) {
   return formatter.format(-Math.floor(diffSeconds / 86400), "day");
 }
 
-function deletedLabel(item: TrashedItem) {
+function deletedLabel(item: TrashedItem): string {
   return t("project_settings.trash.deleted_label", {
     time: formatRelativeTime(item.deleted_at),
   });
 }
 
-function formatSize(bytes: number | null) {
+function formatSize(bytes: number | null): string {
   if (bytes == null) return "";
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
-function formatDateTime(datetime: string | null) {
+function formatDateTime(datetime: string | null): string {
   if (!datetime) return "";
 
   return new Intl.DateTimeFormat(locale.value, {
@@ -184,7 +174,7 @@ function formatDateTime(datetime: string | null) {
   }).format(new Date(datetime));
 }
 
-function deletionActorLabel(item: TrashedItem) {
+function deletionActorLabel(item: TrashedItem): string {
   if (item.deletion_reason === "snapshot_restore") {
     return t("project_settings.trash.deleted_by_snapshot_restore");
   }
@@ -209,15 +199,15 @@ function mutationPayload(item: TrashedItem) {
   return payload;
 }
 
-function restoreItem(item: TrashedItem) {
+function restoreItem(item: TrashedItem): void {
   live.pushEvent("restore_item", mutationPayload(item));
 }
 
-function setFilter(filter: TrashFilter) {
+function setFilter(filter: TrashFilter): void {
   live.pushEvent("set_trash_filter", { type: filter });
 }
 
-function onSearchInput(event: Event) {
+function onSearchInput(event: Event): void {
   localSearchQuery.value = (event.target as HTMLInputElement).value;
 
   if (searchDebounce) clearTimeout(searchDebounce);
@@ -227,7 +217,7 @@ function onSearchInput(event: Event) {
   }, 250);
 }
 
-function goToPage(page: number) {
+function goToPage(page: number): void {
   if (page < 1 || page > pagination.totalPages || page === pagination.page) return;
 
   live.pushEvent("change_trash_page", { page });
@@ -245,27 +235,20 @@ const paginationPages = computed(() => {
   return Array.from({ length: 7 }, (_, index) => start + index);
 });
 
-function openDeleteConfirm(item: TrashedItem) {
+function openDeleteConfirm(item: TrashedItem): void {
   itemToDelete.value = item;
   showDeleteConfirm.value = true;
 }
 
-function closeDeleteConfirm() {
-  showDeleteConfirm.value = false;
-  itemToDelete.value = null;
-}
-
-function confirmDelete() {
+function confirmDelete(): void {
   if (!itemToDelete.value) return;
 
   live.pushEvent("delete_item", mutationPayload(itemToDelete.value));
-
-  closeDeleteConfirm();
+  itemToDelete.value = null;
 }
 
-function emptyTrash() {
+function emptyTrash(): void {
   live.pushEvent("empty_trash", {});
-  showEmptyConfirm.value = false;
 }
 
 watch(
@@ -277,230 +260,206 @@ watch(
 </script>
 
 <template>
-  <div class="space-y-4">
-    <div v-if="hasToolbar" class="space-y-3">
-      <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <p class="text-sm text-muted-foreground">
-          {{ t("project_settings.trash.count_summary", { count: pagination.totalCount }) }}
-        </p>
+  <SettingsPage :title="t('project_settings.trash.page_title')">
+    <template #actions>
+      <Button
+        v-if="canManage && itemCounts.all > 0"
+        variant="destructive"
+        size="sm"
+        data-testid="empty-trash-trigger"
+        @click="showEmptyConfirm = true"
+      >
+        <Trash2 class="size-4" aria-hidden="true" />
+        {{ t("project_settings.trash.empty_trash") }}
+      </Button>
+    </template>
 
-        <Button
-          v-if="canManage && itemCounts.all > 0"
-          variant="destructive"
-          data-testid="empty-trash-trigger"
-          @click="showEmptyConfirm = true"
+    <div v-if="hasToolbar" class="flex flex-col gap-3 lg:flex-row lg:items-center">
+      <div class="relative min-w-0 flex-1">
+        <Search
+          class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
+          aria-hidden="true"
+        />
+        <Input
+          :model-value="localSearchQuery"
+          type="search"
+          class="pl-9"
+          :placeholder="t('project_settings.trash.search_placeholder')"
+          :aria-label="t('project_settings.trash.search_placeholder')"
+          @input="onSearchInput"
+        />
+      </div>
+
+      <div
+        class="flex flex-wrap items-center gap-1 rounded-lg border border-border bg-muted/40 p-1"
+        role="group"
+      >
+        <button
+          v-for="filter in visibleFilters"
+          :key="filter"
+          :data-testid="`trash-filter-${filter}`"
+          type="button"
+          :aria-pressed="activeFilter === filter"
+          :class="[
+            'inline-flex h-7 items-center gap-1.5 rounded-md px-2.5 text-xs font-medium transition-colors',
+            activeFilter === filter
+              ? 'bg-background text-foreground shadow-sm'
+              : 'text-muted-foreground hover:text-foreground',
+          ]"
+          @click="setFilter(filter)"
         >
-          <Trash2 class="mr-2 size-4" />
-          {{ t("project_settings.trash.empty_trash") }}
-        </Button>
-      </div>
-
-      <div class="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <label class="relative block min-w-0 flex-1">
-          <Search
-            class="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground"
-          />
-          <input
-            :value="localSearchQuery"
-            type="search"
-            class="h-9 w-full rounded-md border border-border bg-background pl-9 pr-3 text-sm outline-none transition-colors placeholder:text-muted-foreground/70 focus:border-ring focus:ring-2 focus:ring-ring/20"
-            :placeholder="t('project_settings.trash.search_placeholder')"
-            @input="onSearchInput"
-          />
-        </label>
-
-        <div class="flex flex-wrap items-center gap-1">
-          <button
-            v-for="filter in visibleFilters"
-            :key="filter"
-            :data-testid="`trash-filter-${filter}`"
-            type="button"
-            :class="[
-              'inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-xs font-medium transition-colors',
-              activeFilter === filter
-                ? 'border-border bg-muted text-foreground'
-                : 'border-transparent text-muted-foreground hover:bg-muted/70 hover:text-foreground',
-            ]"
-            @click="setFilter(filter)"
-          >
-            <span>{{ filterLabel(filter) }}</span>
-            <span class="text-muted-foreground">{{ itemCounts[filter] }}</span>
-          </button>
-        </div>
+          <span>{{ filterLabel(filter) }}</span>
+          <span class="tabular-nums text-muted-foreground">{{ itemCounts[filter] }}</span>
+        </button>
       </div>
     </div>
 
-    <div
-      v-if="trashedItems.length === 0"
-      class="flex flex-col items-center justify-center py-20 text-center"
+    <SettingsSection
+      :title="t('project_settings.trash.items_section')"
+      :hint="t('project_settings.trash.count_summary', { count: pagination.totalCount })"
     >
-      <Trash2 class="mb-4 size-10 text-muted-foreground/40" />
-      <h3 class="text-lg font-medium text-muted-foreground">
-        {{ emptyTitle }}
-      </h3>
-      <p class="mt-1 max-w-md text-sm text-muted-foreground/70">
-        {{ emptyDescription }}
-      </p>
-    </div>
+      <SettingsEmptyState
+        v-if="trashedItems.length === 0"
+        :icon="Trash2"
+        :title="emptyTitle"
+        :text="emptyDescription"
+      />
 
-    <div v-else class="space-y-2">
-      <article
+      <div
         v-for="item in trashedItems"
         :key="`${item.type}-${item.id}`"
         :data-testid="`trash-item-${item.type}-${item.id}`"
-        class="flex items-center justify-between gap-4 rounded-lg border border-border/60 bg-muted/35 p-3 transition-colors hover:bg-muted/55"
+        class="grid grid-cols-1 items-center gap-x-6 gap-y-2 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_auto]"
       >
         <div class="flex min-w-0 items-center gap-3">
           <div
             :class="[
-              'flex size-10 shrink-0 items-center justify-center rounded-lg border',
+              'flex size-9 shrink-0 items-center justify-center rounded-lg border',
               typeConfig[item.type].class,
             ]"
           >
-            <component :is="typeConfig[item.type].icon" class="size-4" />
+            <component :is="typeConfig[item.type].icon" class="size-4" aria-hidden="true" />
           </div>
 
           <div class="min-w-0">
-            <div class="mb-1 flex min-w-0 items-center gap-2">
-              <p class="truncate font-medium">{{ itemName(item) }}</p>
+            <div class="flex min-w-0 items-center gap-2">
+              <span class="truncate font-medium">{{ itemName(item) }}</span>
               <span
                 :class="[
-                  'inline-flex items-center rounded-md border px-1.5 py-0.5 text-xs font-medium',
+                  'inline-flex items-center rounded-md border px-1.5 py-0.5 text-[11px] font-medium',
                   typeConfig[item.type].class,
                 ]"
               >
                 {{ typeLabel(item.type) }}
               </span>
             </div>
-            <p class="text-sm text-muted-foreground">
+            <div class="text-[13px] text-muted-foreground">
               <time :datetime="item.deleted_at || undefined">{{ deletedLabel(item) }}</time>
-            </p>
-            <p v-if="item.type === 'asset'" class="text-xs text-muted-foreground">
-              <span v-if="item.content_type">{{ item.content_type }}</span>
-              <span v-if="item.content_type && item.size != null" aria-hidden="true"> · </span>
-              <span v-if="item.size != null">{{ formatSize(item.size) }}</span>
-              <span aria-hidden="true"> · </span>
-              <span>{{ deletionActorLabel(item) }}</span>
-            </p>
-            <p v-if="item.purge_at" class="text-xs text-muted-foreground">
+              <template v-if="item.type === 'asset'">
+                <span aria-hidden="true"> · </span>
+                <span v-if="item.content_type">{{ item.content_type }}</span>
+                <span v-if="item.content_type && item.size != null" aria-hidden="true"> · </span>
+                <span v-if="item.size != null">{{ formatSize(item.size) }}</span>
+                <span aria-hidden="true"> · </span>
+                <span>{{ deletionActorLabel(item) }}</span>
+              </template>
+            </div>
+            <div v-if="item.purge_at" class="text-[13px] text-muted-foreground">
               {{
                 t("project_settings.trash.recoverable_until", {
                   date: formatDateTime(item.purge_at),
                 })
               }}
-            </p>
+            </div>
           </div>
         </div>
 
-        <div v-if="canManage" class="flex shrink-0 items-center gap-2">
+        <div v-if="canManage" class="flex items-center justify-end gap-1">
           <Button
             variant="ghost"
             size="sm"
             :data-testid="`restore-${item.type}-${item.id}`"
             @click="restoreItem(item)"
           >
-            <Undo2 class="mr-1 size-4" />
+            <Undo2 class="size-4" aria-hidden="true" />
             {{ t("project_settings.trash.restore") }}
           </Button>
           <Button
             variant="ghost"
             size="sm"
-            class="text-destructive hover:bg-destructive/10"
+            class="text-destructive hover:bg-destructive/10 hover:text-destructive"
             :data-testid="`delete-${item.type}-${item.id}`"
             @click="openDeleteConfirm(item)"
           >
-            <Trash2 class="mr-1 size-4" />
+            <Trash2 class="size-4" aria-hidden="true" />
             {{ t("project_settings.trash.delete") }}
           </Button>
         </div>
-      </article>
-    </div>
-
-    <div
-      v-if="pagination.totalPages > 1"
-      class="flex flex-col gap-3 border-t border-border/60 pt-4 sm:flex-row sm:items-center sm:justify-between"
-    >
-      <span class="text-sm text-muted-foreground">
-        {{
-          t("project_settings.trash.page_of", {
-            page: pagination.page,
-            total: pagination.totalPages,
-          })
-        }}
-      </span>
-
-      <div class="flex items-center gap-1">
-        <Button
-          variant="ghost"
-          size="sm"
-          :disabled="pagination.page <= 1"
-          @click="goToPage(pagination.page - 1)"
-        >
-          {{ t("project_settings.trash.previous") }}
-        </Button>
-        <Button
-          v-for="page in paginationPages"
-          :key="page"
-          :variant="page === pagination.page ? 'default' : 'ghost'"
-          size="sm"
-          class="min-w-9"
-          @click="goToPage(page)"
-        >
-          {{ page }}
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          :disabled="pagination.page >= pagination.totalPages"
-          @click="goToPage(pagination.page + 1)"
-        >
-          {{ t("project_settings.trash.next") }}
-        </Button>
       </div>
-    </div>
 
-    <Dialog v-model:open="showDeleteConfirm">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle class="flex items-center gap-2">
-            <AlertTriangle class="size-5 text-destructive" />
-            {{ t("project_settings.trash.delete_confirm_title") }}
-          </DialogTitle>
-          <DialogDescription>
-            {{ deleteConfirmDescription }}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" @click="closeDeleteConfirm">
-            {{ t("project_settings.trash.cancel") }}
-          </Button>
-          <Button variant="destructive" @click="confirmDelete">
-            {{ t("project_settings.trash.delete") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      <template v-if="pagination.totalPages > 1" #footer>
+        <span class="flex flex-wrap items-center justify-between gap-2">
+          <span>
+            {{
+              t("project_settings.trash.page_of", {
+                page: pagination.page,
+                total: pagination.totalPages,
+              })
+            }}
+          </span>
+          <span class="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="pagination.page <= 1"
+              @click="goToPage(pagination.page - 1)"
+            >
+              {{ t("project_settings.trash.previous") }}
+            </Button>
+            <Button
+              v-for="page in paginationPages"
+              :key="page"
+              :variant="page === pagination.page ? 'secondary' : 'ghost'"
+              size="sm"
+              class="min-w-8"
+              @click="goToPage(page)"
+            >
+              {{ page }}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              :disabled="pagination.page >= pagination.totalPages"
+              @click="goToPage(pagination.page + 1)"
+            >
+              {{ t("project_settings.trash.next") }}
+            </Button>
+          </span>
+        </span>
+      </template>
+    </SettingsSection>
 
-    <Dialog v-model:open="showEmptyConfirm">
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle class="flex items-center gap-2">
-            <AlertTriangle class="size-5 text-destructive" />
-            {{ t("project_settings.trash.empty_confirm_title") }}
-          </DialogTitle>
-          <DialogDescription>
-            {{ t("project_settings.trash.empty_confirm_description") }}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogFooter>
-          <Button variant="outline" @click="showEmptyConfirm = false">
-            {{ t("project_settings.trash.cancel") }}
-          </Button>
-          <Button variant="destructive" @click="emptyTrash">
-            {{ t("project_settings.trash.empty_trash") }}
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  </div>
+    <ConfirmDialog
+      v-model:open="showDeleteConfirm"
+      :title="t('project_settings.trash.delete_confirm_title')"
+      :description="deleteConfirmDescription"
+      :confirm-text="t('project_settings.trash.delete')"
+      :cancel-text="t('project_settings.trash.cancel')"
+      variant="destructive"
+      :icon="Trash2"
+      @confirm="confirmDelete"
+      @cancel="itemToDelete = null"
+    />
+
+    <ConfirmDialog
+      v-model:open="showEmptyConfirm"
+      :title="t('project_settings.trash.empty_confirm_title')"
+      :description="t('project_settings.trash.empty_confirm_description')"
+      :confirm-text="t('project_settings.trash.empty_trash')"
+      :cancel-text="t('project_settings.trash.cancel')"
+      variant="destructive"
+      :icon="Trash2"
+      @confirm="emptyTrash"
+    />
+  </SettingsPage>
 </template>

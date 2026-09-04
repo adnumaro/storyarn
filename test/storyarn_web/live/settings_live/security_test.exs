@@ -66,16 +66,45 @@ defmodule StoryarnWeb.SettingsLive.SecurityTest do
       assert %{"error" => "You must log in to access this page."} = flash
     end
 
-    test "preserves the security destination when sudo mode has expired", %{conn: conn} do
+    test "mounts locked instead of redirecting when sudo mode has expired", %{conn: conn} do
       stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
 
       conn =
         log_in_user(conn, user_fixture(), token_authenticated_at: stale_authenticated_at)
 
-      assert {:error, {:live_redirect, %{to: to}}} =
-               live(conn, ~p"/users/settings/security")
+      {:ok, view, _html} = live(conn, ~p"/users/settings/security")
 
-      assert to == UserAuth.sudo_confirmation_path(~p"/users/settings/security")
+      vue = get_security_vue(view)
+      assert vue.props["sudo-active"] == false
+      assert vue.props["reauth"]["returnTo"] == "/users/settings/security"
+      assert vue.props["reauth"]["sudoHandoff"] == nil
+    end
+
+    test "re-authenticates in place and locks password changes until then", %{conn: conn} do
+      user = user_fixture()
+      stale_authenticated_at = DateTime.add(DateTime.utc_now(:second), -21, :minute)
+
+      {:ok, view, _html} =
+        conn
+        |> log_in_user(user, token_authenticated_at: stale_authenticated_at)
+        |> live(~p"/users/settings/security")
+
+      password = valid_user_password() <> " changed"
+
+      html =
+        render_click(view, "update_password", %{
+          "user" => %{"email" => user.email, "password" => password, "password_confirmation" => password}
+        })
+
+      assert html =~ "Confirm it&#39;s you to change these settings."
+      assert get_security_vue(view).props["trigger-submit"] == false
+      refute_redirected(view)
+
+      render_click(view, "confirm_access", %{"password" => valid_user_password()})
+
+      vue = get_security_vue(view)
+      assert is_binary(vue.props["reauth"]["sudoHandoff"])
+      assert vue.props["reauth"]["triggerSubmit"] == true
     end
 
     test "keeps the page and password action inside the shared twenty-minute sudo window", %{

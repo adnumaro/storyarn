@@ -1,25 +1,48 @@
 defmodule StoryarnWeb.SettingsLive.Profile do
   @moduledoc """
-  LiveView for user profile settings.
+  Personal › Profile: display name and email.
+
+  Sensitive sections lock in place when the sudo window has lapsed; the page
+  re-authenticates through `StoryarnWeb.Live.Shared.SudoReauth`.
   """
   use StoryarnWeb, :live_view
 
   alias Storyarn.Accounts
-  alias StoryarnWeb.LanguagePickerOption
-  alias StoryarnWeb.PublicLanguageMetadata
+  alias StoryarnWeb.Helpers.SaveStatusTimer
+  alias StoryarnWeb.Live.Shared.SudoReauth
   alias StoryarnWeb.UserAuth
 
-  on_mount {UserAuth, {:require_sudo_mode, __MODULE__}}
-
-  @doc false
-  def sudo_return_to(%{"token" => token}, :confirm_email) do
-    ~p"/users/settings/confirm-email/#{token}"
-  end
-
-  def sudo_return_to(_params, _live_action), do: ~p"/users/settings"
+  on_mount {UserAuth, :load_sudo_state}
 
   @impl true
   def mount(%{"token" => token}, _session, socket) do
+    if socket.assigns.sudo_active do
+      confirm_email_change(socket, token)
+    else
+      {:ok,
+       push_navigate(socket,
+         to: UserAuth.sudo_confirmation_path(~p"/users/settings/confirm-email/#{token}"),
+         replace: true
+       )}
+    end
+  end
+
+  def mount(_params, _session, socket) do
+    user = socket.assigns.current_scope.user
+
+    socket =
+      socket
+      |> assign(:page_title, dgettext("settings", "Profile Settings"))
+      |> assign(:current_path, ~p"/users/settings")
+      |> assign(:profile_form, to_form(Accounts.change_user_profile(user, %{})))
+      |> assign(:email, user.email)
+      |> assign(:save_status, :idle)
+      |> SudoReauth.assign_reauth(~p"/users/settings")
+
+    {:ok, socket}
+  end
+
+  defp confirm_email_change(socket, token) do
     socket =
       case Accounts.update_user_email(socket.assigns.current_scope.user, token) do
         {:ok, _user} ->
@@ -37,20 +60,6 @@ defmodule StoryarnWeb.SettingsLive.Profile do
     {:ok, push_navigate(socket, to: return_to)}
   end
 
-  def mount(_params, _session, socket) do
-    user = socket.assigns.current_scope.user
-
-    profile_changeset = Accounts.change_user_profile(user, %{})
-
-    socket =
-      socket
-      |> assign(:page_title, dgettext("settings", "Profile Settings"))
-      |> assign(:current_path, ~p"/users/settings")
-      |> assign(:profile_form, to_form(profile_changeset))
-
-    {:ok, socket}
-  end
-
   @impl true
   def render(assigns) do
     ~H"""
@@ -58,10 +67,8 @@ defmodule StoryarnWeb.SettingsLive.Profile do
       flash={@flash}
       socket={@socket}
       current_scope={@current_scope}
-      workspaces={@workspaces}
-      managed_workspace_slugs={@managed_workspace_slugs}
-      general_workspace_slugs={@general_workspace_slugs}
       current_path={@current_path}
+      settings_nav={@settings_nav}
       sudo_grant={@sudo_grant}
     >
       <.vue
@@ -70,7 +77,10 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         v-inject="settings-layout"
         id="settings-profile-vue"
         profile-form={@profile_form}
-        locale-options={locale_options()}
+        email={@email}
+        save-status={Atom.to_string(@save_status)}
+        sudo-active={@sudo_active}
+        reauth={SudoReauth.reauth_props(@sudo_return_to, @sudo_handoff, @trigger_sudo_submit)}
       />
     </StoryarnWeb.Components.SettingsLayout.settings>
     """
@@ -88,15 +98,27 @@ defmodule StoryarnWeb.SettingsLive.Profile do
   end
 
   def handle_event("update_profile", %{"user" => user_params}, socket) do
-    user = socket.assigns.current_scope.user
+    SudoReauth.with_sudo(socket, fn socket ->
+      update_profile(socket, socket.assigns.current_scope.user, user_params)
+    end)
+  end
 
-    case UserAuth.authorize_sudo(
-           user,
-           socket.assigns.sudo_session_token,
-           socket.assigns.sudo_grant
-         ) do
-      {:ok, _grant} -> update_profile(socket, user, user_params)
-      :error -> require_sudo(socket)
+  def handle_event("request_email_change", %{"email" => email}, socket) do
+    SudoReauth.with_sudo(socket, fn socket ->
+      request_email_change(socket, socket.assigns.current_scope.user, email)
+    end)
+  end
+
+  def handle_event("confirm_access", params, socket) do
+    SudoReauth.confirm(socket, params)
+  end
+
+  @impl true
+  def handle_info({:reset_save_status, token}, socket) do
+    if socket.assigns[:save_status_reset_token] == token do
+      {:noreply, assign(socket, :save_status, :idle)}
+    else
+      {:noreply, socket}
     end
   end
 
@@ -109,47 +131,62 @@ defmodule StoryarnWeb.SettingsLive.Profile do
         # password confirmation.
         updated_user = %{updated_user | authenticated_at: user.authenticated_at}
 
-        profile_form =
-          updated_user
-          |> Accounts.change_user_profile(%{})
-          |> to_form()
-
         socket =
           socket
           |> assign(:current_scope, Accounts.scope_for_user(updated_user))
-          |> assign(:profile_form, profile_form)
-          |> maybe_apply_locale(updated_user.locale)
+          |> assign(:profile_form, to_form(Accounts.change_user_profile(updated_user, %{})))
+          |> SaveStatusTimer.mark_saved()
 
-        {:noreply, put_flash(socket, :info, dgettext("settings", "Profile updated successfully."))}
+        {:noreply, socket}
 
       {:error, changeset} ->
         {:noreply, assign(socket, profile_form: to_form(changeset, action: :insert))}
     end
   end
 
-  defp require_sudo(socket) do
-    {:noreply,
-     push_navigate(socket,
-       to: UserAuth.sudo_confirmation_path(~p"/users/settings"),
-       replace: true
-     )}
+  defp request_email_change(socket, user, email) do
+    changeset = Accounts.change_user_email(user, %{"email" => email})
+
+    case Ecto.Changeset.apply_action(changeset, :update) do
+      {:ok, applied_user} ->
+        case Accounts.deliver_user_update_email_instructions(
+               applied_user,
+               user.email,
+               &url(~p"/users/settings/confirm-email/#{&1}")
+             ) do
+          {:ok, _delivery} ->
+            {:reply, %{ok: true},
+             put_flash(
+               socket,
+               :info,
+               dgettext(
+                 "settings",
+                 "A link to confirm your email change has been sent to the new address."
+               )
+             )}
+
+          {:error, _reason} ->
+            {:reply,
+             %{
+               ok: false,
+               error: dgettext("settings", "The confirmation email could not be sent. Try again.")
+             }, socket}
+        end
+
+      {:error, changeset} ->
+        {:reply, %{ok: false, error: first_email_error(changeset)}, socket}
+    end
   end
 
-  defp maybe_apply_locale(socket, nil), do: socket
-
-  defp maybe_apply_locale(socket, locale) do
-    Gettext.put_locale(Storyarn.Gettext, locale)
-
-    socket
-    |> assign(:locale, locale)
-    |> push_event("set-locale", %{locale: locale})
-  end
-
-  defp locale_options do
-    Enum.map(Gettext.known_locales(Storyarn.Gettext), fn locale ->
-      label = PublicLanguageMetadata.native_name(locale)
-
-      LanguagePickerOption.from_code(locale, label: label)
+  defp first_email_error(changeset) do
+    changeset
+    |> Ecto.Changeset.traverse_errors(fn {message, opts} ->
+      Enum.reduce(opts, message, fn {key, value}, acc ->
+        String.replace(acc, "%{#{key}}", to_string(value))
+      end)
     end)
+    |> Map.get(:email, [])
+    |> List.first()
+    |> Kernel.||(dgettext("settings", "Enter a valid email address."))
   end
 end
