@@ -143,6 +143,9 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     get_hub_by_hub_id/2
     get_incoming_connections/1
     get_latest_version/1
+    get_localization_source_language/1
+    get_localized_text_by_source/4
+    get_localized_texts_for_source/2
     get_node/2
     get_node!/2
     get_node_by_id!/2
@@ -182,6 +185,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     list_flows_by_parent/2
     list_flows_tree/1
     list_hubs/1
+    list_localization_languages/1
     list_nodes/1
     list_nodes_referencing_flow/2
     list_outcome_tags_for_project/1
@@ -338,7 +342,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
 
   # Frozen immediately before the capability reorganization. These hashes
   # cover semantic signatures, docs/defaults, public types, and specs.
-  @docs_digest "e89cab24e24c81ebd22e32a07e1a2156609e69b573dba4aad21c7f2a19ac3ccf"
+  @docs_digest "062d513a0e011aa5391a029e87aa0c88574805ef682d4f9296abc41426e334de"
   @types_digest "185b2bf999eed11bd7b86968d880d33cccdc414a7f9f5b23921412d98bc03805"
   @specs_digest "c01ed8ba241c0ab1a5717cc1ca8f1147a6f0fa96b86bcabf26c07e4fc9937e02"
 
@@ -388,8 +392,8 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 306
-    assert status_counts == %{documented: 236, hidden: 19, none: 51}
+    assert length(function_docs) == 310
+    assert status_counts == %{documented: 240, hidden: 19, none: 51}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end

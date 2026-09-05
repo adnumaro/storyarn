@@ -14,6 +14,7 @@ import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import DialogueVoice from "@modules/flows/player/components/DialogueVoice.vue";
+import SequenceLocaleControls from "@modules/flows/sequence/components/SequenceLocaleControls.vue";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type {
   SequenceAudioTrack,
@@ -92,6 +93,9 @@ const previewableAudioTracks = computed(() =>
 );
 const hasVisibleLayers = computed(() => interactiveLayers.value.length > 0);
 const owner = computed(() => stage.owner ?? null);
+const localizationStatus = computed(
+  () => stage.localizationStatus ?? intervention.value?.localization ?? null,
+);
 const stageVoice = computed(() => stage.voice ?? intervention.value?.voice ?? null);
 const playableVoice = computed(
   () =>
@@ -192,6 +196,11 @@ function layerFrameStyle(layer: SequenceVisualLayer, stackIndex: number) {
 function openInspector() {
   if (!owner.value) return;
   live.pushEvent("open_sequence_config", { id: owner.value.nodeId });
+}
+
+function setContentLocale(locale: string) {
+  voicePreview.value?.stop();
+  live.pushEvent("set_sequence_content_locale", { locale });
 }
 
 function toggleVoicePreview() {
@@ -374,35 +383,44 @@ onUnmounted(() => {
         />
       </div>
       <div class="ml-auto flex items-center gap-1.5">
-        <Button
-          v-if="playableVoice"
-          type="button"
-          variant="outline"
-          size="icon-xs"
-          :title="
-            voicePreviewBlocked
-              ? $t('flows.presentation.retry_voice_preview')
-              : voicePreviewPlaying
-                ? $t('flows.presentation.pause_voice_preview')
-                : $t('flows.presentation.play_voice_preview')
-          "
-          :aria-label="
-            voicePreviewBlocked
-              ? $t('flows.presentation.retry_voice_preview')
-              : voicePreviewPlaying
-                ? $t('flows.presentation.pause_voice_preview')
-                : $t('flows.presentation.play_voice_preview')
-          "
-          :data-voice-preview-state="
-            voicePreviewBlocked ? 'blocked' : voicePreviewPlaying ? 'playing' : 'paused'
-          "
-          data-sequence-voice-preview
-          @click="toggleVoicePreview"
+        <SequenceLocaleControls
+          id="sequence-stage"
+          :language-options="stage.languageOptions"
+          :content-locale="stage.contentLocale"
+          :localization-status="localizationStatus"
+          :voice="stageVoice"
+          @update:content-locale="setContentLocale"
         >
-          <RefreshCw v-if="voicePreviewBlocked" class="size-3.5" aria-hidden="true" />
-          <Pause v-else-if="voicePreviewPlaying" class="size-3.5" aria-hidden="true" />
-          <Play v-else class="size-3.5" aria-hidden="true" />
-        </Button>
+          <Button
+            v-if="playableVoice"
+            type="button"
+            variant="outline"
+            size="icon-xs"
+            :title="
+              voicePreviewBlocked
+                ? $t('flows.presentation.retry_voice_preview')
+                : voicePreviewPlaying
+                  ? $t('flows.presentation.pause_voice_preview')
+                  : $t('flows.presentation.play_voice_preview')
+            "
+            :aria-label="
+              voicePreviewBlocked
+                ? $t('flows.presentation.retry_voice_preview')
+                : voicePreviewPlaying
+                  ? $t('flows.presentation.pause_voice_preview')
+                  : $t('flows.presentation.play_voice_preview')
+            "
+            :data-voice-preview-state="
+              voicePreviewBlocked ? 'blocked' : voicePreviewPlaying ? 'playing' : 'paused'
+            "
+            data-sequence-voice-preview
+            @click="toggleVoicePreview"
+          >
+            <RefreshCw v-if="voicePreviewBlocked" class="size-3.5" aria-hidden="true" />
+            <Pause v-else-if="voicePreviewPlaying" class="size-3.5" aria-hidden="true" />
+            <Play v-else class="size-3.5" aria-hidden="true" />
+          </Button>
+        </SequenceLocaleControls>
         <span
           v-if="diagnostics.length > 0"
           class="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400"

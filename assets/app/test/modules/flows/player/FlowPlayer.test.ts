@@ -1,7 +1,12 @@
 import { createMockLive } from "../../../setup";
 import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
 import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
+import type {
+  SequenceLanguageOption,
+  SequenceLocalizationState,
+} from "@modules/flows/sequence/types";
 
 const mockLive = createMockLive();
 
@@ -58,6 +63,9 @@ function defaultProps() {
       url: string;
       volume?: number | null;
     },
+    languageOptions: [] as SequenceLanguageOption[],
+    contentLocale: null as string | null,
+    localizationStatus: null as SequenceLocalizationState | null,
     editorUrl: "/flows/123",
     responses: [] as Array<{
       id: string;
@@ -256,6 +264,50 @@ describe("FlowPlayer", () => {
       wrapper = null;
       playSpy.mockRestore();
       pauseSpy.mockRestore();
+    });
+
+    it("shows content language plus translation and voice status", async () => {
+      const w = mountPlayer({
+        languageOptions: [
+          {
+            value: "en",
+            label: "English",
+            languageTag: "en",
+            flagCode: "gb",
+            shortLabel: "EN",
+          },
+          {
+            value: "es",
+            label: "Español",
+            languageTag: "es",
+            flagCode: "es",
+            shortLabel: "ES",
+          },
+        ],
+        contentLocale: "es",
+        localizationStatus: {
+          locale: "es",
+          sourceLocale: "en",
+          status: "missing",
+          fallback: true,
+        },
+        voice: {
+          id: "dialogue-42:es",
+          status: "needed",
+          available: false,
+          url: null,
+        },
+      });
+
+      expect(w.get('[data-translation-status="fallback"]').text()).toBe("Translation: Fallback");
+      expect(w.get('[data-voice-status="needed"]').text()).toBe("Voice: Needed");
+
+      w.getComponent(LanguagePicker).vm.$emit("update:modelValue", "en");
+      await nextTick();
+
+      expect(mockLive.pushEvent).toHaveBeenCalledWith("set_sequence_content_locale", {
+        locale: "en",
+      });
     });
   });
 

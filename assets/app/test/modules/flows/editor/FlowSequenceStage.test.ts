@@ -1,4 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
+import LanguagePicker from "@components/language/LanguagePicker.vue";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SequenceStageState } from "@modules/flows/sequence/types";
 import { createMockLive } from "../../../setup";
@@ -92,6 +93,56 @@ describe("FlowSequenceStage", () => {
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Open the gate.");
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Barely above a whisper");
     expect(wrapper.get("[data-sequence-diagnostics]").text()).toContain("1 composition issue");
+  });
+
+  it("changes content language and exposes localization and voice status", async () => {
+    const stage: SequenceStageState = {
+      ...editableStage(),
+      contentLocale: "es",
+      sourceLocale: "en",
+      languageOptions: [
+        {
+          value: "en",
+          label: "English",
+          languageTag: "en",
+          flagCode: "gb",
+          shortLabel: "EN",
+        },
+        {
+          value: "es",
+          label: "Español",
+          languageTag: "es",
+          flagCode: "es",
+          shortLabel: "ES",
+        },
+      ],
+      localizationStatus: {
+        locale: "es",
+        sourceLocale: "en",
+        status: "missing",
+        fallback: true,
+      },
+      voice: {
+        id: "dialogue-42:es",
+        status: "needed",
+        available: false,
+        url: null,
+      },
+    };
+    const wrapper = mountStage(stage);
+
+    expect(wrapper.get('[data-translation-status="fallback"]').text()).toBe(
+      "Translation: Fallback",
+    );
+    expect(wrapper.get('[data-voice-status="needed"]').text()).toBe("Voice: Needed");
+
+    wrapper.getComponent(LanguagePicker).vm.$emit("update:modelValue", "en");
+    await wrapper.vm.$nextTick();
+
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("set_sequence_content_locale", {
+      locale: "en",
+    });
+    wrapper.unmount();
   });
 
   it("previews an available dialogue voice only after an explicit action", async () => {

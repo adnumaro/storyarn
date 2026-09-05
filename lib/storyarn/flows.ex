@@ -153,6 +153,20 @@ defmodule Storyarn.Flows do
   @doc "Returns the node types that contribute player-facing runtime text."
   defdelegate localizable_node_types(), to: Localization
 
+  @doc "Lists the active project languages available to Flow presentation surfaces."
+  defdelegate list_localization_languages(project_id), to: Localization, as: :list_languages
+
+  @doc "Returns the project source language used by Flow presentation surfaces."
+  defdelegate get_localization_source_language(project_id), to: Localization, as: :get_source_language
+
+  @doc "Returns localized Flow presentation rows for one source entity."
+  defdelegate get_localized_texts_for_source(source_type, source_id), to: Localization, as: :get_texts_for_source
+
+  @doc "Returns one localized Flow presentation row by its source identity."
+  defdelegate get_localized_text_by_source(source_type, source_id, source_field, locale_code),
+    to: Localization,
+    as: :get_text_by_source
+
   @doc "Recomputes formula values according to the Flow runtime contract."
   defdelegate recompute_formula_variables(variables), to: Expressions
 

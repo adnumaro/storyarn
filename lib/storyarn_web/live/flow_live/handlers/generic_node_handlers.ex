@@ -1338,7 +1338,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         graph.nodes,
         speakers_map,
         socket.assigns.project.id,
-        nil
+        nil,
+        SequencePresentation.locale_context(socket.assigns)
       )
     )
     |> maybe_refresh_sequence_panel(owner)
