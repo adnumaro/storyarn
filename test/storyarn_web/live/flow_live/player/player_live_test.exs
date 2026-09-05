@@ -753,30 +753,108 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
 
-      assert vue.props["audio-tracks"] == [
-               %{
-                 "id" => parent_track.id,
-                 "sequence_id" => parent_sequence.id,
-                 "kind" => "music",
-                 "position" => 0,
-                 "url" => PrivateMedia.asset_url(parent_audio),
-                 "volume" => 0.5,
-                 "content_type" => "audio/mpeg",
-                 "filename" => parent_audio.filename,
-                 "depth" => 0
-               },
-               %{
-                 "id" => child_track.id,
-                 "sequence_id" => child_sequence.id,
-                 "kind" => "ambience",
-                 "position" => 0,
-                 "url" => PrivateMedia.asset_url(child_audio),
-                 "volume" => 0.25,
-                 "content_type" => "audio/mpeg",
-                 "filename" => child_audio.filename,
-                 "depth" => 1
-               }
-             ]
+      assert [music, ambience] = vue.props["audio-tracks"]
+
+      assert Map.take(music, [
+               "id",
+               "continuityKey",
+               "trackKey",
+               "sequenceId",
+               "kind",
+               "position",
+               "url",
+               "volume",
+               "contentType",
+               "filename",
+               "depth"
+             ]) == %{
+               "id" => "#{parent_track.track_key}:#{parent_track.id}",
+               "continuityKey" => "#{parent_track.track_key}:#{parent_track.id}",
+               "trackKey" => parent_track.track_key,
+               "sequenceId" => parent_sequence.id,
+               "kind" => "music",
+               "position" => 0,
+               "url" => PrivateMedia.asset_url(parent_audio),
+               "volume" => 0.5,
+               "contentType" => "audio/mpeg",
+               "filename" => parent_audio.filename,
+               "depth" => 0
+             }
+
+      assert Map.take(ambience, [
+               "id",
+               "continuityKey",
+               "trackKey",
+               "sequenceId",
+               "kind",
+               "position",
+               "url",
+               "volume",
+               "contentType",
+               "filename",
+               "depth"
+             ]) == %{
+               "id" => "#{child_track.track_key}:#{child_track.id}",
+               "continuityKey" => "#{child_track.track_key}:#{child_track.id}",
+               "trackKey" => child_track.track_key,
+               "sequenceId" => child_sequence.id,
+               "kind" => "ambience",
+               "position" => 0,
+               "url" => PrivateMedia.asset_url(child_audio),
+               "volume" => 0.25,
+               "contentType" => "audio/mpeg",
+               "filename" => child_audio.filename,
+               "depth" => 1
+             }
+    end
+
+    test "passes the dialogue source voice and replaces its continuity identity", %{
+      conn: conn,
+      project: project,
+      user: user
+    } do
+      first_audio = audio_asset_fixture(project, user, %{filename: "first-line.mp3"})
+      second_audio = audio_asset_fixture(project, user, %{filename: "second-line.mp3"})
+      flow = flow_fixture(project, %{name: "Dialogue Voice Flow"})
+      {entry, _exit} = get_auto_nodes(flow)
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Spoken line</p>",
+            "audio_asset_id" => first_audio.id,
+            "responses" => []
+          }
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+      first_voice = get_player_vue(view).props["voice"]
+
+      assert first_voice["id"] == "dialogue-voice:#{dialogue.id}:source"
+
+      assert first_voice["continuityKey"] ==
+               "dialogue-voice:#{dialogue.id}:source:#{first_audio.id}"
+
+      assert first_voice["assetId"] == first_audio.id
+      assert first_voice["url"] == PrivateMedia.asset_url(first_audio)
+      assert first_voice["available"]
+
+      assert {:ok, _updated_dialogue, _meta} =
+               Flows.update_node_data(
+                 dialogue,
+                 Map.put(dialogue.data, "audio_asset_id", second_audio.id)
+               )
+
+      {:ok, replaced_view, _html} = live(conn, player_url(project, flow))
+      replaced_voice = get_player_vue(replaced_view).props["voice"]
+
+      assert replaced_voice["continuityKey"] ==
+               "dialogue-voice:#{dialogue.id}:source:#{second_audio.id}"
+
+      assert replaced_voice["url"] == PrivateMedia.asset_url(second_audio)
     end
   end
 

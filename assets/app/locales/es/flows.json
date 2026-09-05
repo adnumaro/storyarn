@@ -127,13 +127,14 @@
         "clear_track": "Limpiar pista",
         "composition_source": "Origen de composición",
         "no_source": "Sin origen explícito",
-        "composition_source_help": "Elige una secuencia o un diálogo cuya composición visual resuelta heredará este nodo.",
+        "composition_source_help": "Elige una secuencia o un diálogo cuya composición resuelta heredará este nodo.",
         "diagnostics": "{count} problema de composición | {count} problemas de composición",
         "diagnostic_messages": {
           "composition_cycle": "La cadena de fuentes de composición contiene un ciclo.",
           "invalid_composition_source": "La fuente de composición seleccionada no es válida.",
           "missing_composition_source": "La fuente de composición ya no está disponible.",
           "missing_inherited_layer": "Un ajuste visual ya no tiene una capa de origen.",
+          "missing_inherited_track": "Un ajuste de audio ya no tiene una pista de origen.",
           "fallback": "Esta composición contiene un problema que requiere atención."
         },
         "local": "Local",
@@ -147,6 +148,9 @@
         "revert_all": "Restaurar valores heredados",
         "no_visual_layers": "Esta composición aún no tiene capas visuales.",
         "removed_layers": "Capas retiradas",
+        "add_track": "Añadir pista",
+        "remove_track": "Retirar pista",
+        "removed_tracks": "Pistas retiradas",
         "restore": "Restaurar",
         "fields": {
           "asset_id": "Recurso",
@@ -162,7 +166,8 @@
           "opacity": "Opacidad",
           "visible": "Visible",
           "anchor_x": "Anclaje horizontal",
-          "anchor_y": "Anclaje vertical"
+          "anchor_y": "Anclaje vertical",
+          "volume": "Volumen"
         }
       }
     },
@@ -177,6 +182,9 @@
       "narrator": "Narrador",
       "diagnostics": "{count} problema de composición | {count} problemas de composición",
       "open_inspector": "Abrir inspector de composición",
+      "play_audio_preview": "Reproducir vista previa de {track}",
+      "pause_audio_preview": "Pausar vista previa de {track}",
+      "retry_audio_preview": "Reintentar vista previa de {track}",
       "select_layer": "Seleccionar capa {name}",
       "resize_layer": "Redimensionar capa {name}"
     },
@@ -225,6 +233,11 @@
       "condition_help": "Añade reglas para definir cuándo enrutar a Verdadero/Falso.",
       "condition_switch_help": "Añade condiciones. Cada una crea una salida separada.",
       "instruction_help": "Añade asignaciones para establecer valores de variables cuando se ejecute este nodo."
+    },
+    "presentation": {
+      "play_voice_preview": "Reproducir vista previa de la voz del diálogo",
+      "pause_voice_preview": "Pausar vista previa de la voz del diálogo",
+      "retry_voice_preview": "Reintentar vista previa de la voz del diálogo"
     },
     "debug": {
       "step_limit": "Límite de pasos ({count}) alcanzado — posible bucle infinito.",
@@ -449,7 +462,8 @@
       "back": "Atrás",
       "restart": "Reiniciar",
       "toggle_mode": "Alternar entre reproductor y revisión de respuestas bloqueadas o condicionadas",
-      "no_content": "No hay contenido que mostrar."
+      "no_content": "No hay contenido que mostrar.",
+      "enable_audio": "Activar audio"
     },
     "health": {
       "review": "Revisar estado del flujo",

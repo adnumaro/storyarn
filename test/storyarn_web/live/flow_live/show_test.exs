@@ -204,6 +204,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Inherited tombstones"})
       image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
       {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
 
       middle =
@@ -226,8 +227,16 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
           "asset_id" => image.id
         })
 
+      {:ok, track} =
+        Flows.upsert_sequence_track(base.id, "ambience", %{
+          "asset_id" => audio.id
+        })
+
       assert {:ok, %{removed: true}} =
                Flows.remove_sequence_visual_layer(middle.id, layer.layer_key)
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_track(middle.id, track.track_key)
 
       {:ok, view, _html} =
         live(
@@ -247,12 +256,21 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       removed_layer =
         Enum.find(data["removed_visual_layers"], &(&1["key"] == layer.layer_key))
 
+      removed_track =
+        Enum.find(data["removed_tracks"], &(&1["trackKey"] == track.track_key))
+
       assert removed_layer["removed"] == true
       assert removed_layer["local_row_id"] == nil
       assert removed_layer["asset_id"] == image.id
+      assert removed_track["removed"] == true
+      assert removed_track["local_row_id"] == nil
+      assert removed_track["asset_id"] == audio.id
 
       assert {:ok, restored_layer} =
                Flows.restore_sequence_visual_layer(descendant.id, layer.layer_key)
+
+      assert {:ok, restored_track} =
+               Flows.restore_sequence_track(descendant.id, track.track_key)
 
       render_hook(view, "open_sequence_config", %{"id" => descendant.id})
       render(view)
@@ -265,13 +283,23 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       effective_layer =
         Enum.find(restored_data["visual_layers"], &(&1["key"] == layer.layer_key))
 
+      effective_track =
+        Enum.find(restored_data["tracks"], &(&1["trackKey"] == track.track_key))
+
       assert effective_layer["sequenceId"] == descendant.id
       assert effective_layer["local_row_id"] == restored_layer.id
+      assert effective_track["sequenceId"] == descendant.id
+      assert effective_track["local_row_id"] == restored_track.id
+      assert effective_track["isOverride"] == true
 
       assert {:ok, _deleted_layer} =
                Flows.remove_sequence_visual_layer(descendant.id, layer.layer_key)
 
+      assert {:ok, _deleted_track} =
+               Flows.remove_sequence_track(descendant.id, track.track_key)
+
       assert is_nil(Flows.get_sequence_visual_layer_by_key(descendant.id, layer.layer_key))
+      assert is_nil(Flows.get_sequence_track_by_key(descendant.id, track.track_key))
 
       render_hook(view, "open_sequence_config", %{"id" => descendant.id})
       render(view)
@@ -284,6 +312,11 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert Enum.any?(
                removed_again["removed_visual_layers"],
                &(&1["key"] == layer.layer_key and is_nil(&1["local_row_id"]))
+             )
+
+      assert Enum.any?(
+               removed_again["removed_tracks"],
+               &(&1["trackKey"] == track.track_key and is_nil(&1["local_row_id"]))
              )
     end
 
@@ -323,7 +356,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       flash = LiveVue.Test.get_vue(view, name: "live/layouts/flash/FlashGroup")
 
       assert flash.props["flash"]["error"] ==
-               "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+               "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
 
       assert Flows.get_sequence_visual_layer(base.id, layer.id)
     end

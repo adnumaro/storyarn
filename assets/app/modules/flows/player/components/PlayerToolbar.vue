@@ -14,6 +14,7 @@ const emit = defineEmits<{
   "go-back": [];
   "toggle-mode": [];
   restart: [];
+  exit: [];
 }>();
 </script>
 
@@ -60,6 +61,7 @@ const emit = defineEmits<{
           :href="editorUrl"
           data-phx-link="redirect"
           data-phx-link-state="push"
+          @click="emit('exit')"
         >
           <X :size="16" />
         </Button>

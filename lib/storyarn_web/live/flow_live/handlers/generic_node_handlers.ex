@@ -249,14 +249,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     graph = Flows.load_runtime_graph(socket.assigns.flow.id)
     composition = Flows.inspect_node_sequences(owner_id, graph.nodes)
     local_visual_layers = Flows.list_sequence_visual_layers(owner_id)
+    local_tracks = Flows.list_sequence_tracks(owner_id)
     visual_layers = effective_visual_layers(composition, owner_id, local_visual_layers)
     removed_visual_layers = removed_visual_layers(composition, owner_id, local_visual_layers)
-    tracks = Flows.list_sequence_tracks(owner_id)
+    tracks = effective_tracks(composition, local_tracks)
+    removed_tracks = removed_tracks(composition, local_tracks)
 
     image_asset_ids =
       selected_asset_ids(local_visual_layers) ++ selected_serialized_asset_ids(visual_layers)
 
-    audio_asset_ids = selected_asset_ids(tracks)
+    audio_asset_ids = selected_asset_ids(local_tracks) ++ selected_serialized_asset_ids(tracks)
 
     %{
       sequence_id: owner_id,
@@ -267,7 +269,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       config: sequence_config(owner_type, owner_id),
       visual_layers: visual_layers,
       removed_visual_layers: removed_visual_layers,
-      tracks: Enum.map(tracks, &serialize_sequence_track/1),
+      tracks: tracks,
+      removed_tracks: removed_tracks,
       diagnostics: SequencePresentation.diagnostics(composition),
       image_assets: PickerSearch.initial_asset_options(project_id, "image", Enum.uniq(image_asset_ids)),
       audio_assets: PickerSearch.initial_asset_options(project_id, "audio", Enum.uniq(audio_asset_ids))
@@ -303,6 +306,38 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       local = Map.get(local_by_key, layer.key)
 
       Map.merge(layer, %{
+        local_row_id: local && local.id,
+        overridden_fields: (local && local.overridden_fields) || [],
+        inherited: is_nil(local)
+      })
+    end)
+  end
+
+  defp effective_tracks(composition, local_tracks) do
+    local_by_key = Map.new(local_tracks, &{&1.track_key, &1})
+
+    composition
+    |> SequencePresentation.inspectable_audio_tracks()
+    |> Enum.map(fn track ->
+      local = Map.get(local_by_key, track.trackKey)
+
+      Map.merge(track, %{
+        local_row_id: local && local.id,
+        overridden_fields: (local && local.overridden_fields) || [],
+        inherited: is_nil(local)
+      })
+    end)
+  end
+
+  defp removed_tracks(composition, local_tracks) do
+    local_by_key = Map.new(local_tracks, &{&1.track_key, &1})
+
+    composition
+    |> SequencePresentation.inspectable_removed_audio_tracks()
+    |> Enum.map(fn track ->
+      local = Map.get(local_by_key, track.trackKey)
+
+      Map.merge(track, %{
         local_row_id: local && local.id,
         overridden_fields: (local && local.overridden_fields) || [],
         inherited: is_nil(local)
@@ -381,17 +416,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       height: cfg.height
     }
   end
-
-  defp serialize_sequence_track(%{} = track) do
-    %{
-      kind: track.kind,
-      asset_id: track.asset_id,
-      volume: decimal_to_float(track.volume)
-    }
-  end
-
-  defp decimal_to_float(nil), do: nil
-  defp decimal_to_float(%Decimal{} = value), do: Decimal.to_float(value)
 
   defp selected_asset_ids(records) do
     records
@@ -941,20 +965,24 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def handle_upsert_sequence_track(%{"id" => node_id, "kind" => kind} = params, socket) do
     with {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
          attrs = track_attrs_from_params(params),
-         {:ok, _track} <-
-           Flows.upsert_editor_sequence_track(
-             socket.assigns.current_scope,
-             socket.assigns.flow,
-             parsed_id,
-             kind,
-             attrs
-           ) do
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.upsert_editor_sequence_track(
+               socket.assigns.current_scope,
+               socket.assigns.flow,
+               parsed_id,
+               kind,
+               attrs
+             )
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> record_sequence_history(parsed_id, history, "audio-track-#{kind}")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_track_upserted, %{
          sequence_id: parsed_id,
          kind: kind
@@ -977,11 +1005,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         nil -> attrs
         "" -> attrs
         v when is_number(v) -> Map.put(attrs, "volume", Decimal.from_float(v / 1))
-        v when is_binary(v) -> Map.put(attrs, "volume", Decimal.new(v))
+        v when is_binary(v) -> maybe_put_decimal_volume(attrs, v)
         _ -> attrs
       end
 
     attrs
+  end
+
+  defp maybe_put_decimal_volume(attrs, value) do
+    case Decimal.parse(value) do
+      {%Decimal{} = volume, ""} -> Map.put(attrs, "volume", volume)
+      _invalid -> attrs
+    end
   end
 
   @doc "Clears the track slot for `(sequence_id, kind)`."
@@ -990,17 +1025,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def handle_clear_sequence_track(%{"id" => node_id, "kind" => kind}, socket) do
     with {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
-         {:ok, :cleared} <- Flows.clear_sequence_track(parsed_id, kind) do
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.clear_sequence_track(parsed_id, kind)
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> record_sequence_history(parsed_id, history, "audio-track-#{kind}")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_track_cleared, %{
          sequence_id: parsed_id,
          kind: kind
        })}
     else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
       _ -> {:noreply, socket}
     end
   end
@@ -1114,6 +1155,92 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp mutate_visual_layer_presence(:restore, owner_id, layer_key),
     do: Flows.restore_sequence_visual_layer(owner_id, layer_key)
+
+  @doc "Overrides selected properties of an effective audio track."
+  def handle_override_sequence_track(%{"id" => node_id, "track_key" => track_key} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(track_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         attrs = track_attrs_from_params(params),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.override_sequence_track(parsed_id, track_key, attrs)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "audio-track-#{track_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_track_upserted, parsed_id, %{
+         track_key: track_key
+       })}
+    else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Returns selected audio-track properties to inheritance."
+  def handle_revert_sequence_track(%{"id" => node_id, "track_key" => track_key, "fields" => fields}, socket)
+      when is_list(fields) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(track_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.revert_sequence_track_fields(parsed_id, track_key, fields)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "audio-track-#{track_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_track_upserted, parsed_id, %{
+         track_key: track_key
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Removes an effective audio track for this composition owner."
+  def handle_remove_sequence_track(%{"id" => node_id, "track_key" => track_key}, socket) do
+    mutate_track_presence(socket, node_id, track_key, :remove)
+  end
+
+  @doc "Restores a locally removed audio track."
+  def handle_restore_sequence_track(%{"id" => node_id, "track_key" => track_key}, socket) do
+    mutate_track_presence(socket, node_id, track_key, :restore)
+  end
+
+  defp mutate_track_presence(socket, node_id, track_key, action) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(track_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             mutate_track_presence(action, parsed_id, track_key)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "audio-track-#{track_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_track_upserted, parsed_id, %{
+         track_key: track_key
+       })}
+    else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp mutate_track_presence(:remove, owner_id, track_key), do: Flows.remove_sequence_track(owner_id, track_key)
+
+  defp mutate_track_presence(:restore, owner_id, track_key), do: Flows.restore_sequence_track(owner_id, track_key)
 
   defp record_sequence_history(socket, owner_id, %{previous: previous_snapshot, current: current_snapshot}, history_key) do
     if current_snapshot == previous_snapshot do
@@ -1312,7 +1439,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
        :error,
        dgettext(
          "flows",
-         "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+         "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
        )
      )}
   end

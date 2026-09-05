@@ -81,5 +81,13 @@ describe("PlayerToolbar", () => {
       const link = w.find(".player-toolbar-right a");
       expect(link.attributes("href")).toBe("/workspaces/my-ws/projects/my-proj/flows/flow-xyz");
     });
+
+    it("emits exit before following the editor link", async () => {
+      const w = mountToolbar();
+      const link = w.find(".player-toolbar-right a");
+      link.element.addEventListener("click", (event) => event.preventDefault());
+      await link.trigger("click");
+      expect(w.emitted("exit")).toHaveLength(1);
+    });
   });
 });

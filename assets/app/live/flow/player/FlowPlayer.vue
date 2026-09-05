@@ -1,18 +1,25 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted } from "vue";
+import { Volume2 } from "@lucide/vue";
+import { computed, nextTick, onMounted, onUnmounted, ref } from "vue";
+import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import PlayerSlide from "@modules/flows/player/components/PlayerSlide.vue";
 import PlayerChoices from "@modules/flows/player/components/PlayerChoices.vue";
 import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
 import PlayerOutcome from "@modules/flows/player/components/PlayerOutcome.vue";
 import PlayerAudioTracks from "@modules/flows/player/components/PlayerAudioTracks.vue";
+import DialogueVoice from "@modules/flows/player/components/DialogueVoice.vue";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
 import type { OutcomeData } from "@modules/flows/player/components/PlayerOutcome.vue";
-import type { PlayerAudioTrack } from "@modules/flows/player/components/PlayerAudioTracks.vue";
-import type { SequenceVisualLayer } from "@modules/flows/sequence/types";
+import type {
+  SequenceAudioTrack,
+  SequenceDialogueVoice,
+  SequenceVisualLayer,
+} from "@modules/flows/sequence/types";
 
+/* oxlint-disable vue/max-props -- LiveVue sends the player presentation as explicit top-level props. */
 const {
   slide,
   playerMode,
@@ -21,6 +28,7 @@ const {
   isFinished,
   visualLayers = [],
   audioTracks = [],
+  voice = null,
   editorUrl,
   responses = [],
 } = defineProps<{
@@ -30,22 +38,69 @@ const {
   showContinue: boolean;
   isFinished: boolean;
   visualLayers?: SequenceVisualLayer[];
-  audioTracks?: PlayerAudioTrack[];
+  audioTracks?: SequenceAudioTrack[];
+  voice?: SequenceDialogueVoice | null;
   editorUrl: string;
   responses: ResponseData[];
 }>();
+/* oxlint-enable vue/max-props */
 
 const live = useLive();
+const ambientAudio = ref<InstanceType<typeof PlayerAudioTracks> | null>(null);
+const dialogueVoice = ref<InstanceType<typeof DialogueVoice> | null>(null);
+const ambientAudioBlocked = ref(false);
+const dialogueVoiceBlocked = ref(false);
+let voiceNavigationGeneration = 0;
+const audioBlocked = computed(() => ambientAudioBlocked.value || dialogueVoiceBlocked.value);
+
+function dialogueVoiceSignature(
+  currentVoice: SequenceDialogueVoice | null | undefined,
+): string | null {
+  if (
+    !currentVoice ||
+    currentVoice.available === false ||
+    typeof currentVoice.url !== "string" ||
+    !currentVoice.url.trim()
+  ) {
+    return null;
+  }
+
+  const identity =
+    currentVoice.continuityKey ??
+    currentVoice.continuity_key ??
+    currentVoice.id ??
+    currentVoice.assetId ??
+    currentVoice.asset_id ??
+    currentVoice.url;
+
+  return `${String(identity)}\u0000${currentVoice.url}`;
+}
+
+function stopDialogueVoice(): number {
+  voiceNavigationGeneration += 1;
+  dialogueVoice.value?.stop();
+  return voiceNavigationGeneration;
+}
+
+function retryBlockedAudio() {
+  ambientAudio.value?.retryBlockedAudio();
+  dialogueVoice.value?.retryBlockedAudio();
+}
 
 function onChooseResponse(responseId: string) {
+  stopDialogueVoice();
   live.pushEvent("choose_response", { id: responseId });
 }
 
 function onContinue() {
+  stopDialogueVoice();
   live.pushEvent("continue", {});
 }
 
 function onGoBack() {
+  if (!canGoBack) return;
+
+  stopDialogueVoice();
   live.pushEvent("go_back", {});
 }
 
@@ -54,7 +109,25 @@ function onToggleMode() {
 }
 
 function onRestart() {
-  live.pushEvent("restart", {});
+  const previousVoiceSignature = dialogueVoiceSignature(voice);
+  const navigationGeneration = stopDialogueVoice();
+
+  live.pushEvent("restart", {}, () => {
+    void nextTick(() => {
+      if (
+        navigationGeneration === voiceNavigationGeneration &&
+        previousVoiceSignature != null &&
+        dialogueVoiceSignature(voice) === previousVoiceSignature
+      ) {
+        dialogueVoice.value?.play();
+      }
+    });
+  });
+}
+
+function onExitPlayer() {
+  stopDialogueVoice();
+  live.pushEvent("exit_player", {});
 }
 
 const visibleResponses = computed(() => {
@@ -64,7 +137,29 @@ const visibleResponses = computed(() => {
   return responses;
 });
 
-const EDITABLE_TAGS = new Set(["INPUT", "TEXTAREA", "SELECT"]);
+const INTERACTIVE_TARGET_SELECTOR = [
+  "a[href]",
+  "button",
+  "input",
+  "select",
+  "summary",
+  "textarea",
+  '[contenteditable]:not([contenteditable="false"])',
+  '[role="button"]',
+  '[role="checkbox"]',
+  '[role="combobox"]',
+  '[role="link"]',
+  '[role="listbox"]',
+  '[role="menu"]',
+  '[role="menuitem"]',
+  '[role="option"]',
+  '[role="radio"]',
+  '[role="slider"]',
+  '[role="spinbutton"]',
+  '[role="switch"]',
+  '[role="tab"]',
+  '[role="textbox"]',
+].join(",");
 
 const KEY_ACTIONS: Record<string, () => void> = {
   " ": () => {
@@ -76,8 +171,10 @@ const KEY_ACTIONS: Record<string, () => void> = {
   ArrowRight: () => {
     if (showContinue && !isFinished) onContinue();
   },
-  ArrowLeft: () => onGoBack(),
-  Escape: () => live.pushEvent("exit_player", {}),
+  ArrowLeft: () => {
+    if (canGoBack) onGoBack();
+  },
+  Escape: () => onExitPlayer(),
   p: () => onToggleMode(),
   P: () => onToggleMode(),
   r: () => onRestart(),
@@ -92,7 +189,7 @@ function handleNumberKey(key: string) {
 }
 
 function handleKeydown(e: KeyboardEvent) {
-  if (EDITABLE_TAGS.has((e.target as HTMLElement).tagName)) return;
+  if (e.target instanceof Element && e.target.closest(INTERACTIVE_TARGET_SELECTOR)) return;
 
   const action = KEY_ACTIONS[e.key];
   if (action) {
@@ -121,12 +218,22 @@ onUnmounted(() => {
       @go-back="onGoBack"
       @toggle-mode="onToggleMode"
       @restart="onRestart"
+      @exit="stopDialogueVoice"
     />
 
     <div class="player-main">
       <div class="player-stage">
         <SequenceVisualLayers :layers="visualLayers" />
-        <PlayerAudioTracks :tracks="audioTracks" />
+        <PlayerAudioTracks
+          ref="ambientAudio"
+          :tracks="audioTracks"
+          @blocked-change="ambientAudioBlocked = $event"
+        />
+        <DialogueVoice
+          ref="dialogueVoice"
+          :voice="voice"
+          @blocked-change="dialogueVoiceBlocked = $event"
+        />
 
         <PlayerOutcome
           v-if="slide.type === 'outcome'"
@@ -134,6 +241,24 @@ onUnmounted(() => {
           :editor-url="editorUrl"
           @restart="onRestart"
         />
+      </div>
+
+      <div
+        v-if="audioBlocked"
+        class="absolute right-4 top-4 z-[2100] flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-end gap-2 rounded-xl border border-white/10 bg-slate-950/75 p-2 shadow-xl backdrop-blur-md"
+        data-player-audio-controls
+      >
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          class="gap-2 shadow-lg"
+          data-player-audio-retry
+          @click="retryBlockedAudio"
+        >
+          <Volume2 class="size-4" aria-hidden="true" />
+          {{ $t("flows.player.enable_audio") }}
+        </Button>
       </div>
 
       <div v-if="slide.type !== 'outcome'" class="player-dialogue-overlay">

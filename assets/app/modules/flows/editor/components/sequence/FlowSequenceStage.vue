@@ -1,16 +1,27 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
-import { Layers, MoveDiagonal2, PanelRightOpen, TriangleAlert } from "@lucide/vue";
+import {
+  Layers,
+  MoveDiagonal2,
+  PanelRightOpen,
+  Pause,
+  Play,
+  RefreshCw,
+  TriangleAlert,
+} from "@lucide/vue";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
+import DialogueVoice from "@modules/flows/player/components/DialogueVoice.vue";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type {
+  SequenceAudioTrack,
   SequenceEntityId,
   SequenceStageState,
   SequenceVisualLayer,
 } from "@modules/flows/sequence/types";
+import SequenceAudioTrackPreview from "./SequenceAudioTrackPreview.vue";
 
 const { stage, canEdit = false } = defineProps<{
   stage: SequenceStageState;
@@ -20,6 +31,9 @@ const { stage, canEdit = false } = defineProps<{
 const live = useLive();
 const viewport = ref<HTMLElement | null>(null);
 const selectedLayerKey = ref<string | null>(null);
+const voicePreview = ref<InstanceType<typeof DialogueVoice> | null>(null);
+const voicePreviewPlaying = ref(false);
+const voicePreviewBlocked = ref(false);
 
 interface LayerGeometry {
   x: number;
@@ -68,8 +82,23 @@ const interactiveLayers = computed(() =>
     }),
 );
 const diagnostics = computed(() => composition.value?.diagnostics ?? []);
+const previewableAudioTracks = computed(() =>
+  (composition.value?.audioTracks ?? []).filter(
+    (track) =>
+      (track.kind === "music" || track.kind === "ambience") &&
+      typeof track.url === "string" &&
+      Boolean(track.url.trim()),
+  ),
+);
 const hasVisibleLayers = computed(() => interactiveLayers.value.length > 0);
 const owner = computed(() => stage.owner ?? null);
+const stageVoice = computed(() => stage.voice ?? intervention.value?.voice ?? null);
+const playableVoice = computed(
+  () =>
+    stageVoice.value?.available !== false &&
+    typeof stageVoice.value?.url === "string" &&
+    Boolean(stageVoice.value.url.trim()),
+);
 const canManipulate = computed(() => canEdit && stage.status === "ready" && owner.value != null);
 const speakerInitials = computed(() => {
   if (intervention.value?.speakerInitials) return intervention.value.speakerInitials;
@@ -88,8 +117,22 @@ const speakerInitials = computed(() => {
 watch(
   () => owner.value?.nodeId,
   () => {
+    voicePreview.value?.stop();
+    voicePreviewPlaying.value = false;
+    voicePreviewBlocked.value = false;
     cancelPointerInteraction();
     clearSelection();
+  },
+);
+
+watch(
+  [
+    () => stageVoice.value?.continuityKey ?? stageVoice.value?.continuity_key,
+    () => stageVoice.value?.url,
+  ],
+  () => {
+    voicePreviewPlaying.value = false;
+    voicePreviewBlocked.value = false;
   },
 );
 
@@ -119,6 +162,10 @@ function sameEntityId(
   return left != null && right != null && String(left) === String(right);
 }
 
+function audioTrackKey(track: SequenceAudioTrack): string {
+  return String(track.continuityKey ?? track.continuity_key ?? track.id);
+}
+
 function normalized(value: number | null | undefined, fallback: number): number {
   if (typeof value !== "number" || Number.isNaN(value)) return fallback;
   return Math.min(1, Math.max(0, value));
@@ -145,6 +192,20 @@ function layerFrameStyle(layer: SequenceVisualLayer, stackIndex: number) {
 function openInspector() {
   if (!owner.value) return;
   live.pushEvent("open_sequence_config", { id: owner.value.nodeId });
+}
+
+function toggleVoicePreview() {
+  if (voicePreviewPlaying.value) {
+    voicePreview.value?.pause();
+    return;
+  }
+
+  if (voicePreviewBlocked.value) {
+    voicePreview.value?.retryBlockedAudio();
+    return;
+  }
+
+  voicePreview.value?.play();
 }
 
 function selectLayer(layer: SequenceVisualLayer) {
@@ -280,6 +341,7 @@ function cancelPointerInteraction() {
 }
 
 onUnmounted(() => {
+  voicePreview.value?.stop();
   cancelPointerInteraction();
 });
 </script>
@@ -300,7 +362,47 @@ onUnmounted(() => {
       <Badge variant="outline" class="h-5 px-1.5 text-[10px] font-normal text-muted-foreground">
         {{ $t("flows.sequence_stage.static_preview") }}
       </Badge>
+      <div
+        v-if="stage.status === 'ready' && previewableAudioTracks.length > 0"
+        class="flex min-w-0 items-center gap-1"
+        data-sequence-audio-previews
+      >
+        <SequenceAudioTrackPreview
+          v-for="track in previewableAudioTracks"
+          :key="`${owner?.nodeId ?? 'none'}:${audioTrackKey(track)}`"
+          :track="track"
+        />
+      </div>
       <div class="ml-auto flex items-center gap-1.5">
+        <Button
+          v-if="playableVoice"
+          type="button"
+          variant="outline"
+          size="icon-xs"
+          :title="
+            voicePreviewBlocked
+              ? $t('flows.presentation.retry_voice_preview')
+              : voicePreviewPlaying
+                ? $t('flows.presentation.pause_voice_preview')
+                : $t('flows.presentation.play_voice_preview')
+          "
+          :aria-label="
+            voicePreviewBlocked
+              ? $t('flows.presentation.retry_voice_preview')
+              : voicePreviewPlaying
+                ? $t('flows.presentation.pause_voice_preview')
+                : $t('flows.presentation.play_voice_preview')
+          "
+          :data-voice-preview-state="
+            voicePreviewBlocked ? 'blocked' : voicePreviewPlaying ? 'playing' : 'paused'
+          "
+          data-sequence-voice-preview
+          @click="toggleVoicePreview"
+        >
+          <RefreshCw v-if="voicePreviewBlocked" class="size-3.5" aria-hidden="true" />
+          <Pause v-else-if="voicePreviewPlaying" class="size-3.5" aria-hidden="true" />
+          <Play v-else class="size-3.5" aria-hidden="true" />
+        </Button>
         <span
           v-if="diagnostics.length > 0"
           class="inline-flex items-center gap-1 text-[11px] text-amber-600 dark:text-amber-400"
@@ -323,6 +425,14 @@ onUnmounted(() => {
         </Button>
       </div>
     </header>
+
+    <DialogueVoice
+      ref="voicePreview"
+      :voice="stageVoice"
+      :autoplay="false"
+      @blocked-change="voicePreviewBlocked = $event"
+      @playing-change="voicePreviewPlaying = $event"
+    />
 
     <div class="flex-1 min-h-0 px-3 py-2.5 grid place-items-center overflow-hidden">
       <div
