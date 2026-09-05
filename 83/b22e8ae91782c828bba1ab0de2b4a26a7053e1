@@ -1,0 +1,23 @@
+assets/app/modules/localization/composables/useTranslationEditor.ts
+  s_706b23cf8d9fbd::t_0b399e818608af 354-355,362,371
+  s_706b23cf8d9fbd::t_8ad012e9a8b232 211,219-225,233
+assets/app/test/live/localization/LocalizationTextsIndex.test.ts
+  s_706b23cf8d9fbd::t_84ca29ee02780a 395,425-428
+  s_706b23cf8d9fbd::t_5be4541e7904c3 369-394,396-424,429-440
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "83b22e8ae91782c828bba1ab0de2b4a26a7053e1",
+  "prompts": {},
+  "sessions": {
+    "s_706b23cf8d9fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "810eb57e-17cf-4fe4-b872-a8176fb9282a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
