@@ -51,8 +51,11 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
       nil ->
         nil
 
-      destination ->
+      %{surface: "flow"} = destination ->
         ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/flows/#{destination.flow_id}?#{%{thread: destination.thread_id}}"
+
+      %{surface: "scene"} = destination ->
+        ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/scenes/#{destination.scene_id}?#{%{thread: destination.thread_id}}"
     end
   end
 

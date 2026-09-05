@@ -81,6 +81,7 @@ export function useKonvaStage({
 }: UseKonvaStageOpts) {
   const stageRef = ref<StageRefValue | null>(null);
   const bgImage = ref<HTMLImageElement | null>(null);
+  const backgroundSettled = ref(true);
 
   const stageConfig: StageConfigState = reactive({
     width: 800,
@@ -129,18 +130,22 @@ export function useKonvaStage({
 
     if (!url) {
       bgImage.value = null;
+      backgroundSettled.value = true;
       return;
     }
 
+    backgroundSettled.value = false;
     const img = new Image();
     img.onload = () => {
       if (loadId === loadCounter) {
         bgImage.value = img;
+        backgroundSettled.value = true;
       }
     };
     img.onerror = () => {
       if (loadId === loadCounter) {
         bgImage.value = null;
+        backgroundSettled.value = true;
       }
     };
     img.crossOrigin = "anonymous";
@@ -351,6 +356,7 @@ export function useKonvaStage({
   return {
     stageConfig,
     stageRef,
+    backgroundSettled,
     backgroundConfig,
     gridRectConfig,
     gridLines,

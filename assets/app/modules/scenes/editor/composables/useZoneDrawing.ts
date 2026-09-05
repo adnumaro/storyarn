@@ -1,4 +1,4 @@
-import { computed, onMounted, onUnmounted, ref, type Ref } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch, type Ref } from "vue";
 import { useLive } from "@shared/composables/useLive";
 import { getShapePreset } from "../lib/shape-presets";
 import type { KonvaEventObject } from "konva/lib/Node";
@@ -153,6 +153,10 @@ export function useZoneDrawing({
     drawingVertices.value = [];
     cursorPos.value = null;
   }
+
+  watch(activeTool, (tool) => {
+    if (tool !== "freeform") cancelFreeform();
+  });
 
   // Track cursor for preview line
   function onStageMouseMove(_e: KonvaEventObject<MouseEvent>): void {

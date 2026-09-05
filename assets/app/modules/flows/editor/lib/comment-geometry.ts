@@ -1,4 +1,5 @@
 import type { FlowCommentThread } from "../../types/comments";
+export { commentPopoverPosition } from "@components/comments/commentGeometry";
 
 export interface CommentPoint {
   x: number;
@@ -66,18 +67,4 @@ export function draftCommentCanvasPoint(
   const node = views.get(`node-${nodeId}`);
   if (!node) return null;
   return { x: position.x + node.position.x, y: position.y + node.position.y };
-}
-
-export function commentPopoverPosition(
-  point: CommentPoint,
-  bounds: { width: number; height: number },
-  size: { width: number; height: number },
-): CommentPoint {
-  const margin = 12;
-  const right = point.x + 24;
-  const x = right + size.width <= bounds.width - margin ? right : point.x - size.width - 24;
-  return {
-    x: Math.max(margin, Math.min(x, bounds.width - size.width - margin)),
-    y: Math.max(margin, Math.min(point.y - 18, bounds.height - size.height - margin)),
-  };
 }

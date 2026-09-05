@@ -11,7 +11,17 @@ defmodule Storyarn.Projects.Comments do
   def list_flow_threads(scope, project_id, flow_id, opts \\ []) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
-      {threads, next_cursor} = Queries.list_threads(project_id, flow_id, opts)
+      {threads, next_cursor} = Queries.list_threads(project_id, :flow, flow_id, opts)
+      {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def list_scene_threads(scope, project_id, scene_id, opts \\ []) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(scene_id) do
+      {threads, next_cursor} = Queries.list_threads(project_id, :scene, scene_id, opts)
       {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
     else
       _ -> {:error, :not_found}
@@ -52,6 +62,12 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def create_scene_canvas(scope, project_id, scene_id, attrs) do
+    scope
+    |> Mutations.create_scene_canvas(project_id, scene_id, attrs)
+    |> publish_and_read(scope, project_id)
+  end
+
   def reply(scope, project_id, thread_id, attrs) do
     scope
     |> Mutations.reply(project_id, thread_id, attrs)
@@ -79,7 +95,16 @@ defmodule Storyarn.Projects.Comments do
   def list_pins(scope, project_id, flow_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
-      {:ok, project_id |> Queries.list_pins(flow_id) |> thread_dtos()}
+      {:ok, project_id |> Queries.list_pins(:flow, flow_id) |> thread_dtos()}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def list_scene_pins(scope, project_id, scene_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(scene_id) do
+      {:ok, project_id |> Queries.list_pins(:scene, scene_id) |> thread_dtos()}
     else
       _ -> {:error, :not_found}
     end
@@ -106,8 +131,7 @@ defmodule Storyarn.Projects.Comments do
          message when not is_nil(message) <- Queries.message(project_id, comment_id),
          thread when not is_nil(thread) <- Queries.thread(project_id, message.thread_id),
          true <- Queries.source_available?(thread) do
-      node_id = if thread.source_type == "flow_node", do: thread.source_id
-      {:ok, %{flow_id: thread.container_id, node_id: node_id, thread_id: thread.id}}
+      {:ok, destination(thread)}
     else
       _ -> {:error, :not_found}
     end
@@ -122,7 +146,9 @@ defmodule Storyarn.Projects.Comments do
       |> Enum.filter(fn row ->
         row.project_role |> Access.effective_role(row.workspace_role) |> Access.can?(:view)
       end)
-      |> Map.new(fn row -> {{row.destination.project_id, row.message_id}, row.destination} end)
+      |> Map.new(fn row ->
+        {{row.destination.project_id, row.message_id}, destination_row(row.destination)}
+      end)
     else
       %{}
     end
@@ -133,14 +159,27 @@ defmodule Storyarn.Projects.Comments do
   def subscribe_flow(scope, project_id, flow_id) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(flow_id) do
-      PubSub.subscribe(Storyarn.PubSub, topic(project_id, flow_id))
+      PubSub.subscribe(Storyarn.PubSub, flow_topic(project_id, flow_id))
     else
       _ -> {:error, :not_found}
     end
   end
 
   def unsubscribe_flow(project_id, flow_id) do
-    PubSub.unsubscribe(Storyarn.PubSub, topic(project_id, flow_id))
+    PubSub.unsubscribe(Storyarn.PubSub, flow_topic(project_id, flow_id))
+  end
+
+  def subscribe_scene(scope, project_id, scene_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(scene_id) do
+      PubSub.subscribe(Storyarn.PubSub, scene_topic(project_id, scene_id))
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def unsubscribe_scene(project_id, scene_id) do
+    PubSub.unsubscribe(Storyarn.PubSub, scene_topic(project_id, scene_id))
   end
 
   defp authorize_read(scope, project_id) do
@@ -168,13 +207,47 @@ defmodule Storyarn.Projects.Comments do
   defp publish_and_read({:ok, result}, scope, project_id) do
     if result.notification, do: Platform.publish_notification_delivery(result.notification)
 
-    if result.changed? do
-      PubSub.broadcast(Storyarn.PubSub, topic(project_id, result.flow_id), {:flow_comments_changed, result.flow_id})
-    end
+    if result.changed?, do: publish_change(project_id, result)
 
     get_thread(scope, project_id, result.thread_id)
   end
 
   defp publish_and_read({:error, _} = error, _scope, _project_id), do: error
-  defp topic(project_id, flow_id), do: "project:#{project_id}:flow:#{flow_id}:comments"
+
+  defp publish_change(project_id, %{source_type: source_type, container_id: flow_id})
+       when source_type in ["flow_node", "flow_canvas"] do
+    PubSub.broadcast(Storyarn.PubSub, flow_topic(project_id, flow_id), {:flow_comments_changed, flow_id})
+  end
+
+  defp publish_change(project_id, %{source_type: "scene_canvas", container_id: scene_id}) do
+    PubSub.broadcast(Storyarn.PubSub, scene_topic(project_id, scene_id), {:scene_comments_changed, scene_id})
+  end
+
+  defp destination(%{source_type: source_type} = thread) when source_type in ["flow_node", "flow_canvas"] do
+    %{
+      surface: "flow",
+      flow_id: thread.container_id,
+      node_id: if(source_type == "flow_node", do: thread.source_id),
+      thread_id: thread.id
+    }
+  end
+
+  defp destination(%{source_type: "scene_canvas"} = thread) do
+    %{surface: "scene", scene_id: thread.container_id, thread_id: thread.id}
+  end
+
+  defp destination_row(%{source_type: source_type} = destination) when source_type in ["flow_node", "flow_canvas"] do
+    destination
+    |> Map.put(:surface, "flow")
+    |> Map.drop([:source_type, :scene_id])
+  end
+
+  defp destination_row(%{source_type: "scene_canvas"} = destination) do
+    destination
+    |> Map.put(:surface, "scene")
+    |> Map.drop([:source_type, :flow_id, :node_id])
+  end
+
+  defp flow_topic(project_id, flow_id), do: "project:#{project_id}:flow:#{flow_id}:comments"
+  defp scene_topic(project_id, scene_id), do: "project:#{project_id}:scene:#{scene_id}:comments"
 end

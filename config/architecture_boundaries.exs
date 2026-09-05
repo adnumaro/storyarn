@@ -3948,6 +3948,12 @@ policy = %{
       reason: "The Flow editor reads and mutates contextual conversations through the public Projects facade"
     },
     %{
+      source: "lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The Scene editor reads and mutates contextual conversations through the public Projects facade"
+    },
+    %{
       source: "lib/storyarn/projects/comments/commands/mutations.ex",
       target: "lib/storyarn/platform.ex",
       kinds: ["runtime"],

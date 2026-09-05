@@ -4,12 +4,15 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
 
   alias Storyarn.Flows
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Projects
   alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Projects.Persistence.FlowRecord
+  alias Storyarn.Projects.Persistence.SceneRecord
+  alias Storyarn.Scenes
 
   test "hard deletion retains the discussion and never rebinds an identical reused ID" do
     owner = user_fixture()
@@ -116,6 +119,40 @@ defmodule Storyarn.Projects.Comments.SourceLifecycleTest do
     assert [%{body: "Keep this canvas discussion"}] = retained.messages
     assert Repo.get!(Thread, detail.thread.id).flow_canvas_id == nil
     assert {:ok, []} = Projects.list_flow_comment_pins(scope, project.id, flow.id)
+    assert Projects.comment_destinations(scope, [detail.thread.root_message_id]) == %{}
+  end
+
+  test "Scene canvas discussions stay tombstoned when an identical ID and timestamp are rebuilt" do
+    owner = user_fixture()
+    scope = user_scope_fixture(owner)
+    project = project_fixture(owner)
+    scene = scene_fixture(project, %{name: "Original Scene"})
+
+    attrs = %{
+      body: "Keep this Scene discussion",
+      client_request_id: Ecto.UUID.generate(),
+      mention_user_ids: [],
+      position: %{x: 40, y: 60}
+    }
+
+    assert {:ok, detail} = Projects.create_scene_canvas_comment(scope, project.id, scene.id, attrs)
+    assert {:ok, _deleted_scene} = Scenes.hard_delete_scene(scene)
+
+    Repo.insert!(%SceneRecord{
+      id: scene.id,
+      project_id: project.id,
+      name: "Replacement Scene",
+      inserted_at: scene.inserted_at,
+      updated_at: scene.updated_at
+    })
+
+    assert {:ok, retained} = Projects.get_comment_thread(scope, project.id, detail.thread.id)
+    assert retained.thread.source.status == "unavailable"
+    assert retained.thread.source.label == "Original Scene"
+    assert retained.thread.position == %{x: 40.0, y: 60.0}
+    assert [%{body: "Keep this Scene discussion"}] = retained.messages
+    assert Repo.get!(Thread, detail.thread.id).scene_canvas_id == nil
+    assert {:ok, []} = Projects.list_scene_comment_pins(scope, project.id, scene.id)
     assert Projects.comment_destinations(scope, [detail.thread.root_message_id]) == %{}
   end
 end

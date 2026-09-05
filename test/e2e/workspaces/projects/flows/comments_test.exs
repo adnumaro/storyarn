@@ -6,8 +6,6 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
   import Storyarn.ProjectsFixtures
   import StoryarnWeb.E2EHelpers
 
-  alias PlaywrightEx.Frame
-  alias PlaywrightEx.Page
   alias Storyarn.Projects
   alias Storyarn.Repo
 
@@ -95,38 +93,5 @@ defmodule StoryarnWeb.E2E.FlowCommentsTest do
     |> visit(path <> "?thread=#{thread.id}")
     |> assert_has("#flow-comment-popover", text: feedback, timeout: 20_000)
     |> assert_has("#flow-comment-pin-#{thread.id}[aria-expanded='true']")
-  end
-
-  defp right_click(session, selector) do
-    {:ok, _} = Frame.click(session.frame_id, selector: selector, button: "right", timeout: 10_000)
-    session
-  end
-
-  defp click_at(session, selector, x, y) do
-    {:ok, _} = Frame.click(session.frame_id, selector: selector, position: %{x: x, y: y}, timeout: 10_000)
-    session
-  end
-
-  defp hover_pin(session, selector) do
-    {:ok, _} = Frame.hover(session.frame_id, selector: selector, timeout: 10_000)
-    session
-  end
-
-  defp drag_pin(session, selector, dx, dy) do
-    session
-    |> hover_pin(selector)
-    |> evaluate("document.querySelector(#{Jason.encode!(selector)}).getBoundingClientRect().toJSON()", fn box ->
-      {:ok, _} = Page.mouse_down(session.page_id, timeout: 10_000)
-
-      {:ok, _} =
-        Page.mouse_move(session.page_id,
-          x: box["x"] + box["width"] / 2 + dx,
-          y: box["y"] + box["height"] / 2 + dy,
-          steps: 5,
-          timeout: 10_000
-        )
-
-      {:ok, _} = Page.mouse_up(session.page_id, timeout: 10_000)
-    end)
   end
 end

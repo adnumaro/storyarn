@@ -34,6 +34,7 @@ const flowSharedTechnicalPorts = [
   "^assets/app/components/ui/",
   "^assets/app/components/ConfirmDialog\\.vue$",
   "^assets/app/components/collab/CollabToast\\.vue$",
+  "^assets/app/components/comments/",
   "^assets/app/components/dashboard/(DashboardDataTable|DashboardIssuesSection)\\.vue$",
   "^assets/app/components/dashboard/types\\.ts$",
   "^assets/app/components/forms/(BooleanToggle|EditableText|VariableCombobox)\\.vue$",

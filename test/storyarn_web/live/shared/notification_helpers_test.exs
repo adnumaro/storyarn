@@ -4,6 +4,7 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpersTest do
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
+  import Storyarn.ScenesFixtures
   import Storyarn.WorkspacesFixtures
 
   alias Storyarn.Flows
@@ -65,6 +66,24 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpersTest do
     assert %{items: [notification], unreadCount: 1} = NotificationHelpers.client_state(context.scope)
     assert notification.kind == "comment_mention"
     assert is_nil(notification.href)
+  end
+
+  test "builds Scene conversation links from the source-family destination", context do
+    scene = scene_fixture(context.project)
+
+    assert {:ok, %{thread: thread}} =
+             Projects.create_scene_canvas_comment(context.actor_scope, context.project.id, scene.id, %{
+               body: "Review this Scene position",
+               position: %{x: 25, y: 75},
+               client_request_id: Ecto.UUID.generate(),
+               mention_user_ids: [context.scope.user.id]
+             })
+
+    assert %{items: items, unreadCount: 2} = NotificationHelpers.client_state(context.scope)
+    scene_notification = Enum.find(items, &String.contains?(&1.href || "", "/scenes/"))
+
+    assert scene_notification.href ==
+             "/workspaces/#{context.workspace.slug}/projects/#{context.project.slug}/scenes/#{scene.id}?thread=#{thread.id}"
   end
 
   test "removes the notification and its destination after recipient access is revoked", context do

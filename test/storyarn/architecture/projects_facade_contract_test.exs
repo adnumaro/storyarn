@@ -279,12 +279,16 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   @comment_contract [
     list_flow_comment_threads: 3,
     list_flow_comment_threads: 4,
+    list_scene_comment_threads: 3,
+    list_scene_comment_threads: 4,
     get_comment_thread: 3,
     get_comment_thread: 4,
     create_flow_node_comment: 5,
     create_flow_canvas_comment: 4,
+    create_scene_canvas_comment: 4,
     move_comment_thread: 5,
     list_flow_comment_pins: 3,
+    list_scene_comment_pins: 3,
     reply_to_comment_thread: 4,
     set_comment_thread_status: 5,
     list_comment_members: 2,
@@ -292,7 +296,9 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
     comment_destination: 3,
     comment_destinations: 2,
     subscribe_flow_comments: 3,
-    unsubscribe_flow_comments: 2
+    unsubscribe_flow_comments: 2,
+    subscribe_scene_comments: 3,
+    unsubscribe_scene_comments: 2
   ]
   @docs_digest "97d4e95d55529373850e175b9ee37ebd5919fd3f2c1c82b7b903d923255a9ba4"
   @types_digest "f7f60ba66ab4261d3cc675ac4fac9ad00574aab9af5b64425cf8497175a7f9f8"
