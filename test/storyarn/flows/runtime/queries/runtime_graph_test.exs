@@ -13,11 +13,14 @@ defmodule Storyarn.Flows.RuntimeGraphTest do
     flow = flow_fixture(project)
     hub = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "middle"}})
     target = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "target"}})
+    source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "source"}})
+    inheriting = node_fixture(flow, %{type: "dialogue", composition_source_id: source.id})
     connection_fixture(flow, hub, target, %{source_pin: "output", target_pin: "input"})
 
     graph = Flows.load_runtime_graph(flow.id)
 
     assert graph.nodes[hub.id].data["hub_id"] == "middle"
+    assert graph.nodes[inheriting.id].composition_source_id == source.id
 
     assert Enum.any?(graph.connections, fn connection ->
              connection.source_node_id == hub.id and
