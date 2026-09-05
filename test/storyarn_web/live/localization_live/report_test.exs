@@ -16,6 +16,46 @@ defmodule StoryarnWeb.LocalizationLive.ReportTest do
     LiveVue.Test.get_vue(view, name: "live/localization/report/LocalizationReport")
   end
 
+  describe "add_target_language event" do
+    setup :register_and_log_in_user
+
+    test "owner adds the first target language from the overview", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+
+      {:ok, view, _html} = live(conn, report_url(project))
+
+      vue = get_report_vue(view)
+      assert vue.props["capabilities"]["canEdit"] == true
+      assert is_integer(vue.props["empty-state"]["runtimeWordCount"])
+      assert Enum.any?(vue.props["empty-state"]["addLanguageOptions"], &(&1["value"] == "fr"))
+
+      render_click(view, "add_target_language", %{"locale_code" => "fr"})
+
+      assert Storyarn.Localization.get_language_by_locale(project.id, "fr")
+
+      vue = get_report_vue(view)
+      assert [%{"localeCode" => "fr", "workbenchUrl" => workbench_url}] = vue.props["language-progress"]
+      assert workbench_url =~ "/localization/texts/fr"
+      assert vue.props["selected-locale"] == "fr"
+      assert vue.props["empty-state"]["runtimeWordCount"] == nil
+    end
+
+    test "viewer cannot add a target language", %{conn: conn, user: user} do
+      owner = user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      _membership = membership_fixture(project, user, "viewer")
+
+      {:ok, view, _html} = live(conn, report_url(project))
+
+      assert get_report_vue(view).props["capabilities"]["canEdit"] == false
+      assert get_report_vue(view).props["empty-state"]["addLanguageOptions"] == []
+
+      render_click(view, "add_target_language", %{"locale_code" => "fr"})
+
+      refute Storyarn.Localization.get_language_by_locale(project.id, "fr")
+    end
+  end
+
   describe "Localization report page" do
     setup :register_and_log_in_user
 

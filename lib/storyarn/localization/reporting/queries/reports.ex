@@ -9,16 +9,20 @@ defmodule Storyarn.Localization.Reporting.Queries.Reports do
   alias Storyarn.Repo
 
   @doc """
-  Returns progress per language for a project.
-  Returns a list of `%{locale_code: String.t(), name: String.t(), total: integer(), final: integer(), percentage: float()}`.
+  Returns progress per target language for a project.
+
+  Each entry carries every status count (`pending`, `draft`, `in_progress`,
+  `review`, `final`), the derived `stale` count, the `word_count` of the
+  locale's runtime strings and the completion `percentage`.
   """
   def progress_by_language(project_id) do
     counts_by_locale = status_counts_by_locale(project_id)
     stale_by_locale = stale_counts_by_locale(project_id)
+    words_by_locale = word_counts_by_locale(project_id)
 
     project_id
     |> target_languages()
-    |> Enum.map(&language_progress(&1, counts_by_locale, stale_by_locale))
+    |> Enum.map(&language_progress(&1, counts_by_locale, stale_by_locale, words_by_locale))
   end
 
   defp target_languages(project_id) do
@@ -55,7 +59,17 @@ defmodule Storyarn.Localization.Reporting.Queries.Reports do
     |> Map.new()
   end
 
-  defp language_progress(language, counts_by_locale, stale_by_locale) do
+  defp word_counts_by_locale(project_id) do
+    from(t in LocalizedTextRecord,
+      where: t.project_id == ^project_id and is_nil(t.archived_at),
+      group_by: t.locale_code,
+      select: {t.locale_code, coalesce(sum(t.word_count), 0)}
+    )
+    |> Repo.all()
+    |> Map.new()
+  end
+
+  defp language_progress(language, counts_by_locale, stale_by_locale, words_by_locale) do
     stats = Map.get(counts_by_locale, language.locale_code, %{})
     total = stats |> Map.values() |> Enum.sum()
     final = Map.get(stats, "final", 0)
@@ -64,9 +78,13 @@ defmodule Storyarn.Localization.Reporting.Queries.Reports do
       locale_code: language.locale_code,
       name: language.name,
       total: total,
-      final: final,
+      pending: Map.get(stats, "pending", 0),
+      draft: Map.get(stats, "draft", 0),
+      in_progress: Map.get(stats, "in_progress", 0),
       review: Map.get(stats, "review", 0),
+      final: final,
       stale: Map.get(stale_by_locale, language.locale_code, 0),
+      word_count: Map.get(words_by_locale, language.locale_code, 0),
       percentage: completion_percentage(final, total)
     }
   end

@@ -113,6 +113,36 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpersTest do
     end
   end
 
+  # ── content_role_label/1 ────────────────────────────────────────────
+
+  describe "content_role_label/1" do
+    test "names every runtime content role" do
+      assert LocalizationHelpers.content_role_label("dialogue") == "Dialogue"
+      assert LocalizationHelpers.content_role_label("response") == "Response"
+      assert LocalizationHelpers.content_role_label("stage_direction") == "Stage direction"
+      assert LocalizationHelpers.content_role_label("menu") == "Menu"
+      assert LocalizationHelpers.content_role_label("exit") == "Exit"
+      assert LocalizationHelpers.content_role_label("runtime_value") == "Variable"
+      assert LocalizationHelpers.content_role_label("speaker_name") == "Speaker name"
+    end
+
+    test "falls back to Variable for a missing role" do
+      assert LocalizationHelpers.content_role_label(nil) == "Variable"
+    end
+  end
+
+  # ── vo_status_label/1 ───────────────────────────────────────────────
+
+  describe "vo_status_label/1" do
+    test "names the four voice-over states" do
+      assert LocalizationHelpers.vo_status_label("none") == "Not required"
+      assert LocalizationHelpers.vo_status_label("needed") == "Needed"
+      assert LocalizationHelpers.vo_status_label("recorded") == "Recorded"
+      assert LocalizationHelpers.vo_status_label("approved") == "Approved"
+      assert LocalizationHelpers.vo_status_label(nil) == "Not required"
+    end
+  end
+
   # ── source_type_label/1 ─────────────────────────────────────────────
 
   describe "source_type_label/1" do
