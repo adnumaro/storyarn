@@ -207,6 +207,11 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:editing_mode, nil)
       |> assign(:sequence_panel_data, nil)
       |> assign(:sequence_stage, SequencePresentation.empty_stage())
+      |> assign(:languages, [])
+      |> assign(:source_language, nil)
+      |> assign(:source_locale, nil)
+      |> assign(:content_locale, nil)
+      |> assign(:language_options, [])
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
       |> assign(:debug_active_tab, "console")
@@ -410,6 +415,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     full_flow = Flows.get_flow!(project.id, flow.id)
     project_variables = VariableHelpers.list_all_variables(project.id)
     editor_catalog = Flows.load_editor_catalog(project.id)
+    languages = Flows.list_localization_languages(project.id)
 
     %{
       flow: full_flow,
@@ -418,7 +424,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       gallery_by_sheet: editor_catalog.gallery_by_sheet,
       flow_hubs: Flows.list_hubs(flow.id),
       project_variables: project_variables,
-      available_scenes: editor_catalog.scenes
+      available_scenes: editor_catalog.scenes,
+      languages: languages,
+      source_language: Flows.get_localization_source_language(project.id)
     }
   end
 
@@ -439,6 +447,19 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("comments_" <> action, params, socket) do
     CommentHandlers.handle(action, params, socket)
   end
+
+  def handle_event("set_sequence_content_locale", %{"locale" => locale}, socket) do
+    case SequencePresentation.select_content_locale(locale, socket.assigns.languages) do
+      {:ok, content_locale} ->
+        socket = assign(socket, :content_locale, content_locale)
+        {:noreply, refresh_selected_sequence_stage(socket)}
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_sequence_content_locale", _params, socket), do: {:noreply, socket}
 
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
@@ -1366,6 +1387,13 @@ defmodule StoryarnWeb.FlowLive.Show do
         CollaborationHelpers.get_initial_collab_state(socket, flow)
       end
 
+    locale_state =
+      SequencePresentation.locale_state(
+        data.languages,
+        data.source_language,
+        socket.assigns[:content_locale]
+      )
+
     socket =
       socket
       |> assign(:flow, flow)
@@ -1374,6 +1402,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
       |> assign(:project_variables, data.project_variables)
+      |> assign(locale_state)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
       |> assign(:sequence_panel_data, nil)
@@ -1648,11 +1677,22 @@ defmodule StoryarnWeb.FlowLive.Show do
       graph.nodes,
       sequence_speakers_map(socket.assigns),
       socket.assigns.project.id,
-      nil
+      nil,
+      SequencePresentation.locale_context(socket.assigns)
     )
   end
 
   defp load_sequence_stage(_socket, _node), do: SequencePresentation.empty_stage()
+
+  defp refresh_selected_sequence_stage(socket) do
+    case socket.assigns[:selected_node] do
+      %{type: type} = node when type in ["sequence", "dialogue"] ->
+        assign(socket, :sequence_stage, load_sequence_stage(socket, node))
+
+      _other ->
+        socket
+    end
+  end
 
   defp sequence_speakers_map(assigns) do
     FormHelpers.player_speakers_map(assigns.all_sheets)

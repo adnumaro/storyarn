@@ -41,6 +41,7 @@ const flowSharedTechnicalPorts = [
   "^assets/app/components/forms/assets/AssetPicker\\.vue$",
   "^assets/app/components/forms/fields/EntityCombobox\\.vue$",
   "^assets/app/components/health/(HealthStatusPopover\\.vue|health-details\\.ts)$",
+  "^assets/app/components/language/LanguagePicker\\.vue$",
   "^assets/app/components/toolbar/(ToolbarTooltip\\.vue|index\\.ts)$",
   "^assets/app/i18n\\.ts$",
   "^assets/app/plugins/expression-editor/theme\\.ts$",

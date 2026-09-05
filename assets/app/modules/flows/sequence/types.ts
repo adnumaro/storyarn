@@ -133,6 +133,11 @@ export interface SequenceDialogueVoice {
   content_type?: string | null;
   contentType?: string | null;
   filename?: string | null;
+  locale?: string | null;
+  locale_code?: string | null;
+  localeCode?: string | null;
+  status?: string | null;
+  stale?: boolean;
   available?: boolean;
 }
 
@@ -144,6 +149,33 @@ export interface SequenceCompositionDiagnostic {
   layerId?: SequenceEntityId | null;
 }
 
+export interface SequenceLocalizationFieldState {
+  status?: string | null;
+  stale?: boolean;
+  fallback?: boolean;
+}
+
+export interface SequenceLocalizationState {
+  locale?: string | null;
+  sourceLocale?: string | null;
+  isSource?: boolean;
+  status?: string | null;
+  stale?: boolean;
+  fallback?: boolean;
+  fields?: Record<
+    string,
+    SequenceLocalizationFieldState | Record<string, SequenceLocalizationFieldState> | undefined
+  >;
+}
+
+export interface SequenceLanguageOption {
+  value: string;
+  label: string;
+  languageTag: string;
+  flagCode: string | null;
+  shortLabel: string;
+}
+
 export interface SequenceStageIntervention {
   nodeId: SequenceEntityId;
   speakerName?: string | null;
@@ -152,6 +184,7 @@ export interface SequenceStageIntervention {
   speakerColor?: string | null;
   text?: string | null;
   stageDirections?: string | null;
+  localization?: SequenceLocalizationState | null;
   voice?: SequenceDialogueVoice | null;
 }
 
@@ -174,6 +207,10 @@ export type SequenceStageState =
       intervention?: null;
       composition?: null;
       voice?: null;
+      localizationStatus?: null;
+      contentLocale?: string | null;
+      sourceLocale?: string | null;
+      languageOptions?: SequenceLanguageOption[];
       errorMessage?: null;
     }
   | {
@@ -182,6 +219,10 @@ export type SequenceStageState =
       intervention?: SequenceStageIntervention | null;
       composition: SequenceStageComposition;
       voice?: SequenceDialogueVoice | null;
+      localizationStatus?: SequenceLocalizationState | null;
+      contentLocale?: string | null;
+      sourceLocale?: string | null;
+      languageOptions?: SequenceLanguageOption[];
       errorMessage?: null;
     }
   | {
@@ -190,5 +231,9 @@ export type SequenceStageState =
       intervention?: SequenceStageIntervention | null;
       composition?: SequenceStageComposition | null;
       voice?: SequenceDialogueVoice | null;
+      localizationStatus?: SequenceLocalizationState | null;
+      contentLocale?: string | null;
+      sourceLocale?: string | null;
+      languageOptions?: SequenceLanguageOption[];
       errorMessage?: string | null;
     };

@@ -9,6 +9,7 @@ import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
 import PlayerOutcome from "@modules/flows/player/components/PlayerOutcome.vue";
 import PlayerAudioTracks from "@modules/flows/player/components/PlayerAudioTracks.vue";
 import DialogueVoice from "@modules/flows/player/components/DialogueVoice.vue";
+import SequenceLocaleControls from "@modules/flows/sequence/components/SequenceLocaleControls.vue";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
@@ -16,6 +17,8 @@ import type { OutcomeData } from "@modules/flows/player/components/PlayerOutcome
 import type {
   SequenceAudioTrack,
   SequenceDialogueVoice,
+  SequenceLanguageOption,
+  SequenceLocalizationState,
   SequenceVisualLayer,
 } from "@modules/flows/sequence/types";
 
@@ -29,6 +32,9 @@ const {
   visualLayers = [],
   audioTracks = [],
   voice = null,
+  languageOptions = [],
+  contentLocale = null,
+  localizationStatus = null,
   editorUrl,
   responses = [],
 } = defineProps<{
@@ -40,6 +46,9 @@ const {
   visualLayers?: SequenceVisualLayer[];
   audioTracks?: SequenceAudioTrack[];
   voice?: SequenceDialogueVoice | null;
+  languageOptions?: SequenceLanguageOption[];
+  contentLocale?: string | null;
+  localizationStatus?: SequenceLocalizationState | null;
   editorUrl: string;
   responses: ResponseData[];
 }>();
@@ -52,6 +61,10 @@ const ambientAudioBlocked = ref(false);
 const dialogueVoiceBlocked = ref(false);
 let voiceNavigationGeneration = 0;
 const audioBlocked = computed(() => ambientAudioBlocked.value || dialogueVoiceBlocked.value);
+const showPresentationControls = computed(
+  () =>
+    languageOptions.length > 0 || localizationStatus != null || voice != null || audioBlocked.value,
+);
 
 function dialogueVoiceSignature(
   currentVoice: SequenceDialogueVoice | null | undefined,
@@ -85,6 +98,11 @@ function stopDialogueVoice(): number {
 function retryBlockedAudio() {
   ambientAudio.value?.retryBlockedAudio();
   dialogueVoice.value?.retryBlockedAudio();
+}
+
+function onContentLocaleChange(locale: string) {
+  stopDialogueVoice();
+  live.pushEvent("set_sequence_content_locale", { locale });
 }
 
 function onChooseResponse(responseId: string) {
@@ -244,11 +262,21 @@ onUnmounted(() => {
       </div>
 
       <div
-        v-if="audioBlocked"
+        v-if="showPresentationControls"
         class="absolute right-4 top-4 z-[2100] flex max-w-[calc(100%-2rem)] flex-wrap items-center justify-end gap-2 rounded-xl border border-white/10 bg-slate-950/75 p-2 shadow-xl backdrop-blur-md"
-        data-player-audio-controls
+        data-player-presentation-controls
       >
+        <SequenceLocaleControls
+          id="flow-player"
+          :language-options="languageOptions"
+          :content-locale="contentLocale"
+          :localization-status="localizationStatus"
+          :voice="voice"
+          tone="dark"
+          @update:content-locale="onContentLocaleChange"
+        />
         <Button
+          v-if="audioBlocked"
           type="button"
           variant="secondary"
           size="sm"

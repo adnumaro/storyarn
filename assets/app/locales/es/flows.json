@@ -235,6 +235,27 @@
       "instruction_help": "Añade asignaciones para establecer valores de variables cuando se ejecute este nodo."
     },
     "presentation": {
+      "content_language": "Idioma del contenido",
+      "select_language": "Seleccionar idioma",
+      "search_languages": "Buscar idiomas...",
+      "no_languages": "No se encontraron idiomas de contenido.",
+      "translation_status": "Traducción: {status}",
+      "translation": {
+        "source": "Fuente",
+        "current": "Actual",
+        "missing": "Faltante",
+        "fallback": "Contenido fuente",
+        "stale": "Desactualizada"
+      },
+      "voice_status": "Voz: {status}",
+      "voice": {
+        "none": "Ninguna",
+        "needed": "Necesaria",
+        "recorded": "Grabada",
+        "approved": "Aprobada",
+        "stale": "Desactualizada",
+        "unavailable": "No disponible"
+      },
       "play_voice_preview": "Reproducir vista previa de la voz del diálogo",
       "pause_voice_preview": "Pausar vista previa de la voz del diálogo",
       "retry_voice_preview": "Reintentar vista previa de la voz del diálogo"

@@ -4,6 +4,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   import Phoenix.LiveViewTest
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -359,6 +360,48 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
                "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
 
       assert Flows.get_sequence_visual_layer(base.id, layer.id)
+    end
+
+    test "a viewer can change the content locale without gaining edit access", %{conn: conn, user: user} do
+      owner = Storyarn.AccountsFixtures.user_fixture()
+      project = owner |> project_fixture() |> Repo.preload(:workspace)
+      membership_fixture(project, user, "viewer")
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      flow = flow_fixture(project, %{name: "Localized Sequence Stage"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p>Hello</p>", "responses" => []}
+        })
+
+      source_hash = :sha256 |> :crypto.hash("<p>Hello</p>") |> Base.encode16(case: :lower)
+
+      localized_text_fixture(project.id, %{
+        source_id: dialogue.id,
+        source_field: "text",
+        source_text: "<p>Hello</p>",
+        source_text_hash: source_hash,
+        translated_source_hash: source_hash,
+        translated_text: "<p>Hola</p>",
+        status: "draft"
+      })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+      render_hook(view, "node_selected", %{"id" => dialogue.id})
+      render(view)
+      render_click(view, "set_sequence_content_locale", %{"locale" => "es"})
+
+      stage =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["stage"])
+
+      assert stage["contentLocale"] == "es"
+      assert stage["intervention"]["text"] == "<p>Hola</p>"
+      assert stage["intervention"]["localization"]["fallback"] == false
     end
 
     test "passes incomplete dialogue findings to the warning section",

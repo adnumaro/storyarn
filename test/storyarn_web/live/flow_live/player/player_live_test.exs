@@ -11,6 +11,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
   import Phoenix.LiveViewTest
   import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
+  import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
@@ -494,6 +495,32 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
       assert vue.props["slide"]["type"] == slide_before["type"]
+    end
+
+    test "preserves the selected content locale", %{conn: conn, project: project} do
+      {flow, _entry, dialogue, _exit, response1_id, _response2_id} =
+        create_flow_with_responses(project)
+
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      localized_dialogue_text(
+        project.id,
+        dialogue.id,
+        "<p>What do you choose?</p>",
+        "<p>¿Qué eliges?</p>"
+      )
+
+      {:ok, view, _html} = live(conn, player_url(project, flow))
+      render_click(view, "set_sequence_content_locale", %{"locale" => "es"})
+      render_click(view, "choose_response", %{"id" => response1_id})
+
+      render_click(view, "go_back")
+      render_click(view, "go_back")
+
+      vue = get_player_vue(view)
+      assert vue.props["content-locale"] == "es"
+      assert vue.props["slide"]["text"] =~ "¿Qué eliges?"
     end
   end
 
@@ -1008,6 +1035,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       %{
         main_flow: main_flow,
         sub_flow: sub_flow,
+        main_dialogue: main_dialogue,
+        sub_dialogue: sub_dialogue,
         main_resp_id: main_resp_id,
         sub_resp_id: sub_resp_id,
         after_resp_id: after_resp_id,
@@ -1052,6 +1081,47 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       assert vue.props["slide"]["speaker_name"] == "Session Speaker"
       assert vue.props["slide"]["speaker_avatar_url"] == speaker_avatar_url
       assert vue.props["can-go-back"]
+    end
+
+    test "content locale survives flow navigation and resolves the destination dialogue", %{
+      conn: conn,
+      project: project,
+      main_flow: main_flow,
+      main_dialogue: main_dialogue,
+      sub_dialogue: sub_dialogue,
+      main_resp_id: main_resp_id
+    } do
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      localized_dialogue_text(
+        project.id,
+        main_dialogue.id,
+        "<p>Main dialogue</p>",
+        "<p>Diálogo principal</p>"
+      )
+
+      localized_dialogue_text(
+        project.id,
+        sub_dialogue.id,
+        "<p>Sub flow dialogue</p>",
+        "<p>Diálogo secundario</p>"
+      )
+
+      {:ok, view, _html} = live(conn, player_url(project, main_flow))
+      render_click(view, "set_sequence_content_locale", %{"locale" => "es"})
+
+      vue = get_player_vue(view)
+      assert vue.props["content-locale"] == "es"
+      assert vue.props["slide"]["text"] =~ "Diálogo principal"
+
+      render_click(view, "choose_response", %{"id" => main_resp_id})
+      {sub_path, _} = assert_redirect(view)
+      {:ok, sub_view, _html} = live(conn, sub_path)
+
+      vue = get_player_vue(sub_view)
+      assert vue.props["content-locale"] == "es"
+      assert vue.props["slide"]["text"] =~ "Diálogo secundario"
     end
 
     test "flow_return navigates back to parent flow", %{
@@ -1218,5 +1288,19 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       vue = get_player_vue(view)
       assert vue.props["editor-url"] =~ "/flows/#{flow.id}"
     end
+  end
+
+  defp localized_dialogue_text(project_id, node_id, source, translated) do
+    hash = :sha256 |> :crypto.hash(source) |> Base.encode16(case: :lower)
+
+    localized_text_fixture(project_id, %{
+      source_id: node_id,
+      source_field: "text",
+      source_text: source,
+      source_text_hash: hash,
+      translated_source_hash: hash,
+      translated_text: translated,
+      status: "draft"
+    })
   end
 end

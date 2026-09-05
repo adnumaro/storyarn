@@ -235,6 +235,27 @@
       "instruction_help": "Add assignments to set variable values when this node executes."
     },
     "presentation": {
+      "content_language": "Content language",
+      "select_language": "Select language",
+      "search_languages": "Search languages...",
+      "no_languages": "No content languages found.",
+      "translation_status": "Translation: {status}",
+      "translation": {
+        "source": "Source",
+        "current": "Current",
+        "missing": "Missing",
+        "fallback": "Fallback",
+        "stale": "Stale"
+      },
+      "voice_status": "Voice: {status}",
+      "voice": {
+        "none": "None",
+        "needed": "Needed",
+        "recorded": "Recorded",
+        "approved": "Approved",
+        "stale": "Stale",
+        "unavailable": "Unavailable"
+      },
       "play_voice_preview": "Play dialogue voice preview",
       "pause_voice_preview": "Pause dialogue voice preview",
       "retry_voice_preview": "Retry dialogue voice preview"

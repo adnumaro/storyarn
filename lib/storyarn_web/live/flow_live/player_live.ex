@@ -15,7 +15,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
-  alias StoryarnWeb.FlowLive.Player.Slide
 
   # ===========================================================================
   # Render
@@ -37,6 +36,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         visual-layers={player_visual_layers(assigns)}
         audio-tracks={player_audio_tracks(assigns)}
         voice={@voice}
+        language-options={@language_options}
+        content-locale={@content_locale}
+        localization-status={@localization_status}
         editor-url={editor_url(assigns)}
         responses={serialize_responses(@slide)}
       />
@@ -79,6 +81,15 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     speakers = Flows.load_player_speakers(project.id)
     speakers_map = FormHelpers.player_speakers_map(speakers)
     variables = VariableHelpers.build_variables(project.id)
+    languages = Flows.list_localization_languages(project.id)
+
+    locale_state =
+      SequencePresentation.locale_state(
+        languages,
+        Flows.get_localization_source_language(project.id)
+      )
+
+    socket = assign(socket, locale_state)
 
     case Flows.start_player_session(flow, variables) do
       {:error, reason} ->
@@ -126,7 +137,15 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
           speakers_map = restored[:speakers_map] || restored[:sheets_map] || %{}
           player_session = restore_player_session(restored)
 
+          locale_state =
+            SequencePresentation.locale_state(
+              socket.assigns.languages,
+              socket.assigns.source_language,
+              restored[:content_locale]
+            )
+
           socket
+          |> assign(locale_state)
           |> assign(:speakers_map, speakers_map)
           |> assign(:project, project)
           |> assign(:workspace, project.workspace)
@@ -158,6 +177,19 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     |> Flows.continue_player_session()
     |> handle_player_result(socket)
   end
+
+  def handle_event("set_sequence_content_locale", %{"locale" => locale}, socket) do
+    case SequencePresentation.select_content_locale(locale, socket.assigns.languages) do
+      {:ok, content_locale} ->
+        socket = assign(socket, :content_locale, content_locale)
+        {:noreply, assign_player_session(socket, socket.assigns.player_session)}
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_sequence_content_locale", _params, socket), do: {:noreply, socket}
 
   def handle_event("choose_response", %{"id" => response_id}, socket) do
     socket.assigns.player_session
@@ -198,7 +230,14 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp store_and_navigate_player(socket, player_session) do
-    %{workspace: ws, project: proj, speakers_map: speakers_map, player_mode: mode} = socket.assigns
+    %{
+      workspace: ws,
+      project: proj,
+      speakers_map: speakers_map,
+      player_mode: mode,
+      content_locale: content_locale
+    } = socket.assigns
+
     user_id = socket.assigns.current_scope.user.id
     session_id = socket.assigns.player_session_id
     tab_id = socket.assigns.player_tab_id
@@ -206,7 +245,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     Flows.debug_session_store({:player, user_id, proj.id, session_id, tab_id}, %{
       player_session: player_session,
       speakers_map: speakers_map,
-      player_mode: mode
+      player_mode: mode,
+      content_locale: content_locale
     })
 
     {:noreply,
@@ -255,8 +295,15 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp assign_player_session(socket, player_session) do
     state = player_session.state
     node = Map.get(player_session.nodes, state.current_node_id)
-    slide = Slide.build(node, state, socket.assigns.speakers_map, socket.assigns.project.id)
-    voice = SequencePresentation.dialogue_voice(node, socket.assigns.project.id)
+
+    presentation =
+      SequencePresentation.slide(
+        node,
+        state,
+        socket.assigns.speakers_map,
+        socket.assigns.project.id,
+        SequencePresentation.locale_context(socket.assigns)
+      )
 
     socket
     |> assign(:player_session, player_session)
@@ -264,8 +311,9 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     |> assign(:nodes, player_session.nodes)
     |> assign(:connections, player_session.connections)
     |> assign(:flow, player_session.flow)
-    |> assign(:slide, slide)
-    |> assign(:voice, voice)
+    |> assign(:slide, presentation.slide)
+    |> assign(:voice, presentation.voice)
+    |> assign(:localization_status, presentation.localization)
     |> assign(:can_go_back, Flows.player_session_can_go_back?(player_session))
     |> assign(:current_scene_id, player_session.scene_id)
   end
