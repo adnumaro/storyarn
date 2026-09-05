@@ -324,6 +324,18 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       assert middle_id == middle.id
       assert track_key == track.track_key
 
+      kind_mismatch =
+        update_snapshot_node(snapshot, middle.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "kind", "sfx")]
+          end)
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, ^middle_id, ^track_key,
+               {:kind_mismatch, "music", "sfx"}}} =
+               FlowBuilder.validate_portable_snapshot(kind_mismatch)
+
       without_layer_base =
         update_snapshot_node(snapshot, root.id, fn node ->
           Map.put(node, "sequence_visual_layers", [])

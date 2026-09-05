@@ -158,6 +158,41 @@ defmodule Storyarn.Projects.FlowImportPersistenceTest do
       assert {:error, :cyclic_parent} = FlowImportPersistence.link_node_parent(parent, child.id)
     end
 
+    test "initializes missing composition sources from the deferred parent only once", %{
+      project: project
+    } do
+      flow = import_flow!(project)
+      first_parent = import_sequence!(flow, "First parent")
+      second_parent = import_sequence!(flow, "Second parent")
+      sequence = import_sequence!(flow, "Child sequence")
+
+      assert {:ok, dialogue} =
+               FlowImportPersistence.import_node(flow.id, %{type: "dialogue", data: %{}})
+
+      assert is_nil(sequence.composition_source_id)
+      assert is_nil(dialogue.composition_source_id)
+
+      for node <- [sequence, dialogue] do
+        assert {:ok,
+                %FlowNodeRecord{
+                  parent_id: first_parent_id,
+                  composition_source_id: first_composition_source_id
+                }} = FlowImportPersistence.link_node_parent(node, first_parent.id)
+
+        assert first_parent_id == first_parent.id
+        assert first_composition_source_id == first_parent.id
+
+        assert {:ok,
+                %FlowNodeRecord{
+                  parent_id: second_parent_id,
+                  composition_source_id: preserved_composition_source_id
+                }} = FlowImportPersistence.link_node_parent(node, second_parent.id)
+
+        assert second_parent_id == second_parent.id
+        assert preserved_composition_source_id == first_parent.id
+      end
+    end
+
     test "updates deferred node data", %{project: project} do
       flow = import_flow!(project)
       assert {:ok, node} = FlowImportPersistence.import_node(flow.id, %{type: "subflow", data: %{}})

@@ -168,7 +168,8 @@ defmodule Storyarn.Flows.SequenceCompositionIntegrity do
       inherited,
       node["original_id"],
       :sequence_visual_layer,
-      &validate_visual_layer/2
+      &validate_visual_layer/2,
+      &resource_state/1
     )
   end
 
@@ -178,16 +179,17 @@ defmodule Storyarn.Flows.SequenceCompositionIntegrity do
       inherited,
       node["original_id"],
       :sequence_track,
-      &validate_track/2
+      &validate_track/2,
+      &track_resource_state/1
     )
   end
 
-  defp apply_rows(rows, inherited, owner_id, kind, validator) do
+  defp apply_rows(rows, inherited, owner_id, kind, validator, state_builder) do
     Enum.reduce_while(rows, {:ok, inherited}, fn row, {:ok, state} ->
       key = resource_key(row, kind)
 
       case validator.(row, Map.get(state, key)) do
-        :ok -> {:cont, {:ok, Map.put(state, key, resource_state(row))}}
+        :ok -> {:cont, {:ok, Map.put(state, key, state_builder.(row))}}
         {:error, reason} -> {:halt, invalid_resource(kind, owner_id, key, reason)}
       end
     end)
@@ -225,13 +227,16 @@ defmodule Storyarn.Flows.SequenceCompositionIntegrity do
 
   defp validate_track(%{"is_override" => true}, nil), do: {:error, :missing_inherited_identity}
 
-  defp validate_track(%{"is_override" => true} = row, :removed) do
+  defp validate_track(%{"is_override" => true, "kind" => kind}, {_state, inherited_kind}) when kind != inherited_kind,
+    do: {:error, {:kind_mismatch, inherited_kind, kind}}
+
+  defp validate_track(%{"is_override" => true} = row, {:removed, _kind}) do
     if not row["removed"] and not complete_mask?(row["overridden_fields"], @track_fields),
       do: {:error, :incomplete_tombstone_restore},
       else: :ok
   end
 
-  defp validate_track(%{"is_override" => true}, :active), do: :ok
+  defp validate_track(%{"is_override" => true}, {:active, _kind}), do: :ok
 
   defp complete_mask?(fields, expected), do: MapSet.new(fields) == MapSet.new(expected)
 
@@ -240,6 +245,9 @@ defmodule Storyarn.Flows.SequenceCompositionIntegrity do
 
   defp resource_state(%{"removed" => true}), do: :removed
   defp resource_state(_row), do: :active
+
+  defp track_resource_state(%{"removed" => true, "kind" => kind}), do: {:removed, kind}
+  defp track_resource_state(%{"kind" => kind}), do: {:active, kind}
 
   defp invalid_resource(kind, owner_id, key, reason),
     do: {:error, {:invalid_sequence_resource_inheritance, kind, owner_id, key, reason}}

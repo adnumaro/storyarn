@@ -143,6 +143,9 @@ defmodule Storyarn.Flows do
 
   defdelegate upsert_editor_sequence_track(scope, flow, sequence_id, kind, attrs), to: Editor
 
+  @doc false
+  defdelegate validate_sequence_composition_nodes(nodes), to: Editor
+
   defdelegate create_named_version(scope, flow, opts), to: Versioning
 
   defdelegate restore_tracked_version(scope, flow, version, opts), to: Versioning

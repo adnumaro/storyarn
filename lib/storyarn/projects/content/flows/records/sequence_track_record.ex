@@ -164,24 +164,62 @@ defmodule Storyarn.Projects.Persistence.SequenceTrackRecord do
 
   @doc "Returns selected properties to their inherited values."
   def revert_fields_changeset(track, fields) when is_list(fields) do
-    track
-    |> change(overridden_fields: track.overridden_fields -- normalize_fields(fields))
-    |> validate_override_fields()
+    case normalize_requested_fields(fields) do
+      {:ok, normalized_fields} ->
+        track
+        |> change(overridden_fields: List.wrap(track.overridden_fields) -- normalized_fields)
+        |> validate_override_fields()
+
+      {:error, message} ->
+        track
+        |> change()
+        |> add_error(:overridden_fields, message)
+    end
   end
 
   @doc "Marks or unmarks the logical track tombstone."
   def removal_changeset(track, removed) when is_boolean(removed), do: change(track, removed: removed)
 
   defp validate_override_fields(changeset) do
-    validate_change(changeset, :overridden_fields, fn :overridden_fields, fields ->
+    case get_field(changeset, :overridden_fields) do
+      nil ->
+        add_error(changeset, :overridden_fields, "must be a list of supported property names")
+
+      _fields ->
+        validate_change(changeset, :overridden_fields, fn :overridden_fields, fields ->
+          normalized = normalize_fields(fields)
+
+          cond do
+            length(normalized) != length(fields) ->
+              [overridden_fields: "must contain unique supported property names"]
+
+            Enum.any?(fields, &(&1 not in @property_fields)) ->
+              [overridden_fields: "contains an unsupported property"]
+
+            true ->
+              []
+          end
+        end)
+    end
+  end
+
+  defp normalize_requested_fields(fields) do
+    if Enum.all?(fields, &(is_atom(&1) or is_binary(&1))) do
       normalized = normalize_fields(fields)
 
       cond do
-        length(normalized) != length(fields) -> [overridden_fields: "must contain unique supported property names"]
-        Enum.any?(fields, &(&1 not in @property_fields)) -> [overridden_fields: "contains an unsupported property"]
-        true -> []
+        length(normalized) != length(fields) ->
+          {:error, "must contain unique supported property names"}
+
+        Enum.any?(normalized, &(&1 not in @property_fields)) ->
+          {:error, "contains an unsupported property"}
+
+        true ->
+          {:ok, normalized}
       end
-    end)
+    else
+      {:error, "contains an unsupported property"}
+    end
   end
 
   defp validate_volume(changeset) do

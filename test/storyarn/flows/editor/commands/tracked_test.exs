@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
 
   alias Storyarn.Flows.Editor
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
 
   defmodule TestAnalyticsAdapter do
@@ -314,11 +315,17 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
          } do
       dialogue = node_fixture(flow, %{data: %{"text" => "Corrupt source"}})
       image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
 
       {:ok, layer} =
         Editor.create_sequence_visual_layer(dialogue.id, %{
           asset_id: image.id,
           kind: "character"
+        })
+
+      {:ok, _track} =
+        Editor.upsert_sequence_track(dialogue.id, "ambience", %{
+          asset_id: audio.id
         })
 
       foreign_project = project_fixture(user)
@@ -335,6 +342,9 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
           :count
         )
 
+      layer_count_before = Repo.aggregate(SequenceVisualLayer, :count)
+      track_count_before = Repo.aggregate(SequenceTrack, :count)
+
       drain_analytics()
 
       assert {:error, _reason} = Editor.duplicate_editor_node(scope, flow, dialogue)
@@ -345,6 +355,9 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
                ),
                :count
              ) == count_before
+
+      assert Repo.aggregate(SequenceVisualLayer, :count) == layer_count_before
+      assert Repo.aggregate(SequenceTrack, :count) == track_count_before
 
       refute_event("flow node created")
     end

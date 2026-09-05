@@ -576,6 +576,18 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
                FlowSnapshotValidator.validate(missing_base, flow.id)
 
       assert second_id == second.id
+
+      kind_mismatch =
+        update_snapshot_node(descendant_snapshot, second.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "kind", "sfx")]
+          end)
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, ^second_id, ^track_key,
+               {:kind_mismatch, "music", "sfx"}}} =
+               FlowSnapshotValidator.validate(kind_mismatch, flow.id)
     end
 
     test "accepts a complete descendant definition that reopens an inherited tombstone", %{

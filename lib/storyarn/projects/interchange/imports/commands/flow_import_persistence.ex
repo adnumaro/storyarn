@@ -193,12 +193,20 @@ defmodule Storyarn.Projects.FlowImportPersistence do
   defp update_node_parent!(node, parent_id) do
     node
     |> FlowNodeRecord.reparent_changeset(%{parent_id: parent_id})
+    |> maybe_initialize_composition_source(node, parent_id)
     |> Repo.update()
     |> case do
       {:ok, updated} -> updated
       {:error, changeset} -> Repo.rollback(changeset)
     end
   end
+
+  defp maybe_initialize_composition_source(changeset, %FlowNodeRecord{type: type, composition_source_id: nil}, parent_id)
+       when type in ["sequence", "dialogue"] do
+    FlowNodeRecord.composition_source_changeset(changeset, %{composition_source_id: parent_id})
+  end
+
+  defp maybe_initialize_composition_source(changeset, _node, _parent_id), do: changeset
 
   defp node_ancestor?(%FlowNodeRecord{id: id}, source_id, _visited) when id == source_id, do: true
   defp node_ancestor?(%FlowNodeRecord{parent_id: nil}, _source_id, _visited), do: false

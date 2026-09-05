@@ -4956,6 +4956,13 @@ policy = %{
         "Project settings preserve the aggregate repair workflow through one exact command adapter while Flows owns candidate interpretation, node data and derivative writes"
     },
     %{
+      source: "lib/storyarn/projects/versioning/rules/sequence_composition_integrity.ex",
+      target: "lib/storyarn/flows.ex",
+      kinds: ["runtime"],
+      reason:
+        "Project reconstitution validates the Flow-owned sequence composition contract through the public Flows facade"
+    },
+    %{
       source: "lib/storyarn_web/live/hooks/palette.ex",
       target: "lib/storyarn/sheets.ex",
       kinds: ["runtime"],
