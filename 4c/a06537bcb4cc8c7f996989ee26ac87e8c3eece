@@ -1,0 +1,59 @@
+test/storyarn/flows/versioning/execution/flow_snapshot_test.exs
+  s_5af6a6d0a150f1::t_807bf0e9759422 579-590
+lib/storyarn/flows/editor/rules/sequence_composition_integrity.ex
+  s_5af6a6d0a150f1::t_860a73b0e98678 171-172,182-183,187,192,230-233,239,249-251
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_65dbf059d21ded 4959-4964
+  s_5af6a6d0a150f1::t_11484832109958 4958
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_5af6a6d0a150f1::t_87bb551e1921e1 335-336
+  s_5af6a6d0a150f1::t_807bf0e9759422 327-334,337-338
+test/storyarn/projects/interchange/imports/commands/flow_import_persistence_test.exs
+  s_5af6a6d0a150f1::t_6db100f6ff8e92 161-195
+lib/storyarn/projects/interchange/imports/commands/flow_import_persistence.ex
+  s_5af6a6d0a150f1::t_6db100f6ff8e92 196,204-210
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_65dbf059d21ded 146-148
+test/storyarn/flows/editor/commands/tracked_test.exs
+  s_5af6a6d0a150f1::t_4d0c46c57e7432 11,318,326-330,345-347,359-360
+  s_5af6a6d0a150f1::t_d82e5d9588160b 361
+priv/repo/migrations/20260905130000_add_flow_node_composition_inheritance.exs
+  s_5af6a6d0a150f1::t_4d0c46c57e7432 1-334,336-373
+  s_5af6a6d0a150f1::t_eea4b648e81616 335
+lib/storyarn/flows/editor/entities/sequence_visual_layer.ex
+  s_5af6a6d0a150f1::t_e77ce8ccc01ebd 159-169,215-238,242-249,251-253
+test/storyarn/flows/editor/entities/sequence_composition_changeset_test.exs
+  s_5af6a6d0a150f1::t_0a5818dd87739f 1-7,10-15,17-31,33-37,64-65
+  s_5af6a6d0a150f1::t_8911152247c9da 8-9,16,32,38-63
+lib/storyarn/flows/editor/commands/sequence_crud.ex
+  s_5af6a6d0a150f1::t_87bb551e1921e1 1123
+lib/storyarn/projects/content/flows/records/sequence_visual_layer_record.ex
+  s_5af6a6d0a150f1::t_e77ce8ccc01ebd 159-169,215-238,242-249,251-253
+lib/storyarn/flows/editor/entities/sequence_track.ex
+  s_5af6a6d0a150f1::t_e77ce8ccc01ebd 164-174,200-223,227-234,236-238
+lib/storyarn/projects/versioning/rules/sequence_composition_integrity.ex
+  s_5af6a6d0a150f1::t_512f0f182118ac 4,8
+test/storyarn/projects/content/flows/records/sequence_composition_changeset_test.exs
+  s_5af6a6d0a150f1::t_0a5818dd87739f 1-7,10-15,17-31,33-37,80-81
+  s_5af6a6d0a150f1::t_8911152247c9da 8-9,16,32,38-79
+lib/storyarn/projects/content/flows/records/sequence_track_record.ex
+  s_5af6a6d0a150f1::t_e77ce8ccc01ebd 167-177,184-207,211-218,220-222
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_e5c00f7a15fb65 315,328,378-379
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "4ca06537bcb4cc8c7f996989ee26ac87e8c3eece",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
