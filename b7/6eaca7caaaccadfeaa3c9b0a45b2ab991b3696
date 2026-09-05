@@ -1,0 +1,106 @@
+test/storyarn/flows/editor/commands/sequence_crud_test.exs
+  s_5af6a6d0a150f1::t_b8e4531aefe6ed 1276-1277
+  s_5af6a6d0a150f1::t_90df6202ef2da9 1079-1080
+  s_5af6a6d0a150f1::t_e67bc4cc352678 1097-1228
+  s_5af6a6d0a150f1::t_bd1555c3a0651a 1037-1076,1078,1081-1086
+  s_5af6a6d0a150f1::t_ffe1724c0c494d 1013-1019,1030
+  s_5af6a6d0a150f1::t_5815e2e2a1e0cb 923-1012,1020-1023,1025-1027,1029,1031-1036,1077,1087-1096
+  s_5af6a6d0a150f1::t_4491d5900e58a7 1024,1028
+  s_5af6a6d0a150f1::t_3758e3a1aff24e 840,1278-1304
+  s_5af6a6d0a150f1::t_d41a2b050d5183 1275
+  s_5af6a6d0a150f1::t_d3da832d935de4 794-839,841-922,1368-1383
+  s_5af6a6d0a150f1::t_f526b30ea73193 1367
+lib/storyarn/flows/editor/commands/sequence_crud.ex
+  s_5af6a6d0a150f1::t_94df25bf42e825 1251-1255,1257
+  s_5af6a6d0a150f1::t_4b5320619506c8 30
+  s_5af6a6d0a150f1::t_c2e2cfe1cfcd69 728,1010,1316,1506,1510-1512,1647,1685,1706-1707
+  s_5af6a6d0a150f1::t_18919091e5ca48 724,739,1006,1021,1388,1450,1504-1505,1513,1526-1529,1558-1559,1570,1607-1608,1648,1656-1657,1704-1705,1716,1725
+  s_5af6a6d0a150f1::t_880445b9647284 723,738,741-743,1005,1020,1023-1025
+  s_5af6a6d0a150f1::t_e659156ffc74bb 729-730,1011-1012
+  s_5af6a6d0a150f1::t_3e43c243a0d72f 673-674,679-687,967-968,1340-1341
+  s_5af6a6d0a150f1::t_7ec5fb5ebbbd74 1328-1339,1342-1348,1367,1385-1386,1393-1408
+  s_5af6a6d0a150f1::t_67e09b6dfcffcf 1315
+  s_5af6a6d0a150f1::t_a8be49c561e5b5 745-746,748,953-959,969-1004,1007-1009,1013-1019,1022,1026-1030
+  s_5af6a6d0a150f1::t_6aeef99d21accb 670-672,675-678,688-722,725-727,731-737,740,744
+  s_5af6a6d0a150f1::t_d987cbc139693b 747,1250,1256,1258-1259,1317-1327,1349-1366,1409-1449,1451-1503,1563-1569,1571,1579-1606,1609-1646,1708-1715,1724,1726-1746
+  s_5af6a6d0a150f1::t_ffe1724c0c494d 960-966,1368-1377,1379-1384,1387,1389-1392
+  s_5af6a6d0a150f1::t_1ab0a9518b2f79 749,1031,1530-1535,1572-1578,1675-1681,1717-1723
+  s_5af6a6d0a150f1::t_4aefe27ac7f0b0 1378
+  s_5af6a6d0a150f1::t_d13502d7134168 1507-1509,1514-1525,1536-1557,1560-1562,1649-1655,1659-1674,1682-1684,1686-1703
+  s_5af6a6d0a150f1::t_7ba6a6aef1d5c3 1658
+  s_5af6a6d0a150f1::t_e7393a7f838723 1262-1272
+  s_5af6a6d0a150f1::t_c31cb3c8ff64ec 750
+  s_5af6a6d0a150f1::t_49f8ebb089281c 1032
+  s_5af6a6d0a150f1::t_3ad7fc7d4ca8ad 1260
+test/storyarn/flows/runtime/execution/player_session_test.exs
+  s_5af6a6d0a150f1::t_8fd1a036e8da0e 188-190
+  s_5af6a6d0a150f1::t_d4f0e9cc7b0070 116,147-152,160-186,192-210
+  s_5af6a6d0a150f1::t_c0617d5a7761c5 187,191,211
+lib/storyarn/flows/runtime/execution/player_session.ex
+  s_5af6a6d0a150f1::t_822cff758110d2 152,297-303,305-306,310-314,317-332,336-377
+  s_5af6a6d0a150f1::t_07aa6066f1f38e 378-380
+lib/storyarn/flows/runtime/rules/sequence_composition.ex
+  s_5af6a6d0a150f1::t_94df25bf42e825 41,193,322
+  s_5af6a6d0a150f1::t_fcc7175cd06790 75,155,172,181,207,254-255,257,259,300-310
+  s_5af6a6d0a150f1::t_9dfa5ea9189f6b 3,5-6,9-13,21-22,27-29,39,42-47,58-59,62-63,66-68,70,72-74,79,91-93,95,104,109,112-113,115-116,119,122-124,126,128-131,133-134,136,140-154,156-168,174-180,182-192,199-205,209-210,212-216,220-234,244-251,260-264,274-295,298-299,311-313,323-324,326-359
+  s_5af6a6d0a150f1::t_842a2172a1ceb3 15-18,23,265-269
+  s_5af6a6d0a150f1::t_93e75b70ec25ea 96-103,106-108,117,120,127,135
+  s_5af6a6d0a150f1::t_253acdce0efaef 235,237
+  s_5af6a6d0a150f1::t_acd3a4857343ed 236,238-243,252-253,256,258
+  s_5af6a6d0a150f1::t_83a369443f53c5 31-36,48-57,60,64-65,69,71,77,80-81,83-87,169-171,194-198,206
+  s_5af6a6d0a150f1::t_4af293bc324c23 30,76,78,173,208,273,315,321
+lib/storyarn/flows/runtime/runtime.ex
+  s_5af6a6d0a150f1::t_60b62a589f2db3 75-77
+  s_5af6a6d0a150f1::t_17b71cce7d5357 73
+  s_5af6a6d0a150f1::t_88961639b172e6 74
+test/storyarn/flows/runtime/queries/runtime_graph_test.exs
+  s_5af6a6d0a150f1::t_94df25bf42e825 16-17,23
+lib/storyarn/flows/runtime/queries/runtime_graph.ex
+  s_5af6a6d0a150f1::t_94df25bf42e825 72
+test/storyarn/flows/runtime/rules/sequence_composition_test.exs
+  s_5af6a6d0a150f1::t_94df25bf42e825 6,16,21-22,44-45,70-71,80-81,91,112-113,122-123,134-135,146,183-184
+  s_5af6a6d0a150f1::t_9a9e503a642216 200-283,375-380
+  s_5af6a6d0a150f1::t_d936bba810c157 42,46,51-69,72-79,82-90,92-111,114-121,124-133,136-145,147-182,185-199,358-359,381-390
+  s_5af6a6d0a150f1::t_c9c789a3113655 284-352
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_17b71cce7d5357 1326
+  s_5af6a6d0a150f1::t_783fca7cc1eb00 848,851-856,1300-1311,1327-1337
+lib/storyarn/flows/editor/editor.ex
+  s_5af6a6d0a150f1::t_84eb565bccff2b 306-309,315-318
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_f725cce86563b4 29,165,220-221,249-250,267-268,272-273,337,387-388
+test/storyarn/flows/editor/commands/tracked_test.exs
+  s_5af6a6d0a150f1::t_1a92937b299286 201-202,206-207,209-210,214
+test/storyarn/flows/versioning/execution/flow_snapshot_test.exs
+  s_5af6a6d0a150f1::t_9db4fafa3f8481 287-290,292-293,525-526,558-561,587-588
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_5af6a6d0a150f1::t_abde66cdef5892 279-280,284-285,287-288,315-316,341-342,354-355,2898-2901,2903-2904
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_26d114e2b74ac1 1306-1309
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_11667293ceac35::t_1a6c98fd7f71e7 961
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "b76eaca7caaaccadfeaa3c9b0a45b2ab991b3696",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
