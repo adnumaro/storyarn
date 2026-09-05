@@ -2,14 +2,18 @@ import { mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LocalizationTextsIndex from "../../../live/localization/texts/LocalizationTextsIndex.vue";
+import type { SelectedText, TextRow } from "../../../modules/localization/domain/types";
 import { createMockLive } from "../../setup";
 
-const selectedText = {
+const selectedText: SelectedText = {
   id: 1,
   sourceType: "flow_node",
-  sourceTypeLabel: "Flow node",
+  sourceTypeLabel: "Node",
   sourceField: "text",
-  sourceReference: "Opening",
+  contentRole: "dialogue",
+  contentRoleLabel: "Dialogue",
+  speakerName: "Louise",
+  sourceRef: { parent: "Harbor", label: "Opening", url: "/flows/1?node=9" },
   sourceHtml: "Hello {name}",
   sourceText: "Hello {name}",
   wordCount: 2,
@@ -22,59 +26,74 @@ const selectedText = {
   voEligible: true,
   machineTranslated: false,
   lastTranslatedAt: null,
+  translatedBy: null,
   stale: false,
   placeholders: ["{name}"],
+  glossaryHits: [],
   lockVersion: 1,
 };
 
-const texts = [
-  {
-    id: 1,
-    sourceText: "Hello {name}",
+function row(id: number, sourceText: string): TextRow {
+  return {
+    id,
+    sourceText,
     translatedText: null,
     status: "pending",
     statusLabel: "Pending",
     sourceType: "flow_node",
-    sourceTypeLabel: "Flow node",
+    sourceTypeLabel: "Node",
     sourceTypeIcon: "message-square",
     sourceField: "text",
+    contentRole: "dialogue",
+    contentRoleLabel: "Dialogue",
+    speakerName: "Louise",
+    voEligible: true,
+    voStatus: "none",
     wordCount: 2,
     machineTranslated: false,
     stale: false,
-    editUrl: "/texts/1",
-  },
-  {
-    id: 2,
-    sourceText: "Goodbye",
-    translatedText: null,
-    status: "pending",
-    statusLabel: "Pending",
-    sourceType: "flow_node",
-    sourceTypeLabel: "Flow node",
-    sourceTypeIcon: "message-square",
-    sourceField: "text",
-    wordCount: 1,
-    machineTranslated: false,
-    stale: false,
-    editUrl: "/texts/2",
-  },
-];
+    editUrl: `/texts/${id}`,
+  };
+}
 
-function mountWorkbench() {
+const texts = [row(1, "Hello {name}"), row(2, "Goodbye")];
+
+const languages = {
+  current: {
+    code: "es",
+    name: "Spanish",
+    flagCode: "es",
+    shortLabel: "ES",
+    wordCount: 3,
+    sourceName: "English",
+  },
+  targets: [],
+};
+
+const progress = {
+  total: 2,
+  pending: 2,
+  draft: 0,
+  in_progress: 0,
+  review: 0,
+  final: 0,
+  stale: 0,
+};
+
+function mountWorkbench(overrides: Record<string, unknown> = {}) {
   const live = createMockLive();
   const wrapper = mount(LocalizationTextsIndex, {
     props: {
       texts,
       totalCount: texts.length,
+      progress,
       selectedText,
-      selectedLocaleName: "Spanish",
+      languages,
       capabilities: { canEdit: true, hasProvider: true, hasTargetLanguages: true },
+      ...overrides,
     },
     global: {
       config: { globalProperties: { $live: live } as never },
-      stubs: {
-        DashboardContent: { template: "<div><slot /></div>" },
-      },
     },
   });
 
@@ -165,5 +184,65 @@ describe("LocalizationTextsIndex", () => {
 
     expect(live.pushEvent).not.toHaveBeenCalled();
     expect(translateButton.attributes("disabled")).toBeUndefined();
+    expect(wrapper.get('[data-testid="localization-placeholder-status"]').text()).toContain(
+      "{name} missing",
+    );
+  });
+
+  it("loads the next page when Save & next runs past the loaded rows", async () => {
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench({
+      selectedText: { ...selectedText, id: 2, sourceText: "Goodbye", placeholders: [] },
+      pagination: { page: 1, pageSize: 2, hasMore: true },
+    });
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "save_translation" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    await wrapper.get('[data-testid="localization-save-next"]').trigger("click");
+
+    expect(callbacks).toHaveLength(1);
+    callbacks[0]({ ok: true, text: { ...selectedText, id: 2, lockVersion: 2 } });
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenLastCalledWith("load_more", {}, expect.any(Function));
+
+    await wrapper.setProps({ texts: [...texts, row(3, "Third")] });
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenLastCalledWith("select_text", { id: 3 }, undefined);
+  });
+
+  it("offers the next piece of work when nothing is selected", async () => {
+    const { live, wrapper } = mountWorkbench({ selectedText: null });
+
+    await wrapper.get('[data-testid="localization-next-pending"]').trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith("select_next", { kind: "pending" }, undefined);
+  });
+
+  it("toggles the summary tiles as list filters", async () => {
+    const { live, wrapper } = mountWorkbench({
+      selectedText: null,
+      filters: {
+        status: "",
+        sourceType: "",
+        voStatus: "",
+        speaker: null,
+        stale: false,
+        search: "",
+      },
+    });
+
+    const tiles = wrapper.findAll("button[aria-pressed]");
+    await tiles[0].trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "change_filter",
+      { status: "pending", stale: "false" },
+      undefined,
+    );
   });
 });

@@ -6,29 +6,28 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
   alias Storyarn.Localization.LocalizedText
   alias Storyarn.Repo
 
+  @doc """
+  Lists localized texts for a project.
+
+  Filters: `:locale_code`, `:status`, `:source_type`, `:speaker_sheet_id`,
+  `:vo_status` (voice-over eligible rows only), `:stale` (translations written
+  against an older source revision) and `:search`. `:preload` names the
+  associations to load with the rows.
+  """
   def list_texts(project_id, opts \\ []) do
     from(t in LocalizedText,
       where: t.project_id == ^project_id,
       order_by: [asc: t.source_type, asc: t.source_id, asc: t.source_field]
     )
-    |> maybe_filter_archived(opts[:include_archived])
-    |> maybe_filter_locale(opts[:locale_code])
-    |> maybe_filter_status(opts[:status])
-    |> maybe_filter_source_type(opts[:source_type])
-    |> maybe_filter_speaker(opts[:speaker_sheet_id])
-    |> maybe_search(opts[:search])
+    |> apply_filters(opts)
     |> maybe_paginate(opts[:limit], opts[:offset])
+    |> maybe_preload(opts[:preload])
     |> Repo.all()
   end
 
   def count_texts(project_id, opts \\ []) do
     from(t in LocalizedText, where: t.project_id == ^project_id, select: count(t.id))
-    |> maybe_filter_archived(opts[:include_archived])
-    |> maybe_filter_locale(opts[:locale_code])
-    |> maybe_filter_status(opts[:status])
-    |> maybe_filter_source_type(opts[:source_type])
-    |> maybe_filter_speaker(opts[:speaker_sheet_id])
-    |> maybe_search(opts[:search])
+    |> apply_filters(opts)
     |> Repo.one!()
   end
 
@@ -38,6 +37,13 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
         where: t.id == ^id and t.project_id == ^project_id and is_nil(t.archived_at)
       )
     )
+  end
+
+  @doc "Gets a localized text with the associations named in `:preload` loaded."
+  def get_text(project_id, id, opts) do
+    project_id
+    |> get_text(id)
+    |> preload_struct(opts[:preload])
   end
 
   def get_text!(project_id, id) do
@@ -106,6 +112,18 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
     }
   end
 
+  defp apply_filters(query, opts) do
+    query
+    |> maybe_filter_archived(opts[:include_archived])
+    |> maybe_filter_locale(opts[:locale_code])
+    |> maybe_filter_status(opts[:status])
+    |> maybe_filter_source_type(opts[:source_type])
+    |> maybe_filter_speaker(opts[:speaker_sheet_id])
+    |> maybe_filter_vo_status(opts[:vo_status])
+    |> maybe_filter_stale(opts[:stale])
+    |> maybe_search(opts[:search])
+  end
+
   defp maybe_filter_locale(query, nil), do: query
   defp maybe_filter_locale(query, locale_code), do: where(query, [t], t.locale_code == ^locale_code)
   defp maybe_filter_archived(query, true), do: query
@@ -116,6 +134,23 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
   defp maybe_filter_source_type(query, source_type), do: where(query, [t], t.source_type == ^source_type)
   defp maybe_filter_speaker(query, nil), do: query
   defp maybe_filter_speaker(query, speaker_sheet_id), do: where(query, [t], t.speaker_sheet_id == ^speaker_sheet_id)
+  defp maybe_filter_vo_status(query, nil), do: query
+
+  defp maybe_filter_vo_status(query, vo_status),
+    do: where(query, [t], t.vo_eligible == true and t.vo_status == ^vo_status)
+
+  # Mirrors the stale predicate of the progress reports so a count and the
+  # list it opens agree.
+  defp maybe_filter_stale(query, true) do
+    where(
+      query,
+      [t],
+      not is_nil(t.translated_text) and fragment("btrim(?) <> ''", t.translated_text) and
+        (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash)
+    )
+  end
+
+  defp maybe_filter_stale(query, _stale), do: query
   defp maybe_search(query, nil), do: query
   defp maybe_search(query, ""), do: query
 
@@ -127,4 +162,8 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
 
   defp maybe_paginate(query, nil, _offset), do: query
   defp maybe_paginate(query, limit, offset), do: query |> limit(^limit) |> offset(^(offset || 0))
+  defp maybe_preload(query, nil), do: query
+  defp maybe_preload(query, preloads), do: preload(query, ^preloads)
+  defp preload_struct(text, nil), do: text
+  defp preload_struct(text, preloads), do: Repo.preload(text, preloads)
 end

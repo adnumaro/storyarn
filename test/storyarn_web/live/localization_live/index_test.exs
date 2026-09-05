@@ -380,10 +380,10 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
     end
   end
 
-  describe "change_page event" do
+  describe "load_more event" do
     setup :register_and_log_in_user
 
-    test "paginates to next page", %{conn: conn, user: user} do
+    test "appends the next page to the loaded rows", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
 
@@ -399,14 +399,126 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
 
       vue = get_index_vue(view)
       assert vue.props["pagination"]["page"] == 1
+      assert vue.props["pagination"]["hasMore"] == true
       assert vue.props["total-count"] == 52
+      assert length(vue.props["texts"]) == 50
 
-      render_click(view, "change_page", %{"page" => "2"})
+      render_click(view, "load_more", %{})
 
       vue = get_index_vue(view)
       assert vue.props["pagination"]["page"] == 2
+      assert vue.props["pagination"]["hasMore"] == false
+      assert length(vue.props["texts"]) == 52
     end
   end
+
+  describe "URL-driven filters" do
+    setup :register_and_log_in_user
+
+    test "reads the status filter from the query string", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      _pending = localized_text_fixture(project.id, %{source_text: "Pending here", locale_code: "es"})
+
+      _final =
+        localized_text_fixture(project.id, %{
+          source_text: "Final here",
+          locale_code: "es",
+          status: "final",
+          translated_text: "Final aquí"
+        })
+
+      {:ok, view, _html} = live(conn, loc_path(project) <> "?status=final")
+
+      vue = get_index_vue(view)
+      assert Enum.map(vue.props["texts"], & &1["sourceText"]) == ["Final here"]
+      assert vue.props["filters"]["status"] == "final"
+    end
+
+    test "change_filter patches the URL so the list is shareable", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      render_click(view, "change_filter", %{"status" => "final", "stale" => "true"})
+      assert_patch(view, loc_path(project) <> "?status=final&stale=1")
+
+      render_click(view, "change_filter", %{"status" => "", "stale" => "false"})
+      assert_patch(view, loc_path(project))
+    end
+
+    test "stale=1 lists only translations written against an older source", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      _current =
+        localized_text_fixture(project.id, %{
+          source_text: "Still current",
+          locale_code: "es",
+          status: "draft",
+          translated_text: "Sigue vigente"
+        })
+
+      outdated =
+        localized_text_fixture(project.id, %{
+          source_id: 4242,
+          source_text: "Mind the ropes.",
+          source_text_hash: hash("Mind the ropes."),
+          locale_code: "es",
+          status: "draft",
+          translated_text: "Vigila las cuerdas."
+        })
+
+      {:ok, _reextracted} =
+        Localization.upsert_text(project.id, %{
+          source_type: "flow_node",
+          source_id: 4242,
+          source_field: "text",
+          source_text: "Mind the ropes, deckhand.",
+          source_text_hash: hash("Mind the ropes, deckhand."),
+          locale_code: "es"
+        })
+
+      {:ok, view, _html} = live(conn, loc_path(project) <> "?stale=1")
+
+      vue = get_index_vue(view)
+      assert [row] = vue.props["texts"]
+      assert row["id"] == outdated.id
+      assert row["stale"] == true
+      assert row["status"] == "review"
+      assert vue.props["progress"]["stale"] == 1
+      assert vue.props["filters"]["stale"] == true
+    end
+
+    test "select_next narrows the list and opens its first string", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      _language = language_fixture(project, %{locale_code: "es", name: "Spanish"})
+
+      _final =
+        localized_text_fixture(project.id, %{
+          source_id: 1,
+          source_text: "Final first",
+          locale_code: "es",
+          status: "final",
+          translated_text: "Final primero"
+        })
+
+      pending =
+        localized_text_fixture(project.id, %{source_id: 2, source_text: "Pending second", locale_code: "es"})
+
+      {:ok, view, _html} = live(conn, loc_path(project))
+
+      render_click(view, "select_next", %{"kind" => "pending"})
+      assert_patch(view, "#{loc_path(project)}/#{pending.id}?status=pending")
+
+      vue = get_index_vue(view)
+      assert vue.props["selected-text"]["id"] == pending.id
+      assert Enum.map(vue.props["texts"], & &1["id"]) == [pending.id]
+    end
+  end
+
+  defp hash(text), do: :sha256 |> :crypto.hash(text) |> Base.encode16(case: :lower)
 
   describe "add_target_language event" do
     setup :register_and_log_in_user
@@ -666,6 +778,9 @@ defmodule StoryarnWeb.LocalizationLive.IndexTest do
       assert selected["id"] == text.id
       assert selected["placeholders"] == ["{name}"]
       assert selected["voStatus"] == "none"
+      assert selected["contentRoleLabel"] == "Dialogue"
+      assert selected["sourceRef"] == %{"parent" => nil, "label" => "Dialogue", "url" => nil}
+      assert selected["glossaryHits"] == []
 
       render_click(view, "save_translation", %{
         "id" => text.id,

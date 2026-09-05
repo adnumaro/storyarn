@@ -1,9 +1,9 @@
 defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   @moduledoc """
-  Pure helpers for the localization LiveView.
+  Pure helpers for the localization LiveViews.
 
-  Contains socket-level query helpers, label/class lookups, and
-  render helpers (status_label, source_type_icon, etc.).
+  Contains socket-level query helpers, the closed filter vocabularies of the
+  workbench, and label lookups (status, content role, voice-over state).
   """
 
   use StoryarnWeb, :verified_routes
@@ -14,42 +14,72 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   alias Phoenix.LiveView.Socket
   alias Storyarn.Localization
 
-  @spec load_texts(Socket.t()) :: Socket.t()
-  def load_texts(socket) do
+  @statuses ~w(pending draft in_progress review final)
+  @source_types ~w(flow_node block sheet)
+  @vo_statuses ~w(none needed recorded approved)
+
+  @spec statuses() :: [String.t()]
+  def statuses, do: @statuses
+
+  @spec source_types() :: [String.t()]
+  def source_types, do: @source_types
+
+  @spec vo_statuses() :: [String.t()]
+  def vo_statuses, do: @vo_statuses
+
+  @doc """
+  Loads the workbench rows for the selected locale.
+
+  `:replace` reloads every page loaded so far (pages 1..`page`) so a refresh
+  after a save keeps the rows the translator scrolled to; `:append` fetches
+  only the current page and appends it to the loaded rows.
+  """
+  @spec load_texts(Socket.t(), :replace | :append) :: Socket.t()
+  def load_texts(socket, mode \\ :replace) do
     locale = socket.assigns.selected_locale
 
     if locale do
-      opts =
-        [
-          locale_code: locale,
-          limit: socket.assigns.page_size,
-          offset: (socket.assigns.page - 1) * socket.assigns.page_size
-        ]
-        |> maybe_add(:status, socket.assigns.filter_status)
-        |> maybe_add(:source_type, socket.assigns.filter_source_type)
-        |> maybe_add(:search, non_blank(socket.assigns.search))
+      project_id = socket.assigns.project.id
+      filter_opts = text_filter_opts(socket.assigns)
+      page = socket.assigns.page
+      page_size = socket.assigns.page_size
 
-      texts = Localization.list_texts(socket.assigns.project.id, opts)
+      {limit, offset} =
+        case mode do
+          :append -> {page_size, (page - 1) * page_size}
+          :replace -> {page * page_size, 0}
+        end
 
-      count_opts =
-        [locale_code: locale]
-        |> maybe_add(:status, socket.assigns.filter_status)
-        |> maybe_add(:source_type, socket.assigns.filter_source_type)
-        |> maybe_add(:search, non_blank(socket.assigns.search))
+      texts =
+        Localization.list_texts(
+          project_id,
+          filter_opts ++ [limit: limit, offset: offset, preload: [:speaker_sheet]]
+        )
 
-      total_count = Localization.count_texts(socket.assigns.project.id, count_opts)
-      progress = Localization.get_progress(socket.assigns.project.id, locale)
+      texts = if mode == :append, do: (socket.assigns[:texts] || []) ++ texts, else: texts
 
       socket
       |> assign(:texts, texts)
-      |> assign(:total_count, total_count)
-      |> assign(:progress, progress)
+      |> assign(:total_count, Localization.count_texts(project_id, filter_opts))
+      |> assign(:progress, Localization.get_progress(project_id, locale))
     else
       socket
       |> assign(:texts, [])
       |> assign(:total_count, 0)
       |> assign(:progress, nil)
     end
+  end
+
+  @doc "Builds the `Localization.list_texts/2` filter options from the workbench filter assigns."
+  @spec text_filter_opts(map()) :: keyword()
+  def text_filter_opts(assigns) do
+    [locale_code: assigns.selected_locale]
+    |> maybe_add(:status, assigns[:filter_status])
+    |> maybe_add(:source_type, assigns[:filter_source_type])
+    |> maybe_add(:vo_status, assigns[:filter_vo_status])
+    |> maybe_add(:speaker_sheet_id, assigns[:filter_speaker])
+    |> maybe_add(:stale, if(assigns[:filter_stale], do: true))
+    |> maybe_add(:search, non_blank(assigns[:search] || ""))
   end
 
   @spec reload_languages(Socket.t()) :: Socket.t()
@@ -138,4 +168,22 @@ defmodule StoryarnWeb.LocalizationLive.Helpers.LocalizationHelpers do
   def source_type_icon("block"), do: "square"
   def source_type_icon("sheet"), do: "user-round"
   def source_type_icon(_), do: "box"
+
+  @doc "Names a string by what it is in the game, not by the entity it was extracted from."
+  @spec content_role_label(String.t() | nil) :: String.t()
+  def content_role_label("dialogue"), do: dgettext("localization", "Dialogue")
+  def content_role_label("response"), do: dgettext("localization", "Response")
+  def content_role_label("stage_direction"), do: dgettext("localization", "Stage direction")
+  def content_role_label("menu"), do: dgettext("localization", "Menu")
+  def content_role_label("exit"), do: dgettext("localization", "Exit")
+  def content_role_label("runtime_value"), do: dgettext("localization", "Variable")
+  def content_role_label("speaker_name"), do: dgettext("localization", "Speaker name")
+  def content_role_label(other) when is_binary(other), do: other
+  def content_role_label(_other), do: dgettext("localization", "Variable")
+
+  @spec vo_status_label(String.t() | nil) :: String.t()
+  def vo_status_label("needed"), do: dgettext("localization", "Needed")
+  def vo_status_label("recorded"), do: dgettext("localization", "Recorded")
+  def vo_status_label("approved"), do: dgettext("localization", "Approved")
+  def vo_status_label(_other), do: dgettext("localization", "Not required")
 end

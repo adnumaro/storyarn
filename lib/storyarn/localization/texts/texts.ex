@@ -14,13 +14,16 @@ defmodule Storyarn.Localization.Texts do
   alias Storyarn.Localization.Texts.Queries.BatchTranslation
   alias Storyarn.Localization.Texts.Queries.ExportInventory
   alias Storyarn.Localization.Texts.Queries.RuntimeInventory
+  alias Storyarn.Localization.Texts.Queries.SourceContext
   alias Storyarn.Localization.Texts.Queries.Texts, as: TextQueries
   alias Storyarn.Localization.Texts.Rules.HtmlHandler
 
   defdelegate list_texts(project_id, opts \\ []), to: TextQueries
   defdelegate count_texts(project_id, opts \\ []), to: TextQueries
   defdelegate get_text(project_id, id), to: TextQueries
+  defdelegate get_text(project_id, id, opts), to: TextQueries
   defdelegate get_text!(project_id, id), to: TextQueries
+  defdelegate source_context(text), to: SourceContext, as: :for_text
   defdelegate get_text_by_source(source_type, source_id, source_field, locale_code), to: TextQueries
   defdelegate get_text_by_source(source_type, source_id, source_field, locale_code, opts), to: TextQueries
   defdelegate get_texts_for_source(source_type, source_id), to: TextQueries

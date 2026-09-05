@@ -1,5 +1,11 @@
 defmodule StoryarnWeb.LocalizationLive.Index do
-  @moduledoc false
+  @moduledoc """
+  The translation workbench of one target language.
+
+  The URL is the state: `/localization/texts/:locale[/:id]?status=…&source_type=…&
+  vo_status=…&speaker=…&stale=1&search=…`. Filter changes patch the URL so the
+  overview can deep-link into a filtered list and a translator can share one.
+  """
 
   use StoryarnWeb, :live_view
 
@@ -8,9 +14,12 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   alias Storyarn.Localization
   alias Storyarn.Platform.Shared.HtmlSanitizer
   alias StoryarnWeb.Helpers.Authorize
+  alias StoryarnWeb.LanguagePickerOption
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @page_size 50
+  @empty_filters %{status: nil, source_type: nil, vo_status: nil, speaker: nil, stale: false, search: ""}
+  @text_preloads [:speaker_sheet, :translated_by]
 
   @impl true
   def render(assigns) do
@@ -55,11 +64,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
             "has_provider" => @has_provider,
             "can_edit" => @can_edit,
             "membership" => @membership,
-            "filters" => %{
-              "status" => @filter_status,
-              "source_type" => @filter_source_type,
-              "search" => @search
-            },
+            "filters" => toolbar_filters(assigns),
             "current_scope" => @current_scope,
             "locale" => @locale,
             "inject_target" => "project-layout"
@@ -76,10 +81,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         texts={serialize_texts(assigns)}
         progress={@progress}
         total-count={@total_count}
-        pagination={%{page: @page, pageSize: @page_size}}
-        filters={
-          %{status: @filter_status || "", sourceType: @filter_source_type || "", search: @search}
-        }
+        pagination={%{page: @page, pageSize: @page_size, hasMore: length(@texts) < @total_count}}
+        filters={serialize_filters(assigns)}
         capabilities={
           %{
             canEdit: @can_edit,
@@ -88,7 +91,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
           }
         }
         selected-text={serialize_selected_text(assigns)}
-        selected-locale-name={selected_locale_name(assigns)}
+        languages={
+          %{current: serialize_language(assigns), targets: serialize_target_languages(assigns)}
+        }
+        speakers={serialize_speakers(@speakers)}
+        overview-url={~p"/workspaces/#{@workspace.slug}/projects/#{@project.slug}/localization"}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
     """
@@ -104,8 +111,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     languages = Localization.list_languages(project.id)
     target_languages = Localization.get_target_languages(project.id)
 
-    has_provider = has_active_provider?(project.id)
-
     if connected?(socket) do
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
@@ -118,18 +123,21 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       |> assign(:source_language, source_language)
       |> assign(:languages, languages)
       |> assign(:target_languages, target_languages)
-      # selected_locale is driven by the URL — filled in by handle_params
+      # selected_locale and the filters are driven by the URL — see handle_params
       |> assign(:selected_locale, nil)
-      |> assign(:has_provider, has_provider)
-      |> assign(:filter_status, nil)
-      |> assign(:filter_source_type, nil)
-      |> assign(:search, "")
+      |> assign(:has_provider, has_active_provider?(project.id))
+      |> assign_filters(@empty_filters)
       |> assign(:page, 1)
       |> assign(:page_size, @page_size)
       |> assign(:texts, [])
-      |> assign(:selected_text, nil)
       |> assign(:total_count, 0)
-      |> assign(:progress, %{total: 0, pending: 0, draft: 0, in_progress: 0, review: 0, final: 0, stale: 0})
+      |> assign(:progress, nil)
+      |> assign(:selected_text, nil)
+      |> assign(:source_context, nil)
+      |> assign(:glossary_hits, [])
+      |> assign(:speakers, [])
+      |> assign(:glossary_pairs, [])
+      |> assign(:language_word_count, 0)
       |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
 
     {:ok, socket}
@@ -137,21 +145,35 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   @impl true
   def handle_params(%{"locale" => locale} = params, _url, socket) do
-    socket =
-      if locale == socket.assigns.selected_locale do
-        socket
-      else
-        # Broadcast so LocalizationSidebarLive updates the highlighted target.
-        Phoenix.PubSub.broadcast(
-          Storyarn.PubSub,
-          StoryarnWeb.LocalizationSidebarLive.shell_topic(socket.assigns.project.id),
-          {:active_locale, locale}
-        )
+    filters = parse_filters(params)
 
-        socket
-        |> assign(:selected_locale, locale)
-        |> assign(:page, 1)
-        |> load_texts()
+    socket =
+      cond do
+        locale != socket.assigns.selected_locale ->
+          # Broadcast so LocalizationSidebarLive updates the highlighted target.
+          Phoenix.PubSub.broadcast(
+            Storyarn.PubSub,
+            StoryarnWeb.LocalizationSidebarLive.shell_topic(socket.assigns.project.id),
+            {:active_locale, locale}
+          )
+
+          socket
+          |> assign(:selected_locale, locale)
+          |> assign_filters(filters)
+          |> assign(:page, 1)
+          |> load_locale_context()
+          |> load_texts()
+          |> tap(&broadcast_filters/1)
+
+        filters != current_filters(socket) ->
+          socket
+          |> assign_filters(filters)
+          |> assign(:page, 1)
+          |> load_texts()
+          |> tap(&broadcast_filters/1)
+
+        true ->
+          socket
       end
 
     {:noreply, assign_selected_text(socket, params["id"])}
@@ -159,69 +181,79 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   def handle_params(_params, _url, socket), do: {:noreply, socket}
 
+  # ============================================================================
+  # Filters and navigation (the URL is the state)
+  # ============================================================================
+
   @impl true
   def handle_event("change_filter", params, socket) do
-    socket =
+    filters =
       socket
-      |> maybe_assign_filter(:filter_status, params, "status")
-      |> maybe_assign_filter(:filter_source_type, params, "source_type")
-      |> assign(:page, 1)
-      |> load_texts()
+      |> current_filters()
+      |> merge_filter_param(params, "status", :status, statuses())
+      |> merge_filter_param(params, "source_type", :source_type, source_types())
+      |> merge_filter_param(params, "vo_status", :vo_status, vo_statuses())
+      |> merge_speaker_param(params)
+      |> merge_stale_param(params)
 
-    broadcast_filters(socket)
-    {:noreply, socket}
+    {:noreply, patch_workbench(socket, filters, selected_id(socket), replace: true)}
   end
 
-  def handle_event("search", %{"search" => search}, socket) do
-    socket =
-      socket
-      |> assign(:search, search)
-      |> assign(:page, 1)
-      |> load_texts()
-
-    broadcast_filters(socket)
-    {:noreply, socket}
+  def handle_event("search", %{"search" => search}, socket) when is_binary(search) do
+    filters = %{current_filters(socket) | search: search}
+    {:noreply, patch_workbench(socket, filters, selected_id(socket), replace: true)}
   end
 
-  def handle_event("change_page", %{"page" => page}, socket) do
-    case Integer.parse(page) do
-      {page_int, ""} when page_int > 0 ->
-        {:noreply,
-         socket
-         |> assign(:page, page_int)
-         |> load_texts()}
+  def handle_event("load_more", _params, socket) do
+    if length(socket.assigns.texts) < socket.assigns.total_count do
+      socket =
+        socket
+        |> assign(:page, socket.assigns.page + 1)
+        |> load_texts(:append)
 
-      _ ->
-        {:noreply, socket}
+      {:reply, %{ok: true}, socket}
+    else
+      {:reply, %{ok: true}, socket}
     end
   end
+
+  def handle_event("select_text", %{"id" => id}, socket) do
+    case parse_id(id) do
+      {:ok, text_id} -> {:noreply, patch_workbench(socket, current_filters(socket), text_id)}
+      :error -> {:noreply, socket}
+    end
+  end
+
+  def handle_event("close_editor", _params, socket) do
+    {:noreply, patch_workbench(socket, current_filters(socket), nil)}
+  end
+
+  # The empty editor pane offers the next piece of work: narrow the list to
+  # that set and open its first string.
+  def handle_event("select_next", %{"kind" => kind}, socket) when kind in ~w(pending review stale) do
+    filters =
+      case kind do
+        "pending" -> %{current_filters(socket) | status: "pending", stale: false}
+        "review" -> %{current_filters(socket) | status: "review", stale: false}
+        "stale" -> %{current_filters(socket) | status: nil, stale: true}
+      end
+
+    opts = socket.assigns |> Map.merge(filter_assigns(filters)) |> text_filter_opts()
+
+    case Localization.list_texts(socket.assigns.project.id, opts ++ [limit: 1]) do
+      [text | _] -> {:noreply, patch_workbench(socket, filters, text.id)}
+      [] -> {:noreply, socket}
+    end
+  end
+
+  # ============================================================================
+  # Translation
+  # ============================================================================
 
   def handle_event("translate_single", params, socket) do
     with_auth(:edit_content, socket, fn ->
       translate_single(params, socket)
     end)
-  end
-
-  def handle_event("select_text", %{"id" => id}, socket) do
-    case parse_id(id) do
-      {:ok, text_id} ->
-        {:noreply,
-         push_patch(socket,
-           to:
-             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/localization/texts/#{socket.assigns.selected_locale}/#{text_id}"
-         )}
-
-      :error ->
-        {:noreply, socket}
-    end
-  end
-
-  def handle_event("close_editor", _params, socket) do
-    {:noreply,
-     push_patch(socket,
-       to:
-         ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/localization/texts/#{socket.assigns.selected_locale}"
-     )}
   end
 
   def handle_event("save_translation", %{"id" => id, "lock_version" => lock_version, "localized_text" => params}, socket) do
@@ -234,7 +266,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   # Shell fan-in
   # ============================================================================
 
-  # Sidebar broadcast when the user picks a different locale.
   @impl true
   def handle_info({:active_locale, locale}, %{assigns: %{selected_locale: locale}} = socket) do
     {:noreply, socket}
@@ -245,22 +276,23 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       socket
       |> assign(:selected_locale, locale)
       |> assign(:page, 1)
-      |> assign(:selected_text, nil)
+      |> clear_selected_text()
+      |> load_locale_context()
       |> load_texts()
 
     {:noreply, socket}
   end
 
-  # Sidebar broadcast after a language mutation (add/remove/sync).
+  # Sidebar broadcast after a language mutation (add/remove/sync) or a
+  # completed import or batch run.
   def handle_info({:languages_changed, _payload}, socket) do
     project_id = socket.assigns.project.id
-    target_languages = Localization.get_target_languages(project_id)
-    has_provider = has_active_provider?(project_id)
 
     {:noreply,
      socket
-     |> assign(:target_languages, target_languages)
-     |> assign(:has_provider, has_provider)
+     |> assign(:target_languages, Localization.get_target_languages(project_id))
+     |> assign(:has_provider, has_active_provider?(project_id))
+     |> load_locale_context()
      |> load_texts()
      |> reload_selected_text()}
   end
@@ -290,6 +322,11 @@ defmodule StoryarnWeb.LocalizationLive.Index do
         sourceType: text.source_type,
         sourceTypeLabel: source_type_label(text.source_type),
         sourceField: text.source_field,
+        contentRole: text.content_role,
+        contentRoleLabel: content_role_label(text.content_role),
+        speakerName: speaker_name(text),
+        voEligible: text.vo_eligible,
+        voStatus: text.vo_status || "none",
         wordCount: text.word_count || 0,
         machineTranslated: text.machine_translated || false,
         stale: Localization.text_stale?(text),
@@ -307,7 +344,10 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       sourceType: text.source_type,
       sourceTypeLabel: source_type_label(text.source_type),
       sourceField: text.source_field,
-      sourceReference: "#{source_type_label(text.source_type)} ##{text.source_id} · #{text.source_field}",
+      contentRole: text.content_role,
+      contentRoleLabel: content_role_label(text.content_role),
+      speakerName: speaker_name(text),
+      sourceRef: source_reference(assigns.source_context, text, assigns),
       sourceHtml: HtmlSanitizer.sanitize_html(text.source_text || ""),
       sourceText: strip_html(text.source_text),
       wordCount: text.word_count || 0,
@@ -320,10 +360,246 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       voEligible: text.vo_eligible,
       machineTranslated: text.machine_translated || false,
       lastTranslatedAt: text.last_translated_at && DateTime.to_iso8601(text.last_translated_at),
+      translatedBy: translator_name(text),
       stale: Localization.text_stale?(text),
       placeholders: Localization.text_placeholders(text.source_text),
+      glossaryHits: Enum.map(assigns.glossary_hits, fn {source, target} -> %{source: source, target: target} end),
       lockVersion: text.lock_version
     }
+  end
+
+  defp serialize_filters(assigns) do
+    %{
+      status: assigns.filter_status || "",
+      sourceType: assigns.filter_source_type || "",
+      voStatus: assigns.filter_vo_status || "",
+      speaker: assigns.filter_speaker,
+      stale: assigns.filter_stale,
+      search: assigns.search
+    }
+  end
+
+  defp serialize_language(%{selected_locale: nil}), do: nil
+
+  defp serialize_language(assigns) do
+    code = assigns.selected_locale
+
+    %{
+      code: code,
+      name: selected_locale_name(assigns),
+      flagCode: Localization.language_flag_code(code),
+      shortLabel: Localization.language_short_label(code),
+      wordCount: assigns.language_word_count,
+      sourceName: source_language_name(assigns.source_language)
+    }
+  end
+
+  defp serialize_target_languages(assigns) do
+    Enum.map(assigns.target_languages, fn language ->
+      language.locale_code
+      |> LanguagePickerOption.from_code(label: language.name)
+      |> Map.put(
+        :href,
+        ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/localization/texts/#{language.locale_code}"
+      )
+    end)
+  end
+
+  defp serialize_speakers(speakers) do
+    speakers
+    |> Enum.reject(&is_nil(&1.speaker_sheet_id))
+    |> Enum.map(fn speaker ->
+      %{
+        id: speaker.speaker_sheet_id,
+        name: speaker.speaker_name,
+        lineCount: speaker.line_count,
+        wordCount: speaker.word_count
+      }
+    end)
+  end
+
+  defp source_reference(nil, text, _assigns) do
+    %{parent: nil, label: content_role_label(text.content_role), url: nil}
+  end
+
+  defp source_reference(%{kind: :flow_node} = context, text, assigns) do
+    %{
+      parent: context.parent_name,
+      label: context.label || content_role_label(text.content_role),
+      url:
+        ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{context.flow_id}?node=#{context.node_id}"
+    }
+  end
+
+  defp source_reference(context, text, assigns) do
+    %{
+      parent: context.parent_name,
+      label: context.label || content_role_label(text.content_role),
+      url: ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/sheets/#{context.sheet_id}"
+    }
+  end
+
+  defp speaker_name(%{speaker_sheet: %{name: name}}) when is_binary(name), do: name
+  defp speaker_name(_text), do: nil
+
+  defp translator_name(%{translated_by: %{display_name: name}}) when is_binary(name) and name != "", do: name
+  defp translator_name(%{translated_by: %{email: email}}) when is_binary(email), do: email
+  defp translator_name(_text), do: nil
+
+  defp toolbar_filters(assigns) do
+    %{
+      "status" => assigns.filter_status,
+      "source_type" => assigns.filter_source_type,
+      "search" => assigns.search
+    }
+  end
+
+  # ============================================================================
+  # Filters
+  # ============================================================================
+
+  defp parse_filters(params) do
+    %{
+      status: pick(params["status"], statuses()),
+      source_type: pick(params["source_type"], source_types()),
+      vo_status: pick(params["vo_status"], vo_statuses()),
+      speaker: parse_speaker(params["speaker"]),
+      stale: params["stale"] in ["1", "true"],
+      search: if(is_binary(params["search"]), do: params["search"], else: "")
+    }
+  end
+
+  defp pick(value, allowed) when is_binary(value) and value != "" do
+    if value in allowed, do: value
+  end
+
+  defp pick(_value, _allowed), do: nil
+
+  defp parse_speaker(value) do
+    case parse_id(value) do
+      {:ok, id} -> id
+      :error -> nil
+    end
+  end
+
+  defp merge_filter_param(filters, params, param_key, filter_key, allowed) do
+    if Map.has_key?(params, param_key) do
+      Map.put(filters, filter_key, pick(params[param_key], allowed))
+    else
+      filters
+    end
+  end
+
+  defp merge_speaker_param(filters, %{"speaker" => value}), do: Map.put(filters, :speaker, parse_speaker(value))
+  defp merge_speaker_param(filters, _params), do: filters
+
+  defp merge_stale_param(filters, %{"stale" => value}), do: Map.put(filters, :stale, value in [true, "1", "true"])
+  defp merge_stale_param(filters, _params), do: filters
+
+  defp current_filters(socket) do
+    %{
+      status: socket.assigns.filter_status,
+      source_type: socket.assigns.filter_source_type,
+      vo_status: socket.assigns.filter_vo_status,
+      speaker: socket.assigns.filter_speaker,
+      stale: socket.assigns.filter_stale,
+      search: socket.assigns.search
+    }
+  end
+
+  defp filter_assigns(filters) do
+    %{
+      filter_status: filters.status,
+      filter_source_type: filters.source_type,
+      filter_vo_status: filters.vo_status,
+      filter_speaker: filters.speaker,
+      filter_stale: filters.stale,
+      search: filters.search
+    }
+  end
+
+  defp assign_filters(socket, filters), do: assign(socket, filter_assigns(filters))
+
+  defp filter_query(filters) do
+    []
+    |> maybe_add(:status, filters.status)
+    |> maybe_add(:source_type, filters.source_type)
+    |> maybe_add(:vo_status, filters.vo_status)
+    |> maybe_add(:speaker, filters.speaker)
+    |> maybe_add(:stale, if(filters.stale, do: "1"))
+    |> maybe_add(:search, non_blank(filters.search))
+    |> Enum.reverse()
+  end
+
+  defp workbench_path(socket, filters, text_id) do
+    %{workspace: workspace, project: project, selected_locale: locale} = socket.assigns
+
+    base =
+      if text_id do
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/localization/texts/#{locale}/#{text_id}"
+      else
+        ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/localization/texts/#{locale}"
+      end
+
+    case filter_query(filters) do
+      [] -> base
+      query -> base <> "?" <> URI.encode_query(query)
+    end
+  end
+
+  defp patch_workbench(socket, filters, text_id, opts \\ []) do
+    push_patch(socket, to: workbench_path(socket, filters, text_id), replace: Keyword.get(opts, :replace, false))
+  end
+
+  defp selected_id(%{assigns: %{selected_text: %{id: id}}}), do: id
+  defp selected_id(_socket), do: nil
+
+  defp broadcast_filters(socket) do
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      StoryarnWeb.LocalizationSidebarLive.shell_topic(socket.assigns.project.id),
+      {:localization_filters, toolbar_filters(socket.assigns)}
+    )
+  end
+
+  # ============================================================================
+  # Locale context: speakers, glossary pair and word count
+  # ============================================================================
+
+  defp load_locale_context(%{assigns: %{selected_locale: nil}} = socket) do
+    socket
+    |> assign(:speakers, [])
+    |> assign(:glossary_pairs, [])
+    |> assign(:language_word_count, 0)
+  end
+
+  defp load_locale_context(socket) do
+    %{project: project, selected_locale: locale, source_language: source_language} = socket.assigns
+
+    word_count =
+      project.id
+      |> Localization.progress_by_language()
+      |> Enum.find_value(0, fn entry -> if entry.locale_code == locale, do: entry.word_count end)
+
+    glossary_pairs =
+      if source_language do
+        Localization.get_glossary_entries_for_pair(project.id, source_language.locale_code, locale)
+      else
+        []
+      end
+
+    socket
+    |> assign(:speakers, Localization.word_counts_by_speaker(project.id, locale))
+    |> assign(:glossary_pairs, glossary_pairs)
+    |> assign(:language_word_count, word_count)
+  end
+
+  defp glossary_hits(pairs, source_text) do
+    haystack = source_text |> strip_html() |> String.downcase()
+
+    Enum.filter(pairs, fn {source_term, _target_term} ->
+      is_binary(source_term) and source_term != "" and String.contains?(haystack, String.downcase(source_term))
+    end)
   end
 
   # ============================================================================
@@ -345,20 +621,6 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     )
   end
 
-  defp maybe_assign_filter(socket, assign_key, params, param_key) do
-    if Map.has_key?(params, param_key) do
-      assign(socket, assign_key, blank_to_nil(params[param_key]))
-    else
-      socket
-    end
-  end
-
-  # Treat blanks and the "all" sentinel (used by the Vue select to clear
-  # filter selection) as "no filter".
-  defp blank_to_nil(""), do: nil
-  defp blank_to_nil("all"), do: nil
-  defp blank_to_nil(value), do: value
-
   defp selected_locale_name(%{selected_locale: nil}), do: ""
 
   defp selected_locale_name(assigns) do
@@ -368,16 +630,30 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     end
   end
 
-  defp assign_selected_text(socket, nil), do: assign(socket, :selected_text, nil)
+  defp source_language_name(nil), do: ""
+  defp source_language_name(%{name: name, locale_code: code}), do: name || Localization.language_name(code)
+
+  defp assign_selected_text(socket, nil), do: clear_selected_text(socket)
 
   defp assign_selected_text(socket, id) do
     with {:ok, text_id} <- parse_id(id),
-         text when not is_nil(text) <- Localization.get_text(socket.assigns.project.id, text_id),
+         text when not is_nil(text) <-
+           Localization.get_text(socket.assigns.project.id, text_id, preload: @text_preloads),
          true <- text.locale_code == socket.assigns.selected_locale do
-      assign(socket, :selected_text, text)
+      socket
+      |> assign(:selected_text, text)
+      |> assign(:source_context, Localization.text_source_context(text))
+      |> assign(:glossary_hits, glossary_hits(socket.assigns.glossary_pairs, text.source_text || ""))
     else
-      _reason -> assign(socket, :selected_text, nil)
+      _reason -> clear_selected_text(socket)
     end
+  end
+
+  defp clear_selected_text(socket) do
+    socket
+    |> assign(:selected_text, nil)
+    |> assign(:source_context, nil)
+    |> assign(:glossary_hits, [])
   end
 
   defp reload_selected_text(%{assigns: %{selected_text: nil}} = socket), do: socket
@@ -392,7 +668,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
       socket =
         socket
         |> load_texts()
-        |> assign(:selected_text, updated)
+        |> assign_selected_text(updated.id)
 
       {:reply, %{ok: true, text: serialize_selected_text(socket.assigns)}, socket}
     else
@@ -404,7 +680,8 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp save_translation(socket, id, lock_version, params) do
     with {:ok, text_id} <- parse_id(id),
          {:ok, expected_lock} <- parse_id(lock_version),
-         text when not is_nil(text) <- Localization.get_text(socket.assigns.project.id, text_id),
+         text when not is_nil(text) <-
+           Localization.get_text(socket.assigns.project.id, text_id, preload: @text_preloads),
          true <- text.locale_code == socket.assigns.selected_locale do
       save_with_lock(socket, text_id, text, expected_lock, params)
     else
@@ -424,7 +701,7 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   defp save_with_lock(socket, _text_id, text, _expected_lock, _params), do: conflict_reply(socket, text)
 
   defp successful_save_reply(socket, updated) do
-    socket = socket |> load_texts() |> assign(:selected_text, updated)
+    socket = socket |> load_texts() |> assign_selected_text(updated.id)
     {:reply, %{ok: true, text: serialize_selected_text(socket.assigns)}, socket}
   end
 
@@ -437,14 +714,18 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   defp latest_conflict_reply(socket, text_id) do
-    case Localization.get_text(socket.assigns.project.id, text_id) do
+    case Localization.get_text(socket.assigns.project.id, text_id, preload: @text_preloads) do
       nil -> {:reply, %{ok: false, error: "text_not_found"}, socket}
       current -> conflict_reply(socket, current)
     end
   end
 
   defp conflict_reply(socket, current) do
-    assigns = Map.put(socket.assigns, :selected_text, current)
+    assigns =
+      socket.assigns
+      |> Map.put(:selected_text, current)
+      |> Map.put(:source_context, Localization.text_source_context(current))
+
     {:reply, %{ok: false, conflict: true, text: serialize_selected_text(assigns)}, socket}
   end
 
@@ -462,17 +743,4 @@ defmodule StoryarnWeb.LocalizationLive.Index do
   end
 
   defp parse_id(_value), do: :error
-
-  defp broadcast_filters(socket) do
-    Phoenix.PubSub.broadcast(
-      Storyarn.PubSub,
-      StoryarnWeb.LocalizationSidebarLive.shell_topic(socket.assigns.project.id),
-      {:localization_filters,
-       %{
-         "status" => socket.assigns.filter_status,
-         "source_type" => socket.assigns.filter_source_type,
-         "search" => socket.assigns.search
-       }}
-    )
-  end
 end

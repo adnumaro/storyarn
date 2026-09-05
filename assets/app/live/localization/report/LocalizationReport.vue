@@ -1,238 +1,164 @@
 <script setup lang="ts">
-import { Box, MessageSquare, Square, UserRound } from "@lucide/vue";
-import type { Component } from "vue";
-import { computed } from "vue";
-import { useI18n } from "vue-i18n";
-import LanguagePicker from "@components/language/LanguagePicker.vue";
+import { computed, ref } from "vue";
 import type { LanguagePickerOption } from "@components/language/types";
-import { Badge } from "@components/ui/badge";
-import { Progress } from "@components/ui/progress";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";
+import ContentCard from "@modules/localization/components/overview/ContentCard.vue";
+import EmptyOverview from "@modules/localization/components/overview/EmptyOverview.vue";
+import LanguageCard from "@modules/localization/components/overview/LanguageCard.vue";
+import SpeakerTable from "@modules/localization/components/overview/SpeakerTable.vue";
+import VoiceOverCard from "@modules/localization/components/overview/VoiceOverCard.vue";
+import StatusLegend from "@modules/localization/components/progress/StatusLegend.vue";
+import type {
+  LanguageProgress,
+  SourceLanguage,
+  SpeakerStat,
+  VoProgress,
+} from "@modules/localization/domain/types";
 import { useLive } from "@shared/composables/useLive.ts";
 
-const { t } = useI18n();
-
-interface LanguageProgress {
-  localeCode: string;
-  name: string;
-  final: number;
-  review: number;
-  stale: number;
-  total: number;
-  percentage: number;
+interface Capabilities {
+  canEdit: boolean;
+  hasProvider: boolean;
 }
 
-interface SpeakerStat {
-  speakerSheetId: number | null;
-  speakerName: string | null;
-  lineCount: number;
-  wordCount: number;
-}
-
-interface VoProgress {
-  none: number;
-  needed: number;
-  recorded: number;
-  approved: number;
+/** What the empty overview needs to add the first language in place. */
+interface EmptyState {
+  addLanguageOptions: LanguagePickerOption[];
+  runtimeWordCount: number | null;
+  settingsUrl: string;
 }
 
 const {
+  projectName = "",
+  sourceLanguage = null,
   languageProgress = [],
   targetLanguages = [],
   selectedLocale = null,
   speakerStats = [],
   voProgress = { none: 0, needed: 0, recorded: 0, approved: 0 },
   typeCounts = {},
+  capabilities = { canEdit: false, hasProvider: false },
+  emptyState = { addLanguageOptions: [], runtimeWordCount: null, settingsUrl: "" },
 } = defineProps<{
+  projectName?: string;
+  sourceLanguage?: SourceLanguage | null;
   languageProgress?: LanguageProgress[];
   targetLanguages?: LanguagePickerOption[];
   selectedLocale?: string | null;
   speakerStats?: SpeakerStat[];
   voProgress?: VoProgress;
   typeCounts?: Record<string, number>;
+  capabilities?: Capabilities;
+  emptyState?: EmptyState;
 }>();
 
 const live = useLive();
+const adding = ref(false);
 
-function changeLocale(value: string) {
-  live.pushEvent("change_locale", { locale: value });
+const sourceName = computed(() => sourceLanguage?.name ?? "");
+const hasLanguages = computed(() => languageProgress.length > 0);
+const canEdit = computed(() => capabilities.canEdit);
+const hasProvider = computed(() => capabilities.hasProvider);
+
+const selectedLanguage = computed(
+  () => languageProgress.find((language) => language.localeCode === selectedLocale) ?? null,
+);
+
+function changeLocale(value: string | number): void {
+  const locale = String(value);
+  if (locale && locale !== selectedLocale) live.pushEvent("change_locale", { locale });
 }
 
-const typeCountEntries = computed(() => {
-  return Object.entries(typeCounts);
-});
-
-const voStats = computed(() => [
-  {
-    label: t("localization.report.vo_none"),
-    value: voProgress.none,
-    color: "text-muted-foreground",
-  },
-  { label: t("localization.report.vo_needed"), value: voProgress.needed, color: "text-yellow-500" },
-  {
-    label: t("localization.report.vo_recorded"),
-    value: voProgress.recorded,
-    color: "text-blue-400",
-  },
-  {
-    label: t("localization.report.vo_approved"),
-    value: voProgress.approved,
-    color: "text-emerald-500",
-  },
-]);
-
-function typeIcon(type: string) {
-  const icons: Record<string, Component> = {
-    flow_node: MessageSquare,
-    block: Square,
-    sheet: UserRound,
-  };
-  return icons[type] || Box;
+function addLanguage(localeCode: string): void {
+  adding.value = true;
+  live.pushEvent(
+    "add_target_language",
+    { locale_code: localeCode },
+    () => {
+      adding.value = false;
+    },
+    () => {
+      adding.value = false;
+    },
+  );
 }
-
-const typeKeys: Record<string, string> = {
-  flow_node: "localization.report.types.flow_node",
-  block: "localization.report.types.block",
-  sheet: "localization.report.types.sheet",
-};
 </script>
 
 <template>
-  <div class="max-w-4xl mx-auto">
-    <!-- Header -->
-    <div class="flex items-start justify-between mb-6">
-      <div>
-        <h1 class="text-lg font-semibold">{{ $t("localization.report.title") }}</h1>
-        <p class="text-sm text-muted-foreground">{{ $t("localization.report.subtitle") }}</p>
-      </div>
-    </div>
-
-    <!-- Progress by Language -->
-    <section class="mt-8">
-      <h3 class="text-base font-semibold mb-4">
-        {{ $t("localization.report.progress_by_language") }}
-      </h3>
-
-      <p v-if="languageProgress.length === 0" class="text-sm text-muted-foreground">
-        {{ $t("localization.report.no_targets_configured") }}
+  <div class="mx-auto flex w-full max-w-[1040px] flex-col gap-7 py-2">
+    <header class="min-w-0">
+      <h1 class="text-2xl leading-tight font-semibold tracking-[-0.01em]">
+        {{ $t("localization.overview.title") }}
+      </h1>
+      <p class="mt-1.5 text-sm text-pretty text-muted-foreground">
+        {{ $t("localization.overview.description", { project: projectName, source: sourceName }) }}
       </p>
+    </header>
 
-      <div class="space-y-3">
-        <div
-          v-for="lang in languageProgress"
-          :key="lang.localeCode"
-          class="flex items-center gap-4 bg-muted rounded-lg p-3"
-        >
-          <span class="font-mono text-sm w-12">{{ lang.localeCode }}</span>
-          <span class="w-24">{{ lang.name }}</span>
-          <Progress :model-value="lang.final" :max="Math.max(lang.total, 1)" class="flex-1" />
-          <span class="text-sm font-medium w-20 text-right">{{ lang.percentage }}%</span>
-          <span class="text-xs text-muted-foreground w-24 text-right">
-            {{ lang.final }}/{{ lang.total }}
-          </span>
-          <Badge v-if="lang.stale" variant="destructive" class="shrink-0">
-            {{ $t("localization.report.stale_count", { count: lang.stale }) }}
-          </Badge>
+    <EmptyOverview
+      v-if="!hasLanguages"
+      :source-name="sourceName"
+      :runtime-word-count="emptyState.runtimeWordCount"
+      :can-edit="canEdit"
+      :has-provider="hasProvider"
+      :add-language-options="emptyState.addLanguageOptions"
+      :settings-url="emptyState.settingsUrl"
+      :adding="adding"
+      @add="addLanguage"
+    />
+
+    <template v-else>
+      <section class="flex flex-col gap-3">
+        <div class="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 class="text-[15px] font-medium">{{ $t("localization.overview.languages") }}</h2>
+          <StatusLegend />
         </div>
-      </div>
-    </section>
-
-    <!-- Word Counts by Speaker -->
-    <section v-if="selectedLocale && speakerStats.length > 0" class="mt-8">
-      <div class="flex items-center justify-between mb-4">
-        <h3 class="text-base font-semibold">
-          {{ $t("localization.report.word_counts_by_speaker") }}
-        </h3>
-        <LanguagePicker
-          id="localization-report-language-picker"
-          :model-value="selectedLocale"
-          :options="targetLanguages"
-          :label="$t('localization.report.select_language')"
-          :text="{
-            searchPlaceholder: $t('localization.sidebar.search_languages'),
-            emptyLabel: $t('localization.sidebar.no_matches'),
-          }"
-          :appearance="{
-            align: 'end',
-            triggerSize: 'sm',
-            triggerClass: 'w-48',
-          }"
-          @update:model-value="changeLocale"
-        />
-      </div>
-
-      <div class="rounded-lg border border-border bg-surface overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow class="bg-muted/40 hover:bg-muted/40">
-              <TableHead class="font-medium text-xs text-muted-foreground">{{
-                $t("localization.report.speaker_header")
-              }}</TableHead>
-              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{
-                $t("localization.report.lines_header")
-              }}</TableHead>
-              <TableHead class="font-medium text-xs text-muted-foreground text-right">{{
-                $t("localization.report.words_header")
-              }}</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow v-for="stat in speakerStats" :key="stat.speakerSheetId || 'none'">
-              <TableCell>
-                <span v-if="stat.speakerName">{{ stat.speakerName }}</span>
-                <span v-else-if="stat.speakerSheetId">{{
-                  $t("localization.report.speaker_id", { id: stat.speakerSheetId })
-                }}</span>
-                <span v-else class="text-muted-foreground italic">{{
-                  $t("localization.report.no_speaker")
-                }}</span>
-              </TableCell>
-              <TableCell class="text-right tabular-nums">{{ stat.lineCount }}</TableCell>
-              <TableCell class="text-right tabular-nums">{{ stat.wordCount }}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </div>
-    </section>
-
-    <!-- VO Progress -->
-    <section v-if="selectedLocale" class="mt-8">
-      <h3 class="text-base font-semibold mb-4">{{ $t("localization.report.vo_progress") }}</h3>
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div
-          v-for="stat in voStats"
-          :key="stat.label"
-          class="rounded-lg border border-border bg-surface p-4 space-y-1"
-        >
-          <div class="text-xs text-muted-foreground">{{ stat.label }}</div>
-          <div :class="['text-2xl font-bold tabular-nums', stat.color]">{{ stat.value }}</div>
+        <div class="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
+          <LanguageCard
+            v-for="language in languageProgress"
+            :key="language.localeCode"
+            :language="language"
+          />
         </div>
-      </div>
-    </section>
+      </section>
 
-    <!-- Content Type Breakdown -->
-    <section v-if="selectedLocale && typeCountEntries.length > 0" class="mt-8">
-      <h3 class="text-base font-semibold mb-4">
-        {{ $t("localization.report.content_breakdown") }}
-      </h3>
-      <div class="flex gap-3 flex-wrap">
-        <Badge
-          v-for="[type, count] in typeCountEntries"
-          :key="type"
-          variant="outline"
-          class="gap-1.5 text-sm px-3 py-1"
+      <section class="flex flex-col gap-3.5">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <h2 class="text-[15px] font-medium">{{ $t("localization.overview.detail") }}</h2>
+          <Tabs :model-value="selectedLocale ?? undefined" @update:model-value="changeLocale">
+            <TabsList
+              class="h-auto flex-wrap justify-start"
+              :aria-label="$t('localization.overview.language_tabs')"
+            >
+              <TabsTrigger
+                v-for="language in targetLanguages"
+                :key="language.value"
+                :value="language.value"
+                class="flex-none"
+              >
+                {{ language.label }}
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </div>
+
+        <div
+          v-if="selectedLanguage"
+          class="grid grid-cols-1 items-start gap-3.5 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]"
         >
-          <component :is="typeIcon(type)" class="size-3.5" />
-          {{ typeKeys[type] ? $t(typeKeys[type]) : type }}: {{ count }}
-        </Badge>
-      </div>
-    </section>
+          <SpeakerTable :speakers="speakerStats" :workbench-base="selectedLanguage.workbenchUrl" />
+          <div class="flex flex-col gap-3.5">
+            <VoiceOverCard
+              :vo-progress="voProgress"
+              :workbench-base="selectedLanguage.workbenchUrl"
+            />
+            <ContentCard
+              :type-counts="typeCounts"
+              :workbench-base="selectedLanguage.workbenchUrl"
+            />
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>

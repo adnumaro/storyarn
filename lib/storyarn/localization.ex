@@ -155,6 +155,22 @@ defmodule Storyarn.Localization do
   @spec get_text(id(), id()) :: localized_text() | nil
   defdelegate get_text(project_id, id), to: Texts
 
+  @doc "Gets a single localized text by ID, scoped to project, with the `:preload` associations loaded."
+  @spec get_text(id(), id(), keyword()) :: localized_text() | nil
+  defdelegate get_text(project_id, id, opts), to: Texts
+
+  @doc "Describes the Flow node, Sheet block or Sheet a localized text was extracted from."
+  @spec text_source_context(localized_text()) :: map() | nil
+  defdelegate text_source_context(text), to: Texts, as: :source_context
+
+  @doc "Returns per-flow word counts of player-facing runtime text."
+  @spec flow_word_counts(id()) :: %{id() => non_neg_integer()}
+  defdelegate flow_word_counts(project_id), to: Texts
+
+  @doc "Returns per-sheet word counts of exported sheet names and textual runtime variables."
+  @spec sheet_word_counts(id()) :: %{id() => non_neg_integer()}
+  defdelegate sheet_word_counts(project_id), to: Texts
+
   @doc "Gets a single localized text by ID (scoped to project), raises if not found."
   @spec get_text!(id(), id()) :: localized_text()
   defdelegate get_text!(project_id, id), to: Texts
