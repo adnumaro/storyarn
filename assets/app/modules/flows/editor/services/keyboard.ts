@@ -94,13 +94,13 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
     if (isUndo(e)) {
       if (isEditable(e.target as Element)) return true;
       e.preventDefault();
-      hook.history?.undo();
+      hook.undoHistory();
       return true;
     }
     if (isRedo(e)) {
       if (isEditable(e.target as Element)) return true;
       e.preventDefault();
-      hook.history?.redo();
+      hook.redoHistory();
       return true;
     }
     return false;

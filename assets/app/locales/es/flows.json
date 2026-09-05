@@ -85,6 +85,7 @@
     "sequences": {
       "name_placeholder": "Nombre de la secuencia",
       "toolbar_open_config": "Abrir configuración de la secuencia",
+      "toolbar_open_composition": "Abrir inspector de composición",
       "tracks": {
         "music": "Música",
         "ambience": "Ambiente",
@@ -123,8 +124,61 @@
         "audio_title": "Pistas de audio",
         "pick_audio": "Elige un audio",
         "search_audio": "Buscar audios…",
-        "clear_track": "Limpiar pista"
+        "clear_track": "Limpiar pista",
+        "composition_source": "Origen de composición",
+        "no_source": "Sin origen explícito",
+        "composition_source_help": "Elige una secuencia o un diálogo cuya composición visual resuelta heredará este nodo.",
+        "diagnostics": "{count} problema de composición | {count} problemas de composición",
+        "diagnostic_messages": {
+          "composition_cycle": "La cadena de fuentes de composición contiene un ciclo.",
+          "invalid_composition_source": "La fuente de composición seleccionada no es válida.",
+          "missing_composition_source": "La fuente de composición ya no está disponible.",
+          "missing_inherited_layer": "Un ajuste visual ya no tiene una capa de origen.",
+          "fallback": "Esta composición contiene un problema que requiere atención."
+        },
+        "local": "Local",
+        "inherited": "Heredado",
+        "customized": "Personalizado",
+        "from": "Origen:",
+        "this_node": "este nodo",
+        "unknown_origin": "origen desconocido",
+        "local_fields": "Campos locales",
+        "revert_field_from": "Restaurar el valor de {origin}",
+        "revert_all": "Restaurar valores heredados",
+        "no_visual_layers": "Esta composición aún no tiene capas visuales.",
+        "removed_layers": "Capas retiradas",
+        "restore": "Restaurar",
+        "fields": {
+          "asset_id": "Recurso",
+          "kind": "Tipo",
+          "label": "Etiqueta",
+          "slot": "Posición",
+          "x": "X",
+          "y": "Y",
+          "width": "Anchura",
+          "height": "Altura",
+          "z_index": "Orden de capa",
+          "fit": "Ajuste",
+          "opacity": "Opacidad",
+          "visible": "Visible",
+          "anchor_x": "Anclaje horizontal",
+          "anchor_y": "Anclaje vertical"
+        }
       }
+    },
+    "sequence_stage": {
+      "title": "Escenario de secuencia",
+      "static_preview": "Vista estática",
+      "empty_title": "Selecciona una intervención",
+      "empty_description": "Elige un nodo de diálogo para revisar su puesta en escena resuelta en contexto.",
+      "error_title": "No se pudo componer la secuencia",
+      "error_description": "Vuelve a seleccionar la intervención o revisa la configuración de su secuencia.",
+      "no_layers": "Esta intervención no tiene capas visibles.",
+      "narrator": "Narrador",
+      "diagnostics": "{count} problema de composición | {count} problemas de composición",
+      "open_inspector": "Abrir inspector de composición",
+      "select_layer": "Seleccionar capa {name}",
+      "resize_layer": "Redimensionar capa {name}"
     },
     "node_types": {
       "dialogue": "Diálogo",

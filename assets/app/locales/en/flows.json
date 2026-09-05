@@ -85,6 +85,7 @@
     "sequences": {
       "name_placeholder": "Sequence name",
       "toolbar_open_config": "Open sequence config",
+      "toolbar_open_composition": "Open composition inspector",
       "tracks": {
         "music": "Music",
         "ambience": "Ambience",
@@ -123,8 +124,61 @@
         "audio_title": "Audio tracks",
         "pick_audio": "Pick an audio",
         "search_audio": "Search audio…",
-        "clear_track": "Clear track"
+        "clear_track": "Clear track",
+        "composition_source": "Composition source",
+        "no_source": "No explicit source",
+        "composition_source_help": "Choose a sequence or dialogue whose resolved visual composition this node inherits.",
+        "diagnostics": "{count} composition issue | {count} composition issues",
+        "diagnostic_messages": {
+          "composition_cycle": "The composition source chain contains a cycle.",
+          "invalid_composition_source": "The selected composition source is not valid.",
+          "missing_composition_source": "The composition source is no longer available.",
+          "missing_inherited_layer": "A visual override no longer has a source layer.",
+          "fallback": "This composition contains an issue that needs attention."
+        },
+        "local": "Local",
+        "inherited": "Inherited",
+        "customized": "Customized",
+        "from": "From",
+        "this_node": "this node",
+        "unknown_origin": "unknown source",
+        "local_fields": "Local fields",
+        "revert_field_from": "Restore the value from {origin}",
+        "revert_all": "Restore inherited values",
+        "no_visual_layers": "This composition has no visual layers yet.",
+        "removed_layers": "Removed layers",
+        "restore": "Restore",
+        "fields": {
+          "asset_id": "Asset",
+          "kind": "Type",
+          "label": "Label",
+          "slot": "Position",
+          "x": "X",
+          "y": "Y",
+          "width": "Width",
+          "height": "Height",
+          "z_index": "Layer order",
+          "fit": "Fit",
+          "opacity": "Opacity",
+          "visible": "Visible",
+          "anchor_x": "Horizontal anchor",
+          "anchor_y": "Vertical anchor"
+        }
       }
+    },
+    "sequence_stage": {
+      "title": "Sequence stage",
+      "static_preview": "Static preview",
+      "empty_title": "Select a speaker intervention",
+      "empty_description": "Choose a dialogue node to inspect its resolved staging in context.",
+      "error_title": "The sequence could not be composed",
+      "error_description": "Select the intervention again or review its sequence configuration.",
+      "no_layers": "This intervention has no visible layers.",
+      "narrator": "Narrator",
+      "diagnostics": "{count} composition issue | {count} composition issues",
+      "open_inspector": "Open composition inspector",
+      "select_layer": "Select layer {name}",
+      "resize_layer": "Resize layer {name}"
     },
     "node_types": {
       "dialogue": "Dialogue",

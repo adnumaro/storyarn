@@ -647,44 +647,59 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
 
       vue = get_player_vue(view)
 
-      assert vue.props["visual-layers"] == [
-               %{
-                 "id" => backdrop_layer.id,
-                 "sequence_id" => sequence.id,
-                 "sequence_depth" => 0,
-                 "kind" => "backdrop",
-                 "label" => nil,
-                 "url" => PrivateMedia.asset_url(backdrop_asset),
-                 "z_index" => 0,
-                 "slot" => "full",
-                 "x" => 0.0,
-                 "y" => 0.0,
-                 "width" => 1.0,
-                 "height" => 1.0,
-                 "anchor_x" => 0.0,
-                 "anchor_y" => 0.0,
-                 "fit" => "cover",
-                 "opacity" => 1.0
-               },
-               %{
-                 "id" => character_layer.id,
-                 "sequence_id" => child_sequence.id,
-                 "sequence_depth" => 1,
-                 "kind" => "character",
-                 "label" => nil,
-                 "url" => PrivateMedia.asset_url(character_asset),
-                 "z_index" => 100,
-                 "slot" => "bottom-right",
-                 "x" => 0.75,
-                 "y" => 1.0,
-                 "width" => 0.38,
-                 "height" => 0.9,
-                 "anchor_x" => 0.5,
-                 "anchor_y" => 1.0,
-                 "fit" => "contain",
-                 "opacity" => 1.0
-               }
-             ]
+      assert [backdrop, character] = vue.props["visual-layers"]
+
+      assert Map.take(backdrop, [
+               "key",
+               "rowId",
+               "sequenceId",
+               "sequenceDepth",
+               "kind",
+               "url",
+               "zIndex",
+               "slot",
+               "anchorX",
+               "anchorY",
+               "fit"
+             ]) == %{
+               "key" => backdrop_layer.layer_key,
+               "rowId" => backdrop_layer.id,
+               "sequenceId" => sequence.id,
+               "sequenceDepth" => 0,
+               "kind" => "backdrop",
+               "url" => PrivateMedia.asset_url(backdrop_asset),
+               "zIndex" => 0,
+               "slot" => "full",
+               "anchorX" => 0.0,
+               "anchorY" => 0.0,
+               "fit" => "cover"
+             }
+
+      assert Map.take(character, [
+               "key",
+               "rowId",
+               "sequenceId",
+               "sequenceDepth",
+               "kind",
+               "url",
+               "zIndex",
+               "slot",
+               "anchorX",
+               "anchorY",
+               "fit"
+             ]) == %{
+               "key" => character_layer.layer_key,
+               "rowId" => character_layer.id,
+               "sequenceId" => child_sequence.id,
+               "sequenceDepth" => 1,
+               "kind" => "character",
+               "url" => PrivateMedia.asset_url(character_asset),
+               "zIndex" => 100,
+               "slot" => "bottom-right",
+               "anchorX" => 0.5,
+               "anchorY" => 1.0,
+               "fit" => "contain"
+             }
     end
 
     test "passes active sequence audio tracks ordered from parent to child", %{

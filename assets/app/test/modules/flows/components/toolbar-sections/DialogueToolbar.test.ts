@@ -129,4 +129,12 @@ describe("DialogueToolbar — camelCase adapter (F3-B)", () => {
       node: { technical_id: "new_id" },
     });
   });
+
+  it("opens the composition inspector for this dialogue", async () => {
+    const w = mountIt();
+
+    await w.get("[data-dialogue-composition]").trigger("click");
+
+    expect(mockLive.pushEvent).toHaveBeenCalledWith("open_sequence_config", { id: 42 });
+  });
 });

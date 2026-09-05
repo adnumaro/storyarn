@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { MessageSquare, Play as PlayIcon, Settings, Volume2 } from "@lucide/vue";
+import { Layers, MessageSquare, Play as PlayIcon, Settings, Volume2 } from "@lucide/vue";
 import { computed } from "vue";
 import { ToolbarSeparator } from "@components/toolbar";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -62,6 +62,10 @@ function openDialoguePanel() {
   live.pushEvent("open_dialogue_panel", { id: nodeId });
 }
 
+function openSequenceConfig() {
+  live.pushEvent("open_sequence_config", { id: nodeId });
+}
+
 function startPreview() {
   live.pushEvent("start_preview", { id: nodeId });
 }
@@ -111,6 +115,11 @@ const hasAvatarOverride = computed(() => {
   <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_editor')">
     <button type="button" class="toolbar-btn" @click="openDialoguePanel">
       <Settings class="size-3.5" />
+    </button>
+  </ToolbarTooltip>
+  <ToolbarTooltip :label="$t('flows.sequences.toolbar_open_composition')">
+    <button type="button" class="toolbar-btn" data-dialogue-composition @click="openSequenceConfig">
+      <Layers class="size-3.5" />
     </button>
   </ToolbarTooltip>
   <ToolbarTooltip :label="$t('flows.node_types.dialogue_toolbar_preview')">
