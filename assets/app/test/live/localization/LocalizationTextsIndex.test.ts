@@ -366,4 +366,76 @@ describe("LocalizationTextsIndex", () => {
       "Fix the placeholders first",
     );
   });
+
+  it("ignores a machine-translation reply for a row that is no longer open", async () => {
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench();
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "translate_single" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    await wrapper.get('[data-testid="localization-translate-2"]').trigger("click");
+    expect(callbacks).toHaveLength(1);
+
+    await wrapper.setProps({
+      selectedText: { ...selectedText, id: 3, sourceText: "Third", translatedText: "Tercero" },
+    });
+    await nextTick();
+
+    callbacks[0]({
+      ok: true,
+      text: { ...selectedText, id: 2, translatedText: "Adiós (machine)", status: "draft" },
+    });
+    await nextTick();
+
+    const editor = wrapper.get("#localization-translation-editor");
+    expect((editor.element as HTMLTextAreaElement).value).toBe("Tercero");
+    expect(wrapper.get('[data-testid="localization-save-state"]').text()).toBe("All changes saved");
+  });
+
+  it("lets a newer save own the state when an older reply arrives late", async () => {
+    vi.useFakeTimers();
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench();
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "save_translation" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    const editor = wrapper.get("#localization-translation-editor");
+    await editor.setValue("Hola {name}");
+    await vi.advanceTimersByTimeAsync(900);
+    expect(callbacks).toHaveLength(1);
+
+    // The server moves the selection while the first save is in flight and
+    // the translator keeps typing on the new row.
+    await wrapper.setProps({
+      selectedText: { ...selectedText, id: 2, sourceText: "Goodbye", placeholders: [] },
+    });
+    await nextTick();
+    await editor.setValue("Adiós");
+    await vi.advanceTimersByTimeAsync(900);
+    expect(callbacks).toHaveLength(2);
+
+    await wrapper.get('[data-row-id="1"]').trigger("click");
+
+    callbacks[0]({
+      ok: true,
+      text: { ...selectedText, translatedText: "Hola {name}", lockVersion: 2 },
+    });
+    await nextTick();
+    expect(wrapper.get('[data-testid="localization-save-state"]').text()).toBe("Saving…");
+    expect(live.pushEvent).toHaveBeenCalledTimes(2);
+
+    callbacks[1]({
+      ok: true,
+      text: { ...selectedText, id: 2, translatedText: "Adiós", placeholders: [], lockVersion: 2 },
+    });
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenLastCalledWith("select_text", { id: 1 }, undefined);
+  });
 });

@@ -208,11 +208,19 @@ export function useTranslationEditor(options: EditorOptions) {
       (response: SaveResponse) =>
         handleSaveResponse(response, request, advance, onSuccess, onFailure),
       () => {
+        if (superseded(request)) return;
         pendingSave = null;
         handleSaveError({ error: "save_failed" });
         onFailure?.();
       },
     );
+  }
+
+  // Only the newest save owns the shared state. A reply to an older request
+  // (the selection moved server-side and the translator kept typing) must not
+  // clear the in-flight state or the navigation queued behind the newer save.
+  function superseded(request: PendingSave): boolean {
+    return pendingSave !== request;
   }
 
   function handleSaveResponse(
@@ -222,6 +230,7 @@ export function useTranslationEditor(options: EditorOptions) {
     onSuccess?: () => void,
     onFailure?: () => void,
   ): void {
+    if (superseded(request)) return;
     pendingSave = null;
     if (discardStaleReply(request)) return;
 
@@ -342,12 +351,15 @@ export function useTranslationEditor(options: EditorOptions) {
     if (translating.value) return;
     translating.value = true;
 
+    // The reply hydrates the editor only while the translated row is the one
+    // open: a translator can move on (or a queued click can) before it lands.
     const translate = () => {
       live.pushEvent(
         "translate_single",
         { id },
         (response: SaveResponse) => {
           translating.value = false;
+          if (options.selectedText()?.id !== id) return;
           if (response?.ok && response.text) hydrateEditor(response.text);
           else if (!response?.ok) {
             saveState.value = "error";
@@ -356,6 +368,7 @@ export function useTranslationEditor(options: EditorOptions) {
         },
         () => {
           translating.value = false;
+          if (options.selectedText()?.id !== id) return;
           saveState.value = "error";
           saveError.value = "translation_failed";
         },
