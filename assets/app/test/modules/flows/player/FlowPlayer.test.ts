@@ -1,6 +1,7 @@
 import { createMockLive } from "../../../setup";
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
+import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
 
 const mockLive = createMockLive();
 
@@ -43,12 +44,20 @@ function defaultProps() {
     }>,
     audioTracks: [] as Array<{
       id: string | number;
+      continuityKey?: string | number;
       sequence_id?: string | number;
       kind: string;
       url: string;
       volume?: number | null;
       depth?: number | null;
     }>,
+    voice: null as null | {
+      id: string | number;
+      continuityKey?: string | number;
+      nodeId?: string | number;
+      url: string;
+      volume?: number | null;
+    },
     editorUrl: "/flows/123",
     responses: [] as Array<{
       id: string;
@@ -221,6 +230,33 @@ describe("FlowPlayer", () => {
       playSpy.mockRestore();
       pauseSpy.mockRestore();
     });
+
+    it("renders dialogue voice separately without looping it", async () => {
+      const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, "play").mockResolvedValue();
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+
+      const w = mountPlayer({
+        voice: {
+          id: "dialogue-42:source:asset-5",
+          continuityKey: "dialogue-42:source:asset-5",
+          nodeId: 42,
+          url: "/voice.mp3",
+        },
+      });
+      await flushPromises();
+
+      const voice = w.get(".player-dialogue-voice");
+      expect(voice.attributes("src")).toBe("/voice.mp3");
+      expect(voice.attributes("autoplay")).toBeDefined();
+      expect(voice.attributes("loop")).toBeUndefined();
+
+      w.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
+    });
   });
 
   describe("events via pushEvent", () => {
@@ -249,7 +285,7 @@ describe("FlowPlayer", () => {
       const w = mountPlayer();
       const btn = w.find(".player-toolbar-right").findAll("button")[0]!;
       await btn.trigger("click");
-      expect(mockLive.pushEvent).toHaveBeenCalledWith("restart", {});
+      expect(mockLive.pushEvent).toHaveBeenCalledWith("restart", {}, expect.any(Function));
     });
 
     it("pushes choose_response event on choice click", async () => {
@@ -260,6 +296,140 @@ describe("FlowPlayer", () => {
       const choiceBtn = w.find(".player-response");
       await choiceBtn.trigger("click");
       expect(mockLive.pushEvent).toHaveBeenCalledWith("choose_response", { id: "r1" });
+    });
+
+    it("stops dialogue voice synchronously before every navigation action", async () => {
+      const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, "play").mockResolvedValue();
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+      const w = mountPlayer({
+        canGoBack: true,
+        voice: {
+          id: "dialogue-42:source:asset-5",
+          continuityKey: "dialogue-42:source:asset-5",
+          nodeId: 42,
+          url: "/voice.mp3",
+        },
+      });
+      await flushPromises();
+      const pushEventSpy = vi.mocked(mockLive.pushEvent);
+
+      const expectStopBeforePush = async (action: () => Promise<void> | void, event: string) => {
+        pauseSpy.mockClear();
+        pushEventSpy.mockClear();
+
+        await action();
+
+        expect(pauseSpy).toHaveBeenCalled();
+        expect(pushEventSpy).toHaveBeenCalled();
+        expect(pushEventSpy.mock.calls[0]?.slice(0, 2)).toEqual([event, expect.anything()]);
+        expect(pauseSpy.mock.invocationCallOrder[0]).toBeLessThan(
+          pushEventSpy.mock.invocationCallOrder[0]!,
+        );
+      };
+
+      await expectStopBeforePush(
+        () => w.get(".player-response-continue").trigger("click"),
+        "continue",
+      );
+
+      await w.setProps({
+        responses: [{ id: "r1", text: "Go", valid: true, number: 1, has_condition: false }],
+      });
+      await expectStopBeforePush(
+        () => w.get(".player-response").trigger("click"),
+        "choose_response",
+      );
+      await expectStopBeforePush(
+        () => w.get(".player-toolbar-left button").trigger("click"),
+        "go_back",
+      );
+      await expectStopBeforePush(
+        () => w.get(".player-toolbar-right button").trigger("click"),
+        "restart",
+      );
+      await expectStopBeforePush(() => {
+        document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      }, "exit_player");
+
+      pauseSpy.mockClear();
+      w.getComponent(PlayerToolbar).vm.$emit("exit");
+      expect(pauseSpy).toHaveBeenCalled();
+
+      w.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
+    });
+
+    it("replays the same dialogue voice after restart is acknowledged", async () => {
+      const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, "play").mockResolvedValue();
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+      const w = mountPlayer({
+        voice: {
+          id: "dialogue-42:source:asset-5",
+          continuityKey: "dialogue-42:source:asset-5",
+          nodeId: 42,
+          url: "/voice.mp3",
+        },
+      });
+      await flushPromises();
+      playSpy.mockClear();
+
+      await w.get(".player-toolbar-right button").trigger("click");
+      const restartCall = vi
+        .mocked(mockLive.pushEvent)
+        .mock.calls.find(([event]) => event === "restart");
+      const acknowledgeRestart = restartCall?.[2];
+
+      expect(acknowledgeRestart).toEqual(expect.any(Function));
+      acknowledgeRestart?.({});
+      await flushPromises();
+
+      expect(playSpy).toHaveBeenCalledTimes(1);
+
+      w.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
+    });
+
+    it("shows an accessible recovery control when autoplay is blocked and retries", async () => {
+      const playSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "play")
+        .mockRejectedValue(new DOMException("Playback blocked", "NotAllowedError"));
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+      const w = mountPlayer({
+        audioTracks: [
+          {
+            id: "theme:asset-5",
+            continuityKey: "theme:asset-5",
+            kind: "music",
+            url: "/theme.mp3",
+          },
+        ],
+      });
+      await flushPromises();
+
+      const retry = w.get("[data-player-audio-retry]");
+      expect(retry.element.tagName).toBe("BUTTON");
+      expect(retry.text()).toBe("Enable audio");
+
+      playSpy.mockResolvedValue();
+      await retry.trigger("click");
+      await flushPromises();
+
+      expect(w.find("[data-player-audio-retry]").exists()).toBe(false);
+
+      w.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
     });
   });
 
@@ -274,6 +444,55 @@ describe("FlowPlayer", () => {
       mountPlayer({ canGoBack: true });
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
       expect(mockLive.pushEvent).toHaveBeenCalledWith("go_back", {});
+    });
+
+    it("does not stop or request back when there is no history", async () => {
+      const playSpy = vi.spyOn(window.HTMLMediaElement.prototype, "play").mockResolvedValue();
+      const pauseSpy = vi
+        .spyOn(window.HTMLMediaElement.prototype, "pause")
+        .mockImplementation(() => {});
+      mountPlayer({
+        canGoBack: false,
+        voice: {
+          id: "dialogue-42:source:asset-5",
+          continuityKey: "dialogue-42:source:asset-5",
+          nodeId: 42,
+          url: "/voice.mp3",
+        },
+      });
+      await flushPromises();
+      pauseSpy.mockClear();
+
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowLeft" }));
+
+      expect(pauseSpy).not.toHaveBeenCalled();
+      expect(mockLive.pushEvent).not.toHaveBeenCalledWith("go_back", expect.anything());
+
+      wrapper?.unmount();
+      wrapper = null;
+      playSpy.mockRestore();
+      pauseSpy.mockRestore();
+    });
+
+    it.each([
+      ["button", " "],
+      ["a", "ArrowLeft"],
+      ["contenteditable", "r"],
+      ["combobox", "Enter"],
+    ])("ignores %s keyboard controls", (_kind, key) => {
+      mountPlayer({ canGoBack: true, showContinue: true });
+      const control = document.createElement(_kind === "a" ? "a" : "div");
+
+      if (_kind === "button") control.setAttribute("role", "button");
+      if (_kind === "a") control.setAttribute("href", "/editor");
+      if (_kind === "contenteditable") control.setAttribute("contenteditable", "true");
+      if (_kind === "combobox") control.setAttribute("role", "combobox");
+
+      document.body.appendChild(control);
+      control.dispatchEvent(new KeyboardEvent("keydown", { bubbles: true, cancelable: true, key }));
+      control.remove();
+
+      expect(mockLive.pushEvent).not.toHaveBeenCalled();
     });
 
     it("pushes exit_player on Escape", () => {
@@ -291,7 +510,7 @@ describe("FlowPlayer", () => {
     it("pushes restart on R key", () => {
       mountPlayer();
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "r" }));
-      expect(mockLive.pushEvent).toHaveBeenCalledWith("restart", {});
+      expect(mockLive.pushEvent).toHaveBeenCalledWith("restart", {}, expect.any(Function));
     });
 
     it("chooses response by number key", () => {

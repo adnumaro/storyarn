@@ -127,13 +127,14 @@
         "clear_track": "Clear track",
         "composition_source": "Composition source",
         "no_source": "No explicit source",
-        "composition_source_help": "Choose a sequence or dialogue whose resolved visual composition this node inherits.",
+        "composition_source_help": "Choose a sequence or dialogue whose resolved composition this node inherits.",
         "diagnostics": "{count} composition issue | {count} composition issues",
         "diagnostic_messages": {
           "composition_cycle": "The composition source chain contains a cycle.",
           "invalid_composition_source": "The selected composition source is not valid.",
           "missing_composition_source": "The composition source is no longer available.",
           "missing_inherited_layer": "A visual override no longer has a source layer.",
+          "missing_inherited_track": "An audio override no longer has a source track.",
           "fallback": "This composition contains an issue that needs attention."
         },
         "local": "Local",
@@ -147,6 +148,9 @@
         "revert_all": "Restore inherited values",
         "no_visual_layers": "This composition has no visual layers yet.",
         "removed_layers": "Removed layers",
+        "add_track": "Add track",
+        "remove_track": "Remove track",
+        "removed_tracks": "Removed tracks",
         "restore": "Restore",
         "fields": {
           "asset_id": "Asset",
@@ -162,7 +166,8 @@
           "opacity": "Opacity",
           "visible": "Visible",
           "anchor_x": "Horizontal anchor",
-          "anchor_y": "Vertical anchor"
+          "anchor_y": "Vertical anchor",
+          "volume": "Volume"
         }
       }
     },
@@ -177,6 +182,9 @@
       "narrator": "Narrator",
       "diagnostics": "{count} composition issue | {count} composition issues",
       "open_inspector": "Open composition inspector",
+      "play_audio_preview": "Play {track} preview",
+      "pause_audio_preview": "Pause {track} preview",
+      "retry_audio_preview": "Retry {track} preview",
       "select_layer": "Select layer {name}",
       "resize_layer": "Resize layer {name}"
     },
@@ -225,6 +233,11 @@
       "condition_help": "Add rules to define when to route to True/False.",
       "condition_switch_help": "Add conditions. Each one creates a separate output.",
       "instruction_help": "Add assignments to set variable values when this node executes."
+    },
+    "presentation": {
+      "play_voice_preview": "Play dialogue voice preview",
+      "pause_voice_preview": "Pause dialogue voice preview",
+      "retry_voice_preview": "Retry dialogue voice preview"
     },
     "debug": {
       "step_limit": "Step limit ({count}) reached — possible infinite loop.",
@@ -449,7 +462,8 @@
       "back": "Back",
       "restart": "Restart",
       "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
-      "no_content": "No content to display."
+      "no_content": "No content to display.",
+      "enable_audio": "Enable audio"
     },
     "health": {
       "review": "Review flow health",

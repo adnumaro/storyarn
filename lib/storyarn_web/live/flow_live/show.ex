@@ -708,6 +708,30 @@ defmodule StoryarnWeb.FlowLive.Show do
     end)
   end
 
+  def handle_event("override_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_override_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("revert_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_revert_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("remove_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_remove_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("restore_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_restore_sequence_track(params, socket)
+    end)
+  end
+
   def handle_event("restore_sequence_composition", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_restore_sequence_composition(params, socket)

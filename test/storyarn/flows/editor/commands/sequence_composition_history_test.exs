@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
 
   alias Storyarn.Flows
   alias Storyarn.Flows.SequenceCompositionHistory
+  alias Storyarn.Flows.SequenceTrack
 
   setup do
     user = user_fixture()
@@ -17,7 +18,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     %{user: user, project: project, flow: flow}
   end
 
-  test "capture and restore round-trip source, sequence config, position, and layers", %{
+  test "capture and restore round-trip source, sequence config, layers, and tracks", %{
     user: user,
     project: project,
     flow: flow
@@ -54,7 +55,10 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     {:ok, track} =
       Flows.upsert_sequence_track(owner.id, "ambience", %{
         "asset_id" => audio.id,
-        "volume" => Decimal.new("0.4")
+        "position" => 3,
+        "start_time" => Decimal.new("1.250"),
+        "end_time" => Decimal.new("9.500"),
+        "volume" => Decimal.new("0.420")
       })
 
     assert {:ok, captured} = Flows.capture_sequence_composition(owner.id)
@@ -64,7 +68,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     assert captured["config"] == %{"name" => "Shot", "width" => 720.0, "height" => 405.0}
     assert [%{"layer_key" => layer_key}] = captured["visual_layers"]
     assert layer_key == layer.layer_key
-    refute Map.has_key?(captured, "tracks")
+    assert [%{"track_key" => track_key, "volume" => "0.420"}] = captured["tracks"]
+    assert track_key == track.track_key
 
     {:ok, _owner} = Flows.set_composition_source(owner.id, nil)
 
@@ -80,15 +85,11 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     {:ok, _layer} =
       Flows.update_sequence_visual_layer(layer, %{"opacity" => 0.1, "visible" => true})
 
-    {:ok, _track} =
-      Flows.upsert_sequence_track(owner.id, "ambience", %{"volume" => Decimal.new("0.2")})
+    assert {:ok, :cleared} = Flows.clear_sequence_track(owner.id, "ambience")
 
     assert {:ok, restored} = Flows.restore_sequence_composition(owner.id, captured)
     assert restored == captured
     assert {:ok, ^captured} = Flows.capture_sequence_composition(owner.id)
-    assert [preserved_track] = Flows.list_sequence_tracks(owner.id)
-    assert preserved_track.id == track.id
-    assert Decimal.equal?(preserved_track.volume, Decimal.new("0.2"))
   end
 
   test "round-trip preserves inherited patches and tombstones", %{
@@ -100,6 +101,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "Line"}})
     first_image = image_asset_fixture(project, user)
     second_image = image_asset_fixture(project, user)
+    music = audio_asset_fixture(project, user)
+    ambience = audio_asset_fixture(project, user)
 
     {:ok, inherited_layer} =
       Flows.create_sequence_visual_layer(base.id, %{
@@ -113,12 +116,28 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
         "kind" => "prop"
       })
 
+    {:ok, inherited_track} =
+      Flows.upsert_sequence_track(base.id, "music", %{
+        "asset_id" => music.id,
+        "volume" => Decimal.new("0.800")
+      })
+
+    {:ok, removed_track} =
+      Flows.upsert_sequence_track(base.id, "ambience", %{"asset_id" => ambience.id})
+
     {:ok, _patch} =
       Flows.override_sequence_visual_layer(dialogue.id, inherited_layer.layer_key, %{
         "opacity" => 0.35
       })
 
     {:ok, _tombstone} = Flows.remove_sequence_visual_layer(dialogue.id, removed_layer.layer_key)
+
+    {:ok, _patch} =
+      Flows.override_sequence_track(dialogue.id, inherited_track.track_key, %{
+        "volume" => Decimal.new("0.250")
+      })
+
+    {:ok, _tombstone} = Flows.remove_sequence_track(dialogue.id, removed_track.track_key)
 
     assert {:ok, captured} = Flows.capture_sequence_composition(dialogue.id)
 
@@ -132,6 +151,14 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     assert {:ok, :inherited} =
              Flows.restore_sequence_visual_layer(dialogue.id, removed_layer.layer_key)
 
+    assert {:ok, :inherited} =
+             Flows.revert_sequence_track_fields(
+               dialogue.id,
+               inherited_track.track_key,
+               ["volume"]
+             )
+
+    assert {:ok, :inherited} = Flows.restore_sequence_track(dialogue.id, removed_track.track_key)
     {:ok, _dialogue} = Flows.set_composition_source(dialogue.id, nil)
 
     assert {:ok, ^captured} = Flows.restore_sequence_composition(dialogue.id, captured)
@@ -144,25 +171,25 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     flow: flow
   } do
     {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Owner"})
-    image = image_asset_fixture(project, user)
+    audio = audio_asset_fixture(project, user)
     assert {:ok, before} = SequenceCompositionHistory.capture(owner.id)
 
     assert {:ok,
             %{
-              result: result,
+              result: %SequenceTrack{} = result,
               previous: ^before,
               current: after_create
             }} =
              SequenceCompositionHistory.transact(owner.id, fn ->
-               Flows.create_sequence_visual_layer(owner.id, %{
-                 "asset_id" => image.id,
-                 "kind" => "character"
+               Flows.upsert_sequence_track(owner.id, "music", %{
+                 "asset_id" => audio.id,
+                 "volume" => Decimal.new("0.600")
                })
              end)
 
-    assert result.asset_id == image.id
-    assert [%{"asset_id" => image_id}] = after_create["visual_layers"]
-    assert image_id == image.id
+    assert result.asset_id == audio.id
+    assert [%{"asset_id" => audio_id}] = after_create["tracks"]
+    assert audio_id == audio.id
     assert {:ok, ^after_create} = SequenceCompositionHistory.capture(owner.id)
 
     assert {:ok, ^before} =
@@ -178,12 +205,10 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
 
     assert {:error, :cancelled} =
              SequenceCompositionHistory.transact(owner.id, fn ->
-               with {:ok, layer} <-
-                      Flows.create_sequence_visual_layer(owner.id, %{
-                        "asset_id" => image.id,
-                        "kind" => "prop"
-                      }),
-                    {:ok, _layer} <- Flows.update_sequence_visual_layer(layer, %{"opacity" => 0.1}) do
+               with {:ok, _track} <-
+                      Flows.upsert_sequence_track(owner.id, "music", %{
+                        "volume" => Decimal.new("0.100")
+                      }) do
                  {:error, :cancelled}
                end
              end)
@@ -224,6 +249,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
   } do
     {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Owner"})
     image = image_asset_fixture(project, user)
+    audio = audio_asset_fixture(project, user)
 
     {:ok, _layer} =
       Flows.create_sequence_visual_layer(owner.id, %{
@@ -231,12 +257,14 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
         "kind" => "backdrop"
       })
 
+    {:ok, _track} = Flows.upsert_sequence_track(owner.id, "music", %{"asset_id" => audio.id})
     assert {:ok, captured} = Flows.capture_sequence_composition(owner.id)
 
     foreign_project = project_fixture(user)
     foreign_flow = flow_fixture(foreign_project)
     foreign_source = node_fixture(foreign_flow)
     foreign_image = image_asset_fixture(foreign_project, user)
+    foreign_audio = audio_asset_fixture(foreign_project, user)
 
     assert {:error, :invalid_composition_snapshot} =
              captured
@@ -254,6 +282,16 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
              Flows.restore_sequence_composition(owner.id, foreign_visual)
 
     assert {:ok, ^captured} = Flows.capture_sequence_composition(owner.id)
+
+    foreign_track =
+      update_in(captured, ["tracks", Access.at(0), "asset_id"], fn _current ->
+        foreign_audio.id
+      end)
+
+    assert {:error, :invalid_composition_snapshot} =
+             Flows.restore_sequence_composition(owner.id, foreign_track)
+
+    assert {:ok, ^captured} = Flows.capture_sequence_composition(owner.id)
   end
 
   test "restore rejects malformed row identities before replacing local state", %{
@@ -262,24 +300,19 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     flow: flow
   } do
     {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Owner"})
-    image = image_asset_fixture(project, user)
-
-    {:ok, _layer} =
-      Flows.create_sequence_visual_layer(owner.id, %{
-        "asset_id" => image.id,
-        "kind" => "character"
-      })
-
+    audio = audio_asset_fixture(project, user)
+    {:ok, _track} = Flows.upsert_sequence_track(owner.id, "music", %{"asset_id" => audio.id})
     assert {:ok, captured} = Flows.capture_sequence_composition(owner.id)
 
-    [layer] = captured["visual_layers"]
-    duplicate_local_layers = Map.put(captured, "visual_layers", [layer, layer])
+    [track] = captured["tracks"]
+    duplicate_kind = Map.put(track, "track_key", "another-key")
+    duplicate_local_tracks = Map.put(captured, "tracks", [track, duplicate_kind])
 
     assert {:error, :invalid_composition_snapshot} =
-             Flows.restore_sequence_composition(owner.id, duplicate_local_layers)
+             Flows.restore_sequence_composition(owner.id, duplicate_local_tracks)
 
     oversized_key =
-      update_in(captured, ["visual_layers", Access.at(0), "layer_key"], fn _current ->
+      update_in(captured, ["tracks", Access.at(0), "track_key"], fn _current ->
         String.duplicate("x", 65)
       end)
 
@@ -287,7 +320,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
              Flows.restore_sequence_composition(owner.id, oversized_key)
 
     invalid_asset_id =
-      update_in(captured, ["visual_layers", Access.at(0), "asset_id"], fn _current -> "not-an-id" end)
+      update_in(captured, ["tracks", Access.at(0), "asset_id"], fn _current -> "not-an-id" end)
 
     assert {:error, :invalid_composition_snapshot} =
              Flows.restore_sequence_composition(owner.id, invalid_asset_id)
@@ -302,6 +335,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
   } do
     {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Owner"})
     image = image_asset_fixture(project, user)
+    audio = audio_asset_fixture(project, user)
 
     {:ok, _layer} =
       Flows.create_sequence_visual_layer(owner.id, %{
@@ -309,13 +343,21 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
         "kind" => "character"
       })
 
+    {:ok, _track} =
+      Flows.upsert_sequence_track(owner.id, "music", %{"asset_id" => audio.id})
+
     assert {:ok, captured} = Flows.capture_sequence_composition(owner.id)
 
     invalid_snapshots = [
       update_in(captured, ["visual_layers", Access.at(0), "overridden_fields"], fn _fields ->
         ["opacity"]
       end),
-      update_in(captured, ["visual_layers", Access.at(0), "removed"], fn _removed -> true end)
+      update_in(captured, ["visual_layers", Access.at(0), "removed"], fn _removed -> true end),
+      update_in(captured, ["tracks", Access.at(0), "is_override"], fn _override -> true end),
+      update_in(captured, ["tracks", Access.at(0), "overridden_fields"], fn _fields ->
+        ["volume"]
+      end),
+      update_in(captured, ["tracks", Access.at(0), "removed"], fn _removed -> true end)
     ]
 
     for invalid_snapshot <- invalid_snapshots do
@@ -334,29 +376,26 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     {:ok, root} = Flows.create_sequence(flow.id, %{"name" => "Root"})
     child = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Child", "responses" => []}})
     {:ok, _child} = Flows.set_composition_source(child.id, root.id)
-    image = image_asset_fixture(project, user)
+    audio = audio_asset_fixture(project, user)
 
-    assert {:ok, without_layer} = Flows.capture_sequence_composition(root.id)
+    assert {:ok, without_track} = Flows.capture_sequence_composition(root.id)
 
-    {:ok, layer} =
-      Flows.create_sequence_visual_layer(root.id, %{
-        "asset_id" => image.id,
-        "kind" => "character"
-      })
+    {:ok, track} =
+      Flows.upsert_sequence_track(root.id, "music", %{"asset_id" => audio.id})
 
-    assert {:ok, with_layer} = Flows.capture_sequence_composition(root.id)
+    assert {:ok, with_track} = Flows.capture_sequence_composition(root.id)
 
     {:ok, _patch} =
-      Flows.override_sequence_visual_layer(child.id, layer.layer_key, %{
-        "opacity" => 0.25
+      Flows.override_sequence_track(child.id, track.track_key, %{
+        "volume" => Decimal.new("0.250")
       })
 
     assert {:error, :invalid_composition_snapshot} =
-             Flows.restore_sequence_composition(root.id, without_layer, with_layer)
+             Flows.restore_sequence_composition(root.id, without_track, with_track)
 
-    assert {:ok, ^with_layer} = Flows.capture_sequence_composition(root.id)
-    assert %{layer_key: layer_key} = Flows.get_sequence_visual_layer_by_key(child.id, layer.layer_key)
-    assert layer_key == layer.layer_key
+    assert {:ok, ^with_track} = Flows.capture_sequence_composition(root.id)
+    assert [%SequenceTrack{track_key: track_key}] = Flows.list_sequence_tracks(child.id)
+    assert track_key == track.track_key
   end
 
   test "restore also protects patches owned by deleted descendants", %{
@@ -367,30 +406,24 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     {:ok, root} = Flows.create_sequence(flow.id, %{"name" => "Root"})
     child = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Child", "responses" => []}})
     {:ok, _child} = Flows.set_composition_source(child.id, root.id)
-    image = image_asset_fixture(project, user)
-    assert {:ok, without_layer} = Flows.capture_sequence_composition(root.id)
-
-    {:ok, layer} =
-      Flows.create_sequence_visual_layer(root.id, %{
-        "asset_id" => image.id,
-        "kind" => "character"
-      })
-
-    assert {:ok, with_layer} = Flows.capture_sequence_composition(root.id)
+    audio = audio_asset_fixture(project, user)
+    assert {:ok, without_track} = Flows.capture_sequence_composition(root.id)
+    {:ok, track} = Flows.upsert_sequence_track(root.id, "music", %{"asset_id" => audio.id})
+    assert {:ok, with_track} = Flows.capture_sequence_composition(root.id)
 
     {:ok, _patch} =
-      Flows.override_sequence_visual_layer(child.id, layer.layer_key, %{
-        "opacity" => 0.25
+      Flows.override_sequence_track(child.id, track.track_key, %{
+        "volume" => Decimal.new("0.250")
       })
 
     assert {:ok, _deleted_child, _meta} = Flows.delete_node(child)
 
     assert {:error, :invalid_composition_snapshot} =
-             Flows.restore_sequence_composition(root.id, without_layer, with_layer)
+             Flows.restore_sequence_composition(root.id, without_track, with_track)
 
-    assert {:ok, ^with_layer} = Flows.capture_sequence_composition(root.id)
-    assert %{layer_key: layer_key} = Flows.get_sequence_visual_layer_by_key(child.id, layer.layer_key)
-    assert layer_key == layer.layer_key
+    assert {:ok, ^with_track} = Flows.capture_sequence_composition(root.id)
+    assert [%SequenceTrack{track_key: track_key}] = Flows.list_sequence_tracks(child.id)
+    assert track_key == track.track_key
   end
 
   test "restore rejects a deleted composition source before writing the owner", %{flow: flow} do
@@ -433,6 +466,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     {:ok, _middle} = Flows.set_composition_source(middle.id, root.id)
     {:ok, _leaf} = Flows.set_composition_source(leaf.id, middle.id)
     image = image_asset_fixture(project, user)
+    audio = audio_asset_fixture(project, user)
 
     {:ok, layer} =
       Flows.create_sequence_visual_layer(root.id, %{
@@ -440,11 +474,21 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
         "kind" => "character"
       })
 
+    {:ok, track} =
+      Flows.upsert_sequence_track(root.id, "music", %{"asset_id" => audio.id})
+
     {:ok, _layer_tombstone} = Flows.remove_sequence_visual_layer(middle.id, layer.layer_key)
+    {:ok, _track_tombstone} = Flows.remove_sequence_track(middle.id, track.track_key)
     {:ok, reopened_layer} = Flows.restore_sequence_visual_layer(leaf.id, layer.layer_key)
+    {:ok, reopened_track} = Flows.restore_sequence_track(leaf.id, track.track_key)
 
     assert MapSet.new(reopened_layer.overridden_fields) ==
              MapSet.new(~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible))
+
+    assert reopened_track.is_override
+
+    assert MapSet.new(reopened_track.overridden_fields) ==
+             MapSet.new(~w(position asset_id start_time end_time volume))
 
     assert {:ok, captured} = Flows.capture_sequence_composition(leaf.id)
     assert {:ok, ^captured} = Flows.restore_sequence_composition(leaf.id, captured)

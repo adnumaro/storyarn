@@ -60,6 +60,53 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
     |> Enum.flat_map(&serialize_visual_layer(&1, selected_node_id, true))
   end
 
+  @doc "Serializes effective audio tracks with stable continuity identities."
+  @spec audio_tracks(map()) :: [map()]
+  def audio_tracks(composition) when is_map(composition) do
+    composition
+    |> value(:audio_tracks, [])
+    |> Enum.flat_map(&serialize_audio_track(&1, false))
+  end
+
+  @doc "Serializes effective audio tracks for an editor inspector, including missing assets."
+  @spec inspectable_audio_tracks(map()) :: [map()]
+  def inspectable_audio_tracks(composition) when is_map(composition) do
+    composition
+    |> value(:audio_tracks, [])
+    |> Enum.flat_map(&serialize_audio_track(&1, true))
+  end
+
+  @doc "Serializes effective audio tombstones for the editor inspector."
+  @spec inspectable_removed_audio_tracks(map()) :: [map()]
+  def inspectable_removed_audio_tracks(composition) when is_map(composition) do
+    composition
+    |> value(:removed_audio_tracks, [])
+    |> Enum.flat_map(&serialize_audio_track(&1, true))
+  end
+
+  @doc "Resolves the source voice attached to a dialogue node."
+  @spec dialogue_voice(map() | nil, integer()) :: map() | nil
+  def dialogue_voice(%{type: "dialogue"} = node, project_id) when is_integer(project_id) do
+    node_id = value(node, :id)
+    asset_id = node |> value(:data, %{}) |> value(:audio_asset_id) |> normalize_id()
+    asset = audio_asset(project_id, asset_id)
+    identity = "dialogue-voice:#{node_id}:source"
+
+    %{
+      id: identity,
+      continuityKey: "#{identity}:#{value(asset, :id) || "none"}",
+      nodeId: node_id,
+      available: not is_nil(asset),
+      assetId: asset_id,
+      url: asset && PrivateMedia.asset_url(asset),
+      volume: 1.0,
+      contentType: value(asset, :content_type),
+      filename: value(asset, :filename)
+    }
+  end
+
+  def dialogue_voice(_node, _project_id), do: nil
+
   @doc "Serializes resolver diagnostics for Vue surfaces."
   @spec diagnostics(map()) :: [map()]
   def diagnostics(composition) when is_map(composition) do
@@ -82,6 +129,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
     slide = Slide.build(node, state, speakers_map, project_id)
     composition = Flows.compose_player_sequences(state, nodes)
     serialized_diagnostics = diagnostics(composition)
+    voice = dialogue_voice(node, project_id)
 
     base = %{
       owner: %{
@@ -89,9 +137,11 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
         type: value(node, :type),
         compositionSourceId: value(node, :composition_source_id)
       },
-      intervention: serialize_intervention(slide, node_id),
+      intervention: serialize_intervention(slide, node_id, voice),
+      voice: voice,
       composition: %{
         layers: visual_layers(composition, node_id),
+        audioTracks: audio_tracks(composition),
         diagnostics: serialized_diagnostics
       }
     }
@@ -103,9 +153,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
     end
   end
 
-  defp serialize_intervention(%{type: :empty}, _node_id), do: nil
+  defp serialize_intervention(%{type: :empty}, _node_id, _voice), do: nil
 
-  defp serialize_intervention(slide, node_id) do
+  defp serialize_intervention(slide, node_id, voice) do
     %{
       nodeId: node_id,
       speakerName: slide[:speaker_name],
@@ -113,7 +163,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
       speakerAvatarUrl: slide[:speaker_avatar_url],
       speakerColor: slide[:speaker_color],
       text: slide[:text] || "",
-      stageDirections: slide[:stage_directions] || ""
+      stageDirections: slide[:stage_directions] || "",
+      voice: voice
     }
   end
 
@@ -174,6 +225,45 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
     end
   end
 
+  defp serialize_audio_track(composed, include_missing?) do
+    track = value(composed, :item, %{})
+    url = media_url(track)
+
+    if include_missing? or (is_binary(url) and url != "") do
+      [audio_track_payload(composed, track, url)]
+    else
+      []
+    end
+  end
+
+  defp audio_track_payload(composed, track, url) do
+    asset = value(track, :asset)
+    track_key = value(composed, :track_key) || value(track, :track_key) || value(track, :id)
+    continuity_key = value(composed, :continuity_key) || track_key
+
+    %{
+      id: continuity_key,
+      continuityKey: continuity_key,
+      trackKey: track_key,
+      asset_id: value(track, :asset_id),
+      assetId: value(track, :asset_id),
+      sequenceId: value(composed, :sequence_id),
+      isOverride: value(track, :is_override, false),
+      kind: value(track, :kind, "ambience"),
+      position: value(track, :position, 0),
+      url: url || "",
+      volume: serialize_volume(value(track, :volume)),
+      contentType: value(track, :content_type) || value(asset, :content_type),
+      filename: value(track, :filename) || value(asset, :filename),
+      depth: value(composed, :depth, 0),
+      removed: value(composed, :removed, false),
+      propertyOrigins:
+        composed
+        |> value(:property_sources, %{})
+        |> Map.new(fn {field, owner_id} -> {to_string(field), %{nodeId: owner_id}} end)
+    }
+  end
+
   defp origin(owner_id, selected_node_id) do
     %{nodeId: owner_id, sequenceId: owner_id, inherited: owner_id != selected_node_id}
   end
@@ -181,6 +271,30 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
   defp media_url(item) do
     value(item, :url) || PrivateMedia.asset_url(value(item, :asset))
   end
+
+  defp serialize_volume(nil), do: 1.0
+  defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
+  defp serialize_volume(volume) when is_number(volume), do: volume
+  defp serialize_volume(_volume), do: 1.0
+
+  defp audio_asset(_project_id, nil), do: nil
+
+  defp audio_asset(project_id, asset_id) do
+    project_id
+    |> Flows.initial_asset_options("audio", [asset_id])
+    |> Enum.find(&(value(&1, :id) == asset_id))
+  end
+
+  defp normalize_id(id) when is_integer(id) and id > 0, do: id
+
+  defp normalize_id(id) when is_binary(id) do
+    case Integer.parse(id) do
+      {parsed, ""} when parsed > 0 -> parsed
+      _invalid -> nil
+    end
+  end
+
+  defp normalize_id(_id), do: nil
 
   defp value(container, key, default \\ nil)
   defp value(nil, _key, default), do: default

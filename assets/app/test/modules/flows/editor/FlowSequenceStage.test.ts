@@ -1,4 +1,4 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SequenceStageState } from "@modules/flows/sequence/types";
 import { createMockLive } from "../../../setup";
@@ -92,6 +92,193 @@ describe("FlowSequenceStage", () => {
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Open the gate.");
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Barely above a whisper");
     expect(wrapper.get("[data-sequence-diagnostics]").text()).toContain("1 composition issue");
+  });
+
+  it("previews an available dialogue voice only after an explicit action", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const stage: SequenceStageState = {
+      ...editableStage(),
+      voice: {
+        id: "dialogue-42:source",
+        continuityKey: "dialogue-42:source:asset-5",
+        available: true,
+        url: "/voice.mp3",
+      },
+    };
+    const wrapper = mountStage(stage);
+    await flushPromises();
+
+    expect(playSpy).not.toHaveBeenCalled();
+    const preview = wrapper.get("[data-sequence-voice-preview]");
+    expect(preview.attributes("aria-label")).toBe("Play dialogue voice preview");
+
+    await preview.trigger("click");
+    await flushPromises();
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(preview.attributes("data-voice-preview-state")).toBe("playing");
+
+    await preview.trigger("click");
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(preview.attributes("data-voice-preview-state")).toBe("paused");
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
+  });
+
+  it("keeps a playing voice preview through stage updates with the same identity", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const voice = {
+      id: "dialogue-42:source",
+      continuityKey: "dialogue-42:source:asset-5",
+      available: true,
+      url: "/voice.mp3",
+    };
+    const stage: ReadySequenceStage = { ...editableStage(), voice };
+    const wrapper = mountStage(stage);
+    const preview = wrapper.get("[data-sequence-voice-preview]");
+
+    await preview.trigger("click");
+    await flushPromises();
+    expect(preview.attributes("data-voice-preview-state")).toBe("playing");
+    playSpy.mockClear();
+    pauseSpy.mockClear();
+
+    await wrapper.setProps({
+      stage: {
+        ...stage,
+        voice: { ...voice },
+        composition: {
+          ...stage.composition,
+          diagnostics: [{ code: "missing_prop", severity: "warning" }],
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(preview.attributes("data-voice-preview-state")).toBe("playing");
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(pauseSpy).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
+  });
+
+  it("previews effective music and ambience only after explicit play actions", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const stage: SequenceStageState = {
+      ...editableStage(),
+      composition: {
+        ...editableStage().composition,
+        audioTracks: [
+          {
+            id: "score:asset-7",
+            continuityKey: "score:asset-7",
+            trackKey: "score",
+            kind: "music",
+            url: "/score.mp3",
+            volume: 0.4,
+          },
+          {
+            id: "rain:asset-8",
+            continuityKey: "rain:asset-8",
+            trackKey: "rain",
+            kind: "ambience",
+            url: "/rain.mp3",
+            volume: 0.7,
+          },
+          {
+            id: "door:asset-9",
+            continuityKey: "door:asset-9",
+            trackKey: "door",
+            kind: "sfx",
+            url: "/door.mp3",
+          },
+        ],
+      },
+    };
+    const wrapper = mountStage(stage);
+    await flushPromises();
+
+    const previews = wrapper.findAll("[data-sequence-audio-preview]");
+    expect(previews).toHaveLength(2);
+    expect(wrapper.findAll("audio")).toHaveLength(2);
+    expect(wrapper.find("audio[autoplay]").exists()).toBe(false);
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(previews.map((preview) => preview.attributes("aria-label"))).toEqual([
+      "Play Music preview",
+      "Play Ambience preview",
+    ]);
+
+    await previews[0].trigger("click");
+    await flushPromises();
+
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(previews[0].attributes("data-audio-preview-state")).toBe("playing");
+    expect((wrapper.findAll("audio")[0].element as HTMLAudioElement).volume).toBe(0.4);
+
+    await previews[0].trigger("click");
+    expect(pauseSpy).toHaveBeenCalled();
+    expect(previews[0].attributes("data-audio-preview-state")).toBe("paused");
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
+  });
+
+  it("updates a playing composition preview volume without restarting it", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const track = {
+      id: "score:asset-7",
+      continuityKey: "score:asset-7",
+      trackKey: "score",
+      kind: "music",
+      url: "/score.mp3",
+      volume: 0.4,
+    };
+    const stage: ReadySequenceStage = {
+      ...editableStage(),
+      composition: {
+        ...editableStage().composition,
+        audioTracks: [track],
+      },
+    };
+    const wrapper = mountStage(stage);
+    const preview = wrapper.get("[data-sequence-audio-preview]");
+
+    await preview.trigger("click");
+    await flushPromises();
+
+    const original = wrapper.get('[data-preview-track-key="score"]').element as HTMLAudioElement;
+    expect(original.volume).toBe(0.4);
+    playSpy.mockClear();
+    pauseSpy.mockClear();
+
+    await wrapper.setProps({
+      stage: {
+        ...stage,
+        composition: {
+          ...stage.composition,
+          audioTracks: [{ ...track, volume: 0.2 }],
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.get('[data-preview-track-key="score"]').element).toBe(original);
+    expect(original.volume).toBe(0.2);
+    expect(preview.attributes("data-audio-preview-state")).toBe("playing");
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(pauseSpy).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
   });
 
   it("renders the server error without stale visual layers", () => {

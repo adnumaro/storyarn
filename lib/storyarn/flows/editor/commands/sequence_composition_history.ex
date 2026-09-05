@@ -3,8 +3,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
   Captures and restores the local state of a sequence composition owner.
 
   The editor sends these snapshots through its existing undo/redo history.
-  Restores replace only the owner's local source, canvas configuration, and
-  visual layers; inherited state is recomputed from the graph.
+  Restores replace only the owner's local source, canvas configuration, visual
+  layers, and audio tracks; inherited state is recomputed from the graph.
   """
 
   import Ecto.Query
@@ -22,6 +22,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
   @max_key_length 64
   @int32_min -2_147_483_648
   @int32_max 2_147_483_647
+  @max_track_decimal Decimal.new("9999999.999")
+  @min_track_decimal Decimal.negate(@max_track_decimal)
   @visual_kinds ~w(backdrop character prop overlay)
   @visual_slots ~w(
     full left center right custom
@@ -30,7 +32,9 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
     bottom-left bottom-center bottom-right
   )
   @visual_fits ~w(cover contain fill)
+  @track_kinds ~w(music ambience sfx)
   @visual_property_fields ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
+  @track_property_fields ~w(position asset_id start_time end_time volume)
 
   @doc "Returns a JSON-safe snapshot of one active sequence or dialogue owner."
   @spec capture(integer()) :: {:ok, map()} | {:error, atom()}
@@ -127,7 +131,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          :ok <- validate_snapshot_composition(owner.id, snapshot, nodes),
          :ok <- validate_snapshot_assets(project_id, snapshot),
          {:ok, owner} <- restore_owner(owner, source_id, snapshot),
-         :ok <- replace_visual_layers(owner.id, snapshot["visual_layers"]) do
+         :ok <- replace_visual_layers(owner.id, snapshot["visual_layers"]),
+         :ok <- replace_tracks(owner.id, snapshot["tracks"]) do
       owner
       |> Repo.preload(:sequence_config, force: true)
       |> snapshot()
@@ -178,7 +183,11 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
       "visual_layers" =>
         owner.id
         |> visual_layers()
-        |> Enum.map(&serialize_visual_layer/1)
+        |> Enum.map(&serialize_visual_layer/1),
+      "tracks" =>
+        owner.id
+        |> tracks()
+        |> Enum.map(&serialize_track/1)
     }
   end
 
@@ -187,6 +196,15 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
       from(layer in SequenceVisualLayer,
         where: layer.flow_node_id == ^owner_id,
         order_by: [asc: layer.id]
+      )
+    )
+  end
+
+  defp tracks(owner_id) do
+    Repo.all(
+      from(track in SequenceTrack,
+        where: track.flow_node_id == ^owner_id,
+        order_by: [asc: track.id]
       )
     )
   end
@@ -219,6 +237,24 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
     }
   end
 
+  defp serialize_track(track) do
+    %{
+      "track_key" => track.track_key,
+      "is_override" => track.is_override,
+      "overridden_fields" => track.overridden_fields,
+      "removed" => track.removed,
+      "kind" => track.kind,
+      "position" => track.position,
+      "asset_id" => track.asset_id,
+      "start_time" => serialize_decimal(track.start_time),
+      "end_time" => serialize_decimal(track.end_time),
+      "volume" => serialize_decimal(track.volume)
+    }
+  end
+
+  defp serialize_decimal(nil), do: nil
+  defp serialize_decimal(%Decimal{} = value), do: Decimal.to_string(value, :normal)
+
   defp normalize_snapshot(snapshot) do
     snapshot = stringify_keys(snapshot)
 
@@ -231,7 +267,9 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          {:ok, position_y} <- normalize_number(snapshot, "position_y"),
          {:ok, config} <- normalize_config(owner_type, snapshot),
          visual_layers when is_list(visual_layers) <- snapshot["visual_layers"],
-         {:ok, visual_layers} <- normalize_visual_layers(visual_layers) do
+         tracks when is_list(tracks) <- snapshot["tracks"],
+         {:ok, visual_layers} <- normalize_visual_layers(visual_layers),
+         {:ok, tracks} <- normalize_tracks(tracks) do
       {:ok,
        %{
          "version" => @version,
@@ -242,7 +280,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          "position_x" => position_x,
          "position_y" => position_y,
          "config" => config,
-         "visual_layers" => visual_layers
+         "visual_layers" => visual_layers,
+         "tracks" => tracks
        }}
     else
       _invalid -> {:error, :invalid_composition_snapshot}
@@ -323,6 +362,50 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
 
   defp normalize_visual_layer(_row), do: {:error, :invalid_composition_snapshot}
 
+  defp normalize_tracks(rows) do
+    with {:ok, rows} <- normalize_rows(rows, &normalize_track/1),
+         true <- unique_values?(rows, "track_key"),
+         true <- unique_local_track_kinds?(rows) do
+      {:ok, rows}
+    else
+      _invalid -> {:error, :invalid_composition_snapshot}
+    end
+  end
+
+  defp normalize_track(row) when is_map(row) do
+    row = stringify_keys(row)
+
+    with {:ok, track_key} <- normalize_key(row["track_key"]),
+         is_override when is_boolean(is_override) <- row["is_override"],
+         {:ok, overridden_fields} <-
+           normalize_overridden_fields(row["overridden_fields"], @track_property_fields),
+         removed when is_boolean(removed) <- row["removed"],
+         kind when kind in @track_kinds <- row["kind"],
+         {:ok, position} <- normalize_int32(row["position"]),
+         {:ok, asset_id} <- normalize_optional_id(row["asset_id"]),
+         {:ok, start_time} <- normalize_track_decimal(row["start_time"]),
+         {:ok, end_time} <- normalize_track_decimal(row["end_time"]),
+         {:ok, volume} <- normalize_volume(row["volume"]) do
+      {:ok,
+       %{
+         "track_key" => track_key,
+         "is_override" => is_override,
+         "overridden_fields" => overridden_fields,
+         "removed" => removed,
+         "kind" => kind,
+         "position" => position,
+         "asset_id" => asset_id,
+         "start_time" => start_time,
+         "end_time" => end_time,
+         "volume" => volume
+       }}
+    else
+      _invalid -> {:error, :invalid_composition_snapshot}
+    end
+  end
+
+  defp normalize_track(_row), do: {:error, :invalid_composition_snapshot}
+
   defp normalize_rows(rows, normalize) do
     rows
     |> Enum.reduce_while({:ok, []}, fn row, {:ok, normalized} ->
@@ -394,9 +477,46 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
 
   defp normalize_int32(_value), do: {:error, :invalid_composition_snapshot}
 
+  defp normalize_track_decimal(nil), do: {:ok, nil}
+
+  defp normalize_track_decimal(value) when is_binary(value) do
+    case Decimal.parse(value) do
+      {%Decimal{} = decimal, ""} ->
+        if Decimal.compare(decimal, @min_track_decimal) in [:gt, :eq] and
+             Decimal.compare(decimal, @max_track_decimal) in [:lt, :eq] do
+          {:ok, Decimal.to_string(decimal, :normal)}
+        else
+          {:error, :invalid_composition_snapshot}
+        end
+
+      _invalid ->
+        {:error, :invalid_composition_snapshot}
+    end
+  end
+
+  defp normalize_track_decimal(_value), do: {:error, :invalid_composition_snapshot}
+
+  defp normalize_volume(nil), do: {:ok, nil}
+
+  defp normalize_volume(value) do
+    with {:ok, normalized} <- normalize_track_decimal(value),
+         {decimal, ""} <- Decimal.parse(normalized),
+         true <- Decimal.compare(decimal, Decimal.new(0)) in [:gt, :eq],
+         true <- Decimal.compare(decimal, Decimal.new(1)) in [:lt, :eq] do
+      {:ok, normalized}
+    else
+      _invalid -> {:error, :invalid_composition_snapshot}
+    end
+  end
+
   defp unique_values?(rows, key) do
     values = Enum.map(rows, &Map.fetch!(&1, key))
     length(values) == length(Enum.uniq(values))
+  end
+
+  defp unique_local_track_kinds?(rows) do
+    kinds = for %{"is_override" => false, "kind" => kind} <- rows, do: kind
+    length(kinds) == length(Enum.uniq(kinds))
   end
 
   defp stringify_keys(map) do
@@ -449,7 +569,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
           integrity_node(
             node,
             snapshot["composition_source_id"],
-            node.sequence_tracks,
+            snapshot["tracks"],
             snapshot["visual_layers"]
           )
         else
@@ -479,15 +599,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
     }
   end
 
-  defp integrity_track(%SequenceTrack{} = track) do
-    %{
-      "track_key" => track.track_key,
-      "is_override" => track.is_override,
-      "overridden_fields" => track.overridden_fields,
-      "removed" => track.removed
-    }
-  end
-
+  defp integrity_track(%SequenceTrack{} = track), do: serialize_track(track)
   defp integrity_track(track) when is_map(track), do: track
 
   defp integrity_visual_layer(%SequenceVisualLayer{} = layer), do: serialize_visual_layer(layer)
@@ -527,7 +639,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
 
   defp validate_snapshot_assets(project_id, snapshot) do
     visual_ids = asset_ids(snapshot["visual_layers"])
-    ids = Enum.uniq(visual_ids)
+    audio_ids = asset_ids(snapshot["tracks"])
+    ids = Enum.uniq(visual_ids ++ audio_ids)
 
     assets =
       if ids == [] do
@@ -544,7 +657,8 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
         |> Map.new()
       end
 
-    if Enum.all?(visual_ids, &valid_asset?(assets, &1, "image/")) do
+    if Enum.all?(visual_ids, &valid_asset?(assets, &1, "image/")) and
+         Enum.all?(audio_ids, &valid_asset?(assets, &1, "audio/")) do
       :ok
     else
       {:error, :invalid_composition_snapshot}
@@ -611,6 +725,19 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
            |> SequenceVisualLayer.override_changeset(attrs)
            |> Repo.insert() do
         {:ok, _layer} -> {:cont, :ok}
+        {:error, changeset} -> {:halt, {:error, changeset}}
+      end
+    end)
+  end
+
+  defp replace_tracks(owner_id, rows) do
+    Repo.delete_all(from(track in SequenceTrack, where: track.flow_node_id == ^owner_id))
+
+    Enum.reduce_while(rows, :ok, fn attrs, :ok ->
+      attrs = Map.put(attrs, "flow_node_id", owner_id)
+
+      case %SequenceTrack{} |> SequenceTrack.override_changeset(attrs) |> Repo.insert() do
+        {:ok, _track} -> {:cont, :ok}
         {:error, changeset} -> {:halt, {:error, changeset}}
       end
     end)

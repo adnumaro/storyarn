@@ -16,7 +16,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.Slide
-  alias StoryarnWeb.PrivateMedia
 
   # ===========================================================================
   # Render
@@ -37,6 +36,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
         is-finished={@engine_state.status == :finished}
         visual-layers={player_visual_layers(assigns)}
         audio-tracks={player_audio_tracks(assigns)}
+        voice={@voice}
         editor-url={editor_url(assigns)}
         responses={serialize_responses(@slide)}
       />
@@ -256,6 +256,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     state = player_session.state
     node = Map.get(player_session.nodes, state.current_node_id)
     slide = Slide.build(node, state, socket.assigns.speakers_map, socket.assigns.project.id)
+    voice = SequencePresentation.dialogue_voice(node, socket.assigns.project.id)
 
     socket
     |> assign(:player_session, player_session)
@@ -264,6 +265,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
     |> assign(:connections, player_session.connections)
     |> assign(:flow, player_session.flow)
     |> assign(:slide, slide)
+    |> assign(:voice, voice)
     |> assign(:can_go_back, Flows.player_session_can_go_back?(player_session))
     |> assign(:current_scene_id, player_session.scene_id)
   end
@@ -338,42 +340,10 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   defp player_audio_tracks(%{engine_state: state, nodes: nodes}) do
     state
     |> Flows.compose_player_sequences(nodes)
-    |> Map.fetch!(:audio_tracks)
-    |> Enum.flat_map(&serialize_audio_track/1)
+    |> SequencePresentation.audio_tracks()
   end
 
   defp player_audio_tracks(_assigns), do: []
-
-  defp serialize_audio_track(%{item: track, sequence_id: sequence_id, depth: depth}) do
-    url = media_url(track)
-    asset = Map.get(track, :asset)
-
-    if is_binary(url) and url != "" do
-      [
-        %{
-          id: track.id,
-          sequence_id: sequence_id,
-          kind: track.kind,
-          position: track.position || 0,
-          url: url,
-          volume: serialize_volume(Map.get(track, :volume)),
-          content_type: Map.get(track, :content_type) || (asset && Map.get(asset, :content_type)),
-          filename: Map.get(track, :filename) || (asset && Map.get(asset, :filename)),
-          depth: depth
-        }
-      ]
-    else
-      []
-    end
-  end
-
-  defp media_url(item) do
-    Map.get(item, :url) || PrivateMedia.asset_url(Map.get(item, :asset))
-  end
-
-  defp serialize_volume(nil), do: 1.0
-  defp serialize_volume(%Decimal{} = volume), do: Decimal.to_float(volume)
-  defp serialize_volume(volume) when is_number(volume), do: volume
 
   defp editor_url(assigns) do
     ~p"/workspaces/#{assigns.workspace.slug}/projects/#{assigns.project.slug}/flows/#{assigns.flow.id}"

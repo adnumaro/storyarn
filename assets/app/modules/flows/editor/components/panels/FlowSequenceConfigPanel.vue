@@ -45,21 +45,11 @@ import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 import type {
   SequenceAssetEntry as AssetEntry,
-  SequenceConfigPanelData,
+  SequenceAudioTrackRecord as SequenceTrack,
+  SequenceConfigPanelData as PanelData,
   SequenceEntityId as EntityId,
   SequenceVisualLayerRecord as SequenceVisualLayer,
 } from "../../../sequence/types";
-
-interface SequenceTrack {
-  kind: string;
-  asset_id?: EntityId | null;
-  volume?: number | null;
-}
-
-interface PanelData extends SequenceConfigPanelData {
-  tracks?: SequenceTrack[];
-  audio_assets?: AssetEntry[];
-}
 
 type VisualKind = "backdrop" | "character" | "prop" | "overlay";
 type PositionSlot =
@@ -90,6 +80,8 @@ type LayerField =
   | "fit"
   | "opacity"
   | "visible";
+type TrackField = "asset_id" | "volume";
+type TrackPropertyField = TrackField;
 type LayerPatch = Partial<Record<LayerField | "anchor_x" | "anchor_y", unknown>>;
 
 const {
@@ -108,6 +100,7 @@ const openLayerPicker = ref<string | null>(null);
 
 const ROOT_SOURCE_VALUE = "__composition_root__";
 const TRACK_KINDS = ["music", "ambience", "sfx"] as const;
+const TRACK_PROPERTY_FIELDS: readonly TrackPropertyField[] = ["asset_id", "volume"];
 const VISUAL_KINDS: readonly VisualKind[] = ["backdrop", "character", "prop", "overlay"];
 const PICKER_SEARCH_EVENT = "picker_search";
 const IMAGE_ASSET_SEARCH_PAYLOAD = { resource: "asset", kind: "image" };
@@ -151,6 +144,22 @@ const visualLayers = computed(() =>
   }),
 );
 const removedVisualLayers = computed(() => data?.removed_visual_layers ?? []);
+const tracks = computed(() =>
+  [...(data?.tracks ?? [])].sort((a, b) => {
+    const kindDelta = trackKindOrder(a.kind) - trackKindOrder(b.kind);
+    if (kindDelta !== 0) return kindDelta;
+    return trackKey(a).localeCompare(trackKey(b));
+  }),
+);
+const removedTracks = computed(() => data?.removed_tracks ?? []);
+const missingTrackKinds = computed(() =>
+  TRACK_KINDS.filter(
+    (kind) =>
+      !tracks.value.some(
+        (track) => track.kind === kind && ownerDefinesTrack(track) && !trackIsOverride(track),
+      ),
+  ),
+);
 
 function close() {
   live.pushEvent("close_sequence_config", {});
@@ -472,25 +481,100 @@ function visualKindLabel(kind: string): string {
   return t(`flows.sequences.visual_layers.kinds.${kind}`);
 }
 
-function trackFor(kind: string): SequenceTrack | null {
-  return data?.tracks?.find((track) => track.kind === kind) ?? null;
+function trackKey(track: SequenceTrack): string {
+  return String(track.trackKey ?? track.track_key ?? track.id ?? track.kind);
 }
 
-function pickTrackAsset(kind: string, asset: AssetEntry) {
+function trackKindOrder(kind: string): number {
+  const index = TRACK_KINDS.indexOf(kind as (typeof TRACK_KINDS)[number]);
+  return index < 0 ? TRACK_KINDS.length : index;
+}
+
+function trackSequenceId(track: SequenceTrack): EntityId | null {
+  return track.sequenceId ?? track.sequence_id ?? ownerId.value;
+}
+
+function trackAssetId(track: SequenceTrack): EntityId | null {
+  return track.assetId ?? track.asset_id ?? null;
+}
+
+function ownerDefinesTrack(track: SequenceTrack): boolean {
+  return sameId(trackSequenceId(track), ownerId.value);
+}
+
+function trackIsOverride(track: SequenceTrack): boolean {
+  return track.isOverride ?? track.is_override ?? false;
+}
+
+function trackOverrideFields(track: SequenceTrack): TrackPropertyField[] {
+  const fields = track.overridden_fields ?? track.overriddenFields ?? [];
+  return TRACK_PROPERTY_FIELDS.filter((field) => fields.includes(field));
+}
+
+function trackOriginFields(track: SequenceTrack): TrackPropertyField[] {
+  return TRACK_PROPERTY_FIELDS.filter((field) => track.propertyOrigins?.[field] != null);
+}
+
+function trackFieldOriginLabel(track: SequenceTrack, field: string): string {
+  return originLabel(track.propertyOrigins?.[field]?.nodeId ?? trackSequenceId(track));
+}
+
+function trackHasLocalPatch(track: SequenceTrack): boolean {
+  return !ownerDefinesTrack(track) && trackOverrideFields(track).length > 0;
+}
+
+function trackStatusLabel(track: SequenceTrack): string {
+  if (ownerDefinesTrack(track)) return t("flows.sequences.config_panel.local");
+  if (trackHasLocalPatch(track)) return t("flows.sequences.config_panel.customized");
+  return t("flows.sequences.config_panel.inherited");
+}
+
+function updateTrack(track: SequenceTrack, patch: Partial<Record<TrackField, unknown>>) {
+  if (ownerDefinesTrack(track) && !trackIsOverride(track)) {
+    pushOwnerEvent("upsert_sequence_track", { kind: track.kind, ...patch });
+  } else {
+    pushOwnerEvent("override_sequence_track", {
+      track_key: trackKey(track),
+      ...patch,
+    });
+  }
+}
+
+function pickTrackAsset(track: SequenceTrack, asset: AssetEntry) {
+  updateTrack(track, { asset_id: asset.id });
+}
+
+function createTrack(kind: string, asset: AssetEntry) {
   pushOwnerEvent("upsert_sequence_track", { kind, asset_id: asset.id });
 }
 
-function clearTrack(kind: string) {
-  pushOwnerEvent("clear_sequence_track", { kind });
+function onTrackVolumeChange(track: SequenceTrack, percent: number) {
+  updateTrack(track, { volume: percent / 100 });
 }
 
-function onVolumeChange(kind: string, percent: number) {
-  pushOwnerEvent("upsert_sequence_track", { kind, volume: percent / 100 });
+function removeTrack(track: SequenceTrack) {
+  if (ownerDefinesTrack(track) && !trackIsOverride(track)) {
+    pushOwnerEvent("clear_sequence_track", { kind: track.kind });
+    return;
+  }
+
+  pushOwnerEvent("remove_sequence_track", { track_key: trackKey(track) });
 }
 
-function trackVolumePercent(kind: string): number | null {
-  const track = trackFor(kind);
-  return track?.volume == null ? null : Math.round(Number(track.volume) * 100);
+function restoreTrack(track: SequenceTrack) {
+  pushOwnerEvent("restore_sequence_track", { track_key: trackKey(track) });
+}
+
+function revertTrack(track: SequenceTrack, fields: string[]) {
+  if (fields.length === 0) return;
+  pushOwnerEvent("revert_sequence_track", {
+    track_key: trackKey(track),
+    fields,
+  });
+}
+
+function trackVolumePercent(track: SequenceTrack): number | null {
+  return track.volume == null ? null : Math.round(Number(track.volume) * 100);
 }
 
 function trackIcon(kind: string) {
@@ -907,24 +991,151 @@ function diagnosticLabel(code: string): string {
 
         <TabsContent value="audio" class="mt-0">
           <section class="flex min-w-0 flex-col gap-3">
-            <AudioAsset
-              v-for="kind in TRACK_KINDS"
-              :key="kind"
-              :label="$t(`flows.sequences.tracks.${kind}`)"
-              :icon="trackIcon(kind)"
-              :asset-id="trackFor(kind)?.asset_id"
-              :volume="trackVolumePercent(kind)"
-              :audio-assets="data?.audio_assets || []"
-              :can-edit="canEdit"
-              :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
-              :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
-              :clear-title="$t('flows.sequences.config_panel.clear_track')"
-              :search-event="PICKER_SEARCH_EVENT"
-              :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
-              @select="(asset) => pickTrackAsset(kind, asset)"
-              @clear="clearTrack(kind)"
-              @volume-change="(percent) => onVolumeChange(kind, percent)"
-            />
+            <article
+              v-for="track in tracks"
+              :key="trackKey(track)"
+              class="rounded-lg border border-border bg-muted/20 p-2"
+              :data-track-key="trackKey(track)"
+            >
+              <div class="mb-2 flex min-w-0 items-center gap-2 px-0.5">
+                <Badge
+                  :variant="ownerDefinesTrack(track) ? 'secondary' : 'outline'"
+                  class="shrink-0 text-[10px]"
+                >
+                  {{ trackStatusLabel(track) }}
+                </Badge>
+                <span class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                  {{ $t("flows.sequences.config_panel.from") }}
+                  {{ originLabel(trackSequenceId(track)) }}
+                </span>
+                <Button
+                  v-if="trackHasLocalPatch(track)"
+                  type="button"
+                  variant="ghost"
+                  size="icon-xs"
+                  :disabled="!canEdit"
+                  :title="$t('flows.sequences.config_panel.revert_all')"
+                  :aria-label="$t('flows.sequences.config_panel.revert_all')"
+                  data-revert-track
+                  @click="revertTrack(track, trackOverrideFields(track))"
+                >
+                  <Undo2 class="size-3" aria-hidden="true" />
+                </Button>
+              </div>
+              <div
+                v-if="trackHasLocalPatch(track)"
+                class="mb-2 flex flex-wrap items-center gap-1 rounded border border-border/70 bg-background/70 p-1.5"
+                data-track-overrides
+              >
+                <span class="mr-1 text-[10px] text-muted-foreground">
+                  {{ $t("flows.sequences.config_panel.local_fields") }}
+                </span>
+                <Button
+                  v-for="field in trackOverrideFields(track)"
+                  :key="field"
+                  type="button"
+                  variant="outline"
+                  size="xs"
+                  class="h-6 gap-1 px-1.5 text-[10px]"
+                  :disabled="!canEdit"
+                  :data-revert-track-field="field"
+                  :title="
+                    $t('flows.sequences.config_panel.revert_field_from', {
+                      origin: trackFieldOriginLabel(track, field),
+                    })
+                  "
+                  @click="revertTrack(track, [field])"
+                >
+                  <Undo2 class="size-2.5" aria-hidden="true" />
+                  {{ fieldLabel(field) }}
+                </Button>
+              </div>
+              <AudioAsset
+                :label="$t(`flows.sequences.tracks.${track.kind}`)"
+                :icon="trackIcon(track.kind)"
+                :asset-id="trackAssetId(track)"
+                :volume="trackVolumePercent(track)"
+                :audio-assets="data.audio_assets || []"
+                :can-edit="canEdit"
+                :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
+                :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
+                :clear-title="$t('flows.sequences.config_panel.remove_track')"
+                :search-event="PICKER_SEARCH_EVENT"
+                :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
+                @select="(asset) => pickTrackAsset(track, asset)"
+                @clear="removeTrack(track)"
+                @volume-change="(percent) => onTrackVolumeChange(track, percent)"
+              />
+              <dl
+                class="mt-2 grid grid-cols-2 gap-1.5 text-[10px] sm:grid-cols-3"
+                data-track-property-origins
+              >
+                <div
+                  v-for="field in trackOriginFields(track)"
+                  :key="field"
+                  class="min-w-0 rounded border border-border/70 bg-background/70 px-2 py-1"
+                  :data-track-property-origin="field"
+                >
+                  <dt class="truncate text-muted-foreground">{{ fieldLabel(field) }}</dt>
+                  <dd class="truncate font-medium" :title="trackFieldOriginLabel(track, field)">
+                    {{ trackFieldOriginLabel(track, field) }}
+                  </dd>
+                </div>
+              </dl>
+            </article>
+
+            <div v-if="missingTrackKinds.length > 0" class="space-y-2">
+              <p class="text-[11px] font-medium text-muted-foreground">
+                {{ $t("flows.sequences.config_panel.add_track") }}
+              </p>
+              <AudioAsset
+                v-for="kind in missingTrackKinds"
+                :key="kind"
+                :label="$t(`flows.sequences.tracks.${kind}`)"
+                :icon="trackIcon(kind)"
+                :audio-assets="data.audio_assets || []"
+                :can-edit="canEdit"
+                :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
+                :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
+                :search-event="PICKER_SEARCH_EVENT"
+                :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
+                @select="(asset) => createTrack(kind, asset)"
+              />
+            </div>
+
+            <section
+              v-if="removedTracks.length > 0"
+              class="rounded-lg border border-dashed border-border p-2.5"
+            >
+              <p class="mb-2 text-[11px] font-medium text-muted-foreground">
+                {{ $t("flows.sequences.config_panel.removed_tracks") }}
+              </p>
+              <div class="space-y-1">
+                <div
+                  v-for="track in removedTracks"
+                  :key="trackKey(track)"
+                  class="flex items-center gap-2 rounded bg-muted/40 px-2 py-1.5 text-xs"
+                  :data-removed-track-key="trackKey(track)"
+                >
+                  <component :is="trackIcon(track.kind)" class="size-3.5 text-muted-foreground" />
+                  <span class="min-w-0 flex-1 truncate">{{
+                    $t(`flows.sequences.tracks.${track.kind}`)
+                  }}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    class="gap-1"
+                    :disabled="!canEdit"
+                    data-restore-track
+                    @click="restoreTrack(track)"
+                  >
+                    <RotateCcw class="size-3" />
+                    {{ $t("flows.sequences.config_panel.restore") }}
+                  </Button>
+                </div>
+              </div>
+            </section>
           </section>
         </TabsContent>
       </Tabs>
