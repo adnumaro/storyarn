@@ -1,0 +1,77 @@
+assets/app/locales/en/flows.json
+  s_5af6a6d0a150f1::t_0c301c2d05e8b5 130,137,151-153,169-170,185-187,237-241,465-466
+lib/storyarn_web/live/flow_live/helpers/sequence_presentation.ex
+  s_5af6a6d0a150f1::t_da2be509d01a68 283-285
+  s_5af6a6d0a150f1::t_a6f0528d11919b 63-109,132,140-141,144,156,158,166-167,228-232,265,275-282,286-297
+  s_5af6a6d0a150f1::t_c48fea4e742888 233-264
+  s_5af6a6d0a150f1::t_28e48d88c51845 266
+  s_5af6a6d0a150f1::t_ddd0d213c4cdb0 298
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_15b4914cec5250 711-734
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_5af6a6d0a150f1::t_cb189afabbd66a 756-836,838-844,850-857
+  s_5af6a6d0a150f1::t_314bdcf0364c3a 837,845-849
+assets/app/modules/flows/editor/components/sequence/FlowSequenceStage.vue
+  s_5af6a6d0a150f1::t_4b10b4692cc037 3-11,16,19,24,34-36,85-92,95-101,120-122,128-138,165-168,197-210,344,365-375,377-405,429-435
+  s_5af6a6d0a150f1::t_6e46e5e3341073 436
+assets/app/live/flow/player/FlowPlayer.vue
+  s_5af6a6d0a150f1::t_e80fbbdc6322bd 2-4,11,16-20,22,31,41-42,46,49-88,91,96,101-103,112-130,140-162,174-177,192,221,227-236,246-259
+  s_5af6a6d0a150f1::t_305bdb8d76d12a 260-263
+assets/app/modules/flows/sequence/types.ts
+  s_5af6a6d0a150f1::t_37d9db0227b66e 53-86,116-117,120-144,155,166,176,184,192
+test/storyarn_web/live/flow_live/helpers/sequence_presentation_test.exs
+  s_5af6a6d0a150f1::t_0ee536b180211b 49-99
+assets/app/test/modules/flows/editor/FlowSequenceStage.test.ts
+  s_5af6a6d0a150f1::t_ab9a9271c83515 1,97-282
+  s_5af6a6d0a150f1::t_601bfe46aa41d3 283
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_d7f6a35c99a780 252,255-256,261,272-273,316-347,968-969,971-980,984-985,1008,1015-1021,1028-1033,1037-1038,1044,1159-1244,1442
+assets/app/test/modules/flows/editor/FlowSequenceConfigPanel.test.ts
+  s_5af6a6d0a150f1::t_189b954f3b7fdf 79-86,123,213-251,256-261,272-284,345-349,351,359-360,367,374,379,384,391,396,398-399,402-404,407-409,412-413,421-467,469,472,495,502-595,597-599,603-639
+assets/app/modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue
+  s_5af6a6d0a150f1::t_189b954f3b7fdf 48-49,83-84,103,147-162,484-519,522-547,551-561,564-573,576-577,994-1138
+assets/app/locales/es/flows.json
+  s_5af6a6d0a150f1::t_0c301c2d05e8b5 130,137,151-153,169-170,185-187,237-241,465-466
+assets/app/test/modules/flows/player/DialogueVoice.test.ts
+  s_5af6a6d0a150f1::t_4d229843f819a7 1-128
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_0eb29f6f668af3 207,230-234,238-240,259-261,265-267,272-274,286-288,291-293,298-300,302,316-320,359
+assets/app/modules/flows/player/components/DialogueVoice.vue
+  s_5af6a6d0a150f1::t_4d229843f819a7 1-178
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_5af6a6d0a150f1::t_9265a75af87d53 39,259,268,343
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_5af6a6d0a150f1::t_ea93a70794d2e5 487
+  s_5af6a6d0a150f1::t_189b954f3b7fdf 2,4,47,54-60,233-259,288,300-433,449-470,473-486,488-497,513
+  s_5af6a6d0a150f1::t_a92854d4bebfd2 471-472
+assets/app/modules/flows/editor/components/sequence/SequenceAudioTrackPreview.vue
+  s_5af6a6d0a150f1::t_6465f8c4b4328b 1-142
+assets/app/modules/flows/player/components/PlayerAudioTracks.vue
+  s_5af6a6d0a150f1::t_8d229dd5c8d68c 2-5,8-12,16,19-25,34-83,86-88,90-91,93-96,100,102-103,106,110-114,116-119,127-130,144,147,150-151,158-159,161
+assets/app/modules/flows/player/components/PlayerToolbar.vue
+  s_5af6a6d0a150f1::t_23c1110dfa2a4e 17,64
+assets/app/test/modules/flows/player/PlayerAudioTracks.test.ts
+  s_5af6a6d0a150f1::t_444af9867022c5 1-120
+assets/app/test/modules/flows/player/PlayerToolbar.test.ts
+  s_5af6a6d0a150f1::t_32334feac23d46 84-91
+lib/storyarn/flows/editor/commands/sequence_composition_history.ex
+  s_5af6a6d0a150f1::t_728fd7df061b60 6-7,25-26,35,37,134-135,186-190,203-211,240-257,270-272,283-284,365-408,480-511,517-521,572,602,642-643,660-661,732-744
+test/storyarn/flows/editor/commands/sequence_composition_history_test.exs
+  s_5af6a6d0a150f1::t_8b7c3690025836 11,21,58-61,71-72,88,104-105,119-127,135-141,154-161,174,179,184-186,190-192,208-211,252,260,267,285-294,303-304,307-309,312,315,323,338,346-348,355-360,379,381,383-384,386,389-390,394,396-398,409-412,415-416,422,424-426,469,477-479,481,483,488-492
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "5670b975ba41ad6e4ff3ce3d80d29ab28e83b0d0",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
