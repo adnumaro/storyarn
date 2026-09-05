@@ -107,9 +107,12 @@ function clearFilters(): void {
   });
 }
 
+// The three tiles are three sets, never an intersection: enabling one clears
+// the other two.
 function toggleTile(kind: "pending" | "review" | "stale"): void {
   if (kind === "stale") {
-    changeFilter("stale", filters.stale ? "false" : "true");
+    const payload = filters.stale ? { stale: "false" } : { status: "", stale: "true" };
+    live.pushEvent("change_filter", payload);
     return;
   }
   const active = filters.status === kind && !filters.stale;

@@ -175,6 +175,7 @@ const history = computed(() => ({
         v-if="text.stale"
         :can-edit="canEdit"
         :busy="saving"
+        :placeholders-blocked="editorState.placeholderIssue !== null"
         @confirm="emit('confirm-current')"
       />
 

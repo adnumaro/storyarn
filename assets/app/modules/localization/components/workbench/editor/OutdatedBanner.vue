@@ -6,9 +6,15 @@ import { Button } from "@components/ui/button";
  * The source changed after this translation was written. The translator can
  * confirm the translation still fits; saving a new one clears the flag too.
  */
-const { canEdit = false, busy = false } = defineProps<{
+const {
+  canEdit = false,
+  busy = false,
+  placeholdersBlocked = false,
+} = defineProps<{
   canEdit?: boolean;
   busy?: boolean;
+  /** The translation misses or adds a placeholder, so it cannot be confirmed as is. */
+  placeholdersBlocked?: boolean;
 }>();
 
 const emit = defineEmits<{ confirm: [] }>();
@@ -25,12 +31,22 @@ const emit = defineEmits<{ confirm: [] }>();
       <p class="text-[13px] font-medium">{{ $t("localization.editor.outdated.title") }}</p>
     </div>
     <div v-if="canEdit" class="flex flex-wrap items-center gap-2 sm:pl-6.5">
-      <Button variant="outline" size="sm" :disabled="busy" @click="emit('confirm')">
+      <Button
+        variant="outline"
+        size="sm"
+        :disabled="busy || placeholdersBlocked"
+        data-testid="localization-outdated-confirm"
+        @click="emit('confirm')"
+      >
         <Check class="size-3.5" />
         {{ $t("localization.editor.outdated.confirm") }}
       </Button>
       <span class="text-xs text-muted-foreground">
-        {{ $t("localization.editor.outdated.hint") }}
+        {{
+          placeholdersBlocked
+            ? $t("localization.editor.outdated.blocked")
+            : $t("localization.editor.outdated.hint")
+        }}
       </span>
     </div>
   </div>

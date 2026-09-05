@@ -245,4 +245,125 @@ describe("LocalizationTextsIndex", () => {
       undefined,
     );
   });
+
+  it("clears an active status when the Outdated tile is enabled", async () => {
+    const { live, wrapper } = mountWorkbench({
+      selectedText: null,
+      filters: {
+        status: "pending",
+        sourceType: "",
+        voStatus: "",
+        speaker: null,
+        stale: false,
+        search: "",
+      },
+    });
+
+    const tiles = wrapper.findAll("button[aria-pressed]");
+    await tiles[2].trigger("click");
+
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "change_filter",
+      { status: "", stale: "true" },
+      undefined,
+    );
+  });
+
+  it("ignores a save reply that arrives after another string was opened", async () => {
+    vi.useFakeTimers();
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench();
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "save_translation" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    const editor = wrapper.get("#localization-translation-editor");
+    await editor.setValue("Hola {name}");
+    await vi.advanceTimersByTimeAsync(900);
+    expect(callbacks).toHaveLength(1);
+
+    await wrapper.setProps({
+      selectedText: { ...selectedText, id: 2, sourceText: "Goodbye", translatedText: "Adiós" },
+    });
+    await nextTick();
+    expect((editor.element as HTMLTextAreaElement).value).toBe("Adiós");
+
+    callbacks[0]({
+      ok: true,
+      text: { ...selectedText, translatedText: "Hola {name}", status: "draft", lockVersion: 2 },
+    });
+    await nextTick();
+
+    expect((editor.element as HTMLTextAreaElement).value).toBe("Adiós");
+    expect(wrapper.get('[data-testid="localization-save-state"]').text()).toBe("All changes saved");
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+  });
+
+  it("opens the row clicked while a save is in flight once the save lands", async () => {
+    vi.useFakeTimers();
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench();
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "save_translation" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    await wrapper.get("#localization-translation-editor").setValue("Hola {name}");
+    await vi.advanceTimersByTimeAsync(900);
+    expect(callbacks).toHaveLength(1);
+
+    await wrapper.get('[data-row-id="2"]').trigger("click");
+    expect(live.pushEvent).toHaveBeenCalledTimes(1);
+
+    callbacks[0]({
+      ok: true,
+      text: { ...selectedText, translatedText: "Hola {name}", status: "draft", lockVersion: 2 },
+    });
+    await nextTick();
+
+    expect(live.pushEvent).toHaveBeenLastCalledWith("select_text", { id: 2 }, undefined);
+  });
+
+  it("moves between rows with the arrow keys from the DeepL button too", async () => {
+    const live = createMockLive();
+    const wrapper = mount(LocalizationTextsIndex, {
+      attachTo: document.body,
+      props: {
+        texts,
+        totalCount: texts.length,
+        progress,
+        selectedText: null,
+        languages,
+        capabilities: { canEdit: true, hasProvider: true, hasTargetLanguages: true },
+      },
+      global: { config: { globalProperties: { $live: live } as never } },
+    });
+
+    (wrapper.get('[data-testid="localization-translate-1"]').element as HTMLElement).focus();
+    await wrapper
+      .get('[data-testid="localization-string-list"]')
+      .trigger("keydown", { key: "ArrowDown" });
+
+    expect(document.activeElement?.getAttribute("data-row-id")).toBe("2");
+    wrapper.unmount();
+  });
+
+  it("disables the Outdated confirmation while placeholders are missing", async () => {
+    const { wrapper } = mountWorkbench({ selectedText: { ...selectedText, stale: true } });
+    await nextTick();
+
+    const confirm = wrapper.get('[data-testid="localization-outdated-confirm"]');
+    expect(confirm.attributes("disabled")).toBeUndefined();
+
+    await wrapper.get("#localization-translation-editor").setValue("Hola");
+    await nextTick();
+
+    expect(confirm.attributes("disabled")).toBeDefined();
+    expect(wrapper.get('[data-testid="localization-outdated-banner"]').text()).toContain(
+      "Fix the placeholders first",
+    );
+  });
 });

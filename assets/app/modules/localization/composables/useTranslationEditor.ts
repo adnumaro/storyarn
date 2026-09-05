@@ -52,6 +52,7 @@ export function useTranslationEditor(options: EditorOptions) {
   let autosaveTimeout: ReturnType<typeof setTimeout> | null = null;
   let savedTimeout: ReturnType<typeof setTimeout> | null = null;
   let pendingSave: PendingSave | null = null;
+  let deferredNavigation: (() => void) | null = null;
   let advanceAfterLoad = false;
 
   const currentIndex = computed(() =>
@@ -222,16 +223,27 @@ export function useTranslationEditor(options: EditorOptions) {
     onFailure?: () => void,
   ): void {
     pendingSave = null;
+    if (discardStaleReply(request)) return;
 
     if (response?.ok) {
       handleSaveSuccess(response.text, request, advance, onSuccess, onFailure);
-    } else if (response?.conflict && response.text) {
-      handleSaveConflict(response.text);
-      onFailure?.();
-    } else {
-      handleSaveError(response);
-      onFailure?.();
+      return;
     }
+
+    deferredNavigation = null;
+    if (response?.conflict && response.text) handleSaveConflict(response.text);
+    else handleSaveError(response);
+    onFailure?.();
+  }
+
+  // The translator moved to another string (or locale) while this save was in
+  // flight: the reply belongs to a row the editor no longer shows, so it must
+  // not touch the editor, report a conflict, or navigate.
+  function discardStaleReply(request: PendingSave): boolean {
+    if (options.selectedText()?.id === request.id) return false;
+    deferredNavigation = null;
+    if (saveState.value === "saving") saveState.value = "idle";
+    return true;
   }
 
   function handleSaveSuccess(
@@ -258,7 +270,12 @@ export function useTranslationEditor(options: EditorOptions) {
     if (savedTimeout) clearTimeout(savedTimeout);
     savedTimeout = setTimeout(() => (saveState.value = "idle"), SAVED_FLASH_MS);
     onSuccess?.();
-    if (advance) selectRelative("next");
+
+    // A row clicked while this save was in flight wins over "save & next".
+    const deferred = deferredNavigation;
+    deferredNavigation = null;
+    if (deferred) deferred();
+    else if (advance) selectRelative("next");
   }
 
   function handleSaveConflict(latestText: SelectedText): void {
@@ -293,15 +310,22 @@ export function useTranslationEditor(options: EditorOptions) {
   }
 
   function requestSelection(id: number): void {
-    const navigate = () => options.onSelect(id);
-    if (dirty.value && options.canEdit()) saveTranslation(false, navigate);
-    else navigate();
+    navigateAfterSave(() => options.onSelect(id));
   }
 
   function closeEditor(): void {
-    const close = () => options.onClose();
-    if (dirty.value && options.canEdit()) saveTranslation(false, close);
-    else close();
+    navigateAfterSave(() => options.onClose());
+  }
+
+  // Leaving a string never loses its edits: a dirty editor saves first, and a
+  // navigation requested while a save is already in flight waits for it.
+  function navigateAfterSave(navigate: () => void): void {
+    if (saveState.value === "saving") {
+      deferredNavigation = navigate;
+      return;
+    }
+    if (dirty.value && options.canEdit()) saveTranslation(false, navigate);
+    else navigate();
   }
 
   function selectRelative(direction: "previous" | "next"): void {

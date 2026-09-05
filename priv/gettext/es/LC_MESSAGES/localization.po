@@ -117,7 +117,7 @@ msgstr "Traducción fallida: %{reason}"
 msgid "Translation saved."
 msgstr "Traducción guardada."
 
-#: lib/storyarn_web/live/localization_live/index.ex:620
+#: lib/storyarn_web/live/localization_live/index.ex:621
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to perform this action."
 msgstr "No tienes permiso para realizar esta acción."

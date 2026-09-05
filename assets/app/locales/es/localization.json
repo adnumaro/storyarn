@@ -197,7 +197,8 @@
       "outdated": {
         "title": "El texto fuente cambió después de escribir esta traducción",
         "confirm": "La traducción sigue siendo correcta",
-        "hint": "Quita la marca y mantiene el estado. Guardar una traducción nueva también la quita."
+        "hint": "Quita la marca y mantiene el estado. Guardar una traducción nueva también la quita.",
+        "blocked": "Corrige antes los placeholders: una traducción a la que le falta o le sobra un placeholder no se puede confirmar."
       },
       "source": "Fuente · {source}",
       "words": "{n} palabra | {n} palabras",

@@ -29,13 +29,13 @@ defmodule Storyarn.Localization.Texts.Queries.SourceContext do
           sheet_id: integer() | nil
         }
 
-  @doc "Returns the source context of a text, or `nil` when the source no longer exists."
+  @doc "Returns the source context of a text, or `nil` when the source or its parent is deleted or gone."
   @spec for_text(LocalizedText.t()) :: t() | nil
   def for_text(%LocalizedText{source_type: "flow_node", source_id: node_id}) do
     from(node in FlowNodeRecord,
       join: flow in FlowRecord,
       on: flow.id == node.flow_id,
-      where: node.id == ^node_id,
+      where: node.id == ^node_id and is_nil(node.deleted_at) and is_nil(flow.deleted_at),
       select: %{flow_id: flow.id, flow_name: flow.name, data: node.data}
     )
     |> Repo.one()
@@ -59,7 +59,7 @@ defmodule Storyarn.Localization.Texts.Queries.SourceContext do
     from(block in BlockRecord,
       join: sheet in SheetRecord,
       on: sheet.id == block.sheet_id,
-      where: block.id == ^block_id,
+      where: block.id == ^block_id and is_nil(block.deleted_at) and is_nil(sheet.deleted_at),
       select: %{sheet_id: sheet.id, sheet_name: sheet.name, variable_name: block.variable_name}
     )
     |> Repo.one()
@@ -80,7 +80,10 @@ defmodule Storyarn.Localization.Texts.Queries.SourceContext do
   end
 
   def for_text(%LocalizedText{source_type: "sheet", source_id: sheet_id}) do
-    from(sheet in SheetRecord, where: sheet.id == ^sheet_id, select: %{id: sheet.id, name: sheet.name})
+    from(sheet in SheetRecord,
+      where: sheet.id == ^sheet_id and is_nil(sheet.deleted_at),
+      select: %{id: sheet.id, name: sheet.name}
+    )
     |> Repo.one()
     |> case do
       nil -> nil

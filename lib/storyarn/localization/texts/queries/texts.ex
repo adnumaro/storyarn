@@ -88,16 +88,12 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
       |> Map.new()
 
     stale =
-      Repo.one!(
-        from(t in LocalizedText,
-          where:
-            t.project_id == ^project_id and t.locale_code == ^locale_code and
-              is_nil(t.archived_at) and not is_nil(t.translated_text) and
-              t.translated_text != "" and
-              (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash),
-          select: count(t.id)
-        )
+      from(t in LocalizedText,
+        where: t.project_id == ^project_id and t.locale_code == ^locale_code and is_nil(t.archived_at),
+        select: count(t.id)
       )
+      |> where(^stale_condition())
+      |> Repo.one!()
 
     total = counts |> Map.values() |> Enum.sum()
 
@@ -139,18 +135,20 @@ defmodule Storyarn.Localization.Texts.Queries.Texts do
   defp maybe_filter_vo_status(query, vo_status),
     do: where(query, [t], t.vo_eligible == true and t.vo_status == ^vo_status)
 
-  # Mirrors the stale predicate of the progress reports so a count and the
-  # list it opens agree.
-  defp maybe_filter_stale(query, true) do
-    where(
-      query,
+  defp maybe_filter_stale(query, true), do: where(query, ^stale_condition())
+  defp maybe_filter_stale(query, _stale), do: query
+
+  # One stale predicate for the progress count and the list it opens, matching
+  # `LocalizedText.stale?/1` and the Reporting queries: a non-blank translation
+  # written against an older source revision.
+  defp stale_condition do
+    dynamic(
       [t],
       not is_nil(t.translated_text) and fragment("btrim(?) <> ''", t.translated_text) and
         (is_nil(t.translated_source_hash) or t.translated_source_hash != t.source_text_hash)
     )
   end
 
-  defp maybe_filter_stale(query, _stale), do: query
   defp maybe_search(query, nil), do: query
   defp maybe_search(query, ""), do: query
 

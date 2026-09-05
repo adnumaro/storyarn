@@ -76,9 +76,12 @@ const historyLine = computed(() => {
       </div>
 
       <div class="flex flex-col gap-1.5">
-        <Label for="localization-vo-select" class="text-[13px]">
+        <Label v-if="voEligible" for="localization-vo-select" class="text-[13px]">
           {{ $t("localization.editor.voice_over") }}
         </Label>
+        <span v-else class="text-[13px] font-medium">
+          {{ $t("localization.editor.voice_over") }}
+        </span>
         <Select v-if="voEligible" v-model="voStatus" :disabled="!canEdit">
           <SelectTrigger id="localization-vo-select" class="w-full">
             <SelectValue />
@@ -91,7 +94,6 @@ const historyLine = computed(() => {
         </Select>
         <p
           v-else
-          id="localization-vo-select"
           class="flex h-9 items-center rounded-md border border-dashed border-border px-3 text-sm text-muted-foreground"
         >
           {{ $t("localization.editor.voice_over_not_applicable") }}

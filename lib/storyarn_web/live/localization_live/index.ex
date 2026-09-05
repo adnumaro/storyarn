@@ -283,13 +283,14 @@ defmodule StoryarnWeb.LocalizationLive.Index do
     {:noreply, socket}
   end
 
-  # Sidebar broadcast after a language mutation (add/remove/sync) or a
-  # completed import or batch run.
+  # Sidebar broadcast after a language mutation (add/remove/sync/source change)
+  # or a completed import or batch run.
   def handle_info({:languages_changed, _payload}, socket) do
     project_id = socket.assigns.project.id
 
     {:noreply,
      socket
+     |> assign(:source_language, Localization.get_source_language(project_id))
      |> assign(:target_languages, Localization.get_target_languages(project_id))
      |> assign(:has_provider, has_active_provider?(project_id))
      |> load_locale_context()

@@ -45,33 +45,49 @@ function requestMore(): void {
 }
 
 onMounted(() => {
-  if (typeof IntersectionObserver === "undefined" || !sentinel.value) return;
+  scrollToSelected();
+  if (typeof IntersectionObserver === "undefined") return;
   observer = new IntersectionObserver(
     (entries) => {
       if (entries.some((entry) => entry.isIntersecting)) requestMore();
     },
     { root: scroller.value, rootMargin: "240px 0px" },
   );
-  observer.observe(sentinel.value);
+  if (sentinel.value) observer.observe(sentinel.value);
 });
 
 onBeforeUnmount(() => observer?.disconnect());
 
-watch(
-  () => selectedId,
-  (id) => {
-    if (id === null || !scroller.value) return;
-    const row = scroller.value.querySelector<HTMLElement>(`[data-row-id="${id}"]`);
-    row?.scrollIntoView({ block: "nearest" });
-  },
-);
+// The sentinel lives inside the non-empty branch, so it is a new element
+// every time the list goes empty and comes back: follow it.
+watch(sentinel, (element, previous) => {
+  if (previous) observer?.unobserve(previous);
+  if (element) observer?.observe(element);
+});
+
+watch(() => selectedId, scrollToSelected);
+
+function scrollToSelected(): void {
+  if (selectedId === null || !scroller.value) return;
+  const row = scroller.value.querySelector<HTMLElement>(`[data-row-id="${selectedId}"]`);
+  row?.scrollIntoView({ block: "nearest" });
+}
+
+// The focused element may be a row button or the DeepL button beside it;
+// both live inside the row's article.
+function activeRowIndex(rows: HTMLElement[]): number {
+  const active = document.activeElement;
+  if (!(active instanceof HTMLElement)) return -1;
+  const row = active.closest("article")?.querySelector<HTMLElement>("[data-row-id]") ?? null;
+  return row ? rows.indexOf(row) : -1;
+}
 
 function onKeydown(event: KeyboardEvent): void {
   if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
   const rows = Array.from(scroller.value?.querySelectorAll<HTMLElement>("[data-row-id]") ?? []);
   if (rows.length === 0) return;
 
-  const current = rows.findIndex((row) => row === document.activeElement);
+  const current = activeRowIndex(rows);
   const delta = event.key === "ArrowDown" ? 1 : -1;
   const next = current === -1 ? 0 : Math.min(rows.length - 1, Math.max(0, current + delta));
   event.preventDefault();

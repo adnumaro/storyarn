@@ -197,7 +197,8 @@
       "outdated": {
         "title": "The source changed after this translation was written",
         "confirm": "Translation still correct",
-        "hint": "Clears the flag and keeps the status. Saving a new translation clears it too."
+        "hint": "Clears the flag and keeps the status. Saving a new translation clears it too.",
+        "blocked": "Fix the placeholders first: a translation that misses or adds a placeholder cannot be confirmed."
       },
       "source": "Source · {source}",
       "words": "{n} word | {n} words",

@@ -25,12 +25,19 @@ const segments = computed(() =>
     .map((segment) => ({
       key: segment.key,
       fill: TONES[segment.key].dot,
-      width: total > 0 ? `${((segment.value / total) * 100).toFixed(1)}%` : "0%",
+      // Segments grow in proportion to their count from a zero basis, so the
+      // gaps between them come out of the track instead of clipping the last one.
+      style: { flexGrow: segment.value, flexBasis: "0%" },
       title: `${t(STATUS_I18N[segment.key])}: ${segment.value}`,
     })),
 );
 
-const summary = computed(() => segments.value.map((segment) => segment.title).join(" · "));
+const summary = computed(() => {
+  const titles = segments.value.map((segment) => segment.title);
+  return titles.length > 0
+    ? titles.join(" · ")
+    : t("localization.overview.final_of_total", { final: 0, total });
+});
 </script>
 
 <template>
@@ -46,8 +53,8 @@ const summary = computed(() => segments.value.map((segment) => segment.title).jo
     <span
       v-for="segment in segments"
       :key="segment.key"
-      :class="['h-full shrink-0', segment.fill]"
-      :style="{ width: segment.width }"
+      :class="['h-full min-w-0', segment.fill]"
+      :style="segment.style"
       :title="segment.title"
     />
   </div>

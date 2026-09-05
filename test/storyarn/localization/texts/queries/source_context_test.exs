@@ -1,6 +1,7 @@
 defmodule Storyarn.Localization.Texts.Queries.SourceContextTest do
   use Storyarn.DataCase, async: true
 
+  import Ecto.Query, only: [from: 2]
   import Storyarn.AccountsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.LocalizationFixtures
@@ -8,6 +9,7 @@ defmodule Storyarn.Localization.Texts.Queries.SourceContextTest do
   import Storyarn.SheetsFixtures
 
   alias Storyarn.Localization
+  alias Storyarn.Repo
 
   setup do
     user = user_fixture()
@@ -86,5 +88,47 @@ defmodule Storyarn.Localization.Texts.Queries.SourceContextTest do
 
       assert Localization.text_source_context(text) == nil
     end
+
+    test "returns nil for a soft-deleted node, flow, block or sheet", %{project: project} do
+      flow = flow_fixture(project, %{name: "Harbor"})
+      node = node_fixture(flow, %{data: %{"text" => "Gone"}})
+      node_text = localized_text_fixture(project.id, %{source_id: node.id})
+      soft_delete!("flow_nodes", node.id)
+      assert Localization.text_source_context(node_text) == nil
+
+      other_flow = flow_fixture(project, %{name: "Trashed flow"})
+      other_node = node_fixture(other_flow, %{data: %{"text" => "Still here"}})
+      other_text = localized_text_fixture(project.id, %{source_id: other_node.id})
+      soft_delete!("flows", other_flow.id)
+      assert Localization.text_source_context(other_text) == nil
+
+      sheet = sheet_fixture(project, %{name: "Ruby"})
+      block = block_fixture(sheet, %{variable_name: "gate", value: %{"content" => "Gate"}})
+
+      block_text =
+        localized_text_fixture(project.id, %{source_type: "block", source_id: block.id, source_text: "Gate"})
+
+      name_text =
+        localized_text_fixture(project.id, %{
+          source_type: "sheet",
+          source_field: "name",
+          source_id: sheet.id,
+          source_text: "Ruby"
+        })
+
+      soft_delete!("blocks", block.id)
+      assert Localization.text_source_context(block_text) == nil
+
+      soft_delete!("sheets", sheet.id)
+      assert Localization.text_source_context(name_text) == nil
+    end
+  end
+
+  # Marks a row deleted without the owning context's cascade so the lookup is
+  # exercised against exactly one condition.
+  defp soft_delete!(table, id) do
+    now = DateTime.truncate(DateTime.utc_now(), :second)
+    {1, _} = Repo.update_all(from(row in table, where: row.id == ^id), set: [deleted_at: now])
+    :ok
   end
 end

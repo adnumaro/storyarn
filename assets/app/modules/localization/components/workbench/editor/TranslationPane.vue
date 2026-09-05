@@ -62,26 +62,33 @@ interface PlaceholderStatus {
   tone: "muted" | "warning";
 }
 
-const placeholderStatus = computed<PlaceholderStatus>(() => {
-  if (placeholderIssue?.missing.length) {
-    const missing = placeholderIssue.missing.join(" ");
-    return {
-      text: t("localization.editor.placeholder_status_missing", {
-        missing,
+// Both diagnostics at once: a translation can miss one placeholder and add
+// another, and the translator must fix both before the string can be saved.
+function placeholderWarnings(): string[] {
+  if (!placeholderIssue) return [];
+  const warnings: string[] = [];
+  if (placeholderIssue.missing.length) {
+    warnings.push(
+      t("localization.editor.placeholder_status_missing", {
+        missing: placeholderIssue.missing.join(" "),
         matched: placeholderCount - placeholderIssue.missing.length,
         total: placeholderCount,
       }),
-      tone: "warning",
-    };
+    );
   }
-  if (placeholderIssue?.extra.length) {
-    return {
-      text: t("localization.editor.placeholder_status_extra", {
+  if (placeholderIssue.extra.length) {
+    warnings.push(
+      t("localization.editor.placeholder_status_extra", {
         extra: placeholderIssue.extra.join(" "),
       }),
-      tone: "warning",
-    };
+    );
   }
+  return warnings;
+}
+
+const placeholderStatus = computed<PlaceholderStatus>(() => {
+  const warnings = placeholderWarnings();
+  if (warnings.length > 0) return { text: warnings.join(" · "), tone: "warning" };
   if (placeholderCount === 0) {
     return { text: t("localization.editor.placeholder_status_none"), tone: "muted" };
   }
