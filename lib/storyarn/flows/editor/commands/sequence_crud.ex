@@ -673,32 +673,37 @@ defmodule Storyarn.Flows.SequenceCrud do
     with {:ok, attrs, fields} <-
            normalize_override_attrs(attrs, SequenceVisualLayer.property_fields()) do
       Repo.transaction(fn ->
-        with {:ok, context} <- lock_composition_owner(owner_id),
-             {:ok, inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
-             local = lock_visual_layer_by_key(owner_id, layer_key),
-             changeset =
-               visual_layer_override_changeset(
-                 local,
-                 inherited.item,
-                 owner_id,
-                 layer_key,
-                 attrs,
-                 fields
-               ),
-             asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
-             {:ok, asset_id} <-
-               lock_project_asset(
-                 context.project_id,
-                 :sequence_visual_asset_id,
-                 asset_id,
-                 "image/%"
-               ),
-             {:ok, persisted} <- persist_visual_layer(changeset, asset_id, local) do
-          persisted
-        else
-          {:error, reason} -> Repo.rollback(reason)
-        end
+        do_override_sequence_visual_layer(owner_id, layer_key, attrs, fields)
       end)
+    end
+  end
+
+  defp do_override_sequence_visual_layer(owner_id, layer_key, attrs, fields) do
+    with {:ok, context} <- lock_composition_owner(owner_id),
+         {:ok, inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
+         local = lock_visual_layer_by_key(owner_id, layer_key),
+         attrs = normalize_visual_layer_override_attrs(attrs, local, inherited.item),
+         changeset =
+           visual_layer_override_changeset(
+             local,
+             inherited.item,
+             owner_id,
+             layer_key,
+             attrs,
+             fields
+           ),
+         asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+         {:ok, asset_id} <-
+           lock_project_asset(
+             context.project_id,
+             :sequence_visual_asset_id,
+             asset_id,
+             "image/%"
+           ),
+         {:ok, persisted} <- persist_visual_layer(changeset, asset_id, local) do
+      persisted
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -706,17 +711,19 @@ defmodule Storyarn.Flows.SequenceCrud do
   def revert_sequence_visual_layer_fields(owner_id, layer_key, fields)
       when is_integer(owner_id) and is_binary(layer_key) and is_list(fields) do
     with {:ok, fields} <- normalize_override_fields(fields, SequenceVisualLayer.property_fields()) do
-      Repo.transaction(fn ->
-        with {:ok, context} <- lock_composition_owner(owner_id),
-             {:ok, _inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
-             %SequenceVisualLayer{} = local <- lock_visual_layer_by_key(owner_id, layer_key),
-             {:ok, result} <- revert_or_delete_visual_layer(local, fields) do
-          result
-        else
-          nil -> :inherited
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
+      Repo.transaction(fn -> do_revert_sequence_visual_layer_fields(owner_id, layer_key, fields) end)
+    end
+  end
+
+  defp do_revert_sequence_visual_layer_fields(owner_id, layer_key, fields) do
+    with {:ok, context} <- lock_composition_owner(owner_id),
+         {:ok, _inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
+         %SequenceVisualLayer{} = local <- lock_visual_layer_by_key(owner_id, layer_key),
+         {:ok, result} <- revert_or_delete_visual_layer(local, fields) do
+      result
+    else
+      nil -> :inherited
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -785,6 +792,30 @@ defmodule Storyarn.Flows.SequenceCrud do
         attrs
     end
   end
+
+  defp normalize_visual_layer_override_attrs(attrs, local, inherited) do
+    case Map.fetch(attrs, "slot") do
+      {:ok, slot} ->
+        kind = visual_layer_override_kind(attrs, local, inherited)
+        Map.put(attrs, "slot", normalize_visual_slot(kind, slot))
+
+      :error ->
+        attrs
+    end
+  end
+
+  defp visual_layer_override_kind(attrs, local, inherited) do
+    case Map.fetch(attrs, "kind") do
+      {:ok, kind} -> kind
+      :error -> visual_layer_override_kind(local, inherited)
+    end
+  end
+
+  defp visual_layer_override_kind(%SequenceVisualLayer{kind: kind, overridden_fields: overridden_fields}, inherited) do
+    if "kind" in List.wrap(overridden_fields), do: kind, else: map_value(inherited, :kind)
+  end
+
+  defp visual_layer_override_kind(nil, inherited), do: map_value(inherited, :kind)
 
   defp visual_layer_defaults("backdrop", _slot) do
     %{
@@ -954,32 +985,34 @@ defmodule Storyarn.Flows.SequenceCrud do
   def override_sequence_track(owner_id, track_key, attrs)
       when is_integer(owner_id) and is_binary(track_key) and is_map(attrs) do
     with {:ok, attrs, fields} <- normalize_override_attrs(attrs, SequenceTrack.property_fields()) do
-      Repo.transaction(fn ->
-        with {:ok, context} <- lock_composition_owner(owner_id),
-             local = lock_track_by_key(owner_id, track_key),
-             {:ok, inherited} <-
-               inherited_or_materialized_audio_track(
-                 context.flow.id,
-                 context.node,
-                 track_key,
-                 local
-               ),
-             changeset =
-               track_override_changeset(local, inherited.item, owner_id, track_key, attrs, fields),
-             asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
-             {:ok, asset_id} <-
-               lock_project_asset(
-                 context.project_id,
-                 :sequence_track_asset_id,
-                 asset_id,
-                 "audio/%"
-               ),
-             {:ok, persisted} <- persist_sequence_track(changeset, asset_id, local) do
-          persisted
-        else
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
+      Repo.transaction(fn -> do_override_sequence_track(owner_id, track_key, attrs, fields) end)
+    end
+  end
+
+  defp do_override_sequence_track(owner_id, track_key, attrs, fields) do
+    with {:ok, context} <- lock_composition_owner(owner_id),
+         local = lock_track_by_key(owner_id, track_key),
+         {:ok, inherited} <-
+           inherited_or_materialized_audio_track(
+             context.flow.id,
+             context.node,
+             track_key,
+             local
+           ),
+         changeset =
+           track_override_changeset(local, inherited.item, owner_id, track_key, attrs, fields),
+         asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+         {:ok, asset_id} <-
+           lock_project_asset(
+             context.project_id,
+             :sequence_track_asset_id,
+             asset_id,
+             "audio/%"
+           ),
+         {:ok, persisted} <- persist_sequence_track(changeset, asset_id, local) do
+      persisted
+    else
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -987,18 +1020,20 @@ defmodule Storyarn.Flows.SequenceCrud do
   def revert_sequence_track_fields(owner_id, track_key, fields)
       when is_integer(owner_id) and is_binary(track_key) and is_list(fields) do
     with {:ok, fields} <- normalize_override_fields(fields, SequenceTrack.property_fields()) do
-      Repo.transaction(fn ->
-        with {:ok, context} <- lock_composition_owner(owner_id),
-             {:ok, _inherited} <- inherited_audio_track(context.flow.id, context.node, track_key),
-             %SequenceTrack{is_override: true} = local <- lock_track_by_key(owner_id, track_key),
-             {:ok, result} <- revert_or_delete_track(local, fields) do
-          result
-        else
-          nil -> :inherited
-          %SequenceTrack{} -> Repo.rollback(:track_is_local_definition)
-          {:error, reason} -> Repo.rollback(reason)
-        end
-      end)
+      Repo.transaction(fn -> do_revert_sequence_track_fields(owner_id, track_key, fields) end)
+    end
+  end
+
+  defp do_revert_sequence_track_fields(owner_id, track_key, fields) do
+    with {:ok, context} <- lock_composition_owner(owner_id),
+         {:ok, _inherited} <- inherited_audio_track(context.flow.id, context.node, track_key),
+         %SequenceTrack{is_override: true} = local <- lock_track_by_key(owner_id, track_key),
+         {:ok, result} <- revert_or_delete_track(local, fields) do
+      result
+    else
+      nil -> :inherited
+      %SequenceTrack{} -> Repo.rollback(:track_is_local_definition)
+      {:error, reason} -> Repo.rollback(reason)
     end
   end
 
@@ -1427,12 +1462,24 @@ defmodule Storyarn.Flows.SequenceCrud do
   end
 
   defp normalize_override_fields(fields, allowed_fields) do
-    fields = fields |> Enum.map(&to_string/1) |> Enum.uniq() |> Enum.sort()
-    invalid = fields -- allowed_fields
+    if Enum.all?(fields, &(is_atom(&1) or is_binary(&1))) do
+      normalized_fields = Enum.map(fields, &to_string/1)
+      unique_fields = Enum.uniq(normalized_fields)
+      invalid = unique_fields -- allowed_fields
 
-    if invalid == [],
-      do: {:ok, fields},
-      else: {:error, {:invalid_override_fields, invalid}}
+      cond do
+        length(unique_fields) != length(normalized_fields) ->
+          {:error, {:invalid_override_fields, Enum.sort(normalized_fields)}}
+
+        invalid != [] ->
+          {:error, {:invalid_override_fields, Enum.sort(invalid)}}
+
+        true ->
+          {:ok, Enum.sort(normalized_fields)}
+      end
+    else
+      {:error, {:invalid_override_fields, fields}}
+    end
   end
 
   defp visual_layer_override_changeset(nil, inherited, owner_id, layer_key, attrs, fields) do

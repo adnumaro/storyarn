@@ -821,6 +821,20 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert resolved.property_sources["x"] == base.id
       assert resolved.property_sources["opacity"] == dialogue.id
 
+      assert {:error, {:invalid_override_fields, ["opacity", "opacity"]}} =
+               Flows.revert_sequence_visual_layer_fields(
+                 dialogue.id,
+                 base_layer.layer_key,
+                 [:opacity, "opacity"]
+               )
+
+      assert {:error, {:invalid_override_fields, [%{}]}} =
+               Flows.revert_sequence_visual_layer_fields(
+                 dialogue.id,
+                 base_layer.layer_key,
+                 [%{}]
+               )
+
       assert {:ok, :inherited} =
                Flows.revert_sequence_visual_layer_fields(
                  dialogue.id,
@@ -848,6 +862,96 @@ defmodule Storyarn.Flows.SequenceCrudTest do
                Flows.restore_sequence_visual_layer(dialogue.id, base_layer.layer_key)
 
       assert visual_layer!(composition_for(dialogue, flow.id), base_layer.layer_key)
+    end
+
+    test "normalizes a slot alias with the kind supplied by a visual override" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => asset.id
+        })
+
+      assert {:ok, patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "kind" => "prop",
+                 "slot" => "center"
+               })
+
+      assert patch.kind == "prop"
+      assert patch.slot == "middle-center"
+      assert patch.overridden_fields == ["kind", "slot"]
+    end
+
+    test "normalizes a slot alias with the inherited kind when a local patch does not override kind" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => asset.id
+        })
+
+      assert {:ok, initial_patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "opacity" => 0.4
+               })
+
+      assert initial_patch.kind == "character"
+      refute "kind" in initial_patch.overridden_fields
+
+      assert {:ok, _base_layer} =
+               Flows.update_sequence_visual_layer(base_layer, %{"kind" => "prop"})
+
+      assert {:ok, patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "slot" => "center"
+               })
+
+      assert patch.slot == "middle-center"
+
+      resolved = visual_layer!(composition_for(dialogue, flow.id), base_layer.layer_key)
+      assert resolved.item.kind == "prop"
+      assert resolved.item.slot == "middle-center"
+    end
+
+    test "normalizes a slot alias with a kind retained by the local visual override" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "prop",
+          "asset_id" => asset.id
+        })
+
+      assert {:ok, initial_patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "kind" => "character"
+               })
+
+      assert "kind" in initial_patch.overridden_fields
+
+      assert {:ok, patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "slot" => "center"
+               })
+
+      assert patch.kind == "character"
+      assert patch.slot == "bottom-center"
+
+      resolved = visual_layer!(composition_for(dialogue, flow.id), base_layer.layer_key)
+      assert resolved.item.kind == "character"
+      assert resolved.item.slot == "bottom-center"
     end
 
     test "overrides inherited track properties without replacing local same-kind definitions" do
@@ -887,6 +991,20 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert inherited_result.item.asset_id == inherited_asset.id
       assert Decimal.equal?(inherited_result.item.volume, Decimal.new("0.25"))
       assert inherited_result.asset_source_row_id == inherited_track.id
+
+      assert {:error, {:invalid_override_fields, ["volume", "volume"]}} =
+               Flows.revert_sequence_track_fields(
+                 dialogue.id,
+                 inherited_track.track_key,
+                 [:volume, "volume"]
+               )
+
+      assert {:error, {:invalid_override_fields, [%{}]}} =
+               Flows.revert_sequence_track_fields(
+                 dialogue.id,
+                 inherited_track.track_key,
+                 [%{}]
+               )
 
       assert {:ok, :cleared} = Flows.clear_sequence_track(dialogue.id, "music")
       assert Flows.get_sequence_track_by_key(dialogue.id, patch.track_key)

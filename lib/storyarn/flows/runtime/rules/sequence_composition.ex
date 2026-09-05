@@ -38,7 +38,12 @@ defmodule Storyarn.Flows.SequenceComposition do
 
   @doc "Composes the explicit source chain for the current player node."
   @spec compose(map(), map()) :: t()
-  def compose(state, nodes) when is_map(state) and is_map(nodes), do: compose_node(value(state, :current_node_id), nodes)
+  def compose(state, nodes) when is_map(state) and is_map(nodes) do
+    state
+    |> value(:current_node_id)
+    |> compose_node(nodes)
+    |> Map.update!(:visual_layers, &Enum.filter(&1, fn layer -> runtime_visible?(layer) end))
+  end
 
   def compose(_state, _nodes), do: empty()
 
@@ -77,6 +82,8 @@ defmodule Storyarn.Flows.SequenceComposition do
   def compose_node_with_removed(_node_or_id, _nodes), do: inspection_empty()
 
   defp empty, do: %{visual_layers: [], audio_tracks: [], diagnostics: []}
+
+  defp runtime_visible?(%{item: item}), do: value(item, :visible, true) != false
 
   defp inspection_empty do
     %{
@@ -190,7 +197,15 @@ defmodule Storyarn.Flows.SequenceComposition do
     tracks =
       by_key
       |> Map.values()
-      |> Enum.sort_by(&{&1.depth, track_kind_order(&1.item), value(&1.item, :position, 0), &1.sequence_id, &1.track_key})
+      |> Enum.sort_by(fn track ->
+        {
+          track.depth,
+          track_kind_order(track.item),
+          value(track.item, :position, 0),
+          track.sequence_id,
+          track.track_key
+        }
+      end)
 
     {active_tracks, removed_tracks} = Enum.split_with(tracks, &(not &1.removed))
 

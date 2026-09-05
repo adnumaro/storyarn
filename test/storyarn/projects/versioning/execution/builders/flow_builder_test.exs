@@ -312,8 +312,9 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           Map.put(node, "sequence_tracks", [])
         end)
 
-      assert {:error,
-              {:invalid_sequence_resource_inheritance, :sequence_track, middle_id, track_key, :missing_inherited_identity}} =
+      inheritance_error = :invalid_sequence_resource_inheritance
+
+      assert {:error, {^inheritance_error, :sequence_track, middle_id, track_key, :missing_inherited_identity}} =
                FlowBuilder.validate_portable_snapshot(without_track_base)
 
       assert middle_id == middle.id
@@ -350,8 +351,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           end)
         end)
 
-      assert {:error,
-              {:invalid_sequence_resource_inheritance, :sequence_track, root_id, ^track_key, :incomplete_local_definition}} =
+      assert {:error, {^inheritance_error, :sequence_track, root_id, ^track_key, :incomplete_local_definition}} =
                FlowBuilder.validate_portable_snapshot(incomplete_local_definition)
 
       assert root_id == root.id
@@ -363,8 +363,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           end)
         end)
 
-      assert {:error,
-              {:invalid_sequence_resource_inheritance, :sequence_track, ^root_id, ^track_key, :local_definition_tombstone}} =
+      assert {:error, {^inheritance_error, :sequence_track, ^root_id, ^track_key, :local_definition_tombstone}} =
                FlowBuilder.validate_portable_snapshot(local_tombstone)
     end
 

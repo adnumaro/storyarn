@@ -522,8 +522,9 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
           end)
         end)
 
-      assert {:error,
-              {:invalid_sequence_resource_inheritance, :sequence_track, first_id, track_key, :incomplete_local_definition}} =
+      inheritance_error = :invalid_sequence_resource_inheritance
+
+      assert {:error, {^inheritance_error, :sequence_track, first_id, track_key, :incomplete_local_definition}} =
                FlowSnapshotValidator.validate(incomplete_definition, flow.id)
 
       assert first_id == first.id

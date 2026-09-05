@@ -3,7 +3,7 @@ defmodule Storyarn.Flows.SequenceCompositionTest do
 
   alias Storyarn.Flows
 
-  test "composes all non-removed visual layers in deterministic depth and z order" do
+  test "composes visible non-removed visual layers in deterministic depth and z order for the player" do
     nodes = %{
       1 => sequence(1, nil, [layer(11, 20), layer(12, 10), layer(13, 0, false)], []),
       2 => sequence(2, 1, [layer(21, -10)], []),
@@ -13,13 +13,29 @@ defmodule Storyarn.Flows.SequenceCompositionTest do
     assert %{visual_layers: layers} = Flows.compose_player_sequences(%{current_node_id: 3}, nodes)
 
     assert Enum.map(layers, &{&1.item.id, &1.sequence_id, &1.depth}) == [
-             {13, 1, 0},
              {12, 1, 0},
              {11, 1, 0},
              {21, 2, 1}
            ]
 
-    refute Enum.find(layers, &(&1.item.id == 13)).item.visible
+    refute Enum.any?(layers, &(&1.item.id == 13))
+  end
+
+  test "retains invisible visual layers when composing a node for editor inspection" do
+    nodes = %{
+      1 => sequence(1, nil, [layer(13, 0, false)], []),
+      2 => %{id: 2, type: "dialogue", parent_id: 1}
+    }
+
+    assert %{visual_layers: editable_layers} = Flows.compose_node_sequences(2, nodes)
+
+    assert %{item: %{id: 13, visible: false}} =
+             Enum.find(editable_layers, &(&1.item.id == 13))
+
+    assert %{visual_layers: inspectable_layers} = Flows.inspect_node_sequences(2, nodes)
+
+    assert %{item: %{id: 13, visible: false}} =
+             Enum.find(inspectable_layers, &(&1.item.id == 13))
   end
 
   test "orders audio within each active sequence and keeps ancestors first" do

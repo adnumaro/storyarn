@@ -335,7 +335,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
 
   # Frozen immediately before the capability reorganization. These hashes
   # cover semantic signatures, docs/defaults, public types, and specs.
-  @docs_digest "TO_BE_RECALCULATED"
+  @docs_digest "a6226da4f7e88c05249be9316d7f681768723a125b0cdfebf65ccd8e5b4f5ec1"
   @types_digest "185b2bf999eed11bd7b86968d880d33cccdc414a7f9f5b23921412d98bc03805"
   @specs_digest "c01ed8ba241c0ab1a5717cc1ca8f1147a6f0fa96b86bcabf26c07e4fc9937e02"
 

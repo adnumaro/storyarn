@@ -148,10 +148,23 @@ defmodule Storyarn.Flows.PlayerSession do
   @doc "Returns whether a snapshot can restore a renderable player node."
   @spec can_go_back?(t()) :: boolean()
   def can_go_back?(%__MODULE__{} = session) do
-    Enum.any?(session.state.snapshots, fn snapshot ->
-      previous_position?(session, snapshot) and renderable_snapshot?(session, snapshot)
-    end)
+    session.state.snapshots
+    |> Enum.reduce_while(%{}, &reduce_back_snapshot(&1, &2, session))
+    |> Kernel.==(:renderable)
   end
+
+  defp reduce_back_snapshot(snapshot, runtime_cache, session) do
+    if previous_position?(session, snapshot) do
+      session
+      |> renderable_snapshot?(snapshot, runtime_cache)
+      |> continue_back_search()
+    else
+      {:cont, runtime_cache}
+    end
+  end
+
+  defp continue_back_search({true, _runtime_cache}), do: {:halt, :renderable}
+  defp continue_back_search({false, runtime_cache}), do: {:cont, runtime_cache}
 
   defp load_session(%Flow{} = flow, variables) do
     graph = RuntimeGraph.load(flow.id)
@@ -325,7 +338,7 @@ defmodule Storyarn.Flows.PlayerSession do
            nodes: nodes,
            connections: connections,
            flow: flow,
-           scene_id: SceneResolver.resolve_scene_id(flow)
+           scene_id: restored_scene_id(session, state, flow)
          }}
 
       :error ->
@@ -333,12 +346,54 @@ defmodule Storyarn.Flows.PlayerSession do
     end
   end
 
-  defp renderable_snapshot?(session, snapshot) do
-    flow_id = snapshot.current_flow_id || session.flow.id
+  defp restored_scene_id(%__MODULE__{flow: %{id: flow_id}, scene_id: scene_id}, _state, %{id: flow_id}), do: scene_id
 
-    case runtime_for_flow(session, snapshot, flow_id) do
-      {:ok, %{nodes: nodes}} -> renderable_node?(Map.get(nodes, snapshot.node_id))
-      :error -> false
+  defp restored_scene_id(session, state, flow) do
+    caller_scene_id =
+      state
+      |> Map.get(:call_stack, [])
+      |> Enum.reverse()
+      |> Enum.reduce(nil, &resolve_frame_scene_id(session, &1, &2))
+
+    SceneResolver.resolve_scene_id(flow, caller_scene_id: caller_scene_id)
+  end
+
+  defp resolve_frame_scene_id(
+         %__MODULE__{flow: %{id: flow_id}, scene_id: scene_id},
+         %{flow_id: flow_id},
+         _caller_scene_id
+       ), do: scene_id
+
+  defp resolve_frame_scene_id(session, %{flow_id: flow_id}, caller_scene_id) do
+    case Editor.get_flow_brief(session.flow.project_id, flow_id) do
+      %Flow{} = flow -> SceneResolver.resolve_scene_id(flow, caller_scene_id: caller_scene_id)
+      nil -> caller_scene_id
+    end
+  end
+
+  defp resolve_frame_scene_id(_session, _frame, caller_scene_id), do: caller_scene_id
+
+  defp renderable_snapshot?(session, snapshot, runtime_cache) do
+    flow_id = snapshot.current_flow_id || session.flow.id
+    {runtime, runtime_cache} = cached_runtime_for_flow(session, snapshot, flow_id, runtime_cache)
+
+    renderable? =
+      case runtime do
+        {:ok, %{nodes: nodes}} -> renderable_node?(Map.get(nodes, snapshot.node_id))
+        :error -> false
+      end
+
+    {renderable?, runtime_cache}
+  end
+
+  defp cached_runtime_for_flow(session, snapshot, flow_id, runtime_cache) do
+    case Map.fetch(runtime_cache, flow_id) do
+      {:ok, runtime} ->
+        {runtime, runtime_cache}
+
+      :error ->
+        runtime = runtime_for_flow(session, snapshot, flow_id)
+        {runtime, Map.put(runtime_cache, flow_id, runtime)}
     end
   end
 
