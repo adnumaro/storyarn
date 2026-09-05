@@ -15,6 +15,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
 
   @doc """
   Single canonical path for all node data updates.
@@ -62,6 +63,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
             connections_changed?
           )
           |> maybe_refresh_dialogue_panel(updated_node)
+          |> maybe_refresh_sequence_stage(updated_node)
 
         # Broadcast node data change to other users
         socket =
@@ -318,6 +320,25 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
     |> Flows.serialize_editor_node(project_id)
     |> Map.fetch!(:data)
   end
+
+  defp maybe_refresh_sequence_stage(socket, %{type: type, id: node_id}) when type in ["sequence", "dialogue"] do
+    graph = Flows.load_runtime_graph(socket.assigns.flow.id)
+    speakers_map = FormHelpers.player_speakers_map(socket.assigns.all_sheets)
+
+    assign(
+      socket,
+      :sequence_stage,
+      SequencePresentation.stage(
+        node_id,
+        graph.nodes,
+        speakers_map,
+        socket.assigns.project.id,
+        nil
+      )
+    )
+  end
+
+  defp maybe_refresh_sequence_stage(socket, _node), do: socket
 
   # Pushes a full flow update for graph-wide mutations, otherwise a single node update.
   defp push_node_or_flow_update(socket, _node, renamed_count, _connections_changed?) when renamed_count > 0 do

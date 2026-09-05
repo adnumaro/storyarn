@@ -470,6 +470,57 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       assert html
     end
 
+    test "recomposes the selected dialogue stage on a remote node_updated", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Remote dialogue stage"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p>Before remote edit</p>", "responses" => []}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      load_flow(view)
+      render_click(view, "node_selected", %{"id" => dialogue.id})
+
+      {:ok, _updated_dialogue, _meta} =
+        Storyarn.Flows.update_node_data(
+          dialogue,
+          Map.put(dialogue.data, "text", "<p>After remote edit</p>")
+        )
+
+      other_user = user_fixture()
+
+      send(
+        view.pid,
+        {:remote_change, :node_updated,
+         %{
+           user_id: other_user.id,
+           user_email: other_user.email,
+           user_color: "#00ff00",
+           node_id: dialogue.id,
+           node_data: %{"text" => "<p>After remote edit</p>"}
+         }}
+      )
+
+      stage =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["stage"])
+
+      assert stage["owner"]["nodeId"] == dialogue.id
+      assert stage["intervention"]["text"] == "<p>After remote edit</p>"
+    end
+
     test "handles node_added from another user", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project, %{name: "Test Flow"})

@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Helpers.HealthHelpers
   alias StoryarnWeb.FlowLive.Helpers.NavigationHistory
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Nodes.Condition
@@ -205,6 +206,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:node_form, nil)
       |> assign(:editing_mode, nil)
       |> assign(:sequence_panel_data, nil)
+      |> assign(:sequence_stage, SequencePresentation.empty_stage())
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
       |> assign(:debug_active_tab, "console")
@@ -591,10 +593,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     {:noreply, assign(socket, :editing_mode, :toolbar)}
   end
 
-  def handle_event("open_sequence_config", _params, socket) do
-    Authorize.with_authorization(socket, :edit_content, fn current ->
-      GenericNodeHandlers.handle_open_sequence_config(CommentHandlers.close(current))
-    end)
+  def handle_event("open_sequence_config", params, socket) do
+    GenericNodeHandlers.handle_open_sequence_config(params, CommentHandlers.close(socket))
   end
 
   def handle_event("close_sequence_config", _params, socket) do
@@ -675,6 +675,42 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("clear_sequence_track", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_clear_sequence_track(params, socket)
+    end)
+  end
+
+  def handle_event("set_composition_source", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_set_composition_source(params, socket)
+    end)
+  end
+
+  def handle_event("override_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_override_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("revert_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_revert_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("remove_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_remove_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("restore_sequence_visual_layer", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_restore_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("restore_sequence_composition", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn _socket ->
+      GenericNodeHandlers.handle_restore_sequence_composition(params, socket)
     end)
   end
 
@@ -1317,6 +1353,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
       |> assign(:sequence_panel_data, nil)
+      |> assign(:sequence_stage, SequencePresentation.empty_stage())
       |> assign(:node_select_loading, false)
       |> assign(:referencing_jumps, [])
       |> assign(:available_flows, [])
@@ -1436,7 +1473,13 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:load_node_select_data, node}, socket) do
     case socket.assigns[:selected_node] do
       %{id: selected_id} when selected_id == node.id ->
-        socket = NodeTypeRegistry.on_select(node.type, node, socket)
+        sequence_stage = load_sequence_stage(socket, node)
+
+        socket =
+          node.type
+          |> NodeTypeRegistry.on_select(node, socket)
+          |> assign(:sequence_stage, sequence_stage)
+
         {:noreply, assign(socket, :node_select_loading, false)}
 
       _stale_selection ->
@@ -1444,7 +1487,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     end
   end
 
-  def handle_info({:node_updated, updated_node}, socket), do: EditorInfoHandlers.handle_node_updated(updated_node, socket)
+  def handle_info({:node_updated, updated_node}, socket) do
+    {:noreply, socket} = EditorInfoHandlers.handle_node_updated(updated_node, socket)
+    {:noreply, assign(socket, :sequence_stage, load_sequence_stage(socket, updated_node))}
+  end
 
   def handle_info({:mention_suggestions, query, component_cid}, socket),
     do: EditorInfoHandlers.handle_mention_suggestions(query, component_cid, socket)
@@ -1565,8 +1611,27 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp flow_surface_props(assigns) do
     %{
       canvas: flow_surface_canvas(assigns),
-      dock: flow_surface_dock(assigns)
+      dock: flow_surface_dock(assigns),
+      stage: assigns.sequence_stage
     }
+  end
+
+  defp load_sequence_stage(socket, %{type: type, id: node_id}) when type in ["sequence", "dialogue"] do
+    graph = Flows.load_runtime_graph(socket.assigns.flow.id)
+
+    SequencePresentation.stage(
+      node_id,
+      graph.nodes,
+      sequence_speakers_map(socket.assigns),
+      socket.assigns.project.id,
+      nil
+    )
+  end
+
+  defp load_sequence_stage(_socket, _node), do: SequencePresentation.empty_stage()
+
+  defp sequence_speakers_map(assigns) do
+    FormHelpers.player_speakers_map(assigns.all_sheets)
   end
 
   defp flow_panels_props(assigns) do
@@ -1700,7 +1765,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     }
   end
 
-  defp sequence_config_open?(:sequence_config, %{type: "sequence"}), do: true
+  defp sequence_config_open?(:sequence_config, %{type: type}) when type in ["sequence", "dialogue"], do: true
   defp sequence_config_open?(_, _), do: false
 
   defp sequence_wrap_attrs(params) do

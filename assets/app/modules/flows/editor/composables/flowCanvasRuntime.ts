@@ -18,6 +18,7 @@ import type {
 import type { KeyboardHandler } from "../services/keyboard";
 import type { LodController } from "../services/lod";
 import type { NavigationHandler } from "../services/navigation";
+import { HistoryCommandQueue } from "../services/historyPreset";
 import type { FlowCanvasOpts, SequenceGeometryPatch, ToolbarState } from "./flowCanvasTypes";
 
 export interface FlowCanvasRuntimeCallbacks {
@@ -42,6 +43,7 @@ export interface FlowCanvasRuntime {
   area: AreaPlugin<FlowSchemes, FlowAreaExtra> | null;
   connection: ConnectionPlugin<FlowSchemes> | null;
   history: HistoryPlugin<FlowSchemes> | null;
+  historyCommands: HistoryCommandQueue;
   minimap: MinimapPlugin<FlowSchemes> | null;
   marqueeTeardown: (() => void) | null;
   placementTeardown: (() => void) | null;
@@ -97,6 +99,7 @@ export function createFlowCanvasRuntime(
     area: null,
     connection: null,
     history: null,
+    historyCommands: null as unknown as HistoryCommandQueue,
     minimap: null,
     marqueeTeardown: null,
     placementTeardown: null,
@@ -215,6 +218,15 @@ export function createFlowCanvasRuntime(
     exitLoadingFromServer() {
       runtime.loadingFromServerCount = Math.max(0, runtime.loadingFromServerCount - 1);
     },
+    undoHistory() {
+      void runtime.historyCommands.undo();
+    },
+    redoHistory() {
+      void runtime.historyCommands.redo();
+    },
+    invalidateHistory() {
+      void runtime.historyCommands.invalidate();
+    },
     performAutoLayout: callbacks.performAutoLayout,
     _sheetsMap: {},
     _hubsMap: {},
@@ -240,6 +252,7 @@ export function createFlowCanvasRuntime(
   } as HookProxy;
 
   runtime.hookProxy = hookProxy;
+  runtime.historyCommands = new HistoryCommandQueue(() => runtime.history);
 
   return runtime;
 }

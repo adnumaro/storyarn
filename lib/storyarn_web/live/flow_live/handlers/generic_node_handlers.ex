@@ -22,10 +22,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
   alias StoryarnWeb.FlowLive.NodeTypeRegistry
   alias StoryarnWeb.FlowLive.PickerSearch
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
-  alias StoryarnWeb.PrivateMedia
 
   # Notify the sticky FlowSidebarLive that the flows tree may have changed
   # (flow rename / shortcut change). Show itself no longer owns :flows_tree.
@@ -192,7 +192,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:subflow_exits, [])
      |> assign(:referencing_jumps, [])
      |> assign(:referencing_flows, [])
-     |> assign(:sequence_panel_data, nil)}
+     |> assign(:sequence_panel_data, nil)
+     |> assign(:sequence_stage, SequencePresentation.empty_stage())}
   end
 
   @doc """
@@ -206,7 +207,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
           {:noreply, Socket.t()}
   def handle_open_sequence_config(socket) do
     case socket.assigns.selected_node do
-      %{type: "sequence"} = node ->
+      %{type: type} = node when type in ["sequence", "dialogue"] ->
         {:noreply,
          socket
          |> assign(:editing_mode, :sequence_config)
@@ -217,30 +218,159 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @doc "Opens the composition inspector for an explicit stage owner."
+  @spec handle_open_sequence_config(map(), Socket.t()) :: {:noreply, Socket.t()}
+  def handle_open_sequence_config(%{"id" => node_id}, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: type} = owner <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
+         {:noreply, selected_socket} <- handle_node_selected(%{"id" => parsed_id}, socket) do
+      {:noreply,
+       selected_socket
+       |> assign(:editing_mode, :sequence_config)
+       |> assign(:sequence_panel_data, build_sequence_panel_data(selected_socket, owner))}
+    else
+      _invalid -> {:noreply, socket}
+    end
+  end
+
+  def handle_open_sequence_config(_params, socket), do: handle_open_sequence_config(socket)
+
   @doc """
   Builds the sequence config panel payload (config + tracks + assets).
   Public so collaboration handlers can refresh remote panels in-place.
   """
   @spec build_sequence_panel_data(Socket.t(), map()) :: map() | nil
-  def build_sequence_panel_data(_socket, %{type: type}) when type != "sequence", do: nil
+  def build_sequence_panel_data(_socket, %{type: type}) when type not in ["sequence", "dialogue"], do: nil
 
-  def build_sequence_panel_data(socket, %{type: "sequence", id: seq_id}) do
+  def build_sequence_panel_data(socket, %{type: owner_type, id: owner_id} = owner) do
     project_id = socket.assigns.project.id
-    config = Flows.get_sequence_config(seq_id)
-    visual_layers = Flows.list_sequence_visual_layers(seq_id)
-    tracks = Flows.list_sequence_tracks(seq_id)
-    image_asset_ids = selected_asset_ids(visual_layers)
+    graph = Flows.load_runtime_graph(socket.assigns.flow.id)
+    composition = Flows.inspect_node_sequences(owner_id, graph.nodes)
+    local_visual_layers = Flows.list_sequence_visual_layers(owner_id)
+    visual_layers = effective_visual_layers(composition, owner_id, local_visual_layers)
+    removed_visual_layers = removed_visual_layers(composition, owner_id, local_visual_layers)
+    tracks = Flows.list_sequence_tracks(owner_id)
+
+    image_asset_ids =
+      selected_asset_ids(local_visual_layers) ++ selected_serialized_asset_ids(visual_layers)
+
     audio_asset_ids = selected_asset_ids(tracks)
 
     %{
-      sequence_id: seq_id,
-      config: serialize_sequence_config(config),
-      visual_layers: Enum.map(visual_layers, &serialize_sequence_visual_layer/1),
+      sequence_id: owner_id,
+      owner_id: owner_id,
+      owner_type: owner_type,
+      composition_source_id: owner.composition_source_id,
+      composition_sources: composition_source_options(graph.nodes, owner_id),
+      config: sequence_config(owner_type, owner_id),
+      visual_layers: visual_layers,
+      removed_visual_layers: removed_visual_layers,
       tracks: Enum.map(tracks, &serialize_sequence_track/1),
-      image_assets: PickerSearch.initial_asset_options(project_id, "image", image_asset_ids),
-      audio_assets: PickerSearch.initial_asset_options(project_id, "audio", audio_asset_ids)
+      diagnostics: SequencePresentation.diagnostics(composition),
+      image_assets: PickerSearch.initial_asset_options(project_id, "image", Enum.uniq(image_asset_ids)),
+      audio_assets: PickerSearch.initial_asset_options(project_id, "audio", Enum.uniq(audio_asset_ids))
     }
   end
+
+  defp sequence_config("sequence", owner_id), do: owner_id |> Flows.get_sequence_config() |> serialize_sequence_config()
+
+  defp sequence_config(_owner_type, _owner_id), do: nil
+
+  defp effective_visual_layers(composition, owner_id, local_layers) do
+    local_by_key = Map.new(local_layers, &{&1.layer_key, &1})
+
+    composition
+    |> SequencePresentation.inspectable_visual_layers(owner_id)
+    |> Enum.map(fn layer ->
+      local = Map.get(local_by_key, layer.key)
+
+      Map.merge(layer, %{
+        local_row_id: local && local.id,
+        overridden_fields: (local && local.overridden_fields) || [],
+        inherited: is_nil(local) or layer.origin.inherited
+      })
+    end)
+  end
+
+  defp removed_visual_layers(composition, owner_id, local_layers) do
+    local_by_key = Map.new(local_layers, &{&1.layer_key, &1})
+
+    composition
+    |> SequencePresentation.inspectable_removed_visual_layers(owner_id)
+    |> Enum.map(fn layer ->
+      local = Map.get(local_by_key, layer.key)
+
+      Map.merge(layer, %{
+        local_row_id: local && local.id,
+        overridden_fields: (local && local.overridden_fields) || [],
+        inherited: is_nil(local)
+      })
+    end)
+  end
+
+  defp composition_source_options(nodes, owner_id) do
+    nodes
+    |> Map.values()
+    |> Enum.filter(fn node ->
+      Map.get(node, :type) in ["sequence", "dialogue"] and
+        node.id != owner_id and
+        valid_composition_source_option?(node, owner_id, nodes)
+    end)
+    |> Enum.map(fn node ->
+      %{id: node.id, type: node.type, label: composition_source_label(node)}
+    end)
+    |> Enum.sort_by(&{&1.type, String.downcase(&1.label), &1.id})
+  end
+
+  defp valid_composition_source_option?(node, owner_id, nodes) do
+    composition_source_option_chain_valid?(
+      Map.get(node, :composition_source_id),
+      owner_id,
+      nodes,
+      MapSet.new([node.id])
+    )
+  end
+
+  defp composition_source_option_chain_valid?(nil, _owner_id, _nodes, _visited), do: true
+  defp composition_source_option_chain_valid?(owner_id, owner_id, _nodes, _visited), do: false
+
+  defp composition_source_option_chain_valid?(source_id, owner_id, nodes, visited) do
+    if MapSet.member?(visited, source_id) do
+      false
+    else
+      case Map.get(nodes, source_id) do
+        %{type: type} = source when type in ["sequence", "dialogue"] ->
+          composition_source_option_chain_valid?(
+            Map.get(source, :composition_source_id),
+            owner_id,
+            nodes,
+            MapSet.put(visited, source_id)
+          )
+
+        _missing_or_invalid ->
+          false
+      end
+    end
+  end
+
+  defp composition_source_label(%{type: "sequence", sequence_config: config, id: id}) do
+    if config && present_string?(config.name), do: config.name, else: "Sequence ##{id}"
+  end
+
+  defp composition_source_label(%{type: "dialogue", data: data, id: id}) do
+    technical_id = data["technical_id"]
+    text = data["text"] |> to_string() |> String.replace(~r/<[^>]*>/, "") |> String.trim()
+
+    cond do
+      present_string?(technical_id) -> technical_id
+      present_string?(text) -> String.slice(text, 0, 60)
+      true -> "Dialogue ##{id}"
+    end
+  end
+
+  defp present_string?(value), do: is_binary(value) and String.trim(value) != ""
 
   defp serialize_sequence_config(nil), do: nil
 
@@ -249,27 +379,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       name: cfg.name,
       width: cfg.width,
       height: cfg.height
-    }
-  end
-
-  defp serialize_sequence_visual_layer(%{} = layer) do
-    %{
-      id: layer.id,
-      kind: layer.kind,
-      label: layer.label,
-      asset_id: layer.asset_id,
-      url: PrivateMedia.asset_url(layer.asset),
-      z_index: layer.z_index,
-      slot: layer.slot,
-      x: layer.x,
-      y: layer.y,
-      width: layer.width,
-      height: layer.height,
-      anchor_x: layer.anchor_x,
-      anchor_y: layer.anchor_y,
-      fit: layer.fit,
-      opacity: layer.opacity,
-      visible: layer.visible
     }
   end
 
@@ -282,13 +391,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   defp decimal_to_float(nil), do: nil
-  defp decimal_to_float(%Decimal{} = d), do: Decimal.to_float(d)
+  defp decimal_to_float(%Decimal{} = value), do: Decimal.to_float(value)
 
   defp selected_asset_ids(records) do
     records
     |> Enum.map(&Map.get(&1, :asset_id))
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
+  end
+
+  defp selected_serialized_asset_ids(records) do
+    records
+    |> Enum.map(&(Map.get(&1, :asset_id) || Map.get(&1, "asset_id")))
+    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
@@ -444,7 +559,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
      |> assign(:selected_node, nil)
      |> assign(:node_form, nil)
      |> assign(:editing_mode, nil)
-     |> assign(:sequence_panel_data, nil)}
+     |> assign(:sequence_panel_data, nil)
+     |> assign(:sequence_stage, SequencePresentation.empty_stage())}
   end
 
   @spec handle_batch_update_positions(map(), Socket.t()) ::
@@ -602,7 +718,10 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
-         {:ok, updated} <- Flows.update_sequence(seq, %{"name" => trimmed}) do
+         {:ok, %{result: updated} = history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.update_sequence(seq, %{"name" => trimmed})
+           end) do
       # Keep `node_id` as the integer the client's `nodeMap` uses as key —
       # pushing a stringified id (the shape we receive from pushEvent) would
       # miss the lookup on `handleSequenceRenamed` and leave the local
@@ -616,6 +735,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "sequence-name")
        |> CollaborationHelpers.push_remote_change_event(:sequence_renamed, payload)
        |> CollaborationHelpers.broadcast_change(:sequence_renamed, payload)}
     else
@@ -636,13 +756,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
          attrs = extract_sequence_config_attrs(params),
-         {:ok, updated} <- Flows.update_sequence(seq, attrs) do
+         {:ok, %{result: updated} = history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.update_sequence(seq, attrs)
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, updated))
+       |> record_sequence_history(parsed_id, history, "sequence-config")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_config_updated, %{
          sequence_id: parsed_id,
+         name: updated.sequence_config.name,
          position_x: updated.position_x,
          position_y: updated.position_y,
          width: updated.sequence_config.width,
@@ -691,23 +816,28 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def handle_create_sequence_visual_layer(%{"id" => node_id} = params, socket) do
     with {:ok, parsed_id} <- parse_optional_int(node_id),
          true <- is_integer(parsed_id),
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, _layer} <-
-           Flows.create_editor_sequence_visual_layer(
-             socket.assigns.current_scope,
-             socket.assigns.flow,
-             parsed_id,
-             attrs
-           ) do
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.create_editor_sequence_visual_layer(
+               socket.assigns.current_scope,
+               socket.assigns.flow,
+               parsed_id,
+               attrs
+             )
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> record_sequence_history(parsed_id, history, "visual-layer-create")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
          sequence_id: parsed_id
        })}
     else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
       _ -> {:noreply, socket}
     end
   end
@@ -720,21 +850,25 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
          true <- is_integer(parsed_layer_id),
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
          layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
          attrs = visual_layer_attrs_from_params(params),
-         {:ok, _layer} <-
-           Flows.update_editor_sequence_visual_layer(
-             socket.assigns.current_scope,
-             socket.assigns.flow,
-             parsed_id,
-             layer,
-             attrs
-           ) do
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.update_editor_sequence_visual_layer(
+               socket.assigns.current_scope,
+               socket.assigns.flow,
+               parsed_id,
+               layer,
+               attrs
+             )
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> record_sequence_history(parsed_id, history, "visual-layer-#{parsed_layer_id}")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
          sequence_id: parsed_id
        })}
@@ -751,17 +885,23 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
          true <- is_integer(parsed_id),
          {:ok, parsed_layer_id} <- parse_optional_int(layer_id),
          true <- is_integer(parsed_layer_id),
-         %{type: "sequence"} = seq <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
          layer when not is_nil(layer) <- Flows.get_sequence_visual_layer(parsed_id, parsed_layer_id),
-         {:ok, _layer} <- Flows.delete_sequence_visual_layer(layer) do
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.delete_sequence_visual_layer(layer)
+           end) do
       {:noreply,
        socket
        |> mark_saved()
-       |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
+       |> record_sequence_history(parsed_id, history, "visual-layer-#{parsed_layer_id}")
+       |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
          sequence_id: parsed_id
        })}
     else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
       _ -> {:noreply, socket}
     end
   end
@@ -865,6 +1005,234 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     end
   end
 
+  @doc "Changes the explicit composition source of a sequence or dialogue."
+  def handle_set_composition_source(%{"id" => node_id} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         %{type: type} <- Flows.get_node(socket.assigns.flow.id, parsed_id),
+         true <- type in ["sequence", "dialogue"],
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.set_composition_source(parsed_id, params["source_id"])
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "composition-source")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{})}
+    else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Overrides selected properties of an effective visual layer."
+  def handle_override_sequence_visual_layer(%{"id" => node_id, "layer_key" => layer_key} = params, socket) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(layer_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         attrs = visual_layer_attrs_from_params(params),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.override_sequence_visual_layer(parsed_id, layer_key, attrs)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "visual-layer-#{layer_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
+         layer_key: layer_key
+       })}
+    else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Returns selected visual-layer properties to inheritance."
+  def handle_revert_sequence_visual_layer(%{"id" => node_id, "layer_key" => layer_key, "fields" => fields}, socket)
+      when is_list(fields) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(layer_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             Flows.revert_sequence_visual_layer_fields(parsed_id, layer_key, fields)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "visual-layer-#{layer_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
+         layer_key: layer_key
+       })}
+    else
+      _ -> {:noreply, socket}
+    end
+  end
+
+  @doc "Removes an effective visual layer for this composition owner."
+  def handle_remove_sequence_visual_layer(%{"id" => node_id, "layer_key" => layer_key}, socket) do
+    mutate_visual_layer_presence(socket, node_id, layer_key, :remove)
+  end
+
+  @doc "Restores a locally removed visual layer."
+  def handle_restore_sequence_visual_layer(%{"id" => node_id, "layer_key" => layer_key}, socket) do
+    mutate_visual_layer_presence(socket, node_id, layer_key, :restore)
+  end
+
+  defp mutate_visual_layer_presence(socket, node_id, layer_key, action) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- is_binary(layer_key),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         {:ok, history} <-
+           Flows.transact_sequence_composition(parsed_id, fn ->
+             mutate_visual_layer_presence(action, parsed_id, layer_key)
+           end) do
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> record_sequence_history(parsed_id, history, "visual-layer-#{layer_key}")
+       |> refresh_sequence_editor(parsed_id)
+       |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
+         layer_key: layer_key
+       })}
+    else
+      {:error, :composition_dependency_conflict} -> composition_dependency_error(socket)
+      _ -> {:noreply, socket}
+    end
+  end
+
+  defp mutate_visual_layer_presence(:remove, owner_id, layer_key),
+    do: Flows.remove_sequence_visual_layer(owner_id, layer_key)
+
+  defp mutate_visual_layer_presence(:restore, owner_id, layer_key),
+    do: Flows.restore_sequence_visual_layer(owner_id, layer_key)
+
+  defp record_sequence_history(socket, owner_id, %{previous: previous_snapshot, current: current_snapshot}, history_key) do
+    if current_snapshot == previous_snapshot do
+      socket
+    else
+      push_event(socket, "sequence_composition_changed", %{
+        owner_id: owner_id,
+        history_key: history_key,
+        previous: previous_snapshot,
+        current: current_snapshot
+      })
+    end
+  end
+
+  @doc "Restores an editor history snapshot without recording a new history action."
+  def handle_restore_sequence_composition(
+        %{"id" => node_id, "snapshot" => snapshot, "expected_current" => expected_current},
+        socket
+      )
+      when is_map(snapshot) and is_map(expected_current) do
+    with {:ok, parsed_id} <- parse_optional_int(node_id),
+         true <- is_integer(parsed_id),
+         true <- composition_owner_in_current_flow?(socket, parsed_id),
+         {:ok, restored} <-
+           Flows.restore_sequence_composition(parsed_id, snapshot, expected_current) do
+      config = restored["config"] || %{}
+
+      payload = %{
+        sequence_id: parsed_id,
+        name: config["name"],
+        position_x: restored["position_x"],
+        position_y: restored["position_y"],
+        width: config["width"],
+        height: config["height"]
+      }
+
+      {:noreply,
+       socket
+       |> mark_saved()
+       |> refresh_sequence_editor(parsed_id)
+       |> CollaborationHelpers.push_remote_change_event(:sequence_config_updated, payload)
+       |> CollaborationHelpers.broadcast_change(:sequence_config_updated, payload)}
+    else
+      _invalid ->
+        invalidate_sequence_composition_history(socket)
+    end
+  end
+
+  def handle_restore_sequence_composition(_params, socket), do: invalidate_sequence_composition_history(socket)
+
+  defp invalidate_sequence_composition_history(socket) do
+    {:noreply, push_event(socket, "sequence_composition_history_invalidated", %{})}
+  end
+
+  @doc false
+  def refresh_sequence_editor(socket, owner_id) do
+    case Flows.get_node(socket.assigns.flow.id, owner_id) do
+      %{type: type} = owner when type in ["sequence", "dialogue"] ->
+        graph = Flows.load_runtime_graph(socket.assigns.flow.id)
+        speakers_map = FormHelpers.player_speakers_map(socket.assigns.all_sheets)
+
+        maybe_refresh_selected_sequence_surfaces(socket, owner, graph, speakers_map)
+
+      _other ->
+        socket
+    end
+  end
+
+  defp composition_owner_in_current_flow?(socket, owner_id) do
+    match?(
+      %{type: type} when type in ["sequence", "dialogue"],
+      Flows.get_node(socket.assigns.flow.id, owner_id)
+    )
+  end
+
+  defp maybe_refresh_selected_owner(socket, %{id: owner_id} = owner) do
+    case socket.assigns[:selected_node] do
+      %{id: ^owner_id} -> assign(socket, :selected_node, owner)
+      _other -> socket
+    end
+  end
+
+  defp maybe_refresh_selected_sequence_surfaces(
+         %{assigns: %{selected_node: %{id: owner_id}}} = socket,
+         %{id: owner_id} = owner,
+         graph,
+         speakers_map
+       ) do
+    socket
+    |> maybe_refresh_selected_owner(owner)
+    |> assign(
+      :sequence_stage,
+      SequencePresentation.stage(
+        owner.id,
+        graph.nodes,
+        speakers_map,
+        socket.assigns.project.id,
+        nil
+      )
+    )
+    |> maybe_refresh_sequence_panel(owner)
+  end
+
+  defp maybe_refresh_selected_sequence_surfaces(socket, _owner, _graph, _speakers_map), do: socket
+
+  defp maybe_refresh_sequence_panel(socket, owner) do
+    if socket.assigns[:editing_mode] == :sequence_config,
+      do: assign(socket, :sequence_panel_data, build_sequence_panel_data(socket, owner)),
+      else: socket
+  end
+
+  defp broadcast_composition_change(socket, action, owner_id, payload) do
+    CollaborationHelpers.broadcast_change(
+      socket,
+      action,
+      Map.merge(%{sequence_id: owner_id}, payload)
+    )
+  end
+
   # Accepts nil, integer, or a string that parses cleanly to an integer.
   # Anything else returns :error so the handler can no-op.
   defp parse_optional_int(nil), do: {:ok, nil}
@@ -936,6 +1304,18 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   # Private helpers
+
+  defp composition_dependency_error(socket) do
+    {:noreply,
+     put_flash(
+       socket,
+       :error,
+       dgettext(
+         "flows",
+         "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+       )
+     )}
+  end
 
   defp format_shortcut_error(%Ecto.Changeset{} = changeset) do
     case changeset.errors[:shortcut] do

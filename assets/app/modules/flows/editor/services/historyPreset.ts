@@ -22,11 +22,71 @@ import type { FlowSchemes, FlowAreaExtra, FlowConnection } from "../lib/rete-sch
  * the editor-handlers factory that consumes it.
  */
 export interface HistoryHookProxy {
-  pushEvent(event: string, payload: Record<string, unknown>): void;
+  pushEvent(
+    event: string,
+    payload: Record<string, unknown>,
+    callback?: (reply: Record<string, unknown>) => void,
+    onError?: (error: unknown) => void,
+  ): void;
   isLoadingFromServer: boolean;
   _historyTriggeredDelete?: string | number | null;
   enterLoadingFromServer(): void;
   exitLoadingFromServer(): void;
+  invalidateHistory(): void;
+}
+
+interface HistoryCommandTarget {
+  undo(): Promise<void>;
+  redo(): Promise<void>;
+  clear(): void;
+}
+
+/**
+ * Serializes undo/redo calls around their asynchronous actions. Invalidation is
+ * queued behind an in-flight command, so HistoryPlugin cannot re-add a record
+ * after a conflict or transport failure cleared the stacks.
+ */
+export class HistoryCommandQueue {
+  private tail: Promise<void> = Promise.resolve();
+  private generation = 0;
+
+  constructor(private readonly getHistory: () => HistoryCommandTarget | null) {}
+
+  undo(): Promise<void> {
+    return this.enqueue("undo");
+  }
+
+  redo(): Promise<void> {
+    return this.enqueue("redo");
+  }
+
+  invalidate(): Promise<void> {
+    const generation = ++this.generation;
+    const clear = this.tail
+      .catch(() => undefined)
+      .then(() => {
+        if (generation === this.generation) this.getHistory()?.clear();
+      });
+
+    this.tail = clear.catch(() => undefined);
+    return clear;
+  }
+
+  private enqueue(command: "undo" | "redo"): Promise<void> {
+    const generation = this.generation;
+    const operation = this.tail.then(async () => {
+      if (generation !== this.generation) return;
+
+      try {
+        await this.getHistory()?.[command]();
+      } catch {
+        void this.invalidate();
+      }
+    });
+
+    this.tail = operation.catch(() => undefined);
+    return operation;
+  }
 }
 
 export interface Position {
@@ -272,6 +332,158 @@ export class NodeDataAction implements Action {
     this.hookProxy.pushEvent("restore_node_data", {
       id: this.nodeId,
       data: this.newData,
+    });
+  }
+}
+
+export interface SequenceVisualLayerSnapshot {
+  asset_id: number | null;
+  layer_key: string;
+  overridden_fields: string[];
+  removed: boolean;
+  kind: string;
+  label: string | null;
+  z_index: number;
+  slot: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  anchor_x: number;
+  anchor_y: number;
+  fit: string;
+  opacity: number;
+  visible: boolean;
+}
+
+export interface SequenceCompositionSnapshot {
+  version: number;
+  owner_id: number;
+  flow_id: number;
+  owner_type: "sequence" | "dialogue";
+  composition_source_id: number | null;
+  position_x: number;
+  position_y: number;
+  config: { name: string; width: number; height: number } | null;
+  visual_layers: SequenceVisualLayerSnapshot[];
+}
+
+interface SequenceCompositionHistoryRecord {
+  action: unknown;
+  time: number;
+}
+
+type SequenceCompositionActionRecord = SequenceCompositionHistoryRecord & {
+  action: SequenceCompositionAction;
+};
+
+/** The server snapshots are JSON values, so compare them structurally. */
+export function sequenceCompositionSnapshotsEqual(left: unknown, right: unknown): boolean {
+  if (Object.is(left, right)) return true;
+  if (!isJsonContainer(left) || !isJsonContainer(right)) return false;
+
+  if (Array.isArray(left)) return Array.isArray(right) && jsonArraysEqual(left, right);
+  if (Array.isArray(right)) return false;
+  return jsonRecordsEqual(left, right);
+}
+
+function isJsonContainer(value: unknown): value is Record<string, unknown> | unknown[] {
+  return typeof value === "object" && value !== null;
+}
+
+function jsonArraysEqual(left: unknown[], right: unknown[]): boolean {
+  if (left.length !== right.length) return false;
+  return left.every((value, index) => sequenceCompositionSnapshotsEqual(value, right[index]));
+}
+
+function jsonRecordsEqual(left: Record<string, unknown>, right: Record<string, unknown>): boolean {
+  const leftKeys = Object.keys(left);
+  const rightKeys = Object.keys(right);
+  if (leftKeys.length !== rightKeys.length) return false;
+
+  return leftKeys.every(
+    (key) =>
+      Object.prototype.hasOwnProperty.call(right, key) &&
+      sequenceCompositionSnapshotsEqual(left[key], right[key]),
+  );
+}
+
+/**
+ * Coalescing is valid only for the top history action and a continuous
+ * previous/current snapshot pair. Looking deeper would rewrite history behind
+ * an intervening action and make its optimistic expected-current check stale.
+ */
+export function sequenceCompositionCoalesceTarget(
+  recent: readonly SequenceCompositionHistoryRecord[],
+  ownerId: string | number,
+  historyKey: string,
+  previous: SequenceCompositionSnapshot,
+): SequenceCompositionActionRecord | null {
+  const latest = recent[0];
+  if (!(latest?.action instanceof SequenceCompositionAction)) return null;
+
+  return String(latest.action.ownerId) === String(ownerId) &&
+    latest.action.historyKey === historyKey &&
+    sequenceCompositionSnapshotsEqual(latest.action.current, previous)
+    ? (latest as SequenceCompositionActionRecord)
+    : null;
+}
+
+/** Undo/redo action for the complete local state of one composition owner. */
+export class SequenceCompositionAction implements Action {
+  hookProxy: HistoryHookProxy;
+  ownerId: string | number;
+  historyKey: string;
+  previous: SequenceCompositionSnapshot;
+  current: SequenceCompositionSnapshot;
+
+  constructor(
+    hookProxy: HistoryHookProxy,
+    ownerId: string | number,
+    historyKey: string,
+    previous: SequenceCompositionSnapshot,
+    current: SequenceCompositionSnapshot,
+  ) {
+    this.hookProxy = hookProxy;
+    this.ownerId = ownerId;
+    this.historyKey = historyKey;
+    this.previous = previous;
+    this.current = current;
+  }
+
+  async undo(): Promise<void> {
+    await this.restore(this.previous, this.current);
+  }
+
+  async redo(): Promise<void> {
+    await this.restore(this.current, this.previous);
+  }
+
+  private restore(
+    snapshot: SequenceCompositionSnapshot,
+    expectedCurrent: SequenceCompositionSnapshot,
+  ): Promise<void> {
+    return new Promise((resolve) => {
+      let settled = false;
+      const settle = () => {
+        if (settled) return;
+        settled = true;
+        resolve();
+      };
+
+      this.hookProxy.pushEvent(
+        "restore_sequence_composition",
+        {
+          id: this.ownerId,
+          snapshot,
+          expected_current: expectedCurrent,
+        },
+        settle,
+        () => {
+          this.hookProxy.invalidateHistory();
+          settle();
+        },
+      );
     });
   }
 }

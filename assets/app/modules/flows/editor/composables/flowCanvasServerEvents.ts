@@ -20,6 +20,20 @@ import type {
   DebugUpdateBreakpointsData,
 } from "../services/debug";
 import type { FlowCanvasRuntime } from "./flowCanvasRuntime";
+import {
+  SequenceCompositionAction,
+  sequenceCompositionCoalesceTarget,
+  type SequenceCompositionSnapshot,
+} from "../services/historyPreset";
+
+interface SequenceCompositionChangedPayload {
+  owner_id: string | number;
+  history_key: string;
+  previous: SequenceCompositionSnapshot;
+  current: SequenceCompositionSnapshot;
+}
+
+const SEQUENCE_COMPOSITION_COALESCE_MS = 1000;
 
 export function setupFlowCanvasServerEvents(runtime: FlowCanvasRuntime): void {
   if (!runtime.editorHandlers) {
@@ -69,6 +83,39 @@ export function setupFlowCanvasServerEvents(runtime: FlowCanvasRuntime): void {
     runtime.editorHandlers!.handleSequenceConfigUpdated(
       raw as unknown as SequenceConfigUpdatedPayload,
     );
+  });
+
+  handleEvent("sequence_composition_changed", (raw) => {
+    if (runtime.destroyed || !runtime.history) {
+      return;
+    }
+
+    const data = raw as unknown as SequenceCompositionChangedPayload;
+    const recent = sequenceCompositionCoalesceTarget(
+      runtime.history.getRecent(SEQUENCE_COMPOSITION_COALESCE_MS),
+      data.owner_id,
+      data.history_key,
+      data.previous,
+    );
+
+    if (recent?.action instanceof SequenceCompositionAction) {
+      recent.action.current = data.current;
+      recent.time = Date.now();
+    } else {
+      runtime.history.add(
+        new SequenceCompositionAction(
+          runtime.hookProxy,
+          data.owner_id,
+          data.history_key,
+          data.previous,
+          data.current,
+        ),
+      );
+    }
+  });
+
+  handleEvent("sequence_composition_history_invalidated", () => {
+    runtime.hookProxy.invalidateHistory();
   });
 
   handleEvent("node_added", (data) => {

@@ -99,6 +99,7 @@ export interface FlowUpdatedPayload {
 
 export interface SequenceConfigUpdatedPayload {
   sequence_id: string | number;
+  name?: string | null;
   position_x?: number | null;
   position_y?: number | null;
   width?: number | null;
@@ -134,7 +135,12 @@ export interface FlowContext {
 }
 
 export interface HookProxy {
-  pushEvent: (event: string, payload: Record<string, unknown>) => void;
+  pushEvent: (
+    event: string,
+    payload: Record<string, unknown>,
+    callback?: (reply: Record<string, unknown>) => void,
+    onError?: (error: unknown) => void,
+  ) => void;
   handleEvent: (event: string, callback: (data: Record<string, unknown>) => void) => void;
   editor: NodeEditor<FlowSchemes>;
   area: AreaPlugin<FlowSchemes, FlowAreaExtra>;
@@ -159,6 +165,9 @@ export interface HookProxy {
   el: HTMLElement | null;
   enterLoadingFromServer(): void;
   exitLoadingFromServer(): void;
+  undoHistory(): void;
+  redoHistory(): void;
+  invalidateHistory(): void;
   performAutoLayout(): Promise<void>;
   _sheetsMap: Record<string, SheetMapEntry>;
   _hubsMap: Record<string, HubMapEntry>;
@@ -470,6 +479,10 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
         return;
       }
 
+      if (typeof data.name === "string") {
+        node.nodeData = { ...node.nodeData, name: data.name };
+      }
+
       await applyRemoteSequenceGeometry(hook, node, data);
 
       const ctx = hook._flowContext;
@@ -506,7 +519,7 @@ export function editorHandlers(hook: HookProxy): EditorHandlers {
     },
 
     async handleFlowUpdated(data: FlowUpdatedPayload) {
-      hook.history?.clear();
+      hook.invalidateHistory();
 
       hook.enterLoadingFromServer();
       try {

@@ -1,18 +1,15 @@
 <script setup lang="ts">
-/**
- * Right sidebar opened when a sequence is selected on the canvas.
- *
- * Sequences define stage context for the flow player: visual layers
- * compose parent-to-child, and audio tracks play as sequence-level sound.
- */
 import {
   Box,
   Check,
   ChevronDown,
+  GitFork,
   Image as ImageIcon,
   Layers,
   Music,
+  RotateCcw,
   Sparkles,
+  Undo2,
   UserRound,
   Volume2,
   Wand2,
@@ -25,6 +22,7 @@ import AudioAsset from "../assets/AudioAsset.vue";
 import ImageAsset from "../assets/ImageAsset.vue";
 import ImageFit from "../assets/ImageFit.vue";
 import ImagePosition from "../assets/ImagePosition.vue";
+import { Badge } from "../../../../../components/ui/badge";
 import { Button } from "../../../../../components/ui/button";
 import {
   Command,
@@ -33,55 +31,34 @@ import {
   CommandList,
 } from "../../../../../components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "../../../../../components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../../../../components/ui/select";
+import { Switch } from "../../../../../components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "../../../../../components/ui/toggle-group";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
-
-interface AssetEntry {
-  id: number | string;
-  filename: string;
-  url?: string | null;
-  content_type?: string | null;
-}
-
-interface SequenceConfig {
-  name?: string | null;
-  width?: number | null;
-  height?: number | null;
-}
-
-interface SequenceVisualLayer {
-  id: number | string;
-  kind: string;
-  label?: string | null;
-  asset_id?: number | string | null;
-  z_index?: number | null;
-  slot?: string | null;
-  x?: number | null;
-  y?: number | null;
-  width?: number | null;
-  height?: number | null;
-  anchor_x?: number | null;
-  anchor_y?: number | null;
-  fit?: "cover" | "contain" | "fill" | null;
-  opacity?: number | null;
-  visible?: boolean | null;
-}
+import type {
+  SequenceAssetEntry as AssetEntry,
+  SequenceConfigPanelData,
+  SequenceEntityId as EntityId,
+  SequenceVisualLayerRecord as SequenceVisualLayer,
+} from "../../../sequence/types";
 
 interface SequenceTrack {
   kind: string;
-  asset_id?: number | string | null;
+  asset_id?: EntityId | null;
   volume?: number | null;
 }
 
-interface PanelData {
-  sequence_id: number | string;
-  config: SequenceConfig | null;
-  visual_layers: SequenceVisualLayer[];
-  tracks: SequenceTrack[];
-  image_assets: AssetEntry[];
-  audio_assets: AssetEntry[];
+interface PanelData extends SequenceConfigPanelData {
+  tracks?: SequenceTrack[];
+  audio_assets?: AssetEntry[];
 }
 
 type VisualKind = "backdrop" | "character" | "prop" | "overlay";
@@ -100,6 +77,20 @@ type VisualFit = "cover" | "contain" | "fill";
 type LayoutMode = "full" | "positioned";
 type PositionRow = "top" | "middle" | "bottom";
 type PositionColumn = "left" | "center" | "right";
+type LayerField =
+  | "asset_id"
+  | "kind"
+  | "label"
+  | "slot"
+  | "x"
+  | "y"
+  | "width"
+  | "height"
+  | "z_index"
+  | "fit"
+  | "opacity"
+  | "visible";
+type LayerPatch = Partial<Record<LayerField | "anchor_x" | "anchor_y", unknown>>;
 
 const {
   open = false,
@@ -115,6 +106,7 @@ const live = useLive();
 const { t } = useI18n();
 const openLayerPicker = ref<string | null>(null);
 
+const ROOT_SOURCE_VALUE = "__composition_root__";
 const TRACK_KINDS = ["music", "ambience", "sfx"] as const;
 const VISUAL_KINDS: readonly VisualKind[] = ["backdrop", "character", "prop", "overlay"];
 const PICKER_SEARCH_EVENT = "picker_search";
@@ -130,48 +122,133 @@ const POSITION_SLOTS: readonly PositionSlot[] = [
   "bottom-left",
   "bottom-center",
   "bottom-right",
-] as const;
+];
+const NUMERIC_LAYER_FIELDS: ReadonlyArray<{
+  field: "x" | "y" | "width" | "height" | "z_index";
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { field: "x", min: 0, max: 1, step: 0.01 },
+  { field: "y", min: 0, max: 1, step: 0.01 },
+  { field: "width", min: 0.01, max: 1, step: 0.01 },
+  { field: "height", min: 0.01, max: 1, step: 0.01 },
+  { field: "z_index", min: -1000, max: 1000, step: 1 },
+];
 
-const sequenceId = computed(() => data?.sequence_id ?? null);
-
+const ownerId = computed(() => data?.owner_id ?? data?.sequence_id ?? null);
+const ownerType = computed(() => data?.owner_type ?? "sequence");
+const sourceValue = computed(() =>
+  data?.composition_source_id == null ? ROOT_SOURCE_VALUE : String(data.composition_source_id),
+);
+const compositionSources = computed(() => data?.composition_sources ?? []);
+const diagnostics = computed(() => data?.diagnostics ?? []);
 const visualLayers = computed(() =>
-  [...(data?.visual_layers || [])].sort((a, b) => {
-    const zDelta = (a.z_index ?? 0) - (b.z_index ?? 0);
+  [...(data?.visual_layers ?? [])].sort((a, b) => {
+    const zDelta = layerZIndex(a) - layerZIndex(b);
     if (zDelta !== 0) return zDelta;
-    return String(a.id).localeCompare(String(b.id));
+    return layerKey(a).localeCompare(layerKey(b));
   }),
 );
+const removedVisualLayers = computed(() => data?.removed_visual_layers ?? []);
 
 function close() {
   live.pushEvent("close_sequence_config", {});
 }
 
-function pushSequenceEvent(event: string, payload: Record<string, unknown>) {
-  if (!sequenceId.value) return;
-  live.pushEvent(event, {
-    id: sequenceId.value,
-    ...payload,
+function sameId(left: EntityId | null | undefined, right: EntityId | null | undefined): boolean {
+  return left != null && right != null && String(left) === String(right);
+}
+
+function pushOwnerEvent(event: string, payload: Record<string, unknown>) {
+  if (!canEdit || ownerId.value == null) return;
+  live.pushEvent(event, { id: ownerId.value, ...payload });
+}
+
+function setCompositionSource(value: string | string[]) {
+  const selected = Array.isArray(value) ? value[0] : value;
+  if (!selected) return;
+  pushOwnerEvent("set_composition_source", {
+    source_id: selected === ROOT_SOURCE_VALUE ? null : selected,
   });
 }
 
 function createVisualLayer(kind: VisualKind, asset: AssetEntry) {
-  pushSequenceEvent("create_sequence_visual_layer", {
+  pushOwnerEvent("create_sequence_visual_layer", {
     kind,
     asset_id: asset.id,
     label: asset.filename,
     slot: defaultSlot(kind),
+    ...geometryForSlot(kind, defaultSlot(kind)),
   });
 }
 
-function updateVisualLayer(layer: SequenceVisualLayer, patch: Partial<SequenceVisualLayer>) {
-  pushSequenceEvent("update_sequence_visual_layer", {
-    layer_id: layer.id,
-    ...patch,
-  });
+function layerKey(layer: SequenceVisualLayer): string {
+  return String(layer.key ?? layer.layer_key ?? layer.id);
 }
 
-function deleteVisualLayer(layer: SequenceVisualLayer) {
-  pushSequenceEvent("delete_sequence_visual_layer", { layer_id: layer.id });
+function layerSequenceId(layer: SequenceVisualLayer): EntityId | null {
+  return layer.sequenceId ?? layer.sequence_id ?? ownerId.value;
+}
+
+function layerLocalRowId(layer: SequenceVisualLayer): EntityId | null {
+  return layer.local_row_id ?? layer.localRowId ?? layer.rowId ?? layer.row_id ?? layer.id ?? null;
+}
+
+function layerAssetId(layer: SequenceVisualLayer): EntityId | null {
+  return layer.assetId ?? layer.asset_id ?? null;
+}
+
+function layerZIndex(layer: SequenceVisualLayer): number {
+  return Number(layer.zIndex ?? layer.z_index ?? 0);
+}
+
+function ownerDefinesLayer(layer: SequenceVisualLayer): boolean {
+  return sameId(layerSequenceId(layer), ownerId.value);
+}
+
+function layerOverrideFields(layer: SequenceVisualLayer): string[] {
+  return layer.overridden_fields ?? layer.overriddenFields ?? [];
+}
+
+function layerHasLocalPatch(layer: SequenceVisualLayer): boolean {
+  return !ownerDefinesLayer(layer) && layerOverrideFields(layer).length > 0;
+}
+
+function updateVisualLayer(layer: SequenceVisualLayer, patch: LayerPatch) {
+  const rowId = layerLocalRowId(layer);
+
+  if (ownerDefinesLayer(layer) && rowId != null) {
+    pushOwnerEvent("update_sequence_visual_layer", { layer_id: rowId, ...patch });
+  } else {
+    pushOwnerEvent("override_sequence_visual_layer", {
+      layer_key: layerKey(layer),
+      ...patch,
+    });
+  }
+}
+
+function removeVisualLayer(layer: SequenceVisualLayer) {
+  const rowId = layerLocalRowId(layer);
+
+  if (ownerDefinesLayer(layer) && rowId != null) {
+    pushOwnerEvent("delete_sequence_visual_layer", { layer_id: rowId });
+    return;
+  }
+
+  pushOwnerEvent("remove_sequence_visual_layer", { layer_key: layerKey(layer) });
+}
+
+function restoreVisualLayer(layer: SequenceVisualLayer) {
+  pushOwnerEvent("restore_sequence_visual_layer", { layer_key: layerKey(layer) });
+}
+
+function revertVisualLayer(layer: SequenceVisualLayer, fields: string[]) {
+  if (fields.length === 0) return;
+  pushOwnerEvent("revert_sequence_visual_layer", {
+    layer_key: layerKey(layer),
+    fields,
+  });
 }
 
 function setVisualSlot(layer: SequenceVisualLayer, slot: string) {
@@ -198,8 +275,40 @@ function pickVisualKind(layer: SequenceVisualLayer, kind: VisualKind) {
 
 function setVisualOpacity(layer: SequenceVisualLayer, event: Event) {
   const value = Number((event.target as HTMLInputElement).value);
-  if (!Number.isFinite(value)) return;
-  updateVisualLayer(layer, { opacity: value / 100 });
+  if (Number.isFinite(value)) updateVisualLayer(layer, { opacity: value / 100 });
+}
+
+function setNumericLayerField(
+  layer: SequenceVisualLayer,
+  field: "x" | "y" | "width" | "height" | "z_index",
+  event: Event,
+) {
+  const value = Number((event.target as HTMLInputElement).value);
+  if (Number.isFinite(value)) updateVisualLayer(layer, { [field]: value });
+}
+
+function numericLayerValue(
+  layer: SequenceVisualLayer,
+  field: "x" | "y" | "width" | "height" | "z_index",
+): number {
+  if (field === "z_index") return layerZIndex(layer);
+  return Number(layer[field] ?? (field === "width" || field === "height" ? 1 : 0));
+}
+
+function setVisualVisibility(layer: SequenceVisualLayer, visible: boolean) {
+  updateVisualLayer(layer, { visible });
+}
+
+function fieldOriginLabel(layer: SequenceVisualLayer, field: string): string {
+  return originLabel(
+    layer.propertyOrigins?.[field]?.nodeId ?? layer.origin?.nodeId ?? layerSequenceId(layer),
+  );
+}
+
+function layerStatusLabel(layer: SequenceVisualLayer): string {
+  if (ownerDefinesLayer(layer)) return t("flows.sequences.config_panel.local");
+  if (layerHasLocalPatch(layer)) return t("flows.sequences.config_panel.customized");
+  return t("flows.sequences.config_panel.inherited");
 }
 
 function defaultSlot(kind: string): VisualSlot {
@@ -238,27 +347,17 @@ function layoutModeForLayer(layer: SequenceVisualLayer): LayoutMode {
 
 function setVisualLayoutMode(layer: SequenceVisualLayer, value: string | string[]) {
   const mode = Array.isArray(value) ? value[0] : value;
-  if (!mode) return;
-  setVisualSlot(layer, mode === "full" ? "full" : positionForLayer(layer));
+  if (mode) setVisualSlot(layer, mode === "full" ? "full" : positionForLayer(layer));
 }
 
-function geometryForSlot(kind: string, slot: string): Partial<SequenceVisualLayer> {
-  if (kind === "backdrop" || slot === "full") {
-    return fullLayerGeometry(kind);
-  }
-
-  if (kind === "character") {
-    return characterLayerGeometry(slot);
-  }
-
-  if (isPositionSlot(slot)) {
-    return positionedLayerGeometry(slot);
-  }
-
+function geometryForSlot(kind: string, slot: string): LayerPatch {
+  if (kind === "backdrop" || slot === "full") return fullLayerGeometry(kind);
+  if (kind === "character") return characterLayerGeometry(slot);
+  if (isPositionSlot(slot)) return positionedLayerGeometry(slot);
   return centeredLayerGeometry();
 }
 
-function fullLayerGeometry(kind: string): Partial<SequenceVisualLayer> {
+function fullLayerGeometry(kind: string): LayerPatch {
   return {
     x: 0,
     y: 0,
@@ -271,14 +370,12 @@ function fullLayerGeometry(kind: string): Partial<SequenceVisualLayer> {
 }
 
 function fullLayerFit(kind: string): VisualFit {
-  if (kind === "backdrop" || kind === "overlay") return "cover";
-  return "contain";
+  return kind === "backdrop" || kind === "overlay" ? "cover" : "contain";
 }
 
-function characterLayerGeometry(slot: string): Partial<SequenceVisualLayer> {
+function characterLayerGeometry(slot: string): LayerPatch {
   const position = isPositionSlot(slot) ? slot : defaultPositionSlot("character");
   const { row, col } = splitPositionSlot(position);
-
   return {
     x: characterColumnX(col),
     y: characterRowY(row),
@@ -290,9 +387,8 @@ function characterLayerGeometry(slot: string): Partial<SequenceVisualLayer> {
   };
 }
 
-function positionedLayerGeometry(slot: PositionSlot): Partial<SequenceVisualLayer> {
+function positionedLayerGeometry(slot: PositionSlot): LayerPatch {
   const { row, col } = splitPositionSlot(slot);
-
   return {
     x: safeColumnX(col),
     y: safeRowY(row),
@@ -304,7 +400,7 @@ function positionedLayerGeometry(slot: PositionSlot): Partial<SequenceVisualLaye
   };
 }
 
-function centeredLayerGeometry(): Partial<SequenceVisualLayer> {
+function centeredLayerGeometry(): LayerPatch {
   return {
     x: 0.5,
     y: 0.5,
@@ -346,8 +442,7 @@ function safeRowY(row: PositionRow): number {
 }
 
 function characterWidth(col: PositionColumn): number {
-  if (col === "center") return 0.42;
-  return 0.38;
+  return col === "center" ? 0.42 : 0.38;
 }
 
 function kindIcon(kind: string): Component {
@@ -361,33 +456,41 @@ function addLayerLabel(kind: string): string {
   return `${t("flows.sequences.visual_layers.add")} ${t(`flows.sequences.visual_layers.kinds.${kind}`)}`;
 }
 
-function trackFor(kind: string): SequenceTrack | null {
-  if (!data?.tracks) return null;
-  return data.tracks.find((t) => t.kind === kind) ?? null;
+function pickerKey(layer: SequenceVisualLayer): string {
+  return `kind:${layerKey(layer)}`;
 }
 
-function trackVolumePercent(kind: string): number | null {
-  const t = trackFor(kind);
-  if (!t || t.volume == null) return null;
-  return Math.round(Number(t.volume) * 100);
+function pickerOpen(layer: SequenceVisualLayer): boolean {
+  return openLayerPicker.value === pickerKey(layer);
+}
+
+function setPickerOpen(layer: SequenceVisualLayer, isOpen: boolean) {
+  openLayerPicker.value = isOpen ? pickerKey(layer) : null;
+}
+
+function visualKindLabel(kind: string): string {
+  return t(`flows.sequences.visual_layers.kinds.${kind}`);
+}
+
+function trackFor(kind: string): SequenceTrack | null {
+  return data?.tracks?.find((track) => track.kind === kind) ?? null;
 }
 
 function pickTrackAsset(kind: string, asset: AssetEntry) {
-  pushSequenceEvent("upsert_sequence_track", {
-    kind,
-    asset_id: asset.id,
-  });
+  pushOwnerEvent("upsert_sequence_track", { kind, asset_id: asset.id });
 }
 
 function clearTrack(kind: string) {
-  pushSequenceEvent("clear_sequence_track", { kind });
+  pushOwnerEvent("clear_sequence_track", { kind });
 }
 
 function onVolumeChange(kind: string, percent: number) {
-  pushSequenceEvent("upsert_sequence_track", {
-    kind,
-    volume: percent / 100,
-  });
+  pushOwnerEvent("upsert_sequence_track", { kind, volume: percent / 100 });
+}
+
+function trackVolumePercent(kind: string): number | null {
+  const track = trackFor(kind);
+  return track?.volume == null ? null : Math.round(Number(track.volume) * 100);
 }
 
 function trackIcon(kind: string) {
@@ -396,20 +499,30 @@ function trackIcon(kind: string) {
   return Wand2;
 }
 
-function pickerKey(layer: SequenceVisualLayer, field: "kind"): string {
-  return `${field}:${layer.id}`;
+function originLabel(originId: EntityId | null | undefined): string {
+  if (sameId(originId, ownerId.value)) return t("flows.sequences.config_panel.this_node");
+  const source = compositionSources.value.find((item) => sameId(item.id, originId));
+  return (
+    source?.label ??
+    (originId == null ? t("flows.sequences.config_panel.unknown_origin") : `#${originId}`)
+  );
 }
 
-function pickerOpen(layer: SequenceVisualLayer, field: "kind"): boolean {
-  return openLayerPicker.value === pickerKey(layer, field);
+function ownerTypeLabel(): string {
+  return t(`flows.node_types.${ownerType.value}`);
 }
 
-function setPickerOpen(layer: SequenceVisualLayer, field: "kind", open: boolean) {
-  openLayerPicker.value = open ? pickerKey(layer, field) : null;
+function fieldLabel(field: string): string {
+  return t(`flows.sequences.config_panel.fields.${field}`);
 }
 
-function visualKindLabel(kind: string): string {
-  return t(`flows.sequences.visual_layers.kinds.${kind}`);
+function diagnosticLabel(code: string): string {
+  const key = `flows.sequences.config_panel.diagnostic_messages.${code}`;
+  const translated = t(key);
+
+  return translated === key
+    ? t("flows.sequences.config_panel.diagnostic_messages.fallback")
+    : translated;
 }
 </script>
 
@@ -417,213 +530,404 @@ function visualKindLabel(kind: string): string {
   <Sidebar side="right" :open="open" @close="close">
     <template #header>
       <div class="flex items-center justify-between py-2.5">
-        <div class="flex items-center gap-2 text-sm font-medium">
-          <Layers class="size-4" />
-          {{ $t("flows.sequences.config_panel.title") }}
+        <div class="min-w-0">
+          <div class="flex items-center gap-2 text-sm font-medium">
+            <Layers class="size-4" />
+            {{ $t("flows.sequences.config_panel.title") }}
+          </div>
+          <p v-if="data" class="mt-0.5 text-[11px] text-muted-foreground">
+            {{ ownerTypeLabel() }} · #{{ ownerId }}
+          </p>
         </div>
-        <Button type="button" variant="ghost" size="icon-xs" @click="close">
-          <X class="size-4" />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          :title="$t('flows.preview.close')"
+          :aria-label="$t('flows.preview.close')"
+          @click="close"
+        >
+          <X class="size-4" aria-hidden="true" />
         </Button>
       </div>
     </template>
 
-    <Tabs default-value="visual" class="flex min-w-0 flex-col gap-3">
-      <TabsList class="grid h-8 w-full grid-cols-2">
-        <TabsTrigger value="visual" class="gap-1.5 text-xs">
-          <Layers class="size-3.5" />
-          {{ $t("flows.sequences.visual_layers.title") }}
-        </TabsTrigger>
-        <TabsTrigger value="audio" class="gap-1.5 text-xs">
-          <Music class="size-3.5" />
-          {{ $t("flows.sequences.config_panel.audio_title") }}
-        </TabsTrigger>
-      </TabsList>
-
-      <TabsContent value="visual" class="mt-0">
-        <section class="flex min-w-0 flex-col gap-3">
-          <div class="grid min-w-0 grid-cols-2 gap-2">
-            <ImageAsset
-              v-for="kind in VISUAL_KINDS"
-              :key="kind"
-              :label="addLayerLabel(kind)"
-              :icon="kindIcon(kind)"
-              :image-assets="data?.image_assets || []"
-              :can-edit="canEdit"
-              :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
-              :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-              :search-event="PICKER_SEARCH_EVENT"
-              :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
-              @select="(asset) => createVisualLayer(kind, asset)"
-            />
-          </div>
-
-          <div v-if="visualLayers.length > 0" class="flex min-w-0 flex-col gap-3">
-            <article
-              v-for="layer in visualLayers"
-              :key="layer.id"
-              class="flex min-w-0 flex-col gap-2 overflow-hidden rounded border border-border bg-muted/20 p-2"
+    <div v-if="data" class="flex min-w-0 flex-col gap-3 pb-4">
+      <section class="rounded-lg border border-border bg-muted/20 p-3" data-composition-source>
+        <div class="mb-2 flex items-center gap-2">
+          <GitFork class="size-3.5 text-muted-foreground" />
+          <span id="sequence-composition-source-label" class="text-xs font-medium">
+            {{ $t("flows.sequences.config_panel.composition_source") }}
+          </span>
+        </div>
+        <Select
+          :model-value="sourceValue"
+          :disabled="!canEdit"
+          @update:model-value="setCompositionSource"
+        >
+          <SelectTrigger
+            class="h-8 w-full text-xs"
+            aria-labelledby="sequence-composition-source-label"
+            data-composition-source-trigger
+          >
+            <SelectValue :placeholder="$t('flows.sequences.config_panel.no_source')" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem :value="ROOT_SOURCE_VALUE">
+              {{ $t("flows.sequences.config_panel.no_source") }}
+            </SelectItem>
+            <SelectItem
+              v-for="source in compositionSources"
+              :key="source.id"
+              :value="String(source.id)"
             >
-              <ImageAsset
-                :label="layer.label || $t(`flows.sequences.visual_layers.kinds.${layer.kind}`)"
-                :icon="kindIcon(layer.kind)"
-                :asset-id="layer.asset_id"
-                :image-assets="data?.image_assets || []"
-                :can-edit="canEdit"
-                :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
-                :search-placeholder="$t('flows.sequences.config_panel.search_image')"
-                :clear-title="$t('flows.sequences.visual_layers.delete')"
-                :preview-fit="layer.fit || 'contain'"
-                :search-event="PICKER_SEARCH_EVENT"
-                :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
-                @select="
-                  (asset) => updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
-                "
-                @clear="deleteVisualLayer(layer)"
+              <span class="flex items-center gap-2">
+                <Badge variant="outline" class="px-1 py-0 text-[9px]">{{ source.type }}</Badge>
+                <span class="truncate">{{ source.label }}</span>
+              </span>
+            </SelectItem>
+          </SelectContent>
+        </Select>
+        <p class="mt-2 text-[11px] leading-relaxed text-muted-foreground">
+          {{ $t("flows.sequences.config_panel.composition_source_help") }}
+        </p>
+      </section>
+
+      <div
+        v-if="diagnostics.length > 0"
+        class="rounded-lg border border-amber-500/30 bg-amber-500/10 p-2.5"
+        data-composition-diagnostics
+      >
+        <p class="text-xs font-medium text-amber-700 dark:text-amber-300">
+          {{ $t("flows.sequences.config_panel.diagnostics", { count: diagnostics.length }) }}
+        </p>
+        <ul class="mt-1 space-y-1 text-[11px] text-muted-foreground">
+          <li v-for="diagnostic in diagnostics" :key="`${diagnostic.code}:${diagnostic.nodeId}`">
+            {{ diagnosticLabel(diagnostic.code)
+            }}<span v-if="diagnostic.nodeId"> · #{{ diagnostic.nodeId }}</span>
+          </li>
+        </ul>
+      </div>
+
+      <Tabs default-value="visual" class="flex min-w-0 flex-col gap-3">
+        <TabsList class="grid h-8 w-full grid-cols-2">
+          <TabsTrigger value="visual" class="gap-1.5 text-xs">
+            <Layers class="size-3.5" />
+            {{ $t("flows.sequences.visual_layers.title") }}
+          </TabsTrigger>
+          <TabsTrigger value="audio" class="gap-1.5 text-xs">
+            <Music class="size-3.5" />
+            {{ $t("flows.sequences.config_panel.audio_title") }}
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="visual" class="mt-0">
+          <section class="flex min-w-0 flex-col gap-3">
+            <div v-if="visualLayers.length > 0" class="flex min-w-0 flex-col gap-3">
+              <article
+                v-for="layer in visualLayers"
+                :key="layerKey(layer)"
+                class="flex min-w-0 flex-col gap-2 overflow-hidden rounded-lg border border-border bg-muted/20 p-2.5"
+                :data-layer-key="layerKey(layer)"
               >
-                <template #header-actions>
+                <div class="flex min-w-0 items-center gap-2">
+                  <Badge
+                    :variant="ownerDefinesLayer(layer) ? 'secondary' : 'outline'"
+                    class="shrink-0 text-[10px]"
+                  >
+                    {{ layerStatusLabel(layer) }}
+                  </Badge>
+                  <span class="min-w-0 flex-1 truncate text-[11px] text-muted-foreground">
+                    {{ $t("flows.sequences.config_panel.from") }}
+                    {{ originLabel(layer.origin?.nodeId ?? layerSequenceId(layer)) }}
+                  </span>
                   <Button
                     v-if="canEdit"
+                    type="button"
                     variant="ghost"
                     size="icon-xs"
                     :title="$t('flows.sequences.visual_layers.delete')"
-                    @click="deleteVisualLayer(layer)"
+                    data-remove-layer
+                    @click="removeVisualLayer(layer)"
                   >
                     <X class="size-3" />
                   </Button>
-                </template>
-              </ImageAsset>
-
-              <div class="grid min-w-0 grid-cols-2 gap-2">
-                <div class="flex min-w-0 flex-col gap-1 text-[11px] text-muted-foreground">
-                  {{ $t("flows.sequences.visual_layers.kind") }}
-                  <Popover
-                    :open="pickerOpen(layer, 'kind')"
-                    @update:open="setPickerOpen(layer, 'kind', $event)"
-                  >
-                    <PopoverTrigger as-child>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        class="h-8 w-full min-w-0 shrink justify-between overflow-hidden px-2 text-xs font-normal"
-                        :disabled="!canEdit"
-                      >
-                        <span class="min-w-0 flex-1 truncate text-left text-foreground">
-                          {{ visualKindLabel(layer.kind) }}
-                        </span>
-                        <ChevronDown class="size-3 shrink-0 opacity-50" />
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent
-                      class="w-(--reka-popover-trigger-width) min-w-32 p-0"
-                      align="start"
-                      :side-offset="4"
-                    >
-                      <Command>
-                        <CommandList>
-                          <CommandGroup>
-                            <CommandItem
-                              v-for="kind in VISUAL_KINDS"
-                              :key="kind"
-                              :value="visualKindLabel(kind)"
-                              class="gap-2 text-xs"
-                              @select="pickVisualKind(layer, kind)"
-                            >
-                              <component :is="kindIcon(kind)" class="size-3.5 shrink-0" />
-                              <span class="min-w-0 flex-1 truncate">
-                                {{ visualKindLabel(kind) }}
-                              </span>
-                              <Check v-if="layer.kind === kind" class="size-3 shrink-0" />
-                            </CommandItem>
-                          </CommandGroup>
-                        </CommandList>
-                      </Command>
-                    </PopoverContent>
-                  </Popover>
                 </div>
 
-                <div class="flex flex-col gap-1 text-[11px] text-muted-foreground">
-                  {{ $t("flows.sequences.visual_layers.layout") }}
-                  <ToggleGroup
-                    type="single"
+                <div
+                  v-if="layerHasLocalPatch(layer)"
+                  class="flex flex-wrap items-center gap-1 rounded border border-border/70 bg-background/70 p-1.5"
+                  data-layer-overrides
+                >
+                  <span class="mr-1 text-[10px] text-muted-foreground">
+                    {{ $t("flows.sequences.config_panel.local_fields") }}
+                  </span>
+                  <Button
+                    v-for="field in layerOverrideFields(layer)"
+                    :key="field"
+                    type="button"
                     variant="outline"
                     size="xs"
-                    :model-value="layoutModeForLayer(layer)"
+                    class="h-6 gap-1 px-1.5 text-[10px]"
                     :disabled="!canEdit"
-                    class="w-full"
-                    @update:model-value="setVisualLayoutMode(layer, $event)"
+                    :data-revert-field="field"
+                    :title="
+                      $t('flows.sequences.config_panel.revert_field_from', {
+                        origin: fieldOriginLabel(layer, field),
+                      })
+                    "
+                    @click="revertVisualLayer(layer, [field])"
                   >
-                    <ToggleGroupItem value="full" class="flex-1 text-xs">
-                      {{ $t("flows.sequences.visual_layers.layout_modes.full") }}
-                    </ToggleGroupItem>
-                    <ToggleGroupItem value="positioned" class="flex-1 text-xs">
-                      {{ $t("flows.sequences.visual_layers.layout_modes.positioned") }}
-                    </ToggleGroupItem>
-                  </ToggleGroup>
+                    <Undo2 class="size-2.5" />
+                    {{ fieldLabel(field) }}
+                  </Button>
+                </div>
+
+                <ImageAsset
+                  :label="layer.label || $t(`flows.sequences.visual_layers.kinds.${layer.kind}`)"
+                  :icon="kindIcon(layer.kind)"
+                  :asset-id="layerAssetId(layer)"
+                  :image-assets="data.image_assets || []"
+                  :can-edit="canEdit"
+                  :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
+                  :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+                  :clear-title="$t('flows.sequences.visual_layers.delete')"
+                  :preview-fit="layer.fit || 'contain'"
+                  :search-event="PICKER_SEARCH_EVENT"
+                  :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
+                  @select="
+                    (asset) =>
+                      updateVisualLayer(layer, { asset_id: asset.id, label: asset.filename })
+                  "
+                  @clear="removeVisualLayer(layer)"
+                />
+
+                <div class="grid min-w-0 grid-cols-2 gap-2">
+                  <div class="flex min-w-0 flex-col gap-1 text-[11px] text-muted-foreground">
+                    <span :title="fieldOriginLabel(layer, 'kind')">
+                      {{ $t("flows.sequences.visual_layers.kind") }}
+                    </span>
+                    <Popover :open="pickerOpen(layer)" @update:open="setPickerOpen(layer, $event)">
+                      <PopoverTrigger as-child>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          class="h-8 w-full min-w-0 shrink justify-between overflow-hidden px-2 text-xs font-normal"
+                          :disabled="!canEdit"
+                        >
+                          <span class="min-w-0 flex-1 truncate text-left text-foreground">
+                            {{ visualKindLabel(layer.kind) }}
+                          </span>
+                          <ChevronDown class="size-3 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent
+                        class="w-(--reka-popover-trigger-width) min-w-32 p-0"
+                        align="start"
+                        :side-offset="4"
+                      >
+                        <Command>
+                          <CommandList>
+                            <CommandGroup>
+                              <CommandItem
+                                v-for="kind in VISUAL_KINDS"
+                                :key="kind"
+                                :value="visualKindLabel(kind)"
+                                class="gap-2 text-xs"
+                                @select="pickVisualKind(layer, kind)"
+                              >
+                                <component :is="kindIcon(kind)" class="size-3.5 shrink-0" />
+                                <span class="min-w-0 flex-1 truncate">{{
+                                  visualKindLabel(kind)
+                                }}</span>
+                                <Check v-if="layer.kind === kind" class="size-3 shrink-0" />
+                              </CommandItem>
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div class="flex flex-col gap-1 text-[11px] text-muted-foreground">
+                    <span :title="fieldOriginLabel(layer, 'slot')">
+                      {{ $t("flows.sequences.visual_layers.layout") }}
+                    </span>
+                    <ToggleGroup
+                      type="single"
+                      variant="outline"
+                      size="xs"
+                      :model-value="layoutModeForLayer(layer)"
+                      :disabled="!canEdit"
+                      class="w-full"
+                      @update:model-value="setVisualLayoutMode(layer, $event)"
+                    >
+                      <ToggleGroupItem value="full" class="flex-1 text-xs">
+                        {{ $t("flows.sequences.visual_layers.layout_modes.full") }}
+                      </ToggleGroupItem>
+                      <ToggleGroupItem value="positioned" class="flex-1 text-xs">
+                        {{ $t("flows.sequences.visual_layers.layout_modes.positioned") }}
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </div>
+
+                <ImagePosition
+                  v-if="layoutModeForLayer(layer) === 'positioned'"
+                  :position="positionForLayer(layer)"
+                  :fit="layer.fit || 'contain'"
+                  :can-edit="canEdit"
+                  :position-label="$t('flows.sequences.config_panel.position_label')"
+                  :fit-label="$t('flows.sequences.config_panel.fit_label')"
+                  @position-change="(slot) => setVisualSlot(layer, slot)"
+                  @fit-change="(fit) => setVisualFit(layer, fit)"
+                />
+
+                <ImageFit
+                  v-else
+                  :fit="layer.fit || 'contain'"
+                  :can-edit="canEdit"
+                  :fit-label="$t('flows.sequences.config_panel.fit_label')"
+                  @fit-change="(fit) => setVisualFit(layer, fit)"
+                />
+
+                <div class="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <label
+                    v-for="definition in NUMERIC_LAYER_FIELDS"
+                    :key="definition.field"
+                    class="flex min-w-0 flex-col gap-1 text-[10px] text-muted-foreground"
+                    :title="fieldOriginLabel(layer, definition.field)"
+                  >
+                    {{ fieldLabel(definition.field) }}
+                    <input
+                      type="number"
+                      class="h-7 min-w-0 rounded-md border border-input bg-background px-2 text-xs tabular-nums text-foreground outline-none focus:border-ring focus:ring-2 focus:ring-ring/30 disabled:opacity-50"
+                      :min="definition.min"
+                      :max="definition.max"
+                      :step="definition.step"
+                      :value="numericLayerValue(layer, definition.field)"
+                      :disabled="!canEdit"
+                      :data-layer-field="definition.field"
+                      @change="setNumericLayerField(layer, definition.field, $event)"
+                    />
+                  </label>
+                </div>
+
+                <label class="flex items-center gap-2 text-[11px] text-muted-foreground">
+                  <span class="w-14" :title="fieldOriginLabel(layer, 'opacity')">
+                    {{ $t("flows.sequences.visual_layers.opacity") }}
+                  </span>
+                  <input
+                    class="flex-1 accent-primary"
+                    type="range"
+                    min="0"
+                    max="100"
+                    step="1"
+                    :value="Math.round((layer.opacity ?? 1) * 100)"
+                    :disabled="!canEdit"
+                    data-layer-opacity
+                    @change="setVisualOpacity(layer, $event)"
+                  />
+                  <span class="w-8 text-right tabular-nums">{{
+                    Math.round((layer.opacity ?? 1) * 100)
+                  }}</span>
+                </label>
+
+                <div class="flex items-center justify-between text-[11px] text-muted-foreground">
+                  <span :title="fieldOriginLabel(layer, 'visible')">
+                    {{ $t("flows.sequences.config_panel.fields.visible") }}
+                  </span>
+                  <Switch
+                    :model-value="layer.visible !== false"
+                    :disabled="!canEdit"
+                    :aria-label="`${$t('flows.sequences.config_panel.fields.visible')}: ${layer.label || visualKindLabel(layer.kind)}`"
+                    data-layer-visible
+                    @update:model-value="setVisualVisibility(layer, $event)"
+                  />
+                </div>
+              </article>
+            </div>
+
+            <p
+              v-else
+              class="rounded-lg border border-dashed border-border p-4 text-center text-xs text-muted-foreground"
+            >
+              {{ $t("flows.sequences.config_panel.no_visual_layers") }}
+            </p>
+
+            <div class="grid min-w-0 grid-cols-2 gap-2">
+              <ImageAsset
+                v-for="kind in VISUAL_KINDS"
+                :key="kind"
+                :label="addLayerLabel(kind)"
+                :icon="kindIcon(kind)"
+                :image-assets="data.image_assets || []"
+                :can-edit="canEdit"
+                :pick-placeholder="$t('flows.sequences.visual_layers.pick_asset')"
+                :search-placeholder="$t('flows.sequences.config_panel.search_image')"
+                :search-event="PICKER_SEARCH_EVENT"
+                :search-payload="IMAGE_ASSET_SEARCH_PAYLOAD"
+                @select="(asset) => createVisualLayer(kind, asset)"
+              />
+            </div>
+
+            <section
+              v-if="removedVisualLayers.length > 0"
+              class="rounded-lg border border-dashed border-border p-2.5"
+            >
+              <p class="mb-2 text-[11px] font-medium text-muted-foreground">
+                {{ $t("flows.sequences.config_panel.removed_layers") }}
+              </p>
+              <div class="space-y-1">
+                <div
+                  v-for="layer in removedVisualLayers"
+                  :key="layerKey(layer)"
+                  class="flex items-center gap-2 rounded bg-muted/40 px-2 py-1.5 text-xs"
+                  :data-removed-layer-key="layerKey(layer)"
+                >
+                  <component :is="kindIcon(layer.kind)" class="size-3.5 text-muted-foreground" />
+                  <span class="min-w-0 flex-1 truncate">{{ layer.label || layerKey(layer) }}</span>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="xs"
+                    class="gap-1"
+                    :disabled="!canEdit"
+                    data-restore-layer
+                    @click="restoreVisualLayer(layer)"
+                  >
+                    <RotateCcw class="size-3" />
+                    {{ $t("flows.sequences.config_panel.restore") }}
+                  </Button>
                 </div>
               </div>
+            </section>
+          </section>
+        </TabsContent>
 
-              <ImagePosition
-                v-if="layoutModeForLayer(layer) === 'positioned'"
-                :position="positionForLayer(layer)"
-                :fit="layer.fit || 'contain'"
-                :can-edit="canEdit"
-                :position-label="$t('flows.sequences.config_panel.position_label')"
-                :fit-label="$t('flows.sequences.config_panel.fit_label')"
-                @position-change="(slot) => setVisualSlot(layer, slot)"
-                @fit-change="(fit) => setVisualFit(layer, fit)"
-              />
-
-              <ImageFit
-                v-else
-                :fit="layer.fit || 'contain'"
-                :can-edit="canEdit"
-                :fit-label="$t('flows.sequences.config_panel.fit_label')"
-                @fit-change="(fit) => setVisualFit(layer, fit)"
-              />
-
-              <label class="flex items-center gap-2 text-[11px] text-muted-foreground">
-                <span class="w-14">{{ $t("flows.sequences.visual_layers.opacity") }}</span>
-                <input
-                  class="flex-1 accent-primary"
-                  type="range"
-                  min="0"
-                  max="100"
-                  step="1"
-                  :value="Math.round((layer.opacity ?? 1) * 100)"
-                  :disabled="!canEdit"
-                  @input="setVisualOpacity(layer, $event)"
-                />
-                <span class="w-8 text-right tabular-nums">
-                  {{ Math.round((layer.opacity ?? 1) * 100) }}
-                </span>
-              </label>
-            </article>
-          </div>
-        </section>
-      </TabsContent>
-
-      <TabsContent value="audio" class="mt-0">
-        <section class="flex min-w-0 flex-col gap-3">
-          <AudioAsset
-            v-for="kind in TRACK_KINDS"
-            :key="kind"
-            :label="$t(`flows.sequences.tracks.${kind}`)"
-            :icon="trackIcon(kind)"
-            :asset-id="trackFor(kind)?.asset_id"
-            :volume="trackVolumePercent(kind)"
-            :audio-assets="data?.audio_assets || []"
-            :can-edit="canEdit"
-            :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
-            :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
-            :clear-title="$t('flows.sequences.config_panel.clear_track')"
-            :search-event="PICKER_SEARCH_EVENT"
-            :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
-            @select="(asset) => pickTrackAsset(kind, asset)"
-            @clear="clearTrack(kind)"
-            @volume-change="(percent) => onVolumeChange(kind, percent)"
-          />
-        </section>
-      </TabsContent>
-    </Tabs>
+        <TabsContent value="audio" class="mt-0">
+          <section class="flex min-w-0 flex-col gap-3">
+            <AudioAsset
+              v-for="kind in TRACK_KINDS"
+              :key="kind"
+              :label="$t(`flows.sequences.tracks.${kind}`)"
+              :icon="trackIcon(kind)"
+              :asset-id="trackFor(kind)?.asset_id"
+              :volume="trackVolumePercent(kind)"
+              :audio-assets="data?.audio_assets || []"
+              :can-edit="canEdit"
+              :pick-placeholder="$t('flows.sequences.config_panel.pick_audio')"
+              :search-placeholder="$t('flows.sequences.config_panel.search_audio')"
+              :clear-title="$t('flows.sequences.config_panel.clear_track')"
+              :search-event="PICKER_SEARCH_EVENT"
+              :search-payload="AUDIO_ASSET_SEARCH_PAYLOAD"
+              @select="(asset) => pickTrackAsset(kind, asset)"
+              @clear="clearTrack(kind)"
+              @volume-change="(percent) => onVolumeChange(kind, percent)"
+            />
+          </section>
+        </TabsContent>
+      </Tabs>
+    </div>
   </Sidebar>
 </template>

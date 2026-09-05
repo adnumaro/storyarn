@@ -634,6 +634,52 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert updated_node.data["text"] == "<p>Updated text</p>"
     end
 
+    test "recomposes the selected dialogue stage after text and field updates",
+         %{conn: conn, project: project, flow: flow} do
+      node =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{
+            "text" => "<p>Original</p>",
+            "stage_directions" => "waits",
+            "speaker_sheet_id" => nil
+          }
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      await_async(view)
+      render_click(view, "node_selected", %{"id" => node.id})
+
+      render_click(view, "update_node_text", %{
+        "id" => node.id,
+        "content" => "<p>Updated on stage</p>"
+      })
+
+      stage =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["stage"])
+
+      assert stage["intervention"]["text"] == "<p>Updated on stage</p>"
+
+      render_click(view, "update_node_field", %{
+        "field" => "stage_directions",
+        "value" => "steps closer"
+      })
+
+      updated_stage =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["stage"])
+
+      assert updated_stage["intervention"]["stageDirections"] == "steps closer"
+    end
+
     test "preserves other data fields when updating text",
          %{conn: conn, project: project, flow: flow} do
       node =
