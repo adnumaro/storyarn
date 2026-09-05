@@ -8,7 +8,12 @@ import type { FlowAreaExtra, FlowConnection, FlowSchemes } from "../lib/rete-sch
 import type { SheetMapEntry } from "@modules/flows/types.ts";
 
 export interface FlowCanvasOpts {
-  pushEvent: (event: string, payload: Record<string, unknown>) => void;
+  pushEvent: (
+    event: string,
+    payload: Record<string, unknown>,
+    callback?: (reply: Record<string, unknown>) => void,
+    onError?: (error: unknown) => void,
+  ) => void;
   handleEvent: (event: string, callback: (data: Record<string, unknown>) => void) => void;
 }
 

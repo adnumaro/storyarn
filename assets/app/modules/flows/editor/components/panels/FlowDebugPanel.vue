@@ -185,6 +185,7 @@ interface DebugControls {
 
 const {
   open = false,
+  embedded = false,
   state = null,
   nodes = {},
   controls = {
@@ -198,6 +199,7 @@ const {
   },
 } = defineProps<{
   open: boolean;
+  embedded?: boolean;
   state: DebugState | null;
   nodes: Record<string, DebugNodeInfo>;
   controls: DebugControls;
@@ -561,11 +563,13 @@ function continuePastLimit() {
 <template>
   <div
     v-if="open && state"
-    class="border-t border-border bg-background shrink-0 flex flex-col"
-    :style="{ height: `${height}px` }"
+    class="border-border bg-background shrink-0 flex flex-col"
+    :class="embedded ? 'h-full min-h-0' : 'border-t'"
+    :style="embedded ? undefined : { height: `${height}px` }"
   >
     <!-- Resize handle -->
     <div
+      v-if="!embedded"
       class="h-1 cursor-row-resize bg-transparent hover:bg-primary/30 transition-colors shrink-0"
       @pointerdown="onPointerDown"
     />

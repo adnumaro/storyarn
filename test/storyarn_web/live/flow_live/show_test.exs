@@ -2,6 +2,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   use StoryarnWeb.ConnCase, async: true
 
   import Phoenix.LiveViewTest
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
@@ -35,7 +36,296 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
       assert surface.props["surface"]["dock"]["flowId"] == flow.id
+      assert surface.props["surface"]["stage"] == %{"status" => "empty"}
       assert panels.props["panels"]["debug"]["open"] == false
+    end
+
+    test "selecting a dialogue resolves its inherited composition in the Sequence stage",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Sequence Stage Flow"})
+      backdrop = image_asset_fixture(project, user, %{filename: "stage-room.png"})
+
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Shared scene"})
+
+      {:ok, _layer} =
+        Flows.create_sequence_visual_layer(sequence.id, %{
+          asset_id: backdrop.id,
+          kind: "backdrop",
+          label: "Room"
+        })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{"text" => "<p>The door opens.</p>", "responses" => []}
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+      render_hook(view, "node_selected", %{"id" => dialogue.id})
+      render(view)
+
+      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+      stage = surface.props["surface"]["stage"]
+
+      assert stage["status"] == "ready"
+      assert stage["intervention"]["nodeId"] == dialogue.id
+      assert stage["intervention"]["text"] == "<p>The door opens.</p>"
+      assert [%{"label" => "Room", "origin" => origin}] = stage["composition"]["layers"]
+      assert origin == %{"inherited" => true, "nodeId" => sequence.id, "sequenceId" => sequence.id}
+    end
+
+    test "opens the composition inspector for the owner requested by the Sequence stage",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Inspector owner flow"})
+      first = node_fixture(flow, %{type: "dialogue", data: %{"text" => "First"}})
+      second = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Second"}})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+      render_hook(view, "node_selected", %{"id" => first.id})
+      render_hook(view, "open_sequence_config", %{"id" => second.id})
+      render(view)
+
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+
+      assert panels.props["panels"]["sequence"]["open"] == true
+      assert panels.props["panels"]["sequence"]["data"]["owner_id"] == second.id
+      assert surface.props["surface"]["stage"]["owner"]["nodeId"] == second.id
+    end
+
+    test "restoring another owner's history keeps the selected stage and inspector aligned",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Independent history owners"})
+      {:ok, first} = Flows.create_sequence(flow.id, %{"name" => "First before"})
+
+      second =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p>Second stays selected</p>", "responses" => []}
+        })
+
+      assert {:ok, before} = Flows.capture_sequence_composition(first.id)
+      assert {:ok, _updated_first} = Flows.update_sequence(first, %{"name" => "First after"})
+      assert {:ok, current} = Flows.capture_sequence_composition(first.id)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+      render_hook(view, "open_sequence_config", %{"id" => second.id})
+
+      render_hook(view, "restore_sequence_composition", %{
+        "id" => first.id,
+        "snapshot" => before,
+        "expected_current" => current
+      })
+
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      surface = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface")
+
+      assert panels.props["panels"]["sequence"]["data"]["owner_id"] == second.id
+      assert surface.props["surface"]["stage"]["owner"]["nodeId"] == second.id
+
+      assert surface.props["surface"]["stage"]["intervention"]["text"] ==
+               "<p>Second stays selected</p>"
+
+      assert Flows.get_sequence_config(first.id).name == "First before"
+    end
+
+    test "invalidates client history when a composition restore cannot be applied",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Composition history conflicts"})
+      {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Before"})
+
+      assert {:ok, before} = Flows.capture_sequence_composition(owner.id)
+      assert {:ok, owner} = Flows.update_sequence(owner, %{"name" => "Expected"})
+      assert {:ok, expected} = Flows.capture_sequence_composition(owner.id)
+      assert {:ok, _owner} = Flows.update_sequence(owner, %{"name" => "Intervening edit"})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+
+      render_hook(view, "restore_sequence_composition", %{
+        "id" => owner.id,
+        "snapshot" => before,
+        "expected_current" => expected
+      })
+
+      assert_push_event(view, "sequence_composition_history_invalidated", %{})
+
+      render_hook(view, "restore_sequence_composition", %{
+        "id" => owner.id,
+        "snapshot" => before
+      })
+
+      assert_push_event(view, "sequence_composition_history_invalidated", %{})
+
+      foreign_flow = flow_fixture(project, %{name: "Foreign composition owner"})
+      {:ok, foreign_owner} = Flows.create_sequence(foreign_flow.id, %{"name" => "Foreign"})
+      assert {:ok, foreign_snapshot} = Flows.capture_sequence_composition(foreign_owner.id)
+
+      render_hook(view, "restore_sequence_composition", %{
+        "id" => foreign_owner.id,
+        "snapshot" => foreign_snapshot,
+        "expected_current" => foreign_snapshot
+      })
+
+      assert_push_event(view, "sequence_composition_history_invalidated", %{})
+      assert Flows.get_sequence_config(owner.id).name == "Intervening edit"
+    end
+
+    test "the inspector exposes tombstones inherited from an ancestor for restoration",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Inherited tombstones"})
+      image = image_asset_fixture(project, user)
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      middle =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "Middle"}
+        })
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: middle.id,
+          data: %{"text" => "Descendant"}
+        })
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "backdrop",
+          "asset_id" => image.id
+        })
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_visual_layer(middle.id, layer.layer_key)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_async(view, 2000)
+      render_hook(view, "open_sequence_config", %{"id" => descendant.id})
+      render(view)
+
+      data =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowPanels")
+        |> then(& &1.props["panels"]["sequence"]["data"])
+
+      removed_layer =
+        Enum.find(data["removed_visual_layers"], &(&1["key"] == layer.layer_key))
+
+      assert removed_layer["removed"] == true
+      assert removed_layer["local_row_id"] == nil
+      assert removed_layer["asset_id"] == image.id
+
+      assert {:ok, restored_layer} =
+               Flows.restore_sequence_visual_layer(descendant.id, layer.layer_key)
+
+      render_hook(view, "open_sequence_config", %{"id" => descendant.id})
+      render(view)
+
+      restored_data =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowPanels")
+        |> then(& &1.props["panels"]["sequence"]["data"])
+
+      effective_layer =
+        Enum.find(restored_data["visual_layers"], &(&1["key"] == layer.layer_key))
+
+      assert effective_layer["sequenceId"] == descendant.id
+      assert effective_layer["local_row_id"] == restored_layer.id
+
+      assert {:ok, _deleted_layer} =
+               Flows.remove_sequence_visual_layer(descendant.id, layer.layer_key)
+
+      assert is_nil(Flows.get_sequence_visual_layer_by_key(descendant.id, layer.layer_key))
+
+      render_hook(view, "open_sequence_config", %{"id" => descendant.id})
+      render(view)
+
+      removed_again =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowPanels")
+        |> then(& &1.props["panels"]["sequence"]["data"])
+
+      assert Enum.any?(
+               removed_again["removed_visual_layers"],
+               &(&1["key"] == layer.layer_key and is_nil(&1["local_row_id"]))
+             )
+    end
+
+    test "reports composition dependency conflicts instead of silently ignoring them",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Protected composition"})
+      image = image_asset_fixture(project, user)
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "Customized"}
+        })
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => image.id
+        })
+
+      assert {:ok, _patch} =
+               Flows.override_sequence_visual_layer(descendant.id, layer.layer_key, %{
+                 "opacity" => 0.5
+               })
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+
+      render_hook(view, "delete_sequence_visual_layer", %{
+        "id" => base.id,
+        "layer_id" => layer.id
+      })
+
+      flash = LiveVue.Test.get_vue(view, name: "live/layouts/flash/FlashGroup")
+
+      assert flash.props["flash"]["error"] ==
+               "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+
+      assert Flows.get_sequence_visual_layer(base.id, layer.id)
     end
 
     test "passes incomplete dialogue findings to the warning section",

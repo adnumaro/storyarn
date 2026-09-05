@@ -6,12 +6,12 @@ import PlayerChoices from "@modules/flows/player/components/PlayerChoices.vue";
 import PlayerToolbar from "@modules/flows/player/components/PlayerToolbar.vue";
 import PlayerOutcome from "@modules/flows/player/components/PlayerOutcome.vue";
 import PlayerAudioTracks from "@modules/flows/player/components/PlayerAudioTracks.vue";
-import PlayerVisualLayers from "@modules/flows/player/components/PlayerVisualLayers.vue";
+import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
 import type { OutcomeData } from "@modules/flows/player/components/PlayerOutcome.vue";
 import type { PlayerAudioTrack } from "@modules/flows/player/components/PlayerAudioTracks.vue";
-import type { PlayerVisualLayer } from "@modules/flows/player/components/PlayerVisualLayers.vue";
+import type { SequenceVisualLayer } from "@modules/flows/sequence/types";
 
 const {
   slide,
@@ -29,7 +29,7 @@ const {
   canGoBack: boolean;
   showContinue: boolean;
   isFinished: boolean;
-  visualLayers?: PlayerVisualLayer[];
+  visualLayers?: SequenceVisualLayer[];
   audioTracks?: PlayerAudioTrack[];
   editorUrl: string;
   responses: ResponseData[];
@@ -125,7 +125,7 @@ onUnmounted(() => {
 
     <div class="player-main">
       <div class="player-stage">
-        <PlayerVisualLayers :layers="visualLayers" />
+        <SequenceVisualLayers :layers="visualLayers" />
         <PlayerAudioTracks :tracks="audioTracks" />
 
         <PlayerOutcome

@@ -13,6 +13,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
 
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
+  alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
   alias StoryarnWeb.FlowLive.Helpers.VariableHelpers
   alias StoryarnWeb.FlowLive.Player.Slide
   alias StoryarnWeb.PrivateMedia
@@ -328,10 +329,8 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp player_visual_layers(%{engine_state: state, nodes: nodes}) do
-    state
-    |> Flows.compose_player_sequences(nodes)
-    |> Map.fetch!(:visual_layers)
-    |> Enum.flat_map(&serialize_visual_layer/1)
+    composition = Flows.compose_player_sequences(state, nodes)
+    SequencePresentation.visual_layers(composition, state.current_node_id)
   end
 
   defp player_visual_layers(_assigns), do: []
@@ -344,37 +343,6 @@ defmodule StoryarnWeb.FlowLive.PlayerLive do
   end
 
   defp player_audio_tracks(_assigns), do: []
-
-  defp serialize_visual_layer(%{item: layer, sequence_id: sequence_id, depth: depth}) do
-    url = media_url(layer)
-
-    if is_binary(url) and url != "" do
-      [
-        %{
-          id: layer.id,
-          sequence_id: sequence_id,
-          sequence_depth: depth,
-          kind: layer.kind,
-          label: Map.get(layer, :label),
-          url: url,
-          z_index: layer_value(layer, :z_index, 0),
-          slot: Map.get(layer, :slot),
-          x: layer_value(layer, :x, 0.0),
-          y: layer_value(layer, :y, 0.0),
-          width: layer_value(layer, :width, 1.0),
-          height: layer_value(layer, :height, 1.0),
-          anchor_x: layer_value(layer, :anchor_x, 0.0),
-          anchor_y: layer_value(layer, :anchor_y, 0.0),
-          fit: layer_value(layer, :fit, "contain"),
-          opacity: layer_value(layer, :opacity, 1.0)
-        }
-      ]
-    else
-      []
-    end
-  end
-
-  defp layer_value(layer, key, default), do: Map.get(layer, key) || default
 
   defp serialize_audio_track(%{item: track, sequence_id: sequence_id, depth: depth}) do
     url = media_url(track)

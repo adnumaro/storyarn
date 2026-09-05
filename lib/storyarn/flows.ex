@@ -1279,6 +1279,18 @@ defmodule Storyarn.Flows do
   @doc "Sets the explicit composition source of a sequence or dialogue node."
   defdelegate set_composition_source(owner_id, source_id), to: Editor
 
+  @doc "Captures one composition owner's local state for editor undo/redo."
+  defdelegate capture_sequence_composition(owner_id), to: Editor
+
+  @doc "Runs a composition mutation and captures its before/after history atomically."
+  defdelegate transact_sequence_composition(owner_id, mutation), to: Editor
+
+  @doc "Restores one composition owner's local state from an editor history snapshot."
+  defdelegate restore_sequence_composition(owner_id, snapshot), to: Editor
+
+  @doc "Restores history only when the owner's current state matches the expected snapshot."
+  defdelegate restore_sequence_composition(owner_id, snapshot, expected_current), to: Editor
+
   @doc "Lists all local visual-layer rows for a sequence or dialogue owner."
   defdelegate list_sequence_visual_layers(sequence_id), to: Editor
 

@@ -11,7 +11,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Phoenix.LiveView.Socket
-  alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
@@ -93,28 +92,40 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   # `node.nodeData.name` on the rete node so the header label refreshes.
   # No need to reload `flow_data`.
   def handle_remote_change(:sequence_renamed, payload, socket) do
-    {:noreply, CollaborationHelpers.push_remote_change_event(socket, :sequence_renamed, payload)}
+    {:noreply,
+     socket
+     |> CollaborationHelpers.push_remote_change_event(:sequence_renamed, payload)
+     |> push_event("sequence_composition_history_invalidated", %{})}
   end
 
-  # Sequence config / track changes — only matter to viewers who currently
-  # have the sequence config panel open on the same sequence. Refresh the
-  # panel data assign so Vue re-renders with the new visual/audio state.
-  # Skip the canvas reload — these fields don't affect node graph topology.
+  # Sequence composition changes can affect any descendant that inherits from
+  # the edited owner. Recompose the receiver's current stage and panel instead
+  # of refreshing only an exact sequence-panel match.
   def handle_remote_change(:sequence_config_updated, payload, socket) do
-    socket = CollaborationHelpers.push_remote_change_event(socket, :sequence_config_updated, payload)
-    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+    socket =
+      socket
+      |> CollaborationHelpers.push_remote_change_event(:sequence_config_updated, payload)
+      |> refresh_sequence_surfaces()
+
+    {:noreply, socket}
   end
 
-  def handle_remote_change(:sequence_track_upserted, payload, socket) do
-    refresh_sequence_panel_if_open(socket, payload.sequence_id)
-  end
+  def handle_remote_change(:sequence_track_upserted, _payload, socket), do: {:noreply, refresh_sequence_surfaces(socket)}
 
-  def handle_remote_change(:sequence_track_cleared, payload, socket) do
-    refresh_sequence_panel_if_open(socket, payload.sequence_id)
-  end
+  def handle_remote_change(:sequence_track_cleared, _payload, socket), do: {:noreply, refresh_sequence_surfaces(socket)}
 
-  def handle_remote_change(:sequence_visual_layer_changed, payload, socket) do
-    refresh_sequence_panel_if_open(socket, payload.sequence_id)
+  def handle_remote_change(:sequence_visual_layer_changed, _payload, socket),
+    do: {:noreply, refresh_sequence_surfaces(socket)}
+
+  def handle_remote_change(:node_updated, payload, socket) do
+    socket =
+      socket
+      |> SocketHelpers.reload_flow_data()
+      |> CollaborationHelpers.push_remote_change_event(:node_updated, payload)
+      |> CollaborationHelpers.show_collab_toast(:node_updated, payload)
+      |> refresh_sequence_surfaces()
+
+    {:noreply, socket}
   end
 
   def handle_remote_change(action, payload, socket) do
@@ -128,25 +139,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     {:noreply, socket}
   end
 
-  # Rebuilds the sequence panel payload only when the receiving LV has the
-  # config panel open on `sequence_id`. Other receivers no-op.
-  defp refresh_sequence_panel_if_open(socket, sequence_id) do
-    if socket.assigns[:editing_mode] == :sequence_config and
-         match?(%{id: ^sequence_id, type: "sequence"}, socket.assigns[:selected_node]) do
-      case Flows.get_node(socket.assigns.flow.id, sequence_id) do
-        %{type: "sequence"} = seq ->
-          {:noreply,
-           assign(
-             socket,
-             :sequence_panel_data,
-             GenericNodeHandlers.build_sequence_panel_data(socket, seq)
-           )}
+  defp refresh_sequence_surfaces(socket) do
+    socket
+    |> push_event("sequence_composition_history_invalidated", %{})
+    |> refresh_selected_composition()
+  end
 
-        _ ->
-          {:noreply, socket}
-      end
-    else
-      {:noreply, socket}
+  defp refresh_selected_composition(socket) do
+    case socket.assigns[:selected_node] do
+      %{id: owner_id, type: type} when type in ["sequence", "dialogue"] ->
+        GenericNodeHandlers.refresh_sequence_editor(socket, owner_id)
+
+      _other ->
+        socket
     end
   end
 end
