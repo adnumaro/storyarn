@@ -21,6 +21,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
   alias StoryarnWeb.SheetLive.Handlers.AudioHandlers
   alias StoryarnWeb.SheetLive.Handlers.BlockHandlers
+  alias StoryarnWeb.SheetLive.Handlers.CommentHandlers
   alias StoryarnWeb.SheetLive.Handlers.FormulaHandlers
   alias StoryarnWeb.SheetLive.Handlers.GalleryHandlers
   alias StoryarnWeb.SheetLive.Handlers.HeaderHandlers
@@ -81,6 +82,7 @@ defmodule StoryarnWeb.SheetLive.Show do
         v-inject:top-left="project-layout"
         id="sheet-header"
         health={@sheet_health}
+        comments={sheet_header_comment_props(assigns)}
       />
 
       <.sheet_content
@@ -105,6 +107,9 @@ defmodule StoryarnWeb.SheetLive.Show do
         block_locks={@block_locks}
         current_user_id={@current_scope.user.id}
         highlight_target={@highlight_target}
+        comments={@comments}
+        comment_pins={@comment_pins}
+        comment_focus_thread_id={@comment_focus_thread_id}
         compact={false}
       />
     </StoryarnWeb.Components.ProjectLayout.project>
@@ -141,6 +146,9 @@ defmodule StoryarnWeb.SheetLive.Show do
         block_locks={@block_locks}
         current_user_id={@current_scope.user.id}
         highlight_target={@highlight_target}
+        comments={@comments}
+        comment_pins={@comment_pins}
+        comment_focus_thread_id={@comment_focus_thread_id}
         compact={true}
       />
     </StoryarnWeb.Components.CompareLayout.compare>
@@ -168,6 +176,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   attr :block_locks, :map, default: %{}
   attr :current_user_id, :integer, default: nil
   attr :highlight_target, :map, default: nil
+  attr :comments, :map, default: %{}
+  attr :comment_pins, :list, default: []
+  attr :comment_focus_thread_id, :integer, default: nil
   attr :compact, :boolean, default: false
   attr :inject, :string, default: nil
 
@@ -201,8 +212,17 @@ defmodule StoryarnWeb.SheetLive.Show do
     }
   end
 
-  defp sheet_surface_content_props(%{current_tab: "content"} = assigns) do
+  defp sheet_header_comment_props(assigns) do
     %{
+      count: length(assigns.comment_pins),
+      open: assigns.comments.open && assigns.comments.presentation == "panel",
+      placing: assigns.comments.placing,
+      canComment: assigns.comments.canComment
+    }
+  end
+
+  defp sheet_surface_content_props(%{current_tab: "content"} = assigns) do
+    content = %{
       blocks:
         prepare_blocks_for_vue(
           assigns.blocks,
@@ -230,18 +250,30 @@ defmodule StoryarnWeb.SheetLive.Show do
       blockLocks: serialize_block_locks(assigns.block_locks),
       currentUserId: assigns.current_user_id
     }
+
+    if assigns.compact do
+      content
+    else
+      Map.merge(content, %{
+        commentPins: assigns.comment_pins,
+        commentFocusThreadId: assigns.comment_focus_thread_id,
+        comments: assigns.comments
+      })
+    end
   end
 
   defp sheet_surface_content_props(_assigns), do: nil
 
   defp sheet_panels_props(assigns) do
-    %{
+    panels = %{
       currentTab: assigns.current_tab,
       compact: assigns.compact,
       references: sheet_references_panel_props(assigns),
       audio: sheet_audio_panel_props(assigns),
       history: sheet_history_panel_props(assigns)
     }
+
+    if assigns.compact, do: panels, else: Map.put(panels, :comments, assigns.comments)
   end
 
   defp sheet_references_panel_props(%{current_tab: "references"} = assigns) do
@@ -311,37 +343,41 @@ defmodule StoryarnWeb.SheetLive.Show do
       )
     end
 
-    {:ok,
-     socket
-     |> assign(:can_edit, can_edit)
-     |> assign(:compact, false)
-     |> assign(:sheet, nil)
-     |> assign(:blocks, [])
-     |> assign(:inherited_groups, [])
-     |> assign(:gallery_data, %{})
-     |> assign(:table_data, %{})
-     |> assign(:source_shortcut, nil)
-     |> assign(:sheet_health, empty_health())
-     |> assign(:current_tab, "content")
-     |> assign(:references_data, nil)
-     |> assign(:audio_data, nil)
-     |> assign(:history_data, nil)
-     |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
-     |> assign(:collab_scope, nil)
-     |> assign(:block_locks, %{})
-     |> assign(:pending_delete_id, nil)
-     |> assign(:formula_editing, nil)
-     |> assign(:formula_search_results, [])
-     |> assign(:formula_search_query, "")
-     |> assign(:formula_search_offset, 0)
-     |> assign(:formula_search_has_more, false)
-     |> assign(:highlight_target, nil)
-     |> assign(:highlight_revision, 0)
-     |> UndoRedoStack.init()}
+    socket =
+      socket
+      |> assign(:can_edit, can_edit)
+      |> assign(:compact, false)
+      |> assign(:sheet, nil)
+      |> assign(:blocks, [])
+      |> assign(:inherited_groups, [])
+      |> assign(:gallery_data, %{})
+      |> assign(:table_data, %{})
+      |> assign(:source_shortcut, nil)
+      |> assign(:sheet_health, empty_health())
+      |> assign(:current_tab, "content")
+      |> assign(:references_data, nil)
+      |> assign(:audio_data, nil)
+      |> assign(:history_data, nil)
+      |> assign(:online_users, ProjectChromeHelpers.initial_online_users(project.id))
+      |> assign(:collab_scope, nil)
+      |> assign(:block_locks, %{})
+      |> assign(:pending_delete_id, nil)
+      |> assign(:formula_editing, nil)
+      |> assign(:formula_search_results, [])
+      |> assign(:formula_search_query, "")
+      |> assign(:formula_search_offset, 0)
+      |> assign(:formula_search_has_more, false)
+      |> assign(:highlight_target, nil)
+      |> assign(:highlight_revision, 0)
+      |> UndoRedoStack.init()
+      |> CommentHandlers.init()
+
+    {:ok, socket}
   end
 
   @impl true
   def handle_params(%{"id" => sheet_id} = params, _url, socket) do
+    previous_compact = socket.assigns.compact
     compact = params["layout"] == "compact"
 
     current_sheet_id =
@@ -353,7 +389,7 @@ defmodule StoryarnWeb.SheetLive.Show do
     socket = assign(socket, :compact, compact)
 
     socket =
-      if sheet_id == current_sheet_id do
+      if sheet_id == current_sheet_id && compact == previous_compact do
         socket
       else
         load_sheet(socket, sheet_id)
@@ -366,6 +402,13 @@ defmodule StoryarnWeb.SheetLive.Show do
       StoryarnWeb.SheetsSidebarLive.shell_topic(socket.assigns.project.id),
       {:active_sheet, sheet_id}
     )
+
+    socket =
+      if socket.assigns.sheet do
+        CommentHandlers.handle_params(socket, params)
+      else
+        socket
+      end
 
     {:noreply, socket}
   end
@@ -447,12 +490,13 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   defp load_sheet(socket, sheet_id) do
-    socket = teardown_sheet_collab(socket)
+    socket = socket |> teardown_sheet_collab() |> CommentHandlers.unload() |> CommentHandlers.init()
     %{project: project} = socket.assigns
 
     case Sheets.get_sheet_full(project.id, sheet_id) do
       nil ->
         socket
+        |> assign(:sheet, nil)
         |> put_flash(:error, dgettext("sheets", "Sheet not found."))
         |> push_navigate(to: ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/sheets")
 
@@ -473,24 +517,8 @@ defmodule StoryarnWeb.SheetLive.Show do
         {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
         all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
 
-        gallery_block_ids =
-          all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
-
-        gallery_data =
-          if gallery_block_ids == [],
-            do: %{},
-            else: Sheets.batch_load_gallery_data(gallery_block_ids)
-
-        table_block_ids =
-          all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
-
-        table_data =
-          if table_block_ids == [],
-            do: %{},
-            else:
-              table_block_ids
-              |> Sheets.batch_load_table_data()
-              |> compute_formulas(project.id)
+        gallery_data = load_gallery_data(all_blocks)
+        table_data = load_table_data(all_blocks, project.id)
 
         socket
         |> assign(:sheet, sheet)
@@ -506,7 +534,33 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign(:audio_data, nil)
         |> assign(:history_data, nil)
         |> assign_sheet_health()
+        |> CommentHandlers.loaded()
     end
+  end
+
+  defp load_gallery_data(blocks) do
+    case block_ids_by_type(blocks, "gallery") do
+      [] -> %{}
+      gallery_block_ids -> Sheets.batch_load_gallery_data(gallery_block_ids)
+    end
+  end
+
+  defp load_table_data(blocks, project_id) do
+    case block_ids_by_type(blocks, "table") do
+      [] ->
+        %{}
+
+      table_block_ids ->
+        table_block_ids
+        |> Sheets.batch_load_table_data()
+        |> compute_formulas(project_id)
+    end
+  end
+
+  defp block_ids_by_type(blocks, type) do
+    blocks
+    |> Enum.filter(&(&1.type == type))
+    |> Enum.map(& &1.id)
   end
 
   # ===========================================================================
@@ -520,9 +574,29 @@ defmodule StoryarnWeb.SheetLive.Show do
     {:noreply, socket}
   end
 
+  def handle_event("comments_open", params, socket) do
+    CommentHandlers.handle("open", params, socket)
+  end
+
+  def handle_event("comments_mode", %{"active" => true} = params, socket) do
+    CommentHandlers.handle("mode", params, socket)
+  end
+
+  def handle_event("comments_place", params, socket) do
+    CommentHandlers.handle("place", params, socket)
+  end
+
+  def handle_event("comments_select_thread", params, socket) do
+    CommentHandlers.handle("select_thread", params, socket)
+  end
+
+  def handle_event("comments_" <> action, params, socket) do
+    CommentHandlers.handle(action, params, socket)
+  end
+
   def handle_event("switch_tab", %{"tab" => tab}, socket) when tab in @sheet_tabs do
     track_sheet_history_opened(socket, tab)
-    {:noreply, maybe_switch_tab(socket, tab)}
+    {:noreply, socket |> CommentHandlers.close() |> maybe_switch_tab(tab)}
   end
 
   def handle_event("switch_tab", _params, socket), do: {:noreply, socket}
@@ -571,17 +645,32 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("toggle_multi_select", params, socket),
     do: BlockHandlers.handle_toggle_multi_select(params, socket, content_helpers())
 
-  def handle_event("update_block_config", params, socket),
-    do: BlockHandlers.handle_update_config(params, socket, content_helpers())
+  def handle_event("update_block_config", params, socket) do
+    params
+    |> BlockHandlers.handle_update_config(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
-  def handle_event("delete_block", params, socket), do: BlockHandlers.handle_delete(params, socket, content_helpers())
+  def handle_event("delete_block", params, socket) do
+    params
+    |> BlockHandlers.handle_delete(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
   def handle_event("duplicate_block", params, socket),
     do: BlockHandlers.handle_duplicate(params, socket, content_helpers())
 
-  def handle_event("undo", params, socket), do: BlockHandlers.handle_undo(params, socket, content_helpers())
+  def handle_event("undo", params, socket) do
+    params
+    |> BlockHandlers.handle_undo(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
-  def handle_event("redo", params, socket), do: BlockHandlers.handle_redo(params, socket, content_helpers())
+  def handle_event("redo", params, socket) do
+    params
+    |> BlockHandlers.handle_redo(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
   def handle_event("reorder_layout", params, socket),
     do: BlockHandlers.handle_reorder_layout(params, socket, content_helpers())
@@ -598,9 +687,17 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("toggle_required", params, socket),
     do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
 
-  def handle_event("detach_block", params, socket), do: BlockHandlers.handle_detach(params, socket, content_helpers())
+  def handle_event("detach_block", params, socket) do
+    params
+    |> BlockHandlers.handle_detach(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
-  def handle_event("reattach_block", params, socket), do: BlockHandlers.handle_reattach(params, socket, content_helpers())
+  def handle_event("reattach_block", params, socket) do
+    params
+    |> BlockHandlers.handle_reattach(socket, content_helpers())
+    |> CommentHandlers.refresh_result()
+  end
 
   # --- Gallery blocks ---
 
@@ -842,8 +939,11 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("review_restore", params, socket),
     do: VersionEvents.handle_review_restore(params, socket, sheet_version_config())
 
-  def handle_event("confirm_restore", params, socket),
-    do: VersionEvents.handle_confirm_restore(params, socket, sheet_version_config())
+  def handle_event("confirm_restore", params, socket) do
+    params
+    |> VersionEvents.handle_confirm_restore(socket, sheet_version_config())
+    |> CommentHandlers.refresh_result()
+  end
 
   # --- Block locking ---
 
@@ -871,6 +971,14 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_info({:active_scene, _scene_id}, socket), do: {:noreply, socket}
   def handle_info({:active_locale, _locale}, socket), do: {:noreply, socket}
   def handle_info({:tree_changed, :sheets}, socket), do: {:noreply, socket}
+
+  def handle_info({:sheet_comments_changed, sheet_id}, socket) do
+    if socket.assigns.sheet && socket.assigns.sheet.id == sheet_id && !socket.assigns.compact do
+      {:noreply, CommentHandlers.refresh(socket)}
+    else
+      {:noreply, socket}
+    end
+  end
 
   def handle_info({:entities_deleted, :sheet, ids}, socket) do
     if socket.assigns.sheet.id in ids do
@@ -910,7 +1018,20 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    handle_remote_change(action, payload, socket)
+    result = handle_remote_change(action, payload, socket)
+
+    if action in [
+         :block_deleted,
+         :block_created,
+         :block_updated,
+         :block_type_changed,
+         :inherited_blocks_changed,
+         :sheet_restored
+       ] do
+      CommentHandlers.refresh_result(result)
+    else
+      result
+    end
   end
 
   def handle_info({:table_push_undo, action}, socket) do
@@ -923,7 +1044,7 @@ defmodule StoryarnWeb.SheetLive.Show do
 
   @impl true
   def terminate(_reason, socket) do
-    teardown_sheet_collab(socket)
+    socket |> CommentHandlers.unload() |> teardown_sheet_collab()
   end
 
   # ===========================================================================
@@ -998,6 +1119,10 @@ defmodule StoryarnWeb.SheetLive.Show do
      socket
      |> reload_blocks()
      |> show_collab_toast(:block_type_changed, payload)}
+  end
+
+  defp handle_remote_change(:inherited_blocks_changed, _payload, socket) do
+    {:noreply, reload_blocks(socket)}
   end
 
   defp handle_remote_change(:sheet_updated, payload, socket) do

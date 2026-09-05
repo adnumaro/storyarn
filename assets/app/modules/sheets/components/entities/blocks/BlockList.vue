@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { DnDProvider } from "@vue-dnd-kit/core";
 import { ArrowUpRight, Link2Off } from "@lucide/vue";
-import { onMounted, onUnmounted, provide, ref } from "vue";
+import { onMounted, onUnmounted, provide, ref, watch } from "vue";
 import UserAvatar from "../../../../../components/UserAvatar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
 import type { BlockLock, FormulaEditing, InheritedBlockGroup, LayoutItem } from "../../../types";
@@ -41,6 +41,8 @@ const {
   formulaEditing = null,
   blockLocks = {},
   currentUserId = null,
+  commentsActive = false,
+  commentsPlacing = false,
 } = defineProps<{
   blocks?: LayoutItem[];
   inheritedGroups?: InheritedBlockGroup[];
@@ -50,6 +52,8 @@ const {
   formulaEditing?: FormulaEditing | null;
   blockLocks?: Record<string, BlockLock>;
   currentUserId?: number | null;
+  commentsActive?: boolean;
+  commentsPlacing?: boolean;
 }>();
 
 const live = useLive();
@@ -120,6 +124,13 @@ function deselectBlock(): void {
   selectedBlockId.value = null;
 }
 
+watch(
+  () => commentsActive,
+  (active) => {
+    if (active) deselectBlock();
+  },
+);
+
 provide("selectedBlockId", selectedBlockId);
 provide("selectBlock", selectBlock);
 
@@ -137,8 +148,12 @@ function isInputFocused(): boolean {
   );
 }
 
+function blockShortcutsUnavailable(): boolean {
+  return commentsActive || !selectedBlockId.value || !canEdit || isInputFocused();
+}
+
 function onKeydown(e: KeyboardEvent): void {
-  if (!selectedBlockId.value || !canEdit || isInputFocused()) {
+  if (blockShortcutsUnavailable()) {
     return;
   }
 
@@ -159,7 +174,7 @@ function onKeydown(e: KeyboardEvent): void {
 }
 
 function onUndoRedo(e: KeyboardEvent): void {
-  if (!(e.metaKey || e.ctrlKey) || isInputFocused()) {
+  if (commentsActive || !(e.metaKey || e.ctrlKey) || isInputFocused()) {
     return;
   }
 
@@ -231,6 +246,10 @@ function resolveComponent(type: string): typeof TextBlock | null {
             :id="`sheet-block-${block.id}`"
             :key="block.id"
             :data-sheet-block-id="block.id"
+            :tabindex="commentsPlacing ? 0 : undefined"
+            :aria-describedby="
+              commentsPlacing ? 'sheet-comment-block-keyboard-instructions' : undefined
+            "
             class="relative scroll-mt-8 transition-shadow"
           >
             <component
@@ -278,7 +297,11 @@ function resolveComponent(type: string): typeof TextBlock | null {
       </div>
 
       <!-- ═══ OWN BLOCKS ═══ -->
-      <BlockDndRoot :layout-items="blocks" :can-edit="canEdit" />
+      <BlockDndRoot
+        :layout-items="blocks"
+        :can-edit="canEdit"
+        :comments-placing="commentsPlacing"
+      />
 
       <div
         v-if="blocks.length === 0 && inheritedGroups.length === 0 && !canEdit"

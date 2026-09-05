@@ -10,6 +10,7 @@ defmodule Storyarn.Projects.Comments.Thread do
     field :flow_node_id, :integer
     field :flow_canvas_id, :integer
     field :scene_canvas_id, :integer
+    field :sheet_block_id, :integer
     field :position_x, :float
     field :position_y, :float
     field :container_id, :integer

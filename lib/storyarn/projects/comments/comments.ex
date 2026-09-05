@@ -28,6 +28,16 @@ defmodule Storyarn.Projects.Comments do
     end
   end
 
+  def list_sheet_threads(scope, project_id, sheet_id, opts \\ []) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(sheet_id) do
+      {threads, next_cursor} = Queries.list_threads(project_id, :sheet, sheet_id, opts)
+      {:ok, %{threads: thread_dtos(threads), next_cursor: next_cursor}}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
   def get_thread(scope, project_id, thread_id, opts \\ []) do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(thread_id),
@@ -68,6 +78,12 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
+  def create_sheet_block(scope, project_id, sheet_id, block_id, attrs) do
+    scope
+    |> Mutations.create_sheet_block(project_id, sheet_id, block_id, attrs)
+    |> publish_and_read(scope, project_id)
+  end
+
   def reply(scope, project_id, thread_id, attrs) do
     scope
     |> Mutations.reply(project_id, thread_id, attrs)
@@ -105,6 +121,15 @@ defmodule Storyarn.Projects.Comments do
     with {:ok, _project} <- authorize_read(scope, project_id),
          true <- Payload.valid_id?(scene_id) do
       {:ok, project_id |> Queries.list_pins(:scene, scene_id) |> thread_dtos()}
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def list_sheet_pins(scope, project_id, sheet_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(sheet_id) do
+      {:ok, project_id |> Queries.list_pins(:sheet, sheet_id) |> thread_dtos()}
     else
       _ -> {:error, :not_found}
     end
@@ -182,6 +207,19 @@ defmodule Storyarn.Projects.Comments do
     PubSub.unsubscribe(Storyarn.PubSub, scene_topic(project_id, scene_id))
   end
 
+  def subscribe_sheet(scope, project_id, sheet_id) do
+    with {:ok, _project} <- authorize_read(scope, project_id),
+         true <- Payload.valid_id?(sheet_id) do
+      PubSub.subscribe(Storyarn.PubSub, sheet_topic(project_id, sheet_id))
+    else
+      _ -> {:error, :not_found}
+    end
+  end
+
+  def unsubscribe_sheet(project_id, sheet_id) do
+    PubSub.unsubscribe(Storyarn.PubSub, sheet_topic(project_id, sheet_id))
+  end
+
   defp authorize_read(scope, project_id) do
     case Access.authorize(scope, project_id, :view) do
       {:ok, project, _membership} -> {:ok, project}
@@ -223,6 +261,10 @@ defmodule Storyarn.Projects.Comments do
     PubSub.broadcast(Storyarn.PubSub, scene_topic(project_id, scene_id), {:scene_comments_changed, scene_id})
   end
 
+  defp publish_change(project_id, %{source_type: "sheet_block", container_id: sheet_id}) do
+    PubSub.broadcast(Storyarn.PubSub, sheet_topic(project_id, sheet_id), {:sheet_comments_changed, sheet_id})
+  end
+
   defp destination(%{source_type: source_type} = thread) when source_type in ["flow_node", "flow_canvas"] do
     %{
       surface: "flow",
@@ -236,18 +278,29 @@ defmodule Storyarn.Projects.Comments do
     %{surface: "scene", scene_id: thread.container_id, thread_id: thread.id}
   end
 
+  defp destination(%{source_type: "sheet_block"} = thread) do
+    %{surface: "sheet", sheet_id: thread.container_id, block_id: thread.source_id, thread_id: thread.id}
+  end
+
   defp destination_row(%{source_type: source_type} = destination) when source_type in ["flow_node", "flow_canvas"] do
     destination
     |> Map.put(:surface, "flow")
-    |> Map.drop([:source_type, :scene_id])
+    |> Map.drop([:source_type, :scene_id, :sheet_id, :block_id])
   end
 
   defp destination_row(%{source_type: "scene_canvas"} = destination) do
     destination
     |> Map.put(:surface, "scene")
-    |> Map.drop([:source_type, :flow_id, :node_id])
+    |> Map.drop([:source_type, :flow_id, :node_id, :sheet_id, :block_id])
+  end
+
+  defp destination_row(%{source_type: "sheet_block"} = destination) do
+    destination
+    |> Map.put(:surface, "sheet")
+    |> Map.drop([:source_type, :flow_id, :node_id, :scene_id])
   end
 
   defp flow_topic(project_id, flow_id), do: "project:#{project_id}:flow:#{flow_id}:comments"
   defp scene_topic(project_id, scene_id), do: "project:#{project_id}:scene:#{scene_id}:comments"
+  defp sheet_topic(project_id, sheet_id), do: "project:#{project_id}:sheet:#{sheet_id}:comments"
 end

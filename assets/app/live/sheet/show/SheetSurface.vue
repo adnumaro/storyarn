@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useLiveVue } from "live_vue";
 import CollabToast from "@modules/sheets/components/collab/CollabToast.vue";
+import SheetBlockComments from "@modules/sheets/components/chrome/SheetBlockComments.vue";
 import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetContentHeader.vue";
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
@@ -11,6 +12,7 @@ import {
   useSheetHighlight,
 } from "@modules/sheets/composables/useSheetHighlight";
 import type { Sheet, SheetHealth } from "@modules/sheets/types";
+import type { SheetCommentsPanelState, SheetCommentThread } from "@modules/sheets/types/comments";
 
 type ServerPayload = any;
 
@@ -29,6 +31,9 @@ interface SheetSurfaceContent {
   formulaEditing: ServerPayload;
   blockLocks: Record<string, ServerPayload>;
   currentUserId: number | null;
+  commentPins?: SheetCommentThread[];
+  comments?: SheetCommentsPanelState | null;
+  commentFocusThreadId?: number | null;
 }
 
 interface SheetSurface {
@@ -43,6 +48,7 @@ interface SheetPanelsProps {
   references: ServerPayload | null;
   audio: ServerPayload | null;
   history: ServerPayload | null;
+  comments?: SheetCommentsPanelState;
 }
 
 const {
@@ -79,6 +85,17 @@ const surface = computed(
 const panels = computed(
   () => (live.vue?.props?.panels as SheetPanelsProps | null | undefined) ?? initialPanels,
 );
+const surfaceRoot = ref<HTMLElement | null>(null);
+const localCommentInteractionActive = ref(false);
+const commentsActive = computed(
+  () =>
+    Boolean(surface.value.content?.comments?.open || surface.value.content?.comments?.placing) ||
+    localCommentInteractionActive.value,
+);
+
+function getSurfaceRoot(): HTMLElement | null {
+  return surfaceRoot.value;
+}
 
 useSheetHighlight(
   highlightTarget,
@@ -89,7 +106,12 @@ useSheetHighlight(
 <template>
   <div
     v-if="sheet"
-    class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
+    ref="surfaceRoot"
+    class="relative mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6 shadow-sm"
+    :class="{
+      '[&_[data-sheet-block-id]]:cursor-crosshair':
+        surface.content?.comments?.placing && surface.content.comments.canComment,
+    }"
   >
     <SheetContentHeader
       :sheet="sheet"
@@ -117,8 +139,21 @@ useSheetHighlight(
           :formula-editing="surface.content.formulaEditing"
           :block-locks="surface.content.blockLocks"
           :current-user-id="surface.content.currentUserId"
+          :comments-active="commentsActive"
+          :comments-placing="
+            surface.content.comments?.placing && surface.content.comments.canComment
+          "
         />
       </div>
+
+      <SheetBlockComments
+        v-if="surface.content?.comments"
+        :container="getSurfaceRoot"
+        :state="surface.content.comments"
+        :comment-pins="surface.content.commentPins ?? []"
+        :focus-thread-id="surface.content.commentFocusThreadId ?? null"
+        @interaction-change="localCommentInteractionActive = $event"
+      />
 
       <div id="collab-toast" class="contents">
         <CollabToast />

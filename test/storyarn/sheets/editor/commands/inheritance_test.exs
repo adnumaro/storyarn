@@ -1077,8 +1077,20 @@ defmodule Storyarn.Sheets.Editor.Commands.InheritanceTest do
       child_blocks = Sheets.list_blocks(child.id)
       assert Enum.any?(child_blocks, &(&1.inherited_from_block_id == block.id))
 
+      :ok = Collaboration.subscribe_changes({:sheet, child.id})
+      :ok = Collaboration.subscribe_changes({:sheet, grandchild.id})
+      child_id = child.id
+      grandchild_id = grandchild.id
+      block_id = block.id
+
       # Soft-delete the parent block (also soft-deletes instances)
       {:ok, deleted_block} = Sheets.delete_block(block)
+
+      assert_receive {:remote_change, :inherited_blocks_changed,
+                      %{sheet_id: ^child_id, source_block_id: ^block_id, change: :deleted}}
+
+      assert_receive {:remote_change, :inherited_blocks_changed,
+                      %{sheet_id: ^grandchild_id, source_block_id: ^block_id, change: :deleted}}
 
       # Restoring later must compare instances with the original deletion time,
       # not the wall clock at restoration time.
@@ -1102,6 +1114,12 @@ defmodule Storyarn.Sheets.Editor.Commands.InheritanceTest do
 
       # Restore the parent block
       {:ok, _restored} = Sheets.restore_block(deleted_block)
+
+      assert_receive {:remote_change, :inherited_blocks_changed,
+                      %{sheet_id: ^child_id, source_block_id: ^block_id, change: :restored}}
+
+      assert_receive {:remote_change, :inherited_blocks_changed,
+                      %{sheet_id: ^grandchild_id, source_block_id: ^block_id, change: :restored}}
 
       # Instances should be restored
       child_blocks_restored = Sheets.list_blocks(child.id)
