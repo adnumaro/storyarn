@@ -284,16 +284,13 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
                  "label" => "Shared stage"
                })
 
-      dialogue_track =
-        raw_sequence_track_override_fixture(dialogue, source_track, %{
-          "volume" => Decimal.new("0.25")
-        })
+      assert {:ok, dialogue_track} =
+               Flows.override_sequence_track(dialogue.id, source_track.track_key, %{
+                 "volume" => Decimal.new("0.25")
+               })
 
-      dialogue_layer =
-        raw_sequence_visual_override_fixture(dialogue, source_layer, %{},
-          removed: true,
-          overridden_fields: []
-        )
+      assert {:ok, dialogue_layer} =
+               Flows.remove_sequence_visual_layer(dialogue.id, source_layer.layer_key)
 
       snapshot = FlowSnapshot.build_snapshot(flow)
       source_snapshot = Enum.find(snapshot["nodes"], &(&1["original_id"] == source.id))
@@ -525,10 +522,10 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
           end)
         end)
 
-      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, first_id, track_key, reason}} =
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, first_id, track_key, :incomplete_local_definition}} =
                FlowSnapshotValidator.validate(incomplete_definition, flow.id)
 
-      assert reason == :incomplete_local_definition
       assert first_id == first.id
       assert track_key == track.track_key
 
@@ -558,10 +555,10 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
 
       assert {:ok, _second} = Flows.set_composition_source(second.id, first.id)
 
-      _patch =
-        raw_sequence_track_override_fixture(second, track, %{
-          "volume" => Decimal.new("0.250")
-        })
+      assert {:ok, _patch} =
+               Flows.override_sequence_track(second.id, track.track_key, %{
+                 "volume" => Decimal.new("0.250")
+               })
 
       descendant_snapshot = FlowSnapshot.build_snapshot(flow)
 
@@ -587,16 +584,8 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
       assert {:ok, _middle} = Flows.set_composition_source(middle.id, root.id)
       assert {:ok, _leaf} = Flows.set_composition_source(leaf.id, middle.id)
       assert {:ok, track} = Flows.upsert_sequence_track(root.id, "music", %{})
-
-      _tombstone =
-        raw_sequence_track_override_fixture(middle, track, %{},
-          removed: true,
-          overridden_fields: []
-        )
-
-      restored =
-        raw_sequence_track_override_fixture(leaf, track, %{}, overridden_fields: SequenceTrack.property_fields())
-
+      assert {:ok, _tombstone} = Flows.remove_sequence_track(middle.id, track.track_key)
+      assert {:ok, restored} = Flows.restore_sequence_track(leaf.id, track.track_key)
       assert restored.is_override
 
       assert MapSet.new(restored.overridden_fields) ==

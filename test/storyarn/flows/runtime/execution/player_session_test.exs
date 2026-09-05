@@ -113,7 +113,7 @@ defmodule Storyarn.Flows.PlayerSessionTest do
       assert restarted.state.step_count == 1
     end
 
-    test "restart from a subflow returns to the root flow's first interaction" do
+    test "go back from a subflow restores the parent dialogue" do
       project = project_fixture(user_fixture())
       root_flow = flow_fixture(project, %{name: "Root flow"})
       child_flow = flow_fixture(project, %{name: "Child flow"})
@@ -144,16 +144,70 @@ defmodule Storyarn.Flows.PlayerSessionTest do
       assert [%{flow_id: root_flow_id}] = child_session.state.call_stack
       assert root_flow_id == root_flow.id
 
-      refute Flows.player_session_can_go_back?(child_session)
-
-      assert {:error, :no_history, ^child_session} =
-               Flows.go_back_player_session(child_session)
+      assert Flows.player_session_can_go_back?(child_session)
+      assert {:ok, returned_session} = Flows.go_back_player_session(child_session)
+      assert returned_session.flow.id == root_flow.id
+      assert returned_session.state.current_flow_id == root_flow.id
+      assert returned_session.state.current_node_id == root_dialogue.id
+      assert returned_session.state.call_stack == []
 
       assert {:ok, restarted} = Flows.restart_player_session(child_session)
       assert restarted.flow.id == root_flow.id
       assert restarted.state.current_flow_id == root_flow.id
       assert restarted.state.current_node_id == root_dialogue.id
       assert restarted.state.call_stack == []
+    end
+
+    test "go back reloads a child runtime after it has returned and left the call stack" do
+      project = project_fixture(user_fixture())
+      root_flow = flow_fixture(project, %{name: "Root with return"})
+      child_flow = flow_fixture(project, %{name: "Returning child"})
+
+      root_entry = entry_node(root_flow)
+      before_call = node_fixture(root_flow, %{type: "dialogue", data: %{"text" => "Before"}})
+
+      subflow =
+        node_fixture(root_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => child_flow.id}
+        })
+
+      after_return = node_fixture(root_flow, %{type: "dialogue", data: %{"text" => "After"}})
+      child_entry = entry_node(child_flow)
+      child_dialogue = node_fixture(child_flow, %{type: "dialogue", data: %{"text" => "Child"}})
+
+      child_return =
+        node_fixture(child_flow, %{
+          type: "exit",
+          data: %{"exit_mode" => "caller_return"}
+        })
+
+      connection_fixture(root_flow, root_entry, before_call)
+      connection_fixture(root_flow, before_call, subflow)
+
+      connection_fixture(root_flow, subflow, after_return, %{
+        source_pin: "exit_#{child_return.id}"
+      })
+
+      connection_fixture(child_flow, child_entry, child_dialogue)
+      connection_fixture(child_flow, child_dialogue, child_return)
+
+      assert {:ok, root_session} = Flows.start_player_session(root_flow, %{})
+      assert {:ok, child_session} = Flows.continue_player_session(root_session)
+      assert child_session.flow.id == child_flow.id
+      assert child_session.state.current_node_id == child_dialogue.id
+
+      assert {:ok, returned_session} = Flows.continue_player_session(child_session)
+      assert returned_session.flow.id == root_flow.id
+      assert returned_session.state.current_node_id == after_return.id
+      assert returned_session.state.call_stack == []
+
+      assert Flows.player_session_can_go_back?(returned_session)
+      assert {:ok, restored_child} = Flows.go_back_player_session(returned_session)
+      assert restored_child.flow.id == child_flow.id
+      assert restored_child.state.current_flow_id == child_flow.id
+      assert restored_child.state.current_node_id == child_return.id
+      assert Map.has_key?(restored_child.nodes, child_return.id)
     end
   end
 

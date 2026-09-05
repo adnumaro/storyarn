@@ -845,8 +845,14 @@ defmodule Storyarn.Flows do
   @doc "Returns whether a player session can restore a renderable snapshot."
   defdelegate player_session_can_go_back?(session), to: Runtime
 
-  @doc "Composes the active nested sequences for the current player frame."
+  @doc "Composes the explicit source chain for the current player frame."
   defdelegate compose_player_sequences(state, nodes), to: Runtime
+
+  @doc "Composes any selected node without constructing evaluator state."
+  defdelegate compose_node_sequences(node_or_id, nodes), to: Runtime
+
+  @doc "Composes one owner while retaining effective tombstones for editor inspection."
+  defdelegate inspect_node_sequences(node_or_id, nodes), to: Runtime
 
   @doc "Interprets rich player text references with adapter-owned rendering."
   defdelegate interpolate_player_rich_text(text, variables, renderer), to: Runtime
@@ -1291,6 +1297,18 @@ defmodule Storyarn.Flows do
   @doc "Deletes a local visual-layer row."
   defdelegate delete_sequence_visual_layer(layer), to: Editor
 
+  @doc "Overrides selected properties of an inherited visual layer."
+  defdelegate override_sequence_visual_layer(owner_id, layer_key, attrs), to: Editor
+
+  @doc "Returns selected visual-layer properties to inheritance."
+  defdelegate revert_sequence_visual_layer_fields(owner_id, layer_key, fields), to: Editor
+
+  @doc "Removes a local layer definition or tombstones an inherited layer."
+  defdelegate remove_sequence_visual_layer(owner_id, layer_key), to: Editor
+
+  @doc "Restores a local tombstone or materializes an inherited tombstoned layer."
+  defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: Editor
+
   @doc "Lists all local track and inherited-patch rows for a composition owner."
   defdelegate list_sequence_tracks(sequence_id), to: Editor
 
@@ -1305,4 +1323,16 @@ defmodule Storyarn.Flows do
 
   @doc "Clears a local track definition. No-op if already empty."
   defdelegate clear_sequence_track(sequence_id, kind), to: Editor
+
+  @doc "Overrides selected properties of an inherited audio track."
+  defdelegate override_sequence_track(owner_id, track_key, attrs), to: Editor
+
+  @doc "Returns selected audio-track properties to inheritance."
+  defdelegate revert_sequence_track_fields(owner_id, track_key, fields), to: Editor
+
+  @doc "Removes a local track definition or tombstones an inherited track."
+  defdelegate remove_sequence_track(owner_id, track_key), to: Editor
+
+  @doc "Restores a local tombstone or materializes an inherited tombstoned track."
+  defdelegate restore_sequence_track(owner_id, track_key), to: Editor
 end

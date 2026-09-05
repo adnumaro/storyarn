@@ -303,9 +303,17 @@ defmodule Storyarn.Flows.Editor do
   defdelegate create_sequence_visual_layer(sequence_id, attrs), to: SequenceCrud
   defdelegate update_sequence_visual_layer(layer, attrs), to: SequenceCrud
   defdelegate delete_sequence_visual_layer(layer), to: SequenceCrud
+  defdelegate override_sequence_visual_layer(owner_id, layer_key, attrs), to: SequenceCrud
+  defdelegate revert_sequence_visual_layer_fields(owner_id, layer_key, fields), to: SequenceCrud
+  defdelegate remove_sequence_visual_layer(owner_id, layer_key), to: SequenceCrud
+  defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: SequenceCrud
   defdelegate list_sequence_tracks(sequence_id), to: SequenceCrud
   defdelegate get_sequence_track(sequence_id, kind), to: SequenceCrud
   defdelegate get_sequence_track_by_key(owner_id, track_key), to: SequenceCrud
   defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceCrud
   defdelegate clear_sequence_track(sequence_id, kind), to: SequenceCrud
+  defdelegate override_sequence_track(owner_id, track_key, attrs), to: SequenceCrud
+  defdelegate revert_sequence_track_fields(owner_id, track_key, fields), to: SequenceCrud
+  defdelegate remove_sequence_track(owner_id, track_key), to: SequenceCrud
+  defdelegate restore_sequence_track(owner_id, track_key), to: SequenceCrud
 end

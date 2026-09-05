@@ -198,27 +198,20 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
           asset_id: removed_audio.id
         })
 
-      _patch =
-        raw_sequence_visual_override_fixture(dialogue, inherited_layer, %{
+      {:ok, _patch} =
+        Editor.override_sequence_visual_layer(dialogue.id, inherited_layer.layer_key, %{
           opacity: 0.45
         })
 
-      _tombstone =
-        raw_sequence_visual_override_fixture(dialogue, removed_layer, %{},
-          removed: true,
-          overridden_fields: []
-        )
+      {:ok, _tombstone} =
+        Editor.remove_sequence_visual_layer(dialogue.id, removed_layer.layer_key)
 
-      _patch =
-        raw_sequence_track_override_fixture(dialogue, inherited_track, %{
+      {:ok, _patch} =
+        Editor.override_sequence_track(dialogue.id, inherited_track.track_key, %{
           volume: Decimal.new("0.200")
         })
 
-      _tombstone =
-        raw_sequence_track_override_fixture(dialogue, removed_track, %{},
-          removed: true,
-          overridden_fields: []
-        )
+      {:ok, _tombstone} = Editor.remove_sequence_track(dialogue.id, removed_track.track_key)
 
       drain_analytics()
 

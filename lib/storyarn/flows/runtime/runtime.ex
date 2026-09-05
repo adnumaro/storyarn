@@ -70,6 +70,11 @@ defmodule Storyarn.Flows.Runtime do
   defdelegate restart_player_session(session), to: PlayerSession, as: :restart
   defdelegate player_session_can_go_back?(session), to: PlayerSession, as: :can_go_back?
   defdelegate compose_player_sequences(state, nodes), to: SequenceComposition, as: :compose
+  defdelegate compose_node_sequences(node_or_id, nodes), to: SequenceComposition, as: :compose_node
+
+  defdelegate inspect_node_sequences(node_or_id, nodes),
+    to: SequenceComposition,
+    as: :compose_node_with_removed
 
   defdelegate interpolate_player_rich_text(text, variables, renderer),
     to: PlayerText,

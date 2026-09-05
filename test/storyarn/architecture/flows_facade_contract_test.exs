@@ -26,6 +26,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     child_spec/1
     choose_player_response/2
     clear_sequence_track/2
+    compose_node_sequences/2
     compose_player_sequences/2
     condition_has_rules?/1
     condition_new/0
@@ -161,6 +162,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     hub_color_default_hex/0
     initial_asset_options/3
     initial_speaker_options/2
+    inspect_node_sequences/2
     instruction_format_short/1
     instruction_has_type_warnings?/2
     instruction_sanitize/1
@@ -215,6 +217,8 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     node_specific_label/1
     node_types/0
     node_word_count/2
+    override_sequence_track/3
+    override_sequence_visual_layer/3
     player_response_id_by_number/3
     player_session_can_go_back?/1
     player_step_until_interactive/3
@@ -242,6 +246,8 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     record_version_panel_opened/2
     remove_dialogue_response/2
     remove_exit_outcome_tag/2
+    remove_sequence_track/2
+    remove_sequence_visual_layer/2
     repair_stale_variable_references/2
     reorder_flows/3
     reset_debug_session/3
@@ -258,9 +264,13 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
     restore_node/2
     restore_player_session/5
     restore_sequence/1
+    restore_sequence_track/2
+    restore_sequence_visual_layer/2
     restore_tracked_version/4
     restore_version/2
     restore_version/3
+    revert_sequence_track_fields/3
+    revert_sequence_visual_layer_fields/3
     runtime_entry_node_id/1
     safe_to_integer/1
     search_asset_options/2
@@ -324,7 +334,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
 
   # Frozen immediately before the capability reorganization. These hashes
   # cover semantic signatures, docs/defaults, public types, and specs.
-  @docs_digest "20d2ec425077b654c95ae8a1384c6c7cedb7067eda80de284d5d8aff93f0e28c"
+  @docs_digest "84daf76be039f1398ce8b1d62872a9337b81f294ba7ac3c2538f8f3d46feb49f"
   @types_digest "185b2bf999eed11bd7b86968d880d33cccdc414a7f9f5b23921412d98bc03805"
   @specs_digest "c01ed8ba241c0ab1a5717cc1ca8f1147a6f0fa96b86bcabf26c07e4fc9937e02"
 
@@ -374,8 +384,8 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
       end)
       |> MapSet.new()
 
-    assert length(function_docs) == 292
-    assert status_counts == %{documented: 222, hidden: 19, none: 51}
+    assert length(function_docs) == 302
+    assert status_counts == %{documented: 232, hidden: 19, none: 51}
     assert represented_arities == MapSet.new(@public_contract)
     assert digest(Enum.sort(function_docs)) == @docs_digest
   end

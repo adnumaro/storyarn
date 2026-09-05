@@ -149,8 +149,7 @@ defmodule Storyarn.Flows.PlayerSession do
   @spec can_go_back?(t()) :: boolean()
   def can_go_back?(%__MODULE__{} = session) do
     Enum.any?(session.state.snapshots, fn snapshot ->
-      snapshot.node_id != session.state.current_node_id and
-        renderable_node?(Map.get(session.nodes, snapshot.node_id))
+      previous_position?(session, snapshot) and renderable_snapshot?(session, snapshot)
     end)
   end
 
@@ -295,34 +294,88 @@ defmodule Storyarn.Flows.PlayerSession do
   end
 
   defp resolve_back_state(session, state) do
-    session = runtime_for_state(session, state)
+    case runtime_for_state(session, state) do
+      {:ok, restored_session} ->
+        if renderable_node?(Map.get(restored_session.nodes, state.current_node_id)) do
+          {:ok, restored_session}
+        else
+          step_back_to_renderable(restored_session)
+        end
 
-    if renderable_node?(Map.get(session.nodes, state.current_node_id)) do
-      {:ok, %{session | state: state}}
-    else
-      advance(session, state, [], 0)
+      {:error, _reason} ->
+        step_back_to_renderable(%{session | state: state})
     end
   end
 
-  defp runtime_for_state(session, %{current_flow_id: flow_id} = state) when flow_id == session.flow.id do
-    %{session | state: state}
+  defp step_back_to_renderable(%__MODULE__{} = session) do
+    case Engine.step_back(session.state) do
+      {:ok, state} -> resolve_back_state(session, state)
+      {:error, :no_history} -> {:error, :no_history, session}
+    end
   end
 
-  defp runtime_for_state(session, %{current_flow_id: flow_id} = state) do
-    frame = Enum.find(session.state.call_stack, &(&1.flow_id == flow_id))
+  defp runtime_for_state(session, state) do
+    flow_id = state.current_flow_id || session.flow.id
 
-    with %{nodes: nodes, connections: connections} <- frame,
-         %Flow{} = flow <- Editor.get_flow_brief(session.flow.project_id, flow_id) do
-      %__MODULE__{
-        state: state,
-        nodes: nodes,
-        connections: connections,
-        flow: flow,
-        scene_id: SceneResolver.resolve_scene_id(flow)
-      }
-    else
-      _missing_runtime -> %{session | state: state}
+    case runtime_for_flow(session, state, flow_id) do
+      {:ok, %{flow: flow, nodes: nodes, connections: connections}} ->
+        {:ok,
+         %__MODULE__{
+           state: %{state | current_flow_id: flow_id},
+           nodes: nodes,
+           connections: connections,
+           flow: flow,
+           scene_id: SceneResolver.resolve_scene_id(flow)
+         }}
+
+      :error ->
+        {:error, {:flow_not_found, flow_id}}
     end
+  end
+
+  defp renderable_snapshot?(session, snapshot) do
+    flow_id = snapshot.current_flow_id || session.flow.id
+
+    case runtime_for_flow(session, snapshot, flow_id) do
+      {:ok, %{nodes: nodes}} -> renderable_node?(Map.get(nodes, snapshot.node_id))
+      :error -> false
+    end
+  end
+
+  defp runtime_for_flow(%__MODULE__{flow: %{id: flow_id}} = session, _state, flow_id) do
+    {:ok, %{flow: session.flow, nodes: session.nodes, connections: session.connections}}
+  end
+
+  defp runtime_for_flow(session, state, flow_id) when is_integer(flow_id) do
+    case Editor.get_flow_brief(session.flow.project_id, flow_id) do
+      %Flow{} = flow ->
+        case find_flow_frame(session, state, flow_id) do
+          %{nodes: nodes, connections: connections} ->
+            {:ok, %{flow: flow, nodes: nodes, connections: connections}}
+
+          nil ->
+            graph = RuntimeGraph.load(flow_id)
+            {:ok, %{flow: flow, nodes: graph.nodes, connections: graph.connections}}
+        end
+
+      nil ->
+        :error
+    end
+  end
+
+  defp runtime_for_flow(_session, _state, _flow_id), do: :error
+
+  defp find_flow_frame(session, state, flow_id) do
+    session.state.call_stack
+    |> Kernel.++(Map.get(state, :call_stack, []))
+    |> Enum.find(&(&1.flow_id == flow_id))
+  end
+
+  defp previous_position?(session, snapshot) do
+    current_flow_id = session.state.current_flow_id || session.flow.id
+    snapshot_flow_id = snapshot.current_flow_id || session.flow.id
+
+    snapshot_flow_id != current_flow_id or snapshot.node_id != session.state.current_node_id
   end
 
   defp root_session(%__MODULE__{state: %{call_stack: []}} = session), do: session
