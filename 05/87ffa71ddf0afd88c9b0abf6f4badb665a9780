@@ -1,0 +1,28 @@
+assets/app/modules/scenes/editor/composables/useSceneCanvasComments.ts
+  s_11667293ceac35::t_e3b6bca6ef0ab3 172-175,246
+assets/app/test/live/scene/show/SceneCommentsChrome.test.ts
+  s_11667293ceac35::t_097499b6ca2dba 202,205,208
+  s_11667293ceac35::t_bea19a0e0e200a 186-201,203-204,206-207
+  s_11667293ceac35::t_300894163ab513 209
+test/support/e2e_helpers.ex
+  s_11667293ceac35::t_5c173925f17ef6 4,6-7,30-67
+  s_11667293ceac35::t_ac6354f7b1f471 68
+assets/app/test/live/scene/show/SceneCanvasComments.test.ts
+  s_11667293ceac35::t_f6bd45fae0adc8 87-88,116,230-239,242,244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "0587ffa71ddf0afd88c9b0abf6f4badb665a9780",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
