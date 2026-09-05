@@ -27,6 +27,11 @@ interface PendingSave {
   snapshot: string;
 }
 
+interface PendingTranslation {
+  id: number;
+  selectionGeneration: number;
+}
+
 /**
  * State machine of the inline translation editor: hydration from the
  * selected string, autosave with lock versions, conflicts, placeholder
@@ -52,8 +57,12 @@ export function useTranslationEditor(options: EditorOptions) {
   let autosaveTimeout: ReturnType<typeof setTimeout> | null = null;
   let savedTimeout: ReturnType<typeof setTimeout> | null = null;
   let pendingSave: PendingSave | null = null;
+  let pendingTranslation: PendingTranslation | null = null;
   let deferredNavigation: (() => void) | null = null;
   let advanceAfterLoad = false;
+  let selectedTextId = options.selectedText()?.id ?? null;
+  let selectedTextLocale = options.selectedText()?.localeCode ?? null;
+  let selectionGeneration = 0;
 
   const currentIndex = computed(() =>
     options.texts().findIndex((text) => text.id === options.selectedText()?.id),
@@ -99,16 +108,32 @@ export function useTranslationEditor(options: EditorOptions) {
   watch(
     () => options.selectedText(),
     (text) => {
-      const activeSave = pendingSave;
-      const hasNewerLocalEdit =
-        activeSave !== null &&
-        activeSave.id === text?.id &&
-        currentSnapshot.value !== activeSave.snapshot;
-
-      if (!hasNewerLocalEdit) hydrateEditor(text);
+      const selectionChanged = registerSelection(text);
+      if (!preserveLocalEdit(text, selectionChanged)) hydrateEditor(text);
     },
     { immediate: true },
   );
+
+  function registerSelection(text: SelectedText | null | undefined): boolean {
+    const nextSelectedTextId = text?.id ?? null;
+    const nextSelectedTextLocale = text?.localeCode ?? null;
+    const changed =
+      nextSelectedTextId !== selectedTextId || nextSelectedTextLocale !== selectedTextLocale;
+
+    if (!changed) return false;
+    selectedTextId = nextSelectedTextId;
+    selectedTextLocale = nextSelectedTextLocale;
+    selectionGeneration += 1;
+    return true;
+  }
+
+  function preserveLocalEdit(
+    text: SelectedText | null | undefined,
+    selectionChanged: boolean,
+  ): boolean {
+    if (selectionChanged || lastSavedSnapshot.value === "" || !dirty.value) return false;
+    return currentSnapshot.value !== snapshotFor(text);
+  }
 
   watch(translatedText, (value, previous) => {
     if (hydrating.value || value === previous) return;
@@ -208,8 +233,12 @@ export function useTranslationEditor(options: EditorOptions) {
       (response: SaveResponse) =>
         handleSaveResponse(response, request, advance, onSuccess, onFailure),
       () => {
-        if (superseded(request)) return;
+        if (discardSupersededSave(request, onFailure)) return;
         pendingSave = null;
+        if (discardStaleReply(request)) {
+          onFailure?.();
+          return;
+        }
         handleSaveError({ error: "save_failed" });
         onFailure?.();
       },
@@ -223,6 +252,12 @@ export function useTranslationEditor(options: EditorOptions) {
     return pendingSave !== request;
   }
 
+  function discardSupersededSave(request: PendingSave, onFailure?: () => void): boolean {
+    if (!superseded(request)) return false;
+    onFailure?.();
+    return true;
+  }
+
   function handleSaveResponse(
     response: SaveResponse,
     request: PendingSave,
@@ -230,9 +265,12 @@ export function useTranslationEditor(options: EditorOptions) {
     onSuccess?: () => void,
     onFailure?: () => void,
   ): void {
-    if (superseded(request)) return;
+    if (discardSupersededSave(request, onFailure)) return;
     pendingSave = null;
-    if (discardStaleReply(request)) return;
+    if (discardStaleReply(request)) {
+      onFailure?.();
+      return;
+    }
 
     if (response?.ok) {
       handleSaveSuccess(response.text, request, advance, onSuccess, onFailure);
@@ -350,28 +388,24 @@ export function useTranslationEditor(options: EditorOptions) {
   function translateText(id: number): void {
     if (translating.value) return;
     translating.value = true;
+    const requestedSelectionGeneration = selectionGeneration;
 
     // The reply hydrates the editor only while the translated row is the one
     // open: a translator can move on (or a queued click can) before it lands.
     const translate = () => {
+      if (selectionGeneration !== requestedSelectionGeneration) {
+        translating.value = false;
+        return;
+      }
+
+      const request = { id, selectionGeneration: requestedSelectionGeneration };
+      pendingTranslation = request;
+
       live.pushEvent(
         "translate_single",
         { id },
-        (response: SaveResponse) => {
-          translating.value = false;
-          if (options.selectedText()?.id !== id) return;
-          if (response?.ok && response.text) hydrateEditor(response.text);
-          else if (!response?.ok) {
-            saveState.value = "error";
-            saveError.value = response?.error || "translation_failed";
-          }
-        },
-        () => {
-          translating.value = false;
-          if (options.selectedText()?.id !== id) return;
-          saveState.value = "error";
-          saveError.value = "translation_failed";
-        },
+        (response: SaveResponse) => handleTranslationResponse(response, request),
+        () => handleTranslationError(request),
       );
     };
 
@@ -380,6 +414,40 @@ export function useTranslationEditor(options: EditorOptions) {
     } else {
       translate();
     }
+  }
+
+  function handleTranslationResponse(response: SaveResponse, request: PendingTranslation): void {
+    if (!settleTranslation(request) || translationSelectionChanged(request)) return;
+
+    if (response?.ok && response.text) {
+      hydrateEditor(response.text);
+      return;
+    }
+
+    if (!response?.ok) {
+      saveState.value = "error";
+      saveError.value = response?.error || "translation_failed";
+    }
+  }
+
+  function handleTranslationError(request: PendingTranslation): void {
+    if (!settleTranslation(request) || translationSelectionChanged(request)) return;
+    saveState.value = "error";
+    saveError.value = "translation_failed";
+  }
+
+  function settleTranslation(request: PendingTranslation): boolean {
+    if (pendingTranslation !== request) return false;
+    pendingTranslation = null;
+    translating.value = false;
+    return true;
+  }
+
+  function translationSelectionChanged(request: PendingTranslation): boolean {
+    return (
+      options.selectedText()?.id !== request.id ||
+      selectionGeneration !== request.selectionGeneration
+    );
   }
 
   return {
@@ -433,6 +501,16 @@ function editorValues(text: SelectedText | null | undefined): EditorValues {
     voStatus: text.voStatus,
     lockVersion: text.lockVersion,
   };
+}
+
+function snapshotFor(text: SelectedText | null | undefined): string {
+  const values = editorValues(text);
+  return JSON.stringify({
+    translatedText: values.translatedText,
+    status: values.status,
+    translatorNotes: values.translatorNotes,
+    voStatus: values.voStatus,
+  });
 }
 
 function frequencies(items: string[]): Map<string, number> {

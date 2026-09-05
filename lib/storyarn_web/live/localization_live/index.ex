@@ -665,17 +665,37 @@ defmodule StoryarnWeb.LocalizationLive.Index do
 
   defp translate_single(%{"id" => id}, socket) do
     with {:ok, text_id} <- parse_id(id),
-         {:ok, updated} <- Localization.translate_single(socket.assigns.project.id, text_id) do
+         {:ok, updated} <- Localization.translate_single(socket.assigns.project.id, text_id),
+         translated when not is_nil(translated) <-
+           Localization.get_text(socket.assigns.project.id, updated.id, preload: @text_preloads) do
       socket =
         socket
         |> load_texts()
-        |> assign_selected_text(updated.id)
+        |> reload_translated_selection(translated.id)
 
-      {:reply, %{ok: true, text: serialize_selected_text(socket.assigns)}, socket}
+      {:reply, %{ok: true, text: serialize_translation_reply(socket.assigns, translated)}, socket}
     else
       {:error, reason} -> {:reply, %{ok: false, error: inspect(reason)}, socket}
+      nil -> {:reply, %{ok: false, error: "text_not_found"}, socket}
       :error -> {:reply, %{ok: false, error: "invalid_id"}, socket}
     end
+  end
+
+  defp reload_translated_selection(%{assigns: %{selected_text: %{id: selected_id}}} = socket, id)
+       when selected_id == id do
+    assign_selected_text(socket, id)
+  end
+
+  defp reload_translated_selection(socket, _id), do: socket
+
+  defp serialize_translation_reply(assigns, text) do
+    reply_assigns =
+      assigns
+      |> Map.put(:selected_text, text)
+      |> Map.put(:source_context, Localization.text_source_context(text))
+      |> Map.put(:glossary_hits, glossary_hits(assigns.glossary_pairs, text.source_text || ""))
+
+    serialize_selected_text(reply_assigns)
   end
 
   defp save_translation(socket, id, lock_version, params) do

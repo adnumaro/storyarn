@@ -1,9 +1,9 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { nextTick } from "vue";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import LocalizationTextsIndex from "../../../live/localization/texts/LocalizationTextsIndex.vue";
 import type { SelectedText, TextRow } from "../../../modules/localization/domain/types";
-import { createMockLive } from "../../setup";
+import { createMockLive, createPromiseMockLive } from "../../setup";
 
 const selectedText: SelectedText = {
   id: 1,
@@ -80,8 +80,7 @@ const progress = {
   stale: 0,
 };
 
-function mountWorkbench(overrides: Record<string, unknown> = {}) {
-  const live = createMockLive();
+function mountWorkbench(overrides: Record<string, unknown> = {}, live = createMockLive()) {
   const wrapper = mount(LocalizationTextsIndex, {
     props: {
       texts,
@@ -188,6 +187,64 @@ describe("LocalizationTextsIndex", () => {
       "{name} missing",
     );
   });
+
+  it.each(["reply", "transport error"])(
+    "clears DeepL loading when a prerequisite save is superseded by a newer save (%s)",
+    async (outcome) => {
+      vi.useFakeTimers();
+      const saves: Array<{
+        resolve: (response: Record<string, unknown>) => void;
+        reject: (reason?: unknown) => void;
+      }> = [];
+      const pushEvent = vi.fn((event: unknown) => {
+        if (event !== "save_translation") return Promise.resolve({});
+        return new Promise<Record<string, unknown>>((resolve, reject) => {
+          saves.push({ resolve, reject });
+        });
+      });
+      const live = createPromiseMockLive({}, pushEvent);
+      const { wrapper } = mountWorkbench({}, live);
+
+      const consoleWarning = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+      await nextTick();
+      const editor = wrapper.get("#localization-translation-editor");
+      await editor.setValue("Hola {name}");
+      await wrapper.get('[data-testid="localization-translate-2"]').trigger("click");
+      expect(saves).toHaveLength(1);
+
+      await wrapper.setProps({
+        selectedText: {
+          ...selectedText,
+          id: 2,
+          sourceText: "Goodbye",
+          translatedText: "",
+          placeholders: [],
+        },
+      });
+      await nextTick();
+      await editor.setValue("Adiós");
+      await vi.advanceTimersByTimeAsync(900);
+      expect(saves).toHaveLength(2);
+
+      if (outcome === "reply") {
+        saves[0].resolve({
+          ok: true,
+          text: { ...selectedText, translatedText: "Hola {name}", lockVersion: 2 },
+        });
+      } else {
+        saves[0].reject(new Error("disconnected"));
+      }
+      await flushPromises();
+
+      expect(wrapper.get('[data-testid="localization-translate-2"]').attributes("disabled")).toBe(
+        undefined,
+      );
+      expect(wrapper.get('[data-testid="localization-save-state"]').text()).toBe("Saving…");
+      expect(pushEvent).toHaveBeenCalledTimes(2);
+      consoleWarning.mockRestore();
+    },
+  );
 
   it("loads the next page when Save & next runs past the loaded rows", async () => {
     const callbacks: Array<(response: Record<string, unknown>) => void> = [];
@@ -393,6 +450,50 @@ describe("LocalizationTextsIndex", () => {
     const editor = wrapper.get("#localization-translation-editor");
     expect((editor.element as HTMLTextAreaElement).value).toBe("Tercero");
     expect(wrapper.get('[data-testid="localization-save-state"]').text()).toBe("All changes saved");
+  });
+
+  it("ignores a machine-translation reply from an earlier opening of the same row", async () => {
+    const callbacks: Array<(response: Record<string, unknown>) => void> = [];
+    const { live, wrapper } = mountWorkbench();
+
+    vi.mocked(live.pushEvent).mockImplementation((event, _payload, callback) => {
+      if (event === "translate_single" && callback) callbacks.push(callback);
+    });
+
+    await nextTick();
+    await wrapper.get('[data-testid="localization-translate-1"]').trigger("click");
+    expect(callbacks).toHaveLength(1);
+
+    await wrapper.setProps({
+      selectedText: {
+        ...selectedText,
+        id: 2,
+        sourceText: "Goodbye",
+        translatedText: "Adiós",
+        placeholders: [],
+      },
+    });
+    await nextTick();
+    await wrapper.setProps({ selectedText: { ...selectedText, translatedText: "Hola anterior" } });
+    await nextTick();
+
+    const editor = wrapper.get("#localization-translation-editor");
+    await editor.setValue("Edición nueva {name}");
+
+    const staleTranslation = {
+      ...selectedText,
+      translatedText: "Traducción automática {name}",
+      status: "draft",
+    };
+    await wrapper.setProps({ selectedText: staleTranslation });
+    await nextTick();
+    callbacks[0]({ ok: true, text: staleTranslation });
+    await nextTick();
+
+    expect((editor.element as HTMLTextAreaElement).value).toBe("Edición nueva {name}");
+    expect(wrapper.get('[data-testid="localization-translate-1"]').attributes("disabled")).toBe(
+      undefined,
+    );
   });
 
   it("lets a newer save own the state when an older reply arrives late", async () => {
