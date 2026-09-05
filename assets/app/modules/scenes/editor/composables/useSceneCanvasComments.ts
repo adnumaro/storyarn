@@ -169,7 +169,10 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
 
   function canvasTarget(event: MouseEvent): event is MouseEvent & { target: Element } {
     if (!(event.target instanceof Element) || !container.contains(event.target)) return false;
-    return !interactiveTarget(event.target);
+    return (
+      !interactiveTarget(event.target) &&
+      Boolean(event.target.closest("canvas, [data-scene-element]"))
+    );
   }
 
   function contextButtonGesture(event: MouseEvent): boolean {
@@ -240,7 +243,7 @@ export function useSceneCanvasComments(options: SceneCanvasCommentsOptions) {
   }
 
   function onContextMenu(event: MouseEvent): void {
-    if (!options.state().canComment || interactiveTarget(event.target)) return;
+    if (!options.state().canComment || !canvasTarget(event)) return;
     event.preventDefault();
     event.stopImmediatePropagation();
     if (!options.backgroundSettled()) return;

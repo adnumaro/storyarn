@@ -84,7 +84,8 @@ function setup(
   const canvas = document.createElement("canvas");
   const elementSurface = document.createElement("div");
   elementSurface.dataset.sceneElement = "pin-42";
-  container.append(canvas, elementSurface);
+  const nonCanvasUi = document.createElement("div");
+  container.append(canvas, elementSurface, nonCanvasUi);
   document.body.append(container);
   vi.spyOn(container, "getBoundingClientRect").mockReturnValue({
     left: 10,
@@ -112,7 +113,7 @@ function setup(
     global: { stubs: { SceneCommentsPanel: true } },
   });
   wrappers.push(wrapper);
-  return { wrapper, container, canvas, elementSurface, stage };
+  return { wrapper, container, canvas, elementSurface, nonCanvasUi, stage };
 }
 
 beforeEach(() => {
@@ -226,12 +227,21 @@ describe("Scene canvas comments", () => {
     expect(live.pushEvent).toHaveBeenCalledTimes(2);
   });
 
-  it("offers a custom context-menu action at a clamped logical position", async () => {
-    const { wrapper, canvas } = setup();
+  it("ignores non-canvas UI and offers a context action on the canvas", async () => {
+    const { wrapper, canvas, nonCanvasUi } = setup();
+    const nativeUiContextMenu = vi.fn();
+    nonCanvasUi.addEventListener("contextmenu", nativeUiContextMenu);
+    const uiEvent = pointer(nonCanvasUi, "contextmenu", 510, 340, 2);
+    await nextTick();
+    expect(uiEvent.defaultPrevented).toBe(false);
+    expect(nativeUiContextMenu).toHaveBeenCalledOnce();
+    expect(wrapper.find("#scene-comment-context-menu").exists()).toBe(false);
+
     const nativeContextMenu = vi.fn();
     canvas.addEventListener("contextmenu", nativeContextMenu);
-    pointer(canvas, "contextmenu", 510, 340, 2);
+    const canvasEvent = pointer(canvas, "contextmenu", 510, 340, 2);
     await nextTick();
+    expect(canvasEvent.defaultPrevented).toBe(true);
     expect(nativeContextMenu).not.toHaveBeenCalled();
     expect(wrapper.get("#scene-comment-context-menu").attributes("role")).toBe("menu");
     await wrapper.get("#scene-comment-context-add").trigger("click");

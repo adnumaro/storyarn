@@ -183,4 +183,28 @@ describe("Scene comments chrome wiring", () => {
     expect(payload).not.toHaveProperty("node_id");
     expect(wrapper.find("#scene-comment-send").exists()).toBe(true);
   });
+
+  it("renders a replacement comments state received after mount", async () => {
+    const wrapper = mount(SceneCommentsPanel, {
+      props: { embedded: true, state: comments },
+      global: {
+        stubs: {
+          Sidebar: {
+            template: "<aside><slot name='header'/><slot/><slot name='footer'/></aside>",
+          },
+          Popover: passthrough,
+          PopoverContent: passthrough,
+          PopoverTrigger: passthrough,
+        },
+      },
+    });
+
+    expect(wrapper.find('[role="alert"]').exists()).toBe(false);
+
+    await wrapper.setProps({
+      state: { ...comments, error: "Latest comments state" },
+    });
+
+    expect(wrapper.get('[role="alert"]').text()).toBe("Latest comments state");
+  });
 });
