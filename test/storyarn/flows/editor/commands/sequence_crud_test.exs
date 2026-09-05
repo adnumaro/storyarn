@@ -791,6 +791,441 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert is_nil(detached.composition_source_id)
     end
 
+    test "inherits visual properties, reverts them, and persists a removable tombstone" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => asset.id,
+          "x" => 0.2,
+          "opacity" => 0.9
+        })
+
+      assert {:ok, patch} =
+               Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+                 "opacity" => 0.4
+               })
+
+      assert patch.overridden_fields == ["opacity"]
+
+      {:ok, _base_layer} =
+        Flows.update_sequence_visual_layer(base_layer, %{"x" => 0.7, "opacity" => 0.8})
+
+      resolved = dialogue |> composition_for(flow.id) |> visual_layer!(base_layer.layer_key)
+      assert resolved.item.x == 0.7
+      assert resolved.item.opacity == 0.4
+      assert resolved.property_sources["x"] == base.id
+      assert resolved.property_sources["opacity"] == dialogue.id
+
+      assert {:ok, :inherited} =
+               Flows.revert_sequence_visual_layer_fields(
+                 dialogue.id,
+                 base_layer.layer_key,
+                 ["opacity"]
+               )
+
+      assert dialogue
+             |> composition_for(flow.id)
+             |> visual_layer!(base_layer.layer_key)
+             |> Map.fetch!(:item)
+             |> Map.fetch!(:opacity) == 0.8
+
+      assert {:ok, tombstone} =
+               Flows.remove_sequence_visual_layer(dialogue.id, base_layer.layer_key)
+
+      assert tombstone.removed
+
+      refute Enum.any?(
+               composition_for(dialogue, flow.id).visual_layers,
+               &(&1.layer_key == base_layer.layer_key)
+             )
+
+      assert {:ok, :inherited} =
+               Flows.restore_sequence_visual_layer(dialogue.id, base_layer.layer_key)
+
+      assert visual_layer!(composition_for(dialogue, flow.id), base_layer.layer_key)
+    end
+
+    test "overrides inherited track properties without replacing local same-kind definitions" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      inherited_asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+      local_asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, inherited_track} =
+        Flows.upsert_sequence_track(base.id, "music", %{
+          "asset_id" => inherited_asset.id,
+          "volume" => Decimal.new("0.8")
+        })
+
+      assert {:ok, patch} =
+               Flows.override_sequence_track(dialogue.id, inherited_track.track_key, %{
+                 "volume" => Decimal.new("0.25")
+               })
+
+      assert patch.is_override
+      assert patch.overridden_fields == ["volume"]
+
+      assert {:ok, local_track} =
+               Flows.upsert_sequence_track(dialogue.id, "music", %{
+                 "asset_id" => local_asset.id
+               })
+
+      assert local_track.track_key != inherited_track.track_key
+      assert length(Flows.list_sequence_tracks(dialogue.id)) == 2
+
+      inherited_result =
+        dialogue
+        |> composition_for(flow.id)
+        |> audio_track!(inherited_track.track_key)
+
+      assert inherited_result.item.asset_id == inherited_asset.id
+      assert Decimal.equal?(inherited_result.item.volume, Decimal.new("0.25"))
+      assert inherited_result.asset_source_row_id == inherited_track.id
+
+      assert {:ok, :cleared} = Flows.clear_sequence_track(dialogue.id, "music")
+      assert Flows.get_sequence_track_by_key(dialogue.id, patch.track_key)
+
+      assert {:ok, :inherited} =
+               Flows.revert_sequence_track_fields(
+                 dialogue.id,
+                 inherited_track.track_key,
+                 ["volume"]
+               )
+
+      inherited_result =
+        dialogue
+        |> composition_for(flow.id)
+        |> audio_track!(inherited_track.track_key)
+
+      assert Decimal.equal?(inherited_result.item.volume, Decimal.new("0.8"))
+
+      assert {:ok, tombstone} =
+               Flows.remove_sequence_track(dialogue.id, inherited_track.track_key)
+
+      assert tombstone.removed
+
+      refute Enum.any?(
+               composition_for(dialogue, flow.id).audio_tracks,
+               &(&1.track_key == inherited_track.track_key)
+             )
+
+      assert {:ok, :inherited} =
+               Flows.restore_sequence_track(dialogue.id, inherited_track.track_key)
+
+      assert audio_track!(composition_for(dialogue, flow.id), inherited_track.track_key)
+    end
+
+    test "removing definitions introduced by the current owner deletes their local rows" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, owner} = Flows.create_sequence(flow.id, %{"name" => "Local stage"})
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      audio = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(owner.id, %{
+          "kind" => "backdrop",
+          "asset_id" => image.id
+        })
+
+      {:ok, track} =
+        Flows.upsert_sequence_track(owner.id, "music", %{
+          "asset_id" => audio.id
+        })
+
+      assert {:ok, removed_layer} =
+               Flows.remove_sequence_visual_layer(owner.id, layer.layer_key)
+
+      refute removed_layer.removed
+      assert is_nil(Flows.get_sequence_visual_layer_by_key(owner.id, layer.layer_key))
+
+      assert {:ok, removed_track} =
+               Flows.remove_sequence_track(owner.id, track.track_key)
+
+      refute removed_track.removed
+      assert is_nil(Flows.get_sequence_track_by_key(owner.id, track.track_key))
+    end
+
+    test "a descendant restores ancestor tombstones as complete local overrides" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      middle =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "middle"}
+        })
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: middle.id,
+          data: %{"text" => "descendant"}
+        })
+
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      audio = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => image.id,
+          "x" => 0.25,
+          "opacity" => 0.75
+        })
+
+      {:ok, base_track} =
+        Flows.upsert_sequence_track(base.id, "ambience", %{
+          "asset_id" => audio.id,
+          "volume" => Decimal.new("0.6")
+        })
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_visual_layer(middle.id, base_layer.layer_key)
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_track(middle.id, base_track.track_key)
+
+      assert {:ok, restored_layer} =
+               Flows.restore_sequence_visual_layer(descendant.id, base_layer.layer_key)
+
+      assert restored_layer.layer_key == base_layer.layer_key
+      refute restored_layer.removed
+
+      assert MapSet.new(restored_layer.overridden_fields) ==
+               MapSet.new(SequenceVisualLayer.property_fields())
+
+      assert {:ok, restored_track} =
+               Flows.restore_sequence_track(descendant.id, base_track.track_key)
+
+      assert restored_track.track_key == base_track.track_key
+      assert restored_track.is_override
+      refute restored_track.removed
+
+      assert MapSet.new(restored_track.overridden_fields) ==
+               MapSet.new(SequenceTrack.property_fields())
+
+      assert {:ok, edited_track} =
+               Flows.override_sequence_track(descendant.id, base_track.track_key, %{
+                 "volume" => Decimal.new("0.4")
+               })
+
+      assert edited_track.id == restored_track.id
+
+      restored_composition = composition_for(descendant, flow.id)
+      restored_visual = visual_layer!(restored_composition, base_layer.layer_key)
+      restored_audio = audio_track!(restored_composition, base_track.track_key)
+
+      assert restored_visual.sequence_id == descendant.id
+      assert restored_visual.item.asset_id == image.id
+      assert restored_visual.item.x == 0.25
+      assert restored_visual.property_sources["x"] == descendant.id
+      assert restored_audio.sequence_id == descendant.id
+      assert restored_audio.item.asset_id == audio.id
+      assert Decimal.equal?(restored_audio.item.volume, Decimal.new("0.4"))
+      assert restored_audio.property_sources["volume"] == descendant.id
+
+      assert {:ok, _removed_layer} =
+               Flows.remove_sequence_visual_layer(descendant.id, base_layer.layer_key)
+
+      assert {:ok, _removed_track} =
+               Flows.remove_sequence_track(descendant.id, base_track.track_key)
+
+      assert is_nil(Flows.get_sequence_visual_layer_by_key(descendant.id, base_layer.layer_key))
+
+      assert is_nil(Flows.get_sequence_track_by_key(descendant.id, base_track.track_key))
+      assert composition_for(descendant, flow.id).visual_layers == []
+      assert composition_for(descendant, flow.id).audio_tracks == []
+    end
+
+    test "restoring orphan tombstones clears them after the ancestor deletes the identity" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "descendant"}
+        })
+
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      audio = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "prop",
+          "asset_id" => image.id
+        })
+
+      {:ok, base_track} =
+        Flows.upsert_sequence_track(base.id, "ambience", %{
+          "asset_id" => audio.id
+        })
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_visual_layer(descendant.id, base_layer.layer_key)
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_track(descendant.id, base_track.track_key)
+
+      Repo.delete!(base_layer)
+      Repo.delete!(base_track)
+
+      assert {:ok, :cleared} =
+               Flows.restore_sequence_visual_layer(descendant.id, base_layer.layer_key)
+
+      assert {:ok, :cleared} =
+               Flows.restore_sequence_track(descendant.id, base_track.track_key)
+
+      assert is_nil(Flows.get_sequence_visual_layer_by_key(descendant.id, base_layer.layer_key))
+
+      assert is_nil(Flows.get_sequence_track_by_key(descendant.id, base_track.track_key))
+      assert composition_for(descendant, flow.id).visual_layers == []
+      assert composition_for(descendant, flow.id).audio_tracks == []
+    end
+
+    test "changing a source rolls back when local changes would lose their inherited identities" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      {:ok, alternate} = Flows.create_sequence(flow.id, %{"name" => "Alternate"})
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "descendant"}
+        })
+
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      audio = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => image.id
+        })
+
+      {:ok, base_track} =
+        Flows.upsert_sequence_track(base.id, "music", %{"asset_id" => audio.id})
+
+      assert {:ok, _patch} =
+               Flows.override_sequence_visual_layer(descendant.id, base_layer.layer_key, %{
+                 "opacity" => 0.5
+               })
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_track(descendant.id, base_track.track_key)
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.set_composition_source(descendant.id, alternate.id)
+
+      assert Repo.reload(descendant).composition_source_id == base.id
+      assert visual_layer!(composition_for(descendant, flow.id), base_layer.layer_key)
+      assert composition_for(descendant, flow.id).audio_tracks == []
+    end
+
+    test "definition deletion and clear roll back while descendants still patch or remove them" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      patched =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "patched"}
+        })
+
+      removed =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "removed"}
+        })
+
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      audio = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => image.id
+        })
+
+      {:ok, base_track} =
+        Flows.upsert_sequence_track(base.id, "ambience", %{"asset_id" => audio.id})
+
+      assert {:ok, _patch} =
+               Flows.override_sequence_visual_layer(patched.id, base_layer.layer_key, %{
+                 "visible" => false
+               })
+
+      assert {:ok, _patch} =
+               Flows.override_sequence_track(patched.id, base_track.track_key, %{
+                 "volume" => Decimal.new("0.5")
+               })
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_visual_layer(removed.id, base_layer.layer_key)
+
+      assert {:ok, %{removed: true}} =
+               Flows.remove_sequence_track(removed.id, base_track.track_key)
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.delete_sequence_visual_layer(base_layer)
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.remove_sequence_visual_layer(base.id, base_layer.layer_key)
+
+      assert Flows.get_sequence_visual_layer(base.id, base_layer.id)
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.clear_sequence_track(base.id, "ambience")
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.remove_sequence_track(base.id, base_track.track_key)
+
+      assert Flows.get_sequence_track(base.id, "ambience")
+    end
+
+    test "definition deletion validates dependent composition owners in the trash" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+
+      descendant =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: base.id,
+          data: %{"text" => "archived patch"}
+        })
+
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "prop",
+          "asset_id" => image.id
+        })
+
+      assert {:ok, _patch} =
+               Flows.override_sequence_visual_layer(descendant.id, base_layer.layer_key, %{
+                 "opacity" => 0.4
+               })
+
+      assert {:ok, _deleted_descendant, _meta} = Flows.delete_node(descendant)
+
+      assert {:error, :composition_dependency_conflict} =
+               Flows.delete_sequence_visual_layer(base_layer)
+
+      assert Flows.get_sequence_visual_layer(base.id, base_layer.id)
+    end
+
     test "returns a domain error when deleting an active sequence composition source" do
       %{flow: flow} = setup_flow()
       {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
@@ -836,6 +1271,36 @@ defmodule Storyarn.Flows.SequenceCrudTest do
                Flows.restore_sequence(deleted_dependent)
 
       assert Repo.reload(deleted_dependent).deleted_at
+    end
+
+    test "hard-deleting an overridden visual asset preserves the patch and does not reactivate inheritance" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      dialogue = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "line"}})
+      inherited_asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+      overridden_asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, base_layer} =
+        Flows.create_sequence_visual_layer(base.id, %{
+          "kind" => "character",
+          "asset_id" => inherited_asset.id
+        })
+
+      {:ok, patch} =
+        Flows.override_sequence_visual_layer(dialogue.id, base_layer.layer_key, %{
+          "asset_id" => overridden_asset.id
+        })
+
+      Repo.delete!(overridden_asset)
+
+      persisted = Flows.get_sequence_visual_layer_by_key(dialogue.id, patch.layer_key)
+      assert persisted.asset_id == nil
+      assert persisted.asset == nil
+      assert persisted.overridden_fields == ["asset_id"]
+
+      resolved = visual_layer!(composition_for(dialogue, flow.id), base_layer.layer_key)
+      assert resolved.item.asset_id == nil
+      assert resolved.item.asset == nil
     end
   end
 
@@ -899,4 +1364,21 @@ defmodule Storyarn.Flows.SequenceCrudTest do
   defp refute_dashboard_invalidation do
     refute_receive {:dashboard_invalidate, :flows}, 10
   end
+
+  defp composition_for(node, flow_id) do
+    nodes =
+      FlowNode
+      |> Repo.all()
+      |> Enum.filter(&(&1.flow_id == flow_id and is_nil(&1.deleted_at)))
+      |> Repo.preload(sequence_tracks: [:asset], sequence_visual_layers: [:asset])
+      |> Map.new(&{&1.id, &1})
+
+    Flows.compose_node_sequences(node.id, nodes)
+  end
+
+  defp visual_layer!(composition, layer_key),
+    do: Enum.find(composition.visual_layers, &(&1.layer_key == layer_key)) || flunk("missing visual layer")
+
+  defp audio_track!(composition, track_key),
+    do: Enum.find(composition.audio_tracks, &(&1.track_key == track_key)) || flunk("missing audio track")
 end

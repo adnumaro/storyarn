@@ -27,6 +27,7 @@ defmodule Storyarn.Flows.SequenceCrud do
   alias Storyarn.Flows.NodeDelete
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.References
+  alias Storyarn.Flows.Runtime
   alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
@@ -666,6 +667,87 @@ defmodule Storyarn.Flows.SequenceCrud do
     end)
   end
 
+  @doc "Creates or updates the local property patch for an inherited visual layer."
+  def override_sequence_visual_layer(owner_id, layer_key, attrs)
+      when is_integer(owner_id) and is_binary(layer_key) and is_map(attrs) do
+    with {:ok, attrs, fields} <-
+           normalize_override_attrs(attrs, SequenceVisualLayer.property_fields()) do
+      Repo.transaction(fn ->
+        with {:ok, context} <- lock_composition_owner(owner_id),
+             {:ok, inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
+             local = lock_visual_layer_by_key(owner_id, layer_key),
+             changeset =
+               visual_layer_override_changeset(
+                 local,
+                 inherited.item,
+                 owner_id,
+                 layer_key,
+                 attrs,
+                 fields
+               ),
+             asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+             {:ok, asset_id} <-
+               lock_project_asset(
+                 context.project_id,
+                 :sequence_visual_asset_id,
+                 asset_id,
+                 "image/%"
+               ),
+             {:ok, persisted} <- persist_visual_layer(changeset, asset_id, local) do
+          persisted
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end
+  end
+
+  @doc "Returns selected local visual-layer properties to inheritance."
+  def revert_sequence_visual_layer_fields(owner_id, layer_key, fields)
+      when is_integer(owner_id) and is_binary(layer_key) and is_list(fields) do
+    with {:ok, fields} <- normalize_override_fields(fields, SequenceVisualLayer.property_fields()) do
+      Repo.transaction(fn ->
+        with {:ok, context} <- lock_composition_owner(owner_id),
+             {:ok, _inherited} <- inherited_visual_layer(context.flow.id, context.node, layer_key),
+             %SequenceVisualLayer{} = local <- lock_visual_layer_by_key(owner_id, layer_key),
+             {:ok, result} <- revert_or_delete_visual_layer(local, fields) do
+          result
+        else
+          nil -> :inherited
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end
+  end
+
+  @doc "Removes a local layer definition or tombstones an inherited layer."
+  def remove_sequence_visual_layer(owner_id, layer_key) when is_integer(owner_id) and is_binary(layer_key) do
+    Repo.transaction(fn ->
+      with {:ok, context} <- lock_composition_owner(owner_id),
+           local = lock_visual_layer_by_key(owner_id, layer_key),
+           {:ok, removed} <-
+             remove_visual_layer(context.flow.id, context.node, local, owner_id, layer_key),
+           :ok <- validate_composition_dependents(context.flow.id, owner_id) do
+        removed
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  @doc "Restores a local tombstone or materializes an inherited tombstoned layer."
+  def restore_sequence_visual_layer(owner_id, layer_key) when is_integer(owner_id) and is_binary(layer_key) do
+    Repo.transaction(fn ->
+      with {:ok, context} <- lock_composition_owner(owner_id),
+           local = lock_visual_layer_by_key(owner_id, layer_key),
+           {:ok, restored} <- restore_visual_layer(context, local, owner_id, layer_key) do
+        restored
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
   defp default_slot_for_visual_kind("backdrop"), do: "full"
   defp default_slot_for_visual_kind("overlay"), do: "full"
   defp default_slot_for_visual_kind("character"), do: "bottom-center"
@@ -866,6 +948,86 @@ defmodule Storyarn.Flows.SequenceCrud do
     else
       {:error, :invalid_kind}
     end
+  end
+
+  @doc "Creates or updates the local property patch for an inherited audio track."
+  def override_sequence_track(owner_id, track_key, attrs)
+      when is_integer(owner_id) and is_binary(track_key) and is_map(attrs) do
+    with {:ok, attrs, fields} <- normalize_override_attrs(attrs, SequenceTrack.property_fields()) do
+      Repo.transaction(fn ->
+        with {:ok, context} <- lock_composition_owner(owner_id),
+             local = lock_track_by_key(owner_id, track_key),
+             {:ok, inherited} <-
+               inherited_or_materialized_audio_track(
+                 context.flow.id,
+                 context.node,
+                 track_key,
+                 local
+               ),
+             changeset =
+               track_override_changeset(local, inherited.item, owner_id, track_key, attrs, fields),
+             asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+             {:ok, asset_id} <-
+               lock_project_asset(
+                 context.project_id,
+                 :sequence_track_asset_id,
+                 asset_id,
+                 "audio/%"
+               ),
+             {:ok, persisted} <- persist_sequence_track(changeset, asset_id, local) do
+          persisted
+        else
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end
+  end
+
+  @doc "Returns selected local audio-track properties to inheritance."
+  def revert_sequence_track_fields(owner_id, track_key, fields)
+      when is_integer(owner_id) and is_binary(track_key) and is_list(fields) do
+    with {:ok, fields} <- normalize_override_fields(fields, SequenceTrack.property_fields()) do
+      Repo.transaction(fn ->
+        with {:ok, context} <- lock_composition_owner(owner_id),
+             {:ok, _inherited} <- inherited_audio_track(context.flow.id, context.node, track_key),
+             %SequenceTrack{is_override: true} = local <- lock_track_by_key(owner_id, track_key),
+             {:ok, result} <- revert_or_delete_track(local, fields) do
+          result
+        else
+          nil -> :inherited
+          %SequenceTrack{} -> Repo.rollback(:track_is_local_definition)
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end)
+    end
+  end
+
+  @doc "Removes a local track definition or tombstones an inherited track."
+  def remove_sequence_track(owner_id, track_key) when is_integer(owner_id) and is_binary(track_key) do
+    Repo.transaction(fn ->
+      with {:ok, context} <- lock_composition_owner(owner_id),
+           local = lock_track_by_key(owner_id, track_key),
+           {:ok, removed} <-
+             remove_track(context.flow.id, context.node, local, owner_id, track_key),
+           :ok <- validate_composition_dependents(context.flow.id, owner_id) do
+        removed
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
+  end
+
+  @doc "Restores a local tombstone or materializes an inherited tombstoned track."
+  def restore_sequence_track(owner_id, track_key) when is_integer(owner_id) and is_binary(track_key) do
+    Repo.transaction(fn ->
+      with {:ok, context} <- lock_composition_owner(owner_id),
+           local = lock_track_by_key(owner_id, track_key),
+           {:ok, restored} <- restore_track(context, local, owner_id, track_key) do
+        restored
+      else
+        {:error, reason} -> Repo.rollback(reason)
+      end
+    end)
   end
 
   defp put_normalized_parent_id(node_attrs, parent_id) do
@@ -1085,12 +1247,29 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp normalize_optional_id(value), do: {:error, {:invalid_composition_source, value}}
 
+  defp composition_nodes(flow_id) do
+    from(node in FlowNode,
+      where:
+        node.flow_id == ^flow_id and node.type in ["sequence", "dialogue"] and
+          is_nil(node.deleted_at),
+      preload: [sequence_tracks: [:asset], sequence_visual_layers: [:asset]]
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
+  end
+
   defp validate_composition_dependents(flow_id, owner_id) do
-    flow_id
-    |> composition_nodes_including_deleted()
-    |> Map.values()
-    |> Enum.map(&composition_integrity_node/1)
-    |> SequenceCompositionIntegrity.validate_affected(owner_id)
+    result =
+      flow_id
+      |> composition_nodes_including_deleted()
+      |> Map.values()
+      |> Enum.map(&composition_integrity_node/1)
+      |> SequenceCompositionIntegrity.validate_affected(owner_id)
+
+    case result do
+      :ok -> :ok
+      {:error, _reason} -> {:error, :composition_dependency_conflict}
+    end
   end
 
   defp composition_nodes_including_deleted(flow_id) do
@@ -1134,4 +1313,436 @@ defmodule Storyarn.Flows.SequenceCrud do
       "removed" => layer.removed
     }
   end
+
+  defp inherited_composition(_flow_id, %FlowNode{composition_source_id: nil}),
+    do: {:ok, %{visual_layers: [], audio_tracks: [], diagnostics: []}}
+
+  defp inherited_composition(flow_id, %FlowNode{composition_source_id: source_id}) do
+    composition = Runtime.compose_node_sequences(source_id, composition_nodes(flow_id))
+
+    case composition.diagnostics do
+      [] -> {:ok, composition}
+      diagnostics -> {:error, {:invalid_composition_source_chain, diagnostics}}
+    end
+  end
+
+  defp inherited_composition_with_removed(_flow_id, %FlowNode{composition_source_id: nil}) do
+    {:ok,
+     %{
+       visual_layers: [],
+       removed_visual_layers: [],
+       audio_tracks: [],
+       removed_audio_tracks: [],
+       diagnostics: []
+     }}
+  end
+
+  defp inherited_composition_with_removed(flow_id, %FlowNode{composition_source_id: source_id}) do
+    composition =
+      Runtime.inspect_node_sequences(source_id, composition_nodes(flow_id))
+
+    case composition.diagnostics do
+      [] -> {:ok, composition}
+      diagnostics -> {:error, {:invalid_composition_source_chain, diagnostics}}
+    end
+  end
+
+  defp inherited_visual_layer(flow_id, owner, layer_key) do
+    with {:ok, composition} <- inherited_composition(flow_id, owner),
+         %{layer_key: ^layer_key} = layer <-
+           Enum.find(composition.visual_layers, &(&1.layer_key == layer_key)) do
+      {:ok, layer}
+    else
+      nil -> {:error, :inherited_layer_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp inherited_audio_track(flow_id, owner, track_key) do
+    with {:ok, composition} <- inherited_composition(flow_id, owner),
+         %{track_key: ^track_key} = track <-
+           Enum.find(composition.audio_tracks, &(&1.track_key == track_key)) do
+      {:ok, track}
+    else
+      nil -> {:error, :inherited_track_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp inherited_or_materialized_audio_track(flow_id, owner, track_key, local) do
+    case inherited_audio_track(flow_id, owner, track_key) do
+      {:ok, _inherited} = result ->
+        result
+
+      {:error, :inherited_track_not_found} = not_found ->
+        if complete_materialized_track?(local) do
+          {:ok, %{item: local}}
+        else
+          not_found
+        end
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp complete_materialized_track?(%SequenceTrack{is_override: true, removed: false, overridden_fields: fields}) do
+    MapSet.new(fields) == MapSet.new(SequenceTrack.property_fields())
+  end
+
+  defp complete_materialized_track?(_track), do: false
+
+  defp inherited_removed_visual_layer(flow_id, owner, layer_key) do
+    with {:ok, composition} <- inherited_composition_with_removed(flow_id, owner),
+         %{layer_key: ^layer_key} = layer <-
+           Enum.find(composition.removed_visual_layers, &(&1.layer_key == layer_key)) do
+      {:ok, layer}
+    else
+      nil -> {:error, :sequence_visual_layer_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp inherited_removed_audio_track(flow_id, owner, track_key) do
+    with {:ok, composition} <- inherited_composition_with_removed(flow_id, owner),
+         %{track_key: ^track_key} = track <-
+           Enum.find(composition.removed_audio_tracks, &(&1.track_key == track_key)) do
+      {:ok, track}
+    else
+      nil -> {:error, :sequence_track_not_found}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp normalize_override_attrs(attrs, allowed_fields) do
+    attrs = normalize_keys(attrs)
+    fields = Map.keys(attrs)
+    invalid = fields -- allowed_fields
+
+    cond do
+      invalid != [] -> {:error, {:invalid_override_fields, Enum.sort(invalid)}}
+      fields == [] -> {:error, :empty_override}
+      true -> {:ok, attrs, Enum.sort(fields)}
+    end
+  end
+
+  defp normalize_override_fields(fields, allowed_fields) do
+    fields = fields |> Enum.map(&to_string/1) |> Enum.uniq() |> Enum.sort()
+    invalid = fields -- allowed_fields
+
+    if invalid == [],
+      do: {:ok, fields},
+      else: {:error, {:invalid_override_fields, invalid}}
+  end
+
+  defp visual_layer_override_changeset(nil, inherited, owner_id, layer_key, attrs, fields) do
+    inherited
+    |> relational_attrs(SequenceVisualLayer.property_fields())
+    |> Map.merge(attrs)
+    |> Map.merge(%{
+      "flow_node_id" => owner_id,
+      "layer_key" => layer_key,
+      "overridden_fields" => fields,
+      "removed" => false
+    })
+    |> then(&SequenceVisualLayer.override_changeset(%SequenceVisualLayer{}, &1))
+  end
+
+  defp visual_layer_override_changeset(%SequenceVisualLayer{} = local, _inherited, _owner_id, _layer_key, attrs, _fields) do
+    local
+    |> SequenceVisualLayer.update_changeset(attrs)
+    |> Ecto.Changeset.put_change(:removed, false)
+  end
+
+  defp persist_visual_layer(changeset, asset_id, nil) do
+    changeset
+    |> Ecto.Changeset.put_change(:asset_id, asset_id)
+    |> Repo.insert()
+  end
+
+  defp persist_visual_layer(changeset, asset_id, %SequenceVisualLayer{}) do
+    changeset
+    |> Ecto.Changeset.put_change(:asset_id, asset_id)
+    |> Repo.update()
+  end
+
+  defp lock_visual_layer_by_key(owner_id, layer_key) do
+    Repo.one(
+      from(layer in SequenceVisualLayer,
+        where: layer.flow_node_id == ^owner_id and layer.layer_key == ^layer_key,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp revert_or_delete_visual_layer(local, fields) do
+    changeset = SequenceVisualLayer.revert_fields_changeset(local, fields)
+
+    if Ecto.Changeset.get_field(changeset, :overridden_fields) == [] and
+         not Ecto.Changeset.get_field(changeset, :removed) do
+      case Repo.delete(local) do
+        {:ok, _deleted} -> {:ok, :inherited}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      Repo.update(changeset)
+    end
+  end
+
+  defp persist_visual_layer_tombstone(nil, effective, owner_id, layer_key) do
+    effective
+    |> relational_attrs(SequenceVisualLayer.property_fields())
+    |> Map.merge(%{
+      "flow_node_id" => owner_id,
+      "layer_key" => layer_key,
+      "overridden_fields" => [],
+      "removed" => true
+    })
+    |> then(&SequenceVisualLayer.override_changeset(%SequenceVisualLayer{}, &1))
+    |> Repo.insert()
+  end
+
+  defp remove_visual_layer(_flow_id, _owner, %SequenceVisualLayer{removed: true} = local, _owner_id, _layer_key),
+    do: {:ok, local}
+
+  defp remove_visual_layer(flow_id, owner, nil, owner_id, layer_key) do
+    with {:ok, inherited} <- inherited_visual_layer(flow_id, owner, layer_key) do
+      persist_visual_layer_tombstone(nil, inherited.item, owner_id, layer_key)
+    end
+  end
+
+  defp remove_visual_layer(flow_id, owner, %SequenceVisualLayer{} = local, _owner_id, layer_key) do
+    case inherited_visual_layer(flow_id, owner, layer_key) do
+      {:ok, _inherited} ->
+        local |> SequenceVisualLayer.removal_changeset(true) |> Repo.update()
+
+      {:error, :inherited_layer_not_found} ->
+        Repo.delete(local)
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp restore_visual_layer(_context, %SequenceVisualLayer{removed: false}, _owner_id, _layer_key),
+    do: {:error, :sequence_visual_layer_not_removed}
+
+  defp restore_visual_layer(context, %SequenceVisualLayer{} = local, _owner_id, layer_key) do
+    case inherited_visual_layer(context.flow.id, context.node, layer_key) do
+      {:ok, _inherited} -> restore_visual_layer_row(local)
+      {:error, :inherited_layer_not_found} -> clear_orphan_visual_tombstone(local)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp restore_visual_layer(context, nil, owner_id, layer_key) do
+    fields = SequenceVisualLayer.property_fields()
+
+    with {:ok, inherited} <-
+           inherited_removed_visual_layer(context.flow.id, context.node, layer_key),
+         changeset =
+           visual_layer_override_changeset(
+             nil,
+             inherited.item,
+             owner_id,
+             layer_key,
+             %{},
+             fields
+           ),
+         asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+         {:ok, asset_id} <-
+           lock_project_asset(
+             context.project_id,
+             :sequence_visual_asset_id,
+             asset_id,
+             "image/%"
+           ) do
+      persist_visual_layer(changeset, asset_id, nil)
+    end
+  end
+
+  defp restore_visual_layer_row(%SequenceVisualLayer{overridden_fields: []} = local) do
+    case Repo.delete(local) do
+      {:ok, _deleted} -> {:ok, :inherited}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp restore_visual_layer_row(local), do: local |> SequenceVisualLayer.removal_changeset(false) |> Repo.update()
+
+  defp clear_orphan_visual_tombstone(local) do
+    case Repo.delete(local) do
+      {:ok, _deleted} -> {:ok, :cleared}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp track_override_changeset(nil, inherited, owner_id, track_key, attrs, fields) do
+    inherited
+    |> relational_attrs(SequenceTrack.property_fields())
+    |> Map.merge(attrs)
+    |> Map.merge(%{
+      "flow_node_id" => owner_id,
+      "kind" => map_value(inherited, :kind),
+      "track_key" => track_key,
+      "is_override" => true,
+      "overridden_fields" => fields,
+      "removed" => false
+    })
+    |> then(&SequenceTrack.override_changeset(%SequenceTrack{}, &1))
+  end
+
+  defp track_override_changeset(
+         %SequenceTrack{is_override: true} = local,
+         _inherited,
+         _owner_id,
+         _track_key,
+         attrs,
+         _fields
+       ) do
+    local
+    |> SequenceTrack.update_changeset(attrs)
+    |> Ecto.Changeset.put_change(:removed, false)
+  end
+
+  defp track_override_changeset(%SequenceTrack{} = local, _inherited, _owner_id, _track_key, _attrs, _fields),
+    do: Ecto.Changeset.add_error(Ecto.Changeset.change(local), :track_key, "is a local definition")
+
+  defp lock_track_by_key(owner_id, track_key) do
+    Repo.one(
+      from(track in SequenceTrack,
+        where: track.flow_node_id == ^owner_id and track.track_key == ^track_key,
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp revert_or_delete_track(local, fields) do
+    changeset = SequenceTrack.revert_fields_changeset(local, fields)
+
+    if Ecto.Changeset.get_field(changeset, :overridden_fields) == [] and
+         not Ecto.Changeset.get_field(changeset, :removed) do
+      case Repo.delete(local) do
+        {:ok, _deleted} -> {:ok, :inherited}
+        {:error, reason} -> {:error, reason}
+      end
+    else
+      Repo.update(changeset)
+    end
+  end
+
+  defp persist_track_tombstone(nil, effective, owner_id, track_key) do
+    effective
+    |> relational_attrs(SequenceTrack.property_fields())
+    |> Map.merge(%{
+      "flow_node_id" => owner_id,
+      "kind" => map_value(effective, :kind),
+      "track_key" => track_key,
+      "is_override" => true,
+      "overridden_fields" => [],
+      "removed" => true
+    })
+    |> then(&SequenceTrack.override_changeset(%SequenceTrack{}, &1))
+    |> Repo.insert()
+  end
+
+  defp remove_track(_flow_id, _owner, %SequenceTrack{removed: true} = local, _owner_id, _track_key), do: {:ok, local}
+
+  defp remove_track(flow_id, owner, nil, owner_id, track_key) do
+    with {:ok, inherited} <- inherited_audio_track(flow_id, owner, track_key) do
+      persist_track_tombstone(nil, inherited.item, owner_id, track_key)
+    end
+  end
+
+  defp remove_track(_flow_id, _owner, %SequenceTrack{is_override: false} = local, _owner_id, _track_key),
+    do: Repo.delete(local)
+
+  defp remove_track(flow_id, owner, %SequenceTrack{} = local, _owner_id, track_key) do
+    case inherited_audio_track(flow_id, owner, track_key) do
+      {:ok, _inherited} ->
+        local |> SequenceTrack.removal_changeset(true) |> Repo.update()
+
+      {:error, :inherited_track_not_found} ->
+        Repo.delete(local)
+
+      {:error, _reason} = error ->
+        error
+    end
+  end
+
+  defp restore_track(_context, %SequenceTrack{removed: false}, _owner_id, _track_key),
+    do: {:error, :sequence_track_not_removed}
+
+  defp restore_track(context, %SequenceTrack{} = local, _owner_id, track_key) do
+    case inherited_audio_track(context.flow.id, context.node, track_key) do
+      {:ok, _inherited} -> restore_track_row(local)
+      {:error, :inherited_track_not_found} -> clear_orphan_track_tombstone(local)
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp restore_track(context, nil, owner_id, track_key) do
+    fields = SequenceTrack.property_fields()
+
+    with {:ok, inherited} <-
+           inherited_removed_audio_track(context.flow.id, context.node, track_key),
+         changeset =
+           track_override_changeset(
+             nil,
+             inherited.item,
+             owner_id,
+             track_key,
+             %{},
+             fields
+           ),
+         asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
+         {:ok, asset_id} <-
+           lock_project_asset(
+             context.project_id,
+             :sequence_track_asset_id,
+             asset_id,
+             "audio/%"
+           ) do
+      persist_sequence_track(changeset, asset_id, nil)
+    end
+  end
+
+  defp restore_track_row(%SequenceTrack{is_override: true, overridden_fields: []} = local) do
+    case Repo.delete(local) do
+      {:ok, _deleted} -> {:ok, :inherited}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp restore_track_row(local), do: local |> SequenceTrack.removal_changeset(false) |> Repo.update()
+
+  defp clear_orphan_track_tombstone(local) do
+    case Repo.delete(local) do
+      {:ok, _deleted} -> {:ok, :cleared}
+      {:error, reason} -> {:error, reason}
+    end
+  end
+
+  defp relational_attrs(item, fields), do: Map.new(fields, &{&1, map_value(item, property_atom(&1))})
+
+  defp map_value(map, key), do: Map.get(map, key, Map.get(map, Atom.to_string(key)))
+
+  defp property_atom("asset_id"), do: :asset_id
+  defp property_atom("kind"), do: :kind
+  defp property_atom("label"), do: :label
+  defp property_atom("z_index"), do: :z_index
+  defp property_atom("slot"), do: :slot
+  defp property_atom("x"), do: :x
+  defp property_atom("y"), do: :y
+  defp property_atom("width"), do: :width
+  defp property_atom("height"), do: :height
+  defp property_atom("anchor_x"), do: :anchor_x
+  defp property_atom("anchor_y"), do: :anchor_y
+  defp property_atom("fit"), do: :fit
+  defp property_atom("opacity"), do: :opacity
+  defp property_atom("visible"), do: :visible
+  defp property_atom("position"), do: :position
+  defp property_atom("start_time"), do: :start_time
+  defp property_atom("end_time"), do: :end_time
+  defp property_atom("volume"), do: :volume
 end
