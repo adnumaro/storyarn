@@ -87,10 +87,11 @@ function setup(
   const block = document.createElement("div");
   const background = document.createElement("div");
   const input = document.createElement("input");
+  const button = document.createElement("button");
   block.id = "sheet-block-42";
   block.dataset.sheetBlockId = "42";
   background.dataset.testid = "block-background";
-  block.append(background, input);
+  block.append(background, input, button);
   container.append(block);
   document.body.append(container);
 
@@ -108,7 +109,7 @@ function setup(
     global: { stubs: { SheetCommentsPanel: true } },
   });
   wrappers.push(wrapper);
-  return { wrapper, container, block, background, input };
+  return { wrapper, container, block, background, input, button };
 }
 
 beforeEach(() => {
@@ -147,6 +148,22 @@ describe("Sheet block comments", () => {
       thread_id: 12,
       presentation: "canvas",
     });
+  });
+
+  it("does not describe the selected pin with the hidden preview while its dialog is open", async () => {
+    const { wrapper } = setup({
+      open: true,
+      presentation: "canvas",
+      thread,
+    });
+    await flushPromises();
+
+    const pin = wrapper.get("#sheet-comment-pin-12");
+    await pin.trigger("focus");
+
+    expect(wrapper.find("#sheet-comment-preview").exists()).toBe(false);
+    expect(pin.attributes("aria-describedby")).toBe("sheet-comment-pin-keyboard-instructions");
+    expect(wrapper.find("#sheet-comment-pin-keyboard-instructions").exists()).toBe(true);
   });
 
   it("keeps comment interaction active while focus moves within the layer", async () => {
@@ -228,8 +245,26 @@ describe("Sheet block comments", () => {
     });
   });
 
-  it("intercepts comment-mode placement without letting the underlying block edit", async () => {
-    const { background } = setup({ placing: true });
+  it("preserves interactive controls in comment mode and intercepts the block background", async () => {
+    const { background, input, button } = setup({ placing: true });
+
+    for (const control of [input, button]) {
+      const controlPointerDown = vi.fn();
+      const controlClick = vi.fn();
+      control.addEventListener("pointerdown", controlPointerDown);
+      control.addEventListener("click", controlClick);
+
+      const pointerDown = pointer(control, "pointerdown", 210, 270);
+      pointer(control, "pointerup", 210, 270);
+      const click = pointer(control, "click", 210, 270);
+
+      expect(pointerDown.defaultPrevented).toBe(false);
+      expect(click.defaultPrevented).toBe(false);
+      expect(controlPointerDown).toHaveBeenCalledOnce();
+      expect(controlClick).toHaveBeenCalledOnce();
+    }
+    expect(live.pushEvent).not.toHaveBeenCalled();
+
     const blockPointerDown = vi.fn();
     const blockClick = vi.fn();
     background.addEventListener("pointerdown", blockPointerDown);

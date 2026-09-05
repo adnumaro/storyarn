@@ -259,7 +259,7 @@ export function useSheetBlockComments(options: SheetBlockCommentsOptions) {
   function onSurfacePointerDown(event: PointerEvent): void {
     if (!placing.value || event.button !== 0 || event.altKey || event.ctrlKey || event.metaKey)
       return;
-    const anchor = anchorFromTarget(event.target, true);
+    const anchor = anchorFromTarget(event.target, false);
     if (!anchor) return;
 
     event.preventDefault();

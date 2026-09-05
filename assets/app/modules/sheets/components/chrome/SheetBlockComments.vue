@@ -207,7 +207,7 @@ onUnmounted(() => {
       :style="{ left: `${pin.screen.x}px`, top: `${pin.screen.y}px` }"
       :aria-label="$t('sheets.comments.pin_label', { author: pin.thread.author.display_name })"
       :aria-describedby="
-        hoverId === pin.thread.id
+        hoverId === pin.thread.id && !(popupOpen && state.thread?.id === pin.thread.id)
           ? 'sheet-comment-preview sheet-comment-pin-keyboard-instructions'
           : 'sheet-comment-pin-keyboard-instructions'
       "
