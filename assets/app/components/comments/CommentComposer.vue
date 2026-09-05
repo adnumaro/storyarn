@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import { AtSign, LoaderCircle, Send, X } from "@lucide/vue";
-import { computed, reactive, ref } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
 import { useLive } from "@shared/composables/useLive";
+import { clearCommentDraft, readCommentDraft, updateCommentDraft } from "./commentDraftStorage";
 import type { CommentMember, CommentPosition, CommentUiConfig } from "./types";
 
 interface Draft {
@@ -22,6 +23,7 @@ const {
   parentId = null,
   position = null,
   draftId = null,
+  draftStorageKey = null,
   members,
   disabled = false,
   ui,
@@ -31,6 +33,7 @@ const {
   parentId?: number | null;
   position?: CommentPosition | null;
   draftId?: string | null;
+  draftStorageKey?: string | null;
   members: CommentMember[];
   disabled?: boolean;
   ui: CommentUiConfig;
@@ -42,31 +45,47 @@ const { t } = useI18n();
 const drafts = reactive(new Map<string, Draft>());
 const memberSearch = ref("");
 const mentionOpen = ref(false);
+const submittedDraftKey = ref<string | null>(null);
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
 const domId = (name: string) => `${ui.domScope}-comment-${name}`;
 
 const draftKey = computed(() => {
   if (threadId != null) return `thread:${threadId}:parent:${parentId}`;
+  if (draftStorageKey) return `stored:${draftStorageKey}`;
   if (draftId) return `draft:${draftId}`;
   if (sourceId != null) return `source:${sourceId}`;
   if (position) return `canvas:${position.x}:${position.y}`;
   return "canvas:unplaced";
 });
+
+function initialDraft(): Draft {
+  const stored = threadId == null ? readCommentDraft(draftStorageKey) : null;
+  return {
+    body: stored?.body ?? "",
+    mentionIds: stored?.mentionIds ?? [],
+    requestId: stored?.requestId ?? null,
+    fingerprint: stored?.fingerprint ?? null,
+    pending: false,
+    error: null,
+  };
+}
+
 const draft = computed(() => {
   const key = draftKey.value;
   let value = drafts.get(key);
   if (!value) {
-    drafts.set(key, {
-      body: "",
-      mentionIds: [],
-      requestId: null,
-      fingerprint: null,
-      pending: false,
-      error: null,
-    });
+    drafts.set(key, initialDraft());
     value = drafts.get(key)!;
   }
   return value;
+});
+
+watch(draftKey, (key) => {
+  if (submittedDraftKey.value && submittedDraftKey.value !== key) submittedDraftKey.value = null;
+});
+watch([() => draft.value.body, () => [...draft.value.mentionIds]], ([body, mentionIds]) => {
+  if (threadId != null || submittedDraftKey.value === draftKey.value) return;
+  updateCommentDraft(draftStorageKey, { body: body as string, mentionIds: mentionIds as number[] });
 });
 const availableMembers = computed(() =>
   members.filter((member): member is CommentMember & { id: number } => member.id != null),
@@ -97,9 +116,22 @@ function toggleMention(memberId: number) {
   }
 }
 
+function ensureRequestIdentity(current: Draft, fingerprint: string, storageKey: string | null) {
+  if (current.fingerprint === fingerprint && current.requestId) return;
+  current.requestId = crypto.randomUUID();
+  current.fingerprint = fingerprint;
+  if (threadId == null)
+    updateCommentDraft(storageKey, {
+      requestId: current.requestId,
+      fingerprint: current.fingerprint,
+    });
+}
+
 function submit() {
   if (!canSend.value) return;
   const current = draft.value;
+  const submittedComposerKey = draftKey.value;
+  const submittedStorageKey = draftStorageKey;
   const body = current.body.trim();
   const mentionIds = [
     ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
@@ -114,10 +146,7 @@ function submit() {
     body,
     mentionIds,
   });
-  if (current.fingerprint !== fingerprint || !current.requestId) {
-    current.requestId = crypto.randomUUID();
-    current.fingerprint = fingerprint;
-  }
+  ensureRequestIdentity(current, fingerprint, submittedStorageKey);
   const createTarget = ui.createSourceKey ? { [ui.createSourceKey]: sourceId } : {};
   const payload = {
     body,
@@ -135,6 +164,8 @@ function submit() {
     (reply) => {
       current.pending = false;
       if (reply.ok === true) {
+        if (draftKey.value === submittedComposerKey) submittedDraftKey.value = submittedComposerKey;
+        clearCommentDraft(submittedStorageKey);
         current.body = "";
         current.mentionIds = [];
         current.requestId = null;

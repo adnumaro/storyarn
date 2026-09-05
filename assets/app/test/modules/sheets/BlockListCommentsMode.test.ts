@@ -37,7 +37,6 @@ describe("BlockList comment mode", () => {
         blockLocks: {},
         currentUserId: 4,
         commentsActive: false,
-        commentsPlacing: false,
       },
       global: {
         provide: { _live_vue: live },
@@ -59,7 +58,7 @@ describe("BlockList comment mode", () => {
       undefined,
     );
 
-    await wrapper.setProps({ commentsActive: true, commentsPlacing: true });
+    await wrapper.setProps({ commentsActive: true });
     await nextTick();
     expect(live.pushEvent).toHaveBeenLastCalledWith(
       "release_block_lock",
@@ -67,10 +66,10 @@ describe("BlockList comment mode", () => {
       undefined,
     );
 
-    expect(wrapper.get("[data-sheet-block-id='42']").attributes("tabindex")).toBe("0");
-    expect(wrapper.get("[data-sheet-block-id='42']").attributes("aria-describedby")).toBe(
-      "sheet-comment-block-keyboard-instructions",
-    );
+    expect(wrapper.get("[data-sheet-block-id='42']").attributes("tabindex")).toBeUndefined();
+    expect(
+      wrapper.get("[data-sheet-block-id='42']").attributes("aria-describedby"),
+    ).toBeUndefined();
 
     vi.mocked(live.pushEvent).mockClear();
     document.dispatchEvent(

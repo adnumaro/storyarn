@@ -937,7 +937,7 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :list_scene_threads
 
-  @doc "Lists project-owned review threads on blocks in a Sheet, newest threads first."
+  @doc "Lists project-owned review threads on a Sheet canvas, newest threads first."
   defdelegate list_sheet_comment_threads(scope, project_id, sheet_id, opts \\ []),
     to: Comments,
     as: :list_sheet_threads
@@ -961,10 +961,10 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :create_scene_canvas
 
-  @doc "Creates a conversation at a percentage position within a Sheet block."
-  defdelegate create_sheet_block_comment(scope, project_id, sheet_id, block_id, attrs),
+  @doc "Creates a conversation at a horizontal percentage and vertical document offset within a Sheet canvas."
+  defdelegate create_sheet_canvas_comment(scope, project_id, sheet_id, attrs),
     to: Comments,
-    as: :create_sheet_block
+    as: :create_sheet_canvas
 
   @doc "Moves a comment pin, preserving its source identity and checking the expected revision."
   defdelegate move_comment_thread(scope, project_id, thread_id, position, expected_revision),
@@ -977,7 +977,7 @@ defmodule Storyarn.Projects do
   @doc "Lists every open comment pin whose Scene canvas is currently available."
   defdelegate list_scene_comment_pins(scope, project_id, scene_id), to: Comments, as: :list_scene_pins
 
-  @doc "Lists every open comment pin whose Sheet block is currently available."
+  @doc "Lists every open comment pin whose Sheet canvas is currently available."
   defdelegate list_sheet_comment_pins(scope, project_id, sheet_id), to: Comments, as: :list_sheet_pins
 
   defdelegate reply_to_comment_thread(scope, project_id, thread_id, attrs),

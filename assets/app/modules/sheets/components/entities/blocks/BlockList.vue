@@ -42,7 +42,6 @@ const {
   blockLocks = {},
   currentUserId = null,
   commentsActive = false,
-  commentsPlacing = false,
 } = defineProps<{
   blocks?: LayoutItem[];
   inheritedGroups?: InheritedBlockGroup[];
@@ -53,7 +52,6 @@ const {
   blockLocks?: Record<string, BlockLock>;
   currentUserId?: number | null;
   commentsActive?: boolean;
-  commentsPlacing?: boolean;
 }>();
 
 const live = useLive();
@@ -246,10 +244,6 @@ function resolveComponent(type: string): typeof TextBlock | null {
             :id="`sheet-block-${block.id}`"
             :key="block.id"
             :data-sheet-block-id="block.id"
-            :tabindex="commentsPlacing ? 0 : undefined"
-            :aria-describedby="
-              commentsPlacing ? 'sheet-comment-block-keyboard-instructions' : undefined
-            "
             class="relative scroll-mt-8 transition-shadow"
           >
             <component
@@ -297,11 +291,7 @@ function resolveComponent(type: string): typeof TextBlock | null {
       </div>
 
       <!-- ═══ OWN BLOCKS ═══ -->
-      <BlockDndRoot
-        :layout-items="blocks"
-        :can-edit="canEdit"
-        :comments-placing="commentsPlacing"
-      />
+      <BlockDndRoot :layout-items="blocks" :can-edit="canEdit" />
 
       <div
         v-if="blocks.length === 0 && inheritedGroups.length === 0 && !canEdit"

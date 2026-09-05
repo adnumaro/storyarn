@@ -9,9 +9,7 @@ defmodule Storyarn.Projects.SheetCommentsTest do
   alias Storyarn.Platform
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
-  alias Storyarn.Projects.Comments.DTO
   alias Storyarn.Projects.Comments.Message
-  alias Storyarn.Projects.Comments.Projections.SheetBlockRecord
   alias Storyarn.Projects.Comments.Thread
   alias Storyarn.Projects.Persistence.FlowRecord
   alias Storyarn.Sheets
@@ -21,19 +19,17 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     workspace = workspace_fixture(owner)
     project = project_fixture(owner, %{workspace: workspace})
     sheet = sheet_fixture(project, %{name: "Character"})
-    block = block_fixture(sheet, %{config: %{"label" => "Motivation", "placeholder" => ""}})
 
     %{
       owner: owner,
       scope: user_scope_fixture(owner),
       workspace: workspace,
       project: project,
-      sheet: sheet,
-      block: block
+      sheet: sheet
     }
   end
 
-  test "creates a block-relative Sheet anchor and resolves its destinations", ctx do
+  test "creates a Sheet-owned canvas anchor and resolves its destinations", ctx do
     recipient = user_fixture()
     membership_fixture(ctx.project, recipient, "viewer")
     recipient_scope = user_scope_fixture(recipient)
@@ -42,7 +38,6 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     request = %{attrs() | mention_user_ids: [recipient.id]}
     assert {:ok, detail} = create_sheet_comment(ctx, request)
     sheet_id = ctx.sheet.id
-    block_id = ctx.block.id
     assert_receive {:sheet_comments_changed, ^sheet_id}
 
     assert {:ok, repeated} = create_sheet_comment(ctx, request)
@@ -51,43 +46,45 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     assert Repo.aggregate(Thread, :count) == 1
     assert Repo.aggregate(Message, :count) == 1
 
-    assert detail.thread.position == %{x: 25.5, y: 75.0}
+    assert detail.thread.position == %{x: 25.5, y: 750.0}
 
     assert detail.thread.source == %{
-             type: "sheet_block",
-             id: block_id,
+             type: "sheet_canvas",
+             id: sheet_id,
              sheet_id: sheet_id,
-             label: "Motivation",
+             label: "Character",
              status: "available"
            }
 
     stored = Repo.get!(Thread, detail.thread.id)
-    assert stored.sheet_block_id == block_id
+    assert stored.sheet_canvas_id == sheet_id
     assert stored.flow_node_id == nil
     assert stored.flow_canvas_id == nil
     assert stored.scene_canvas_id == nil
+    assert stored.source_id == sheet_id
     assert stored.container_id == sheet_id
-    assert stored.source_inserted_at == ctx.block.inserted_at
+    assert stored.source_inserted_at == ctx.sheet.inserted_at
 
     message = hd(detail.messages)
     thread_id = detail.thread.id
 
-    assert {:ok, %{surface: "sheet", sheet_id: ^sheet_id, block_id: ^block_id, thread_id: ^thread_id}} =
+    assert {:ok, %{surface: "sheet", sheet_id: ^sheet_id, thread_id: ^thread_id} = destination} =
              Projects.comment_destination(recipient_scope, ctx.project.id, message.id)
 
+    refute Map.has_key?(destination, :block_id)
     key = {ctx.project.id, message.id}
 
     assert %{
              ^key => %{
                surface: "sheet",
                sheet_id: ^sheet_id,
-               block_id: ^block_id,
                thread_id: ^thread_id,
                project_slug: project_slug,
                workspace_slug: workspace_slug
              }
-           } = Projects.comment_destinations(recipient_scope, [message.id])
+           } = destinations = Projects.comment_destinations(recipient_scope, [message.id])
 
+    refute Map.has_key?(destinations[key], :block_id)
     assert project_slug == ctx.project.slug
     assert workspace_slug == ctx.workspace.slug
     assert Enum.any?(Platform.list_notifications(recipient_scope), &(&1.entity_id == message.id))
@@ -96,28 +93,12 @@ defmodule Storyarn.Projects.SheetCommentsTest do
              Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, sheet_id)
 
     assert listed.id == thread_id
-
-    assert {:ok, %{threads: [filtered]}} =
-             Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, sheet_id, block_id: block_id)
-
-    assert filtered.id == thread_id
-
-    assert {:ok, %{threads: []}} =
-             Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, sheet_id, block_id: block_id + 1)
-
     assert {:ok, [pin]} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, sheet_id)
     assert pin.id == thread_id
     assert :ok = Projects.unsubscribe_sheet_comments(ctx.project.id, sheet_id)
   end
 
-  test "uses a stable fallback label when historical block config has no label" do
-    assert DTO.source_label(%SheetBlockRecord{id: 42, type: "rich_text", config: nil}) == "Rich_text #42"
-
-    assert DTO.source_label(%SheetBlockRecord{id: 43, type: "text", config: %{"label" => " <b> </b> "}}) ==
-             "Text #43"
-  end
-
-  test "requires normalized positions and moves only within the original block", ctx do
+  test "uses normalized horizontal positions and stable vertical document offsets", ctx do
     for position <- [
           nil,
           [],
@@ -125,14 +106,16 @@ defmodule Storyarn.Projects.SheetCommentsTest do
           %{x: 1},
           %{x: "1", y: 2},
           %{x: -0.1, y: 50},
-          %{x: 50, y: 100.1},
+          %{x: 100.1, y: 50},
+          %{x: 50, y: -0.1},
+          %{x: 50, y: 10_000_000.1},
           %{x: :infinity, y: 50}
         ] do
       assert {:error, :invalid_position} = create_sheet_comment(ctx, %{attrs() | position: position})
     end
 
     assert Repo.aggregate(Thread, :count) == 0
-    assert {:ok, detail} = create_sheet_comment(ctx, %{attrs() | position: %{x: 0, y: 100}})
+    assert {:ok, detail} = create_sheet_comment(ctx, %{attrs() | position: %{x: 0, y: 10_000_000}})
     assert :ok = Projects.subscribe_sheet_comments(ctx.scope, ctx.project.id, ctx.sheet.id)
     original_source = detail.thread.source
 
@@ -150,72 +133,74 @@ defmodule Storyarn.Projects.SheetCommentsTest do
                ctx.scope,
                ctx.project.id,
                detail.thread.id,
-               %{x: 80, y: 20},
+               %{x: 80, y: 5_000},
                detail.thread.revision
              )
 
-    assert moved.position == %{x: 80.0, y: 20.0}
+    assert moved.position == %{x: 80.0, y: 5_000.0}
     assert moved.source == original_source
     assert moved.revision == detail.thread.revision + 1
     assert_receive {:sheet_comments_changed, sheet_id} when sheet_id == ctx.sheet.id
 
     stored = Repo.get!(Thread, detail.thread.id)
-    assert stored.sheet_block_id == ctx.block.id
-    assert stored.source_id == ctx.block.id
+    assert stored.sheet_canvas_id == ctx.sheet.id
+    assert stored.source_id == ctx.sheet.id
     assert stored.container_id == ctx.sheet.id
     assert :ok = Projects.unsubscribe_sheet_comments(ctx.project.id, ctx.sheet.id)
   end
 
-  test "accepts inherited local instances and rejects blocks outside the Sheet", ctx do
-    other_sheet = sheet_fixture(ctx.project)
-    other_block = block_fixture(other_sheet)
+  test "comments belong only to the exact Sheet and are never inherited", ctx do
+    child = child_sheet_fixture(ctx.project, ctx.sheet, %{name: "Child character"})
+    assert {:ok, parent_detail} = create_sheet_comment(ctx)
 
-    assert {:error, :source_unavailable} =
-             Projects.create_sheet_block_comment(
-               ctx.scope,
-               ctx.project.id,
-               ctx.sheet.id,
-               other_block.id,
+    assert {:ok, %{threads: []}} =
+             Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, child.id)
+
+    assert {:ok, []} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, child.id)
+
+    assert {:ok, child_detail} =
+             Projects.create_sheet_canvas_comment(ctx.scope, ctx.project.id, child.id, %{
                attrs()
-             )
+               | body: "Only the child Sheet sees this",
+                 client_request_id: Ecto.UUID.generate()
+             })
 
-    child = child_sheet_fixture(ctx.project, ctx.sheet)
-    source = inheritable_block_fixture(ctx.sheet, label: "Inherited field")
-    local_instance = Enum.find(Sheets.list_blocks(child.id), &(&1.inherited_from_block_id == source.id))
-    assert local_instance
+    assert parent_detail.thread.source.id == ctx.sheet.id
+    assert child_detail.thread.source.id == child.id
 
-    assert {:error, :source_unavailable} =
-             Projects.create_sheet_block_comment(ctx.scope, ctx.project.id, child.id, source.id, attrs())
+    assert {:ok, %{threads: [listed_parent]}} =
+             Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, ctx.sheet.id)
 
-    assert {:ok, detail} =
-             Projects.create_sheet_block_comment(ctx.scope, ctx.project.id, child.id, local_instance.id, attrs())
+    assert {:ok, %{threads: [listed_child]}} =
+             Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, child.id)
 
-    assert detail.thread.source.id == local_instance.id
-    assert detail.thread.source.sheet_id == child.id
-    assert detail.thread.source.label == "Inherited field"
-
-    other_project = project_fixture()
-    foreign_sheet = sheet_fixture(other_project)
-    foreign_block = block_fixture(foreign_sheet)
-
-    assert {:error, :source_unavailable} =
-             Projects.create_sheet_block_comment(
-               ctx.scope,
-               ctx.project.id,
-               ctx.sheet.id,
-               foreign_block.id,
-               attrs()
-             )
+    assert listed_parent.id == parent_detail.thread.id
+    assert listed_child.id == child_detail.thread.id
   end
 
-  test "soft deletion hides a block anchor, restore revives it and hard deletion preserves history", ctx do
+  test "block lifecycle never changes a Sheet-owned comment", ctx do
+    block = block_fixture(ctx.sheet)
+    assert {:ok, detail} = create_sheet_comment(ctx)
+
+    assert {:ok, deleted_block} = Sheets.delete_block(block)
+    assert {:ok, [after_delete]} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, ctx.sheet.id)
+    assert after_delete.id == detail.thread.id
+    assert after_delete.source.status == "available"
+
+    assert {:ok, _restored_block} = Sheets.restore_block(deleted_block)
+    assert {:ok, [after_restore]} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, ctx.sheet.id)
+    assert after_restore.id == detail.thread.id
+    assert after_restore.position == detail.thread.position
+  end
+
+  test "soft deletion hides a Sheet canvas, restore revives it and hard deletion preserves history", ctx do
     assert {:ok, detail} = create_sheet_comment(ctx)
     root_message_id = detail.thread.root_message_id
-    assert {:ok, deleted_block} = Sheets.delete_block(ctx.block)
+    assert {:ok, deleted_sheet} = Sheets.delete_sheet(ctx.sheet)
 
     assert {:ok, unavailable} = Projects.get_comment_thread(ctx.scope, ctx.project.id, detail.thread.id)
     assert unavailable.thread.source.status == "unavailable"
-    assert unavailable.thread.source.label == "Motivation"
+    assert unavailable.thread.source.label == "Character"
     assert {:ok, []} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, ctx.sheet.id)
     assert Projects.comment_destinations(ctx.scope, [root_message_id]) == %{}
 
@@ -224,20 +209,20 @@ defmodule Storyarn.Projects.SheetCommentsTest do
                ctx.scope,
                ctx.project.id,
                detail.thread.id,
-               %{x: 30, y: 30},
+               %{x: 30, y: 300},
                detail.thread.revision
              )
 
-    assert {:ok, restored_block} = Sheets.restore_block(deleted_block)
+    assert {:ok, restored_sheet} = Sheets.restore_sheet(deleted_sheet)
     assert {:ok, [pin]} = Projects.list_sheet_comment_pins(ctx.scope, ctx.project.id, ctx.sheet.id)
     assert pin.id == detail.thread.id
     assert pin.source.status == "available"
 
     messages = Repo.all(Message)
-    assert {:ok, _deleted} = Sheets.permanently_delete_block(restored_block)
+    assert {:ok, _deleted} = Sheets.permanently_delete_sheet(restored_sheet)
     stored = Repo.get!(Thread, detail.thread.id)
-    assert stored.sheet_block_id == nil
-    assert stored.source_id == ctx.block.id
+    assert stored.sheet_canvas_id == nil
+    assert stored.source_id == ctx.sheet.id
     assert stored.container_id == ctx.sheet.id
     assert Repo.all(Message) == messages
 
@@ -264,7 +249,8 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     assert {:ok, flow_detail} =
              Projects.create_flow_canvas_comment(ctx.scope, ctx.project.id, shared_id, %{
                attrs()
-               | client_request_id: Ecto.UUID.generate()
+               | position: %{x: 25.5, y: 75},
+                 client_request_id: Ecto.UUID.generate()
              })
 
     assert_receive {:flow_comments_changed, ^shared_id}
@@ -282,7 +268,7 @@ defmodule Storyarn.Projects.SheetCommentsTest do
              Projects.list_sheet_comment_threads(ctx.scope, ctx.project.id, shared_id)
 
     assert listed_sheet.id == sheet_detail.thread.id
-    assert listed_sheet.source.type == "sheet_block"
+    assert listed_sheet.source.type == "sheet_canvas"
 
     assert {:ok, [flow_pin]} = Projects.list_flow_comment_pins(ctx.scope, ctx.project.id, shared_id)
     assert flow_pin.id == flow_detail.thread.id
@@ -303,16 +289,24 @@ defmodule Storyarn.Projects.SheetCommentsTest do
     assert :ok = Projects.unsubscribe_sheet_comments(ctx.project.id, shared_id)
   end
 
+  test "cannot create a Sheet anchor across project boundaries", ctx do
+    other_project = project_fixture()
+    other_sheet = sheet_fixture(other_project)
+
+    assert {:error, :source_unavailable} =
+             Projects.create_sheet_canvas_comment(ctx.scope, ctx.project.id, other_sheet.id, attrs())
+  end
+
   defp attrs do
     %{
-      body: "Review this field",
-      position: %{x: 25.5, y: 75},
+      body: "Review this Sheet",
+      position: %{x: 25.5, y: 750},
       client_request_id: Ecto.UUID.generate(),
       mention_user_ids: []
     }
   end
 
   defp create_sheet_comment(ctx, request \\ attrs()) do
-    Projects.create_sheet_block_comment(ctx.scope, ctx.project.id, ctx.sheet.id, ctx.block.id, request)
+    Projects.create_sheet_canvas_comment(ctx.scope, ctx.project.id, ctx.sheet.id, request)
   end
 end

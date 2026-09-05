@@ -2,7 +2,7 @@
 
 Comments are a Projects-owned capability because their access and durable
 lifecycle belong to one project, independently of the editor that displays them.
-Supported anchors are `flow_node`, `flow_canvas`, `scene_canvas` and `sheet_block`. Adding another editor
+Supported anchors are `flow_node`, `flow_canvas`, `scene_canvas` and `sheet_canvas`. Adding another editor
 adds an explicit source contract and resolver; it does not create another message model. Public
 callers enter through `Storyarn.Projects`. The realtime collaboration module in
 Platform remains technical coordination; it does not own these conversations.
@@ -10,7 +10,7 @@ Platform remains technical coordination; it does not own these conversations.
 ## Model and permissions
 
 - A thread records source identity, author, open/resolved state, revision and
-  message count. Multiple threads can discuss the same node, Flow canvas, Scene canvas or Sheet block.
+  message count. Multiple threads can discuss the same node, Flow canvas, Scene canvas or Sheet canvas.
 - Messages are immutable plain text, limited to 10,000 characters. Replies
   explicitly identify a parent message in the same thread. V1 does not edit or
   redact messages and does not introduce anonymous or AI authors.
@@ -30,8 +30,8 @@ Platform remains technical coordination; it does not own these conversations.
 The immutable source type, ID, containing Flow, Scene or Sheet ID, creation time and label preserve
 the original context. A separate nullable `flow_node_id` reference uses **ON DELETE
 SET NULL**; canvas threads use the equivalent `flow_canvas_id` or `scene_canvas_id`
-reference to their owning Flow or Scene. Sheet threads use `sheet_block_id`, which points
-to the local block instance displayed in that Sheet, including inherited instances.
+reference to their owning Flow or Scene. Sheet threads use `sheet_canvas_id`, which points
+to the exact Sheet whose surface owns the discussion.
 Deleting a source never cascades into review history. If a deleted ID is
 later reused, the null pointer prevents automatic rebinding, even when text,
 coordinates or creation timestamps match. Source projections are read-only and
@@ -42,7 +42,7 @@ source ID. The follow-up identity migration validates existing rows and rejects
 inconsistent data without repairing or deleting conversations. Null references
 remain valid after a source is hard-deleted.
 
-Soft deletion makes a source unavailable. Restoring the same existing node, Flow, Scene, Sheet or block makes
+Soft deletion makes a source unavailable. Restoring the same existing node, Flow, Scene or Sheet makes
 it available again. Hard deletion, replacement import or snapshot reconstitution
 that creates new rows does not attach old discussions to the replacement. A Flow
 version restore preserving the same row identity retains its discussion. Source
@@ -64,9 +64,11 @@ The thread DTO exposes `position: %{x: number, y: number}` or `nil`. Node positi
 are offsets relative to the node origin, so moving a node moves its pins without
 rewriting the discussions. Canvas positions are absolute Flow canvas coordinates.
 Both Flow coordinates must be finite numbers between -10,000,000 and 10,000,000.
-Scene canvas positions are percentages of the stable logical Scene bounds. Sheet block
-positions are percentages of that block's rendered bounds. Both coordinates are required
-and remain between 0 and 100 so viewport or block resizing does not move them.
+Scene canvas positions are percentages of the stable logical Scene bounds. Sheet positions
+use a horizontal percentage of the Sheet surface and an absolute vertical document offset
+from its top edge. This keeps comments beside the same header, row or block when content is
+added farther down the Sheet. Sheet X remains between 0 and 100 and Y between 0 and
+10,000,000 pixels.
 Existing node threads keep `nil` positions for the editor's default placement;
 new spatial threads require a position. Moving a pin changes its position and
 revision, never its source identity, messages, author or discussion activity time.
@@ -81,7 +83,7 @@ The pin-list API returns every available open thread without a pagination cutoff
 root messages, authors and source availability are fetched in batches. The ordinary
 discussion list remains paginated. Node filters and node badge counts exclude canvas
 threads. Flow canvas notification destinations have `node_id: nil`; Sheet destinations
-identify both the Sheet and the immutable block anchor.
+identify the exact Sheet and never inherit into parent or child Sheets.
 
 ## Transactions, delivery and pagination
 

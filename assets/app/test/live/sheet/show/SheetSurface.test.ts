@@ -9,6 +9,20 @@ import { createMockLive } from "@app/test/setup";
 type SheetSurfaceProps = InstanceType<typeof SheetSurface>["$props"];
 type SheetSurfaceContent = NonNullable<SheetSurfaceProps["surface"]["content"]>;
 
+function rect(left: number, top: number, width: number, height: number): DOMRect {
+  return {
+    left,
+    top,
+    width,
+    height,
+    right: left + width,
+    bottom: top + height,
+    x: left,
+    y: top,
+    toJSON: () => ({}),
+  } as DOMRect;
+}
+
 const content: SheetSurfaceContent = {
   blocks: [],
   inheritedGroups: [],
@@ -33,8 +47,6 @@ const comments: SheetCommentsPanelState = {
   messageNextCursor: null,
   members: [],
   canComment: true,
-  selectedBlockId: null,
-  selectedBlockLabel: null,
   statusFilter: "open",
   error: null,
 };
@@ -49,10 +61,10 @@ const commentThread: SheetCommentThread = {
   resolved_at: null,
   resolved_by: null,
   source: {
-    type: "sheet_block",
-    id: 42,
+    type: "sheet_canvas",
+    id: 10,
     sheet_id: 10,
-    label: "Health",
+    label: "Hero",
     status: "available",
   },
   author: { id: 4, display_name: "Ada", avatar_url: null },
@@ -187,7 +199,7 @@ describe("SheetSurface deep-link highlights", () => {
     expect(scrollIntoView).toHaveBeenCalledTimes(2);
   });
 
-  it("mounts the comment layer from the live surface and marks block interaction as active", async () => {
+  it("mounts the sheet-wide comment layer and marks block interaction as active", async () => {
     vi.stubGlobal(
       "ResizeObserver",
       class {
@@ -204,7 +216,9 @@ describe("SheetSurface deep-link highlights", () => {
     const wrapper = mountSurface(null, surfaceProps(commentContent));
     await flushPromises();
 
-    expect(wrapper.find("[data-testid='sheet-block-comments']").exists()).toBe(true);
+    expect(wrapper.find("[data-testid='sheet-canvas-comments']").exists()).toBe(true);
+    const sheetSurface = wrapper.get("[data-sheet-comment-surface='true']");
+    vi.spyOn(sheetSurface.element, "getBoundingClientRect").mockReturnValue(rect(0, 0, 800, 800));
     const blockList = wrapper.findComponent(BlockListStub);
     expect(blockList.props("commentsActive")).toBe(false);
 
@@ -274,5 +288,36 @@ describe("SheetSurface deep-link highlights", () => {
     await nextTick();
     expect(wrapper.find("#sheet-comment-pin-12").exists()).toBe(false);
     expect(blockList.props("commentsActive")).toBe(false);
+  });
+
+  it("makes only the gray sheet surface keyboard-placeable", async () => {
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        observe() {}
+        disconnect() {}
+      },
+    );
+    const wrapper = mountSurface(
+      null,
+      surfaceProps({
+        ...content,
+        comments: { ...comments, placing: true },
+        commentPins: [],
+        commentFocusThreadId: null,
+      }),
+    );
+    await nextTick();
+
+    const surface = wrapper.get("[data-sheet-comment-surface='true']");
+    const block = wrapper.get("[data-sheet-block-id='42']");
+    expect(surface.attributes("role")).toBe("region");
+    expect(surface.attributes("aria-label")).toBe("Sheet comment surface");
+    expect(surface.attributes("tabindex")).toBe("0");
+    expect(surface.attributes("aria-describedby")).toBe(
+      "sheet-comment-surface-keyboard-instructions",
+    );
+    expect(block.attributes("tabindex")).toBeUndefined();
+    expect(block.attributes("aria-describedby")).toBeUndefined();
   });
 });

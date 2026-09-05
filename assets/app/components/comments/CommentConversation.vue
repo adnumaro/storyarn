@@ -25,10 +25,12 @@ const {
   state,
   embedded = false,
   ui,
+  draftStorageKey = null,
 } = defineProps<{
   state: CommentsPanelState;
   embedded?: boolean;
   ui: CommentUiConfig;
+  draftStorageKey?: string | null;
 }>();
 const live = useLive();
 const { t, locale } = useI18n();
@@ -352,6 +354,7 @@ function changeStatus(status: CommentStatus) {
         :source-id="state.selectedSourceId"
         :position="state.draftPosition ?? null"
         :draft-id="state.draftId ?? null"
+        :draft-storage-key="draftStorageKey"
         :thread-id="state.thread?.id ?? null"
         :parent-id="replyParentId"
         :members="state.members"

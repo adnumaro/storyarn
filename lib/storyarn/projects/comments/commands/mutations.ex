@@ -61,15 +61,15 @@ defmodule Storyarn.Projects.Comments.Mutations do
     end
   end
 
-  def create_sheet_block(scope, project_id, sheet_id, block_id, attrs) do
+  def create_sheet_canvas(scope, project_id, sheet_id, attrs) do
     with {:ok, payload} <- Payload.normalize(attrs),
-         {:ok, position} <- Payload.normalized_position(Payload.value(attrs, :position)),
-         true <- Payload.valid_id?(sheet_id) and Payload.valid_id?(block_id) do
+         {:ok, position} <- Payload.sheet_position(Payload.value(attrs, :position)),
+         true <- Payload.valid_id?(sheet_id) do
       payload = Map.put(payload, :position, position)
-      target = {:create_sheet_block, sheet_id, block_id}
+      target = {:create_sheet_canvas, sheet_id}
 
       transact_request(scope, project_id, payload, target, fn project, actor_id, request_hash ->
-        create_sheet_block_thread!(project, actor_id, sheet_id, block_id, payload, request_hash)
+        create_sheet_canvas_thread!(project, actor_id, sheet_id, payload, request_hash)
       end)
     else
       false -> {:error, :not_found}
@@ -145,9 +145,15 @@ defmodule Storyarn.Projects.Comments.Mutations do
     result(thread, nil, changed?)
   end
 
-  defp validate_position_for_thread!(%Thread{source_type: source_type}, position)
-       when source_type in ["scene_canvas", "sheet_block"] do
+  defp validate_position_for_thread!(%Thread{source_type: "scene_canvas"}, position) do
     case Payload.normalized_position(position) do
+      {:ok, _position} -> :ok
+      {:error, :invalid_position} -> Repo.rollback(:invalid_position)
+    end
+  end
+
+  defp validate_position_for_thread!(%Thread{source_type: "sheet_canvas"}, position) do
+    case Payload.sheet_position(position) do
       {:ok, _position} -> :ok
       {:error, :invalid_position} -> Repo.rollback(:invalid_position)
     end
@@ -247,23 +253,20 @@ defmodule Storyarn.Projects.Comments.Mutations do
     insert_message(thread, actor_id, nil, payload, request_hash, [])
   end
 
-  defp create_sheet_block_thread!(project, actor_id, sheet_id, block_id, payload, request_hash) do
-    block =
-      Queries.sheet_block_source(project.id, sheet_id, block_id, lock: :share) ||
-        Repo.rollback(:source_unavailable)
-
+  defp create_sheet_canvas_thread!(project, actor_id, sheet_id, payload, request_hash) do
+    sheet = Queries.sheet_source(project.id, sheet_id, lock: :share) || Repo.rollback(:source_unavailable)
     validate_mentions!(project, payload.mention_user_ids)
 
     thread =
       Repo.insert!(%Thread{
         project_id: project.id,
         author_id: actor_id,
-        source_type: "sheet_block",
-        source_id: block.id,
-        sheet_block_id: block.id,
+        source_type: "sheet_canvas",
+        source_id: sheet.id,
+        sheet_canvas_id: sheet.id,
         container_id: sheet_id,
-        source_inserted_at: block.inserted_at,
-        source_label: DTO.source_label(block),
+        source_inserted_at: sheet.inserted_at,
+        source_label: DTO.source_label(sheet),
         position_x: payload.position.x,
         position_y: payload.position.y,
         last_activity_at: TimeHelpers.now()

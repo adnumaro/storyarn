@@ -46,14 +46,9 @@ const blockComponents: Record<string, typeof TextBlock> = {
   reference: ReferenceBlock,
 };
 
-const {
-  layoutItems = [],
-  canEdit = false,
-  commentsPlacing = false,
-} = defineProps<{
+const { layoutItems = [], canEdit = false } = defineProps<{
   layoutItems?: LayoutItem[];
   canEdit?: boolean;
-  commentsPlacing?: boolean;
 }>();
 
 const isLockedByOther = inject<(id: number | string) => boolean>("isLockedByOther", () => false);
@@ -280,10 +275,6 @@ makeDroppable(
         v-if="item.type === 'full_width'"
         :id="`sheet-block-${(item as FullWidthLayoutItem).block.id}`"
         :data-sheet-block-id="(item as FullWidthLayoutItem).block.id"
-        :tabindex="commentsPlacing ? 0 : undefined"
-        :aria-describedby="
-          commentsPlacing ? 'sheet-comment-block-keyboard-instructions' : undefined
-        "
         kind="full_width"
         :block-id="(item as FullWidthLayoutItem).block.id"
         :can-edit="canEdit"
@@ -338,10 +329,6 @@ makeDroppable(
             v-for="block in (item as ColumnGroupLayoutItem).blocks"
             :id="`sheet-block-${block.id}`"
             :data-sheet-block-id="block.id"
-            :tabindex="commentsPlacing ? 0 : undefined"
-            :aria-describedby="
-              commentsPlacing ? 'sheet-comment-block-keyboard-instructions' : undefined
-            "
             :key="block.id"
             kind="column_child"
             :block-id="block.id"

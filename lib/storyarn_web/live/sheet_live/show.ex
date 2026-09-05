@@ -517,8 +517,24 @@ defmodule StoryarnWeb.SheetLive.Show do
         {inherited_groups, own_blocks} = Sheets.get_sheet_blocks_grouped(sheet.id)
         all_blocks = Enum.flat_map(inherited_groups, & &1.blocks) ++ own_blocks
 
-        gallery_data = load_gallery_data(all_blocks)
-        table_data = load_table_data(all_blocks, project.id)
+        gallery_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "gallery")) |> Enum.map(& &1.id)
+
+        gallery_data =
+          if gallery_block_ids == [],
+            do: %{},
+            else: Sheets.batch_load_gallery_data(gallery_block_ids)
+
+        table_block_ids =
+          all_blocks |> Enum.filter(&(&1.type == "table")) |> Enum.map(& &1.id)
+
+        table_data =
+          if table_block_ids == [],
+            do: %{},
+            else:
+              table_block_ids
+              |> Sheets.batch_load_table_data()
+              |> compute_formulas(project.id)
 
         socket
         |> assign(:sheet, sheet)
@@ -536,31 +552,6 @@ defmodule StoryarnWeb.SheetLive.Show do
         |> assign_sheet_health()
         |> CommentHandlers.loaded()
     end
-  end
-
-  defp load_gallery_data(blocks) do
-    case block_ids_by_type(blocks, "gallery") do
-      [] -> %{}
-      gallery_block_ids -> Sheets.batch_load_gallery_data(gallery_block_ids)
-    end
-  end
-
-  defp load_table_data(blocks, project_id) do
-    case block_ids_by_type(blocks, "table") do
-      [] ->
-        %{}
-
-      table_block_ids ->
-        table_block_ids
-        |> Sheets.batch_load_table_data()
-        |> compute_formulas(project_id)
-    end
-  end
-
-  defp block_ids_by_type(blocks, type) do
-    blocks
-    |> Enum.filter(&(&1.type == type))
-    |> Enum.map(& &1.id)
   end
 
   # ===========================================================================
@@ -645,32 +636,17 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("toggle_multi_select", params, socket),
     do: BlockHandlers.handle_toggle_multi_select(params, socket, content_helpers())
 
-  def handle_event("update_block_config", params, socket) do
-    params
-    |> BlockHandlers.handle_update_config(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("update_block_config", params, socket),
+    do: BlockHandlers.handle_update_config(params, socket, content_helpers())
 
-  def handle_event("delete_block", params, socket) do
-    params
-    |> BlockHandlers.handle_delete(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("delete_block", params, socket), do: BlockHandlers.handle_delete(params, socket, content_helpers())
 
   def handle_event("duplicate_block", params, socket),
     do: BlockHandlers.handle_duplicate(params, socket, content_helpers())
 
-  def handle_event("undo", params, socket) do
-    params
-    |> BlockHandlers.handle_undo(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("undo", params, socket), do: BlockHandlers.handle_undo(params, socket, content_helpers())
 
-  def handle_event("redo", params, socket) do
-    params
-    |> BlockHandlers.handle_redo(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("redo", params, socket), do: BlockHandlers.handle_redo(params, socket, content_helpers())
 
   def handle_event("reorder_layout", params, socket),
     do: BlockHandlers.handle_reorder_layout(params, socket, content_helpers())
@@ -687,17 +663,9 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("toggle_required", params, socket),
     do: BlockHandlers.handle_toggle_required(params, socket, content_helpers())
 
-  def handle_event("detach_block", params, socket) do
-    params
-    |> BlockHandlers.handle_detach(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("detach_block", params, socket), do: BlockHandlers.handle_detach(params, socket, content_helpers())
 
-  def handle_event("reattach_block", params, socket) do
-    params
-    |> BlockHandlers.handle_reattach(socket, content_helpers())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("reattach_block", params, socket), do: BlockHandlers.handle_reattach(params, socket, content_helpers())
 
   # --- Gallery blocks ---
 
@@ -939,11 +907,8 @@ defmodule StoryarnWeb.SheetLive.Show do
   def handle_event("review_restore", params, socket),
     do: VersionEvents.handle_review_restore(params, socket, sheet_version_config())
 
-  def handle_event("confirm_restore", params, socket) do
-    params
-    |> VersionEvents.handle_confirm_restore(socket, sheet_version_config())
-    |> CommentHandlers.refresh_result()
-  end
+  def handle_event("confirm_restore", params, socket),
+    do: VersionEvents.handle_confirm_restore(params, socket, sheet_version_config())
 
   # --- Block locking ---
 
@@ -1018,20 +983,7 @@ defmodule StoryarnWeb.SheetLive.Show do
   end
 
   def handle_info({:remote_change, action, payload}, socket) do
-    result = handle_remote_change(action, payload, socket)
-
-    if action in [
-         :block_deleted,
-         :block_created,
-         :block_updated,
-         :block_type_changed,
-         :inherited_blocks_changed,
-         :sheet_restored
-       ] do
-      CommentHandlers.refresh_result(result)
-    else
-      result
-    end
+    handle_remote_change(action, payload, socket)
   end
 
   def handle_info({:table_push_undo, action}, socket) do
@@ -1119,10 +1071,6 @@ defmodule StoryarnWeb.SheetLive.Show do
      socket
      |> reload_blocks()
      |> show_collab_toast(:block_type_changed, payload)}
-  end
-
-  defp handle_remote_change(:inherited_blocks_changed, _payload, socket) do
-    {:noreply, reload_blocks(socket)}
   end
 
   defp handle_remote_change(:sheet_updated, payload, socket) do

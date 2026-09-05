@@ -89,17 +89,15 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpersTest do
 
   test "builds Sheet conversation links from the source-family destination", context do
     sheet = sheet_fixture(context.project)
-    block = block_fixture(sheet, %{config: %{"label" => "Motivation", "placeholder" => ""}})
 
     assert {:ok, %{thread: thread}} =
-             Projects.create_sheet_block_comment(
+             Projects.create_sheet_canvas_comment(
                context.actor_scope,
                context.project.id,
                sheet.id,
-               block.id,
                %{
-                 body: "Review this Sheet field",
-                 position: %{x: 25, y: 75},
+                 body: "Review this Sheet",
+                 position: %{x: 25, y: 750},
                  client_request_id: Ecto.UUID.generate(),
                  mention_user_ids: [context.scope.user.id]
                }

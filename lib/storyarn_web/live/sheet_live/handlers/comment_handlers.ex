@@ -46,8 +46,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     |> put_state(%{
       open: false,
       placing: false,
-      selectedBlockId: nil,
-      selectedBlockLabel: nil,
       draftPosition: nil,
       draftId: nil,
       error: nil
@@ -79,33 +77,30 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     )
   end
 
-  def handle("open", params, socket) do
-    with {:ok, _project, _membership} <- authorize_read(socket),
-         {:ok, block_id} <- optional_block(socket, params["block_id"]) do
-      block_label = selected_block_label(socket, block_id)
+  def handle("open", _params, socket) do
+    case authorize_read(socket) do
+      {:ok, _project, _membership} ->
+        socket =
+          socket
+          |> assign(:current_tab, "content")
+          |> put_state(%{
+            open: true,
+            presentation: "panel",
+            placing: false,
+            draftPosition: nil,
+            draftId: nil,
+            thread: nil,
+            messages: [],
+            messageNextCursor: nil,
+            error: nil
+          })
+          |> assign(:comment_focus_thread_id, nil)
+          |> refresh()
 
-      socket =
-        socket
-        |> assign(:current_tab, "content")
-        |> put_state(%{
-          open: true,
-          presentation: "panel",
-          placing: false,
-          selectedBlockId: block_id,
-          selectedBlockLabel: block_label,
-          draftPosition: nil,
-          draftId: nil,
-          thread: nil,
-          messages: [],
-          messageNextCursor: nil,
-          error: nil
-        })
-        |> assign(:comment_focus_thread_id, nil)
-        |> refresh()
+        {:reply, %{ok: true}, socket}
 
-      {:reply, %{ok: true}, socket}
-    else
-      _error -> failure(clear(socket), :not_found)
+      _error ->
+        failure(clear(socket), :not_found)
     end
   end
 
@@ -163,40 +158,12 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     end
   end
 
-  def refresh_result({:noreply, socket}), do: {:noreply, refresh(socket)}
-  def refresh_result({:reply, reply, socket}), do: {:reply, reply, refresh(socket)}
-
   defp refresh_open(socket, %{open: false}), do: socket
 
   defp refresh_open(socket, state) do
     socket = socket |> load_threads() |> load_members()
 
-    if state.thread do
-      load_detail(socket, state.thread.id)
-    else
-      refresh_selected_source(socket, state.selectedBlockId)
-    end
-  end
-
-  defp refresh_selected_source(socket, nil), do: socket
-
-  defp refresh_selected_source(socket, block_id) do
-    case optional_block(socket, block_id) do
-      {:ok, _block_id} ->
-        put_state(socket, %{selectedBlockLabel: selected_block_label(socket, block_id)})
-
-      _unavailable ->
-        socket
-        |> assign(:comment_focus_thread_id, nil)
-        |> put_state(%{
-          selectedBlockId: nil,
-          selectedBlockLabel: nil,
-          draftPosition: nil,
-          draftId: nil,
-          presentation: "panel",
-          error: error_message(:source_unavailable)
-        })
-    end
+    if state.thread, do: load_detail(socket, state.thread.id), else: socket
   end
 
   defp mutate("mode", params, socket) do
@@ -212,35 +179,32 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   end
 
   defp mutate("place", params, socket) do
-    with {:ok, block_id} <- required_block(socket, params["block_id"]),
-         {:ok, position} <- position(params) do
-      block_label = selected_block_label(socket, block_id)
+    case position(params) do
+      {:ok, position} ->
+        draft_id =
+          if params["moving_draft"] == true && socket.assigns.comments.draftId,
+            do: socket.assigns.comments.draftId,
+            else: Ecto.UUID.generate()
 
-      draft_id =
-        if params["moving_draft"] == true && socket.assigns.comments.draftId,
-          do: socket.assigns.comments.draftId,
-          else: Ecto.UUID.generate()
+        socket =
+          socket
+          |> close()
+          |> assign(:current_tab, "content")
+          |> put_state(%{
+            open: true,
+            presentation: "canvas",
+            draftPosition: position,
+            draftId: draft_id,
+            thread: nil,
+            messages: [],
+            messageNextCursor: nil
+          })
+          |> refresh()
 
-      socket =
-        socket
-        |> close()
-        |> assign(:current_tab, "content")
-        |> put_state(%{
-          open: true,
-          presentation: "canvas",
-          selectedBlockId: block_id,
-          selectedBlockLabel: block_label,
-          draftPosition: position,
-          draftId: draft_id,
-          thread: nil,
-          messages: [],
-          messageNextCursor: nil
-        })
-        |> refresh()
+        {:reply, %{ok: true}, socket}
 
-      {:reply, %{ok: true}, socket}
-    else
-      {:error, reason} -> failure(socket, reason)
+      {:error, reason} ->
+        failure(socket, reason)
     end
   end
 
@@ -268,16 +232,9 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     %{current_scope: scope, project: project, sheet: sheet} = socket.assigns
     attrs = Map.take(params, ~w(body client_request_id mention_user_ids position))
 
-    result =
-      case required_block(socket, params["block_id"]) do
-        {:ok, block_id} ->
-          Projects.create_sheet_block_comment(scope, project.id, sheet.id, block_id, attrs)
-
-        {:error, _reason} = error ->
-          error
-      end
-
-    mutation_result(result, socket)
+    scope
+    |> Projects.create_sheet_canvas_comment(project.id, sheet.id, attrs)
+    |> mutation_result(socket)
   end
 
   defp mutate("reply", params, socket) do
@@ -368,8 +325,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
           end
 
         available? = thread.source.status == "available"
-        block_id = if available?, do: thread.source.id
-        block_label = selected_block_label(socket, block_id)
         presentation = if available?, do: socket.assigns.comments.presentation, else: "panel"
 
         socket
@@ -377,8 +332,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
           thread: thread,
           messages: messages,
           messageNextCursor: next_cursor,
-          selectedBlockId: block_id,
-          selectedBlockLabel: block_label,
           draftPosition: nil,
           draftId: nil,
           presentation: presentation
@@ -393,8 +346,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
             thread: nil,
             messages: [],
             messageNextCursor: nil,
-            selectedBlockId: nil,
-            selectedBlockLabel: nil,
             draftPosition: nil,
             draftId: nil,
             presentation: "panel",
@@ -414,7 +365,7 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
   end
 
   defp current_sheet_thread(socket, thread_id, opts \\ []) do
-    with {:ok, %{thread: %{source: %{type: "sheet_block", sheet_id: sheet_id}}} = detail} <-
+    with {:ok, %{thread: %{source: %{type: "sheet_canvas", sheet_id: sheet_id}}} = detail} <-
            Projects.get_comment_thread(
              socket.assigns.current_scope,
              socket.assigns.project.id,
@@ -426,41 +377,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     else
       _error -> {:error, :not_found}
     end
-  end
-
-  defp optional_block(_socket, nil), do: {:ok, nil}
-  defp optional_block(socket, raw_id), do: required_block(socket, raw_id)
-
-  defp required_block(socket, raw_id) do
-    with block_id when is_integer(block_id) <- positive_id(raw_id),
-         true <- sheet_block?(socket, block_id) do
-      {:ok, block_id}
-    else
-      _error -> {:error, :not_found}
-    end
-  end
-
-  defp sheet_block?(socket, block_id) do
-    not is_nil(find_sheet_block(socket, block_id))
-  end
-
-  defp selected_block_label(_socket, nil), do: nil
-
-  defp selected_block_label(socket, block_id) do
-    with %{config: config} <- find_sheet_block(socket, block_id),
-         label when is_binary(label) <- config["label"],
-         label when label != "" <- String.trim(label) do
-      String.slice(label, 0, 120)
-    else
-      _missing_label -> nil
-    end
-  end
-
-  defp find_sheet_block(socket, block_id) do
-    Enum.find(socket.assigns.blocks, &(&1.id == block_id)) ||
-      Enum.find_value(socket.assigns.inherited_groups, fn group ->
-        Enum.find(group.blocks, &(&1.id == block_id))
-      end)
   end
 
   defp authorize_read(socket), do: Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view)
@@ -475,8 +391,10 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
     assign(socket, :comment_focus_thread_id, thread_id)
   end
 
-  defp position(%{"x" => x, "y" => y}) when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 100,
-    do: {:ok, %{x: x, y: y}}
+  defp position(%{"x" => x, "y" => y})
+       when is_number(x) and is_number(y) and x >= 0 and x <= 100 and y >= 0 and y <= 10_000_000 do
+    {:ok, %{x: x, y: y}}
+  end
 
   defp position(_params), do: {:error, :invalid_position}
 
@@ -522,8 +440,6 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       open: false,
       presentation: "panel",
       placing: false,
-      selectedBlockId: nil,
-      selectedBlockLabel: nil,
       draftPosition: nil,
       draftId: nil,
       threads: [],
@@ -533,6 +449,8 @@ defmodule StoryarnWeb.SheetLive.Handlers.CommentHandlers do
       messageNextCursor: nil,
       members: [],
       canComment: false,
+      selectedSourceId: nil,
+      selectedSourceLabel: nil,
       statusFilter: "open",
       error: nil
     }

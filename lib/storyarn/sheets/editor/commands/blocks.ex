@@ -72,20 +72,12 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
         |> ensure_unique_variable_name(block.sheet_id, block.id)
         |> put_block_word_count()
 
-      {affected_sheet_ids, inherited_change} =
-        inherited_instance_change_for_update(
-          block,
-          old_scope,
-          Ecto.Changeset.get_field(changeset, :scope),
-          project_id
-        )
-
       with {:ok, updated_block} <- Repo.update(changeset),
            :ok <- maybe_update_block_references(updated_block, sheet.project_id),
            :ok <- handle_scope_change(updated_block, old_scope),
            :ok <- maybe_sync_definition(updated_block, old_scope),
            :ok <- extract_updated_block(updated_block, old_scope) do
-        {updated_block, affected_sheet_ids, inherited_change}
+        updated_block
       else
         {:error, reason} -> Repo.rollback(reason)
       end
@@ -174,45 +166,6 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   end
 
   defp handle_scope_change(_block, _old_scope), do: :ok
-
-  defp inherited_instance_change_for_update(block, "children", "self", project_id) do
-    {active_inherited_instance_sheet_ids(block, project_id), :scope_changed}
-  end
-
-  defp inherited_instance_change_for_update(block, "children", "children", project_id) do
-    {active_inherited_instance_sheet_ids(block, project_id), :definition_synced}
-  end
-
-  defp inherited_instance_change_for_update(_block, _old_scope, _new_scope, _project_id), do: {[], nil}
-
-  defp active_inherited_instance_sheet_ids(%Block{scope: "children", id: block_id}, project_id) do
-    from(instance in Block,
-      join: owner_sheet in Sheet,
-      on: owner_sheet.id == instance.sheet_id,
-      where:
-        instance.inherited_from_block_id == ^block_id and
-          instance.detached == false and is_nil(instance.deleted_at) and
-          owner_sheet.project_id == ^project_id,
-      order_by: [asc: instance.sheet_id],
-      select: instance.sheet_id
-    )
-    |> Repo.all()
-    |> Enum.uniq()
-  end
-
-  defp active_inherited_instance_sheet_ids(_block, _project_id), do: []
-
-  defp sheet_ids_for_blocks([]), do: []
-
-  defp sheet_ids_for_blocks(block_ids) do
-    from(block in Block,
-      where: block.id in ^block_ids,
-      order_by: [asc: block.sheet_id],
-      select: block.sheet_id
-    )
-    |> Repo.all()
-    |> Enum.uniq()
-  end
 
   defp extract_updated_block(updated_block, old_scope) do
     if old_scope == "children" or updated_block.scope == "children" do
@@ -334,7 +287,6 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
       project_id = fetch_block_project_id!(block.id)
       lock_active_project!(project_id)
       {block, sheet} = lock_active_block!(block.id, project_id)
-      affected_sheet_ids = active_inherited_instance_sheet_ids(block, project_id)
 
       changeset =
         block
@@ -347,13 +299,13 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
            :ok <- maybe_update_block_references(updated_block, sheet.project_id),
            :ok <- maybe_sync_config_definition(updated_block),
            :ok <- extract_updated_block(updated_block, block.scope) do
-        {updated_block, affected_sheet_ids}
+        updated_block
       else
         {:error, reason} -> Repo.rollback(reason)
       end
     end
     |> Repo.transaction()
-    |> broadcast_block_result(:definition_synced)
+    |> broadcast_block_result()
   end
 
   defp maybe_sync_config_definition(%Block{scope: "children"} = updated_block) do
@@ -372,22 +324,27 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
       project_id = fetch_block_project_id!(block.id)
       lock_active_project!(project_id)
       {block, _sheet} = lock_active_block!(block.id, project_id)
-      affected_sheet_ids = active_inherited_instance_sheet_ids(block, project_id)
 
       # Clean up references and localization texts before soft-deleting
       VariableUsage.delete_block_references(block.id)
       Localization.delete_block_tree_texts(block.id)
 
-      with :ok <- maybe_delete_inherited_instances(block),
-           {:ok, deleted_block} <- block |> Block.delete_changeset() |> Repo.update() do
-        maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
-        {deleted_block, affected_sheet_ids}
-      else
-        {:error, reason} -> Repo.rollback(reason)
+      # If this is a parent block with scope: "children", soft-delete all instances
+      if block.scope == "children" do
+        PropertyInheritance.delete_inherited_instances(block)
+      end
+
+      case block |> Block.delete_changeset() |> Repo.update() do
+        {:ok, deleted_block} ->
+          maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
+          deleted_block
+
+        {:error, changeset} ->
+          Repo.rollback(changeset)
       end
     end
     |> Repo.transaction()
-    |> broadcast_block_result(:deleted)
+    |> broadcast_block_result()
   end
 
   @doc """
@@ -419,7 +376,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
       do_restore_block(block, sheet)
     end
     |> Repo.transaction()
-    |> broadcast_block_result(:restored)
+    |> broadcast_block_result()
   end
 
   @doc false
@@ -445,7 +402,6 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   defp do_restore_block(block, sheet) do
     lock_active_inheritance_source!(block, sheet.project_id)
     inherited_instance_ids = lock_restorable_inherited_instance_ids!(block, sheet.project_id)
-    affected_sheet_ids = sheet_ids_for_blocks(inherited_instance_ids)
 
     case AssetReferences.lock_active_for_restore(sheet.project_id,
            block_ids: [block.id | inherited_instance_ids]
@@ -472,7 +428,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
          :ok <- maybe_update_block_references(restored_block, sheet.project_id),
          :ok <- maybe_restore_inherited_instances(block),
          :ok <- extract_updated_block(restored_block, block.scope) do
-      {restored_block, affected_sheet_ids}
+      restored_block
     else
       {:error, reason} -> Repo.rollback(reason)
     end
@@ -618,14 +574,6 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
 
   defp maybe_restore_inherited_instances(_deleted_block), do: :ok
 
-  defp maybe_delete_inherited_instances(%Block{scope: "children"} = block) do
-    block
-    |> PropertyInheritance.delete_inherited_instances()
-    |> normalize_side_effect()
-  end
-
-  defp maybe_delete_inherited_instances(_block), do: :ok
-
   @doc """
   Recreates a block from a snapshot (for undo/redo).
   First tries to restore a soft-deleted block with the same ID.
@@ -669,7 +617,7 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
       end
     end
     |> Repo.transaction()
-    |> broadcast_block_result(:restored)
+    |> broadcast_block_result()
   end
 
   defp insert_block_from_snapshot(sheet, snapshot, attrs) do
@@ -1341,43 +1289,12 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
     if project_id, do: Collaboration.broadcast_dashboard_change(project_id, :sheets)
   end
 
-  defp broadcast_block_result(result), do: broadcast_block_result(result, nil)
-
-  defp broadcast_block_result({:ok, {%Block{} = block, affected_sheet_ids, inherited_change}}, _default_change)
-       when is_list(affected_sheet_ids) do
-    broadcast_block_change(block)
-    broadcast_inherited_block_changes(affected_sheet_ids, block.id, inherited_change)
-    {:ok, block}
-  end
-
-  defp broadcast_block_result({:ok, {%Block{} = block, affected_sheet_ids}}, inherited_change)
-       when is_list(affected_sheet_ids) do
-    broadcast_block_change(block)
-    broadcast_inherited_block_changes(affected_sheet_ids, block.id, inherited_change)
-    {:ok, block}
-  end
-
-  defp broadcast_block_result({:ok, %Block{} = block} = result, _inherited_change) do
+  defp broadcast_block_result({:ok, %Block{} = block} = result) do
     broadcast_block_change(block)
     result
   end
 
-  defp broadcast_block_result(result, _inherited_change), do: result
-
-  defp broadcast_inherited_block_changes(_sheet_ids, _source_block_id, nil), do: :ok
-
-  defp broadcast_inherited_block_changes(sheet_ids, source_block_id, change) do
-    sheet_ids
-    |> Enum.uniq()
-    |> Enum.sort()
-    |> Enum.each(fn sheet_id ->
-      Collaboration.broadcast_change(
-        {:sheet, sheet_id},
-        :inherited_blocks_changed,
-        %{sheet_id: sheet_id, source_block_id: source_block_id, change: change}
-      )
-    end)
-  end
+  defp broadcast_block_result(result), do: result
 
   defp broadcast_block_project_result({:ok, {value, project_id}}) do
     Collaboration.broadcast_dashboard_change(project_id, :sheets)

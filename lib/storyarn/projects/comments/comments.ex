@@ -78,9 +78,9 @@ defmodule Storyarn.Projects.Comments do
     |> publish_and_read(scope, project_id)
   end
 
-  def create_sheet_block(scope, project_id, sheet_id, block_id, attrs) do
+  def create_sheet_canvas(scope, project_id, sheet_id, attrs) do
     scope
-    |> Mutations.create_sheet_block(project_id, sheet_id, block_id, attrs)
+    |> Mutations.create_sheet_canvas(project_id, sheet_id, attrs)
     |> publish_and_read(scope, project_id)
   end
 
@@ -261,7 +261,7 @@ defmodule Storyarn.Projects.Comments do
     PubSub.broadcast(Storyarn.PubSub, scene_topic(project_id, scene_id), {:scene_comments_changed, scene_id})
   end
 
-  defp publish_change(project_id, %{source_type: "sheet_block", container_id: sheet_id}) do
+  defp publish_change(project_id, %{source_type: "sheet_canvas", container_id: sheet_id}) do
     PubSub.broadcast(Storyarn.PubSub, sheet_topic(project_id, sheet_id), {:sheet_comments_changed, sheet_id})
   end
 
@@ -278,23 +278,23 @@ defmodule Storyarn.Projects.Comments do
     %{surface: "scene", scene_id: thread.container_id, thread_id: thread.id}
   end
 
-  defp destination(%{source_type: "sheet_block"} = thread) do
-    %{surface: "sheet", sheet_id: thread.container_id, block_id: thread.source_id, thread_id: thread.id}
+  defp destination(%{source_type: "sheet_canvas"} = thread) do
+    %{surface: "sheet", sheet_id: thread.container_id, thread_id: thread.id}
   end
 
   defp destination_row(%{source_type: source_type} = destination) when source_type in ["flow_node", "flow_canvas"] do
     destination
     |> Map.put(:surface, "flow")
-    |> Map.drop([:source_type, :scene_id, :sheet_id, :block_id])
+    |> Map.drop([:source_type, :scene_id, :sheet_id])
   end
 
   defp destination_row(%{source_type: "scene_canvas"} = destination) do
     destination
     |> Map.put(:surface, "scene")
-    |> Map.drop([:source_type, :flow_id, :node_id, :sheet_id, :block_id])
+    |> Map.drop([:source_type, :flow_id, :node_id, :sheet_id])
   end
 
-  defp destination_row(%{source_type: "sheet_block"} = destination) do
+  defp destination_row(%{source_type: "sheet_canvas"} = destination) do
     destination
     |> Map.put(:surface, "sheet")
     |> Map.drop([:source_type, :flow_id, :node_id, :scene_id])

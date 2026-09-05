@@ -10,19 +10,6 @@ defmodule Storyarn.Projects.Comments.DTO do
 
   def source_label(%{name: name}) when is_binary(name), do: HtmlUtils.strip_and_truncate(name, 120)
 
-  def source_label(%{config: config, type: type, id: id}) do
-    case is_map(config) && config["label"] do
-      label when is_binary(label) ->
-        case HtmlUtils.strip_and_truncate(label, 120) do
-          stripped when is_binary(stripped) and stripped != "" -> stripped
-          _empty -> fallback_source_label(type, id)
-        end
-
-      _other ->
-        fallback_source_label(type, id)
-    end
-  end
-
   def source_label(node) do
     data = node.data || %{}
     candidate = data["name"] || data["text"] || data["label"]
@@ -75,10 +62,8 @@ defmodule Storyarn.Projects.Comments.DTO do
 
     case thread.source_type do
       "scene_canvas" -> Map.put(base, :scene_id, thread.container_id)
-      "sheet_block" -> Map.put(base, :sheet_id, thread.container_id)
+      "sheet_canvas" -> Map.put(base, :sheet_id, thread.container_id)
       _flow -> Map.put(base, :flow_id, thread.container_id)
     end
   end
-
-  defp fallback_source_label(type, id), do: "#{String.capitalize(type)} ##{id}"
 end

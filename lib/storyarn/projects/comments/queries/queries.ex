@@ -8,7 +8,6 @@ defmodule Storyarn.Projects.Comments.Queries do
   alias Storyarn.Projects.Comments.Projections.FlowRecord
   alias Storyarn.Projects.Comments.Projections.ProjectMembershipRecord
   alias Storyarn.Projects.Comments.Projections.SceneRecord
-  alias Storyarn.Projects.Comments.Projections.SheetBlockRecord
   alias Storyarn.Projects.Comments.Projections.SheetRecord
   alias Storyarn.Projects.Comments.Projections.UserRecord
   alias Storyarn.Projects.Comments.Projections.WorkspaceMembershipRecord
@@ -45,15 +44,9 @@ defmodule Storyarn.Projects.Comments.Queries do
     |> Repo.one()
   end
 
-  def sheet_block_source(project_id, sheet_id, block_id, opts \\ []) do
-    from(block in SheetBlockRecord,
-      join: sheet in SheetRecord,
-      on: sheet.id == block.sheet_id,
-      where:
-        block.id == ^block_id and block.sheet_id == ^sheet_id and
-          sheet.project_id == ^project_id and is_nil(block.deleted_at) and
-          is_nil(sheet.deleted_at),
-      select: block
+  def sheet_source(project_id, sheet_id, opts \\ []) do
+    from(sheet in SheetRecord,
+      where: sheet.id == ^sheet_id and sheet.project_id == ^project_id and is_nil(sheet.deleted_at)
     )
     |> maybe_lock(opts)
     |> Repo.one()
@@ -81,26 +74,26 @@ defmodule Storyarn.Projects.Comments.Queries do
   defp anchored_source(%Thread{source_type: "scene_canvas", scene_canvas_id: id, container_id: id} = thread, opts)
        when is_integer(id), do: scene_source(thread.project_id, id, opts)
 
-  defp anchored_source(%Thread{source_type: "sheet_block", sheet_block_id: id} = thread, opts) when is_integer(id),
-    do: sheet_block_source(thread.project_id, thread.container_id, id, opts)
+  defp anchored_source(%Thread{source_type: "sheet_canvas", sheet_canvas_id: id, container_id: id} = thread, opts)
+       when is_integer(id), do: sheet_source(thread.project_id, id, opts)
 
   defp anchored_source(_thread, _opts), do: nil
 
   def available_sources(threads) do
     ids = Enum.map(threads, & &1.id)
 
-    from([thread: t, node: n, flow: f, scene: s, sheet_block: b] in available_threads(Thread),
+    from([thread: t, node: n, flow: f, scene: s, sheet: sh] in available_threads(Thread),
       where: t.id in ^ids,
-      select: {t.id, t.source_type, n, f, s, b}
+      select: {t.id, t.source_type, n, f, s, sh}
     )
     |> Repo.all()
-    |> Map.new(fn {id, type, node, flow, scene, block} ->
+    |> Map.new(fn {id, type, node, flow, scene, sheet} ->
       source =
         case type do
           "flow_node" -> node
           "flow_canvas" -> flow
           "scene_canvas" -> scene
-          "sheet_block" -> block
+          "sheet_canvas" -> sheet
         end
 
       {id, source}
@@ -158,7 +151,7 @@ defmodule Storyarn.Projects.Comments.Queries do
 
     Repo.all(
       from(
-        [message: m, thread: t, node: n, flow: f, scene: s, sheet: sh, sheet_block: b] in sources,
+        [message: m, thread: t, node: n, flow: f, scene: s, sheet: sh] in sources,
         join: p in Project,
         on: p.id == t.project_id,
         join: w in assoc(p, :workspace),
@@ -181,7 +174,6 @@ defmodule Storyarn.Projects.Comments.Queries do
             node_id: n.id,
             scene_id: s.id,
             sheet_id: sh.id,
-            block_id: b.id,
             thread_id: t.id
           }
         }
@@ -267,10 +259,7 @@ defmodule Storyarn.Projects.Comments.Queries do
     from([thread: t] in query,
       left_join: sh in SheetRecord,
       as: :sheet,
-      on: t.source_type == "sheet_block" and sh.id == t.container_id and sh.project_id == t.project_id,
-      left_join: b in SheetBlockRecord,
-      as: :sheet_block,
-      on: t.source_type == "sheet_block" and b.id == t.sheet_block_id and b.sheet_id == sh.id
+      on: t.source_type == "sheet_canvas" and sh.id == t.sheet_canvas_id and sh.project_id == t.project_id
     )
   end
 
@@ -278,8 +267,8 @@ defmodule Storyarn.Projects.Comments.Queries do
     node = available_node_anchor()
     canvas = available_canvas_anchor()
     scene = available_scene_anchor()
-    sheet_block = available_sheet_block_anchor()
-    dynamic(^node or ^canvas or ^scene or ^sheet_block)
+    sheet = available_sheet_anchor()
+    dynamic(^node or ^canvas or ^scene or ^sheet)
   end
 
   defp available_node_anchor do
@@ -309,18 +298,18 @@ defmodule Storyarn.Projects.Comments.Queries do
     )
   end
 
-  defp available_sheet_block_anchor do
+  defp available_sheet_anchor do
     dynamic(
-      [thread: t, sheet: sh, sheet_block: b],
-      t.source_type == "sheet_block" and t.sheet_block_id == b.id and
-        t.source_id == b.id and t.source_inserted_at == b.inserted_at and
-        is_nil(b.deleted_at) and is_nil(sh.deleted_at)
+      [thread: t, sheet: sh],
+      t.source_type == "sheet_canvas" and t.sheet_canvas_id == sh.id and
+        t.source_id == sh.id and t.container_id == sh.id and
+        t.source_inserted_at == sh.inserted_at and is_nil(sh.deleted_at)
     )
   end
 
   defp source_family(query, :flow), do: where(query, [thread: t], t.source_type in ["flow_node", "flow_canvas"])
   defp source_family(query, :scene), do: where(query, [thread: t], t.source_type == "scene_canvas")
-  defp source_family(query, :sheet), do: where(query, [thread: t], t.source_type == "sheet_block")
+  defp source_family(query, :sheet), do: where(query, [thread: t], t.source_type == "sheet_canvas")
 
   defp maybe_filter_source(query, :flow, opts) do
     case opts[:node_id] do
@@ -328,16 +317,6 @@ defmodule Storyarn.Projects.Comments.Queries do
         where(query, [thread: t], t.source_type == "flow_node" and t.source_id == ^node_id)
 
       _no_node ->
-        query
-    end
-  end
-
-  defp maybe_filter_source(query, :sheet, opts) do
-    case opts[:block_id] do
-      block_id when is_integer(block_id) and block_id > 0 ->
-        where(query, [thread: t], t.source_type == "sheet_block" and t.source_id == ^block_id)
-
-      _no_block ->
         query
     end
   end

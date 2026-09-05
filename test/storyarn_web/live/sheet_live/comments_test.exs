@@ -6,10 +6,8 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
 
-  alias Storyarn.Platform.Collaboration
   alias Storyarn.Projects
   alias Storyarn.Repo
-  alias Storyarn.Sheets
 
   setup :register_and_log_in_user
 
@@ -21,33 +19,30 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     %{project: project, sheet: sheet, block: block, scope: user_scope_fixture(user)}
   end
 
-  test "an editor creates, moves, replies to and resolves a block conversation", context do
+  test "an editor creates, moves, replies to and resolves a Sheet canvas conversation", context do
     view = open_sheet(context)
 
     render_hook(view, "comments_mode", %{active: true})
     assert panel(view)["placing"]
 
-    render_hook(view, "comments_place", %{block_id: context.block.id, x: 25, y: 75})
-    assert panel(view)["draftPosition"] == %{"x" => 25, "y" => 75}
-    assert panel(view)["selectedBlockId"] == context.block.id
-    assert panel(view)["selectedBlockLabel"] == "Motivation"
+    render_hook(view, "comments_place", %{x: 25, y: 750})
+    assert panel(view)["draftPosition"] == %{"x" => 25, "y" => 750}
     assert panel(view)["presentation"] == "canvas"
 
     render_hook(view, "comments_create", %{
-      block_id: context.block.id,
-      position: %{x: 25, y: 75},
-      body: "Clarify this motivation",
+      position: %{x: 25, y: 750},
+      body: "Clarify this part of the Sheet",
       client_request_id: Ecto.UUID.generate()
     })
 
     state = panel(view)
     thread = state["thread"]
-    assert thread["source"]["type"] == "sheet_block"
+    assert thread["source"]["type"] == "sheet_canvas"
     assert thread["source"]["sheet_id"] == context.sheet.id
-    assert thread["source"]["id"] == context.block.id
-    assert [%{"body" => "Clarify this motivation"}] = state["messages"]
+    assert thread["source"]["id"] == context.sheet.id
+    assert [%{"body" => "Clarify this part of the Sheet"}] = state["messages"]
 
-    assert [%{"id" => thread_id, "position" => %{"x" => 25.0, "y" => 75.0}}] =
+    assert [%{"id" => thread_id, "position" => %{"x" => 25.0, "y" => 750.0}}] =
              content(view)["commentPins"]
 
     assert thread_id == thread["id"]
@@ -56,13 +51,13 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     render_hook(view, "comments_move", %{
       thread_id: thread["id"],
       x: 40,
-      y: 60,
+      y: 960,
       expected_revision: thread["revision"]
     })
 
     moved = panel(view)["thread"]
-    assert moved["position"] == %{"x" => 40.0, "y" => 60.0}
-    assert [%{"position" => %{"x" => 40.0, "y" => 60.0}}] = content(view)["commentPins"]
+    assert moved["position"] == %{"x" => 40.0, "y" => 960.0}
+    assert [%{"position" => %{"x" => 40.0, "y" => 960.0}}] = content(view)["commentPins"]
 
     render_hook(view, "comments_reply", %{
       thread_id: moved["id"],
@@ -92,7 +87,6 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
 
     assert panel(view)["thread"]["id"] == detail.thread.id
     assert panel(view)["presentation"] == "canvas"
-    assert panel(view)["selectedBlockLabel"] == "Motivation"
     assert content(view)["commentFocusThreadId"] == detail.thread.id
 
     assert {:ok, _reply} =
@@ -119,7 +113,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     assert panel(view)["thread"]["id"] == detail.thread.id
     refute panel(view)["canComment"]
 
-    render_hook(view, "comments_place", %{block_id: context.block.id, x: 10, y: 20})
+    render_hook(view, "comments_place", %{x: 10, y: 200})
     assert panel(view)["draftPosition"] == nil
 
     render_hook(view, "comments_reply", %{
@@ -132,7 +126,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     render_hook(view, "comments_move", %{
       thread_id: detail.thread.id,
       x: 10,
-      y: 20,
+      y: 200,
       expected_revision: detail.thread.revision
     })
 
@@ -140,7 +134,7 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
              Projects.get_comment_thread(context.scope, context.project.id, detail.thread.id)
 
     assert unchanged.thread.message_count == 1
-    assert unchanged.thread.position == %{x: 20.0, y: 30.0}
+    assert unchanged.thread.position == %{x: 20.0, y: 300.0}
   end
 
   test "compact Sheet layouts omit comment state and restore it when returning", context do
@@ -172,109 +166,45 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
     refute Map.has_key?(panels(view), "comments")
   end
 
-  test "an inherited block lifecycle refreshes comments in an open child Sheet session", context do
-    source = inheritable_block_fixture(context.sheet, label: "Inherited motivation")
+  test "a Sheet never exposes a parent or sibling Sheet conversation", context do
+    parent_detail = create_comment(context)
     child = child_sheet_fixture(context.project, context.sheet, %{name: "Child character"})
-    instance = inherited_instance!(child.id, source.id)
+    sibling = sheet_fixture(context.project, %{name: "Sibling character"})
 
-    {:ok, detail} =
-      Projects.create_sheet_block_comment(
-        context.scope,
-        context.project.id,
-        child.id,
-        instance.id,
-        %{
-          body: "Review the inherited motivation",
-          position: %{x: 20, y: 30},
-          client_request_id: Ecto.UUID.generate()
-        }
-      )
+    for other_sheet <- [child, sibling] do
+      other_context = Map.put(context, :sheet, other_sheet)
+      view = open_sheet(other_context, "?thread=#{parent_detail.thread.id}")
 
-    collaborator = user_fixture()
-    membership_fixture(context.project, collaborator, "editor")
+      assert panel(view)["thread"] == nil
+      assert panel(view)["messages"] == []
+      assert content(view)["commentPins"] == []
+    end
 
-    parent_view = open_sheet(context)
+    assert {:ok, child_detail} =
+             Projects.create_sheet_canvas_comment(context.scope, context.project.id, child.id, %{
+               body: "Child-only comment",
+               position: %{x: 50, y: 450},
+               client_request_id: Ecto.UUID.generate()
+             })
 
     child_view =
       context
-      |> Map.put(:conn, log_in_user(build_conn(), collaborator))
       |> Map.put(:sheet, child)
-      |> open_sheet("?thread=#{detail.thread.id}")
+      |> open_sheet("?thread=#{child_detail.thread.id}")
 
-    assert panel(child_view)["thread"]["source"]["status"] == "available"
-    assert [%{"id" => thread_id}] = content(child_view)["commentPins"]
-    assert thread_id == detail.thread.id
-
-    :ok = Collaboration.subscribe_changes({:sheet, child.id})
-    child_id = child.id
-    source_id = source.id
-
-    render_hook(parent_view, "delete_block", %{"id" => source.id})
-
-    assert_receive {:remote_change, :inherited_blocks_changed,
-                    %{sheet_id: ^child_id, source_block_id: ^source_id, change: :deleted}}
-
-    assert_comments_eventually(child_view, fn ->
-      assert content(child_view)["commentPins"] == []
-
-      assert %{"thread" => %{"source" => %{"status" => "unavailable"}}} =
-               panel(child_view)
-    end)
-
-    render_hook(parent_view, "undo", %{})
-
-    assert_receive {:remote_change, :inherited_blocks_changed,
-                    %{sheet_id: ^child_id, source_block_id: ^source_id, change: :restored}}
-
-    assert_comments_eventually(child_view, fn ->
-      assert [%{"id" => restored_thread_id}] = content(child_view)["commentPins"]
-      assert restored_thread_id == detail.thread.id
-
-      assert %{"thread" => %{"source" => %{"status" => "available"}}} =
-               panel(child_view)
-    end)
-
-    render_hook(parent_view, "update_block_config", %{
-      "id" => source.id,
-      "field" => "label",
-      "value" => "Inherited drive"
-    })
-
-    assert_receive {:remote_change, :inherited_blocks_changed,
-                    %{sheet_id: ^child_id, source_block_id: ^source_id, change: :definition_synced}}
-
-    assert_comments_eventually(child_view, fn ->
-      assert %{
-               "selectedBlockLabel" => "Inherited drive",
-               "thread" => %{
-                 "source" => %{"status" => "available", "label" => "Inherited drive"}
-               }
-             } = panel(child_view)
-    end)
-
-    render_hook(parent_view, "change_block_scope", %{"id" => source.id, "scope" => "self"})
-
-    assert_receive {:remote_change, :inherited_blocks_changed,
-                    %{sheet_id: ^child_id, source_block_id: ^source_id, change: :scope_changed}}
-
-    assert_comments_eventually(child_view, fn ->
-      assert content(child_view)["commentPins"] == []
-
-      assert %{"thread" => %{"source" => %{"status" => "unavailable"}}} =
-               panel(child_view)
-    end)
+    assert panel(child_view)["thread"]["id"] == child_detail.thread.id
+    assert panel(child_view)["thread"]["source"]["id"] == child.id
   end
 
   defp create_comment(context) do
     {:ok, detail} =
-      Projects.create_sheet_block_comment(
+      Projects.create_sheet_canvas_comment(
         context.scope,
         context.project.id,
         context.sheet.id,
-        context.block.id,
         %{
-          body: "Review this field",
-          position: %{x: 20, y: 30},
+          body: "Review this part of the Sheet",
+          position: %{x: 20, y: 300},
           client_request_id: Ecto.UUID.generate()
         }
       )
@@ -307,26 +237,5 @@ defmodule StoryarnWeb.SheetLive.CommentsTest do
   defp header_comments(view) do
     render(view)
     LiveVue.Test.get_vue(view, name: "live/sheet/show/SheetHeader").props["comments"]
-  end
-
-  defp inherited_instance!(sheet_id, source_id) do
-    Enum.find(Sheets.list_blocks(sheet_id), &(&1.inherited_from_block_id == source_id)) ||
-      flunk("expected inherited instance for block #{source_id} in Sheet #{sheet_id}")
-  end
-
-  defp assert_comments_eventually(view, assertion, attempts \\ 200)
-
-  defp assert_comments_eventually(view, assertion, attempts) when attempts > 1 do
-    render(view)
-    assertion.()
-  rescue
-    ExUnit.AssertionError ->
-      Process.sleep(10)
-      assert_comments_eventually(view, assertion, attempts - 1)
-  end
-
-  defp assert_comments_eventually(view, assertion, 1) do
-    render(view)
-    assertion.()
   end
 end

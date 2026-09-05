@@ -1,17 +1,24 @@
 <script setup lang="ts">
 import { MessageCircle, Plus } from "@lucide/vue";
-import { computed, nextTick, onUnmounted, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import { commentPopoverPosition } from "@components/comments/commentGeometry";
 import { useLive } from "@shared/composables/useLive";
-import { useSheetBlockComments } from "../../composables/useSheetBlockComments";
+import { useSheetCanvasComments } from "../../composables/useSheetCanvasComments";
 import type { SheetCommentsPanelState, SheetCommentThread } from "../../types/comments";
 import SheetCommentsPanel from "../panels/SheetCommentsPanel.vue";
 
-const { container, state, commentPins, focusThreadId } = defineProps<{
+const {
+  container,
+  state,
+  commentPins,
+  focusThreadId,
+  draftStorageKey = null,
+} = defineProps<{
   container: () => HTMLElement | null;
   state: SheetCommentsPanelState;
   commentPins: SheetCommentThread[];
   focusThreadId: number | null;
+  draftStorageKey?: string | null;
 }>();
 const emit = defineEmits<{
   interactionChange: [active: boolean];
@@ -26,11 +33,13 @@ const commentLayer = ref<HTMLElement | null>(null);
 const popup = ref<HTMLElement | null>(null);
 const contextMenu = ref<HTMLElement | null>(null);
 const focusWithin = ref(false);
+const measuredPopupSize = ref<{ width: number; height: number } | null>(null);
 let focusLeaveTimer: ReturnType<typeof setTimeout> | null = null;
+let popupResizeObserver: ResizeObserver | null = null;
 const {
   pins,
   placing,
-  bounds,
+  visibleBounds,
   hoverId,
   hoveredPin,
   activePoint,
@@ -43,11 +52,12 @@ const {
   movePinWithKeyboard,
   placeContextComment,
   closeContextMenu,
-} = useSheetBlockComments({
+} = useSheetCanvasComments({
   container: resolveContainer,
   state: () => state,
   pins: () => commentPins,
   focusThreadId: () => focusThreadId,
+  draftStorageKey: () => draftStorageKey,
   live,
 });
 
@@ -55,32 +65,73 @@ const popupOpen = computed(
   () => state.open && state.presentation === "canvas" && Boolean(activePoint.value),
 );
 const popupSize = computed(() => ({
-  width: Math.max(0, Math.min(360, bounds.value.width - 24)),
-  height: Math.max(0, Math.min(480, bounds.value.height - 24)),
+  width: Math.max(0, Math.min(360, visibleBounds.value.width - 24)),
+  height: Math.max(0, Math.min(480, visibleBounds.value.height - 24)),
 }));
+
+const popupPlacementSize = computed(() => measuredPopupSize.value ?? popupSize.value);
+
+function positionWithinVisibleSurface(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+) {
+  const visible = visibleBounds.value;
+  const position = commentPopoverPosition(
+    { x: point.x, y: point.y - visible.top },
+    { width: visible.width, height: visible.height },
+    size,
+  );
+  return { x: position.x, y: position.y + visible.top };
+}
+
+function popupPositionWithinVisibleSurface(
+  point: { x: number; y: number },
+  size: { width: number; height: number },
+) {
+  const visible = visibleBounds.value;
+  const relativePoint = { x: point.x, y: point.y - visible.top };
+  const horizontal = commentPopoverPosition(
+    relativePoint,
+    { width: visible.width, height: visible.height },
+    size,
+  );
+  const margin = 12;
+  const pinGap = 24;
+  const alignedTop = relativePoint.y - 18;
+  const maxTop = Math.max(margin, visible.height - size.height - margin);
+  const preferredTop =
+    alignedTop + size.height <= visible.height - margin
+      ? alignedTop
+      : relativePoint.y - size.height - pinGap;
+
+  return {
+    x: horizontal.x,
+    y: Math.max(margin, Math.min(preferredTop, maxTop)) + visible.top,
+  };
+}
+
 const popupPosition = computed(() =>
-  commentPopoverPosition(
-    activePoint.value ?? { x: bounds.value.width / 2, y: bounds.value.height / 2 },
-    bounds.value,
-    popupSize.value,
+  popupPositionWithinVisibleSurface(
+    activePoint.value ?? {
+      x: visibleBounds.value.width / 2,
+      y: visibleBounds.value.top + visibleBounds.value.height / 2,
+    },
+    popupPlacementSize.value,
   ),
 );
 const previewSize = computed(() => ({
-  width: Math.max(0, Math.min(260, bounds.value.width - 24)),
-  height: 112,
+  width: Math.max(0, Math.min(260, visibleBounds.value.width - 24)),
+  height: Math.max(0, Math.min(112, visibleBounds.value.height - 24)),
 }));
 const previewPosition = computed(() =>
-  commentPopoverPosition(
-    hoveredPin.value?.screen ?? { x: 0, y: 0 },
-    bounds.value,
-    previewSize.value,
-  ),
+  positionWithinVisibleSurface(hoveredPin.value?.screen ?? { x: 0, y: 0 }, previewSize.value),
 );
 const contextMenuPosition = computed(() => {
   const point = contextMenuPoint.value ?? { x: 0, y: 0 };
+  const visible = visibleBounds.value;
   return {
-    x: Math.max(8, Math.min(point.x, bounds.value.width - 200)),
-    y: Math.max(8, Math.min(point.y, bounds.value.height - 48)),
+    x: Math.max(8, Math.min(point.x, visible.width - 200)),
+    y: Math.max(visible.top + 8, Math.min(point.y, visible.top + visible.height - 48)),
   };
 });
 const localInteractionActive = computed(
@@ -118,16 +169,60 @@ function onFocusOut(event: FocusEvent): void {
   scheduleFocusContainmentCheck(root);
 }
 
+function restoreFocusAfterPopup(previousId: number | null | undefined): void {
+  const previousPin =
+    previousId == null ? null : document.getElementById(`sheet-comment-pin-${previousId}`);
+  const target =
+    previousPin ?? document.getElementById("sheet-comments-toggle") ?? resolveContainer();
+  target?.focus({ preventScroll: true });
+}
+
+function stopObservingPopup(): void {
+  popupResizeObserver?.disconnect();
+  popupResizeObserver = null;
+}
+
+function measurePopup(): void {
+  const element = popup.value;
+  if (!element) return;
+  const rect = element.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return;
+  const nextSize = { width: rect.width, height: rect.height };
+  if (
+    measuredPopupSize.value?.width === nextSize.width &&
+    measuredPopupSize.value.height === nextSize.height
+  )
+    return;
+  measuredPopupSize.value = nextSize;
+}
+
+function observePopup(): void {
+  stopObservingPopup();
+  measurePopup();
+  if (!popup.value) return;
+  popupResizeObserver = new ResizeObserver(measurePopup);
+  popupResizeObserver.observe(popup.value);
+}
+
 watch([popupOpen, () => state.thread?.id], async ([open], [previousOpen, previousId]) => {
   if (open) {
     await nextTick();
+    observePopup();
     popup.value?.focus({ preventScroll: true });
   } else if (previousOpen) {
+    stopObservingPopup();
+    measuredPopupSize.value = null;
     await nextTick();
-    if (previousId != null)
-      document.getElementById(`sheet-comment-pin-${previousId}`)?.focus({ preventScroll: true });
+    restoreFocusAfterPopup(previousId);
     syncFocusContainment();
   }
+});
+
+onMounted(async () => {
+  if (!popupOpen.value) return;
+  await nextTick();
+  observePopup();
+  popup.value?.focus({ preventScroll: true });
 });
 
 watch(localInteractionActive, (active) => emit("interactionChange", active), {
@@ -160,6 +255,7 @@ watch(
 
 onUnmounted(() => {
   if (focusLeaveTimer) clearTimeout(focusLeaveTimer);
+  stopObservingPopup();
   emit("interactionChange", false);
 });
 </script>
@@ -168,7 +264,7 @@ onUnmounted(() => {
   <div
     ref="commentLayer"
     class="pointer-events-none absolute inset-0 z-20 overflow-visible"
-    data-testid="sheet-block-comments"
+    data-testid="sheet-canvas-comments"
     data-sheet-comment-ui="true"
     @focusin="onFocusIn"
     @focusout="onFocusOut"
@@ -176,7 +272,7 @@ onUnmounted(() => {
     <p id="sheet-comment-pin-keyboard-instructions" class="sr-only">
       {{ $t("sheets.comments.keyboard_move_hint") }}
     </p>
-    <p v-if="placing" id="sheet-comment-block-keyboard-instructions" class="sr-only">
+    <p v-if="placing" id="sheet-comment-surface-keyboard-instructions" class="sr-only">
       {{ $t("sheets.comments.keyboard_place_hint") }}
     </p>
     <p
@@ -299,7 +395,7 @@ onUnmounted(() => {
       @wheel.stop
       @contextmenu.stop
     >
-      <SheetCommentsPanel :state="state" embedded />
+      <SheetCommentsPanel :state="state" :draft-storage-key="draftStorageKey" embedded />
     </div>
   </div>
 </template>
