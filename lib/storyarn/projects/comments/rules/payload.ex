@@ -34,9 +34,20 @@ defmodule Storyarn.Projects.Comments.Payload do
 
   def position(_position, _opts), do: {:error, :invalid_position}
 
-  def scene_position(value) do
+  def normalized_position(value) do
     with {:ok, position} <- position(value, required: true),
          true <- position.x >= 0 and position.x <= 100 and position.y >= 0 and position.y <= 100 do
+      {:ok, position}
+    else
+      _ -> {:error, :invalid_position}
+    end
+  end
+
+  def scene_position(value), do: normalized_position(value)
+
+  def sheet_position(value) do
+    with {:ok, position} <- position(value, required: true),
+         true <- position.x >= 0 and position.x <= 100 and position.y >= 0 do
       {:ok, position}
     else
       _ -> {:error, :invalid_position}

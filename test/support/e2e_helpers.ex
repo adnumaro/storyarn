@@ -32,6 +32,18 @@ defmodule StoryarnWeb.E2EHelpers do
     session
   end
 
+  def right_click_at(session, selector, x, y) do
+    {:ok, _} =
+      Frame.click(session.frame_id,
+        selector: selector,
+        button: "right",
+        position: %{x: x, y: y},
+        timeout: 10_000
+      )
+
+    session
+  end
+
   def click_at(session, selector, x, y) do
     {:ok, _} =
       Frame.click(session.frame_id,

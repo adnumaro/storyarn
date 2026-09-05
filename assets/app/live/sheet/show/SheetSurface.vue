@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import { useLiveVue } from "live_vue";
 import CollabToast from "@modules/sheets/components/collab/CollabToast.vue";
+import SheetCanvasComments from "@modules/sheets/components/chrome/SheetCanvasComments.vue";
 import SheetContentHeader from "@modules/sheets/components/chrome/header/SheetContentHeader.vue";
 import BlockList from "@modules/sheets/components/entities/blocks/BlockList.vue";
 import SheetShowPanels from "@modules/sheets/components/panels/SheetShowPanels.vue";
@@ -11,6 +12,7 @@ import {
   useSheetHighlight,
 } from "@modules/sheets/composables/useSheetHighlight";
 import type { Sheet, SheetHealth } from "@modules/sheets/types";
+import type { SheetCommentsPanelState, SheetCommentThread } from "@modules/sheets/types/comments";
 
 type ServerPayload = any;
 
@@ -29,6 +31,9 @@ interface SheetSurfaceContent {
   formulaEditing: ServerPayload;
   blockLocks: Record<string, ServerPayload>;
   currentUserId: number | null;
+  commentPins?: SheetCommentThread[];
+  comments?: SheetCommentsPanelState | null;
+  commentFocusThreadId?: number | null;
 }
 
 interface SheetSurface {
@@ -43,6 +48,7 @@ interface SheetPanelsProps {
   references: ServerPayload | null;
   audio: ServerPayload | null;
   history: ServerPayload | null;
+  comments?: SheetCommentsPanelState;
 }
 
 const {
@@ -79,6 +85,28 @@ const surface = computed(
 const panels = computed(
   () => (live.vue?.props?.panels as SheetPanelsProps | null | undefined) ?? initialPanels,
 );
+const surfaceRoot = ref<HTMLElement | null>(null);
+const localCommentInteractionActive = ref(false);
+const commentsActive = computed(
+  () =>
+    Boolean(surface.value.content?.comments?.open || surface.value.content?.comments?.placing) ||
+    localCommentInteractionActive.value,
+);
+const commentPlacementActive = computed(
+  () =>
+    surface.value.content?.comments?.placing === true && surface.value.content.comments.canComment,
+);
+const commentDraftStorageKey = computed(() => {
+  const sheetId = sheet.value?.id;
+  const userId = surface.value.content?.currentUserId;
+  return sheetId == null || userId == null
+    ? null
+    : `storyarn:sheet-comment-draft:${userId}:${sheetId}`;
+});
+
+function getSurfaceRoot(): HTMLElement | null {
+  return surfaceRoot.value;
+}
 
 useSheetHighlight(
   highlightTarget,
@@ -89,7 +117,18 @@ useSheetHighlight(
 <template>
   <div
     v-if="sheet"
-    class="max-w-4xl mx-auto bg-surface border border-border rounded-2xl p-6 shadow-sm"
+    ref="surfaceRoot"
+    data-sheet-comment-surface="true"
+    :role="commentPlacementActive ? 'region' : undefined"
+    :aria-label="commentPlacementActive ? $t('sheets.comments.surface_label') : undefined"
+    class="relative mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    :class="{
+      'cursor-crosshair': commentPlacementActive,
+    }"
+    :tabindex="commentPlacementActive ? 0 : -1"
+    :aria-describedby="
+      commentPlacementActive ? 'sheet-comment-surface-keyboard-instructions' : undefined
+    "
   >
     <SheetContentHeader
       :sheet="sheet"
@@ -117,8 +156,19 @@ useSheetHighlight(
           :formula-editing="surface.content.formulaEditing"
           :block-locks="surface.content.blockLocks"
           :current-user-id="surface.content.currentUserId"
+          :comments-active="commentsActive"
         />
       </div>
+
+      <SheetCanvasComments
+        v-if="surface.content?.comments"
+        :container="getSurfaceRoot"
+        :state="surface.content.comments"
+        :comment-pins="surface.content.commentPins ?? []"
+        :focus-thread-id="surface.content.commentFocusThreadId ?? null"
+        :draft-storage-key="commentDraftStorageKey"
+        @interaction-change="localCommentInteractionActive = $event"
+      />
 
       <div id="collab-toast" class="contents">
         <CollabToast />

@@ -109,7 +109,7 @@ msgstr "Destino de referencia no encontrado."
 msgid "Renamed sheet"
 msgstr "Ficha renombrada"
 
-#: lib/storyarn_web/live/sheet_live/show.ex:456
+#: lib/storyarn_web/live/sheet_live/show.ex:500
 #, elixir-autogen, elixir-format
 msgid "Sheet not found."
 msgstr "Ficha no encontrada."
@@ -309,7 +309,7 @@ msgstr "Recurso no encontrado."
 msgid "Invalid layout."
 msgstr "Diseño no válido."
 
-#: lib/storyarn_web/live/sheet_live/show.ex:966
+#: lib/storyarn_web/live/sheet_live/show.ex:1087
 #, elixir-autogen, elixir-format
 msgid "Unknown"
 msgstr "Desconocido"
@@ -457,3 +457,18 @@ msgstr "El audio seleccionado ya no está disponible."
 #, elixir-autogen, elixir-format
 msgid "This dialogue line is no longer available. Refresh and try again."
 msgstr "Esta línea de diálogo ya no está disponible. Actualiza la página e inténtalo de nuevo."
+
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:518
+#, elixir-autogen, elixir-format
+msgid "Could not save the comment. Check the text and selected mentions."
+msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."
+
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:513
+#, elixir-autogen, elixir-format
+msgid "This conversation changed. Review the latest state and try again."
+msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
+
+#: lib/storyarn_web/live/sheet_live/handlers/comment_handlers.ex:516
+#, elixir-autogen, elixir-format
+msgid "This conversation or its source is no longer available."
+msgstr "Esta conversación o su origen ya no están disponibles."

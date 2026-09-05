@@ -60,8 +60,10 @@ defmodule Storyarn.Projects.Comments.DTO do
       status: if(source, do: "available", else: "unavailable")
     }
 
-    if thread.source_type == "scene_canvas",
-      do: Map.put(base, :scene_id, thread.container_id),
-      else: Map.put(base, :flow_id, thread.container_id)
+    case thread.source_type do
+      "scene_canvas" -> Map.put(base, :scene_id, thread.container_id)
+      "sheet_canvas" -> Map.put(base, :sheet_id, thread.container_id)
+      _flow -> Map.put(base, :flow_id, thread.container_id)
+    end
   end
 end

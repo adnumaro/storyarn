@@ -56,6 +56,9 @@ defmodule StoryarnWeb.Live.Shared.NotificationHelpers do
 
       %{surface: "scene"} = destination ->
         ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/scenes/#{destination.scene_id}?#{%{thread: destination.thread_id}}"
+
+      %{surface: "sheet"} = destination ->
+        ~p"/workspaces/#{destination.workspace_slug}/projects/#{destination.project_slug}/sheets/#{destination.sheet_id}?#{%{thread: destination.thread_id}}"
     end
   end
 

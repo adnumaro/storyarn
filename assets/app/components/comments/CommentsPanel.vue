@@ -10,10 +10,12 @@ const {
   state,
   embedded = false,
   ui,
+  draftStorageKey = null,
 } = defineProps<{
   state: CommentsPanelState;
   embedded?: boolean;
   ui: CommentUiConfig;
+  draftStorageKey?: string | null;
 }>();
 const live = useLive();
 const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
@@ -45,6 +47,7 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
     <CommentConversation
       :state="state"
       :ui="ui"
+      :draft-storage-key="draftStorageKey"
       embedded
       class="min-h-0 overflow-y-auto overscroll-contain p-3"
     />
@@ -71,6 +74,11 @@ const translationKey = (name: string) => `${ui.i18nPrefix}.${name}`;
         /></Button>
       </div>
     </template>
-    <CommentConversation v-if="state.presentation !== 'canvas'" :state="state" :ui="ui" />
+    <CommentConversation
+      v-if="state.presentation !== 'canvas'"
+      :state="state"
+      :ui="ui"
+      :draft-storage-key="draftStorageKey"
+    />
   </Sidebar>
 </template>

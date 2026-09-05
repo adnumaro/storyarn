@@ -937,6 +937,11 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :list_scene_threads
 
+  @doc "Lists project-owned review threads on a Sheet canvas, newest threads first."
+  defdelegate list_sheet_comment_threads(scope, project_id, sheet_id, opts \\ []),
+    to: Comments,
+    as: :list_sheet_threads
+
   @doc "Reads a discussion and its newest message page; cursor loads older messages."
   defdelegate get_comment_thread(scope, project_id, thread_id, opts \\ []),
     to: Comments,
@@ -956,6 +961,11 @@ defmodule Storyarn.Projects do
     to: Comments,
     as: :create_scene_canvas
 
+  @doc "Creates a conversation at a horizontal percentage and vertical document offset within a Sheet canvas."
+  defdelegate create_sheet_canvas_comment(scope, project_id, sheet_id, attrs),
+    to: Comments,
+    as: :create_sheet_canvas
+
   @doc "Moves a comment pin, preserving its source identity and checking the expected revision."
   defdelegate move_comment_thread(scope, project_id, thread_id, position, expected_revision),
     to: Comments,
@@ -966,6 +976,9 @@ defmodule Storyarn.Projects do
 
   @doc "Lists every open comment pin whose Scene canvas is currently available."
   defdelegate list_scene_comment_pins(scope, project_id, scene_id), to: Comments, as: :list_scene_pins
+
+  @doc "Lists every open comment pin whose Sheet canvas is currently available."
+  defdelegate list_sheet_comment_pins(scope, project_id, sheet_id), to: Comments, as: :list_sheet_pins
 
   defdelegate reply_to_comment_thread(scope, project_id, thread_id, attrs),
     to: Comments,
@@ -983,4 +996,6 @@ defmodule Storyarn.Projects do
   defdelegate unsubscribe_flow_comments(project_id, flow_id), to: Comments, as: :unsubscribe_flow
   defdelegate subscribe_scene_comments(scope, project_id, scene_id), to: Comments, as: :subscribe_scene
   defdelegate unsubscribe_scene_comments(project_id, scene_id), to: Comments, as: :unsubscribe_scene
+  defdelegate subscribe_sheet_comments(scope, project_id, sheet_id), to: Comments, as: :subscribe_sheet
+  defdelegate unsubscribe_sheet_comments(project_id, sheet_id), to: Comments, as: :unsubscribe_sheet
 end
