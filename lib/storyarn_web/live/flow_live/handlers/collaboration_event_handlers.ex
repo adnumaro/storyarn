@@ -11,7 +11,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
   import Phoenix.LiveView, only: [push_event: 3]
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
+  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
@@ -143,6 +145,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
     socket
     |> push_event("sequence_composition_history_invalidated", %{})
     |> refresh_selected_composition()
+    |> refresh_debug_graph()
   end
 
   defp refresh_selected_composition(socket) do
@@ -154,4 +157,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
         socket
     end
   end
+
+  defp refresh_debug_graph(
+         %{assigns: %{debug_panel_open: true, debug_state: %{current_flow_id: flow_id}, flow: %{id: flow_id}}} = socket
+       ) do
+    graph = flow_id |> Flows.load_runtime_graph() |> DebugExecutionHandlers.present_runtime_graph()
+
+    socket
+    |> assign(:debug_nodes, graph.nodes)
+    |> assign(:debug_connections, graph.connections)
+  end
+
+  defp refresh_debug_graph(socket), do: socket
 end

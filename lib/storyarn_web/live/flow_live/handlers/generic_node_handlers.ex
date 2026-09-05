@@ -19,6 +19,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
+  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.NodeHelpers
@@ -1302,7 +1303,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
         graph = Flows.load_runtime_graph(socket.assigns.flow.id)
         speakers_map = FormHelpers.player_speakers_map(socket.assigns.all_sheets)
 
-        maybe_refresh_selected_sequence_surfaces(socket, owner, graph, speakers_map)
+        socket
+        |> maybe_refresh_debug_composition_graph(graph)
+        |> maybe_refresh_selected_sequence_surfaces(owner, graph, speakers_map)
 
       _other ->
         socket
@@ -1346,6 +1349,19 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   end
 
   defp maybe_refresh_selected_sequence_surfaces(socket, _owner, _graph, _speakers_map), do: socket
+
+  defp maybe_refresh_debug_composition_graph(
+         %{assigns: %{debug_panel_open: true, debug_state: %{current_flow_id: flow_id}, flow: %{id: flow_id}}} = socket,
+         graph
+       ) do
+    presented = DebugExecutionHandlers.present_runtime_graph(graph)
+
+    socket
+    |> assign(:debug_nodes, presented.nodes)
+    |> assign(:debug_connections, presented.connections)
+  end
+
+  defp maybe_refresh_debug_composition_graph(socket, _graph), do: socket
 
   defp maybe_refresh_sequence_panel(socket, owner) do
     if socket.assigns[:editing_mode] == :sequence_config,

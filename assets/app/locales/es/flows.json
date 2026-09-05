@@ -267,6 +267,7 @@
       "tab_variables": "Variables",
       "tab_history": "Historial",
       "tab_path": "Ruta",
+      "tab_composition": "Composición",
       "choose_response": "Elige una respuesta:",
       "empty_response": "(vacío)",
       "condition_not_met": "Condición no cumplida",
@@ -321,7 +322,19 @@
       "no_options": "Sin opciones",
       "bool_true": "Sí",
       "bool_false": "No",
-      "bool_nil": "Sin valor"
+      "bool_nil": "Sin valor",
+      "composition_for": "Composición efectiva · {node}",
+      "composition_visual_layers": "Capas visuales",
+      "composition_audio_tracks": "Pistas de audio",
+      "composition_local": "Local",
+      "composition_inherited": "Heredada",
+      "composition_from": "Origen: {origin}",
+      "composition_removed": "Eliminada",
+      "composition_removed_by": "Eliminada por {origin}",
+      "composition_unknown_origin": "Origen desconocido",
+      "composition_no_visual_layers": "No hay capas visuales efectivas",
+      "composition_no_audio_tracks": "No hay pistas de audio efectivas",
+      "composition_unavailable": "Aún no hay una composición disponible de un speaker ejecutado."
     },
     "minimap": {
       "toggle": "Alternar minimapa",

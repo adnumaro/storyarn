@@ -7,6 +7,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.CommentHandlers
+  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
@@ -1662,11 +1663,45 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp flow_surface_props(assigns) do
+    presentation_node_id = debug_presentation_node_id(assigns)
+
     %{
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
-      stage: assigns.sequence_stage
+      stage: flow_surface_stage(assigns, presentation_node_id),
+      debug: flow_surface_debug(assigns, presentation_node_id)
     }
+  end
+
+  defp debug_presentation_node_id(%{debug_panel_open: true, debug_state: %{} = state} = assigns) do
+    DebugExecutionHandlers.presentation_node_id(state, assigns.debug_nodes)
+  end
+
+  defp debug_presentation_node_id(_assigns), do: nil
+
+  defp flow_surface_stage(%{debug_panel_open: true, debug_state: %{} = state} = assigns, presentation_node_id) do
+    SequencePresentation.stage(
+      presentation_node_id,
+      assigns.debug_nodes,
+      sequence_speakers_map(assigns),
+      assigns.project.id,
+      state,
+      SequencePresentation.locale_context(assigns)
+    )
+  end
+
+  defp flow_surface_stage(assigns, _presentation_node_id), do: assigns.sequence_stage
+
+  defp flow_surface_debug(assigns, presentation_node_id) do
+    assigns
+    |> flow_panels_debug()
+    |> Map.put(
+      :composition,
+      DebugExecutionHandlers.present_debug_composition(
+        presentation_node_id,
+        assigns.debug_nodes
+      )
+    )
   end
 
   defp load_sequence_stage(socket, %{type: type, id: node_id}) when type in ["sequence", "dialogue"] do
@@ -1701,7 +1736,6 @@ defmodule StoryarnWeb.FlowLive.Show do
   defp flow_panels_props(assigns) do
     %{
       versions: flow_panels_versions(assigns),
-      debug: flow_panels_debug(assigns),
       builder: flow_panels_builder(assigns),
       dialogue: flow_panels_dialogue(assigns),
       dialogueFullscreen: flow_panels_dialogue_fullscreen(assigns),

@@ -332,6 +332,122 @@ describe("FlowSequenceStage", () => {
     pauseSpy.mockRestore();
   });
 
+  it("keeps a shared composition preview playing when the presentation owner changes", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const track = {
+      id: "score:asset-7",
+      continuityKey: "score:asset-7",
+      trackKey: "score",
+      kind: "music",
+      url: "/score.mp3",
+      volume: 0.4,
+    };
+    const stage: ReadySequenceStage = {
+      ...editableStage(),
+      composition: { ...editableStage().composition, audioTracks: [track] },
+    };
+    const wrapper = mountStage(stage);
+    const preview = wrapper.get("[data-sequence-audio-preview]");
+
+    await preview.trigger("click");
+    await flushPromises();
+    const original = wrapper.get('[data-preview-track-key="score"]').element;
+    playSpy.mockClear();
+    pauseSpy.mockClear();
+
+    await wrapper.setProps({
+      stage: {
+        ...stage,
+        owner: { nodeId: 43, type: "dialogue", compositionSourceId: 10 },
+        intervention: { nodeId: 43, speakerName: "Bram", text: "Close it." },
+        composition: {
+          ...stage.composition,
+          audioTracks: [{ ...track }],
+        },
+      },
+    });
+    await flushPromises();
+
+    expect(wrapper.get('[data-preview-track-key="score"]').element).toBe(original);
+    expect(
+      wrapper.get("[data-sequence-audio-preview]").attributes("data-audio-preview-state"),
+    ).toBe("playing");
+    expect(playSpy).not.toHaveBeenCalled();
+    expect(pauseSpy).not.toHaveBeenCalled();
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
+  });
+
+  it("exposes separate voice, pause-all, and stop-all media controls", async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+    const stage: ReadySequenceStage = {
+      ...editableStage(),
+      voice: {
+        id: "dialogue-42:source",
+        continuityKey: "dialogue-42:source:asset-5",
+        available: true,
+        url: "/voice.mp3",
+      },
+      composition: {
+        ...editableStage().composition,
+        audioTracks: [
+          {
+            id: "rain:asset-8",
+            continuityKey: "rain:asset-8",
+            trackKey: "rain",
+            kind: "ambience",
+            url: "/rain.mp3",
+          },
+        ],
+      },
+    };
+    const wrapper = mountStage(stage);
+    const controls = wrapper.vm as unknown as {
+      pausePreviews: () => void;
+      stopPreviews: () => void;
+      stopVoicePreview: () => void;
+    };
+
+    await wrapper.get("[data-sequence-voice-preview]").trigger("click");
+    await wrapper.get("[data-sequence-audio-preview]").trigger("click");
+    await flushPromises();
+
+    const voice = wrapper.get(".player-dialogue-voice").element as HTMLAudioElement;
+    const ambience = wrapper.get('[data-preview-track-key="rain"]').element as HTMLAudioElement;
+    voice.currentTime = 5;
+    ambience.currentTime = 7;
+
+    controls.stopVoicePreview();
+    await wrapper.vm.$nextTick();
+    expect(voice.currentTime).toBe(0);
+    expect(ambience.currentTime).toBe(7);
+    expect(
+      wrapper.get("[data-sequence-audio-preview]").attributes("data-audio-preview-state"),
+    ).toBe("playing");
+
+    controls.pausePreviews();
+    await wrapper.vm.$nextTick();
+    expect(ambience.currentTime).toBe(7);
+    expect(
+      wrapper.get("[data-sequence-audio-preview]").attributes("data-audio-preview-state"),
+    ).toBe("paused");
+
+    voice.currentTime = 3;
+    ambience.currentTime = 4;
+    controls.stopPreviews();
+    expect(voice.currentTime).toBe(0);
+    expect(ambience.currentTime).toBe(0);
+    expect(pauseSpy).toHaveBeenCalled();
+
+    wrapper.unmount();
+    playSpy.mockRestore();
+    pauseSpy.mockRestore();
+  });
+
   it("renders the server error without stale visual layers", () => {
     const wrapper = mountStage({
       status: "error",
