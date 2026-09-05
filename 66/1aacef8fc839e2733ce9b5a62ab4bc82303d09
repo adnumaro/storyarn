@@ -1,0 +1,21 @@
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_67967a0d356927 53
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_6c0508851d19bc 48,63-64,149,154,166,194,200,210,215,220,366,383,399,404,409,414,502,504
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "661aacef8fc839e2733ce9b5a62ab4bc82303d09",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
