@@ -33,6 +33,7 @@ const live = useLive();
 const viewport = ref<HTMLElement | null>(null);
 const selectedLayerKey = ref<string | null>(null);
 const voicePreview = ref<InstanceType<typeof DialogueVoice> | null>(null);
+const audioPreviews = ref<Array<InstanceType<typeof SequenceAudioTrackPreview> | null>>([]);
 const voicePreviewPlaying = ref(false);
 const voicePreviewBlocked = ref(false);
 
@@ -121,9 +122,7 @@ const speakerInitials = computed(() => {
 watch(
   () => owner.value?.nodeId,
   () => {
-    voicePreview.value?.stop();
-    voicePreviewPlaying.value = false;
-    voicePreviewBlocked.value = false;
+    stopVoicePreview();
     cancelPointerInteraction();
     clearSelection();
   },
@@ -199,9 +198,32 @@ function openInspector() {
 }
 
 function setContentLocale(locale: string) {
-  voicePreview.value?.stop();
+  stopVoicePreview();
   live.pushEvent("set_sequence_content_locale", { locale });
 }
+
+function stopVoicePreview(): void {
+  voicePreview.value?.stop();
+  voicePreviewPlaying.value = false;
+  voicePreviewBlocked.value = false;
+}
+
+function pausePreviews(): void {
+  voicePreview.value?.pause();
+  voicePreviewPlaying.value = false;
+  for (const preview of audioPreviews.value) preview?.pause();
+}
+
+function stopPreviews(): void {
+  stopVoicePreview();
+  for (const preview of audioPreviews.value) preview?.stop();
+}
+
+defineExpose({
+  pausePreviews,
+  stopPreviews,
+  stopVoicePreview,
+});
 
 function toggleVoicePreview() {
   if (voicePreviewPlaying.value) {
@@ -350,7 +372,7 @@ function cancelPointerInteraction() {
 }
 
 onUnmounted(() => {
-  voicePreview.value?.stop();
+  stopPreviews();
   cancelPointerInteraction();
 });
 </script>
@@ -378,7 +400,8 @@ onUnmounted(() => {
       >
         <SequenceAudioTrackPreview
           v-for="track in previewableAudioTracks"
-          :key="`${owner?.nodeId ?? 'none'}:${audioTrackKey(track)}`"
+          ref="audioPreviews"
+          :key="audioTrackKey(track)"
           :track="track"
         />
       </div>

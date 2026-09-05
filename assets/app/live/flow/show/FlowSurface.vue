@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { useLiveVue } from "live_vue";
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
@@ -39,6 +39,7 @@ interface FlowDebugSurface {
   open: FlowDebugPanelProps["open"];
   state: FlowDebugPanelProps["state"];
   nodes: FlowDebugPanelProps["nodes"];
+  composition?: FlowDebugPanelProps["composition"];
   controls: FlowDebugPanelProps["controls"];
 }
 
@@ -61,6 +62,7 @@ const surface = computed(
 const emptyStage: SequenceStageState = { status: "empty" };
 const stage = computed(() => surface.value.stage ?? emptyStage);
 const debugOpen = computed(() => Boolean(surface.value.debug?.open && surface.value.debug.state));
+const sequenceStage = ref<InstanceType<typeof FlowSequenceStage> | null>(null);
 const comments = computed(() => {
   const canvas = surface.value.canvas;
   if (!canvas.comments) return null;
@@ -70,11 +72,48 @@ const comments = computed(() => {
     focusThreadId: canvas.commentFocusThreadId ?? null,
   };
 });
+
+type DebugPlaybackAction = "step" | "back" | "choice" | "pause" | "reset" | "stop";
+
+function handleDebugPlaybackAction(action: DebugPlaybackAction): void {
+  if (action === "pause") {
+    sequenceStage.value?.pausePreviews();
+    return;
+  }
+
+  if (action === "reset" || action === "stop") {
+    sequenceStage.value?.stopPreviews();
+    return;
+  }
+
+  sequenceStage.value?.stopVoicePreview();
+}
+
+watch(
+  () => surface.value.debug?.state?.step_count,
+  (stepCount, previousStepCount) => {
+    if (stepCount != null && previousStepCount != null && stepCount !== previousStepCount) {
+      sequenceStage.value?.stopVoicePreview();
+    }
+  },
+);
+
+watch(
+  () => surface.value.debug?.controls.autoPlaying,
+  (autoPlaying, wasAutoPlaying) => {
+    if (wasAutoPlaying && !autoPlaying) sequenceStage.value?.pausePreviews();
+  },
+);
+
+watch(debugOpen, (open, wasOpen) => {
+  if (wasOpen && !open) sequenceStage.value?.stopPreviews();
+});
 </script>
 
 <template>
   <div class="h-full min-h-0 relative flex flex-col bg-background">
     <FlowSequenceStage
+      ref="sequenceStage"
       :stage="stage"
       :can-edit="surface.dock.canEdit && !surface.canvas.readonly"
     />
@@ -121,7 +160,9 @@ const comments = computed(() => {
           :open="surface.debug.open"
           :state="surface.debug.state"
           :nodes="surface.debug.nodes"
+          :composition="surface.debug.composition"
           :controls="surface.debug.controls"
+          @playback-action="handleDebugPlaybackAction"
         />
       </div>
     </div>

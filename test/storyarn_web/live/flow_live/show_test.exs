@@ -38,7 +38,8 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
       assert surface.props["surface"]["dock"]["flowId"] == flow.id
       assert surface.props["surface"]["stage"] == %{"status" => "empty"}
-      assert panels.props["panels"]["debug"]["open"] == false
+      assert surface.props["surface"]["debug"]["open"] == false
+      refute Map.has_key?(panels.props["panels"], "debug")
     end
 
     test "selecting a dialogue resolves its inherited composition in the Sequence stage",
@@ -81,6 +82,126 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert stage["intervention"]["text"] == "<p>The door opens.</p>"
       assert [%{"label" => "Room", "origin" => origin}] = stage["composition"]["layers"]
       assert origin == %{"inherited" => true, "nodeId" => sequence.id, "sequenceId" => sequence.id}
+    end
+
+    test "debug Stage and composition share the branch speaker through convergence, back, and reset",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Debug presentation flow"})
+      full_flow = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(full_flow.nodes, &(&1.type == "entry"))
+      exit_node = Enum.find(full_flow.nodes, &(&1.type == "exit"))
+
+      first =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p>Before condition</p>", "responses" => []}
+        })
+
+      condition =
+        node_fixture(flow, %{
+          type: "condition",
+          data: %{"condition" => %{"logic" => "all", "rules" => []}}
+        })
+
+      true_branch =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: first.id,
+          data: %{"text" => "<p>True branch</p>", "responses" => []}
+        })
+
+      false_branch =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: first.id,
+          data: %{"text" => "<p>False branch</p>", "responses" => []}
+        })
+
+      convergence = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "join"}})
+      first_asset = image_asset_fixture(project, user, %{filename: "before-condition.png"})
+      branch_asset = image_asset_fixture(project, user, %{filename: "true-branch.png"})
+
+      {:ok, first_layer} =
+        Flows.create_sequence_visual_layer(first.id, %{
+          asset_id: first_asset.id,
+          kind: "backdrop",
+          label: "Before"
+        })
+
+      {:ok, branch_layer} =
+        Flows.create_sequence_visual_layer(true_branch.id, %{
+          asset_id: branch_asset.id,
+          kind: "character",
+          label: "True branch"
+        })
+
+      connection_fixture(flow, entry, first)
+      connection_fixture(flow, first, condition)
+      connection_fixture(flow, condition, true_branch, %{source_pin: "true"})
+      connection_fixture(flow, condition, false_branch, %{source_pin: "false"})
+      connection_fixture(flow, true_branch, convergence)
+      connection_fixture(flow, false_branch, convergence)
+      connection_fixture(flow, convergence, exit_node)
+
+      source_language_fixture(project, %{locale_code: "en", name: "English"})
+      language_fixture(project, %{locale_code: "es", name: "Spanish"})
+      localize_debug_dialogue(project.id, first, "<p>Antes de la condición</p>")
+      localize_debug_dialogue(project.id, true_branch, "<p>Rama verdadera</p>")
+
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+      render_click(view, "set_sequence_content_locale", %{"locale" => "es"})
+      render_click(view, "debug_start", %{})
+
+      surface = flow_surface(view)
+      assert surface["stage"] == %{"status" => "empty"}
+      assert surface["debug"]["composition"] == nil
+
+      render_click(view, "debug_step", %{})
+      assert_debug_presentation(view, first.id, "<p>Antes de la condición</p>", [first_layer.layer_key])
+
+      render_click(view, "debug_step", %{})
+      surface = flow_surface(view)
+      assert surface["debug"]["state"]["current_node_id"] == condition.id
+      assert_debug_presentation(view, first.id, "<p>Antes de la condición</p>", [first_layer.layer_key])
+
+      render_click(view, "debug_step", %{})
+
+      assert_debug_presentation(
+        view,
+        true_branch.id,
+        "<p>Rama verdadera</p>",
+        [first_layer.layer_key, branch_layer.layer_key]
+      )
+
+      render_click(view, "debug_step", %{})
+      surface = flow_surface(view)
+      assert surface["debug"]["state"]["current_node_id"] == convergence.id
+
+      assert_debug_presentation(
+        view,
+        true_branch.id,
+        "<p>Rama verdadera</p>",
+        [first_layer.layer_key, branch_layer.layer_key]
+      )
+
+      render_click(view, "debug_step_back", %{})
+
+      assert_debug_presentation(
+        view,
+        true_branch.id,
+        "<p>Rama verdadera</p>",
+        [first_layer.layer_key, branch_layer.layer_key]
+      )
+
+      render_click(view, "debug_step_back", %{})
+      assert_debug_presentation(view, first.id, "<p>Antes de la condición</p>", [first_layer.layer_key])
+
+      render_click(view, "debug_reset", %{})
+      surface = flow_surface(view)
+      assert surface["stage"] == %{"status" => "empty"}
+      assert surface["debug"]["composition"] == nil
     end
 
     test "opens the composition inspector for the owner requested by the Sequence stage",
@@ -914,6 +1035,44 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       restored = Flows.get_flow(project.id, flow.id)
       assert restored.name == "History Flow"
     end
+  end
+
+  defp flow_surface(view) do
+    view
+    |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+    |> then(& &1.props["surface"])
+  end
+
+  defp assert_debug_presentation(view, node_id, translated_text, expected_layer_keys) do
+    surface = flow_surface(view)
+    stage = surface["stage"]
+    composition = surface["debug"]["composition"]
+
+    assert stage["owner"]["nodeId"] == node_id
+    assert stage["contentLocale"] == "es"
+    assert stage["intervention"]["text"] == translated_text
+    assert composition["presentationNodeId"] == node_id
+
+    stage_keys = stage["composition"]["layers"] |> Enum.map(& &1["key"]) |> Enum.sort()
+    debug_keys = composition["visualLayers"] |> Enum.map(& &1["key"]) |> Enum.sort()
+
+    assert stage_keys == Enum.sort(expected_layer_keys)
+    assert debug_keys == stage_keys
+  end
+
+  defp localize_debug_dialogue(project_id, dialogue, translated_text) do
+    source_text = dialogue.data["text"]
+    source_hash = :sha256 |> :crypto.hash(source_text) |> Base.encode16(case: :lower)
+
+    localized_text_fixture(project_id, %{
+      source_id: dialogue.id,
+      source_field: "text",
+      source_text: source_text,
+      source_text_hash: source_hash,
+      translated_source_hash: source_hash,
+      translated_text: translated_text,
+      status: "draft"
+    })
   end
 
   defp mount_flow(conn, url) do

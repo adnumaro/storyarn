@@ -25,6 +25,7 @@ import {
   LogIn,
   LogOut,
   MessageSquare,
+  Music,
   Pause,
   Play,
   RotateCcw,
@@ -33,9 +34,11 @@ import {
   StickyNote,
   TriangleAlert,
   Undo2,
+  Volume2,
   Zap,
 } from "@lucide/vue";
 import { computed, ref } from "vue";
+import { useI18n } from "vue-i18n";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
@@ -171,6 +174,48 @@ interface DebugNodeInfo {
   label?: string;
   type: string;
   data?: Record<string, unknown>;
+  sequence_config?: { name?: string } | null;
+}
+
+interface DebugCompositionOverride {
+  field: string;
+  nodeId: string | number | null;
+}
+
+interface DebugCompositionOrigin {
+  nodeId: string | number | null;
+  sequenceId?: string | number | null;
+  inherited?: boolean;
+}
+
+interface DebugCompositionItem {
+  id: string | number;
+  key?: string | number;
+  trackKey?: string | number;
+  kind: string;
+  label?: string | null;
+  filename?: string | null;
+  sequenceId?: string | number | null;
+  origin?: DebugCompositionOrigin;
+  lastChangedByNodeId?: string | number | null;
+  removedByNodeId?: string | number | null;
+  overriddenProperties?: DebugCompositionOverride[];
+  removed?: boolean;
+}
+
+interface DebugCompositionDiagnostic {
+  code: string;
+  nodeId?: string | number | null;
+  severity?: string;
+}
+
+interface DebugComposition {
+  presentationNodeId?: string | number | null;
+  visualLayers: DebugCompositionItem[];
+  removedVisualLayers: DebugCompositionItem[];
+  audioTracks: DebugCompositionItem[];
+  removedAudioTracks: DebugCompositionItem[];
+  diagnostics: DebugCompositionDiagnostic[];
 }
 
 interface DebugControls {
@@ -188,6 +233,7 @@ const {
   embedded = false,
   state = null,
   nodes = {},
+  composition = null,
   controls = {
     activeTab: "console",
     autoPlaying: false,
@@ -202,10 +248,16 @@ const {
   embedded?: boolean;
   state: DebugState | null;
   nodes: Record<string, DebugNodeInfo>;
+  composition?: DebugComposition | null;
   controls: DebugControls;
 }>();
 
+const emit = defineEmits<{
+  "playback-action": [action: "step" | "back" | "choice" | "pause" | "reset" | "stop"];
+}>();
+
 const live = useLive();
+const { t } = useI18n();
 const { height, onPointerDown } = useVerticalResize({
   initial: 280,
   min: 120,
@@ -233,6 +285,10 @@ const consoleEntries = computed<ConsoleEntry[]>(() =>
 );
 const historyEntries = computed<HistoryEntry[]>(() =>
   state?.history ? [...state.history].reverse() : [],
+);
+const debugComposition = computed(() => composition);
+const compositionNodeId = computed(
+  () => debugComposition.value?.presentationNodeId ?? state?.current_node_id,
 );
 
 const breakpointSet = computed<Set<number>>(() => new Set(state?.breakpoints ?? []));
@@ -302,6 +358,7 @@ const NODE_TYPE_ICON: Record<string, typeof Circle> = {
   jump: LogOut,
   subflow: Box,
   annotation: StickyNote,
+  sequence: Layers,
 };
 
 function pathIcon(type: string) {
@@ -457,6 +514,51 @@ function cleanResponseText(text: unknown): string | null {
   return stripHtml(text, 40);
 }
 
+function sameEntityId(
+  left: string | number | null | undefined,
+  right: string | number | null | undefined,
+) {
+  if (left == null || right == null) return false;
+  return String(left) === String(right);
+}
+
+function debugNodeLabel(nodeId: string | number | null | undefined): string {
+  if (nodeId == null) return t("flows.debug.composition_unknown_origin");
+
+  const node = nodes[String(nodeId)];
+  const name = node?.sequence_config?.name || stripHtml(node?.data?.text, 28);
+  return name || `#${nodeId}`;
+}
+
+function visualLayerLabel(layer: DebugCompositionItem): string {
+  return layer.label || t(`flows.sequences.visual_layers.kinds.${layer.kind}`);
+}
+
+function audioTrackLabel(track: DebugCompositionItem): string {
+  return track.filename || t(`flows.sequences.tracks.${track.kind}`);
+}
+
+function debugPropertyLabel(field: string): string {
+  const key = `flows.sequences.config_panel.fields.${field}`;
+  const translated = t(key);
+  return translated === key ? field.replaceAll("_", " ") : translated;
+}
+
+function debugDiagnosticLabel(code: string): string {
+  const key = `flows.sequences.config_panel.diagnostic_messages.${code}`;
+  const translated = t(key);
+
+  return translated === key
+    ? t("flows.sequences.config_panel.diagnostic_messages.fallback")
+    : translated;
+}
+
+function compositionOriginKey(item: DebugCompositionItem): string {
+  return sameEntityId(item.origin?.nodeId, compositionNodeId.value)
+    ? "flows.debug.composition_local"
+    : "flows.debug.composition_inherited";
+}
+
 const LEVEL_ICON: Record<ConsoleLevel, typeof Info> = {
   info: Info,
   warning: TriangleAlert,
@@ -527,18 +629,23 @@ function statusKey(status: DebugStatus): string | null {
 }
 
 function step() {
+  emit("playback-action", "step");
   live.pushEvent("debug_step", {});
 }
 function stepBack() {
+  emit("playback-action", "back");
   live.pushEvent("debug_step_back", {});
 }
 function reset() {
+  emit("playback-action", "reset");
   live.pushEvent("debug_reset", {});
 }
 function stop() {
+  emit("playback-action", "stop");
   live.pushEvent("debug_stop", {});
 }
 function togglePlay() {
+  if (controls.autoPlaying) emit("playback-action", "pause");
   live.pushEvent(controls.autoPlaying ? "debug_pause" : "debug_play", {});
 }
 function setSpeed(val: number[] | undefined): void {
@@ -546,6 +653,7 @@ function setSpeed(val: number[] | undefined): void {
   live.pushEvent("debug_set_speed", { speed: val[0] });
 }
 function selectChoice(choiceId: string | number): void {
+  emit("playback-action", "choice");
   live.pushEvent("debug_choose_response", { id: choiceId });
 }
 function switchTab(tab: string | number): void {
@@ -603,6 +711,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="controls.autoPlaying ? $t('flows.debug.pause') : $t('flows.debug.auto_play')"
+        data-debug-toggle-play
         @click="togglePlay"
       >
         <Pause v-if="controls.autoPlaying" class="size-3.5" />
@@ -617,6 +726,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.step_key')"
+        data-debug-step
         @click="step"
       >
         <Play class="size-3.5" />
@@ -628,6 +738,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.step_back_key')"
+        data-debug-step-back
         @click="stepBack"
       >
         <Undo2 class="size-3.5" />
@@ -639,6 +750,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.reset_key')"
+        data-debug-reset
         @click="reset"
       >
         <RotateCcw class="size-3.5" />
@@ -652,6 +764,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7 text-destructive"
         :title="$t('flows.debug.stop')"
+        data-debug-stop
         @click="stop"
       >
         <Square class="size-3.5" />
@@ -759,6 +872,9 @@ function continuePastLimit() {
         <TabsTrigger value="variables" class="text-xs">
           {{ $t("flows.debug.tab_variables") }}
         </TabsTrigger>
+        <TabsTrigger value="composition" class="text-xs">
+          {{ $t("flows.debug.tab_composition") }}
+        </TabsTrigger>
         <TabsTrigger value="history" class="text-xs">
           {{ $t("flows.debug.tab_history") }}
         </TabsTrigger>
@@ -829,6 +945,7 @@ function continuePastLimit() {
                 "
                 :disabled="!choice.valid"
                 :title="!choice.valid ? $t('flows.debug.condition_not_met') : undefined"
+                :data-debug-choice="choice.id"
                 @click="selectChoice(choice.id)"
               >
                 {{ cleanResponseText(choice.text) ?? $t("flows.debug.empty_response") }}
@@ -1092,6 +1209,234 @@ function continuePastLimit() {
           class="flex items-center justify-center h-24 text-muted-foreground/50"
         >
           {{ $t("flows.debug.no_matching_vars") }}
+        </div>
+      </TabsContent>
+
+      <!-- Effective static composition -->
+      <TabsContent
+        value="composition"
+        class="flex-1 min-h-0 overflow-y-auto text-xs"
+        data-debug-composition
+      >
+        <div v-if="debugComposition" class="space-y-3 p-3">
+          <div class="flex items-center gap-2">
+            <Layers class="size-3.5 text-muted-foreground" aria-hidden="true" />
+            <p class="font-medium">
+              {{ $t("flows.debug.composition_for", { node: debugNodeLabel(compositionNodeId) }) }}
+            </p>
+          </div>
+
+          <div
+            v-if="debugComposition.diagnostics.length > 0"
+            class="space-y-1 rounded-md border border-amber-500/30 bg-amber-500/10 p-2"
+            data-debug-composition-diagnostics
+          >
+            <p
+              v-for="diagnostic in debugComposition.diagnostics"
+              :key="`${diagnostic.code}:${diagnostic.nodeId ?? ''}`"
+              class="text-amber-700 dark:text-amber-300"
+            >
+              {{ debugDiagnosticLabel(diagnostic.code) }}
+              <span v-if="diagnostic.nodeId"> · #{{ diagnostic.nodeId }}</span>
+            </p>
+          </div>
+
+          <div class="grid grid-cols-1 gap-3 lg:grid-cols-2">
+            <section class="min-w-0 space-y-1.5" data-debug-composition-visuals>
+              <div class="flex items-center gap-1.5 text-muted-foreground">
+                <Layers class="size-3.5" aria-hidden="true" />
+                <h3 class="font-medium text-foreground">
+                  {{ $t("flows.debug.composition_visual_layers") }}
+                </h3>
+                <span class="tabular-nums">
+                  {{
+                    debugComposition.visualLayers.length +
+                    debugComposition.removedVisualLayers.length
+                  }}
+                </span>
+              </div>
+
+              <article
+                v-for="layer in debugComposition.visualLayers"
+                :key="String(layer.key ?? layer.id)"
+                class="rounded-md border border-border bg-muted/20 px-2.5 py-2"
+                :data-debug-layer-key="layer.key ?? layer.id"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <Badge variant="outline" class="shrink-0 px-1.5 py-0 text-[9px]">
+                    {{ layer.kind }}
+                  </Badge>
+                  <span class="min-w-0 flex-1 truncate font-medium">
+                    {{ visualLayerLabel(layer) }}
+                  </span>
+                  <Badge variant="secondary" class="shrink-0 px-1.5 py-0 text-[9px]">
+                    {{ $t(compositionOriginKey(layer)) }}
+                  </Badge>
+                </div>
+                <p class="mt-1 truncate text-[10px] text-muted-foreground">
+                  {{
+                    $t("flows.debug.composition_from", {
+                      origin: debugNodeLabel(layer.origin?.nodeId),
+                    })
+                  }}
+                </p>
+                <div
+                  v-if="layer.overriddenProperties?.length"
+                  class="mt-1.5 flex flex-wrap gap-1"
+                  data-debug-overrides
+                >
+                  <span
+                    v-for="property in layer.overriddenProperties"
+                    :key="`${property.field}:${property.nodeId}`"
+                    class="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary"
+                    :data-debug-property="property.field"
+                  >
+                    {{ debugPropertyLabel(property.field) }} · {{ debugNodeLabel(property.nodeId) }}
+                  </span>
+                </div>
+              </article>
+
+              <article
+                v-for="layer in debugComposition.removedVisualLayers"
+                :key="`removed:${String(layer.key ?? layer.id)}`"
+                class="rounded-md border border-dashed border-destructive/30 bg-destructive/5 px-2.5 py-2"
+                :data-debug-removed-layer-key="layer.key ?? layer.id"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <CircleX class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
+                  <span class="min-w-0 flex-1 truncate font-medium">
+                    {{ visualLayerLabel(layer) }}
+                  </span>
+                  <Badge variant="outline" class="shrink-0 px-1.5 py-0 text-[9px] text-destructive">
+                    {{ $t("flows.debug.composition_removed") }}
+                  </Badge>
+                </div>
+                <p class="mt-1 truncate text-[10px] text-muted-foreground">
+                  {{
+                    $t("flows.debug.composition_from", {
+                      origin: debugNodeLabel(layer.origin?.nodeId),
+                    })
+                  }}
+                  ·
+                  {{
+                    $t("flows.debug.composition_removed_by", {
+                      origin: debugNodeLabel(layer.removedByNodeId),
+                    })
+                  }}
+                </p>
+              </article>
+
+              <p
+                v-if="
+                  debugComposition.visualLayers.length === 0 &&
+                  debugComposition.removedVisualLayers.length === 0
+                "
+                class="rounded-md border border-dashed border-border px-3 py-4 text-center text-muted-foreground"
+              >
+                {{ $t("flows.debug.composition_no_visual_layers") }}
+              </p>
+            </section>
+
+            <section class="min-w-0 space-y-1.5" data-debug-composition-audio>
+              <div class="flex items-center gap-1.5 text-muted-foreground">
+                <Music class="size-3.5" aria-hidden="true" />
+                <h3 class="font-medium text-foreground">
+                  {{ $t("flows.debug.composition_audio_tracks") }}
+                </h3>
+                <span class="tabular-nums">
+                  {{
+                    debugComposition.audioTracks.length + debugComposition.removedAudioTracks.length
+                  }}
+                </span>
+              </div>
+
+              <article
+                v-for="track in debugComposition.audioTracks"
+                :key="String(track.trackKey ?? track.id)"
+                class="rounded-md border border-border bg-muted/20 px-2.5 py-2"
+                :data-debug-track-key="track.trackKey ?? track.id"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <Volume2 class="size-3.5 shrink-0 text-muted-foreground" aria-hidden="true" />
+                  <span class="min-w-0 flex-1 truncate font-medium">
+                    {{ audioTrackLabel(track) }}
+                  </span>
+                  <Badge variant="secondary" class="shrink-0 px-1.5 py-0 text-[9px]">
+                    {{ $t(compositionOriginKey(track)) }}
+                  </Badge>
+                </div>
+                <p class="mt-1 truncate text-[10px] text-muted-foreground">
+                  {{
+                    $t("flows.debug.composition_from", {
+                      origin: debugNodeLabel(track.origin?.nodeId),
+                    })
+                  }}
+                </p>
+                <div
+                  v-if="track.overriddenProperties?.length"
+                  class="mt-1.5 flex flex-wrap gap-1"
+                  data-debug-overrides
+                >
+                  <span
+                    v-for="property in track.overriddenProperties"
+                    :key="`${property.field}:${property.nodeId}`"
+                    class="rounded bg-primary/10 px-1.5 py-0.5 text-[9px] text-primary"
+                    :data-debug-property="property.field"
+                  >
+                    {{ debugPropertyLabel(property.field) }} · {{ debugNodeLabel(property.nodeId) }}
+                  </span>
+                </div>
+              </article>
+
+              <article
+                v-for="track in debugComposition.removedAudioTracks"
+                :key="`removed:${String(track.trackKey ?? track.id)}`"
+                class="rounded-md border border-dashed border-destructive/30 bg-destructive/5 px-2.5 py-2"
+                :data-debug-removed-track-key="track.trackKey ?? track.id"
+              >
+                <div class="flex min-w-0 items-center gap-2">
+                  <CircleX class="size-3.5 shrink-0 text-destructive" aria-hidden="true" />
+                  <span class="min-w-0 flex-1 truncate font-medium">
+                    {{ audioTrackLabel(track) }}
+                  </span>
+                  <Badge variant="outline" class="shrink-0 px-1.5 py-0 text-[9px] text-destructive">
+                    {{ $t("flows.debug.composition_removed") }}
+                  </Badge>
+                </div>
+                <p class="mt-1 truncate text-[10px] text-muted-foreground">
+                  {{
+                    $t("flows.debug.composition_from", {
+                      origin: debugNodeLabel(track.origin?.nodeId),
+                    })
+                  }}
+                  ·
+                  {{
+                    $t("flows.debug.composition_removed_by", {
+                      origin: debugNodeLabel(track.removedByNodeId),
+                    })
+                  }}
+                </p>
+              </article>
+
+              <p
+                v-if="
+                  debugComposition.audioTracks.length === 0 &&
+                  debugComposition.removedAudioTracks.length === 0
+                "
+                class="rounded-md border border-dashed border-border px-3 py-4 text-center text-muted-foreground"
+              >
+                {{ $t("flows.debug.composition_no_audio_tracks") }}
+              </p>
+            </section>
+          </div>
+        </div>
+
+        <div
+          v-else
+          class="flex h-24 items-center justify-center px-4 text-center text-muted-foreground/70"
+          data-debug-composition-unavailable
+        >
+          {{ $t("flows.debug.composition_unavailable") }}
         </div>
       </TabsContent>
 

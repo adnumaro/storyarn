@@ -3,9 +3,11 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
   import Phoenix.LiveViewTest
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
 
+  alias Storyarn.Flows
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Repo
 
@@ -493,7 +495,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       render_click(view, "node_selected", %{"id" => dialogue.id})
 
       {:ok, _updated_dialogue, _meta} =
-        Storyarn.Flows.update_node_data(
+        Flows.update_node_data(
           dialogue,
           Map.put(dialogue.data, "text", "<p>After remote edit</p>")
         )
@@ -519,6 +521,65 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
 
       assert stage["owner"]["nodeId"] == dialogue.id
       assert stage["intervention"]["text"] == "<p>After remote edit</p>"
+    end
+
+    test "refreshes the active debug composition after a remote sequence edit", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Remote debug composition"})
+      full_flow = Flows.get_flow!(project.id, flow.id)
+      entry = Enum.find(full_flow.nodes, &(&1.type == "entry"))
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "<p>Debug me</p>", "responses" => []}
+        })
+
+      asset = image_asset_fixture(project, user)
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(dialogue.id, %{
+          asset_id: asset.id,
+          kind: "character",
+          label: "Before remote edit"
+        })
+
+      connection_fixture(flow, entry, dialogue)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      load_flow(view)
+      render_click(view, "debug_start", %{})
+      render_click(view, "debug_step", %{})
+
+      composition =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["debug"]["composition"])
+
+      assert [%{"label" => "Before remote edit"}] = composition["visualLayers"]
+
+      assert {:ok, _layer} =
+               Flows.update_sequence_visual_layer(layer, %{"label" => "After remote edit"})
+
+      send(
+        view.pid,
+        {:remote_change, :sequence_visual_layer_changed, %{sequence_id: dialogue.id}}
+      )
+
+      composition =
+        view
+        |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+        |> then(& &1.props["surface"]["debug"]["composition"])
+
+      assert [%{"label" => "After remote edit"}] = composition["visualLayers"]
     end
 
     test "handles node_added from another user", %{conn: conn, user: user} do
@@ -783,7 +844,7 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       html = render_click(view, "delete_node", %{"id" => node.id})
 
       assert is_binary(html)
-      assert Storyarn.Flows.get_node!(flow.id, node.id)
+      assert Flows.get_node!(flow.id, node.id)
     end
   end
 end

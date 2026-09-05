@@ -93,6 +93,11 @@ function togglePlayback(): void {
   }
 }
 
+defineExpose({
+  pause: pauseTrack,
+  stop: stopTrack,
+});
+
 watch([() => track.continuityKey ?? track.continuity_key ?? track.id, () => track.url], stopTrack);
 
 watch(

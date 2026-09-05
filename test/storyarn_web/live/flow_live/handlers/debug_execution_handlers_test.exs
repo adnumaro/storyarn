@@ -6,8 +6,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
   import Storyarn.ProjectsFixtures
 
   alias Phoenix.LiveView.Socket
+  alias Storyarn.Flows
   alias Storyarn.Flows.DebugSessionStore
   alias Storyarn.Flows.Evaluator.Engine
+  alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
 
@@ -63,8 +66,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
 
   defp debug_panel(view) do
     view
-    |> LiveVue.Test.get_vue(name: "live/flow/show/FlowPanels")
-    |> then(& &1.props["panels"]["debug"])
+    |> LiveVue.Test.get_vue(name: "live/flow/show/FlowSurface")
+    |> then(& &1.props["surface"]["debug"])
   end
 
   # ===========================================================================
@@ -275,6 +278,61 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       {:noreply, result} = DebugExecutionHandlers.handle_debug_step_back(socket)
 
       assert result.assigns.debug_state.current_node_id == 1
+      refute result.redirected
+    end
+
+    test "reloads the parent graph and navigates when stepping back from a child flow" do
+      project = Repo.preload(project_fixture(), :workspace)
+      parent_flow = flow_fixture(project, %{name: "Parent debug flow"})
+      child_flow = flow_fixture(project, %{name: "Child debug flow"})
+
+      subflow =
+        node_fixture(parent_flow, %{
+          type: "subflow",
+          data: %{"referenced_flow_id" => child_flow.id}
+        })
+
+      parent_graph = Flows.load_runtime_graph(parent_flow.id)
+
+      state =
+        %{}
+        |> Engine.init(subflow.id)
+        |> Map.put(:current_flow_id, parent_flow.id)
+
+      assert {:navigate, child_state, child_graph, child_flow_id} =
+               Flows.debug_step(
+                 state,
+                 parent_graph.nodes,
+                 parent_graph.connections,
+                 parent_flow.name
+               )
+
+      assert child_flow_id == child_flow.id
+      session_id = "debug-step-back-#{System.unique_integer([:positive])}"
+      user_id = System.unique_integer([:positive])
+
+      socket =
+        build_socket(%{
+          current_scope: %{user: %{id: user_id}},
+          project: project,
+          workspace: project.workspace,
+          flow: child_flow,
+          debug_session_id: session_id,
+          debug_state: child_state,
+          debug_nodes: DebugExecutionHandlers.present_runtime_graph(child_graph).nodes,
+          debug_connections: child_graph.connections
+        })
+
+      {:noreply, result} = DebugExecutionHandlers.handle_debug_step_back(socket)
+
+      assert result.redirected
+      assert result.assigns.debug_state.current_flow_id == parent_flow.id
+      assert result.assigns.debug_state.current_node_id == subflow.id
+      assert Map.has_key?(result.assigns.debug_nodes, subflow.id)
+
+      stored = DebugSessionStore.take({:debug, user_id, project.id, session_id})
+      assert stored.debug_state.current_flow_id == parent_flow.id
+      assert Map.has_key?(stored.debug_nodes, subflow.id)
     end
 
     test "does nothing when no history (no snapshots)" do
@@ -977,6 +1035,181 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
     end
   end
 
+  describe "presentation_node_id/2" do
+    test "keeps the speaker from the executed Condition branch through convergence" do
+      nodes = %{
+        10 => node(10, "dialogue", %{"text" => "Left"}),
+        20 => node(20, "dialogue", %{"text" => "Right"}),
+        30 => node(30, "condition"),
+        40 => node(40, "hub")
+      }
+
+      assert DebugExecutionHandlers.presentation_node_id(
+               %{current_node_id: 10, execution_path: [10, 30]},
+               nodes
+             ) == 10
+
+      assert DebugExecutionHandlers.presentation_node_id(
+               %{current_node_id: 20, execution_path: [20, 30]},
+               nodes
+             ) == 20
+
+      assert DebugExecutionHandlers.presentation_node_id(
+               %{current_node_id: 40, execution_path: [40, 10, 30]},
+               nodes
+             ) == 10
+
+      assert DebugExecutionHandlers.presentation_node_id(
+               %{"current_node_id" => "40", "execution_path" => ["40", "20", "30"]},
+               nodes
+             ) == 20
+    end
+
+    test "returns nil after reset when no speaker has executed" do
+      nodes = %{30 => node(30, "condition"), 40 => node(40, "hub")}
+      state = Engine.init(%{}, 30)
+
+      assert DebugExecutionHandlers.presentation_node_id(state, nodes) == nil
+    end
+  end
+
+  describe "present_debug_composition/2" do
+    test "serializes effective layers, tracks, overrides, origins, and tombstones per owner" do
+      base = %{
+        id: 1,
+        type: "sequence",
+        data: %{},
+        parent_id: nil,
+        composition_source_id: nil,
+        sequence_config: %{name: "Base", width: 16, height: 9},
+        sequence_visual_layers: [
+          %{
+            id: 11,
+            layer_key: "hero",
+            overridden_fields: SequenceVisualLayer.property_fields(),
+            removed: false,
+            asset_id: 101,
+            kind: "character",
+            label: "Hero",
+            opacity: 1.0,
+            url: "/hero.png"
+          },
+          %{
+            id: 12,
+            layer_key: "room",
+            overridden_fields: SequenceVisualLayer.property_fields(),
+            removed: false,
+            asset_id: 102,
+            kind: "backdrop",
+            label: "Room",
+            url: "/room.png"
+          }
+        ],
+        sequence_tracks: [
+          %{
+            id: 13,
+            track_key: "theme",
+            is_override: false,
+            overridden_fields: SequenceTrack.property_fields(),
+            removed: false,
+            asset_id: 201,
+            kind: "music",
+            position: 0,
+            volume: 1.0,
+            url: "/theme.mp3"
+          },
+          %{
+            id: 14,
+            track_key: "wind",
+            is_override: false,
+            overridden_fields: SequenceTrack.property_fields(),
+            removed: false,
+            asset_id: 202,
+            kind: "ambience",
+            position: 0,
+            volume: 0.8,
+            url: "/wind.mp3"
+          }
+        ]
+      }
+
+      dialogue = %{
+        id: 2,
+        type: "dialogue",
+        data: %{"text" => "Changed staging"},
+        parent_id: nil,
+        composition_source_id: 1,
+        sequence_config: nil,
+        sequence_visual_layers: [
+          %{
+            id: 21,
+            layer_key: "hero",
+            overridden_fields: ["opacity"],
+            removed: false,
+            opacity: 0.4,
+            url: nil
+          },
+          %{
+            id: 22,
+            layer_key: "room",
+            overridden_fields: [],
+            removed: true,
+            url: nil
+          }
+        ],
+        sequence_tracks: [
+          %{
+            id: 23,
+            track_key: "theme",
+            kind: "music",
+            is_override: true,
+            overridden_fields: ["volume"],
+            removed: false,
+            volume: 0.5,
+            url: nil
+          },
+          %{
+            id: 24,
+            track_key: "wind",
+            kind: "ambience",
+            is_override: true,
+            overridden_fields: [],
+            removed: true,
+            url: nil
+          }
+        ]
+      }
+
+      graph = DebugExecutionHandlers.present_runtime_graph(%{nodes: %{1 => base, 2 => dialogue}, connections: []})
+
+      composition =
+        DebugExecutionHandlers.present_debug_composition(%{current_node_id: 2}, graph.nodes)
+
+      assert composition.presentationNodeId == 2
+      assert [%{key: "hero"} = hero] = composition.visualLayers
+      assert hero.origin.nodeId == 1
+      assert hero.lastChangedByNodeId == 2
+      assert hero.overriddenProperties == [%{field: "opacity", nodeId: 2}]
+
+      assert [%{key: "room", removed: true, removedByNodeId: 2} = room] =
+               composition.removedVisualLayers
+
+      assert room.origin.nodeId == 1
+
+      assert [%{trackKey: "theme"} = theme] = composition.audioTracks
+      assert theme.origin.nodeId == 1
+      assert theme.lastChangedByNodeId == 2
+      assert theme.overriddenProperties == [%{field: "volume", nodeId: 2}]
+
+      assert [%{trackKey: "wind", removed: true, removedByNodeId: 2} = wind] =
+               composition.removedAudioTracks
+
+      assert wind.origin.nodeId == 1
+
+      assert composition.diagnostics == []
+    end
+  end
+
   # ===========================================================================
   # schedule_auto_step/1 and cancel_auto_timer/1
   # ===========================================================================
@@ -1038,7 +1271,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       flow = flow_fixture(project, %{name: "Debug Test Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use them
-      full_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      full_flow = Flows.get_flow!(project.id, flow.id)
       entry = Enum.find(full_flow.nodes, &(&1.type == "entry"))
       auto_exit = Enum.find(full_flow.nodes, &(&1.type == "exit"))
 
@@ -1114,13 +1347,11 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_play", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
-      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == true
+      assert debug_panel(view)["controls"]["autoPlaying"] == true
 
       render_click(view, "debug_pause", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
-      assert vue.props["panels"]["debug"]["controls"]["autoPlaying"] == false
+      assert debug_panel(view)["controls"]["autoPlaying"] == false
     end
 
     test "debug_set_speed changes the speed display", %{
@@ -1139,8 +1370,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       render_click(view, "debug_start", %{})
       render_click(view, "debug_set_speed", %{"speed" => "1500"})
 
-      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
-      assert vue.props["panels"]["debug"]["controls"]["speed"] == 1500
+      assert debug_panel(view)["controls"]["speed"] == 1500
     end
 
     test "debug_stop closes the debug panel", %{
@@ -1204,7 +1434,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       flow = flow_fixture(project, %{name: "Dialogue Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry
-      full_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      full_flow = Flows.get_flow!(project.id, flow.id)
       entry = Enum.find(full_flow.nodes, &(&1.type == "entry"))
 
       dialogue =
@@ -1268,9 +1498,9 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       # Step to dialogue — should enter waiting_input with choices
       render_click(view, "debug_step", %{})
 
-      vue = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
-      assert vue.props["panels"]["debug"]["state"]["status"] == "waiting_input"
-      responses = vue.props["panels"]["debug"]["state"]["pending_choices"]
+      debug = debug_panel(view)
+      assert debug["state"]["status"] == "waiting_input"
+      responses = debug["state"]["pending_choices"]
       assert is_list(responses)
       assert responses != []
     end
@@ -1313,7 +1543,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlersTest do
       flow = flow_fixture(project, %{name: "Loop Flow"})
 
       # flow_fixture auto-creates entry + exit nodes; use the entry for our loop
-      full_flow = Storyarn.Flows.get_flow!(project.id, flow.id)
+      full_flow = Flows.get_flow!(project.id, flow.id)
       entry = Enum.find(full_flow.nodes, &(&1.type == "entry"))
 
       hub_a = node_fixture(flow, %{type: "hub", data: %{"hub_id" => "a", "color" => "#000"}})

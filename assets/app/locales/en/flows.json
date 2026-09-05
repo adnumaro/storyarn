@@ -267,6 +267,7 @@
       "tab_variables": "Variables",
       "tab_history": "History",
       "tab_path": "Path",
+      "tab_composition": "Composition",
       "choose_response": "Choose a response:",
       "empty_response": "(empty)",
       "condition_not_met": "Condition not met",
@@ -321,7 +322,19 @@
       "no_options": "No options",
       "bool_true": "True",
       "bool_false": "False",
-      "bool_nil": "Unset"
+      "bool_nil": "Unset",
+      "composition_for": "Effective composition · {node}",
+      "composition_visual_layers": "Visual layers",
+      "composition_audio_tracks": "Audio tracks",
+      "composition_local": "Local",
+      "composition_inherited": "Inherited",
+      "composition_from": "From {origin}",
+      "composition_removed": "Removed",
+      "composition_removed_by": "Removed by {origin}",
+      "composition_unknown_origin": "Unknown origin",
+      "composition_no_visual_layers": "No effective visual layers",
+      "composition_no_audio_tracks": "No effective audio tracks",
+      "composition_unavailable": "No executed speaker composition is available yet."
     },
     "minimap": {
       "toggle": "Toggle minimap",
