@@ -8,6 +8,7 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
 
   alias Storyarn.Flows.Editor
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SequenceVisualLayer
 
   defmodule TestAnalyticsAdapter do
     @moduledoc false
@@ -141,6 +142,214 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
     end
   end
 
+  describe "composition owner duplication" do
+    test "duplicates a dialogue with its parent, source, local layers, and local tracks", %{
+      flow: flow,
+      project: project,
+      scope: scope,
+      user: user
+    } do
+      {:ok, parent} = Editor.create_sequence(flow.id, %{name: "Canvas parent"})
+      {:ok, composition_source} = Editor.create_sequence(flow.id, %{name: "Composition source"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 120.0,
+          position_y: 240.0,
+          parent_id: parent.id,
+          composition_source_id: composition_source.id,
+          data: %{
+            "text" => "<p>Hold the gate.</p>",
+            "technical_id" => "hold-the-gate",
+            "localization_id" => "dialogue-original"
+          }
+        })
+
+      image = image_asset_fixture(project, user)
+      removed_image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
+      removed_audio = audio_asset_fixture(project, user)
+
+      {:ok, inherited_layer} =
+        Editor.create_sequence_visual_layer(composition_source.id, %{
+          asset_id: image.id,
+          kind: "character",
+          label: "Guard",
+          slot: "bottom-right",
+          opacity: 0.7
+        })
+
+      {:ok, removed_layer} =
+        Editor.create_sequence_visual_layer(composition_source.id, %{
+          asset_id: removed_image.id,
+          kind: "prop"
+        })
+
+      {:ok, inherited_track} =
+        Editor.upsert_sequence_track(composition_source.id, "ambience", %{
+          asset_id: audio.id,
+          position: 2,
+          volume: Decimal.new("0.350")
+        })
+
+      {:ok, removed_track} =
+        Editor.upsert_sequence_track(composition_source.id, "sfx", %{
+          asset_id: removed_audio.id
+        })
+
+      _patch =
+        raw_sequence_visual_override_fixture(dialogue, inherited_layer, %{
+          opacity: 0.45
+        })
+
+      _tombstone =
+        raw_sequence_visual_override_fixture(dialogue, removed_layer, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      _patch =
+        raw_sequence_track_override_fixture(dialogue, inherited_track, %{
+          volume: Decimal.new("0.200")
+        })
+
+      _tombstone =
+        raw_sequence_track_override_fixture(dialogue, removed_track, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      drain_analytics()
+
+      assert {:ok, duplicate} = Editor.duplicate_editor_node(scope, flow, dialogue)
+
+      assert duplicate.type == "dialogue"
+      assert duplicate.parent_id == parent.id
+      assert duplicate.composition_source_id == composition_source.id
+      assert duplicate.position_x == 170.0
+      assert duplicate.position_y == 290.0
+      assert duplicate.data["text"] == dialogue.data["text"]
+      assert duplicate.data["technical_id"] == ""
+      assert duplicate.data["localization_id"] != dialogue.data["localization_id"]
+      assert visual_state(duplicate.id) == visual_state(dialogue.id)
+      assert track_state(duplicate.id) == track_state(dialogue.id)
+
+      assert_event_once("flow node created", %{
+        "creation_method" => "duplicate",
+        "flow_id" => flow.id,
+        "has_parent" => true,
+        "node_type" => "dialogue",
+        "project_id" => flow.project_id
+      })
+    end
+
+    test "duplicates a sequence with its complete local composition and config", %{
+      flow: flow,
+      project: project,
+      scope: scope,
+      user: user
+    } do
+      {:ok, parent} = Editor.create_sequence(flow.id, %{name: "Canvas parent"})
+      composition_source = node_fixture(flow, %{data: %{"text" => "Previous shot"}})
+
+      {:ok, sequence} =
+        Editor.create_sequence(flow.id, %{
+          name: "Throne room",
+          position_x: 10.0,
+          position_y: 20.0,
+          parent_id: parent.id,
+          width: 640.0,
+          height: 360.0
+        })
+
+      {:ok, sequence} = Editor.set_composition_source(sequence.id, composition_source.id)
+      image = image_asset_fixture(project, user)
+      audio = audio_asset_fixture(project, user)
+
+      {:ok, _layer} =
+        Editor.create_sequence_visual_layer(sequence.id, %{
+          asset_id: image.id,
+          kind: "backdrop",
+          label: "Throne room",
+          fit: "cover"
+        })
+
+      {:ok, _track} =
+        Editor.upsert_sequence_track(sequence.id, "music", %{
+          asset_id: audio.id,
+          volume: Decimal.new("0.650")
+        })
+
+      drain_analytics()
+
+      assert {:ok, duplicate} = Editor.duplicate_editor_node(scope, flow, sequence)
+
+      assert duplicate.type == "sequence"
+      assert duplicate.parent_id == parent.id
+      assert duplicate.composition_source_id == composition_source.id
+      assert duplicate.position_x == 60.0
+      assert duplicate.position_y == 70.0
+      assert duplicate.sequence_config.name == "Throne room"
+      assert duplicate.sequence_config.width == 640.0
+      assert duplicate.sequence_config.height == 360.0
+      assert visual_state(duplicate.id) == visual_state(sequence.id)
+      assert track_state(duplicate.id) == track_state(sequence.id)
+
+      assert_event_once("flow node created", %{
+        "creation_method" => "duplicate",
+        "flow_id" => flow.id,
+        "has_parent" => true,
+        "node_type" => "sequence",
+        "project_id" => flow.project_id
+      })
+    end
+
+    test "rolls back the duplicate and emits no fact when a local asset is outside the project",
+         %{
+           flow: flow,
+           project: project,
+           scope: scope,
+           user: user
+         } do
+      dialogue = node_fixture(flow, %{data: %{"text" => "Corrupt source"}})
+      image = image_asset_fixture(project, user)
+
+      {:ok, layer} =
+        Editor.create_sequence_visual_layer(dialogue.id, %{
+          asset_id: image.id,
+          kind: "character"
+        })
+
+      foreign_project = project_fixture(user)
+      foreign_image = image_asset_fixture(foreign_project, user)
+
+      Repo.update_all(
+        from(item in SequenceVisualLayer, where: item.id == ^layer.id),
+        set: [asset_id: foreign_image.id]
+      )
+
+      count_before =
+        Repo.aggregate(
+          from(node in FlowNode, where: node.flow_id == ^flow.id and is_nil(node.deleted_at)),
+          :count
+        )
+
+      drain_analytics()
+
+      assert {:error, _reason} = Editor.duplicate_editor_node(scope, flow, dialogue)
+
+      assert Repo.aggregate(
+               from(node in FlowNode,
+                 where: node.flow_id == ^flow.id and is_nil(node.deleted_at)
+               ),
+               :count
+             ) == count_before
+
+      refute_event("flow node created")
+    end
+  end
+
   describe "sequence composition facts" do
     test "visual-layer commands emit once after success and never after error", %{
       flow: flow,
@@ -171,7 +380,7 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
 
       dialogue = node_fixture(flow)
 
-      assert {:error, :sequence_not_found} =
+      assert {:ok, dialogue_layer} =
                Editor.create_editor_sequence_visual_layer(
                  scope,
                  flow,
@@ -179,7 +388,16 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
                  %{kind: "backdrop", asset_id: image.id}
                )
 
-      refute_event("sequence visual layer created")
+      assert_event_once("sequence visual layer created", %{
+        "flow_id" => flow.id,
+        "has_asset" => true,
+        "layer_kind" => "backdrop",
+        "project_id" => flow.project_id,
+        "sequence_id" => dialogue.id,
+        "slot" => "full"
+      })
+
+      assert {:ok, _deleted} = Editor.delete_sequence_visual_layer(dialogue_layer)
 
       assert {:ok, updated_layer} =
                Editor.update_editor_sequence_visual_layer(
@@ -254,6 +472,57 @@ defmodule Storyarn.Flows.Editor.Commands.TrackedTest do
 
       refute_event("sequence track updated")
     end
+  end
+
+  defp visual_state(owner_id) do
+    owner_id
+    |> Editor.list_sequence_visual_layers()
+    |> Enum.map(fn layer ->
+      layer
+      |> Map.from_struct()
+      |> Map.take([
+        :asset_id,
+        :layer_key,
+        :overridden_fields,
+        :removed,
+        :kind,
+        :label,
+        :z_index,
+        :slot,
+        :x,
+        :y,
+        :width,
+        :height,
+        :anchor_x,
+        :anchor_y,
+        :fit,
+        :opacity,
+        :visible
+      ])
+    end)
+    |> Enum.sort_by(& &1.layer_key)
+  end
+
+  defp track_state(owner_id) do
+    owner_id
+    |> Editor.list_sequence_tracks()
+    |> Enum.map(fn track ->
+      track
+      |> Map.from_struct()
+      |> Map.take([
+        :track_key,
+        :is_override,
+        :overridden_fields,
+        :removed,
+        :kind,
+        :position,
+        :asset_id,
+        :start_time,
+        :end_time,
+        :volume
+      ])
+    end)
+    |> Enum.sort_by(& &1.track_key)
   end
 
   defp assert_event_once(event_name, expected_properties) do

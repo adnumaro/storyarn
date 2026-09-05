@@ -25,14 +25,20 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
   @spec duplicate_node(term(), Flow.t(), FlowNode.t()) ::
           {:ok, FlowNode.t()} | {:error, term()} | {:error, term(), term()}
   def duplicate_node(scope, %Flow{} = flow, %FlowNode{} = node) do
-    attrs = %{
-      type: node.type,
-      position_x: node.position_x + 50.0,
-      position_y: node.position_y + 50.0,
-      data: NodeTypes.duplicate_data(node.type, node.data)
-    }
+    if node.type in ["sequence", "dialogue"] do
+      flow
+      |> SequenceCrud.duplicate_composition_owner(node)
+      |> tap_success(fn duplicate -> emit_node_created(scope, flow, duplicate, "duplicate") end)
+    else
+      attrs = %{
+        type: node.type,
+        position_x: node.position_x + 50.0,
+        position_y: node.position_y + 50.0,
+        data: NodeTypes.duplicate_data(node.type, node.data)
+      }
 
-    create_node(scope, flow, attrs, "duplicate")
+      create_node(scope, flow, attrs, "duplicate")
+    end
   end
 
   @spec create_sequence(term(), Flow.t(), map(), String.t()) ::

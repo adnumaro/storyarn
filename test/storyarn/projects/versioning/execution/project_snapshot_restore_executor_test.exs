@@ -1279,6 +1279,186 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
            ) == ["Primero", "Segundo"]
   end
 
+  test "exact restore canonicalizes remapped composition source identities", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    flow = flow_fixture(project, %{name: "Composition identity restore"})
+
+    assert {:ok, source} =
+             Storyarn.Flows.create_sequence(flow.id, %{
+               "name" => "Historical composition source",
+               "width" => 640.0,
+               "height" => 360.0
+             })
+
+    dialogue =
+      node_fixture(flow, %{
+        type: "dialogue",
+        data: %{"text" => "Historical branch staging", "responses" => []}
+      })
+
+    assert {:ok, dialogue} = Storyarn.Flows.set_composition_source(dialogue.id, source.id)
+
+    assert {:ok, source_track} =
+             Storyarn.Flows.upsert_sequence_track(source.id, "ambience", %{
+               "volume" => Decimal.new("0.75")
+             })
+
+    _patch =
+      raw_sequence_track_override_fixture(dialogue, source_track, %{
+        "volume" => Decimal.new("0.3")
+      })
+
+    target_object = active_project_object(project.id)
+
+    expected_dialogue =
+      target_object
+      |> get_in(["flows", Access.at(0), "snapshot", "nodes"])
+      |> Enum.find(&(&1["original_id"] == dialogue.id))
+
+    refute Map.has_key?(expected_dialogue, "sequence_config")
+
+    Process.put({EmptyArchiveReader, :project_object}, target_object)
+
+    assert {:ok, result} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    assert is_binary(result.semantic_digest)
+
+    restored_flow =
+      Repo.one!(
+        from(candidate in Flow,
+          where:
+            candidate.project_id == ^project.id and candidate.name == "Composition identity restore" and
+              is_nil(candidate.deleted_at)
+        )
+      )
+
+    restored_nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.flow_id == ^restored_flow.id and is_nil(node.deleted_at),
+          preload: [:sequence_tracks]
+        )
+      )
+
+    restored_source = Enum.find(restored_nodes, &(&1.type == "sequence"))
+
+    restored_dialogue =
+      Enum.find(restored_nodes, fn node ->
+        node.type == "dialogue" and node.data["text"] == "Historical branch staging"
+      end)
+
+    assert restored_dialogue.composition_source_id == restored_source.id
+    refute restored_dialogue.composition_source_id == source.id
+
+    assert [restored_patch] = restored_dialogue.sequence_tracks
+    assert restored_patch.track_key == source_track.track_key
+    assert restored_patch.is_override
+    assert restored_patch.overridden_fields == ["volume"]
+    assert Decimal.equal?(restored_patch.volume, Decimal.new("0.3"))
+  end
+
+  test "exact restore postverifies a project snapshot from before composition inheritance", context do
+    project = Repo.get!(Project, context.restore.project_id)
+    flow = flow_fixture(project, %{name: "Legacy sequence composition restore"})
+
+    assert {:ok, source} =
+             Storyarn.Flows.create_sequence(flow.id, %{
+               "name" => "Legacy source",
+               "width" => 640.0,
+               "height" => 360.0
+             })
+
+    dialogue =
+      node_fixture(flow, %{
+        type: "dialogue",
+        parent_id: source.id,
+        data: %{"text" => "Legacy inherited staging", "responses" => []}
+      })
+
+    assert dialogue.composition_source_id == source.id
+
+    assert {:ok, track} =
+             Storyarn.Flows.upsert_sequence_track(source.id, "ambience", %{
+               "volume" => Decimal.new("0.65")
+             })
+
+    legacy_target =
+      project.id
+      |> active_project_object()
+      |> update_in(["flows"], fn flows ->
+        Enum.map(flows, fn entry ->
+          update_in(entry, ["snapshot", "nodes"], fn nodes ->
+            Enum.map(nodes, fn node ->
+              node = Map.delete(node, "composition_source_original_id")
+
+              node =
+                if node["type"] == "dialogue",
+                  do: Map.drop(node, ~w(sequence_tracks sequence_visual_layers)),
+                  else: node
+
+              node
+              |> Map.replace_lazy("sequence_tracks", fn tracks ->
+                Enum.map(tracks, &Map.drop(&1, ~w(track_key is_override overridden_fields removed)))
+              end)
+              |> Map.replace_lazy("sequence_visual_layers", fn layers ->
+                Enum.map(layers, &Map.drop(&1, ~w(layer_key overridden_fields removed)))
+              end)
+            end)
+          end)
+        end)
+      end)
+
+    Process.put({EmptyArchiveReader, :project_object}, legacy_target)
+
+    assert {:ok, result} =
+             ProjectSnapshotRestoreExecutor.execute(context.restore,
+               archive_reader: EmptyArchiveReader,
+               asset_materializer: EmptyMaterializer,
+               project_recovery: ProjectRecovery
+             )
+
+    assert is_binary(result.semantic_digest)
+
+    restored_flow =
+      Repo.one!(
+        from(candidate in Flow,
+          where:
+            candidate.project_id == ^project.id and
+              candidate.name == "Legacy sequence composition restore" and
+              is_nil(candidate.deleted_at)
+        )
+      )
+
+    restored_nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.flow_id == ^restored_flow.id and is_nil(node.deleted_at),
+          preload: [:sequence_tracks]
+        )
+      )
+
+    restored_source = Enum.find(restored_nodes, &(&1.type == "sequence"))
+
+    restored_dialogue =
+      Enum.find(restored_nodes, fn node ->
+        node.type == "dialogue" and node.data["text"] == "Legacy inherited staging"
+      end)
+
+    assert restored_dialogue.composition_source_id == restored_source.id
+    assert [restored_track] = restored_source.sequence_tracks
+    assert restored_track.track_key == "track-#{track.id}"
+    refute restored_track.is_override
+    refute restored_track.removed
+
+    assert MapSet.new(restored_track.overridden_fields) ==
+             MapSet.new(~w(position asset_id start_time end_time volume))
+  end
+
   test "semantic postverification never treats a business integer as an entity id", context do
     project = Repo.get!(Project, context.restore.project_id)
     sheet = sheet_fixture(project, %{name: "Position collision"})

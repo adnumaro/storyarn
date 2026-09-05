@@ -17,6 +17,7 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Flows.Versioning
   alias Storyarn.Flows.Versioning.FlowSnapshot
+  alias Storyarn.Flows.Versioning.FlowSnapshotValidator
   alias Storyarn.Flows.Versioning.RestorePolicy
   alias Storyarn.Localization
   alias Storyarn.Localization.LocalizedText
@@ -247,6 +248,364 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
       refute Repo.get(SequenceVisualLayer, replacement_layer.id)
     end
 
+    test "round-trips explicit dialogue composition patches and tombstones", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "dialogue-patch.mp3", "dialogue audio", "audio/mpeg")
+      image = uploaded_asset(project, user, "dialogue-tombstone.png", "dialogue image", "image/png")
+
+      assert {:ok, source} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "Composition source",
+                 "width" => 640.0,
+                 "height" => 360.0
+               })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "An alternate branch", "responses" => []}
+        })
+
+      assert {:ok, dialogue} = Flows.set_composition_source(dialogue.id, source.id)
+
+      assert {:ok, source_track} =
+               Flows.upsert_sequence_track(source.id, "music", %{
+                 "asset_id" => audio.id,
+                 "volume" => Decimal.new("0.8")
+               })
+
+      assert {:ok, source_layer} =
+               Flows.create_sequence_visual_layer(source.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Shared stage"
+               })
+
+      dialogue_track =
+        raw_sequence_track_override_fixture(dialogue, source_track, %{
+          "volume" => Decimal.new("0.25")
+        })
+
+      dialogue_layer =
+        raw_sequence_visual_override_fixture(dialogue, source_layer, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      snapshot = FlowSnapshot.build_snapshot(flow)
+      source_snapshot = Enum.find(snapshot["nodes"], &(&1["original_id"] == source.id))
+      dialogue_snapshot = Enum.find(snapshot["nodes"], &(&1["original_id"] == dialogue.id))
+
+      assert source_snapshot["composition_source_original_id"] == nil
+      assert dialogue_snapshot["composition_source_original_id"] == source.id
+
+      assert [%{"track_key" => source_track_key, "is_override" => false, "removed" => false}] =
+               source_snapshot["sequence_tracks"]
+
+      assert source_track_key == source_track.track_key
+
+      assert [
+               %{
+                 "track_key" => dialogue_track_key,
+                 "is_override" => true,
+                 "overridden_fields" => ["volume"],
+                 "removed" => false
+               }
+             ] = dialogue_snapshot["sequence_tracks"]
+
+      assert dialogue_track_key == dialogue_track.track_key
+
+      assert [
+               %{
+                 "layer_key" => dialogue_layer_key,
+                 "overridden_fields" => [],
+                 "removed" => true,
+                 "asset_id" => dialogue_layer_asset_id
+               }
+             ] = dialogue_snapshot["sequence_visual_layers"]
+
+      assert dialogue_layer_key == dialogue_layer.layer_key
+      assert dialogue_layer_asset_id == image.id
+      assert snapshot["asset_blob_hashes"][to_string(audio.id)] == audio.blob_hash
+      assert snapshot["asset_blob_hashes"][to_string(image.id)] == image.blob_hash
+
+      Repo.delete_all(from(track in SequenceTrack, where: track.flow_node_id == ^dialogue.id))
+      Repo.delete_all(from(layer in SequenceVisualLayer, where: layer.flow_node_id == ^dialogue.id))
+      assert {:ok, _detached} = Flows.set_composition_source(dialogue.id, nil)
+
+      assert {:ok, restored} =
+               FlowSnapshot.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      rebuilt = FlowSnapshot.build_snapshot(restored)
+      rebuilt_dialogue = Enum.find(rebuilt["nodes"], &(&1["original_id"] == dialogue.id))
+
+      assert Map.take(rebuilt_dialogue, [
+               "composition_source_original_id",
+               "sequence_tracks",
+               "sequence_visual_layers"
+             ]) ==
+               Map.take(dialogue_snapshot, [
+                 "composition_source_original_id",
+                 "sequence_tracks",
+                 "sequence_visual_layers"
+               ])
+
+      restored_dialogue = Enum.find(restored.nodes, &(&1.id == dialogue.id))
+      assert restored_dialogue.composition_source_id == source.id
+
+      assert [restored_track] = restored_dialogue.sequence_tracks
+      assert restored_track.id == dialogue_track.id
+      assert restored_track.track_key == source_track.track_key
+      assert restored_track.is_override
+      assert restored_track.overridden_fields == ["volume"]
+      refute restored_track.removed
+
+      assert [restored_layer] = restored_dialogue.sequence_visual_layers
+      assert restored_layer.id == dialogue_layer.id
+      assert restored_layer.layer_key == source_layer.layer_key
+      assert restored_layer.overridden_fields == []
+      assert restored_layer.removed
+      assert restored_layer.asset_id == image.id
+    end
+
+    test "normalizes legacy snapshots as full definitions and derives composition from hierarchy", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "legacy-sequence.mp3", "legacy audio", "audio/mpeg")
+      image = uploaded_asset(project, user, "legacy-sequence.png", "legacy image", "image/png")
+
+      assert {:ok, sequence} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "Legacy source",
+                 "width" => 640.0,
+                 "height" => 360.0
+               })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          parent_id: sequence.id,
+          data: %{"text" => "Legacy child", "responses" => []}
+        })
+
+      assert {:ok, track} =
+               Flows.upsert_sequence_track(sequence.id, "ambience", %{"asset_id" => audio.id})
+
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "overlay"
+               })
+
+      legacy_snapshot =
+        flow
+        |> FlowSnapshot.build_snapshot()
+        |> Map.update!("nodes", fn nodes ->
+          Enum.map(nodes, fn node ->
+            node = Map.delete(node, "composition_source_original_id")
+
+            node
+            |> Map.update("sequence_tracks", [], fn tracks ->
+              Enum.map(tracks, &Map.drop(&1, ~w(track_key is_override overridden_fields removed)))
+            end)
+            |> Map.update("sequence_visual_layers", [], fn layers ->
+              Enum.map(layers, &Map.drop(&1, ~w(layer_key overridden_fields removed)))
+            end)
+          end)
+        end)
+
+      assert :ok = FlowSnapshotValidator.validate(legacy_snapshot, flow.id)
+      assert {:ok, _detached} = Flows.set_composition_source(dialogue.id, nil)
+
+      assert {:ok, restored} =
+               FlowSnapshot.restore_snapshot(flow, legacy_snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      restored_sequence = Enum.find(restored.nodes, &(&1.id == sequence.id))
+      restored_dialogue = Enum.find(restored.nodes, &(&1.id == dialogue.id))
+
+      assert restored_dialogue.composition_source_id == sequence.id
+
+      assert [%SequenceTrack{} = restored_track] = restored_sequence.sequence_tracks
+      assert restored_track.id == track.id
+      assert restored_track.track_key == "track-#{track.id}"
+
+      assert MapSet.new(restored_track.overridden_fields) ==
+               MapSet.new(~w(position asset_id start_time end_time volume))
+
+      refute restored_track.is_override
+      refute restored_track.removed
+
+      assert [%SequenceVisualLayer{} = restored_layer] = restored_sequence.sequence_visual_layers
+      assert restored_layer.id == layer.id
+      assert restored_layer.layer_key == "layer-#{layer.id}"
+
+      assert MapSet.new(restored_layer.overridden_fields) ==
+               MapSet.new(~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible))
+
+      refute restored_layer.removed
+    end
+
+    test "rejects invalid composition source graphs, keys, and override masks", %{flow: flow} do
+      assert {:ok, first} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "First",
+                 "width" => 640.0,
+                 "height" => 360.0
+               })
+
+      assert {:ok, second} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "Second",
+                 "width" => 640.0,
+                 "height" => 360.0
+               })
+
+      condition = node_fixture(flow, %{type: "condition", data: %{}})
+      assert {:ok, track} = Flows.upsert_sequence_track(first.id, "music", %{})
+      snapshot = FlowSnapshot.build_snapshot(flow)
+      entry = Enum.find(snapshot["nodes"], &(&1["type"] == "entry"))
+
+      for {field, value} <- [
+            {"sequence_config", %{"name" => "Residual", "width" => 1.0, "height" => 1.0}},
+            {"sequence_tracks", [%{}]},
+            {"sequence_visual_layers", [%{}]}
+          ] do
+        invalid_owner_payload =
+          update_snapshot_node(snapshot, condition.id, &Map.put(&1, field, value))
+
+        assert {:error, {:invalid_sequence_composition_payload, invalid_owner_id, ^field}} =
+                 FlowSnapshotValidator.validate(invalid_owner_payload, flow.id)
+
+        assert invalid_owner_id == condition.id
+      end
+
+      invalid_target =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          Map.put(node, "composition_source_original_id", entry["original_id"])
+        end)
+
+      assert {:error, {:invalid_snapshot_composition_source, _, _, _}} =
+               FlowSnapshotValidator.validate(invalid_target, flow.id)
+
+      cycle =
+        snapshot
+        |> update_snapshot_node(first.id, &Map.put(&1, "composition_source_original_id", second.id))
+        |> update_snapshot_node(second.id, &Map.put(&1, "composition_source_original_id", first.id))
+
+      assert {:error, :snapshot_composition_source_cycle} =
+               FlowSnapshotValidator.validate(cycle, flow.id)
+
+      invalid_key =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          update_in(node["sequence_tracks"], fn [track] -> [Map.put(track, "track_key", "")] end)
+        end)
+
+      assert {:error, {:invalid_sequence_track_snapshot, _track}} =
+               FlowSnapshotValidator.validate(invalid_key, flow.id)
+
+      invalid_mask =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          update_in(node["sequence_tracks"], fn [track] ->
+            [Map.put(track, "overridden_fields", ["volume", "unsupported"])]
+          end)
+        end)
+
+      assert {:error, {:invalid_sequence_track_snapshot, _track}} =
+               FlowSnapshotValidator.validate(invalid_mask, flow.id)
+
+      incomplete_definition =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "overridden_fields", ["volume"])]
+          end)
+        end)
+
+      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, first_id, track_key, reason}} =
+               FlowSnapshotValidator.validate(incomplete_definition, flow.id)
+
+      assert reason == :incomplete_local_definition
+      assert first_id == first.id
+      assert track_key == track.track_key
+
+      local_tombstone =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "removed", true)]
+          end)
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, ^first_id, ^track_key,
+               :local_definition_tombstone}} =
+               FlowSnapshotValidator.validate(local_tombstone, flow.id)
+
+      orphan_override =
+        update_snapshot_node(snapshot, first.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "is_override", true)]
+          end)
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, ^first_id, ^track_key,
+               :missing_inherited_identity}} =
+               FlowSnapshotValidator.validate(orphan_override, flow.id)
+
+      assert {:ok, _second} = Flows.set_composition_source(second.id, first.id)
+
+      _patch =
+        raw_sequence_track_override_fixture(second, track, %{
+          "volume" => Decimal.new("0.250")
+        })
+
+      descendant_snapshot = FlowSnapshot.build_snapshot(flow)
+
+      missing_base =
+        update_snapshot_node(descendant_snapshot, first.id, fn node ->
+          Map.put(node, "sequence_tracks", [])
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_track, second_id, ^track_key,
+               :missing_inherited_identity}} =
+               FlowSnapshotValidator.validate(missing_base, flow.id)
+
+      assert second_id == second.id
+    end
+
+    test "accepts a complete descendant definition that reopens an inherited tombstone", %{
+      flow: flow
+    } do
+      assert {:ok, root} = Flows.create_sequence(flow.id, %{"name" => "Root"})
+      middle = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Middle", "responses" => []}})
+      leaf = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Leaf", "responses" => []}})
+      assert {:ok, _middle} = Flows.set_composition_source(middle.id, root.id)
+      assert {:ok, _leaf} = Flows.set_composition_source(leaf.id, middle.id)
+      assert {:ok, track} = Flows.upsert_sequence_track(root.id, "music", %{})
+
+      _tombstone =
+        raw_sequence_track_override_fixture(middle, track, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      restored =
+        raw_sequence_track_override_fixture(leaf, track, %{}, overridden_fields: SequenceTrack.property_fields())
+
+      assert restored.is_override
+
+      assert MapSet.new(restored.overridden_fields) ==
+               MapSet.new(~w(position asset_id start_time end_time volume))
+
+      snapshot = FlowSnapshot.build_snapshot(flow)
+      assert :ok = FlowSnapshotValidator.validate(snapshot, flow.id)
+    end
+
     test "builder restore fails closed unless the entity action is explicit", %{flow: flow} do
       snapshot = FlowSnapshot.build_snapshot(flow)
       assert {:ok, changed} = Flows.update_flow(flow, %{name: "Must remain"})
@@ -377,7 +736,17 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
 
     test "preserves prior trash and only soft-deletes active post-snapshot state", %{flow: flow} do
       active_target = node_fixture(flow, %{type: "hub", position_x: 100.0})
-      existing_trash = node_fixture(flow, %{type: "dialogue", position_x: 200.0})
+
+      composition_source =
+        node_fixture(flow, %{type: "dialogue", position_x: 150.0, data: %{"text" => "Source"}})
+
+      existing_trash =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 200.0,
+          composition_source_id: composition_source.id
+        })
+
       trash_connection = connection_fixture(flow, existing_trash, active_target)
       assert {:ok, trashed_node, _metadata} = Flows.delete_node(existing_trash)
 
@@ -397,19 +766,96 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
       assert {:ok, trashed_sequence, _metadata} = Flows.delete_node(trashed_sequence)
       snapshot = FlowSnapshot.build_snapshot(flow)
 
-      post_snapshot = node_fixture(flow, %{type: "hub", position_x: 300.0})
-      post_snapshot_connection = connection_fixture(flow, active_target, post_snapshot)
+      post_snapshot_source =
+        node_fixture(flow, %{type: "dialogue", position_x: 300.0, data: %{"text" => "Later source"}})
+
+      post_snapshot_dependent =
+        node_fixture(flow, %{
+          type: "dialogue",
+          position_x: 350.0,
+          composition_source_id: post_snapshot_source.id,
+          data: %{"text" => "Later dependent"}
+        })
+
+      post_snapshot_connection = connection_fixture(flow, active_target, post_snapshot_dependent)
 
       assert {:ok, restored} =
                FlowSnapshot.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
 
-      assert Repo.get!(FlowNode, existing_trash.id).deleted_at == trashed_node.deleted_at
+      restored_existing_trash = Repo.get!(FlowNode, existing_trash.id)
+      restored_post_source = Repo.get!(FlowNode, post_snapshot_source.id)
+      restored_post_dependent = Repo.get!(FlowNode, post_snapshot_dependent.id)
+
+      assert restored_existing_trash.deleted_at == trashed_node.deleted_at
+      assert restored_existing_trash.composition_source_id == composition_source.id
       assert Repo.get!(FlowNode, trashed_sequence.id).deleted_at == trashed_sequence.deleted_at
-      assert Repo.get!(FlowNode, post_snapshot.id).deleted_at
+      assert restored_post_source.deleted_at
+      assert restored_post_dependent.deleted_at
+      assert restored_post_dependent.composition_source_id == post_snapshot_source.id
       assert Repo.get!(SequenceTrack, trash_track.id).flow_node_id == trashed_sequence.id
       assert Repo.get!(FlowConnection, trash_connection.id)
       assert Repo.get!(FlowConnection, post_snapshot_connection.id)
-      refute Enum.any?(restored.nodes, &(&1.id in [existing_trash.id, trashed_sequence.id, post_snapshot.id]))
+
+      refute Enum.any?(restored.nodes, fn node ->
+               node.id in [
+                 existing_trash.id,
+                 trashed_sequence.id,
+                 post_snapshot_source.id,
+                 post_snapshot_dependent.id
+               ]
+             end)
+    end
+
+    test "rejects owner type restores while trash still inherits from the owner", %{project: project} do
+      for owner_type <- ~w(dialogue sequence) do
+        flow = flow_fixture(project, %{name: "#{owner_type} source transition"})
+
+        source =
+          case owner_type do
+            "dialogue" ->
+              node_fixture(flow, %{type: "dialogue", data: %{"text" => "Source"}})
+
+            "sequence" ->
+              assert {:ok, source} = Flows.create_sequence(flow.id, %{"name" => "Source"})
+              source
+          end
+
+        historical_snapshot =
+          flow
+          |> FlowSnapshot.build_snapshot()
+          |> update_snapshot_node(source.id, fn node ->
+            Map.merge(node, %{
+              "type" => "annotation",
+              "data" => %{},
+              "composition_source_original_id" => nil,
+              "sequence_config" => nil,
+              "sequence_tracks" => [],
+              "sequence_visual_layers" => []
+            })
+          end)
+
+        dependent =
+          node_fixture(flow, %{
+            type: "dialogue",
+            composition_source_id: source.id,
+            data: %{"text" => "Dependent"}
+          })
+
+        assert {:ok, trashed_dependent, _metadata} = Flows.delete_node(dependent)
+
+        assert {:error, {:composition_source_transition_conflicts_with_trash, {dependent_id, source_id}}} =
+                 FlowSnapshot.restore_snapshot(flow, historical_snapshot,
+                   restore_action: {:entity_version_restore, "flow"}
+                 )
+
+        assert dependent_id == dependent.id
+        assert source_id == source.id
+        assert Repo.get!(FlowNode, source.id).type == owner_type
+
+        restored_dependent = Repo.get!(FlowNode, dependent.id)
+        assert restored_dependent.deleted_at == trashed_dependent.deleted_at
+        assert restored_dependent.composition_source_id == source.id
+      end
     end
   end
 

@@ -10,15 +10,24 @@ defmodule Storyarn.Flows.SequenceCrud do
   Soft-delete is supported via `deleted_at` on the flow_node row. A DB
   trigger nilifies `parent_id` on children when a sequence is
   soft-deleted — children orphan rather than cascade.
+
+  Static visual layers and audio tracks may be owned by either a sequence or
+  dialogue node. They compose through `composition_source_id`, independently
+  from canvas hierarchy, using logical keys and property-level override masks.
   """
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Editor.Commands.ItemCapacity
   alias Storyarn.Flows.Editor.Projections.AssetRecord
   alias Storyarn.Flows.Editor.Queries.Sequences
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeCrud
+  alias Storyarn.Flows.NodeDelete
+  alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.References
+  alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.SequenceConfig
   alias Storyarn.Flows.SequenceTrack
   alias Storyarn.Flows.SequenceVisualLayer
@@ -26,6 +35,38 @@ defmodule Storyarn.Flows.SequenceCrud do
   alias Storyarn.Repo
 
   @type sequence :: FlowNode.t()
+
+  @visual_layer_copy_fields [
+    :asset_id,
+    :layer_key,
+    :overridden_fields,
+    :removed,
+    :kind,
+    :label,
+    :z_index,
+    :slot,
+    :x,
+    :y,
+    :width,
+    :height,
+    :anchor_x,
+    :anchor_y,
+    :fit,
+    :opacity,
+    :visible
+  ]
+  @track_copy_fields [
+    :track_key,
+    :is_override,
+    :overridden_fields,
+    :removed,
+    :kind,
+    :position,
+    :asset_id,
+    :start_time,
+    :end_time,
+    :volume
+  ]
 
   @doc """
   Lists active (non-deleted) sequences for a flow, ordered by insertion
@@ -154,6 +195,7 @@ defmodule Storyarn.Flows.SequenceCrud do
       with {:ok, %{node: locked_node, project_id: project_id}} <-
              References.lock_active_node_for_write(node),
            :ok <- ensure_sequence(locked_node),
+           :ok <- NodeDelete.validate_and_lock_no_active_composition_dependents(locked_node),
            {:ok, deleted_node} <-
              locked_node
              |> FlowNode.soft_delete_changeset()
@@ -194,6 +236,7 @@ defmodule Storyarn.Flows.SequenceCrud do
                  lock: "FOR UPDATE"
                )
              ),
+           :ok <- NodeDelete.validate_and_lock_active_composition_source(locked_node),
            :ok <-
              References.lock_active_asset_references_for_restore(project_id,
                flow_node_ids: [locked_node.id]
@@ -252,6 +295,27 @@ defmodule Storyarn.Flows.SequenceCrud do
     |> broadcast_sequence_result()
   end
 
+  @doc """
+  Atomically duplicates a dialogue or sequence together with its local static
+  composition.
+
+  The duplicate keeps the original canvas parent and explicit composition
+  source. Sequence configuration, visual-layer definitions and patches,
+  tombstones, and audio tracks are copied exactly. The new node is offset by
+  50 pixels and dialogue runtime identity is regenerated through the standard
+  duplicate-data rule.
+  """
+  @spec duplicate_composition_owner(Flow.t(), FlowNode.t()) ::
+          {:ok, FlowNode.t()} | {:error, term()} | {:error, :limit_reached, map()}
+  def duplicate_composition_owner(%Flow{} = flow, %FlowNode{id: source_id}) when is_integer(source_id) do
+    fn -> duplicate_composition_owner_in_transaction(flow, source_id) end
+    |> Repo.transaction()
+    |> normalize_duplicate_result()
+    |> broadcast_sequence_result()
+  end
+
+  def duplicate_composition_owner(_flow, _node), do: {:error, :composition_owner_not_found}
+
   # =========================================================================
   # Internals
   # =========================================================================
@@ -281,7 +345,10 @@ defmodule Storyarn.Flows.SequenceCrud do
   end
 
   defp update_sequence_config(node, attrs) do
-    case node |> ensure_config_loaded() |> SequenceConfig.update_changeset(attrs) |> Repo.update() do
+    case node
+         |> ensure_config_loaded()
+         |> SequenceConfig.update_changeset(attrs)
+         |> Repo.update() do
       {:ok, config} -> config
       {:error, changeset} -> Repo.rollback(changeset)
     end
@@ -325,6 +392,134 @@ defmodule Storyarn.Flows.SequenceCrud do
     :ok
   end
 
+  defp duplicate_composition_owner_in_transaction(flow, source_id) do
+    with {:ok, %{flow: locked_flow, project: project, project_id: project_id}} <-
+           References.lock_active_flow_for_write(flow),
+         :ok <- ItemCapacity.can_create_item?(project),
+         %FlowNode{} = source <- lock_composition_owner_for_duplicate(locked_flow.id, source_id),
+         source =
+           Repo.preload(source, [
+             :sequence_config,
+             :sequence_tracks,
+             :sequence_visual_layers
+           ]),
+         {:ok, duplicate} <- insert_composition_duplicate(locked_flow, source, project_id),
+         {:ok, duplicate} <- set_composition_source(duplicate.id, source.composition_source_id),
+         :ok <- duplicate_visual_layers(source, duplicate.id, project_id),
+         :ok <- duplicate_tracks(source, duplicate.id, project_id) do
+      duplicate = Repo.preload(duplicate, :sequence_config, force: true)
+      {duplicate, project_id}
+    else
+      nil -> Repo.rollback(:composition_owner_not_found)
+      {:error, :limit_reached, details} -> Repo.rollback({:limit_reached, details})
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
+  defp lock_composition_owner_for_duplicate(flow_id, source_id) do
+    Repo.one(
+      from(node in FlowNode,
+        where:
+          node.id == ^source_id and node.flow_id == ^flow_id and
+            node.type in ["sequence", "dialogue"] and is_nil(node.deleted_at),
+        lock: "FOR UPDATE"
+      )
+    )
+  end
+
+  defp insert_composition_duplicate(flow, %FlowNode{type: "dialogue"} = source, _project_id) do
+    NodeCrud.create_node_without_dashboard_broadcast(flow, %{
+      "type" => "dialogue",
+      "position_x" => source.position_x + 50.0,
+      "position_y" => source.position_y + 50.0,
+      "parent_id" => source.parent_id,
+      "composition_source_id" => nil,
+      "data" => NodeTypes.duplicate_data("dialogue", source.data)
+    })
+  end
+
+  defp insert_composition_duplicate(
+         flow,
+         %FlowNode{type: "sequence", sequence_config: %SequenceConfig{} = config} = source,
+         project_id
+       ) do
+    attrs = %{
+      "name" => config.name,
+      "position_x" => source.position_x + 50.0,
+      "position_y" => source.position_y + 50.0,
+      "parent_id" => source.parent_id,
+      "width" => config.width,
+      "height" => config.height
+    }
+
+    case create_sequence_in_transaction(flow.id, attrs) do
+      {duplicate, ^project_id} -> {:ok, duplicate}
+      {_duplicate, _other_project_id} -> {:error, :flow_scope_mismatch}
+    end
+  end
+
+  defp insert_composition_duplicate(_flow, _source, _project_id), do: {:error, :invalid_sequence_config}
+
+  defp duplicate_visual_layers(source, duplicate_id, project_id) do
+    source.sequence_visual_layers
+    |> Enum.sort_by(& &1.id)
+    |> Enum.reduce_while(:ok, fn layer, :ok ->
+      with {:ok, asset_id} <-
+             lock_project_asset(
+               project_id,
+               :sequence_visual_asset_id,
+               layer.asset_id,
+               "image/%"
+             ),
+           attrs =
+             layer
+             |> Map.from_struct()
+             |> Map.take(@visual_layer_copy_fields)
+             |> Map.put(:flow_node_id, duplicate_id)
+             |> Map.put(:asset_id, asset_id),
+           {:ok, _copy} <-
+             %SequenceVisualLayer{}
+             |> SequenceVisualLayer.override_changeset(attrs)
+             |> Repo.insert() do
+        {:cont, :ok}
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp duplicate_tracks(source, duplicate_id, project_id) do
+    source.sequence_tracks
+    |> Enum.sort_by(& &1.id)
+    |> Enum.reduce_while(:ok, fn track, :ok ->
+      with {:ok, asset_id} <-
+             lock_project_asset(
+               project_id,
+               :sequence_track_asset_id,
+               track.asset_id,
+               "audio/%"
+             ),
+           attrs =
+             track
+             |> Map.from_struct()
+             |> Map.take(@track_copy_fields)
+             |> Map.put(:flow_node_id, duplicate_id)
+             |> Map.put(:asset_id, asset_id),
+           {:ok, _copy} <-
+             %SequenceTrack{}
+             |> SequenceTrack.override_changeset(attrs)
+             |> Repo.insert() do
+        {:cont, :ok}
+      else
+        {:error, reason} -> {:halt, {:error, reason}}
+      end
+    end)
+  end
+
+  defp normalize_duplicate_result({:error, {:limit_reached, details}}), do: {:error, :limit_reached, details}
+
+  defp normalize_duplicate_result(result), do: result
+
   defp ensure_sequence(%FlowNode{type: "sequence", deleted_at: nil}), do: :ok
   defp ensure_sequence(_node), do: {:error, :sequence_not_found}
 
@@ -335,29 +530,63 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp broadcast_sequence_result(result), do: result
 
+  @doc "Selects the explicit composition source for a sequence or dialogue node."
+  @spec set_composition_source(integer(), integer() | String.t() | nil) ::
+          {:ok, FlowNode.t()} | {:error, atom() | tuple() | Ecto.Changeset.t()}
+  def set_composition_source(owner_id, source_id) when is_integer(owner_id) do
+    with {:ok, source_id} <- normalize_optional_id(source_id) do
+      Repo.transaction(fn -> persist_composition_source(owner_id, source_id) end)
+    end
+  end
+
+  def set_composition_source(_owner_id, source_id), do: {:error, {:invalid_composition_source, source_id}}
+
+  defp persist_composition_source(owner_id, source_id) do
+    with {:ok, %{flow: flow, node: owner}} <- lock_composition_owner(owner_id),
+         {:ok, nodes} <- lock_composition_nodes(flow.id),
+         :ok <- validate_composition_source(owner, source_id, nodes),
+         {:ok, updated} <-
+           owner
+           |> FlowNode.composition_source_changeset(%{composition_source_id: source_id})
+           |> Repo.update(),
+         :ok <- validate_composition_dependents(flow.id, owner_id) do
+      updated
+    else
+      {:error, reason} -> Repo.rollback(reason)
+    end
+  end
+
   # =========================================================================
   # Sequence visual layers
   # =========================================================================
 
   @doc """
-  Lists all visual layers for a sequence, ordered for player rendering.
+  Lists all local visual-layer rows for a sequence or dialogue owner.
   """
   @spec list_sequence_visual_layers(integer()) :: [SequenceVisualLayer.t()]
   def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id), do: Sequences.list_visual_layers(sequence_id)
 
-  @doc "Fetches a visual layer scoped to its sequence."
+  @doc "Fetches a visual layer scoped to its sequence or dialogue owner."
   @spec get_sequence_visual_layer(integer(), integer()) :: SequenceVisualLayer.t() | nil
   def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id),
     do: Sequences.get_visual_layer(sequence_id, id)
 
+  @doc "Fetches a local visual-layer row by logical key."
+  def get_sequence_visual_layer_by_key(owner_id, layer_key) when is_integer(owner_id) and is_binary(layer_key),
+    do: Sequences.get_visual_layer_by_key(owner_id, layer_key)
+
   @doc """
-  Creates a visual layer for a sequence. `kind` drives sensible stage
+  Creates a local visual-layer definition. `kind` drives sensible stage
   defaults, and explicit attrs override those defaults.
   """
   @spec create_sequence_visual_layer(integer(), map()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def create_sequence_visual_layer(sequence_id, attrs) when is_integer(sequence_id) and is_map(attrs) do
-    attrs = normalize_keys(attrs)
+    attrs =
+      attrs
+      |> normalize_keys()
+      |> Map.drop(~w(flow_node_id layer_key overridden_fields removed))
+
     kind = Map.get(attrs, "kind", "prop")
     slot = normalize_visual_slot(kind, Map.get(attrs, "slot", default_slot_for_visual_kind(kind)))
 
@@ -370,7 +599,7 @@ defmodule Storyarn.Flows.SequenceCrud do
       |> Map.put("slot", slot)
 
     Repo.transaction(fn ->
-      with {:ok, %{project_id: project_id}} <- lock_active_sequence(sequence_id),
+      with {:ok, %{project_id: project_id}} <- lock_composition_owner(sequence_id),
            changeset = SequenceVisualLayer.create_changeset(%SequenceVisualLayer{}, attrs),
            asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
            {:ok, asset_id} <-
@@ -391,7 +620,7 @@ defmodule Storyarn.Flows.SequenceCrud do
     end)
   end
 
-  @doc "Updates a sequence visual layer."
+  @doc "Updates a local visual-layer row."
   @spec update_sequence_visual_layer(SequenceVisualLayer.t(), map()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def update_sequence_visual_layer(%SequenceVisualLayer{} = layer, attrs) when is_map(attrs) do
@@ -422,13 +651,14 @@ defmodule Storyarn.Flows.SequenceCrud do
     end)
   end
 
-  @doc "Deletes a sequence visual layer."
+  @doc "Deletes a local visual-layer row."
   @spec delete_sequence_visual_layer(SequenceVisualLayer.t()) ::
-          {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
+          {:ok, SequenceVisualLayer.t()} | {:error, atom() | Ecto.Changeset.t()}
   def delete_sequence_visual_layer(%SequenceVisualLayer{} = layer) do
     Repo.transaction(fn ->
-      with {:ok, locked_layer, _project_id} <- lock_visual_layer_for_write(layer),
-           {:ok, deleted_layer} <- Repo.delete(locked_layer) do
+      with {:ok, locked_layer, context} <- lock_visual_layer_for_write(layer),
+           {:ok, deleted_layer} <- Repo.delete(locked_layer),
+           :ok <- validate_composition_dependents(context.flow.id, locked_layer.flow_node_id) do
         deleted_layer
       else
         {:error, reason} -> Repo.rollback(reason)
@@ -593,25 +823,26 @@ defmodule Storyarn.Flows.SequenceCrud do
   # =========================================================================
 
   @doc """
-  Lists all tracks for a sequence, ordered by `kind` then `position`.
-  Returns `[]` for sequences with no tracks.
+  Lists all local track and inherited-patch rows for an owner, ordered by
+  `kind` then `position`. Returns `[]` when there are no rows.
   """
   @spec list_sequence_tracks(integer()) :: [SequenceTrack.t()]
   def list_sequence_tracks(sequence_id) when is_integer(sequence_id), do: Sequences.list_tracks(sequence_id)
 
   @doc """
-  Fetches a sequence's track for a given kind, or `nil`.
+  Fetches an owner's local track definition for a given kind, or `nil`.
   """
   @spec get_sequence_track(integer(), String.t()) :: SequenceTrack.t() | nil
   def get_sequence_track(sequence_id, kind) when is_binary(kind), do: Sequences.get_track(sequence_id, kind)
 
-  @doc """
-  Upserts the track row for `(sequence_id, kind)`. If no row exists it's
-  created; if one exists it's updated with `attrs`. `kind` must be one of
-  `SequenceTrack.kinds/0`. Silently rejects kinds outside the whitelist.
+  @doc "Fetches a local audio-track row by logical key."
+  def get_sequence_track_by_key(owner_id, track_key) when is_integer(owner_id) and is_binary(track_key),
+    do: Sequences.get_track_by_key(owner_id, track_key)
 
-  Rejects calls targeting a non-sequence flow_node via the DB trigger
-  (`fn_validate_sequence_track_owner`).
+  @doc """
+  Upserts the local definition for `(owner_id, kind)`. Inherited patches with
+  the same kind are left untouched. `kind` must be one of
+  `SequenceTrack.kinds/0`.
   """
   @spec upsert_sequence_track(integer(), String.t(), map()) ::
           {:ok, SequenceTrack.t()} | {:error, atom() | Ecto.Changeset.t()}
@@ -624,8 +855,8 @@ defmodule Storyarn.Flows.SequenceCrud do
   end
 
   @doc """
-  Deletes the track row for `(sequence_id, kind)`. Returns `{:ok, :cleared}`
-  whether or not a row existed — clearing an empty slot is a no-op.
+  Deletes the local definition for `(owner_id, kind)` and preserves inherited
+  patches. Returns `{:ok, :cleared}` whether or not a definition existed.
   """
   @spec clear_sequence_track(integer(), String.t()) ::
           {:ok, :cleared} | {:error, atom()}
@@ -645,7 +876,7 @@ defmodule Storyarn.Flows.SequenceCrud do
 
   defp do_upsert_sequence_track(sequence_id, kind, attrs) do
     Repo.transaction(fn ->
-      with {:ok, %{project_id: project_id}} <- lock_active_sequence(sequence_id),
+      with {:ok, %{project_id: project_id}} <- lock_composition_owner(sequence_id),
            track = lock_sequence_track(sequence_id, kind),
            changeset = sequence_track_changeset(track, sequence_id, kind, attrs),
            asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
@@ -666,34 +897,45 @@ defmodule Storyarn.Flows.SequenceCrud do
   end
 
   defp do_clear_sequence_track(sequence_id, kind) do
-    Repo.transaction(fn ->
-      case lock_active_sequence(sequence_id) do
-        {:ok, _context} ->
-          Repo.delete_all(
-            from(t in SequenceTrack,
-              where: t.flow_node_id == ^sequence_id and t.kind == ^kind
-            )
-          )
-
-          :cleared
-
-        {:error, reason} ->
-          Repo.rollback(reason)
-      end
-    end)
+    Repo.transaction(fn -> clear_sequence_track_in_transaction(sequence_id, kind) end)
   end
 
-  defp lock_active_sequence(sequence_id) do
+  defp clear_sequence_track_in_transaction(sequence_id, kind) do
+    case lock_composition_owner(sequence_id) do
+      {:ok, context} ->
+        Repo.delete_all(
+          from(t in SequenceTrack,
+            where:
+              t.flow_node_id == ^sequence_id and t.kind == ^kind and
+                t.is_override == false
+          )
+        )
+
+        finish_clearing_track(validate_composition_dependents(context.flow.id, sequence_id))
+
+      {:error, reason} ->
+        Repo.rollback(reason)
+    end
+  end
+
+  defp finish_clearing_track(:ok), do: :cleared
+  defp finish_clearing_track({:error, reason}), do: Repo.rollback(reason)
+
+  defp lock_composition_owner(owner_id) do
     with {:ok, %{node: node} = context} <-
-           References.lock_active_node_for_write(sequence_id),
-         :ok <- ensure_sequence(node) do
+           References.lock_active_node_for_write(owner_id),
+         :ok <- ensure_composition_owner(node) do
       {:ok, context}
     end
   end
 
+  defp ensure_composition_owner(%FlowNode{type: type, deleted_at: nil}) when type in ["sequence", "dialogue"], do: :ok
+
+  defp ensure_composition_owner(_node), do: {:error, :composition_owner_not_found}
+
   defp lock_visual_layer_for_write(%SequenceVisualLayer{id: layer_id, flow_node_id: sequence_id})
        when is_integer(layer_id) and is_integer(sequence_id) do
-    with {:ok, context} <- lock_active_sequence(sequence_id),
+    with {:ok, context} <- lock_composition_owner(sequence_id),
          %SequenceVisualLayer{} = layer <-
            Repo.one(
              from(layer in SequenceVisualLayer,
@@ -748,7 +990,9 @@ defmodule Storyarn.Flows.SequenceCrud do
   defp lock_sequence_track(sequence_id, kind) do
     Repo.one(
       from(track in SequenceTrack,
-        where: track.flow_node_id == ^sequence_id and track.kind == ^kind,
+        where:
+          track.flow_node_id == ^sequence_id and track.kind == ^kind and
+            track.is_override == false,
         lock: "FOR UPDATE"
       )
     )
@@ -758,6 +1002,7 @@ defmodule Storyarn.Flows.SequenceCrud do
     attrs =
       attrs
       |> normalize_keys()
+      |> Map.drop(~w(flow_node_id kind track_key is_override overridden_fields removed))
       |> Map.put("flow_node_id", sequence_id)
       |> Map.put("kind", kind)
 
@@ -778,5 +1023,114 @@ defmodule Storyarn.Flows.SequenceCrud do
     changeset
     |> Ecto.Changeset.put_change(:asset_id, asset_id)
     |> Repo.update()
+  end
+
+  defp lock_composition_nodes(flow_id) do
+    nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where:
+            node.flow_id == ^flow_id and node.type in ["sequence", "dialogue"] and
+              is_nil(node.deleted_at),
+          order_by: [asc: node.id],
+          lock: "FOR UPDATE"
+        )
+      )
+
+    {:ok, Map.new(nodes, &{&1.id, &1})}
+  end
+
+  defp validate_composition_source(_owner, nil, _nodes), do: :ok
+
+  defp validate_composition_source(owner, source_id, nodes) do
+    case Map.get(nodes, source_id) do
+      %FlowNode{} ->
+        if composition_cycle?(owner.id, source_id, nodes),
+          do: {:error, :composition_cycle},
+          else: :ok
+
+      nil ->
+        {:error, {:invalid_composition_source, source_id}}
+    end
+  end
+
+  defp composition_cycle?(owner_id, source_id, nodes), do: composition_cycle?(owner_id, source_id, nodes, MapSet.new())
+
+  defp composition_cycle?(owner_id, owner_id, _nodes, _visited), do: true
+  defp composition_cycle?(_owner_id, nil, _nodes, _visited), do: false
+
+  defp composition_cycle?(owner_id, source_id, nodes, visited) do
+    if MapSet.member?(visited, source_id) do
+      true
+    else
+      case Map.get(nodes, source_id) do
+        %FlowNode{composition_source_id: next_id} ->
+          composition_cycle?(owner_id, next_id, nodes, MapSet.put(visited, source_id))
+
+        nil ->
+          false
+      end
+    end
+  end
+
+  defp normalize_optional_id(value) when value in [nil, ""], do: {:ok, nil}
+  defp normalize_optional_id(value) when is_integer(value) and value > 0, do: {:ok, value}
+
+  defp normalize_optional_id(value) when is_binary(value) do
+    case Integer.parse(value) do
+      {id, ""} when id > 0 -> {:ok, id}
+      _ -> {:error, {:invalid_composition_source, value}}
+    end
+  end
+
+  defp normalize_optional_id(value), do: {:error, {:invalid_composition_source, value}}
+
+  defp validate_composition_dependents(flow_id, owner_id) do
+    flow_id
+    |> composition_nodes_including_deleted()
+    |> Map.values()
+    |> Enum.map(&composition_integrity_node/1)
+    |> SequenceCompositionIntegrity.validate_affected(owner_id)
+  end
+
+  defp composition_nodes_including_deleted(flow_id) do
+    from(node in FlowNode,
+      where: node.flow_id == ^flow_id and node.type in ["sequence", "dialogue"],
+      preload: [sequence_tracks: [:asset], sequence_visual_layers: [:asset]]
+    )
+    |> Repo.all()
+    |> Map.new(&{&1.id, &1})
+  end
+
+  defp composition_integrity_node(node) do
+    %{
+      "original_id" => node.id,
+      "type" => node.type,
+      "deleted_at" => node.deleted_at,
+      "composition_source_original_id" => node.composition_source_id,
+      "sequence_config" => composition_integrity_config(node),
+      "sequence_tracks" => Enum.map(node.sequence_tracks, &composition_integrity_track/1),
+      "sequence_visual_layers" => Enum.map(node.sequence_visual_layers, &composition_integrity_visual_layer/1)
+    }
+  end
+
+  defp composition_integrity_config(%FlowNode{type: "sequence"}), do: %{}
+  defp composition_integrity_config(_node), do: nil
+
+  defp composition_integrity_track(track) do
+    %{
+      "track_key" => track.track_key,
+      "is_override" => track.is_override,
+      "overridden_fields" => track.overridden_fields,
+      "removed" => track.removed
+    }
+  end
+
+  defp composition_integrity_visual_layer(layer) do
+    %{
+      "layer_key" => layer.layer_key,
+      "overridden_fields" => layer.overridden_fields,
+      "removed" => layer.removed
+    }
   end
 end

@@ -815,6 +815,47 @@ defmodule Storyarn.Flows.NodeCrudTest do
       assert Flows.get_connection(flow.id, connection.id) == nil
     end
 
+    test "rejects leaving dialogue while any composition state still exists" do
+      %{flow: flow, project: project, user: user} = create_project_and_flow()
+      {:ok, source} = Flows.create_sequence(flow.id, %{"name" => "Source"})
+
+      inherited = node_fixture(flow, %{type: "dialogue"})
+      {:ok, _inherited} = Flows.set_composition_source(inherited.id, source.id)
+
+      track_owner = node_fixture(flow, %{type: "dialogue"})
+      {:ok, _track} = Flows.upsert_sequence_track(track_owner.id, "music", %{})
+
+      layer_owner = node_fixture(flow, %{type: "dialogue"})
+      image = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      {:ok, _layer} =
+        Flows.create_sequence_visual_layer(layer_owner.id, %{
+          "asset_id" => image.id,
+          "kind" => "character"
+        })
+
+      dependent_source = node_fixture(flow, %{type: "dialogue"})
+      dependent = node_fixture(flow, %{type: "dialogue"})
+      {:ok, _dependent} = Flows.set_composition_source(dependent.id, dependent_source.id)
+      {:ok, _deleted_dependent, _meta} = Flows.delete_node(dependent)
+
+      {:ok, configured} = Flows.create_sequence(flow.id, %{"name" => "Configured"})
+
+      Repo.update_all(
+        from(node in FlowNode, where: node.id == ^configured.id),
+        set: [type: "dialogue"]
+      )
+
+      configured_dialogue = Repo.reload!(configured)
+
+      for dialogue <- [inherited, track_owner, layer_owner, dependent_source, configured_dialogue] do
+        assert {:error, :cannot_change_composition_owner_type} =
+                 Flows.update_node(dialogue, %{type: "annotation", data: %{}})
+
+        assert Repo.reload!(dialogue).type == "dialogue"
+      end
+    end
+
     test "rejects a duplicate hub_id when the full node update changes data" do
       %{flow: flow} = create_project_and_flow()
 

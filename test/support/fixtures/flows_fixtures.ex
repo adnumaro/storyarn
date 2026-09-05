@@ -7,9 +7,29 @@ defmodule Storyarn.FlowsFixtures do
   alias Storyarn.Flows
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Platform.Kernel.MapAccess
   alias Storyarn.ProjectsFixtures
   alias Storyarn.Repo
+
+  @sequence_track_fields [:position, :asset_id, :start_time, :end_time, :volume]
+  @sequence_visual_layer_fields [
+    :asset_id,
+    :kind,
+    :label,
+    :z_index,
+    :slot,
+    :x,
+    :y,
+    :width,
+    :height,
+    :anchor_x,
+    :anchor_y,
+    :fit,
+    :opacity,
+    :visible
+  ]
 
   def unique_flow_name, do: "Flow #{System.unique_integer([:positive])}"
 
@@ -95,6 +115,50 @@ defmodule Storyarn.FlowsFixtures do
     |> Repo.insert!()
   end
 
+  @doc "Inserts a test-only persisted patch or tombstone for an inherited audio track."
+  def raw_sequence_track_override_fixture(owner, source, attrs \\ %{}, options \\ []) do
+    overridden_fields =
+      Keyword.get(options, :overridden_fields, overridden_field_names(attrs, @sequence_track_fields))
+
+    source
+    |> Map.from_struct()
+    |> Map.take(@sequence_track_fields)
+    |> Map.merge(normalize_fixture_attrs(attrs, @sequence_track_fields))
+    |> Map.merge(%{
+      flow_node_id: owner.id,
+      track_key: source.track_key,
+      kind: source.kind,
+      is_override: true,
+      overridden_fields: overridden_fields,
+      removed: Keyword.get(options, :removed, false)
+    })
+    |> then(&SequenceTrack.override_changeset(%SequenceTrack{}, &1))
+    |> Repo.insert!()
+  end
+
+  @doc "Inserts a test-only persisted patch or tombstone for an inherited visual layer."
+  def raw_sequence_visual_override_fixture(owner, source, attrs \\ %{}, options \\ []) do
+    overridden_fields =
+      Keyword.get(
+        options,
+        :overridden_fields,
+        overridden_field_names(attrs, @sequence_visual_layer_fields)
+      )
+
+    source
+    |> Map.from_struct()
+    |> Map.take(@sequence_visual_layer_fields)
+    |> Map.merge(normalize_fixture_attrs(attrs, @sequence_visual_layer_fields))
+    |> Map.merge(%{
+      flow_node_id: owner.id,
+      layer_key: source.layer_key,
+      overridden_fields: overridden_fields,
+      removed: Keyword.get(options, :removed, false)
+    })
+    |> then(&SequenceVisualLayer.override_changeset(%SequenceVisualLayer{}, &1))
+    |> Repo.insert!()
+  end
+
   @doc """
   Creates a connection between two nodes.
   """
@@ -107,5 +171,21 @@ defmodule Storyarn.FlowsFixtures do
 
     {:ok, connection} = Flows.create_connection(flow, source_node, target_node, attrs)
     connection
+  end
+
+  defp overridden_field_names(attrs, allowed_fields) do
+    for field <- allowed_fields,
+        Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
+        do: Atom.to_string(field)
+  end
+
+  defp normalize_fixture_attrs(attrs, allowed_fields) do
+    Enum.reduce(allowed_fields, %{}, fn field, normalized ->
+      cond do
+        Map.has_key?(attrs, field) -> Map.put(normalized, field, Map.fetch!(attrs, field))
+        Map.has_key?(attrs, Atom.to_string(field)) -> Map.put(normalized, field, Map.fetch!(attrs, Atom.to_string(field)))
+        true -> normalized
+      end
+    end)
   end
 end

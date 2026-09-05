@@ -26,6 +26,11 @@ defmodule Storyarn.Flows.FlowNode do
   DB trigger. Non-sequence nodes have `has_many :children`, which
   conceptually only makes sense for sequence-type rows but is exposed
   uniformly.
+
+  `composition_source_id` is independent from canvas hierarchy. Sequence and
+  dialogue nodes use it to inherit a deterministic static composition. The
+  source must be an active composition owner in the same flow, chains cannot
+  cycle, and an active source cannot be soft-deleted while it has dependents.
   """
   use Ecto.Schema
 
@@ -67,6 +72,9 @@ defmodule Storyarn.Flows.FlowNode do
           parent_id: integer() | nil,
           parent: t() | NotLoaded.t() | nil,
           children: [t()] | NotLoaded.t(),
+          composition_source_id: integer() | nil,
+          composition_source: t() | NotLoaded.t() | nil,
+          composition_dependents: [t()] | NotLoaded.t(),
           sequence_config: SequenceConfig.t() | NotLoaded.t() | nil,
           sequence_tracks: [SequenceTrack.t()] | NotLoaded.t(),
           sequence_visual_layers: [SequenceVisualLayer.t()] | NotLoaded.t(),
@@ -88,6 +96,8 @@ defmodule Storyarn.Flows.FlowNode do
     belongs_to :flow, Flow
     belongs_to :parent, __MODULE__, foreign_key: :parent_id
     has_many :children, __MODULE__, foreign_key: :parent_id
+    belongs_to :composition_source, __MODULE__, foreign_key: :composition_source_id
+    has_many :composition_dependents, __MODULE__, foreign_key: :composition_source_id
     has_one :sequence_config, SequenceConfig, foreign_key: :flow_node_id
     has_many :sequence_tracks, SequenceTrack, foreign_key: :flow_node_id
     has_many :sequence_visual_layers, SequenceVisualLayer, foreign_key: :flow_node_id
@@ -106,30 +116,46 @@ defmodule Storyarn.Flows.FlowNode do
   Changeset for creating a new node.
   """
   def create_changeset(node, attrs) do
-    attrs = normalize_node_data(attrs, nil, :create)
+    attrs =
+      attrs
+      |> normalize_node_data(nil, :create)
+      |> default_composition_source()
 
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id])
+    |> cast(attrs, [:type, :position_x, :position_y, :data, :parent_id, :composition_source_id])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
     |> validate_dialogue_runtime_ids()
     |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:composition_source_id)
   end
 
   @doc "Changeset for materializing a node from a snapshot, including historical data normalization."
   def materialize_changeset(node, attrs) do
-    attrs = normalize_legacy_node_data(attrs, node, :materialize)
+    attrs =
+      attrs
+      |> normalize_legacy_node_data(node, :materialize)
+      |> default_composition_source()
 
     node
-    |> cast(attrs, [:type, :position_x, :position_y, :data, :word_count, :parent_id])
+    |> cast(attrs, [
+      :type,
+      :position_x,
+      :position_y,
+      :data,
+      :word_count,
+      :parent_id,
+      :composition_source_id
+    ])
     |> validate_required([:type])
     |> validate_inclusion(:type, @node_types)
     |> validate_dialogue_runtime_ids()
     |> dialogue_localization_id_constraint()
     |> foreign_key_constraint(:flow_id)
     |> foreign_key_constraint(:parent_id)
+    |> foreign_key_constraint(:composition_source_id)
   end
 
   @doc """
@@ -171,6 +197,13 @@ defmodule Storyarn.Flows.FlowNode do
     |> foreign_key_constraint(:parent_id)
   end
 
+  @doc "Changeset for selecting an explicit static-composition source."
+  def composition_source_changeset(node, attrs) do
+    node
+    |> cast(attrs, [:composition_source_id])
+    |> foreign_key_constraint(:composition_source_id)
+  end
+
   @doc """
   Changeset for updating only the data of a node.
   Used for editing node properties.
@@ -206,6 +239,18 @@ defmodule Storyarn.Flows.FlowNode do
     |> ensure_dialogue_runtime_ids(node, identity_mode)
     |> ensure_hub_color(node, &HubColors.resolve/1)
   end
+
+  defp default_composition_source(attrs) when is_map(attrs) do
+    type = attr(attrs, :type)
+
+    if type in ["sequence", "dialogue"] and not has_attr?(attrs, :composition_source_id) do
+      put_attr(attrs, :composition_source_id, attr(attrs, :parent_id))
+    else
+      attrs
+    end
+  end
+
+  defp has_attr?(attrs, key), do: Map.has_key?(attrs, key) or Map.has_key?(attrs, Atom.to_string(key))
 
   defp normalize_legacy_node_data(attrs, node, identity_mode) do
     attrs

@@ -1,6 +1,7 @@
 defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   @moduledoc false
 
+  alias Storyarn.Flows.Editor
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.RuntimeKey
   alias Storyarn.Flows.SequenceTrack
@@ -15,12 +16,15 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
     original_id name shortcut description is_main settings scene_id nodes connections
     asset_blob_hashes asset_metadata referenced_sheets localization localization_manifest
   )
-  @node_fields ~w(original_id type position_x position_y data parent_id)
+  @node_fields ~w(original_id type position_x position_y data parent_id composition_source_original_id)
   @sequence_config_fields ~w(name width height)
-  @sequence_track_fields ~w(original_id kind position asset_id start_time end_time volume)
+  @sequence_track_fields ~w(
+    original_id track_key is_override overridden_fields removed kind position asset_id
+    start_time end_time volume
+  )
   @sequence_layer_fields ~w(
-    original_id asset_id kind label z_index slot x y width height anchor_x anchor_y fit
-    opacity visible
+    original_id layer_key overridden_fields removed asset_id kind label z_index slot x y width
+    height anchor_x anchor_y fit opacity visible
   )
   @connection_fields ~w(
     original_id source_node_index target_node_index source_pin target_pin label
@@ -32,9 +36,22 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
     translated_by_id reviewed_by_id archived_at archive_reason
   )
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
+  @composition_owner_types ~w(sequence dialogue)
+  @track_override_fields ~w(position asset_id start_time end_time volume)
+  @layer_override_fields ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
+
+  @doc false
+  @spec normalize_legacy(term()) :: term()
+  def normalize_legacy(%{"nodes" => nodes} = snapshot) when is_list(nodes) do
+    Map.put(snapshot, "nodes", Enum.map(nodes, &normalize_legacy_node/1))
+  end
+
+  def normalize_legacy(snapshot), do: snapshot
 
   @spec validate(term(), pos_integer()) :: :ok | {:error, term()}
   def validate(snapshot, expected_flow_id) when is_map(snapshot) do
+    snapshot = normalize_legacy(snapshot)
+
     with :ok <- required_keys(snapshot, @flow_fields, :flow),
          :ok <- validate_root(snapshot, expected_flow_id),
          {:ok, nodes} <- list_field(snapshot, "nodes"),
@@ -79,8 +96,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
          :ok <- dialogue_runtime_ids_unique(nodes),
          :ok <- graph_cardinality(nodes),
          :ok <- sequence_resource_ids(nodes, "sequence_tracks", :sequence_track),
-         :ok <- sequence_resource_ids(nodes, "sequence_visual_layers", :sequence_visual_layer) do
-      validate_parents(nodes)
+         :ok <- sequence_resource_ids(nodes, "sequence_visual_layers", :sequence_visual_layer),
+         :ok <- validate_parents(nodes),
+         :ok <- validate_composition_sources(nodes) do
+      Editor.validate_sequence_composition_nodes(nodes)
     end
   end
 
@@ -135,8 +154,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
 
   defp validate_node_payload(%{"original_id" => id, "type" => "exit", "data" => data}), do: validate_exit_target(id, data)
 
-  defp validate_node_payload(%{"original_id" => id, "type" => "dialogue", "data" => data}),
-    do: validate_dialogue_runtime_ids(id, data)
+  defp validate_node_payload(%{"original_id" => id, "type" => "dialogue", "data" => data} = node) do
+    with :ok <- validate_dialogue_runtime_ids(id, data), do: validate_composition_resources(node)
+  end
 
   defp validate_node_payload(%{"type" => "sequence"} = node), do: validate_sequence(node)
   defp validate_node_payload(_node), do: :ok
@@ -202,16 +222,21 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   end
 
   defp validate_sequence(node) do
+    with :ok <- validate_sequence_config(node), do: validate_composition_resources(node)
+  end
+
+  defp validate_composition_resources(node) do
     with {:ok, tracks} <- required_sequence_collection(node, "sequence_tracks"),
          {:ok, layers} <- required_sequence_collection(node, "sequence_visual_layers"),
-         :ok <- validate_sequence_config(node),
          :ok <- unique_ids(tracks, :sequence_track),
          :ok <- unique_ids(layers, :sequence_visual_layer),
          :ok <- each(tracks, &validate_track/1),
-         :ok <- each(layers, &validate_layer/1) do
-      kinds = Enum.map(tracks, & &1["kind"])
+         :ok <- each(layers, &validate_layer/1),
+         :ok <- unique_resource_keys(tracks, "track_key", :sequence_track, node["original_id"]),
+         :ok <- unique_resource_keys(layers, "layer_key", :sequence_visual_layer, node["original_id"]) do
+      local_kinds = for track <- tracks, track["is_override"] == false, do: track["kind"]
 
-      if length(kinds) == length(Enum.uniq(kinds)),
+      if length(local_kinds) == length(Enum.uniq(local_kinds)),
         do: :ok,
         else: {:error, {:duplicate_sequence_track_kind, node["original_id"]}}
     end
@@ -251,6 +276,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
 
   defp validate_track(track) when is_map(track) do
     with :ok <- required_keys(track, @sequence_track_fields, :sequence_track),
+         true <- bounded_nonempty_string?(track["track_key"], 64),
+         true <- is_boolean(track["is_override"]),
+         true <- valid_override_fields?(track["overridden_fields"], @track_override_fields),
+         true <- is_boolean(track["removed"]),
          true <- track["kind"] in SequenceTrack.kinds(),
          true <- is_integer(track["position"]),
          true <- optional_positive_integer?(track["asset_id"]),
@@ -268,7 +297,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
 
   defp validate_layer(layer) when is_map(layer) do
     with :ok <- required_keys(layer, @sequence_layer_fields, :sequence_visual_layer),
-         true <- positive_integer?(layer["asset_id"]),
+         true <- bounded_nonempty_string?(layer["layer_key"], 64),
+         true <- valid_override_fields?(layer["overridden_fields"], @layer_override_fields),
+         true <- is_boolean(layer["removed"]),
+         true <- optional_positive_integer?(layer["asset_id"]),
          true <- layer["kind"] in SequenceVisualLayer.kinds(),
          true <- optional_bounded_string?(layer["label"], 120),
          true <- is_integer(layer["z_index"]),
@@ -289,10 +321,18 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   defp sequence_resource_ids(nodes, key, kind) do
     nodes
     |> Enum.flat_map(fn
-      %{"type" => "sequence"} = node -> node[key]
+      %{"type" => type} = node when type in @composition_owner_types -> node[key]
       _node -> []
     end)
     |> unique_ids(kind)
+  end
+
+  defp unique_resource_keys(resources, key, kind, node_id) do
+    keys = Enum.map(resources, & &1[key])
+
+    if length(keys) == length(Enum.uniq(keys)),
+      do: :ok,
+      else: {:error, {:duplicate_sequence_resource_key, kind, node_id}}
   end
 
   defp validate_parents(nodes) do
@@ -304,6 +344,115 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
         else: :ok
     end
   end
+
+  defp validate_composition_sources(nodes) do
+    by_id = Map.new(nodes, &{&1["original_id"], &1})
+
+    with :ok <- each(nodes, &validate_composition_source(&1, by_id)) do
+      if Enum.any?(nodes, &composition_source_cycle?(&1["original_id"], by_id, MapSet.new())),
+        do: {:error, :snapshot_composition_source_cycle},
+        else: :ok
+    end
+  end
+
+  defp validate_composition_source(%{"composition_source_original_id" => nil}, _by_id), do: :ok
+
+  defp validate_composition_source(
+         %{"original_id" => node_id, "type" => type, "composition_source_original_id" => source_id},
+         by_id
+       ) do
+    source = Map.get(by_id, source_id)
+
+    cond do
+      type not in @composition_owner_types ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :invalid_owner_type}}
+
+      node_id == source_id ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :self}}
+
+      not positive_integer?(source_id) ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :invalid_id}}
+
+      not is_map(source) or source["type"] not in @composition_owner_types ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, source}}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp composition_source_cycle?(node_id, by_id, seen) do
+    case by_id[node_id] do
+      %{"composition_source_original_id" => nil} ->
+        false
+
+      %{"composition_source_original_id" => source_id} ->
+        MapSet.member?(seen, source_id) or
+          composition_source_cycle?(source_id, by_id, MapSet.put(seen, node_id))
+
+      nil ->
+        true
+    end
+  end
+
+  defp normalize_legacy_node(%{} = node) do
+    type = node["type"]
+
+    node =
+      Map.put_new(
+        node,
+        "composition_source_original_id",
+        if(type in @composition_owner_types, do: node["parent_id"])
+      )
+
+    if type in @composition_owner_types do
+      node
+      |> Map.put_new("sequence_tracks", [])
+      |> Map.put_new("sequence_visual_layers", [])
+      |> normalize_legacy_resources("sequence_tracks", &normalize_legacy_track/1)
+      |> normalize_legacy_resources("sequence_visual_layers", &normalize_legacy_layer/1)
+    else
+      node
+    end
+  end
+
+  defp normalize_legacy_node(node), do: node
+
+  defp normalize_legacy_resources(node, key, normalize) do
+    case node[key] do
+      resources when is_list(resources) -> Map.put(node, key, Enum.map(resources, normalize))
+      _invalid -> node
+    end
+  end
+
+  defp normalize_legacy_track(%{} = track) do
+    track
+    |> Map.put_new("track_key", legacy_resource_key("track", track["original_id"]))
+    |> Map.put_new("is_override", false)
+    |> Map.put_new("overridden_fields", @track_override_fields)
+    |> Map.put_new("removed", false)
+  end
+
+  defp normalize_legacy_track(track), do: track
+
+  defp normalize_legacy_layer(%{} = layer) do
+    layer
+    |> Map.put_new("layer_key", legacy_resource_key("layer", layer["original_id"]))
+    |> Map.put_new("overridden_fields", @layer_override_fields)
+    |> Map.put_new("removed", false)
+  end
+
+  defp normalize_legacy_layer(layer), do: layer
+
+  defp legacy_resource_key(prefix, id) when is_integer(id) and id > 0, do: "#{prefix}-#{id}"
+  defp legacy_resource_key(_prefix, _id), do: nil
+
+  defp valid_override_fields?(fields, allowed) when is_list(fields) do
+    Enum.all?(fields, &is_binary/1) and length(fields) == length(Enum.uniq(fields)) and
+      Enum.all?(fields, &(&1 in allowed))
+  end
+
+  defp valid_override_fields?(_fields, _allowed), do: false
 
   defp validate_parent(%{"parent_id" => nil}, _by_id), do: :ok
 

@@ -144,6 +144,7 @@ defmodule Storyarn.Projects.Exports.Validator do
           artifact_context
         )
       end,
+      fn -> check_unsupported_sequence_composition(opts, validation_data.flows) end,
       fn -> check_circular_subflows(artifact_flows) end,
       fn -> check_missing_translations(project_id, opts, artifact_flows) end,
       fn -> check_orphan_sheets(project_id, validation_data.sheets) end
@@ -212,6 +213,70 @@ defmodule Storyarn.Projects.Exports.Validator do
 
   defp load_sheets(project_id, %ExportOptions{sheet_ids: sheet_ids}) do
     SheetReadModel.list_for_export(project_id, filter_ids: sheet_ids)
+  end
+
+  # =============================================================================
+  # Check: unsupported_sequence_composition (warning)
+  # =============================================================================
+
+  defp check_unsupported_sequence_composition(%ExportOptions{format: :storyarn}, _flows), do: []
+
+  defp check_unsupported_sequence_composition(%ExportOptions{format: format}, flows) do
+    if format in ExportOptions.valid_formats() do
+      Enum.flat_map(flows, &sequence_composition_findings(&1, format))
+    else
+      []
+    end
+  end
+
+  defp sequence_composition_findings(flow, format) do
+    counts = sequence_composition_counts(flow.nodes || [])
+
+    if Enum.any?(Map.values(counts), &(&1 > 0)) do
+      [
+        %{
+          level: :warning,
+          rule: :unsupported_sequence_composition,
+          format: format,
+          flow_id: flow.id,
+          flow_name: flow.name,
+          details: counts,
+          message:
+            dgettext(
+              "projects",
+              ~s(Flow "%{name}" uses Storyarn sequence composition that %{format} cannot represent; those composition details will be omitted. Use a Storyarn project snapshot to preserve them.),
+              name: flow.name,
+              format: format_label(format)
+            )
+        }
+      ]
+    else
+      []
+    end
+  end
+
+  defp sequence_composition_counts(nodes) do
+    Enum.reduce(
+      nodes,
+      %{composition_sources: 0, visual_layers: 0, audio_tracks: 0},
+      fn node, counts ->
+        source_count = if is_nil(node.composition_source_id), do: 0, else: 1
+
+        counts
+        |> Map.update!(:composition_sources, &(&1 + source_count))
+        |> Map.update!(:visual_layers, &(&1 + loaded_count(node.sequence_visual_layers)))
+        |> Map.update!(:audio_tracks, &(&1 + loaded_count(node.sequence_tracks)))
+      end
+    )
+  end
+
+  defp loaded_count(items) when is_list(items), do: length(items)
+  defp loaded_count(_items), do: 0
+
+  defp format_label(format) do
+    format
+    |> to_string()
+    |> String.capitalize()
   end
 
   # Export consumes canonical health as a boundary, never as a second dashboard.

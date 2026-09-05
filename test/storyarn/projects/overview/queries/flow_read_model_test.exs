@@ -2,6 +2,7 @@ defmodule Storyarn.Projects.FlowReadModelTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
@@ -11,21 +12,38 @@ defmodule Storyarn.Projects.FlowReadModelTest do
   alias Storyarn.Projects.FlowReadModel
 
   setup do
-    project = project_fixture(user_fixture())
-    %{project: project}
+    user = user_fixture()
+    project = project_fixture(user)
+    %{project: project, user: user}
   end
 
   describe "list_flows_for_export/2" do
-    test "loads active Flows with nodes, sequence configs and connections", %{project: project} do
+    test "loads active Flows with nodes, sequence composition and connections", %{
+      project: project,
+      user: user
+    } do
       flow = flow_fixture(project, %{name: "Exported"})
       assert {:ok, sequence} = Flows.create_sequence(flow.id, %{name: "Act I"})
+      image = image_asset_fixture(project, user)
+
+      assert {:ok, track} = Flows.upsert_sequence_track(sequence.id, "music", %{})
+
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop"
+               })
 
       [exported] = FlowReadModel.list_flows_for_export(project.id)
 
       assert exported.id == flow.id
       assert is_list(exported.nodes)
       assert is_list(exported.connections)
-      assert Enum.find(exported.nodes, &(&1.id == sequence.id)).sequence_config.name == "Act I"
+
+      exported_sequence = Enum.find(exported.nodes, &(&1.id == sequence.id))
+      assert exported_sequence.sequence_config.name == "Act I"
+      assert Enum.map(exported_sequence.sequence_tracks, & &1.id) == [track.id]
+      assert Enum.map(exported_sequence.sequence_visual_layers, & &1.id) == [layer.id]
     end
 
     test "filters the caller-owned export selection", %{project: project} do

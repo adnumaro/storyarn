@@ -56,7 +56,7 @@ defmodule Storyarn.Projects.FlowReadModel do
       from(node in FlowNodeRecord,
         where: is_nil(node.deleted_at),
         order_by: [asc: node.id],
-        preload: [:sequence_config]
+        preload: [:sequence_config, :sequence_tracks, :sequence_visual_layers]
       )
 
     query =

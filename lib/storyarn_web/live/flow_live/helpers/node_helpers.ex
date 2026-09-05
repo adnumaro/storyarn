@@ -433,6 +433,18 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
       {:ok, :already_active} ->
         {:noreply, socket}
 
+      {:error, :inactive_composition_source} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.dgettext(
+             Storyarn.Gettext,
+             "flows",
+             "This node cannot be restored while its sequence composition source is in the trash."
+           )
+         )}
+
       {:error, _} ->
         {:noreply,
          put_flash(
@@ -566,6 +578,18 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
              Storyarn.Gettext,
              "flows",
              "A flow must have at least one Exit node."
+           )
+         )}
+
+      {:error, :composition_source_in_use} ->
+        {:noreply,
+         put_flash(
+           socket,
+           :error,
+           Gettext.dgettext(
+             Storyarn.Gettext,
+             "flows",
+             "This node cannot be deleted while other nodes inherit its sequence composition."
            )
          )}
 

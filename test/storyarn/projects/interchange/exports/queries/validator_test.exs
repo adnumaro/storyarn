@@ -2,6 +2,7 @@ defmodule Storyarn.Projects.Exports.ValidatorTest do
   use Storyarn.DataCase, async: true
 
   import Storyarn.AccountsFixtures
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures, except: [connection_fixture: 3, connection_fixture: 4]
   import Storyarn.LocalizationFixtures
   import Storyarn.ProjectsFixtures
@@ -341,6 +342,94 @@ defmodule Storyarn.Projects.Exports.ValidatorTest do
       result = Validator.validate_project(project.id, %ExportOptions{format: :ink})
 
       assert Enum.any?(result.errors, &(&1.rule == :invalid_export_expression))
+    end
+  end
+
+  # =============================================================================
+  # unsupported_sequence_composition (warning)
+  # =============================================================================
+
+  describe "unsupported_sequence_composition" do
+    setup [:setup_project]
+
+    test "warns for every external format when a selected Flow uses static composition", %{
+      user: user,
+      project: project
+    } do
+      flow = flow_fixture(project, %{name: "Staged Flow"})
+      speaker = sheet_fixture(project, %{name: "Narrator"})
+      assert {:ok, sequence} = Storyarn.Flows.create_sequence(flow.id, %{name: "Stage"})
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          composition_source_id: sequence.id,
+          data: %{"text" => "Welcome", "speaker_sheet_id" => speaker.id}
+        })
+
+      exit_node = node_fixture(flow, %{type: "exit", data: %{}})
+      connect_from_entry(flow, dialogue)
+      Storyarn.FlowsFixtures.connection_fixture(flow, dialogue, exit_node)
+
+      image = image_asset_fixture(project, user)
+
+      assert {:ok, _layer} =
+               Storyarn.Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop"
+               })
+
+      assert {:ok, _track} = Storyarn.Flows.upsert_sequence_track(sequence.id, "music", %{})
+
+      for format <- ExportOptions.valid_formats() do
+        result = Validator.validate_project(project.id, %ExportOptions{format: format})
+
+        assert [warning] =
+                 Enum.filter(result.warnings, &(&1.rule == :unsupported_sequence_composition))
+
+        assert warning.format == format
+        assert warning.flow_id == flow.id
+        assert warning.flow_name == "Staged Flow"
+        assert warning.details == %{composition_sources: 1, visual_layers: 1, audio_tracks: 1}
+        assert warning.message =~ "cannot represent"
+        assert warning.message =~ "will be omitted"
+        assert warning.message =~ "Storyarn project snapshot"
+      end
+    end
+
+    test "checks source links only inside the selected Flows", %{project: project} do
+      excluded = flow_fixture(project, %{name: "Excluded Stage"})
+      selected = flow_fixture(project, %{name: "Selected Plain Flow"})
+      assert {:ok, source} = Storyarn.Flows.create_sequence(excluded.id, %{name: "Source"})
+
+      _dialogue =
+        node_fixture(excluded, %{
+          type: "dialogue",
+          composition_source_id: source.id,
+          data: %{"text" => "Excluded"}
+        })
+
+      result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :unity,
+          flow_ids: [selected.id]
+        })
+
+      refute Enum.any?(result.warnings, &(&1.rule == :unsupported_sequence_composition))
+
+      affected_result =
+        Validator.validate_project(project.id, %ExportOptions{
+          format: :unity,
+          flow_ids: [excluded.id]
+        })
+
+      assert [warning] =
+               Enum.filter(
+                 affected_result.warnings,
+                 &(&1.rule == :unsupported_sequence_composition)
+               )
+
+      assert warning.details == %{composition_sources: 1, visual_layers: 0, audio_tracks: 0}
     end
   end
 

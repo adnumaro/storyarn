@@ -978,9 +978,10 @@ shared_persistence_mapping_policy = %{
         %{identity: "defp do_restore_exact_authored_node_types/4", operations: [:update_all]},
         %{identity: "defp insert_flow_nodes/7", operations: [:insert]},
         %{identity: "defp link_exact_snapshot_node_parent/6", operations: [:update]},
-        %{identity: "defp link_portable_snapshot_node_parent/6", operations: [:update]}
+        %{identity: "defp link_portable_snapshot_node_parent/6", operations: [:update]},
+        %{identity: "defp link_snapshot_node_composition_source/4", operations: [:update]}
       ],
-      reason: "Project snapshot materialization restores and links captured Flow nodes"
+      reason: "Project snapshot materialization restores and links captured Flow nodes and composition sources"
     },
     %{
       table: :flow_nodes,

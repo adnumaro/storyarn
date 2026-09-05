@@ -1,11 +1,11 @@
 defmodule Storyarn.Flows.SequenceVisualLayer do
   @moduledoc """
-  A visual layer attached to a sequence flow node.
+  A visual layer definition or property patch attached to a composition owner.
 
-  Layers compose the Flow Player stage from the active sequence chain.
-  Parent sequence layers render first; child sequence layers render above
-  them. Geometry is normalized to the player stage so the same data can
-  scale across viewports and later feed a 2D runtime.
+  `layer_key` preserves logical identity across an explicit composition-source
+  chain. `overridden_fields` distinguishes a local value from a copied value
+  used only to satisfy the relational row, and `removed` is an inheritable
+  tombstone.
   """
   use Ecto.Schema
 
@@ -33,6 +33,7 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
     "bottom-right"
   ]
   @fits ~w(cover contain fill)
+  @property_fields ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
 
   @type t :: %__MODULE__{
           id: integer() | nil,
@@ -40,6 +41,9 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
           flow_node: FlowNode.t() | NotLoaded.t() | nil,
           asset_id: integer() | nil,
           asset: AssetRecord.t() | NotLoaded.t() | nil,
+          layer_key: String.t() | nil,
+          overridden_fields: [String.t()],
+          removed: boolean(),
           kind: String.t() | nil,
           label: String.t() | nil,
           z_index: integer(),
@@ -61,6 +65,9 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
     belongs_to :flow_node, FlowNode
     belongs_to :asset, AssetRecord, where: [deleted_at: nil]
 
+    field :layer_key, :string
+    field :overridden_fields, {:array, :string}, default: []
+    field :removed, :boolean, default: false
     field :kind, :string
     field :label, :string
     field :z_index, :integer, default: 0
@@ -92,16 +99,28 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
   @spec fits() :: [String.t()]
   def fits, do: @fits
 
+  @doc "Returns the properties that can be overridden independently."
+  @spec property_fields() :: [String.t()]
+  def property_fields, do: @property_fields
+
   def create_changeset(layer, attrs) do
+    attrs =
+      attrs
+      |> put_new_attr(:layer_key, "layer-#{Ecto.UUID.generate()}")
+      |> put_new_attr(:overridden_fields, @property_fields)
+
     layer
     |> cast_layer(attrs)
-    |> validate_required([:flow_node_id, :asset_id, :kind, :z_index, :slot, :fit])
+    |> validate_required([:flow_node_id, :asset_id, :kind, :z_index, :slot, :fit, :layer_key])
     |> validate_layer()
+    |> unique_constraint([:flow_node_id, :layer_key])
     |> foreign_key_constraint(:flow_node_id)
     |> foreign_key_constraint(:asset_id)
   end
 
   def update_changeset(layer, attrs) do
+    overridden_fields = merge_overridden_fields(layer.overridden_fields, attrs)
+
     layer
     |> cast(attrs, [
       :asset_id,
@@ -119,14 +138,39 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
       :opacity,
       :visible
     ])
+    |> put_change(:overridden_fields, overridden_fields)
     |> validate_layer()
     |> foreign_key_constraint(:asset_id)
   end
+
+  @doc "Builds a complete relational row whose mask contains only local overrides."
+  def override_changeset(layer, attrs) do
+    layer
+    |> cast_layer(attrs)
+    |> validate_required([:flow_node_id, :kind, :z_index, :slot, :fit, :layer_key])
+    |> validate_layer()
+    |> unique_constraint([:flow_node_id, :layer_key])
+    |> foreign_key_constraint(:flow_node_id)
+    |> foreign_key_constraint(:asset_id)
+  end
+
+  @doc "Returns selected properties to their inherited values."
+  def revert_fields_changeset(layer, fields) when is_list(fields) do
+    layer
+    |> change(overridden_fields: layer.overridden_fields -- normalize_fields(fields))
+    |> validate_override_fields()
+  end
+
+  @doc "Marks or unmarks the logical layer tombstone."
+  def removal_changeset(layer, removed) when is_boolean(removed), do: change(layer, removed: removed)
 
   defp cast_layer(layer, attrs) do
     cast(layer, attrs, [
       :flow_node_id,
       :asset_id,
+      :layer_key,
+      :overridden_fields,
+      :removed,
       :kind,
       :label,
       :z_index,
@@ -156,6 +200,50 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
     |> validate_number(:width, greater_than: 0, less_than_or_equal_to: 1)
     |> validate_number(:height, greater_than: 0, less_than_or_equal_to: 1)
     |> validate_normalized(:opacity)
+    |> validate_override_fields()
+  end
+
+  defp validate_override_fields(changeset) do
+    validate_change(changeset, :overridden_fields, fn :overridden_fields, fields ->
+      normalized = normalize_fields(fields)
+
+      cond do
+        length(normalized) != length(fields) -> [overridden_fields: "must contain unique supported property names"]
+        Enum.any?(fields, &(&1 not in @property_fields)) -> [overridden_fields: "contains an unsupported property"]
+        true -> []
+      end
+    end)
+  end
+
+  defp merge_overridden_fields(existing, attrs) do
+    existing
+    |> List.wrap()
+    |> Kernel.++(property_keys(attrs))
+    |> normalize_fields()
+  end
+
+  defp property_keys(attrs) do
+    attrs
+    |> Map.keys()
+    |> Enum.map(&to_string/1)
+    |> Enum.filter(&(&1 in @property_fields))
+  end
+
+  defp normalize_fields(fields), do: fields |> Enum.map(&to_string/1) |> Enum.uniq() |> Enum.sort()
+
+  defp put_new_attr(attrs, key, value) do
+    string_key = Atom.to_string(key)
+
+    cond do
+      Map.has_key?(attrs, key) or Map.has_key?(attrs, string_key) ->
+        attrs
+
+      Enum.any?(attrs, fn {attr_key, _value} -> is_atom(attr_key) end) ->
+        Map.put(attrs, key, value)
+
+      true ->
+        Map.put(attrs, string_key, value)
+    end
   end
 
   defp validate_normalized(changeset, field) do

@@ -41,6 +41,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   alias Storyarn.Repo
 
   @flow_fields ~w(name shortcut description is_main settings scene_id)
+  @composition_owner_types ~w(sequence dialogue)
   @source_locked_event [:storyarn, :flows, :flow_snapshot, :source_locked]
 
   @doc "Builds a deterministic snapshot from current persisted Flow state."
@@ -75,6 +76,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   def restore(flow, snapshot, opts \\ [])
 
   def restore(%Flow{} = flow, snapshot, opts) when is_map(snapshot) do
+    snapshot = FlowSnapshotValidator.normalize_legacy(snapshot)
+
     with :ok <- RestorePolicy.ensure_enabled(Keyword.get(opts, :restore_action)),
          :ok <- validate(snapshot, flow.id) do
       flow
@@ -177,7 +180,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   @doc "Returns structured changes used by version history summaries."
   @spec diff(map(), map()) :: [map()]
   def diff(old_snapshot, new_snapshot) when is_map(old_snapshot) and is_map(new_snapshot) do
-    FlowSnapshotDiff.diff(old_snapshot, new_snapshot)
+    FlowSnapshotDiff.diff(
+      FlowSnapshotValidator.normalize_legacy(old_snapshot),
+      FlowSnapshotValidator.normalize_legacy(new_snapshot)
+    )
   end
 
   @doc "Extracts every external reference needed by restore conflict preview."
@@ -630,20 +636,37 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
       "position_x" => node.position_x,
       "position_y" => node.position_y,
       "data" => node.data,
-      "parent_id" => node.parent_id
+      "parent_id" => node.parent_id,
+      "composition_source_original_id" => node.composition_source_id
     }
 
-    if node.type == "sequence" do
-      Map.merge(base, %{
-        "sequence_config" => sequence_config_snapshot(node.sequence_config),
-        "sequence_tracks" =>
-          node |> sequence_tracks() |> Enum.sort_by(&{&1.kind, &1.position, &1.id}) |> Enum.map(&track_snapshot/1),
-        "sequence_visual_layers" =>
-          node |> sequence_layers() |> Enum.sort_by(&{&1.z_index, &1.id}) |> Enum.map(&layer_snapshot/1)
-      })
-    else
-      base
+    case node.type do
+      "sequence" ->
+        base
+        |> Map.put("sequence_config", sequence_config_snapshot(node.sequence_config))
+        |> Map.merge(composition_snapshot(node))
+
+      "dialogue" ->
+        Map.merge(base, composition_snapshot(node))
+
+      _other ->
+        base
     end
+  end
+
+  defp composition_snapshot(node) do
+    %{
+      "sequence_tracks" =>
+        node
+        |> sequence_tracks()
+        |> Enum.sort_by(&{&1.kind, &1.position, &1.track_key, &1.id})
+        |> Enum.map(&track_snapshot/1),
+      "sequence_visual_layers" =>
+        node
+        |> sequence_layers()
+        |> Enum.sort_by(&{&1.z_index, &1.layer_key, &1.id})
+        |> Enum.map(&layer_snapshot/1)
+    }
   end
 
   defp sequence_config_snapshot(%SequenceConfig{} = config) do
@@ -655,6 +678,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   defp track_snapshot(track) do
     %{
       "original_id" => track.id,
+      "track_key" => track.track_key,
+      "is_override" => track.is_override,
+      "overridden_fields" => track.overridden_fields,
+      "removed" => track.removed,
       "kind" => track.kind,
       "position" => track.position,
       "asset_id" => track.asset_id,
@@ -667,6 +694,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   defp layer_snapshot(layer) do
     %{
       "original_id" => layer.id,
+      "layer_key" => layer.layer_key,
+      "overridden_fields" => layer.overridden_fields,
+      "removed" => layer.removed,
       "asset_id" => layer.asset_id,
       "kind" => layer.kind,
       "label" => layer.label,
@@ -1310,12 +1340,14 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
          is_main = restorable_main_state(flow, snapshot["is_main"], opts),
          :ok <- run_before_main_write_hook(opts),
          {:ok, updated_flow} <- update_flow(flow, snapshot, is_main),
+         {:ok, _cleared_sources} <- clear_target_composition_sources(flow.id, target_node_ids),
          {:ok, deleted_node_ids} <- soft_delete_absent_nodes(current_nodes, snapshot_node_ids),
          {:ok, _cleared} <- clear_target_node_state(flow.id, target_node_ids),
          {:ok, _swapped} <- prepare_target_dialogue_id_swaps(flow.id, target_node_ids),
          {:ok, restored_nodes} <-
            restore_nodes(flow.id, current_nodes, nodes_data, snapshot, flow.project_id, opts),
          :ok <- restore_node_parents(restored_nodes, nodes_data),
+         :ok <- restore_node_composition_sources(restored_nodes, nodes_data),
          {:ok, _resources} <-
            restore_sequence_resources(restored_nodes, nodes_data, snapshot, flow.project_id, opts),
          {:ok, _connections} <-
@@ -1367,7 +1399,13 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
          :ok <- validate_sequence_resource_ownership(SequenceTrack, flow_id, track_owners),
          :ok <- validate_sequence_resource_ownership(SequenceVisualLayer, flow_id, visual_layer_owners),
          :ok <- validate_sequence_type_transitions(flow_id, nodes_data, target_node_ids),
-         :ok <- validate_parent_boundary_transitions(flow_id, nodes_data, target_node_ids) do
+         :ok <- validate_parent_boundary_transitions(flow_id, nodes_data, target_node_ids),
+         :ok <-
+           validate_composition_source_boundary_transitions(
+             current_nodes,
+             nodes_data,
+             target_node_ids
+           ) do
       validate_current_node_scope(current_nodes, flow_id)
     end
   end
@@ -1407,7 +1445,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
 
   defp snapshot_resource_owners(nodes, key) do
     Map.new(
-      for %{"type" => "sequence", "original_id" => node_id} = node <- nodes,
+      for %{"type" => type, "original_id" => node_id} = node <- nodes,
+          type in ["sequence", "dialogue"],
           resource <- node[key] do
         {resource["original_id"], node_id}
       end
@@ -1511,6 +1550,49 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
     end
   end
 
+  defp validate_composition_source_boundary_transitions(current_nodes, nodes, target_node_ids) do
+    target_types = Map.new(nodes, &{&1["original_id"], &1["type"]})
+
+    departing_owner_ids =
+      current_nodes
+      |> Enum.filter(fn node ->
+        MapSet.member?(target_node_ids, node.id) and
+          node.type in @composition_owner_types and
+          Map.get(target_types, node.id) not in @composition_owner_types
+      end)
+      |> MapSet.new(& &1.id)
+
+    conflict =
+      Enum.find(current_nodes, fn node ->
+        not MapSet.member?(target_node_ids, node.id) and
+          MapSet.member?(departing_owner_ids, node.composition_source_id)
+      end)
+
+    case conflict do
+      nil ->
+        :ok
+
+      node ->
+        {:error, {:composition_source_transition_conflicts_with_trash, {node.id, node.composition_source_id}}}
+    end
+  end
+
+  defp clear_target_composition_sources(_flow_id, []), do: {:ok, 0}
+
+  defp clear_target_composition_sources(flow_id, target_node_ids) do
+    {count, _rows} =
+      Repo.update_all(
+        from(node in FlowNode,
+          where:
+            node.flow_id == ^flow_id and node.id in ^target_node_ids and
+              not is_nil(node.composition_source_id)
+        ),
+        set: [composition_source_id: nil, updated_at: TimeHelpers.now()]
+      )
+
+    {:ok, count}
+  end
+
   defp clear_target_node_state(_flow_id, []), do: {:ok, %{configs: 0, tracks: 0, visual_layers: 0, connections: 0}}
 
   defp clear_target_node_state(flow_id, target_node_ids) do
@@ -1595,7 +1677,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
         position_y: data["position_y"],
         data: node_data,
         word_count: Localization.node_word_count(data["type"], node_data),
-        parent_id: nil
+        parent_id: nil,
+        composition_source_id: nil
       }
 
       node
@@ -1648,6 +1731,30 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
     end
   end
 
+  defp restore_node_composition_sources(restored, nodes_data) do
+    Enum.reduce_while(nodes_data, :ok, fn data, :ok ->
+      restore_node_composition_source(restored, data)
+    end)
+  end
+
+  defp restore_node_composition_source(_restored, %{"composition_source_original_id" => nil}), do: {:cont, :ok}
+
+  defp restore_node_composition_source(restored, data) do
+    source_id = data["composition_source_original_id"]
+
+    with %FlowNode{type: source_type} when source_type in ["sequence", "dialogue"] <- Map.get(restored, source_id),
+         %FlowNode{} = node <- Map.get(restored, data["original_id"]),
+         {:ok, _node} <-
+           node
+           |> FlowNode.composition_source_changeset(%{composition_source_id: source_id})
+           |> Repo.update() do
+      {:cont, :ok}
+    else
+      _invalid ->
+        {:halt, {:error, {:invalid_snapshot_composition_source, data["original_id"], source_id}}}
+    end
+  end
+
   defp soft_delete_absent_nodes(current_nodes, snapshot_ids) do
     now = TimeHelpers.now()
 
@@ -1657,6 +1764,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
         &(MapSet.member?(snapshot_ids, &1.id) or not is_nil(&1.deleted_at))
       )
 
+    absent_nodes = sort_composition_dependents_first(absent_nodes)
     absent_ids = Enum.map(absent_nodes, & &1.id)
 
     if absent_ids != [] do
@@ -1668,10 +1776,12 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
           )
         )
 
-      Repo.update_all(
-        from(node in FlowNode, where: node.id in ^absent_ids and is_nil(node.deleted_at)),
-        set: [deleted_at: now, updated_at: now]
-      )
+      Enum.each(absent_ids, fn node_id ->
+        Repo.update_all(
+          from(node in FlowNode, where: node.id == ^node_id and is_nil(node.deleted_at)),
+          set: [deleted_at: now, updated_at: now]
+        )
+      end)
 
       (Enum.map(absent_nodes, &{&1.id, &1.parent_id}) ++ affected_child_states)
       |> Enum.uniq_by(&elem(&1, 0))
@@ -1690,6 +1800,30 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
     {:ok, absent_ids}
   end
 
+  defp sort_composition_dependents_first(nodes) do
+    nodes_by_id = Map.new(nodes, &{&1.id, &1})
+
+    Enum.sort_by(
+      nodes,
+      &composition_dependency_depth(&1, nodes_by_id, MapSet.new()),
+      :desc
+    )
+  end
+
+  defp composition_dependency_depth(%FlowNode{id: id, composition_source_id: source_id}, nodes_by_id, visited) do
+    if MapSet.member?(visited, id) do
+      0
+    else
+      case Map.get(nodes_by_id, source_id) do
+        %FlowNode{} = source ->
+          1 + composition_dependency_depth(source, nodes_by_id, MapSet.put(visited, id))
+
+        _source_outside_absent_nodes ->
+          0
+      end
+    end
+  end
+
   defp restore_sequence_resources(restored, nodes_data, snapshot, project_id, opts) do
     Enum.reduce_while(
       nodes_data,
@@ -1702,10 +1836,10 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   end
 
   defp restore_sequence_resources_for_node(%FlowNode{type: type}, _data, _snapshot, _project_id, _opts, summary)
-       when type != "sequence", do: {:cont, {:ok, summary}}
+       when type not in ["sequence", "dialogue"], do: {:cont, {:ok, summary}}
 
   defp restore_sequence_resources_for_node(node, data, snapshot, project_id, opts, summary) do
-    with {:ok, config_count} <- restore_sequence_config(node.id, data["sequence_config"]),
+    with {:ok, config_count} <- restore_composition_config(node, data),
          {:ok, track_ids} <-
            restore_sequence_tracks(
              node.id,
@@ -1733,6 +1867,11 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
       {:error, reason} -> {:halt, {:error, reason}}
     end
   end
+
+  defp restore_composition_config(%FlowNode{type: "sequence", id: node_id}, data),
+    do: restore_sequence_config(node_id, data["sequence_config"])
+
+  defp restore_composition_config(%FlowNode{type: "dialogue"}, _data), do: {:ok, 0}
 
   defp restore_sequence_config(_node_id, nil), do: {:ok, 0}
 
@@ -1765,9 +1904,13 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
              ),
            {:ok, track} <-
              %SequenceTrack{id: data["original_id"]}
-             |> SequenceTrack.create_changeset(%{
+             |> SequenceTrack.override_changeset(%{
                flow_node_id: node_id,
                kind: data["kind"],
+               track_key: data["track_key"],
+               is_override: data["is_override"],
+               overridden_fields: data["overridden_fields"],
+               removed: data["removed"],
                position: data["position"],
                asset_id: asset_id,
                start_time: data["start_time"],
@@ -1801,15 +1944,16 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
                "image/",
                :sequence_visual_layer
              ),
-           true <- is_integer(asset_id) || {:error, {:missing_sequence_visual_layer_asset, data["asset_id"]}},
            attrs =
              data
-             |> Map.take(~w(kind label z_index slot x y width height anchor_x anchor_y fit opacity visible))
+             |> Map.take(
+               ~w(layer_key overridden_fields removed kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
+             )
              |> Map.put("flow_node_id", node_id)
              |> Map.put("asset_id", asset_id),
            {:ok, layer} <-
              %SequenceVisualLayer{id: data["original_id"]}
-             |> SequenceVisualLayer.create_changeset(attrs)
+             |> SequenceVisualLayer.override_changeset(attrs)
              |> Repo.insert() do
         {:cont, {:ok, Map.put(ids, data["original_id"], layer.id)}}
       else

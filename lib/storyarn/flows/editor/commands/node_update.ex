@@ -12,6 +12,9 @@ defmodule Storyarn.Flows.NodeUpdate do
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.NodeEditor
   alias Storyarn.Flows.References
+  alias Storyarn.Flows.SequenceConfig
+  alias Storyarn.Flows.SequenceTrack
+  alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Platform.Collaboration
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
@@ -40,6 +43,7 @@ defmodule Storyarn.Flows.NodeUpdate do
          type = Ecto.Changeset.get_field(changeset, :type),
          data = Ecto.Changeset.get_field(changeset, :data) || %{},
          parent_id = Ecto.Changeset.get_field(changeset, :parent_id),
+         :ok <- validate_composition_owner_transition(locked_node, type),
          :ok <- validate_node_type_transition(locked_node, type),
          {:ok, parent_id} <-
            References.lock_node_parent(flow.id, parent_id, locked_node.id),
@@ -106,6 +110,23 @@ defmodule Storyarn.Flows.NodeUpdate do
   end
 
   defp validate_node_type_transition(%FlowNode{}, _new_type), do: :ok
+
+  defp validate_composition_owner_transition(%FlowNode{type: "dialogue"} = node, new_type)
+       when new_type not in ["sequence", "dialogue"] do
+    if composition_state_exists?(node),
+      do: {:error, :cannot_change_composition_owner_type},
+      else: :ok
+  end
+
+  defp validate_composition_owner_transition(%FlowNode{}, _new_type), do: :ok
+
+  defp composition_state_exists?(%FlowNode{id: node_id, composition_source_id: source_id}) do
+    not is_nil(source_id) or
+      Repo.exists?(from(config in SequenceConfig, where: config.flow_node_id == ^node_id)) or
+      Repo.exists?(from(track in SequenceTrack, where: track.flow_node_id == ^node_id)) or
+      Repo.exists?(from(layer in SequenceVisualLayer, where: layer.flow_node_id == ^node_id)) or
+      Repo.exists?(from(dependent in FlowNode, where: dependent.composition_source_id == ^node_id))
+  end
 
   defp active_node_of_type_exists?(flow_id, type, excluded_id) do
     Repo.exists?(

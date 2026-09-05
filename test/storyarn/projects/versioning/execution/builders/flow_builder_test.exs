@@ -253,6 +253,115 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       assert snapshot["asset_blob_hashes"][to_string(image.id)] == image.blob_hash
     end
 
+    test "validates composition inheritance before accepting portable snapshots", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "inheritance.mp3", "inheritance audio", "audio/mpeg")
+      image = uploaded_asset(project, user, "inheritance.png", "inheritance image", "image/png")
+      {:ok, root} = Flows.create_sequence(flow.id, %{"name" => "Root"})
+      middle = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Middle", "responses" => []}})
+      leaf = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Leaf", "responses" => []}})
+      {:ok, _middle} = Flows.set_composition_source(middle.id, root.id)
+      {:ok, _leaf} = Flows.set_composition_source(leaf.id, middle.id)
+      condition = node_fixture(flow, %{type: "condition", data: %{}})
+
+      {:ok, track} =
+        Flows.upsert_sequence_track(root.id, "music", %{"asset_id" => audio.id})
+
+      {:ok, layer} =
+        Flows.create_sequence_visual_layer(root.id, %{
+          "asset_id" => image.id,
+          "kind" => "backdrop"
+        })
+
+      _track_patch =
+        raw_sequence_track_override_fixture(middle, track, %{
+          "volume" => Decimal.new("0.250")
+        })
+
+      _layer_tombstone =
+        raw_sequence_visual_override_fixture(middle, layer, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      reopened_layer =
+        raw_sequence_visual_override_fixture(leaf, layer, %{},
+          overridden_fields: ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
+        )
+
+      assert MapSet.new(reopened_layer.overridden_fields) ==
+               MapSet.new(~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible))
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      assert :ok = FlowBuilder.validate_portable_snapshot(snapshot)
+
+      for {field, value} <- [
+            {"sequence_config", %{"name" => "Residual", "width" => 1.0, "height" => 1.0}},
+            {"sequence_tracks", [%{}]},
+            {"sequence_visual_layers", [%{}]}
+          ] do
+        invalid_owner_payload =
+          update_snapshot_node(snapshot, condition.id, &Map.put(&1, field, value))
+
+        assert {:error, {:invalid_sequence_composition_payload, invalid_owner_id, ^field}} =
+                 FlowBuilder.validate_portable_snapshot(invalid_owner_payload)
+
+        assert invalid_owner_id == condition.id
+      end
+
+      without_track_base =
+        update_snapshot_node(snapshot, root.id, fn node ->
+          Map.put(node, "sequence_tracks", [])
+        end)
+
+      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, middle_id, track_key, reason}} =
+               FlowBuilder.validate_portable_snapshot(without_track_base)
+
+      assert reason == :missing_inherited_identity
+      assert middle_id == middle.id
+      assert track_key == track.track_key
+
+      without_layer_base =
+        update_snapshot_node(snapshot, root.id, fn node ->
+          Map.put(node, "sequence_visual_layers", [])
+        end)
+
+      assert {:error,
+              {:invalid_sequence_resource_inheritance, :sequence_visual_layer, ^middle_id, layer_key,
+               :missing_inherited_identity}} =
+               FlowBuilder.validate_portable_snapshot(without_layer_base)
+
+      assert layer_key == layer.layer_key
+
+      incomplete_local_definition =
+        update_snapshot_node(snapshot, root.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "overridden_fields", ["volume"])]
+          end)
+        end)
+
+      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, root_id, ^track_key, reason}} =
+               FlowBuilder.validate_portable_snapshot(incomplete_local_definition)
+
+      assert reason == :incomplete_local_definition
+      assert root_id == root.id
+
+      local_tombstone =
+        update_snapshot_node(snapshot, root.id, fn node ->
+          update_in(node["sequence_tracks"], fn [snapshot_track] ->
+            [Map.put(snapshot_track, "removed", true)]
+          end)
+        end)
+
+      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, ^root_id, ^track_key, reason}} =
+               FlowBuilder.validate_portable_snapshot(local_tombstone)
+
+      assert reason == :local_definition_tombstone
+    end
+
     test "rejects cross-project assets from every Flow asset-bearing surface", %{
       user: user,
       project: project,
@@ -2756,6 +2865,114 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       end)
     end
 
+    test "remaps dialogue composition sources and preserves patches and tombstones", %{
+      user: user,
+      project: project,
+      flow: flow
+    } do
+      audio = uploaded_asset(project, user, "clone-patch.mp3", "clone patch audio", "audio/mpeg")
+      image = uploaded_asset(project, user, "clone-tombstone.png", "clone tombstone image", "image/png")
+
+      assert {:ok, source} =
+               Flows.create_sequence(flow.id, %{
+                 "name" => "Clone source",
+                 "width" => 720.0,
+                 "height" => 420.0
+               })
+
+      dialogue =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Branch-specific staging", "responses" => []}
+        })
+
+      assert {:ok, dialogue} = Flows.set_composition_source(dialogue.id, source.id)
+
+      assert {:ok, source_track} =
+               Flows.upsert_sequence_track(source.id, "music", %{
+                 "asset_id" => audio.id,
+                 "volume" => Decimal.new("0.7")
+               })
+
+      assert {:ok, source_layer} =
+               Flows.create_sequence_visual_layer(source.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop",
+                 "label" => "Shared source"
+               })
+
+      track_patch =
+        raw_sequence_track_override_fixture(dialogue, source_track, %{
+          "volume" => Decimal.new("0.2")
+        })
+
+      layer_tombstone =
+        raw_sequence_visual_override_fixture(dialogue, source_layer, %{},
+          removed: true,
+          overridden_fields: []
+        )
+
+      snapshot = FlowBuilder.build_snapshot(flow)
+      target_project = project_fixture(user)
+
+      assert {:ok, materialized, id_maps} =
+               FlowBuilder.instantiate_snapshot(target_project.id, snapshot,
+                 asset_mode: :copy,
+                 user_id: user.id,
+                 reset_shortcut: true
+               )
+
+      cloned_source = Enum.find(materialized.nodes, &(&1.id == id_maps.node[source.id]))
+      cloned_dialogue = Enum.find(materialized.nodes, &(&1.id == id_maps.node[dialogue.id]))
+
+      assert cloned_dialogue.composition_source_id == cloned_source.id
+      refute cloned_dialogue.composition_source_id == source.id
+
+      assert [cloned_source_track] = cloned_source.sequence_tracks
+      assert cloned_source_track.track_key == source_track.track_key
+      refute cloned_source_track.is_override
+      refute cloned_source_track.removed
+
+      assert [cloned_source_layer] = cloned_source.sequence_visual_layers
+      assert cloned_source_layer.layer_key == source_layer.layer_key
+      refute cloned_source_layer.removed
+
+      assert [cloned_track_patch] = cloned_dialogue.sequence_tracks
+      assert cloned_track_patch.id == id_maps.sequence_track[track_patch.id]
+      assert cloned_track_patch.track_key == source_track.track_key
+      assert cloned_track_patch.is_override
+      assert cloned_track_patch.overridden_fields == ["volume"]
+      refute cloned_track_patch.removed
+      assert Decimal.equal?(cloned_track_patch.volume, Decimal.new("0.2"))
+      assert cloned_track_patch.asset_id == cloned_source_track.asset_id
+
+      assert [cloned_layer_tombstone] = cloned_dialogue.sequence_visual_layers
+      assert cloned_layer_tombstone.id == id_maps.sequence_visual_layer[layer_tombstone.id]
+      assert cloned_layer_tombstone.layer_key == source_layer.layer_key
+      assert cloned_layer_tombstone.overridden_fields == []
+      assert cloned_layer_tombstone.removed
+      assert cloned_layer_tombstone.asset_id == cloned_source_layer.asset_id
+
+      cloned_assets =
+        [cloned_source_track.asset_id, cloned_source_layer.asset_id]
+        |> Enum.uniq()
+        |> Enum.map(&Repo.get!(Asset, &1))
+
+      on_exit(fn ->
+        Enum.each(cloned_assets, fn asset ->
+          Assets.storage_delete(asset.key)
+
+          Assets.storage_delete(
+            BlobStore.blob_key(
+              target_project.id,
+              asset.blob_hash,
+              BlobStore.ext_from_content_type(asset.content_type)
+            )
+          )
+        end)
+      end)
+    end
+
     test "remaps dynamic exit pins with the referenced flow node map", %{
       user: user,
       project: project,
@@ -3008,6 +3225,12 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
             "data" => %{},
             "sequence_tracks" => [%{"asset_id" => 52}],
             "sequence_visual_layers" => [%{"asset_id" => 53}]
+          },
+          %{
+            "type" => "dialogue",
+            "data" => %{},
+            "sequence_tracks" => [%{"asset_id" => 54, "removed" => true}],
+            "sequence_visual_layers" => [%{"asset_id" => 55, "removed" => true}]
           }
         ],
         "localization" => [
@@ -3023,6 +3246,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       assert {:asset, 51} in types_and_ids
       assert {:asset, 52} in types_and_ids
       assert {:asset, 53} in types_and_ids
+      assert {:asset, 54} in types_and_ids
+      assert {:asset, 55} in types_and_ids
       assert {:avatar, 13} in types_and_ids
       assert {:flow, 30} in types_and_ids
       assert {:scene, 41} in types_and_ids
@@ -3031,16 +3256,17 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
       assert {:sheet, 11} in types_and_ids
       assert {:sheet, "12"} in types_and_ids
       assert {:sheet, 14} in types_and_ids
-      assert length(refs) == 12
+      assert length(refs) == 14
 
       assert Enum.find(refs, &(&1.type == :avatar && &1.id == 13)).speaker_sheet_id == 10
 
-      for audio_asset_id <- [20, 51, 52] do
+      for audio_asset_id <- [20, 51, 52, 54] do
         assert Enum.find(refs, &(&1.type == :asset && &1.id == audio_asset_id)).expected_content_type_prefix ==
                  "audio/"
       end
 
       assert Enum.find(refs, &(&1.type == :asset && &1.id == 53)).expected_content_type_prefix == "image/"
+      assert Enum.find(refs, &(&1.type == :asset && &1.id == 55)).expected_content_type_prefix == "image/"
     end
 
     test "skips nil references" do

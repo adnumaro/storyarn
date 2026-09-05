@@ -48,12 +48,12 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotDiff do
     ]
 
     {matched, added, removed} = match_by_keys(old_nodes, new_nodes, key_fns)
-    {old_parent_tokens, new_parent_tokens} = parent_identity_tokens(matched)
+    {old_node_tokens, new_node_tokens} = node_identity_tokens(matched)
 
     modified =
       Enum.filter(matched, fn {old_node, new_node} ->
-        normalize_node(old_node, old_parent_tokens) !=
-          normalize_node(new_node, new_parent_tokens)
+        normalize_node(old_node, old_node_tokens) !=
+          normalize_node(new_node, new_node_tokens)
       end)
 
     old_node_index = old_nodes |> Enum.with_index() |> Map.new()
@@ -76,24 +76,29 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotDiff do
     |> diff_connections(old_connections, new_connections, old_index_to_new)
   end
 
-  defp parent_identity_tokens(matched) do
+  defp node_identity_tokens(matched) do
     matched
     |> Enum.with_index()
     |> Enum.reduce({%{}, %{}}, fn {{old_node, new_node}, token}, {old_tokens, new_tokens} ->
       {
-        maybe_put_parent_token(old_tokens, old_node["original_id"], token),
-        maybe_put_parent_token(new_tokens, new_node["original_id"], token)
+        maybe_put_node_token(old_tokens, old_node["original_id"], token),
+        maybe_put_node_token(new_tokens, new_node["original_id"], token)
       }
     end)
   end
 
-  defp maybe_put_parent_token(tokens, nil, _token), do: tokens
-  defp maybe_put_parent_token(tokens, node_id, token), do: Map.put(tokens, node_id, token)
+  defp maybe_put_node_token(tokens, nil, _token), do: tokens
+  defp maybe_put_node_token(tokens, node_id, token), do: Map.put(tokens, node_id, token)
 
-  defp normalize_node(node, parent_tokens) do
+  defp normalize_node(node, node_tokens) do
     node
     |> Map.drop(@node_ignore_fields)
-    |> Map.update("parent_id", nil, &Map.get(parent_tokens, &1, {:unmatched_parent, &1}))
+    |> Map.update("parent_id", nil, &Map.get(node_tokens, &1, {:unmatched_parent, &1}))
+    |> Map.update(
+      "composition_source_original_id",
+      nil,
+      &Map.get(node_tokens, &1, {:unmatched_composition_source, &1})
+    )
   end
 
   defp append_node_changes(changes, nodes, action) do

@@ -226,6 +226,30 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert layer.height == 1.0
     end
 
+    test "public creation ignores persisted identity and override-state attrs" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
+
+      assert {:ok, layer} =
+               Flows.create_sequence_visual_layer(seq.id, %{
+                 "asset_id" => asset.id,
+                 "kind" => "prop",
+                 "flow_node_id" => -1,
+                 "layer_key" => "caller-controlled",
+                 "overridden_fields" => [],
+                 "removed" => true
+               })
+
+      assert layer.flow_node_id == seq.id
+      assert layer.layer_key != "caller-controlled"
+
+      assert MapSet.new(layer.overridden_fields) ==
+               MapSet.new(SequenceVisualLayer.property_fields())
+
+      refute layer.removed
+    end
+
     test "creates a character layer with legacy right-slot defaults" do
       %{flow: flow, project: project, user: user} = setup_flow()
       {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
@@ -317,16 +341,18 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert Flows.get_sequence_visual_layer(seq.id, layer.id) == nil
     end
 
-    test "writer rejects layers pointing to non-sequence flow_nodes" do
+    test "dialogue nodes can own visual layers" do
       %{flow: flow, project: project, user: user} = setup_flow()
       asset = Storyarn.AssetsFixtures.image_asset_fixture(project, user)
       dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
 
-      assert {:error, :sequence_not_found} =
+      assert {:ok, %SequenceVisualLayer{flow_node_id: dialogue_id}} =
                Flows.create_sequence_visual_layer(dialogue.id, %{
                  "kind" => "backdrop",
                  "asset_id" => asset.id
                })
+
+      assert dialogue_id == dialogue.id
     end
   end
 
@@ -346,6 +372,30 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert track.kind == "music"
       assert track.asset_id == asset.id
       assert Decimal.equal?(track.volume, Decimal.new("0.8"))
+    end
+
+    test "public upsert creation ignores persisted identity and override-state attrs" do
+      %{flow: flow, project: project, user: user} = setup_flow()
+      {:ok, seq} = Flows.create_sequence(flow.id, %{"name" => "s"})
+      asset = Storyarn.AssetsFixtures.audio_asset_fixture(project, user)
+
+      assert {:ok, track} =
+               Flows.upsert_sequence_track(seq.id, "music", %{
+                 "asset_id" => asset.id,
+                 "flow_node_id" => -1,
+                 "kind" => "sfx",
+                 "track_key" => "caller-controlled",
+                 "is_override" => true,
+                 "overridden_fields" => [],
+                 "removed" => true
+               })
+
+      assert track.flow_node_id == seq.id
+      assert track.kind == "music"
+      assert track.track_key != "caller-controlled"
+      assert MapSet.new(track.overridden_fields) == MapSet.new(SequenceTrack.property_fields())
+      refute track.is_override
+      refute track.removed
     end
 
     test "upsert updates the existing row for the same (sequence, kind)" do
@@ -397,12 +447,14 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       assert {:error, :invalid_kind} = Flows.clear_sequence_track(seq.id, "narration")
     end
 
-    test "writer rejects tracks pointing to non-sequence flow_nodes" do
+    test "dialogue nodes can own audio tracks" do
       %{flow: flow} = setup_flow()
       dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "x"}})
 
-      assert {:error, :sequence_not_found} =
+      assert {:ok, %SequenceTrack{flow_node_id: dialogue_id}} =
                Flows.upsert_sequence_track(dialogue.id, "music", %{})
+
+      assert dialogue_id == dialogue.id
     end
 
     test "UNIQUE (flow_node_id, kind) enforced — independent kinds coexist" do
@@ -711,6 +763,79 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       |> Repo.update!()
 
       assert {:error, :nodes_not_found} = Flows.wrap_selection_in_sequence(flow, [n1.id])
+    end
+  end
+
+  describe "explicit composition inheritance" do
+    test "sets a same-flow source, accepts explicit empty, and rejects cycles and foreign flows" do
+      %{flow: flow, project: project} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      first = node_fixture(flow, %{parent_id: base.id, data: %{"text" => "first"}})
+      second = node_fixture(flow, %{data: %{"text" => "second"}})
+
+      assert Repo.reload(first).composition_source_id == base.id
+      assert {:ok, second} = Flows.set_composition_source(second.id, first.id)
+      assert second.composition_source_id == first.id
+
+      assert {:error, :composition_cycle} = Flows.set_composition_source(first.id, second.id)
+      assert Repo.reload(first).composition_source_id == base.id
+
+      other_flow = flow_fixture(project)
+      foreign = node_fixture(other_flow)
+
+      assert {:error, {:invalid_composition_source, foreign_id}} =
+               Flows.set_composition_source(first.id, foreign.id)
+
+      assert foreign_id == foreign.id
+      assert {:ok, detached} = Flows.set_composition_source(first.id, nil)
+      assert is_nil(detached.composition_source_id)
+    end
+
+    test "returns a domain error when deleting an active sequence composition source" do
+      %{flow: flow} = setup_flow()
+      {:ok, base} = Flows.create_sequence(flow.id, %{"name" => "Base"})
+      _dialogue = node_fixture(flow, %{parent_id: base.id})
+
+      assert {:error, :composition_source_in_use} = Flows.delete_sequence(base)
+      assert is_nil(Repo.reload(base).deleted_at)
+    end
+
+    test "returns a domain error when deleting an active dialogue composition source" do
+      %{flow: flow} = setup_flow()
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "source"}})
+      _dependent = node_fixture(flow, %{type: "dialogue", composition_source_id: source.id})
+
+      assert {:error, :composition_source_in_use} = Flows.delete_node(source)
+      assert is_nil(Repo.reload(source).deleted_at)
+    end
+
+    test "returns a domain error when restoring a node whose composition source is deleted" do
+      %{flow: flow} = setup_flow()
+      source = node_fixture(flow, %{type: "dialogue", data: %{"text" => "source"}})
+      dependent = node_fixture(flow, %{type: "dialogue", composition_source_id: source.id})
+
+      assert {:ok, deleted_dependent, _meta} = Flows.delete_node(dependent)
+      assert {:ok, _deleted_source, _meta} = Flows.delete_node(source)
+
+      assert {:error, :inactive_composition_source} =
+               Flows.restore_node(flow.id, deleted_dependent.id)
+
+      assert Repo.reload(deleted_dependent).deleted_at
+    end
+
+    test "returns a domain error when restoring a sequence whose composition source is deleted" do
+      %{flow: flow} = setup_flow()
+      {:ok, source} = Flows.create_sequence(flow.id, %{"name" => "Source"})
+      {:ok, dependent} = Flows.create_sequence(flow.id, %{"name" => "Dependent"})
+      assert {:ok, dependent} = Flows.set_composition_source(dependent.id, source.id)
+
+      assert {:ok, deleted_dependent} = Flows.delete_sequence(dependent)
+      assert {:ok, _deleted_source} = Flows.delete_sequence(source)
+
+      assert {:error, :inactive_composition_source} =
+               Flows.restore_sequence(deleted_dependent)
+
+      assert Repo.reload(deleted_dependent).deleted_at
     end
   end
 

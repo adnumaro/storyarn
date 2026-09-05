@@ -232,27 +232,27 @@ msgstr "Idioma de origen actualizado."
 msgid "You don't have access to this project."
 msgstr "No tienes acceso a este proyecto."
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:449
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:514
 #, elixir-autogen, elixir-format
 msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
 msgstr "%{excluded} de %{total} textos no están listos para publicación en el idioma \"%{locale}\""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:480
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:545
 #, elixir-autogen, elixir-format
 msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
 msgstr "%{missing} de %{total} textos no tienen traducción de previsualización para el idioma \"%{locale}\""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:506
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:571
 #, elixir-autogen, elixir-format
 msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr "La exportación de previsualización incluye %{count} textos no finales o desactualizados para el idioma \"%{locale}\""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:256
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:321
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no Entry node"
 msgstr "El flujo \"%{name}\" no tiene nodo Entry"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:390
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:455
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
 msgstr "El flujo \"%{name}\" forma parte de una cadena circular de referencias entre subflujos"
@@ -267,7 +267,7 @@ msgstr "El operador '%{operator}' no es compatible con %{engine}"
 msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
 msgstr "El operador '%{operator}' requiere la función personalizada '%{func_name}' en %{engine}"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:558
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:623
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr "La ficha \"%{name}\" no tiene referencias desde flujos ni escenas"
@@ -900,14 +900,14 @@ msgid_plural "Localization ID \"%{id}\" is used by %{count} dialogues"
 msgstr[0] "El ID de localización \"%{id}\" se usa en un diálogo más de una vez"
 msgstr[1] "El ID de localización \"%{id}\" se usa en %{count} diálogos"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:347
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:412
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no speaker assigned"
 msgid_plural "%{count} dialogues have no speaker assigned"
 msgstr[0] "Un diálogo no tiene personaje asignado"
 msgstr[1] "%{count} diálogos no tienen personaje asignado"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:328
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:393
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no text"
 msgid_plural "%{count} dialogues have no text"
@@ -944,7 +944,7 @@ msgstr "Varias fichas colapsan al identificador de ejecución \"%{identifier}\" 
 msgid "Multiple variables collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr "Varias variables colapsan al identificador de ejecución \"%{identifier}\" en %{format}"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:296
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:361
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has connections from outputs the exporter cannot preserve"
 msgstr "\"%{node}\" del flujo \"%{flow}\" tiene conexiones desde salidas que el exportador no puede conservar"
@@ -999,7 +999,7 @@ msgstr "El XML de articy:draft no representa las condiciones de los diálogos"
 msgid "Exit flow references are not represented by this serializer"
 msgstr "Este serializador no representa las referencias de salida a otros flujos"
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:271
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:336
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one"
 msgstr "El flujo \"%{name}\" tiene %{count} nodos Entry; la exportación solo puede conservar uno"
@@ -1323,3 +1323,8 @@ msgstr "No se pudo completar la acción de importación porque los datos de prop
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to import into this project."
 msgstr "No tienes permiso para importar contenido en este proyecto."
+
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:245
+#, elixir-autogen, elixir-format
+msgid "Flow \"%{name}\" uses Storyarn sequence composition that %{format} cannot represent; those composition details will be omitted. Use a Storyarn project snapshot to preserve them."
+msgstr "El flujo \"%{name}\" usa una composición de secuencia de Storyarn que %{format} no puede representar; esos detalles de composición se omitirán. Usa una snapshot de proyecto de Storyarn para conservarlos."
