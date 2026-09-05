@@ -619,6 +619,40 @@ describe("Sheet canvas comments", () => {
     expect(window.sessionStorage.getItem(storageKey)).toBeNull();
   });
 
+  it("keeps the saved draft when an existing thread is selected", async () => {
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const storedDraft = {
+      position: { x: 40, y: 240 },
+      body: "Return to this draft",
+      mentionIds: [],
+    };
+    window.sessionStorage.setItem(storageKey, JSON.stringify(storedDraft));
+    const { wrapper } = setup(
+      {
+        open: true,
+        presentation: "canvas",
+        draftPosition: storedDraft.position,
+      },
+      [thread],
+      null,
+      800,
+      null,
+      storageKey,
+    );
+
+    await wrapper.setProps({
+      state: {
+        ...base,
+        open: true,
+        presentation: "canvas",
+        thread,
+      },
+    });
+    await flushPromises();
+
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey) ?? "{}")).toEqual(storedDraft);
+  });
+
   it("keeps drafts isolated when the mounted surface navigates to another sheet", async () => {
     const firstKey = "storyarn:sheet-comment-draft:4:7";
     const secondKey = "storyarn:sheet-comment-draft:4:8";

@@ -132,6 +132,7 @@ function submit() {
   const current = draft.value;
   const submittedComposerKey = draftKey.value;
   const submittedStorageKey = draftStorageKey;
+  const submittedTopLevelThread = threadId == null;
   const body = current.body.trim();
   const mentionIds = [
     ...new Set(current.mentionIds.filter((id) => members.some((member) => member.id === id))),
@@ -164,8 +165,11 @@ function submit() {
     (reply) => {
       current.pending = false;
       if (reply.ok === true) {
-        if (draftKey.value === submittedComposerKey) submittedDraftKey.value = submittedComposerKey;
-        clearCommentDraft(submittedStorageKey);
+        if (submittedTopLevelThread) {
+          if (draftKey.value === submittedComposerKey)
+            submittedDraftKey.value = submittedComposerKey;
+          clearCommentDraft(submittedStorageKey);
+        }
         current.body = "";
         current.mentionIds = [];
         current.requestId = null;

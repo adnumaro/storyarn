@@ -1,7 +1,11 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createMockLive } from "@app/test/setup";
-import type { SheetCommentsPanelState } from "@modules/sheets/types/comments";
+import type {
+  SheetCommentMessage,
+  SheetCommentsPanelState,
+  SheetCommentThread,
+} from "@modules/sheets/types/comments";
 
 const live = createMockLive();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
@@ -203,6 +207,143 @@ describe("Sheet comments chrome wiring", () => {
     expect(JSON.parse(window.sessionStorage.getItem(nextStorageKey) ?? "{}").body).toBe(
       "A later Sheet draft",
     );
+  });
+
+  it("keeps the saved new-comment draft after a confirmed reply", async () => {
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const storedDraft = {
+      position: { x: 25, y: 50 },
+      body: "Keep this top-level draft",
+      mentionIds: [],
+    };
+    const author = { id: 4, display_name: "Ada", avatar_url: null };
+    const thread: SheetCommentThread = {
+      id: 12,
+      status: "open",
+      revision: 3,
+      message_count: 1,
+      created_at: "2026-09-05T09:00:00Z",
+      last_activity_at: "2026-09-05T09:00:00Z",
+      resolved_at: null,
+      resolved_by: null,
+      source: {
+        type: "sheet_canvas",
+        id: 7,
+        sheet_id: 7,
+        label: "Hero",
+        status: "available",
+      },
+      author,
+      root_message_id: 21,
+      position: storedDraft.position,
+    };
+    const rootMessage: SheetCommentMessage = {
+      id: 21,
+      thread_id: thread.id,
+      parent_id: null,
+      body: "Existing comment",
+      author,
+      mentions: [],
+      inserted_at: "2026-09-05T09:00:00Z",
+    };
+    window.sessionStorage.setItem(storageKey, JSON.stringify(storedDraft));
+
+    const wrapper = mount(SheetCommentsPanel, {
+      props: {
+        embedded: true,
+        draftStorageKey: storageKey,
+        state: { ...comments, presentation: "canvas", thread, messages: [rootMessage] },
+      },
+      global: {
+        stubs: {
+          Sidebar: {
+            template: "<aside><slot name='header'/><slot/><slot name='footer'/></aside>",
+          },
+          Popover: passthrough,
+          PopoverContent: passthrough,
+          PopoverTrigger: passthrough,
+        },
+      },
+    });
+
+    await wrapper.get("#sheet-comment-body").setValue("A reply");
+    await wrapper.get("form").trigger("submit");
+    const reply = vi
+      .mocked(live.pushEvent)
+      .mock.calls.find(([event]) => event === "comments_reply");
+    expect(reply?.[2]).toEqual(expect.any(Function));
+    if (typeof reply?.[2] === "function") reply[2]({ ok: true });
+    await flushPromises();
+
+    expect(JSON.parse(window.sessionStorage.getItem(storageKey) ?? "{}")).toEqual(storedDraft);
+  });
+
+  it("clears a submitted new-comment draft after the server selects its thread", async () => {
+    const storageKey = "storyarn:sheet-comment-draft:4:7";
+    const position = { x: 25, y: 50 };
+    window.sessionStorage.setItem(
+      storageKey,
+      JSON.stringify({ position, body: "Publish this draft", mentionIds: [] }),
+    );
+    const wrapper = mount(SheetCommentsPanel, {
+      props: {
+        embedded: true,
+        draftStorageKey: storageKey,
+        state: {
+          ...comments,
+          presentation: "canvas",
+          draftPosition: position,
+          draftId: "server-draft-id",
+        },
+      },
+      global: {
+        stubs: {
+          Sidebar: {
+            template: "<aside><slot name='header'/><slot/><slot name='footer'/></aside>",
+          },
+          Popover: passthrough,
+          PopoverContent: passthrough,
+          PopoverTrigger: passthrough,
+        },
+      },
+    });
+
+    await wrapper.get("form").trigger("submit");
+    const create = vi
+      .mocked(live.pushEvent)
+      .mock.calls.find(([event]) => event === "comments_create");
+    expect(create?.[2]).toEqual(expect.any(Function));
+
+    await wrapper.setProps({
+      state: {
+        ...comments,
+        presentation: "canvas",
+        thread: {
+          id: 12,
+          status: "open",
+          revision: 1,
+          message_count: 1,
+          created_at: "2026-09-05T09:00:00Z",
+          last_activity_at: "2026-09-05T09:00:00Z",
+          resolved_at: null,
+          resolved_by: null,
+          source: {
+            type: "sheet_canvas",
+            id: 7,
+            sheet_id: 7,
+            label: "Hero",
+            status: "available",
+          },
+          author: { id: 4, display_name: "Ada", avatar_url: null },
+          root_message_id: 21,
+          position,
+        },
+      },
+    });
+    if (typeof create?.[2] === "function") create[2]({ ok: true });
+    await flushPromises();
+
+    expect(window.sessionStorage.getItem(storageKey)).toBeNull();
   });
 
   it("reuses the same request id when a pending draft is retried after reload", async () => {

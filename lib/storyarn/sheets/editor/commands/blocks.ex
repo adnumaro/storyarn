@@ -329,18 +329,12 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
       VariableUsage.delete_block_references(block.id)
       Localization.delete_block_tree_texts(block.id)
 
-      # If this is a parent block with scope: "children", soft-delete all instances
-      if block.scope == "children" do
-        PropertyInheritance.delete_inherited_instances(block)
-      end
-
-      case block |> Block.delete_changeset() |> Repo.update() do
-        {:ok, deleted_block} ->
-          maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
-          deleted_block
-
-        {:error, changeset} ->
-          Repo.rollback(changeset)
+      with :ok <- maybe_delete_inherited_instances(block),
+           {:ok, deleted_block} <- block |> Block.delete_changeset() |> Repo.update() do
+        maybe_dissolve_column_group(deleted_block.sheet_id, deleted_block.column_group_id)
+        deleted_block
+      else
+        {:error, reason} -> Repo.rollback(reason)
       end
     end
     |> Repo.transaction()
@@ -573,6 +567,14 @@ defmodule Storyarn.Sheets.Editor.Commands.Blocks do
   end
 
   defp maybe_restore_inherited_instances(_deleted_block), do: :ok
+
+  defp maybe_delete_inherited_instances(%Block{scope: "children"} = block) do
+    block
+    |> PropertyInheritance.delete_inherited_instances()
+    |> normalize_side_effect()
+  end
+
+  defp maybe_delete_inherited_instances(_block), do: :ok
 
   @doc """
   Recreates a block from a snapshot (for undo/redo).

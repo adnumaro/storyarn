@@ -302,7 +302,7 @@ describe("SheetSurface deep-link highlights", () => {
       null,
       surfaceProps({
         ...content,
-        comments: { ...comments, placing: true },
+        comments,
         commentPins: [],
         commentFocusThreadId: null,
       }),
@@ -311,6 +311,21 @@ describe("SheetSurface deep-link highlights", () => {
 
     const surface = wrapper.get("[data-sheet-comment-surface='true']");
     const block = wrapper.get("[data-sheet-block-id='42']");
+    expect(surface.attributes("role")).toBeUndefined();
+    expect(surface.attributes("aria-label")).toBeUndefined();
+    expect(surface.attributes("aria-describedby")).toBeUndefined();
+    expect(surface.attributes("tabindex")).toBe("-1");
+
+    await wrapper.setProps({
+      surface: surfaceProps({
+        ...content,
+        comments: { ...comments, placing: true },
+        commentPins: [],
+        commentFocusThreadId: null,
+      }),
+    });
+    await nextTick();
+
     expect(surface.attributes("role")).toBe("region");
     expect(surface.attributes("aria-label")).toBe("Sheet comment surface");
     expect(surface.attributes("tabindex")).toBe("0");
@@ -319,5 +334,20 @@ describe("SheetSurface deep-link highlights", () => {
     );
     expect(block.attributes("tabindex")).toBeUndefined();
     expect(block.attributes("aria-describedby")).toBeUndefined();
+
+    await wrapper.setProps({
+      surface: surfaceProps({
+        ...content,
+        comments: { ...comments, placing: true, canComment: false },
+        commentPins: [],
+        commentFocusThreadId: null,
+      }),
+    });
+    await nextTick();
+
+    expect(surface.attributes("role")).toBeUndefined();
+    expect(surface.attributes("aria-label")).toBeUndefined();
+    expect(surface.attributes("aria-describedby")).toBeUndefined();
+    expect(surface.attributes("tabindex")).toBe("-1");
   });
 });

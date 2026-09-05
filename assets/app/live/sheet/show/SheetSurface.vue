@@ -92,6 +92,10 @@ const commentsActive = computed(
     Boolean(surface.value.content?.comments?.open || surface.value.content?.comments?.placing) ||
     localCommentInteractionActive.value,
 );
+const commentPlacementActive = computed(
+  () =>
+    surface.value.content?.comments?.placing === true && surface.value.content.comments.canComment,
+);
 const commentDraftStorageKey = computed(() => {
   const sheetId = sheet.value?.id;
   const userId = surface.value.content?.currentUserId;
@@ -115,17 +119,15 @@ useSheetHighlight(
     v-if="sheet"
     ref="surfaceRoot"
     data-sheet-comment-surface="true"
-    role="region"
-    :aria-label="$t('sheets.comments.surface_label')"
+    :role="commentPlacementActive ? 'region' : undefined"
+    :aria-label="commentPlacementActive ? $t('sheets.comments.surface_label') : undefined"
     class="relative mx-auto max-w-4xl rounded-2xl border border-border bg-surface p-6 shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
     :class="{
-      'cursor-crosshair': surface.content?.comments?.placing && surface.content.comments.canComment,
+      'cursor-crosshair': commentPlacementActive,
     }"
-    :tabindex="surface.content?.comments?.placing && surface.content.comments.canComment ? 0 : -1"
+    :tabindex="commentPlacementActive ? 0 : -1"
     :aria-describedby="
-      surface.content?.comments?.placing && surface.content.comments.canComment
-        ? 'sheet-comment-surface-keyboard-instructions'
-        : undefined
+      commentPlacementActive ? 'sheet-comment-surface-keyboard-instructions' : undefined
     "
   >
     <SheetContentHeader

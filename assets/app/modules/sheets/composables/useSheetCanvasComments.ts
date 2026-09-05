@@ -51,6 +51,26 @@ interface VisibleSurfaceBounds {
   top: number;
 }
 
+interface DraftConversationSnapshot {
+  open: boolean;
+  draftPosition: SheetCommentPosition | null;
+  threadId: number | null;
+}
+
+function draftConversationClosed(
+  current: DraftConversationSnapshot,
+  previous?: DraftConversationSnapshot,
+): boolean {
+  return (
+    previous?.open === true &&
+    previous.threadId == null &&
+    previous.draftPosition != null &&
+    current.open === false &&
+    current.threadId == null &&
+    current.draftPosition == null
+  );
+}
+
 function editableTarget(target: EventTarget | null): boolean {
   return (
     target instanceof Element &&
@@ -682,7 +702,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
     () => ({
       storageKey: options.draftStorageKey(),
       open: options.state().open,
-      draftPosition: options.state().draftPosition,
+      draftPosition: options.state().draftPosition ?? null,
       threadId: options.state().thread?.id ?? null,
     }),
     (current, previous) => {
@@ -692,11 +712,7 @@ export function useSheetCanvasComments(options: SheetCanvasCommentsOptions) {
         draftPosition.value = null;
         return;
       }
-      if (
-        current.threadId != null ||
-        (previous?.draftPosition != null && current.draftPosition == null)
-      )
-        clearCommentDraft(current.storageKey);
+      if (draftConversationClosed(current, previous)) clearCommentDraft(current.storageKey);
       draftPosition.value = null;
     },
   );
