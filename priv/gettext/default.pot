@@ -50,7 +50,7 @@ msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:189
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:245
-#: lib/storyarn_web/live/flow_live/show.ex:1816
+#: lib/storyarn_web/live/flow_live/show.ex:1840
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:98
 #: lib/storyarn_web/live/sheets_sidebar_live.ex:115
 #, elixir-autogen, elixir-format
