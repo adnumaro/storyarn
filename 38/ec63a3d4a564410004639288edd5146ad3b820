@@ -1,0 +1,64 @@
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_706b23cf8d9fbd::t_458ce1cd0f0b35 110-111,114-115
+lib/storyarn/localization/texts/queries/source_context.ex
+  s_706b23cf8d9fbd::t_785ac9b032ba48 32
+  s_706b23cf8d9fbd::t_c4ed11b7e66c63 62
+  s_706b23cf8d9fbd::t_69aefc2da53b0c 83-86
+  s_706b23cf8d9fbd::t_958b6d8b7cbae8 38
+assets/app/test/live/localization/LocalizationTextsIndex.test.ts
+  s_706b23cf8d9fbd::t_ec62bd7653a6e3 300
+  s_706b23cf8d9fbd::t_87f05fb78d3b1a 248-299,301-368
+lib/storyarn/localization/texts/queries/texts.ex
+  s_706b23cf8d9fbd::t_c01e2c0661dbf8 138-145
+  s_706b23cf8d9fbd::t_1e812169db755d 91-93,95-96
+assets/app/modules/localization/components/workbench/StringEditor.vue
+  s_706b23cf8d9fbd::t_b1e86303d2fbbe 178
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_706b23cf8d9fbd::t_9d5c21701c3d81 120
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_706b23cf8d9fbd::t_9d5c21701c3d81 120
+priv/gettext/localization.pot
+  s_706b23cf8d9fbd::t_9d5c21701c3d81 120
+assets/app/modules/localization/composables/useTranslationEditor.ts
+  s_706b23cf8d9fbd::t_0498c84772c5ca 55
+  s_706b23cf8d9fbd::t_e44417baca8c3d 226,230,232-246
+  s_706b23cf8d9fbd::t_b0ec0c59b0f4a8 313,317-328
+  s_706b23cf8d9fbd::t_479e87d81c95c5 273-278
+assets/app/modules/localization/components/workbench/editor/OutdatedBanner.vue
+  s_706b23cf8d9fbd::t_3cf77f874881e3 9-13,16-17
+  s_706b23cf8d9fbd::t_dbce2a9c741778 34-40,45-49
+assets/app/modules/localization/components/workbench/editor/EditorMeta.vue
+  s_706b23cf8d9fbd::t_2db8be51fe4a18 79,82-84
+test/storyarn/localization/texts/queries/source_context_test.exs
+  s_706b23cf8d9fbd::t_67621bb276ef4e 91-132
+  s_706b23cf8d9fbd::t_2f9a6c85cc66b7 12
+  s_706b23cf8d9fbd::t_f81f00b9379409 4
+assets/app/locales/en/localization.json
+  s_706b23cf8d9fbd::t_eaa1122de936eb 200-201
+assets/app/modules/localization/components/progress/SegmentedProgress.vue
+  s_706b23cf8d9fbd::t_b34afc4ad02b43 28-30,35-40,56-57
+lib/storyarn_web/live/localization_live/index.ex
+  s_706b23cf8d9fbd::t_9a12a0d6afdcaf 286-287,293
+assets/app/modules/localization/components/workbench/StringList.vue
+  s_706b23cf8d9fbd::t_f72f07f0a6c3d4 48-49,56,61-83,90
+assets/app/locales/es/localization.json
+  s_706b23cf8d9fbd::t_6e9a46e1066fd1 200-201
+assets/app/modules/localization/components/workbench/editor/TranslationPane.vue
+  s_706b23cf8d9fbd::t_0036d116d01031 65-73,77,79-81,84,86-91
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "38ec63a3d4a564410004639288edd5146ad3b820",
+  "prompts": {},
+  "sessions": {
+    "s_706b23cf8d9fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "810eb57e-17cf-4fe4-b872-a8176fb9282a",
+        "model": "claude-fable-5-1"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
