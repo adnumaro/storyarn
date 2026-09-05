@@ -36,18 +36,22 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   alias Storyarn.Projects.Versioning.Builders.AssetHashResolver
   alias Storyarn.Projects.Versioning.LocalizationSnapshotCodec
   alias Storyarn.Projects.Versioning.MaterializationHelpers
+  alias Storyarn.Projects.Versioning.SequenceCompositionIntegrity
   alias Storyarn.Repo
 
   @flow_snapshot_fields ~w(
     original_id name shortcut description is_main settings scene_id nodes connections
     asset_blob_hashes asset_metadata referenced_sheets localization localization_manifest
   )
-  @node_snapshot_fields ~w(original_id type position_x position_y data parent_id)
+  @node_snapshot_fields ~w(original_id type position_x position_y data parent_id composition_source_original_id)
   @sequence_config_fields ~w(name width height)
-  @sequence_track_fields ~w(original_id kind position asset_id start_time end_time volume)
+  @sequence_track_fields ~w(
+    original_id track_key is_override overridden_fields removed kind position asset_id
+    start_time end_time volume
+  )
   @sequence_visual_layer_fields ~w(
-    original_id asset_id kind label z_index slot x y width height anchor_x anchor_y fit
-    opacity visible
+    original_id layer_key overridden_fields removed asset_id kind label z_index slot x y width
+    height anchor_x anchor_y fit opacity visible
   )
   @connection_snapshot_fields ~w(
     original_id source_node_index target_node_index source_pin target_pin label
@@ -60,6 +64,9 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   )
   @snapshot_import_tombstone_nodes_fun_key :snapshot_import_tombstone_nodes_fun
   @snapshot_import_external_tombstone_node_map_key :snapshot_import_external_tombstone_node_map
+  @composition_owner_types ~w(sequence dialogue)
+  @track_override_fields ~w(position asset_id start_time end_time volume)
+  @layer_override_fields ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
 
   # ========== Build Snapshot ==========
 
@@ -586,20 +593,28 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
       "position_x" => node.position_x,
       "position_y" => node.position_y,
       "data" => node.data,
-      "parent_id" => node.parent_id
+      "parent_id" => node.parent_id,
+      "composition_source_original_id" => node.composition_source_id
     }
 
-    if node.type == "sequence" do
-      Map.merge(snapshot, sequence_snapshot_fields(node))
-    else
-      snapshot
+    case node.type do
+      "sequence" ->
+        Map.merge(snapshot, sequence_snapshot_fields(node))
+
+      "dialogue" ->
+        Map.merge(snapshot, composition_snapshot_fields(node))
+
+      _other ->
+        if residual_sequence_resources?(node),
+          do: Map.merge(snapshot, sequence_snapshot_fields(node)),
+          else: snapshot
     end
   end
 
   defp node_to_capture_snapshot(%FlowNode{} = node) do
     snapshot = node_to_snapshot(node)
 
-    if node.type != "sequence" and residual_sequence_resources?(node),
+    if node.type not in @composition_owner_types and residual_sequence_resources?(node),
       do: Map.merge(snapshot, sequence_snapshot_fields(node)),
       else: snapshot
   end
@@ -610,17 +625,24 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp sequence_snapshot_fields(node) do
+    Map.put(
+      composition_snapshot_fields(node),
+      "sequence_config",
+      sequence_config_to_snapshot(node.sequence_config)
+    )
+  end
+
+  defp composition_snapshot_fields(node) do
     %{
-      "sequence_config" => sequence_config_to_snapshot(node.sequence_config),
       "sequence_tracks" =>
         node
         |> sequence_tracks()
-        |> Enum.sort_by(&{&1.kind, &1.position, &1.id})
+        |> Enum.sort_by(&{&1.kind, &1.position, &1.track_key, &1.id})
         |> Enum.map(&sequence_track_to_snapshot/1),
       "sequence_visual_layers" =>
         node
         |> sequence_visual_layers()
-        |> Enum.sort_by(&{&1.z_index, &1.id})
+        |> Enum.sort_by(&{&1.z_index, &1.layer_key, &1.id})
         |> Enum.map(&sequence_visual_layer_to_snapshot/1)
     }
   end
@@ -638,6 +660,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp sequence_track_to_snapshot(%SequenceTrack{} = track) do
     %{
       "original_id" => track.id,
+      "track_key" => track.track_key,
+      "is_override" => track.is_override,
+      "overridden_fields" => track.overridden_fields,
+      "removed" => track.removed,
       "kind" => track.kind,
       "position" => track.position,
       "asset_id" => track.asset_id,
@@ -650,6 +676,9 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp sequence_visual_layer_to_snapshot(%SequenceVisualLayer{} = layer) do
     %{
       "original_id" => layer.id,
+      "layer_key" => layer.layer_key,
+      "overridden_fields" => layer.overridden_fields,
+      "removed" => layer.removed,
       "asset_id" => layer.asset_id,
       "kind" => layer.kind,
       "label" => layer.label,
@@ -910,7 +939,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
 
   @doc false
   @spec validate_portable_snapshot(term()) :: :ok | {:error, term()}
-  def validate_portable_snapshot(snapshot), do: validate_flow_snapshot(snapshot)
+  def validate_portable_snapshot(snapshot), do: snapshot |> normalize_legacy_snapshot() |> validate_flow_snapshot()
 
   @doc """
   Materializes a captured Flow inside Project reconstitution.
@@ -920,6 +949,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   restore.
   """
   def instantiate_snapshot(project_id, snapshot, opts \\ []) do
+    snapshot = normalize_legacy_snapshot(snapshot)
+
     with :ok <- validate_instantiation_snapshot(snapshot, opts) do
       with_asset_materialization_scope(opts, fn scoped_opts ->
         instantiate_flow_snapshot_transaction(
@@ -932,6 +963,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp validate_instantiation_snapshot(snapshot, opts) do
+    # Exact reconstitution preserves legacy residual sequence rows on authored
+    # non-owner node types. Portable snapshots reject that residual shape.
     if MaterializationHelpers.exact_materialization?(opts) and is_map(snapshot),
       do: :ok,
       else: validate_portable_snapshot(snapshot)
@@ -1008,6 +1041,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
              opts
            ),
          {:ok, _linked_parents} <- link_snapshot_node_parents(Repo, nodes, node_id_map, project_id, opts),
+         {:ok, _linked_composition_sources} <-
+           link_snapshot_node_composition_sources(Repo, nodes, node_id_map),
          {:ok, sequence_resource_data} <-
            insert_sequence_resources(Repo, nodes, node_id_map, snapshot, project_id, opts, now),
          :ok <- restore_exact_authored_node_types(Repo, nodes, node_id_map, opts),
@@ -1365,6 +1400,72 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     end
   end
 
+  @doc false
+  @spec normalize_legacy_snapshot(term()) :: term()
+  def normalize_legacy_snapshot(%{"nodes" => nodes} = snapshot) when is_list(nodes) do
+    Map.put(snapshot, "nodes", Enum.map(nodes, &normalize_legacy_node_snapshot/1))
+  end
+
+  def normalize_legacy_snapshot(snapshot), do: snapshot
+
+  defp normalize_legacy_node_snapshot(%{} = node) do
+    type = node["type"]
+
+    node =
+      Map.put_new(
+        node,
+        "composition_source_original_id",
+        if(type in @composition_owner_types, do: node["parent_id"])
+      )
+
+    node =
+      if type in @composition_owner_types do
+        node
+        |> Map.put_new("sequence_tracks", [])
+        |> Map.put_new("sequence_visual_layers", [])
+      else
+        node
+      end
+
+    node
+    |> normalize_legacy_resource_collection("sequence_tracks", &normalize_legacy_track_snapshot/1)
+    |> normalize_legacy_resource_collection(
+      "sequence_visual_layers",
+      &normalize_legacy_layer_snapshot/1
+    )
+  end
+
+  defp normalize_legacy_node_snapshot(node), do: node
+
+  defp normalize_legacy_resource_collection(node, key, normalize) do
+    case node[key] do
+      resources when is_list(resources) -> Map.put(node, key, Enum.map(resources, normalize))
+      _invalid -> node
+    end
+  end
+
+  defp normalize_legacy_track_snapshot(%{} = track) do
+    track
+    |> Map.put_new("track_key", legacy_resource_key("track", track["original_id"]))
+    |> Map.put_new("is_override", false)
+    |> Map.put_new("overridden_fields", @track_override_fields)
+    |> Map.put_new("removed", false)
+  end
+
+  defp normalize_legacy_track_snapshot(track), do: track
+
+  defp normalize_legacy_layer_snapshot(%{} = layer) do
+    layer
+    |> Map.put_new("layer_key", legacy_resource_key("layer", layer["original_id"]))
+    |> Map.put_new("overridden_fields", @layer_override_fields)
+    |> Map.put_new("removed", false)
+  end
+
+  defp normalize_legacy_layer_snapshot(layer), do: layer
+
+  defp legacy_resource_key(prefix, id) when is_integer(id) and id > 0, do: "#{prefix}-#{id}"
+  defp legacy_resource_key(_prefix, _id), do: nil
+
   defp validate_flow_snapshot(snapshot) when is_map(snapshot) do
     with :ok <- validate_required_snapshot_keys(snapshot, @flow_snapshot_fields, :flow),
          :ok <- validate_flow_snapshot_payload(snapshot),
@@ -1455,8 +1556,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
              nodes,
              "sequence_visual_layers",
              :sequence_visual_layer
-           ) do
-      validate_snapshot_parents(nodes)
+           ),
+         :ok <- validate_snapshot_parents(nodes),
+         :ok <- validate_snapshot_composition_sources(nodes) do
+      SequenceCompositionIntegrity.validate_nodes(nodes)
     end
   end
 
@@ -1521,8 +1624,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp validate_snapshot_node_type_payload(%{"original_id" => node_id, "type" => "exit", "data" => data}),
     do: validate_flow_exit_target_contract(node_id, data)
 
-  defp validate_snapshot_node_type_payload(%{"original_id" => node_id, "type" => "dialogue", "data" => data}),
-    do: validate_dialogue_runtime_ids(node_id, data)
+  defp validate_snapshot_node_type_payload(%{"original_id" => node_id, "type" => "dialogue", "data" => data} = node) do
+    with :ok <- validate_dialogue_runtime_ids(node_id, data),
+         do: validate_composition_snapshot(node)
+  end
 
   defp validate_snapshot_node_type_payload(%{"type" => "sequence"} = node), do: validate_sequence_snapshot(node)
 
@@ -1610,13 +1715,24 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp validate_sequence_snapshot(node) do
+    with :ok <- validate_sequence_config_snapshot(node), do: validate_composition_snapshot(node)
+  end
+
+  defp validate_composition_snapshot(node) do
     with {:ok, tracks} <- fetch_required_sequence_collection(node, "sequence_tracks"),
          {:ok, layers} <- fetch_required_sequence_collection(node, "sequence_visual_layers"),
-         :ok <- validate_sequence_config_snapshot(node),
          :ok <- validate_snapshot_entry_ids(tracks, :sequence_track),
          :ok <- validate_snapshot_entry_ids(layers, :sequence_visual_layer),
          :ok <- validate_sequence_track_payloads(tracks),
-         :ok <- validate_sequence_visual_layer_payloads(layers) do
+         :ok <- validate_sequence_visual_layer_payloads(layers),
+         :ok <- validate_unique_sequence_resource_keys(node["original_id"], tracks, "track_key", :sequence_track),
+         :ok <-
+           validate_unique_sequence_resource_keys(
+             node["original_id"],
+             layers,
+             "layer_key",
+             :sequence_visual_layer
+           ) do
       validate_unique_track_kinds(node["original_id"], tracks)
     end
   end
@@ -1662,6 +1778,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
                  @sequence_track_fields,
                  :sequence_track
                ),
+             true <- valid_snapshot_string?(track["track_key"], 64),
+             true <- is_boolean(track["is_override"]),
+             true <- valid_override_fields?(track["overridden_fields"], @track_override_fields),
+             true <- is_boolean(track["removed"]),
              true <- track["kind"] in SequenceTrack.kinds(),
              true <- is_integer(track["position"]),
              true <- optional_positive_integer?(track["asset_id"]),
@@ -1690,7 +1810,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
                  @sequence_visual_layer_fields,
                  :sequence_visual_layer
                ),
-             true <- positive_integer?(layer["asset_id"]),
+             true <- valid_snapshot_string?(layer["layer_key"], 64),
+             true <- valid_override_fields?(layer["overridden_fields"], @layer_override_fields),
+             true <- is_boolean(layer["removed"]),
+             true <- optional_positive_integer?(layer["asset_id"]),
              true <- layer["kind"] in SequenceVisualLayer.kinds(),
              true <- optional_bounded_string?(layer["label"], 120),
              true <- is_integer(layer["z_index"]),
@@ -1713,17 +1836,25 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp validate_unique_track_kinds(node_id, tracks) do
-    kinds = Enum.map(tracks, & &1["kind"])
+    kinds = for track <- tracks, track["is_override"] == false, do: track["kind"]
 
     if length(kinds) == length(Enum.uniq(kinds)),
       do: :ok,
       else: {:error, {:duplicate_sequence_track_kind, node_id}}
   end
 
+  defp validate_unique_sequence_resource_keys(node_id, resources, key, kind) do
+    keys = Enum.map(resources, & &1[key])
+
+    if length(keys) == length(Enum.uniq(keys)),
+      do: :ok,
+      else: {:error, {:duplicate_sequence_resource_key, kind, node_id}}
+  end
+
   defp validate_sequence_resource_ids(nodes, key, kind) do
     resources =
       Enum.flat_map(nodes, fn
-        %{"type" => "sequence"} = node -> node[key]
+        %{"type" => type} = node when type in @composition_owner_types -> node[key]
         _node -> []
       end)
 
@@ -2314,6 +2445,76 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     end)
   end
 
+  defp validate_snapshot_composition_sources(nodes) do
+    nodes_by_id = Map.new(nodes, &{&1["original_id"], &1})
+
+    with :ok <- validate_composition_source_targets(nodes, nodes_by_id),
+         false <- snapshot_composition_source_cycle?(nodes, nodes_by_id) do
+      :ok
+    else
+      true -> {:error, :snapshot_composition_source_cycle}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp validate_composition_source_targets(nodes, nodes_by_id) do
+    Enum.reduce_while(nodes, :ok, fn node, :ok ->
+      case validate_composition_source_target(node, nodes_by_id) do
+        :ok -> {:cont, :ok}
+        {:error, _reason} = error -> {:halt, error}
+      end
+    end)
+  end
+
+  defp validate_composition_source_target(%{"composition_source_original_id" => nil}, _nodes_by_id), do: :ok
+
+  defp validate_composition_source_target(node, nodes_by_id) do
+    node_id = node["original_id"]
+    source_id = node["composition_source_original_id"]
+    source = Map.get(nodes_by_id, source_id)
+
+    cond do
+      node["type"] not in @composition_owner_types ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :invalid_owner_type}}
+
+      node_id == source_id ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :self}}
+
+      not positive_integer?(source_id) ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, :invalid_id}}
+
+      not is_map(source) or source["type"] not in @composition_owner_types ->
+        {:error, {:invalid_snapshot_composition_source, node_id, source_id, source}}
+
+      true ->
+        :ok
+    end
+  end
+
+  defp snapshot_composition_source_cycle?(nodes, nodes_by_id) do
+    Enum.any?(nodes, fn node ->
+      walk_snapshot_composition_sources(node["original_id"], nodes_by_id, MapSet.new())
+    end)
+  end
+
+  defp walk_snapshot_composition_sources(node_id, nodes_by_id, seen) do
+    case get_in(nodes_by_id, [node_id, "composition_source_original_id"]) do
+      nil ->
+        false
+
+      source_id ->
+        if MapSet.member?(seen, source_id) do
+          true
+        else
+          walk_snapshot_composition_sources(
+            source_id,
+            nodes_by_id,
+            MapSet.put(seen, node_id)
+          )
+        end
+    end
+  end
+
   defp walk_snapshot_parents(node_id, nodes_by_id, seen) do
     case get_in(nodes_by_id, [node_id, "parent_id"]) do
       nil ->
@@ -2439,6 +2640,13 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   defp valid_snapshot_string?(value, max_length),
     do: is_binary(value) and value != "" and String.length(value) <= max_length
 
+  defp valid_override_fields?(fields, allowed) when is_list(fields) do
+    Enum.all?(fields, &is_binary/1) and length(fields) == length(Enum.uniq(fields)) and
+      Enum.all?(fields, &(&1 in allowed))
+  end
+
+  defp valid_override_fields?(_fields, _allowed), do: false
+
   defp link_snapshot_node_parents(repo, nodes_data, node_id_map, project_id, opts) do
     nodes_by_original_id =
       nodes_data
@@ -2553,6 +2761,38 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     end
   end
 
+  defp link_snapshot_node_composition_sources(repo, nodes_data, node_id_map) do
+    Enum.reduce_while(nodes_data, {:ok, 0}, fn node_data, result ->
+      link_snapshot_node_composition_source(repo, node_data, node_id_map, result)
+    end)
+  end
+
+  defp link_snapshot_node_composition_source(
+         _repo,
+         %{"composition_source_original_id" => nil},
+         _node_id_map,
+         {:ok, count}
+       ), do: {:cont, {:ok, count}}
+
+  defp link_snapshot_node_composition_source(repo, node_data, node_id_map, {:ok, count}) do
+    source_original_id = node_data["composition_source_original_id"]
+    node_id = Map.get(node_id_map, node_data["original_id"])
+    source_id = Map.get(node_id_map, source_original_id)
+
+    with node_id when is_integer(node_id) <- node_id,
+         source_id when is_integer(source_id) <- source_id,
+         %FlowNode{} = node <- repo.get(FlowNode, node_id),
+         {:ok, _node} <-
+           node
+           |> FlowNode.composition_source_changeset(%{composition_source_id: source_id})
+           |> repo.update() do
+      {:cont, {:ok, count + 1}}
+    else
+      reason ->
+        {:halt, {:error, {:invalid_snapshot_composition_source, node_data["original_id"], source_original_id, reason}}}
+    end
+  end
+
   defp insert_sequence_resources(repo, nodes_data, node_id_map, snapshot, project_id, opts, now) do
     Enum.reduce_while(
       nodes_data,
@@ -2566,10 +2806,10 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
       node_id = Map.fetch!(node_id_map, node_data["original_id"])
 
       with {:ok, config_count} <-
-             insert_sequence_config_for_mode(
+             insert_composition_config(
                repo,
                node_id,
-               node_data["sequence_config"],
+               node_data,
                opts,
                now
              ),
@@ -2609,6 +2849,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp materialize_sequence_resources?(%{"type" => "sequence"}, _opts), do: true
+  defp materialize_sequence_resources?(%{"type" => "dialogue"}, _opts), do: true
 
   defp materialize_sequence_resources?(node_data, opts) when is_map(node_data) do
     MaterializationHelpers.exact_materialization?(opts) and
@@ -2616,6 +2857,14 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp materialize_sequence_resources?(_node_data, _opts), do: false
+
+  defp insert_composition_config(repo, node_id, %{"type" => "sequence"} = node_data, opts, now),
+    do: insert_sequence_config_for_mode(repo, node_id, node_data["sequence_config"], opts, now)
+
+  defp insert_composition_config(_repo, _node_id, %{"type" => "dialogue"}, _opts, _now), do: {:ok, 0}
+
+  defp insert_composition_config(repo, node_id, node_data, opts, now),
+    do: insert_sequence_config_for_mode(repo, node_id, node_data["sequence_config"], opts, now)
 
   defp residual_sequence_snapshot_resources?(node_data) do
     not is_nil(node_data["sequence_config"]) or
@@ -2692,12 +2941,22 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
 
         attrs =
           track_data
-          |> Map.take(["kind", "position", "start_time", "end_time", "volume"])
+          |> Map.take([
+            "kind",
+            "track_key",
+            "is_override",
+            "overridden_fields",
+            "removed",
+            "position",
+            "start_time",
+            "end_time",
+            "volume"
+          ])
           |> Map.put("flow_node_id", node_id)
           |> Map.put("asset_id", asset_id)
 
         %SequenceTrack{inserted_at: now, updated_at: now}
-        |> SequenceTrack.create_changeset(attrs)
+        |> SequenceTrack.override_changeset(attrs)
         |> repo.insert()
       end
     )
@@ -2708,11 +2967,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
   end
 
   defp insert_sequence_visual_layers(repo, node_id, layers, snapshot, project_id, opts, now) when is_list(layers) do
-    if flow_asset_mode(opts) == :drop do
-      {:ok, %{}}
-    else
-      insert_sequence_visual_layer_items(repo, node_id, layers, snapshot, project_id, opts, now)
-    end
+    insert_sequence_visual_layer_items(repo, node_id, layers, snapshot, project_id, opts, now)
   end
 
   defp insert_sequence_visual_layers(_repo, _node_id, layers, _snapshot, _project_id, _opts, _now) do
@@ -2739,15 +2994,14 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     )
   end
 
-  defp insert_sequence_visual_layer(_repo, _node_id, layer_data, nil, _now) do
-    {:error, {:missing_sequence_visual_layer_asset, layer_data["asset_id"]}}
-  end
-
   defp insert_sequence_visual_layer(repo, node_id, layer_data, asset_id, now) do
     attrs =
       layer_data
       |> Map.take([
         "kind",
+        "layer_key",
+        "overridden_fields",
+        "removed",
         "label",
         "z_index",
         "slot",
@@ -2765,7 +3019,7 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
       |> Map.put("asset_id", asset_id)
 
     %SequenceVisualLayer{inserted_at: now, updated_at: now}
-    |> SequenceVisualLayer.create_changeset(attrs)
+    |> SequenceVisualLayer.override_changeset(attrs)
     |> repo.insert()
   end
 

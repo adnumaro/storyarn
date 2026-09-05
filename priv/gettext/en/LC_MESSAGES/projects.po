@@ -232,27 +232,27 @@ msgstr ""
 msgid "You don't have access to this project."
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:449
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:514
 #, elixir-autogen, elixir-format
 msgid "%{excluded} of %{total} strings are not release-ready for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:480
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:545
 #, elixir-autogen, elixir-format
 msgid "%{missing} of %{total} strings have no preview translation for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:506
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:571
 #, elixir-autogen, elixir-format
 msgid "Preview export includes %{count} non-final or outdated strings for locale \"%{locale}\""
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:256
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:321
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has no Entry node"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:390
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:455
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" is part of a circular subflow reference chain"
 msgstr ""
@@ -267,7 +267,7 @@ msgstr ""
 msgid "Operator '%{operator}' requires custom function '%{func_name}' in %{engine}"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:558
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:623
 #, elixir-autogen, elixir-format
 msgid "Sheet \"%{name}\" has no references from flows or scenes"
 msgstr ""
@@ -900,14 +900,14 @@ msgid_plural "Localization ID \"%{id}\" is used by %{count} dialogues"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:347
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:412
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no speaker assigned"
 msgid_plural "%{count} dialogues have no speaker assigned"
 msgstr[0] ""
 msgstr[1] ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:328
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:393
 #, elixir-autogen, elixir-format
 msgid "One dialogue has no text"
 msgid_plural "%{count} dialogues have no text"
@@ -944,7 +944,7 @@ msgstr ""
 msgid "Multiple variables collapse to the runtime identifier \"%{identifier}\" in %{format}"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:296
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:361
 #, elixir-autogen, elixir-format
 msgid "\"%{node}\" in flow \"%{flow}\" has connections from outputs the exporter cannot preserve"
 msgstr ""
@@ -999,7 +999,7 @@ msgstr ""
 msgid "Exit flow references are not represented by this serializer"
 msgstr ""
 
-#: lib/storyarn/projects/interchange/exports/queries/validator.ex:271
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:336
 #, elixir-autogen, elixir-format
 msgid "Flow \"%{name}\" has %{count} Entry nodes; export can preserve only one"
 msgstr ""
@@ -1322,4 +1322,9 @@ msgstr ""
 #: lib/storyarn_web/live/export_import_live/index.ex:685
 #, elixir-autogen, elixir-format
 msgid "You don't have permission to import into this project."
+msgstr ""
+
+#: lib/storyarn/projects/interchange/exports/queries/validator.ex:245
+#, elixir-autogen, elixir-format
+msgid "Flow \"%{name}\" uses Storyarn sequence composition that %{format} cannot represent; those composition details will be omitted. Use a Storyarn project snapshot to preserve them."
 msgstr ""

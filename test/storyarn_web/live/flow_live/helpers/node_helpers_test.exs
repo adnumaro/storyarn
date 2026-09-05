@@ -314,6 +314,35 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert dialogue_nodes == []
     end
 
+    test "explains why an active composition source cannot be deleted",
+         %{conn: conn, project: project, flow: flow} do
+      source =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Source"}
+        })
+
+      _dependent =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Dependent"},
+          composition_source_id: source.id
+        })
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "delete_node", %{"id" => source.id})
+
+      assert get_flash_vue(view).props["flash"]["error"] ==
+               "This node cannot be deleted while other nodes inherit its sequence composition."
+
+      assert Flows.get_node(flow.id, source.id)
+    end
+
     test "soft-deletes a condition node",
          %{conn: conn, project: project, flow: flow} do
       node =
@@ -892,6 +921,38 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       assert restored.data["text"] == "<p>Important dialogue</p>"
       assert restored.data["menu_text"] == "Select me"
     end
+
+    test "explains why a node with a deleted composition source cannot be restored",
+         %{conn: conn, project: project, flow: flow} do
+      source =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Source"}
+        })
+
+      dependent =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "Dependent"},
+          composition_source_id: source.id
+        })
+
+      assert {:ok, deleted_dependent, _meta} = Flows.delete_node(dependent)
+      assert {:ok, _deleted_source, _meta} = Flows.delete_node(source)
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      render_click(view, "restore_node", %{"id" => deleted_dependent.id})
+
+      assert get_flash_vue(view).props["flash"]["error"] ==
+               "This node cannot be restored while its sequence composition source is in the trash."
+
+      assert is_nil(Flows.get_node(flow.id, dependent.id))
+    end
   end
 
   describe "restore_node_data via LiveView" do
@@ -1075,5 +1136,9 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpersTest do
       hub_nodes = Enum.filter(updated_flow.nodes, &(&1.type == "hub"))
       assert length(hub_nodes) == 1
     end
+  end
+
+  defp get_flash_vue(view) do
+    LiveVue.Test.get_vue(view, name: "live/layouts/flash/FlashGroup")
   end
 end

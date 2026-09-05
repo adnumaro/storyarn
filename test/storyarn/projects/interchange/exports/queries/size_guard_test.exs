@@ -1,6 +1,7 @@
 defmodule Storyarn.Projects.Exports.SizeGuardTest do
   use Storyarn.DataCase, async: false
 
+  import Storyarn.AssetsFixtures
   import Storyarn.FlowsFixtures
   import Storyarn.ProjectsFixtures
   import Storyarn.SheetsFixtures
@@ -171,7 +172,16 @@ defmodule Storyarn.Projects.Exports.SizeGuardTest do
     test "estimates selected source bytes without loading excluded flows" do
       project = project_fixture()
       flow = flow_fixture(project, %{description: String.duplicate("flow", 500)})
-      {:ok, _sequence} = Flows.create_sequence(flow.id, %{"name" => "Opening sequence"})
+      {:ok, sequence} = Flows.create_sequence(flow.id, %{"name" => "Opening sequence"})
+      image = image_asset_fixture(project)
+
+      assert {:ok, _track} = Flows.upsert_sequence_track(sequence.id, "music", %{})
+
+      assert {:ok, _layer} =
+               Flows.create_sequence_visual_layer(sequence.id, %{
+                 "asset_id" => image.id,
+                 "kind" => "backdrop"
+               })
 
       {:ok, included_opts} =
         ExportOptions.new(%{
@@ -192,9 +202,13 @@ defmodule Storyarn.Projects.Exports.SizeGuardTest do
       assert included.flows > 0
       assert included.nodes > 0
       assert included.sequence_configs > 0
+      assert included.sequence_tracks > 0
+      assert included.sequence_visual_layers > 0
       assert excluded.flows == 0
       assert excluded.nodes == 0
       assert excluded.sequence_configs == 0
+      assert excluded.sequence_tracks == 0
+      assert excluded.sequence_visual_layers == 0
       assert included.total_bytes > excluded.total_bytes
     end
 

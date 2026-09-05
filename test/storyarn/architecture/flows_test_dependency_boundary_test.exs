@@ -217,7 +217,9 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     ],
     "test/support/fixtures/flows_fixtures.ex" => [
       "Storyarn.Flows.Flow",
-      "Storyarn.Flows.FlowNode"
+      "Storyarn.Flows.FlowNode",
+      "Storyarn.Flows.SequenceTrack",
+      "Storyarn.Flows.SequenceVisualLayer"
     ],
     "test/support/flows_ai_context_task.ex" => [
       "Storyarn.Flows.AI.ContextContract",

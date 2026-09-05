@@ -143,6 +143,9 @@ defmodule Storyarn.Flows do
 
   defdelegate upsert_editor_sequence_track(scope, flow, sequence_id, kind, attrs), to: Editor
 
+  @doc false
+  defdelegate validate_sequence_composition_nodes(nodes), to: Editor
+
   defdelegate create_named_version(scope, flow, opts), to: Versioning
 
   defdelegate restore_tracked_version(scope, flow, version, opts), to: Versioning
@@ -1270,30 +1273,39 @@ defmodule Storyarn.Flows do
   """
   defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: Editor
 
-  @doc "Lists visual layers assigned to a sequence."
+  @doc "Sets the explicit composition source of a sequence or dialogue node."
+  defdelegate set_composition_source(owner_id, source_id), to: Editor
+
+  @doc "Lists all local visual-layer rows for a sequence or dialogue owner."
   defdelegate list_sequence_visual_layers(sequence_id), to: Editor
 
-  @doc "Fetches a visual layer scoped to its sequence."
+  @doc "Fetches a visual layer scoped to its sequence or dialogue owner."
   defdelegate get_sequence_visual_layer(sequence_id, id), to: Editor
 
-  @doc "Creates a visual layer for a sequence."
+  @doc "Fetches a local visual-layer row by logical key."
+  defdelegate get_sequence_visual_layer_by_key(owner_id, layer_key), to: Editor
+
+  @doc "Creates a local visual-layer definition for a sequence or dialogue owner."
   defdelegate create_sequence_visual_layer(sequence_id, attrs), to: Editor
 
-  @doc "Updates a sequence visual layer."
+  @doc "Updates a local visual-layer row."
   defdelegate update_sequence_visual_layer(layer, attrs), to: Editor
 
-  @doc "Deletes a sequence visual layer."
+  @doc "Deletes a local visual-layer row."
   defdelegate delete_sequence_visual_layer(layer), to: Editor
 
-  @doc "Lists the audio tracks assigned to a sequence (one per kind, 0-3 rows)."
+  @doc "Lists all local track and inherited-patch rows for a composition owner."
   defdelegate list_sequence_tracks(sequence_id), to: Editor
 
-  @doc "Fetches the single track for `(sequence_id, kind)`, or nil."
+  @doc "Fetches an owner's local track definition for a given kind, or nil."
   defdelegate get_sequence_track(sequence_id, kind), to: Editor
 
-  @doc "Upserts a track slot. `kind` ∈ {music, ambience, sfx}."
+  @doc "Fetches a local audio-track row by logical key."
+  defdelegate get_sequence_track_by_key(owner_id, track_key), to: Editor
+
+  @doc "Upserts a local track definition. `kind` ∈ {music, ambience, sfx}."
   defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: Editor
 
-  @doc "Clears the track for `(sequence_id, kind)`. No-op if already empty."
+  @doc "Clears a local track definition. No-op if already empty."
   defdelegate clear_sequence_track(sequence_id, kind), to: Editor
 end

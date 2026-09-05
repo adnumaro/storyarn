@@ -279,12 +279,12 @@ msgstr ""
 msgid "Set or modify variable values"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:105
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:110
 #, elixir-autogen, elixir-format
 msgid "Added %{type} node"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:167
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:172
 #, elixir-autogen, elixir-format
 msgid "Added connection"
 msgstr ""
@@ -320,12 +320,12 @@ msgstr ""
 msgid "Flow not found"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:119
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:124
 #, elixir-autogen, elixir-format
 msgid "Modified %{type} node"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:181
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:186
 #, elixir-autogen, elixir-format
 msgid "Modified connection"
 msgstr ""
@@ -348,12 +348,12 @@ msgstr ""
 msgid "Node #%{n} (%{type}) — speaker"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:106
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:111
 #, elixir-autogen, elixir-format
 msgid "Removed %{type} node"
 msgstr ""
 
-#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:168
+#: lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex:173
 #, elixir-autogen, elixir-format
 msgid "Removed connection"
 msgstr ""

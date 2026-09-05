@@ -29,6 +29,8 @@ defmodule Storyarn.Projects.Exports.DataCollector do
   alias Storyarn.Projects.Persistence.SceneRecord, as: Scene
   alias Storyarn.Projects.Persistence.SceneZoneRecord, as: SceneZone
   alias Storyarn.Projects.Persistence.SequenceConfigRecord, as: SequenceConfig
+  alias Storyarn.Projects.Persistence.SequenceTrackRecord, as: SequenceTrack
+  alias Storyarn.Projects.Persistence.SequenceVisualLayerRecord, as: SequenceVisualLayer
   alias Storyarn.Projects.Persistence.SheetAvatarRecord, as: SheetAvatar
   alias Storyarn.Projects.Persistence.SheetRecord, as: Sheet
   alias Storyarn.Projects.Persistence.TableColumnRecord, as: TableColumn
@@ -51,6 +53,8 @@ defmodule Storyarn.Projects.Exports.DataCollector do
     :flows,
     :nodes,
     :sequence_configs,
+    :sequence_tracks,
+    :sequence_visual_layers,
     :flow_connections,
     :scenes,
     :scene_layers,
@@ -399,6 +403,8 @@ defmodule Storyarn.Projects.Exports.DataCollector do
       {:flows, section_row_query(:flows, Flow, project_id, opts)},
       {:nodes, flow_node_query(project_id, opts)},
       {:sequence_configs, sequence_config_query(project_id, opts)},
+      {:sequence_tracks, sequence_composition_row_query(SequenceTrack, project_id, opts)},
+      {:sequence_visual_layers, sequence_composition_row_query(SequenceVisualLayer, project_id, opts)},
       {:flow_connections, flow_child_query(FlowConnection, project_id, opts)},
       {:scenes, section_row_query(:scenes, Scene, project_id, opts)},
       {:scene_layers, scene_child_query(SceneLayer, project_id, opts)},
@@ -527,6 +533,25 @@ defmodule Storyarn.Projects.Exports.DataCollector do
       :all -> query
       [] -> where(query, false)
       ids -> where(query, [_config, _node, flow], flow.id in ^ids)
+    end
+  end
+
+  defp sequence_composition_row_query(_schema, _project_id, %{include_flows: false}), do: nil
+
+  defp sequence_composition_row_query(schema, project_id, %{flow_ids: flow_ids}) do
+    query =
+      from(row in schema,
+        join: node in FlowNode,
+        on: row.flow_node_id == node.id,
+        join: flow in Flow,
+        on: node.flow_id == flow.id,
+        where: flow.project_id == ^project_id and is_nil(flow.deleted_at) and is_nil(node.deleted_at)
+      )
+
+    case flow_ids do
+      :all -> query
+      [] -> where(query, false)
+      ids -> where(query, [_row, _node, flow], flow.id in ^ids)
     end
   end
 

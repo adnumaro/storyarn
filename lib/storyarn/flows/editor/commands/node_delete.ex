@@ -75,6 +75,7 @@ defmodule Storyarn.Flows.NodeDelete do
     with :ok <- validate_restore_changeset(changeset),
          {:ok, parent_id} <-
            References.lock_node_parent(node.flow_id, parent_id, node.id),
+         :ok <- validate_and_lock_active_composition_source(node),
          {:ok, data} <-
            References.lock_and_normalize_node_references(
              project_id,
@@ -166,7 +167,49 @@ defmodule Storyarn.Flows.NodeDelete do
     end
   end
 
-  defp validate_deletable_node(%FlowNode{}), do: :ok
+  defp validate_deletable_node(%FlowNode{} = node) do
+    validate_and_lock_no_active_composition_dependents(node)
+  end
+
+  @doc false
+  def validate_and_lock_no_active_composition_dependents(%FlowNode{id: node_id, type: type})
+      when type in ["sequence", "dialogue"] do
+    from(dependent in FlowNode,
+      where:
+        dependent.composition_source_id == ^node_id and
+          is_nil(dependent.deleted_at),
+      select: dependent.id,
+      lock: "FOR UPDATE"
+    )
+    |> Repo.all()
+    |> case do
+      [] -> :ok
+      _dependents -> {:error, :composition_source_in_use}
+    end
+  end
+
+  def validate_and_lock_no_active_composition_dependents(%FlowNode{}), do: :ok
+
+  @doc false
+  def validate_and_lock_active_composition_source(%FlowNode{composition_source_id: nil}), do: :ok
+
+  def validate_and_lock_active_composition_source(%FlowNode{
+        flow_id: flow_id,
+        composition_source_id: composition_source_id
+      }) do
+    from(source in FlowNode,
+      where:
+        source.id == ^composition_source_id and source.flow_id == ^flow_id and
+          source.type in ["sequence", "dialogue"] and is_nil(source.deleted_at),
+      select: source.id,
+      lock: "FOR SHARE"
+    )
+    |> Repo.one()
+    |> case do
+      nil -> {:error, :inactive_composition_source}
+      _source_id -> :ok
+    end
+  end
 
   defp do_delete_node(node_hint) do
     fn ->

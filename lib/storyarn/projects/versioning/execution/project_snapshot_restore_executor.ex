@@ -53,6 +53,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
   alias Storyarn.Projects.StorageCleanupInventory
   alias Storyarn.Projects.Versioning
   alias Storyarn.Projects.Versioning.Adapters.Storage.Hashing, as: StorageHash
+  alias Storyarn.Projects.Versioning.Builders.FlowBuilder
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Projects.Versioning.ProjectRecovery
   alias Storyarn.Projects.Versioning.ProjectSnapshot
@@ -871,6 +872,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     expected_source =
       expected
       |> normalize_json()
+      |> normalize_expected_flow_snapshots()
       |> normalize_expected_localization_actors(preserved_localization_actor_ids)
 
     source_maps = %{mode: :identity, ids: %{}}
@@ -899,6 +901,21 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
       end
     end
   end
+
+  defp normalize_expected_flow_snapshots(%{"flows" => flows} = snapshot) when is_list(flows) do
+    normalized_flows =
+      Enum.map(flows, fn
+        %{"snapshot" => flow_snapshot} = entry ->
+          Map.put(entry, "snapshot", FlowBuilder.normalize_legacy_snapshot(flow_snapshot))
+
+        entry ->
+          entry
+      end)
+
+    Map.put(snapshot, "flows", normalized_flows)
+  end
+
+  defp normalize_expected_flow_snapshots(snapshot), do: snapshot
 
   defp normalize_expected_localization_actors(snapshot, preserved_actor_ids) do
     snapshot
@@ -1074,6 +1091,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     node
     |> Map.update!("original_id", &canonical_id(&1, :node, maps))
     |> Map.update!("parent_id", &canonical_authored_id(&1, :node, maps))
+    |> update_if_present(
+      "composition_source_original_id",
+      &canonical_authored_id(&1, :node, maps)
+    )
     |> Map.update!("data", &canonical_flow_node_data(&1, maps))
     |> update_if_present("sequence_tracks", fn tracks ->
       Enum.map(tracks, &canonical_sequence_resource(&1, maps))

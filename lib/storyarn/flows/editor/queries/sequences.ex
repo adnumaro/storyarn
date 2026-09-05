@@ -77,11 +77,21 @@ defmodule Storyarn.Flows.Editor.Queries.Sequences do
     )
   end
 
+  def get_visual_layer_by_key(owner_id, layer_key) do
+    Repo.one(
+      from(layer in SequenceVisualLayer,
+        where: layer.flow_node_id == ^owner_id and layer.layer_key == ^layer_key,
+        preload: [:asset]
+      )
+    )
+  end
+
   def list_tracks(sequence_id) do
     Repo.all(
       from(track in SequenceTrack,
         where: track.flow_node_id == ^sequence_id,
-        order_by: [asc: track.kind, asc: track.position]
+        order_by: [asc: track.kind, asc: track.position],
+        preload: [:asset]
       )
     )
   end
@@ -89,7 +99,19 @@ defmodule Storyarn.Flows.Editor.Queries.Sequences do
   def get_track(sequence_id, kind) do
     Repo.one(
       from(track in SequenceTrack,
-        where: track.flow_node_id == ^sequence_id and track.kind == ^kind
+        where:
+          track.flow_node_id == ^sequence_id and track.kind == ^kind and
+            track.is_override == false,
+        preload: [:asset]
+      )
+    )
+  end
+
+  def get_track_by_key(owner_id, track_key) do
+    Repo.one(
+      from(track in SequenceTrack,
+        where: track.flow_node_id == ^owner_id and track.track_key == ^track_key,
+        preload: [:asset]
       )
     )
   end

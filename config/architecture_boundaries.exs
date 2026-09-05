@@ -978,9 +978,10 @@ shared_persistence_mapping_policy = %{
         %{identity: "defp do_restore_exact_authored_node_types/4", operations: [:update_all]},
         %{identity: "defp insert_flow_nodes/7", operations: [:insert]},
         %{identity: "defp link_exact_snapshot_node_parent/6", operations: [:update]},
-        %{identity: "defp link_portable_snapshot_node_parent/6", operations: [:update]}
+        %{identity: "defp link_portable_snapshot_node_parent/6", operations: [:update]},
+        %{identity: "defp link_snapshot_node_composition_source/4", operations: [:update]}
       ],
-      reason: "Project snapshot materialization restores and links captured Flow nodes"
+      reason: "Project snapshot materialization restores and links captured Flow nodes and composition sources"
     },
     %{
       table: :flow_nodes,
@@ -4959,6 +4960,13 @@ policy = %{
       kinds: ["runtime"],
       reason:
         "Project settings preserve the aggregate repair workflow through one exact command adapter while Flows owns candidate interpretation, node data and derivative writes"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/rules/sequence_composition_integrity.ex",
+      target: "lib/storyarn/flows.ex",
+      kinds: ["runtime"],
+      reason:
+        "Project reconstitution validates the Flow-owned sequence composition contract through the public Flows facade"
     },
     %{
       source: "lib/storyarn_web/live/hooks/palette.ex",

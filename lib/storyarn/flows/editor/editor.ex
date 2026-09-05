@@ -26,6 +26,7 @@ defmodule Storyarn.Flows.Editor do
   alias Storyarn.Flows.NodeLabel
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.RuntimeKey
+  alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.ShortcutGenerator
   alias Storyarn.Flows.TreeOperations
@@ -281,6 +282,10 @@ defmodule Storyarn.Flows.Editor do
   defdelegate resolve_node_colors(type, data, cache), to: CanvasSerializer
 
   # Sequences
+  defdelegate validate_sequence_composition_nodes(nodes),
+    to: SequenceCompositionIntegrity,
+    as: :validate_nodes
+
   defdelegate list_sequences(flow_id), to: SequenceCrud
   defdelegate list_deleted_sequences(flow_id), to: SequenceCrud, as: :list_deleted
   defdelegate get_sequence(flow_id, id), to: SequenceCrud
@@ -291,13 +296,16 @@ defmodule Storyarn.Flows.Editor do
   defdelegate delete_sequence(sequence), to: SequenceCrud
   defdelegate restore_sequence(sequence), to: SequenceCrud
   defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceCrud
+  defdelegate set_composition_source(owner_id, source_id), to: SequenceCrud
   defdelegate list_sequence_visual_layers(sequence_id), to: SequenceCrud
   defdelegate get_sequence_visual_layer(sequence_id, id), to: SequenceCrud
+  defdelegate get_sequence_visual_layer_by_key(owner_id, layer_key), to: SequenceCrud
   defdelegate create_sequence_visual_layer(sequence_id, attrs), to: SequenceCrud
   defdelegate update_sequence_visual_layer(layer, attrs), to: SequenceCrud
   defdelegate delete_sequence_visual_layer(layer), to: SequenceCrud
   defdelegate list_sequence_tracks(sequence_id), to: SequenceCrud
   defdelegate get_sequence_track(sequence_id, kind), to: SequenceCrud
+  defdelegate get_sequence_track_by_key(owner_id, track_key), to: SequenceCrud
   defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceCrud
   defdelegate clear_sequence_track(sequence_id, kind), to: SequenceCrud
 end
