@@ -1,0 +1,99 @@
+assets/app/live/flow/player/FlowPlayer.vue
+  s_5af6a6d0a150f1::t_8be89f0a83b69e 9,14,32,128
+assets/app/live/flow/show/FlowPanels.vue
+  s_5af6a6d0a150f1::t_e727d938649ccc 58-59,123-125
+assets/app/live/flow/show/FlowSurface.vue
+  s_5af6a6d0a150f1::t_580a533131b3c1 6-8,36-44,48-49,61-63,76-111,113-126
+assets/app/locales/en/flows.json
+  s_5af6a6d0a150f1::t_b39bd718bb2125 88,127-166,169-182
+assets/app/locales/es/flows.json
+  s_5af6a6d0a150f1::t_bb4e53ef279e2a 88,127-166,169-182
+assets/app/modules/flows/editor/components/entities/toolbar/sections/DialogueToolbar.vue
+  s_5af6a6d0a150f1::t_7e0151c2fe1e35 2,65-68,120-124
+assets/app/modules/flows/editor/components/panels/FlowDebugPanel.vue
+  s_5af6a6d0a150f1::t_9c04bf96cebd73 188,202,566-568,572
+assets/app/modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue
+  s_5af6a6d0a150f1::t_96dcaf8f9e28c3 6,10,12,25,34-41,46-51,55,59-61,80-93,109,125-145,147-148,150,153,159-172,177,182,186-191,194-251,278-311,350,353-356,360,373,376,390,403,445,459-460,463-476,480,484,488-493,502-508,511-512,515-516,519-525,533-540,542-550,555-582,584-631,633-643,646,650-651,657-668,671,673-679,681-683,686-703,705-864,866-870,872,874-931
+assets/app/modules/flows/editor/components/sequence/FlowSequenceStage.vue
+  s_5af6a6d0a150f1::t_938156888457dc 1-488
+assets/app/modules/flows/editor/composables/flowCanvasRuntime.ts
+  s_5af6a6d0a150f1::t_eba80867301695 21,46,102,221-229,255
+assets/app/modules/flows/editor/composables/flowCanvasServerEvents.ts
+  s_5af6a6d0a150f1::t_bb2084172150fa 23-36,88-120
+assets/app/modules/flows/editor/composables/flowCanvasTypes.ts
+  s_5af6a6d0a150f1::t_5c8b46a083e18d 11-16
+assets/app/modules/flows/editor/services/editorHandlers.ts
+  s_5af6a6d0a150f1::t_7d36244617c019 102,138-143,168-170,482-485,522
+assets/app/modules/flows/editor/services/historyPreset.ts
+  s_5af6a6d0a150f1::t_79692c90f9aae7 25-30,35-89,339-490
+assets/app/modules/flows/editor/services/keyboard.ts
+  s_5af6a6d0a150f1::t_9473146fdfc135 97,103
+assets/app/modules/flows/sequence/components/SequenceVisualLayers.vue
+  s_5af6a6d0a150f1::t_116910b1fb1d1f 3,6,11,21,25,34-35,38,54,58,67,90-93,97-98,101,104-106,109,113
+assets/app/modules/flows/sequence/types.ts
+  s_5af6a6d0a150f1::t_94c0e536e42941 1-136
+assets/app/test/live/flow/show/FlowPanels.test.ts
+  s_5af6a6d0a150f1::t_0a7571e431acea 1-92
+assets/app/test/live/flow/show/FlowSurface.test.ts
+  s_5af6a6d0a150f1::t_5ba093e3cc049d 1-168
+assets/app/test/modules/flows/components/toolbar-sections/DialogueToolbar.test.ts
+  s_5af6a6d0a150f1::t_9e09efa36f7e22 132-139
+assets/app/test/modules/flows/editor/FlowSequenceConfigPanel.test.ts
+  s_5af6a6d0a150f1::t_73dbfd9bdbf01a 3,13,57-106,110-111,116,135-140,146-214,217,279-386
+assets/app/test/modules/flows/editor/FlowSequenceStage.test.ts
+  s_5af6a6d0a150f1::t_7276008a93a059 1-288
+assets/app/test/modules/flows/editor/historyPreset.test.ts
+  s_5af6a6d0a150f1::t_c4cc8024cd5afa 1-213
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_5af6a6d0a150f1::t_221b8c2cf80674 141,150,178,187
+assets/app/test/modules/flows/sequence/SequenceVisualLayers.test.ts
+  s_5af6a6d0a150f1::t_1e1237d6580c6b 1-119
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_ee32b4b139f342 1282-1293
+lib/storyarn/flows/editor/commands/sequence_composition_history.ex
+  s_5af6a6d0a150f1::t_88482a2d2a3185 1-618
+lib/storyarn/flows/editor/editor.ex
+  s_5af6a6d0a150f1::t_ad27d420d59f2e 29,301-312
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_5af6a6d0a150f1::t_b511191115448e 95-98,101-103,105-108,110,113-115,117-128,142-154
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_47a16e8b164dae 25,195-196,210,221-239,245,247,249-258,262-269,271-273,277-374,394,403-408,562-563,721-724,738,759-762,766-767,770,819-820,822-830,834-835,840,853-854,857-866,870-871,888-889,891-894,898-899,904,1008-1235,1308-1319
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_5af6a6d0a150f1::t_a1b8c1dd062232 18,66,324-342
+lib/storyarn_web/live/flow_live/helpers/sequence_presentation.ex
+  s_5af6a6d0a150f1::t_8edc5cf3b61a9b 1-191
+lib/storyarn_web/live/flow_live/player_live.ex
+  s_5af6a6d0a150f1::t_baf2f807d927c3 16,332-333
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_120aa2bf849fd2 22,209,596-597,681-716,1356,1476-1482,1490-1493,1614-1615,1619-1636,1768
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_ebe5130fc79a13 20,268-269,310,341,391-392
+test/storyarn/flows/editor/commands/sequence_composition_history_test.exs
+  s_5af6a6d0a150f1::t_1dae770c66f7d7 1-452
+test/storyarn_web/live/flow_live/collaboration_test.exs
+  s_5af6a6d0a150f1::t_eaa8d566cb227a 473-523
+test/storyarn_web/live/flow_live/helpers/node_helpers_test.exs
+  s_5af6a6d0a150f1::t_50adb9190a2184 637-682
+test/storyarn_web/live/flow_live/helpers/sequence_presentation_test.exs
+  s_5af6a6d0a150f1::t_c4271e8b5d67a1 1-93
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_5af6a6d0a150f1::t_9581762f01cd98 650-702
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_aa292005ae63da 5,39,43-330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ade5ccca574cc907ce849ae6ff7f7293aed79308",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
