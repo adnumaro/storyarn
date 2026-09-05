@@ -1,0 +1,178 @@
+assets/app/modules/localization/components/status/TextFlag.vue
+  s_706b23cf8d9fbd::t_d0cc8d03cbcb4a 1-37
+assets/app/modules/localization/components/overview/SpeakerTable.vue
+  s_706b23cf8d9fbd::t_d8727e655ff203 1-59
+assets/app/modules/localization/components/workbench/editor/ConflictBanner.vue
+  s_706b23cf8d9fbd::t_f6c28d0063df86 1-31
+assets/app/live/localization/report/LocalizationReport.vue
+  s_706b23cf8d9fbd::t_565847b09f474b 94,155-158
+  s_706b23cf8d9fbd::t_e3eca0cda541ae 19-21,24-28,40-41,51-52,60-61
+  s_706b23cf8d9fbd::t_271448a196f6da 2,4-16,32-33,43-44,56,58-59,63-65,67-69,72-84,88-93,96-100,102-103,106-142,146-147,149-154,159,161-162
+  s_706b23cf8d9fbd::t_ae9c536993317f 101,104-105
+assets/app/test/live/localization/LocalizationTextsIndex.test.ts
+  s_706b23cf8d9fbd::t_960145bf3324ec 242-246
+  s_706b23cf8d9fbd::t_565847b09f474b 229-236
+  s_706b23cf8d9fbd::t_5e213c61cebdff 5,8,11,13-16,29,32,36-39,44,47-51,55-68,70-81,83,89,91,93,187-209,211-214,216-222,224-228,237-241
+  s_706b23cf8d9fbd::t_a03a1f76ccf36d 210,215,223
+assets/app/locales/en/localization.json
+  s_706b23cf8d9fbd::t_a092269e9f1a61 3-25,101-141,144-170,172-242
+assets/app/modules/localization/components/overview/ContentCard.vue
+  s_706b23cf8d9fbd::t_a211e6d987c4b0 1-62
+assets/app/modules/localization/components/workbench/FilterChipMenu.vue
+  s_706b23cf8d9fbd::t_565847b09f474b 23
+  s_706b23cf8d9fbd::t_faebc34b19ec50 1-22,24-80
+test/storyarn_web/live/localization_live/index_test.exs
+  s_706b23cf8d9fbd::t_bd50f572f5f842 781-783
+  s_706b23cf8d9fbd::t_53c59f0bf37ca0 383,386,402,404,406,410-411,415-521
+  s_706b23cf8d9fbd::t_2299fe20e63b8b 522
+priv/gettext/en/LC_MESSAGES/localization.po
+  s_706b23cf8d9fbd::t_12fd789112c646 14,25,31,37,42,48,55,68,73,78,83,120,163-218
+lib/storyarn_web/live/localization_live/report.ex
+  s_706b23cf8d9fbd::t_12fd789112c646 260-266
+  s_706b23cf8d9fbd::t_6b803a9f7b1ae2 2-7,12,55-57,71,80,89-91,101,103-104,133-143,158,167-211,213-221,223-224,229-231,238,242-243,246-259,267-275,280,288-289,293-298,300,302-305,316-325
+  s_706b23cf8d9fbd::t_0a00f84fe1afc0 63-70
+  s_706b23cf8d9fbd::t_4a81997b9c7ecf 326
+lib/storyarn_web/live/localization_live/helpers/localization_helpers.ex
+  s_706b23cf8d9fbd::t_53577fbb350b4b 3,5-6,17-38,42-59,63-64,73-84,171-188
+lib/storyarn/localization/texts/queries/source_context.ex
+  s_706b23cf8d9fbd::t_f3832dd2185b92 1-115
+assets/app/modules/localization/components/status/StatusBadge.vue
+  s_706b23cf8d9fbd::t_73fa748f32500e 1-35
+assets/app/modules/localization/components/progress/StatusLegend.vue
+  s_706b23cf8d9fbd::t_22998945e18f42 1-15
+assets/app/modules/localization/components/progress/SegmentedProgress.vue
+  s_706b23cf8d9fbd::t_957d3033acb27c 1-54
+assets/app/modules/localization/components/overview/LanguageCard.vue
+  s_706b23cf8d9fbd::t_c30e2753948ee3 38-45,51
+  s_706b23cf8d9fbd::t_c5b0a4fc1176bb 1-37,46-50,52-114
+assets/app/modules/localization/components/overview/VoiceOverCard.vue
+  s_706b23cf8d9fbd::t_c3ce9cc68b8c43 1-54
+assets/app/modules/localization/components/workbench/WorkbenchSummary.vue
+  s_706b23cf8d9fbd::t_6f89030888e802 1-93
+assets/app/modules/localization/components/workbench/StringList.vue
+  s_706b23cf8d9fbd::t_3271dcecdcb6e4 1-150
+assets/app/modules/localization/components/workbench/editor/SourcePane.vue
+  s_706b23cf8d9fbd::t_d62f1a94a55db0 1-101
+assets/app/modules/localization/components/workbench/StringEditor.vue
+  s_706b23cf8d9fbd::t_b787b8ee590cd8 1-133,135-136,138-248
+  s_706b23cf8d9fbd::t_21f8927f942c5d 134,137
+test/storyarn_web/live/localization_live/report_test.exs
+  s_706b23cf8d9fbd::t_dd7e6c146d0b79 19-58
+lib/storyarn/localization/texts/projections/user_record.ex
+  s_706b23cf8d9fbd::t_4c37b2c9fb638d 5-6,11-15,18-19
+assets/app/modules/localization/domain/types.ts
+  s_706b23cf8d9fbd::t_bbef3d3f988b0d 1-152
+test/storyarn/localization/texts/queries/source_context_test.exs
+  s_706b23cf8d9fbd::t_59574f2f7e3d8c 1-90
+test/storyarn_web/live/localization_live/helpers/localization_helpers_test.exs
+  s_706b23cf8d9fbd::t_78d9832fcee913 116-145
+lib/storyarn/localization/reporting/queries/reports.ex
+  s_706b23cf8d9fbd::t_6946c05d78bf25 12-16,21,25
+  s_706b23cf8d9fbd::t_b8fe2fbc24ad92 62-72,81-83,85,87
+assets/app/modules/localization/components/overview/EmptyOverview.vue
+  s_706b23cf8d9fbd::t_9c0bf62b839a11 1-51,53-123
+  s_706b23cf8d9fbd::t_565847b09f474b 52
+assets/app/modules/localization/domain/status.ts
+  s_706b23cf8d9fbd::t_69e5d97c5d9376 1-27,36-167
+  s_706b23cf8d9fbd::t_565847b09f474b 28-35
+lib/storyarn_web/live/localization_live/index.ex
+  s_706b23cf8d9fbd::t_12fd789112c646 84,94-96
+  s_706b23cf8d9fbd::t_608921b87b8442 2-8,17,21-22,67,85,97-98,126,128-129,134-140,148,150-176,184-187,190,192-199,202-204,207-212,214-216,222-223,228-256,279-280,286-287,293-295,325-329,347-350,363,366,371-604,633-636,640-641,643-646,648,652-658,671,683-684,704,717,724-728
+lib/storyarn/localization/texts/projections/flow_record.ex
+  s_706b23cf8d9fbd::t_9c9da66aae622d 3-4,13
+assets/app/modules/localization/components/workbench/WorkbenchHeader.vue
+  s_706b23cf8d9fbd::t_cb2eddc8a0d30c 1-52,58-64,67-70
+  s_706b23cf8d9fbd::t_565847b09f474b 53-57,65-66
+assets/app/modules/localization/components/workbench/StringRow.vue
+  s_706b23cf8d9fbd::t_f58e237712e40b 1-87
+assets/app/modules/localization/components/workbench/editor/OutdatedBanner.vue
+  s_706b23cf8d9fbd::t_7fa5c69bc4c96e 1-37
+priv/gettext/es/LC_MESSAGES/localization.po
+  s_706b23cf8d9fbd::t_76214178719cad 202
+  s_706b23cf8d9fbd::t_8a06de6fc27194 167
+  s_706b23cf8d9fbd::t_de762c9b7a21ef 192
+  s_706b23cf8d9fbd::t_127a0be388968d 187
+  s_706b23cf8d9fbd::t_7c25b174885571 197
+  s_706b23cf8d9fbd::t_97e31f9bfaee64 207
+  s_706b23cf8d9fbd::t_68167a17aa3dd3 212
+  s_706b23cf8d9fbd::t_12fd789112c646 14,25,31,37,42,48,55,68,73,78,83,120,163-166,168-171,173-176,178-181,183-186,188-191,193-196,198-201,203-206,208-211,213-217
+  s_706b23cf8d9fbd::t_e6e0e4a04ad59f 177
+  s_706b23cf8d9fbd::t_50ccd284881b30 172
+  s_706b23cf8d9fbd::t_ad2a3634c3939a 182
+  s_706b23cf8d9fbd::t_c7aa0a7ef4b2bf 218
+assets/app/modules/localization/composables/useTranslationEditor.ts
+  s_706b23cf8d9fbd::t_8065c26e78fd72 144,146-150
+  s_706b23cf8d9fbd::t_a65a581230c7c8 384-390
+  s_706b23cf8d9fbd::t_1132e4ea47a7ef 1-143,145,151-373,401-413
+  s_706b23cf8d9fbd::t_e6edec69dd07e0 374-383,391-400
+assets/app/modules/localization/navigation/workbenchUrl.ts
+  s_706b23cf8d9fbd::t_0c6fd533b3e4a2 1-27
+lib/storyarn/localization/texts/texts.ex
+  s_706b23cf8d9fbd::t_e49b452e90b611 17,24,26
+assets/app/test/live/localization/LocalizationReport.test.ts
+  s_706b23cf8d9fbd::t_cff51d1a89e7a1 1,4,6,10-11,14-32,34,38,42-50,52-90,92,95-96,98,100-122,124-126
+  s_706b23cf8d9fbd::t_70d28f4bfe1493 51
+priv/gettext/localization.pot
+  s_706b23cf8d9fbd::t_12fd789112c646 14,25,31,37,42,48,55,68,73,78,83,120,163-218
+assets/app/modules/localization/components/workbench/EditorEmptyPane.vue
+  s_706b23cf8d9fbd::t_a23e96c3b5da99 1-86
+assets/app/modules/localization/domain/format.ts
+  s_706b23cf8d9fbd::t_565847b09f474b 6-10
+  s_706b23cf8d9fbd::t_6059aafd54b13b 1-5,11
+assets/app/modules/localization/components/progress/CountChip.vue
+  s_706b23cf8d9fbd::t_d974faf3c13a85 1-47
+lib/storyarn/localization/texts/queries/texts.ex
+  s_706b23cf8d9fbd::t_aa14f98d9f6e7f 9-16,22,24,30,42-46
+  s_706b23cf8d9fbd::t_ca8d82359acb91 47,137-153
+  s_706b23cf8d9fbd::t_f6be5cc74674b2 115-126
+  s_706b23cf8d9fbd::t_20c548e32e60bb 165-168
+  s_706b23cf8d9fbd::t_0cab773df9d924 48
+assets/app/modules/localization/components/workbench/editor/TranslationPane.vue
+  s_706b23cf8d9fbd::t_f368bb6befeba7 1-88,93-172
+  s_706b23cf8d9fbd::t_565847b09f474b 89-92
+assets/app/modules/localization/components/workbench/editor/EditorMeta.vue
+  s_706b23cf8d9fbd::t_565847b09f474b 110-112
+  s_706b23cf8d9fbd::t_13968d6e6918b0 1-109,113-134
+assets/app/test/modules/localization/workbenchUrl.test.ts
+  s_706b23cf8d9fbd::t_2b5b25d69df520 1-30
+assets/app/modules/localization/components/workbench/editor/types.ts
+  s_706b23cf8d9fbd::t_a7f1ec4725f01b 5-6
+  s_706b23cf8d9fbd::t_76f7442af28011 1-4,7-25
+lib/storyarn/localization.ex
+  s_706b23cf8d9fbd::t_29a61288a9a690 158-173
+assets/app/modules/localization/components/workbench/FilterBar.vue
+  s_706b23cf8d9fbd::t_fe1a4819eaa98e 1-158
+assets/app/live/localization/texts/LocalizationTextsIndex.vue
+  s_706b23cf8d9fbd::t_1461a0f8b000d7 68
+  s_706b23cf8d9fbd::t_57b279d6a09a04 4
+  s_706b23cf8d9fbd::t_cb434d8eb13749 176-177,181,183-184,187-190,193-194,196
+  s_706b23cf8d9fbd::t_daf63454757fe3 152-155
+  s_706b23cf8d9fbd::t_5fd9121b9bbb90 2-3,5-21,23-26,29-32,35-38,41-42,47-48,51-53,55-56,58-60,62-64,69,73-74,76-79,82-84,88-89,92-93,100-107,110-112,115-116,119-120,122-128,131-132,135-145,147-149,151,156-172,180,199-201,204-208,212,214-216,218-225,228-245,247-259,261-269,271-295,297-306
+  s_11667293ceac35::t_30be8aec98e49f 173
+assets/app/locales/es/localization.json
+  s_706b23cf8d9fbd::t_ffad4eea4b46dc 3-25,101-141,144-170,172-242
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.0",
+  "base_commit_sha": "4267b35778615b1d40d6f2b8779811a13e673e93",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_706b23cf8d9fbd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "810eb57e-17cf-4fe4-b872-a8176fb9282a",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
