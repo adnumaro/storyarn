@@ -1,0 +1,44 @@
+assets/app/test/live/localization/LocalizationTextsIndex.test.ts
+  s_b7919ea823a4e4::t_1f17184bc1af63 1,6,196-197,199-206,208-209,231,236,238,244-245
+  s_b7919ea823a4e4::t_99e2957f29f797 83,483-490
+  s_b7919ea823a4e4::t_02d66c8371c69a 191-195,198,207,210-230,232-235,237,239-243,246-248,455-482,491-496
+  s_5af6a6d0a150f1::t_7f178a1a270631 497-498
+test/storyarn/localization/facade_contract_test.exs
+  s_b7919ea823a4e4::t_02d66c8371c69a 56,71,113,117
+assets/app/modules/localization/composables/useTranslationEditor.ts
+  s_b7919ea823a4e4::t_79dda4e0db7760 64,236,238,255-260,268,420-451
+  s_b7919ea823a4e4::t_02d66c8371c69a 30-34,60,63,65,239-241,270-273,402-403,514
+  s_b7919ea823a4e4::t_ac9d39141bd5f1 407-408,506-513
+  s_b7919ea823a4e4::t_7c59f30ab4c0d2 391,396-401
+  s_b7919ea823a4e4::t_120699e4ac518b 111-112,117-136,419
+  s_b7919ea823a4e4::t_fe2762b83a3b59 137
+  s_b7919ea823a4e4::t_23d08255ce5592 452
+  s_b7919ea823a4e4::t_06b72f23d8d748 515
+lib/storyarn_web/live/localization_live/index.ex
+  s_b7919ea823a4e4::t_4b2413da4a4b7d 668-670,674,676,679,689-700
+  s_b7919ea823a4e4::t_a3da72a238c425 684-688
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "90e59a1f8df033ba193465db60221826de9717e6",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b7919ea823a4e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07268-8888-7ea2-805f-101f443c7d8e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
