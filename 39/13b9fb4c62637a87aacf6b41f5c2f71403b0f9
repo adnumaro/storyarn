@@ -1,0 +1,23 @@
+docs/reference/README.md
+  s_5af6a6d0a150f1::t_1453bc17805b32 5,43
+docs/reference/flow-sequence-composition.md
+  s_5af6a6d0a150f1::t_e844d76eef82c5 1-177
+test/e2e/workspaces/projects/flows/sequence_editor_test.exs
+  s_5af6a6d0a150f1::t_b87271c2700564 1-93
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3913b9fb4c62637a87aacf6b41f5c2f71403b0f9",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
