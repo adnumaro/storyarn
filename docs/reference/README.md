@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-02
+> Last reviewed: 2026-09-05
 >
 > Source of truth: this index
 
@@ -40,6 +40,7 @@ in this directory.
 - [Bounded-context map](context-map.md)
 - [Shared utilities](shared-utilities.md)
 - [Flow dialogue typography](flow-dialogue-typography.md)
+- [Flow sequence composition](flow-sequence-composition.md)
 - [AI provider adapters](ai-provider-adapters.md)
 - [AI operations](ai-operations.md)
 - [Versioning containment](versioning-containment.md)
