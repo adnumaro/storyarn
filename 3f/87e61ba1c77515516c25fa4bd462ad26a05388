@@ -132,6 +132,7 @@ test/storyarn/flows/editor/commands/sequence_crud_test.exs
 test/storyarn/architecture/flows_facade_contract_test.exs
   s_5af6a6d0a150f1::t_edeba6f442111d 154,156,296
   s_5af6a6d0a150f1::t_302100cb795cba 29,165,220-221,249-250,267-268,272-273
+  s_5af6a6d0a150f1::t_b4a3ae026b0a22 338,388-389
 lib/storyarn/projects/content/flows/records/sequence_visual_layer_record.ex
   s_5af6a6d0a150f1::t_3ad5825d5cd9b4 275-283
   s_5af6a6d0a150f1::t_f9f0dd1d4c7e0d 102-105,107-111,114,122-123,141-150,152-153,157-158,170-174,239-240,254-274,284
