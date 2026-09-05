@@ -1,0 +1,53 @@
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_6a721eabd8b646 337
+  s_5af6a6d0a150f1::t_302100cb795cba 29,165,220-221,249-250,267-268,272-273,387-388
+test/storyarn_web/live/flow_live/player/player_live_test.exs
+  s_5af6a6d0a150f1::t_302100cb795cba 961
+lib/storyarn/flows/editor/editor.ex
+  s_5af6a6d0a150f1::t_302100cb795cba 306-309,315-318
+lib/storyarn/flows/editor/commands/sequence_crud.ex
+  s_5af6a6d0a150f1::t_ab552d8d0d6f43 30,1320,1341
+  s_5af6a6d0a150f1::t_69fc59e579854d 670-750,953-1032,1250-1260,1262-1272,1315-1319,1321-1340,1342-1746
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_302100cb795cba 848,851-856,1300-1311,1326-1337
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_302100cb795cba 1306-1309
+lib/storyarn/flows/runtime/execution/player_session.ex
+  s_5af6a6d0a150f1::t_591bd51a56ea4b 152,297-303,305-306,310-314,317-332,336-380
+lib/storyarn/flows/runtime/queries/runtime_graph.ex
+  s_5af6a6d0a150f1::t_20c11307bb579f 72
+lib/storyarn/flows/runtime/rules/sequence_composition.ex
+  s_5af6a6d0a150f1::t_9a69df9d9d6675 3,5-6,9-13,15-18,21-23,27-36,39,41-60,62-81,83-87,91-93,95-104,106-109,112-113,115-117,119-120,122-124,126-131,133-136,140-210,212-216,220-269,273-295,298-313,315,321-324,326-359
+lib/storyarn/flows/runtime/runtime.ex
+  s_5af6a6d0a150f1::t_905832d46844a6 73-77
+test/storyarn/flows/editor/commands/sequence_crud_test.exs
+  s_5af6a6d0a150f1::t_3cb94d2834b0d5 794-1228,1275-1304,1367-1383
+test/storyarn/flows/editor/commands/tracked_test.exs
+  s_5af6a6d0a150f1::t_868262395d0876 201-202,206-207,209-210,214
+test/storyarn/flows/runtime/execution/player_session_test.exs
+  s_5af6a6d0a150f1::t_4529ba5f5122ad 116,147-152,160-211
+test/storyarn/flows/runtime/queries/runtime_graph_test.exs
+  s_5af6a6d0a150f1::t_62fabb2bf036c5 16-17,23
+test/storyarn/flows/runtime/rules/sequence_composition_test.exs
+  s_5af6a6d0a150f1::t_f922c45e2204d9 6,16,21-22,42,44-46,51-352,358-359,375-390
+test/storyarn/flows/versioning/execution/flow_snapshot_test.exs
+  s_5af6a6d0a150f1::t_46838cef70ac0a 287-290,292-293,525-526,558-561,587-588
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_5af6a6d0a150f1::t_8ead5a5d4b6cbb 279-280,284-285,287-288,315-316,341-342,354-355,2898-2901,2903-2904
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "2d65cd6291a846a4f0c73a1bd284c748634d7727",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
