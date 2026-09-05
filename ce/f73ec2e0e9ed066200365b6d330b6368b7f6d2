@@ -1,0 +1,244 @@
+test/storyarn/flows/editor/commands/node_crud_test.exs
+  s_5af6a6d0a150f1::t_e9ae23c6fd9bc3 818-839,841-858
+  s_5af6a6d0a150f1::t_9399ca2abc84b2 840
+lib/storyarn/flows/editor/rules/sequence_composition_integrity.ex
+  s_5af6a6d0a150f1::t_e60f942a88eac0 1-12,19-26,44,75-86,88-102,104-110,117,129-241
+  s_5af6a6d0a150f1::t_4230be17ee0fe6 13-18,27-43,45-74
+  s_5af6a6d0a150f1::t_e4c112c922f846 87,103,111-116,118-128
+  s_5af6a6d0a150f1::t_66add44f186442 242-246
+lib/storyarn/flows/editor/entities/sequence_track.ex
+  s_5af6a6d0a150f1::t_3ad5825d5cd9b4 222-230
+  s_5af6a6d0a150f1::t_b8e4531aefe6ed 87
+  s_5af6a6d0a150f1::t_069c698a45a080 3-4,37,47-50,62-65,80-83,90-94,99-102,109,112,114,116,127-128,131-154,156-158,162-163,166-169,171,190-195,197-221,231-232
+  s_5af6a6d0a150f1::t_93e75b70ec25ea 196
+  s_5af6a6d0a150f1::t_94df25bf42e825 6,13-19,21-24,85-86,164-165,170
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_5af6a6d0a150f1::t_7789bdc0a5998a 436-447,584-592
+  s_5af6a6d0a150f1::t_ae0fb4bcd59d03 593-595
+test/storyarn_web/live/flow_live/helpers/node_helpers_test.exs
+  s_5af6a6d0a150f1::t_a58b3966b3bc1c 317-345,924-955,1140-1142
+  s_5af6a6d0a150f1::t_8022f900c71dee 1143
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_5af6a6d0a150f1::t_8fd1a036e8da0e 304,316,328-329,342,355
+  s_5af6a6d0a150f1::t_18f89fae3561d9 2868-2966
+  s_5af6a6d0a150f1::t_821b3443803f00 268,295-303,305-308
+  s_5af6a6d0a150f1::t_bdadfd66a4dd5a 256-267,269-294,309-315,317-327,330-341,343-354,356-358,360-363,2968-2971
+  s_5af6a6d0a150f1::t_aef414a236771f 3250
+  s_5af6a6d0a150f1::t_e7a99c59d5022d 359,364,2967,2972-2975,3228-3233,3249,3259,3263,3269
+lib/storyarn/flows/versioning/execution/flow_snapshot_validator.ex
+  s_5af6a6d0a150f1::t_9fbefc3d89555b 100-101,361,405
+  s_5af6a6d0a150f1::t_b8af84ddb96ee8 19,21-24,26-27,39-49,53-54,99,157-159,225-228,234-237,239,279-282,300-303,324,330-337,348-360,362-404,406-455
+  s_5af6a6d0a150f1::t_84eb565bccff2b 4,102
+  s_5af6a6d0a150f1::t_968bb8fc9c8b7e 456
+lib/storyarn/flows/editor/editor.ex
+  s_5af6a6d0a150f1::t_17b71cce7d5357 299,302,308
+  s_5af6a6d0a150f1::t_84eb565bccff2b 29,285-288
+lib/storyarn/flows/editor/commands/sequence_crud.ex
+  s_5af6a6d0a150f1::t_10daec941e142e 924,926-927,933-935,938,993-995
+  s_5af6a6d0a150f1::t_67e09b6dfcffcf 1088,1094-1104,1115-1116,1119,1128
+  s_5af6a6d0a150f1::t_1ab0a9518b2f79 585-589,1005
+  s_5af6a6d0a150f1::t_582fd48f4fff9b 900-910,914,916-917,1113
+  s_5af6a6d0a150f1::t_d987cbc139693b 1027-1056,1058-1087,1135
+  s_5af6a6d0a150f1::t_3e43c243a0d72f 21,348-351
+  s_5af6a6d0a150f1::t_879d27826e97a3 27,198,239
+  s_5af6a6d0a150f1::t_18919091e5ca48 30,310,317,461,519,542,558,575-576,839-840,932,1057,1089-1093,1105-1112,1114,1117-1118,1120-1127,1129-1134
+  s_5af6a6d0a150f1::t_94df25bf42e825 13-16,564,569,579,623,654,826-827,833,843-845,858-859
+  s_5af6a6d0a150f1::t_a8be49c561e5b5 838,879
+  s_5af6a6d0a150f1::t_443e2bbd661524 538,543-557,912,918,921-922
+  s_5af6a6d0a150f1::t_4b5320619506c8 533-537,539-541
+  s_5af6a6d0a150f1::t_6aeef99d21accb 574,577,602
+  s_5af6a6d0a150f1::t_4aefe27ac7f0b0 656
+  s_5af6a6d0a150f1::t_e659156ffc74bb 659-661
+  s_5af6a6d0a150f1::t_e2e93c2d5f559f 298-309,311-316,318,395-460,462-518,520-521
+  s_5af6a6d0a150f1::t_95eb85c847f2b7 26,28,39-70
+  s_5af6a6d0a150f1::t_13384512bb69ac 522,842,923
+lib/storyarn/flows/versioning/execution/flow_snapshot.ex
+  s_5af6a6d0a150f1::t_d7f58251016f7f 1343,1579-1580,1582-1584,1588-1590,1742,1756-1757,1767,1779-1784,1803-1814,1816-1818,1820-1826,1871
+  s_5af6a6d0a150f1::t_89b5825c0337df 1585-1587,1591-1595
+  s_5af6a6d0a150f1::t_931674674068e6 79-80,639-640,643-653,657-671,681-684,697-699,1350,1448-1449,1734-1741,1743-1755,1872-1875,1907,1910-1913,1949-1951
+  s_5af6a6d0a150f1::t_3616bd8f9714a7 44,1402-1408,1553-1578,1815
+  s_5af6a6d0a150f1::t_bcaabf263796db 183-186
+  s_5af6a6d0a150f1::t_0b4fa5b4bc1b8c 1819
+  s_5af6a6d0a150f1::t_eeeb6310a4cbd1 1581,1680-1681,1839,1842,1956
+lib/storyarn/flows/editor/entities/flow_node.ex
+  s_5af6a6d0a150f1::t_87e882769730e7 29-30,75-77,99-100,119-122,125,132,137-140,143-151,158,200-206,243-253
+  s_5af6a6d0a150f1::t_94df25bf42e825 31-33
+  s_5af6a6d0a150f1::t_80cbb90d3fddf0 254
+lib/storyarn/projects/assets/projections/sequence_track_record.ex
+  s_5af6a6d0a150f1::t_e7a11ba11b41c4 11-14
+lib/storyarn/flows/versioning/rules/flow_snapshot_diff.ex
+  s_5af6a6d0a150f1::t_bcaabf263796db 51,55-56,79,84-85,90-91,93,96-101
+lib/storyarn/flows/editor/commands/tracked.ex
+  s_5af6a6d0a150f1::t_5de3bed4aceb54 28-41
+test/storyarn/flows/editor/commands/tracked_test.exs
+  s_5af6a6d0a150f1::t_9f9b3b94de3d77 383
+  s_5af6a6d0a150f1::t_2a19a6d4bbae99 11
+  s_5af6a6d0a150f1::t_1d5166c4636943 145-169,171,173,176-182,191-193,212,215-342,345-349,351-352,477-516,523,527
+  s_5af6a6d0a150f1::t_843053af691230 170,172,174-175,183-190,194-211,213-214
+  s_5af6a6d0a150f1::t_e8f23504b29aaa 343-344,350,391-400,517-522,524-526
+lib/storyarn/projects/assets/projections/sequence_visual_layer_record.ex
+  s_5af6a6d0a150f1::t_e7a11ba11b41c4 11-13
+lib/storyarn/projects/content/flows/records/flow_node_record.ex
+  s_5af6a6d0a150f1::t_e7a11ba11b41c4 70-72,94-95,120,127,138-146,153,195-199
+  s_5af6a6d0a150f1::t_f9f0dd1d4c7e0d 114-117,132-135,200,238-248
+  s_5af6a6d0a150f1::t_374c2f6b0497b1 201
+  s_5af6a6d0a150f1::t_c081e8f66a193f 249
+test/storyarn/projects/overview/queries/flow_read_model_test.exs
+  s_5af6a6d0a150f1::t_04f73d6f4f83e1 5,15-17,21-24,27-35,42-46
+priv/repo/migrations/20260905120000_add_flow_node_composition_inheritance.exs
+  s_5af6a6d0a150f1::t_c2b0052dc1c45f 86-89,95-98,104-118,140-147
+  s_5af6a6d0a150f1::t_2cf619e5c318c1 21-28,82,148-153,192-199,315-334,359-368
+  s_5af6a6d0a150f1::t_d17c81e2f1ba3a 1-8,10-20,29-81,83-85,155-191,200-311,313-314,369-373
+  s_5af6a6d0a150f1::t_f547ad34b62f2c 9,154
+  s_5af6a6d0a150f1::t_153736774d095f 99-103,119-126,128-139
+  s_5af6a6d0a150f1::t_8415df5676117a 336-358
+  s_5af6a6d0a150f1::t_b8224d228dea26 335
+  s_5af6a6d0a150f1::t_05031304d7bc97 127
+  s_5af6a6d0a150f1::t_b8e4531aefe6ed 312
+  s_5af6a6d0a150f1::t_5af32fa7e19b53 90-94
+lib/storyarn/projects/interchange/exports/queries/validator.ex
+  s_5af6a6d0a150f1::t_b34c4824023f95 263-264,266
+  s_5af6a6d0a150f1::t_04f73d6f4f83e1 147,218-221,224-262,265,267-280
+  s_5af6a6d0a150f1::t_a94b6048ce2ce8 222-223
+  s_11667293ceac35::t_98fee57601c52c 281
+lib/storyarn/flows/editor/commands/node_update.ex
+  s_5af6a6d0a150f1::t_8415df5676117a 15-17,46,114-129
+  s_5af6a6d0a150f1::t_1c28e44a6372e6 130
+lib/storyarn/flows/editor/entities/sequence_visual_layer.ex
+  s_5af6a6d0a150f1::t_680cd1144975e1 3,5-8,36,44-46,68-70,102-105,107-111,114,116,122-123,141-149,152-153,157-158,161-164,166,171-173,203-210,212-236,246
+  s_5af6a6d0a150f1::t_fedac6a6c5d615 150,159-160,165
+  s_5af6a6d0a150f1::t_93e75b70ec25ea 211
+  s_5af6a6d0a150f1::t_3ad5825d5cd9b4 237-245
+lib/storyarn/projects/overview/queries/flow_read_model.ex
+  s_5af6a6d0a150f1::t_04f73d6f4f83e1 59
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_edeba6f442111d 1276,1279,1285,1288,1291,1294,1297,1303,1306
+  s_5af6a6d0a150f1::t_17b71cce7d5357 1273-1274,1282-1283,1300-1302
+  s_5af6a6d0a150f1::t_bd37ebd857277e 1275
+  s_5af6a6d0a150f1::t_974b349dab75b5 1284
+test/storyarn/flows/editor/commands/sequence_crud_test.exs
+  s_5af6a6d0a150f1::t_b8e4531aefe6ed 812-818
+  s_5af6a6d0a150f1::t_cdee6255e1e1f4 354,456
+  s_5af6a6d0a150f1::t_d41a2b050d5183 793,798-799,802,807-808,811,819-834
+  s_5af6a6d0a150f1::t_bd1555c3a0651a 229-251,355,377-398,457,791-792
+  s_5af6a6d0a150f1::t_3758e3a1aff24e 800-801,803-806,809-810,835
+  s_5af6a6d0a150f1::t_d3da832d935de4 344,769-790,794-797,836-838
+  s_5af6a6d0a150f1::t_c8c29fdb9e117c 252,349,399-400,450,454,839-841
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_edeba6f442111d 153,155,286
+  s_5af6a6d0a150f1::t_e4d17ec122d534 327,377-378
+lib/storyarn/projects/content/flows/records/sequence_visual_layer_record.ex
+  s_5af6a6d0a150f1::t_3ad5825d5cd9b4 237-245
+  s_5af6a6d0a150f1::t_f9f0dd1d4c7e0d 102-105,107-111,114,122-123,141-150,152-153,157-166,208-209,211,216-236,246
+  s_5af6a6d0a150f1::t_e7a11ba11b41c4 36,44-46,68-70,116,171-173,203-207,210,212-215
+lib/storyarn/projects/versioning/execution/builders/flow_builder.ex
+  s_5af6a6d0a150f1::t_49ece4438f0fef 608-610
+  s_5af6a6d0a150f1::t_f9f0dd1d4c7e0d 1421-1435
+  s_5af6a6d0a150f1::t_443e2bbd661524 2765-2768,2770-2776,2778-2795
+  s_5af6a6d0a150f1::t_9366b70837c9a0 2946-2954,2959,2970,3002-3004
+  s_5af6a6d0a150f1::t_fd3b1696084976 966-967
+  s_5af6a6d0a150f1::t_22ca37101d5808 1406-1408,1410-1417,1419-1420,1436-1468,2764,2769,2777
+  s_5af6a6d0a150f1::t_28b3059b120aa3 39,1418,1560-1562,1627,2469,2866
+  s_5af6a6d0a150f1::t_39d2d502afb835 2448-2468,2470-2517,2643-2648
+  s_5af6a6d0a150f1::t_bf05d45effef85 617
+  s_5af6a6d0a150f1::t_7b6b8ba2dcd75b 1559,1628-1630,1718-1721,1727-1735,1781-1784,1813-1816,1839,1846-1853,1857
+  s_5af6a6d0a150f1::t_8efc4ea5afe3d7 2863-2865,2867
+  s_5af6a6d0a150f1::t_a05c8e5f6de76a 2868
+  s_5af6a6d0a150f1::t_5e0178b634c578 46,48-51,53-54,67-69,596-597,600-607,628-635,640,645,663-666,679-681,942,952-953,1044-1045
+  s_5af6a6d0a150f1::t_c15d3822ddafa1 1403-1405,1409
+  s_5af6a6d0a150f1::t_b6597459759c07 2649,2809,2812,2852,2861-2862,2944-2945,3022
+test/storyarn/projects/interchange/exports/queries/validator_test.exs
+  s_5af6a6d0a150f1::t_ab13f520b0308a 400,419-432
+  s_5af6a6d0a150f1::t_b34c4824023f95 387-388
+  s_5af6a6d0a150f1::t_04f73d6f4f83e1 5,348-386,389-399,401-418,433
+  s_5af6a6d0a150f1::t_db429a90fa51e9 434-435
+lib/storyarn/projects/versioning/rules/sequence_composition_integrity.ex
+  s_5af6a6d0a150f1::t_4230be17ee0fe6 13-57
+  s_5af6a6d0a150f1::t_e4c112c922f846 70,86,94-99,101-111
+  s_5af6a6d0a150f1::t_28b3059b120aa3 1-12,58-69,71-85,87-93,100,112-201
+  s_5af6a6d0a150f1::t_e3384546e0282a 202-209
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_5af6a6d0a150f1::t_c2ea3be47d99da 1094-1097
+  s_5af6a6d0a150f1::t_c15d3822ddafa1 56,875,905-918
+  s_b7919ea823a4e4::t_05eebe0cfd743a 919
+test/storyarn/projects/interchange/exports/queries/size_guard_test.exs
+  s_5af6a6d0a150f1::t_36d38bdf1cf402 4,175-184,205-206,210-211
+lib/storyarn/flows/editor/commands/node_delete.ex
+  s_5af6a6d0a150f1::t_fe0df437e817ab 170-212
+  s_5af6a6d0a150f1::t_f68962aa392a9f 78
+test/storyarn/flows/versioning/execution/flow_snapshot_test.exs
+  s_5af6a6d0a150f1::t_821b3443803f00 465,469-477,479-482
+  s_5af6a6d0a150f1::t_6a472a19cdf7cb 805-808
+  s_5af6a6d0a150f1::t_831f4a21aeb542 466,517-525,527-595,599,747,856-857
+  s_5af6a6d0a150f1::t_3616bd8f9714a7 596,798-804,809-849
+  s_5af6a6d0a150f1::t_8fd1a036e8da0e 334,478,526
+  s_5af6a6d0a150f1::t_1035de1769617b 20,251-333,335-336,352-422,424-464,467-468,483-516,607,743,854-855
+  s_5af6a6d0a150f1::t_d7f58251016f7f 769-780,785-790,792-794
+  s_5af6a6d0a150f1::t_3e6463cc503658 337-351,423
+  s_5af6a6d0a150f1::t_a30913963eac30 597-598,600-606,608,739-742,744-746,748-749,850-853,858
+lib/storyarn/flows/editor/queries/sequences.ex
+  s_5af6a6d0a150f1::t_9e5c8e99a0aaee 80-88,102-103,106-114
+  s_5af6a6d0a150f1::t_f547ad34b62f2c 93-94,104-105
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_5af6a6d0a150f1::t_9693546c3c91ee 235,240,245,250,255,270,903,910,947,1002,1326-1330
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_16f4e2d224f9b2 1312-1319
+  s_5af6a6d0a150f1::t_d72af0e6c5aa07 1282-1311,1320-1364
+  s_5af6a6d0a150f1::t_c15d3822ddafa1 1365-1461
+lib/storyarn/projects/content/flows/records/sequence_track_record.ex
+  s_5af6a6d0a150f1::t_f9f0dd1d4c7e0d 83-86,93-97,130-131,134,136-161,165-169,171-173,177-178,180,185,205-224,234-235
+  s_5af6a6d0a150f1::t_3ad5825d5cd9b4 225-233
+  s_5af6a6d0a150f1::t_e7a11ba11b41c4 40,50-53,65-68,102-105,112,115,117,119,170,174-176,179,181-184
+  s_11667293ceac35::t_bfff18bd2926d2 186
+lib/storyarn/projects/interchange/exports/queries/data_collector.ex
+  s_5af6a6d0a150f1::t_36d38bdf1cf402 32-33,56-57,406-407,539-554
+  s_5af6a6d0a150f1::t_c90f358c874987 555-557
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_bcd33e72216786 981-982,984
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_069ff596dc3d1c 282,287,323,328,351,356
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_5af6a6d0a150f1::t_ae851a80998f20 235,240,245,250,255,270,903,910,947,1002,1326-1330
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_7abe93568dc159 282,287,323,328,351,356
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_c0c5d77c1472b3 282,287,323,328,351,356
+priv/gettext/projects.pot
+  s_5af6a6d0a150f1::t_4c437d9b69d706 235,240,245,250,255,270,903,910,947,1002,1326-1330
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_5af6a6d0a150f1::t_295bec07d290bf 220-222
+test/support/fixtures/flows_fixtures.ex
+  s_5af6a6d0a150f1::t_a233dd328cfb8f 10-11,16-33,118-161,175-190
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "cef73ec2e0e9ed066200365b6d330b6368b7f6d2",
+  "prompts": {},
+  "sessions": {
+    "s_11667293ceac35": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c07-6e3b-76c2-807e-bd3ba2d0f6f6",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_b7919ea823a4e4": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a07268-8888-7ea2-805f-101f443c7d8e",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
