@@ -1,0 +1,51 @@
+lib/storyarn/flows/editor/commands/sequence_crud.ex
+  s_5af6a6d0a150f1::t_54cc3e3f39952e 796-813,815-819
+  s_5af6a6d0a150f1::t_a902fb8ced7674 1465-1475,1477-1482
+  s_5af6a6d0a150f1::t_4646445b15fbc0 676,681-709,714-726,814,988-1015,1023-1036
+lib/storyarn/flows/runtime/execution/player_session.ex
+  s_5af6a6d0a150f1::t_f59cb6a15e99fb 341,349-354,356-376,378-380
+  s_5af6a6d0a150f1::t_b8351c75f2c634 152,156-167
+  s_5af6a6d0a150f1::t_9b3648566fc501 355
+  s_5af6a6d0a150f1::t_68117f35cb1044 151,153,382-387,389-396
+  s_5af6a6d0a150f1::t_a2066d427d01c8 168,381
+lib/storyarn/flows/runtime/rules/sequence_composition.ex
+  s_5af6a6d0a150f1::t_0841ef524e09df 41-46,86
+  s_5af6a6d0a150f1::t_b8351c75f2c634 200-208
+  s_5af6a6d0a150f1::t_2d5f10732750e1 87
+test/storyarn/flows/runtime/rules/sequence_composition_test.exs
+  s_5af6a6d0a150f1::t_0841ef524e09df 6,21-38
+test/storyarn/projects/versioning/execution/builders/flow_builder_test.exs
+  s_5af6a6d0a150f1::t_15d9924b202291 315-316
+  s_5af6a6d0a150f1::t_73b9457bb4aac4 317,354,366
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_169e46c6b83a8e 338
+test/storyarn/flows/editor/commands/sequence_crud_test.exs
+  s_5af6a6d0a150f1::t_a902fb8ced7674 824-830,832-834,836-837,995-1001,1003-1005,1007
+  s_5af6a6d0a150f1::t_c25f40d04c4a7d 831,835,1002,1006
+  s_5af6a6d0a150f1::t_242cf9e6848114 867-956
+  s_5af6a6d0a150f1::t_56aaccf12957ec 1008
+test/storyarn/flows/versioning/execution/flow_snapshot_test.exs
+  s_5af6a6d0a150f1::t_15d9924b202291 525-526
+  s_5af6a6d0a150f1::t_bdabc94ff1b93b 527
+test/storyarn/flows/runtime/execution/player_session_test.exs
+  s_5af6a6d0a150f1::t_68117f35cb1044 104-154,400,402,404-433
+  s_5af6a6d0a150f1::t_8fef568353efca 7
+  s_5af6a6d0a150f1::t_9b3648566fc501 213-254,401,403
+  s_5af6a6d0a150f1::t_f59cb6a15e99fb 257-258,299,306
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f75db48a740a523867633e8bf06a1dc0eefb4d89",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
