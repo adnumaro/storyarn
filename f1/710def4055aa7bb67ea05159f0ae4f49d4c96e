@@ -1,0 +1,173 @@
+assets/app/components/comments/types.ts
+  s_5af6a6d0a150f1::t_e0ee8aced22984 50
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_5af6a6d0a150f1::t_ffc10fc360d95c 163-167
+assets/app/modules/flows/editor/components/sequence/FlowSequenceComments.vue
+  s_5af6a6d0a150f1::t_e0ee8aced22984 1-42
+  s_5af6a6d0a150f1::t_53edfe48eef4f7 43-93
+lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex
+  s_5af6a6d0a150f1::t_e0ee8aced22984 83,106-112
+  s_5af6a6d0a150f1::t_fc5bc11ab5f31f 113
+assets/app/components/comments/CommentConversation.vue
+  s_5af6a6d0a150f1::t_e0ee8aced22984 132
+  s_5af6a6d0a150f1::t_8c137bd6a23a27 128,133-139
+test/storyarn_web/live/docs_live/show_test.exs
+  s_5af6a6d0a150f1::t_bcbe7c4e732cdb 100,125-126
+assets/app/live/flow/show/FlowPanels.vue
+  s_5af6a6d0a150f1::t_e0ee8aced22984 76
+  s_5af6a6d0a150f1::t_7ae64835929111 77-80
+assets/app/live/flow/show/FlowSurface.vue
+  s_5af6a6d0a150f1::t_e0ee8aced22984 240
+  s_5af6a6d0a150f1::t_6071a5ed6fa526 43,70-83,173,178-213,223-239,241-251,319-320
+assets/app/modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue
+  s_5af6a6d0a150f1::t_e0ee8aced22984 39-40,61
+  s_5af6a6d0a150f1::t_0ea0f2ef056165 3,34-36,62,69,71,75-76,80-81,103,182-187,190,386-390,420-423,460-478,483,542,682-698,701-726,728-749
+.dependency-cruiser.cjs
+  s_5af6a6d0a150f1::t_ac190c40694ac0 35
+assets/app/locales/en/flows.json
+  s_5af6a6d0a150f1::t_1e86a1ba0e01da 137-138,166-171,194-197,308-321,485-486,657-691
+assets/app/locales/es/flows.json
+  s_5af6a6d0a150f1::t_fa8371d4d2e6b6 137-138,166-171,194-197,308-321,485-486,657-691
+assets/app/modules/flows/editor/components/panels/FlowDebugComposition.vue
+  s_5af6a6d0a150f1::t_b43c121c50c994 1-321
+assets/app/modules/flows/editor/components/panels/FlowDebugPanel.vue
+  s_5af6a6d0a150f1::t_c93c422a756a37 39,175,193,208,212-215,312,538,542,546,550,554,562,620,635,647,659,673,781-783,854,1121-1133
+assets/app/modules/flows/editor/components/sequence/FlowSequenceAudio.vue
+  s_5af6a6d0a150f1::t_ce243588fe3bfa 1-141
+assets/app/modules/flows/editor/components/sequence/FlowSequenceAudioSlot.vue
+  s_5af6a6d0a150f1::t_b484f6bc4e8c43 1-157
+assets/app/modules/flows/editor/components/sequence/FlowSequencePlayback.vue
+  s_5af6a6d0a150f1::t_28928bc52afb2a 2,4,8,26-41,46-57,59,62-69,80,92,97-105,113,123-135,143,180,182-189,199,208
+assets/app/modules/flows/editor/components/sequence/SequenceAudioTrackPreview.vue
+  s_5af6a6d0a150f1::t_07f4cf04d4cd7f 1-57
+assets/app/modules/flows/editor/components/sequence/sequence-playback.ts
+  s_5af6a6d0a150f1::t_bfe2317c198d03 1-6,17-20
+assets/app/modules/flows/editor/services/historyPreset.ts
+  s_5af6a6d0a150f1::t_5b557a32a8fd25 359-371,383-384
+assets/app/modules/flows/player/components/DialogueVoice.vue
+  s_5af6a6d0a150f1::t_ac4dac87974473 1-195
+assets/app/modules/flows/player/components/PlayerAudioTracks.vue
+  s_5af6a6d0a150f1::t_e9953a9e970d58 2-5,8-12,16,18-38,48-102,105-109,111-112,114-117,121,123-124,127,131-135,137-140,148-151,159,165-166,169,172-183,190-191,193
+assets/app/modules/flows/sequence/components/SequenceLocaleControls.vue
+  s_5af6a6d0a150f1::t_c47680aa8d42d8 1-154
+assets/app/modules/flows/sequence/types.ts
+  s_5af6a6d0a150f1::t_917df650c698a3 1,56-89,122-123,126-161,164-178,188-189,200,210-214,222-226,234-238
+assets/app/test/live/flow/show/FlowSurface.test.ts
+  s_5af6a6d0a150f1::t_3eeb003d017467 1,3-5,27-29,32-35,74,78,92-94,127,158,171,175-176,181-249
+assets/app/test/modules/flows/editor/FlowDebugPanel.test.ts
+  s_5af6a6d0a150f1::t_f2b3bccd54cb8f 1-322
+assets/app/test/modules/flows/editor/FlowSequenceAudio.test.ts
+  s_5af6a6d0a150f1::t_dfcd54ec8e65dd 1-76
+assets/app/test/modules/flows/editor/FlowSequenceComments.test.ts
+  s_5af6a6d0a150f1::t_52a86e2d269c60 1-76
+assets/app/test/modules/flows/editor/FlowSequencePlayback.test.ts
+  s_5af6a6d0a150f1::t_f2a01303e4ff2b 33-36,119-132
+assets/app/test/modules/flows/player/DialogueVoice.test.ts
+  s_5af6a6d0a150f1::t_7edaca996e735a 1-142
+assets/app/test/modules/flows/player/FlowPlayer.test.ts
+  s_5af6a6d0a150f1::t_9ffab84b8ad1dc 215
+assets/app/test/modules/flows/player/PlayerAudioTracks.test.ts
+  s_5af6a6d0a150f1::t_a08f564ddffdb9 1-152
+assets/app/test/modules/flows/sequence/SequenceLocaleControls.test.ts
+  s_5af6a6d0a150f1::t_595c7181b649c7 1-57
+docs/reference/README.md
+  s_5af6a6d0a150f1::t_950325801a5af2 42
+docs/reference/flow-sequence-composition.md
+  s_5af6a6d0a150f1::t_444dc6575e305e 1-226
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_4bf2f977a0ac38 160-173
+lib/storyarn/flows/editor/commands/sequence_composition_history.ex
+  s_5af6a6d0a150f1::t_f0aebf4750c25a 6-7,22,26-27,36,38,129,136-137,151-154,159-165,199-203,216-224,253-270,274,284-285,297-298,305-312,398-443,521-552,558-562,613,643,683-684,701-702,790-802
+lib/storyarn/flows/localization/localization.ex
+  s_5af6a6d0a150f1::t_e4d8475acba85e 29-70
+lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
+  s_5af6a6d0a150f1::t_4ee2aa785a29be 15,155
+lib/storyarn_web/live/flow_live/handlers/debug_execution_handlers.ex
+  s_5af6a6d0a150f1::t_1aa14ced184b8c 14,40,194-217,235,244,270-283,286-289,301,312-435,451-454,477-481
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_aef0c89ca99137 22,285,288-289,293,304-305,348-379,1024-1025,1027-1036,1041-1042,1065,1072-1078,1085-1090,1095-1096,1102,1221-1309,1374,1500
+lib/storyarn_web/live/flow_live/handlers/sequence_playback_handlers.ex
+  s_5af6a6d0a150f1::t_370ba89cb7a9e6 110-121,125-126,131,133-137,145-149,151-152
+lib/storyarn_web/live/flow_live/helpers/dialogue_localization.ex
+  s_5af6a6d0a150f1::t_379b85966f6e71 1-285
+lib/storyarn_web/live/flow_live/helpers/node_helpers.ex
+  s_5af6a6d0a150f1::t_ccce3e1eecb5f3 342-343
+lib/storyarn_web/live/flow_live/helpers/sequence_presentation.ex
+  s_5af6a6d0a150f1::t_06982adfbc35dc 10,12,27-28,30,35,39-110,136-159,176,179,183-190,197-199,202,207-208,216,218,227-229,233-241,300-338,347-364
+lib/storyarn_web/live/flow_live/player/slide.ex
+  s_5af6a6d0a150f1::t_e7bd0c528cd2e4 19-22,26,29,33-34,38-40,50-53,78,85,100-106,109-110,138-143
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_ff48cd22695820 10,217-221,427,436-438,460-472,642-643,767-790,1426-1432,1442,1722-1723,1727,1739,1743-1768,1777-1778,1784-1793
+priv/docs/en/narrative-design/01-flows-overview.md
+  s_5af6a6d0a150f1::t_98c474a7073fe4 33,52-59,72,76,78,80,82,84,98
+priv/docs/en/narrative-design/04-debug-mode.md
+  s_5af6a6d0a150f1::t_df0c58a0b70adc 10,20,68,70,137-146
+priv/docs/en/narrative-design/06-sequence-editor.md
+  s_5af6a6d0a150f1::t_0355e9c01ce0a6 1-48
+priv/docs/en/narrative-design/node-types/07-sequence.md
+  s_5af6a6d0a150f1::t_28d926f6ee1778 2,7,12,14,16
+priv/docs/es/narrative-design/01-flows-overview.md
+  s_5af6a6d0a150f1::t_c2add1855aceb3 33,52-59,72,76,78,80,82,84,98
+priv/docs/es/narrative-design/04-debug-mode.md
+  s_5af6a6d0a150f1::t_bb38f801a8cc79 10,20,68,70,137-146
+priv/docs/es/narrative-design/06-sequence-editor.md
+  s_5af6a6d0a150f1::t_4f75a0ca0cd4ea 1-48
+priv/docs/es/narrative-design/node-types/07-sequence.md
+  s_5af6a6d0a150f1::t_81c128f286b387 2,4,7,12,14,16
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_98778eaa9d9ede 53
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_1b373d34c290b8 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_9fbe22fd624ca7 14,19,24,48,58,63-64,103,106,135,152,164,169,186,191,196,201,347,363,379,384,389,394,467,472,477,482,486-490
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_87b202525df74e 34-35,102
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_3b68e9b1fd2333 53
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_e10fdb1197ee47 14,19,24,48,58,63-64,103,106,135,152,164,169,186,191,196,201,347,363,379,384,389,394,467,472,477,482,486-490
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_22430ce9d15013 34-35,102
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_440f8ff207515d 14,19,24,48,58,63-64,103,106,135,152,164,169,186,191,196,201,347,363,379,384,389,394,467,472,477,482,484,487,489
+priv/gettext/versioning.pot
+  s_5af6a6d0a150f1::t_5d9e2b44615a22 34-35,102
+test/e2e/workspaces/projects/flows/sequence_editor_test.exs
+  s_5af6a6d0a150f1::t_51239f29834634 1-124
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_1d9e47e144f921 146-148,189,356,406-407
+test/storyarn/flows/editor/commands/sequence_composition_history_test.exs
+  s_5af6a6d0a150f1::t_16ca4e79cc10d0 12,22-35,54,91-94,104-105,121,137-138,152-160,168-174,187-194,207,212,217-219,223-225,241-244,285,293,300,318-327,336-337,340-342,345,348,356,371,379-381,388-393,412,414,416-417,419,422-423,427,429-455,466-469,472-473,479,481-483,526,534-536,538,540,545-549
+test/storyarn_web/live/flow_live/comments_test.exs
+  s_5af6a6d0a150f1::t_b85cccd7365d9c 23-48
+test/storyarn_web/live/flow_live/handlers/debug_execution_handlers_test.exs
+  s_5af6a6d0a150f1::t_1cfde9f230dfe9 9,12-13,69-70,281-335,1038-1212,1274,1350,1354,1373,1437,1501-1503,1546
+test/storyarn_web/live/flow_live/helpers/dialogue_localization_test.exs
+  s_5af6a6d0a150f1::t_2d1e1da02eb526 1-195
+test/storyarn_web/live/flow_live/helpers/sequence_presentation_test.exs
+  s_5af6a6d0a150f1::t_364bf50944415c 49-99
+test/storyarn_web/live/flow_live/player/slide_test.exs
+  s_5af6a6d0a150f1::t_dd481799110f4b 101-132
+test/storyarn_web/live/flow_live/sequence_versioning_test.exs
+  s_5af6a6d0a150f1::t_4ef044bf56da8a 146-169,212-216
+test/storyarn_web/live/flow_live/sequence_workspace_test.exs
+  s_5af6a6d0a150f1::t_99f6fba3309366 1-139
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_58703792b8cbac 330
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f1710def4055aa7bb67ea05159f0ae4f49d4c96e",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
