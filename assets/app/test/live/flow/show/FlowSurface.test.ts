@@ -1,5 +1,8 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, onMounted, reactive } from "vue";
+import { createMockLive } from "@app/test/setup";
+const live = createMockLive();
+vi.mock("@shared/composables/useLive", () => ({ useLive: () => live }));
 
 const liveProjection = reactive<{ vue: { props: { surface?: SurfaceData } } }>({
   vue: { props: {} },
@@ -21,9 +24,15 @@ const FlowCanvasStub = defineComponent({
   template: '<div data-canvas-stub="true" />',
 });
 
+const stopVoice = vi.fn();
+const stopPreviews = vi.fn();
+const pausePreviews = vi.fn();
 const FlowSequenceStageStub = defineComponent({
   name: "FlowSequenceWorkspace",
-  props: ["stage", "canEdit", "fullscreen", "playback"],
+  props: ["stage", "canEdit", "fullscreen", "playback", "debugging", "data"],
+  setup(_props, { expose }) {
+    expose({ stopVoicePreview: stopVoice, stopPreviews, pausePreviews });
+  },
   emits: ["toggle-fullscreen"],
   template:
     '<div data-stage-stub="true" :data-status="stage.status" :data-can-edit="canEdit"><button data-stage-fullscreen @click="$emit(\'toggle-fullscreen\')" /></div>',
@@ -62,9 +71,11 @@ function surfaceData(): SurfaceData {
 function mountSurface(surface: SurfaceData) {
   liveProjection.vue.props.surface = surface;
   return mount(FlowSurface, {
+    attachTo: document.body,
     props: { surface },
     global: {
       stubs: {
+        Teleport: true,
         FlowCanvas: FlowCanvasStub,
         FlowSequenceWorkspace: FlowSequenceStageStub,
         FlowDebugPanel: true,
@@ -78,6 +89,9 @@ function mountSurface(surface: SurfaceData) {
 describe("FlowSurface sequence workspace", () => {
   beforeEach(() => {
     canvasMounts.mockClear();
+    stopVoice.mockClear();
+    stopPreviews.mockClear();
+    pausePreviews.mockClear();
     liveProjection.vue.props.surface = undefined;
   });
 
@@ -110,7 +124,7 @@ describe("FlowSurface sequence workspace", () => {
         error: null,
       },
     };
-    await wrapper.vm.$nextTick();
+    await flushPromises();
     expect(wrapper.get("[data-stage-stub]").attributes("data-status")).toBe("ready");
     expect(wrapper.getComponent(FlowSequenceStageStub).props("playback").slide.text).toBe("Hello");
     expect(wrapper.get("[data-canvas-stub]").element).toBe(canvas);
@@ -141,7 +155,7 @@ describe("FlowSurface sequence workspace", () => {
       );
     window.dispatchEvent(new MouseEvent("pointermove", { clientY: 700 }));
     window.dispatchEvent(new MouseEvent("pointerup", { clientY: 700 }));
-    await wrapper.vm.$nextTick();
+    await flushPromises();
 
     expect(wrapper.get("[data-flow-upper-workspace]").attributes("style")).toContain("70%");
     wrapper.unmount();
@@ -153,16 +167,84 @@ describe("FlowSurface sequence workspace", () => {
     const wrapper = mountSurface(surface);
     const canvas = wrapper.get("[data-canvas-stub]").element;
     await wrapper.get("[data-visual-editor-toggle]").trigger("click");
-    const upperWorkspace = wrapper.get("[data-flow-upper-workspace]");
 
-    expect(upperWorkspace.classes()).toContain("md:pr-[24.75rem]");
+    expect(wrapper.get("[data-flow-upper-workspace]").classes()).toContain("md:pr-[24.75rem]");
 
     await wrapper.get("[data-stage-fullscreen]").trigger("click");
 
-    expect(upperWorkspace.classes()).not.toContain("md:pr-[24.75rem]");
-    expect(wrapper.get("[data-flow-upper-workspace]").classes()).toContain("z-30");
+    expect(wrapper.get("[data-flow-upper-workspace]").classes()).not.toContain("md:pr-[24.75rem]");
+    expect(wrapper.get("[data-flow-upper-workspace]").classes()).toContain("z-45");
     expect(wrapper.get("#flow-lower-workspace").isVisible()).toBe(false);
     expect(wrapper.get("[data-canvas-stub]").element).toBe(canvas);
     wrapper.unmount();
   });
+  it.each([false, true])(
+    "shows executed composition during Debug and restores prior open=%s",
+    async (wasOpen) => {
+      const surface = surfaceData();
+      const wrapper = mountSurface(surface);
+      if (wasOpen) await wrapper.get("[data-visual-editor-toggle]").trigger("click");
+      const debug: NonNullable<SurfaceData["debug"]> = {
+        open: true,
+        state: {
+          status: "paused",
+          current_node_id: 42,
+          start_node_id: 1,
+          step_count: 1,
+          max_steps: 1000,
+          variables: {},
+          console: [],
+          history: [],
+          execution_path: [42],
+          execution_log: [],
+          pending_choices: null,
+          call_stack: [],
+          breakpoints: [],
+        },
+        nodes: {},
+        controls: {
+          activeTab: "composition",
+          autoPlaying: false,
+          speed: 800,
+          varFilter: "",
+          varChangedOnly: false,
+          flowName: "Test",
+          stepLimitReached: false,
+        },
+        composition: {
+          presentationNodeId: 42,
+          visualLayers: [],
+          removedVisualLayers: [],
+          audioTracks: [],
+          removedAudioTracks: [],
+          diagnostics: [],
+        },
+      };
+      liveProjection.vue.props.surface = {
+        ...surface,
+        debug,
+        stage: {
+          status: "ready",
+          owner: { nodeId: 42, type: "dialogue" },
+          composition: { layers: [], audioTracks: [] },
+        },
+      };
+      await flushPromises();
+      const stage = wrapper.getComponent(FlowSequenceStageStub);
+      expect(stage.props("canEdit")).toBe(false);
+      expect(stage.props("debugging")).toBe(true);
+      expect(stage.props("data").owner_id).toBe(42);
+      expect(wrapper.get("[data-flow-workspace='canvas']").isVisible()).toBe(false);
+      wrapper.getComponent({ name: "FlowDebugPanel" }).vm.$emit("playback-action", "pause");
+      expect(pausePreviews).toHaveBeenCalled();
+      wrapper.getComponent({ name: "FlowDebugPanel" }).vm.$emit("playback-action", "step");
+      expect(stopVoice).toHaveBeenCalled();
+      liveProjection.vue.props.surface = surface;
+      await flushPromises();
+      expect(stopPreviews).toHaveBeenCalled();
+      expect(wrapper.find("[data-stage-stub]").exists()).toBe(wasOpen);
+      expect(wrapper.get("[data-flow-workspace='canvas']").isVisible()).toBe(true);
+      wrapper.unmount();
+    },
+  );
 });

@@ -125,10 +125,18 @@ function changeStatus(status: CommentStatus) {
       <div class="space-y-2">
         <Button
           v-if="!embedded"
+          :id="domId('back')"
           variant="ghost"
           size="sm"
           class="-ml-2 gap-1.5 text-xs text-muted-foreground"
-          @click="live.pushEvent('comments_open', {})"
+          @click="
+            live.pushEvent(
+              'comments_open',
+              state.presentation === 'workspace' && ui.createSourceKey
+                ? { [ui.createSourceKey]: state.selectedSourceId, presentation: 'workspace' }
+                : {},
+            )
+          "
           ><ArrowLeft class="size-3.5" />{{ $t(translationKey("all_threads")) }}</Button
         >
         <div class="flex items-start justify-between gap-2">

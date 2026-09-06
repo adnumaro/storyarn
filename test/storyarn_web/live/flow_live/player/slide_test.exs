@@ -98,6 +98,38 @@ defmodule StoryarnWeb.FlowLive.Player.SlideTest do
       assert result.text == "Hello world"
     end
 
+    test "accepts resolved localized content while preserving sanitization and interpolation" do
+      node = dialogue_node(%{"text" => "Source", "speaker_sheet_id" => 1})
+
+      state =
+        base_state(%{
+          variables: %{
+            "mc.health" => variable(12)
+          },
+          pending_choices: %{
+            responses: [%{id: "r1", text: "Source response", valid: true}]
+          }
+        })
+
+      resolved = %{
+        text: "<script>bad()</script><p>Salud: {mc.health}</p>",
+        stage_directions: "Entra.",
+        menu_text: "Saludar",
+        response_texts: %{"r1" => "Vida: $mc.health"},
+        speaker_name: "Heroína"
+      }
+
+      result = Slide.build(node, state, %{"1" => %{name: "Hero"}}, 1, resolved)
+
+      refute result.text =~ "<script>"
+      assert result.text =~ "12"
+      assert result.stage_directions == "Entra."
+      assert result.menu_text == "Saludar"
+      assert hd(result.responses).text =~ "12"
+      assert result.speaker_name == "Heroína"
+      assert result.speaker_initials == "H"
+    end
+
     test "handles nil data gracefully" do
       node = %{id: 1, type: "dialogue", data: nil}
       result = Slide.build(node, base_state(), %{}, 1)

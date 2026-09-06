@@ -212,7 +212,7 @@ describe("FlowPlayer", () => {
       expect(audio.attributes("data-kind")).toBe("music");
       expect(audio.attributes("data-depth")).toBe("1");
       expect(audio.attributes("loop")).toBeDefined();
-      expect(audio.attributes("autoplay")).toBeDefined();
+      expect(audio.attributes("autoplay")).toBeUndefined();
       await nextTick();
       expect(playSpy).toHaveBeenCalled();
 

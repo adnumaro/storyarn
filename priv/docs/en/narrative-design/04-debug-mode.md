@@ -7,7 +7,7 @@ description: "Test and verify your flows with the built-in debugger."
 
 ---
 
-The flow editor includes a built-in {accent}debugger{/accent} that lets you simulate how a flow executes -- step by step, with full visibility into variable values, decision paths, and execution history. This is something no other narrative design tool offers: you can verify your entire branching logic without leaving the editor, without exporting, and without a game engine.
+The flow editor includes a built-in {accent}debugger{/accent} that lets you simulate how a flow executes -- step by step, with full visibility into variable values, decision paths, and execution history. You can verify your entire branching logic without leaving the editor, without exporting, and without a game engine.
 
 <img src="/images/docs/flows-debug-current.png" alt="The flow editor with the debug panel open at the bottom, showing the console tab with execution logs" loading="lazy">
 
@@ -17,7 +17,7 @@ The flow editor includes a built-in {accent}debugger{/accent} that lets you simu
 
 1. Open a flow in the editor
 2. Click the **Debug** button in the toolbar
-3. The debug panel appears docked at the bottom of the canvas
+3. The debug panel opens below the visual composition of the dialogue being executed
 
 The debugger initializes at the flow's **Entry** node, loading all project variables with their current values from the sheets.
 
@@ -65,9 +65,9 @@ The canvas auto-centers on the active node as you step through the flow, so you 
 
 ---
 
-## The four tabs
+## The five tabs
 
-The debug panel has four information tabs, each giving you a different view of the execution state.
+The debug panel has five information tabs, each giving you a different view of the execution state.
 
 ### Console
 
@@ -131,6 +131,16 @@ A visual trace of **every node visited**, in execution order. Each entry shows:
 The current node is highlighted in the path. When debugging across subflows, **flow separators** appear in the path showing "Entering sub-flow" and "Returned to parent" markers, with entries indented to show the call depth.
 
 <img src="/images/docs/flows-debug-current.png" alt="The Path tab showing the execution trace inside the debug panel" loading="lazy">
+
+---
+
+## Composition
+
+The **Composition** tab shows the visual layers and audio resolved for the executed dialogue, including inherited and local elements, their source nodes, overrides and removed elements. It follows execution, even when a different dialogue remains selected in the editor.
+
+The upper stage previews that same composition. Stepping or going back stops the previous voice preview; pausing or stopping Debug stops its audio previews. To edit the composition, end the debug session first.
+
+See the [Sequence editor guide](/docs/narrative-design/sequence-editor) for composition inheritance and audio controls.
 
 ---
 

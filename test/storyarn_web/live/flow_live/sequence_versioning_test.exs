@@ -143,6 +143,30 @@ defmodule StoryarnWeb.FlowLive.SequenceVersioningTest do
     assert Flows.list_sequence_tracks(sequence.id) == []
   end
 
+  test "dialogue audio overrides, reverts and removal schedule recoverable versions", ctx do
+    audio = uploaded_asset(ctx, "shared-theme.mp3", "shared music bytes", "audio/mpeg")
+    source = node_fixture(ctx.flow)
+    {:ok, track} = Flows.upsert_sequence_track(source.id, "music", %{asset_id: audio.id})
+    {:ok, _owner} = Flows.set_composition_source(ctx.owner.id, source.id)
+    view = mount_flow(ctx)
+    params = %{"id" => ctx.owner.id, "track_key" => track.track_key}
+
+    schedule_edit(view, "override_sequence_track", Map.put(params, "volume", 0.2))
+    schedule_edit(view, "revert_sequence_track", Map.put(params, "fields", ["volume"]))
+    schedule_edit(view, "remove_sequence_track", params)
+    schedule_edit(view, "restore_sequence_track", params)
+    schedule_edit(view, "override_sequence_track", Map.put(params, "volume", 0.4))
+
+    snapshot = persist_scheduled_version(view, ctx.flow)
+    saved = Enum.find(snapshot["nodes"], &(&1["original_id"] == ctx.owner.id))
+    assert [%{"track_key" => key, "is_override" => true, "volume" => volume}] = saved["sequence_tracks"]
+    assert key == track.track_key
+    assert Decimal.equal?(Decimal.new(volume), Decimal.new("0.4"))
+    assert snapshot["asset_blob_hashes"][to_string(audio.id)] == audio.blob_hash
+    assert [%{volume: inherited_volume}] = Flows.list_sequence_tracks(source.id)
+    assert Decimal.equal?(inherited_volume, 1)
+  end
+
   test "deleting a local layer schedules a version", ctx do
     image = image_asset_fixture(ctx.project, ctx.user)
     {:ok, layer} = Flows.create_sequence_visual_layer(ctx.owner.id, %{asset_id: image.id, kind: "prop"})
@@ -185,7 +209,11 @@ defmodule StoryarnWeb.FlowLive.SequenceVersioningTest do
     for {event, params} <- [
           {"create_sequence_visual_layer", %{"id" => ctx.owner.id, "asset_id" => image.id, "kind" => "overlay"}},
           {"update_sequence_visual_layer", %{"id" => ctx.owner.id, "layer_id" => layer.id, "x" => -0.5}},
-          {"reorder_sequence_visual_layers", %{"id" => ctx.owner.id, "layer_keys" => [layer.layer_key]}}
+          {"reorder_sequence_visual_layers", %{"id" => ctx.owner.id, "layer_keys" => [layer.layer_key]}},
+          {"override_sequence_track", %{"id" => ctx.owner.id, "track_key" => "track", "volume" => 0.2}},
+          {"revert_sequence_track", %{"id" => ctx.owner.id, "track_key" => "track", "fields" => ["volume"]}},
+          {"remove_sequence_track", %{"id" => ctx.owner.id, "track_key" => "track"}},
+          {"restore_sequence_track", %{"id" => ctx.owner.id, "track_key" => "track"}}
         ] do
       render_hook(view, event, params)
       assert socket_assigns(view).auto_snapshot_ref == nil

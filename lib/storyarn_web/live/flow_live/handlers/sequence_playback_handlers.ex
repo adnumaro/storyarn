@@ -11,8 +11,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.SequencePlaybackHandlers do
   alias Storyarn.Flows
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.FlowLive.Helpers.SequencePresentation
-  alias StoryarnWeb.FlowLive.Player.Slide
-  alias StoryarnWeb.PrivateMedia
 
   def handle_event(%{"action" => "stop"}, socket) do
     {:noreply, assign(socket, sequence_playback_session: nil, sequence_playback: nil)}
@@ -109,18 +107,34 @@ defmodule StoryarnWeb.FlowLive.Handlers.SequencePlaybackHandlers do
      )}
   end
 
+  @doc "Refreshes presentation after a content-locale change without advancing playback."
+  def refresh(socket) do
+    case socket.assigns[:sequence_playback_session] do
+      nil ->
+        socket
+
+      session ->
+        {:noreply, updated} = present(socket, session)
+        updated
+    end
+  end
+
   defp projection(session, assigns) do
     node = session.nodes[session.state.current_node_id]
     speakers = FormHelpers.player_speakers_map(assigns[:all_sheets] || [])
-    slide = Slide.build(node, session.state, speakers, assigns.project.id)
+    locale_context = SequencePresentation.locale_context(assigns)
+    presentation = SequencePresentation.slide(node, session.state, speakers, assigns.project.id, locale_context)
     composition = Flows.compose_player_sequences(session.state, session.nodes)
     finished? = session.state.status == :finished
 
     %{
-      slide: Map.put_new(slide, :responses, []),
+      slide: Map.put_new(presentation.slide, :responses, []),
       visualLayers: SequencePresentation.visual_layers(composition),
-      audioTracks: audio_tracks(composition),
-      voice: voice(node, assigns.project.id),
+      audioTracks: SequencePresentation.audio_tracks(composition),
+      voice: playback_voice(presentation.voice),
+      contentLocale: locale_context.content_locale,
+      languageOptions: locale_context.language_options,
+      localizationStatus: presentation.localization,
       canGoBack: Flows.player_session_can_go_back?(session),
       showContinue: not finished? and session.state.status != :waiting_input,
       isFinished: finished?,
@@ -128,45 +142,16 @@ defmodule StoryarnWeb.FlowLive.Handlers.SequencePlaybackHandlers do
     }
   end
 
-  defp audio_tracks(composition) do
-    Enum.flat_map(composition.audio_tracks, fn composed ->
-      track = composed.item
+  defp playback_voice(voice) do
+    case voice do
+      %{available: true} = voice ->
+        key = Ecto.UUID.generate()
+        Map.merge(voice, %{key: key, continuityKey: key})
 
-      case PrivateMedia.asset_url(track.asset) do
-        nil ->
-          []
-
-        url ->
-          [
-            %{
-              id: composed.continuity_key,
-              sequenceId: composed.sequence_id,
-              kind: track.kind,
-              position: track.position,
-              url: url,
-              volume: numeric(track.volume),
-              depth: composed.depth
-            }
-          ]
-      end
-    end)
-  end
-
-  defp voice(%{type: "dialogue", data: data}, project_id) do
-    with asset_id when is_integer(asset_id) <- parse_id(data["audio_asset_id"]),
-         %{} = asset <- Flows.get_player_audio_asset(project_id, asset_id),
-         url when is_binary(url) <- PrivateMedia.asset_url(asset) do
-      %{url: url, key: Ecto.UUID.generate()}
-    else
-      _ -> nil
+      _ ->
+        nil
     end
   end
-
-  defp voice(_node, _project_id), do: nil
-
-  defp numeric(%Decimal{} = value), do: Decimal.to_float(value)
-  defp numeric(value) when is_number(value), do: value
-  defp numeric(_value), do: 1.0
 
   defp parse_id(value) when is_integer(value) and value > 0, do: value
 

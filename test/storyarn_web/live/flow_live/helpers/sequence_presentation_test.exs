@@ -46,6 +46,57 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentationTest do
            } = SequencePresentation.stage(20, nodes, %{}, 1)
   end
 
+  test "uses the continuity key as the audio identity" do
+    composition = %{
+      audio_tracks: [
+        %{
+          item: %{
+            id: 301,
+            track_key: "ambience-room",
+            kind: "ambience",
+            asset: %{id: 902, filename: "room.ogg", content_type: "audio/ogg"},
+            volume: Decimal.new("0.750")
+          },
+          sequence_id: 10,
+          depth: 0,
+          track_key: "ambience-room",
+          continuity_key: "ambience-room:301",
+          property_sources: %{"asset_id" => 10, "volume" => 20}
+        }
+      ]
+    }
+
+    assert [track] = SequencePresentation.audio_tracks(composition)
+    assert track.id == "ambience-room:301"
+    assert track.continuityKey == "ambience-room:301"
+    assert track.trackKey == "ambience-room"
+    assert track.url == "/media/assets/902"
+    assert track.volume == 0.75
+    assert track.propertyOrigins["volume"] == %{nodeId: 20}
+  end
+
+  test "keeps an effective audio track with a missing asset inspectable" do
+    composition = %{
+      audio_tracks: [
+        %{
+          item: %{id: 302, track_key: "missing-music", kind: "music", asset_id: 999},
+          sequence_id: 10,
+          depth: 0,
+          track_key: "missing-music",
+          continuity_key: "missing-music:302",
+          property_sources: %{"asset_id" => 10}
+        }
+      ]
+    }
+
+    assert SequencePresentation.audio_tracks(composition) == []
+
+    assert [%{trackKey: "missing-music", assetId: 999, url: "", propertyOrigins: origins}] =
+             SequencePresentation.inspectable_audio_tracks(composition)
+
+    assert origins["asset_id"] == %{nodeId: 10}
+  end
+
   defp sequence(id, source_id, layers) do
     %{
       id: id,

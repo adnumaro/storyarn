@@ -47,7 +47,7 @@ export interface CommentMessage {
 
 export interface CommentsPanelState<TSource extends CommentSource = CommentSource> {
   open: boolean;
-  presentation?: "panel" | "canvas";
+  presentation?: "panel" | "canvas" | "workspace";
   placing?: boolean;
   draftPosition?: CommentPosition | null;
   draftId?: string | null;

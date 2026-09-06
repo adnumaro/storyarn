@@ -31,8 +31,8 @@ msgstr ""
 msgid "Could not create safety backup before restoring. Restore aborted."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1502
-#: lib/storyarn_web/live/flow_live/show.ex:1932
+#: lib/storyarn_web/live/flow_live/show.ex:1557
+#: lib/storyarn_web/live/flow_live/show.ex:2026
 #: lib/storyarn_web/live/flow_live/version_events.ex:157
 #: lib/storyarn_web/live/flow_live/version_events.ex:160
 #: lib/storyarn_web/live/scene_live/version_events.ex:157
@@ -99,7 +99,7 @@ msgstr ""
 msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1931
+#: lib/storyarn_web/live/flow_live/show.ex:2025
 #: lib/storyarn_web/live/scene_live/version_events.ex:151
 #: lib/storyarn_web/live/sheet_live/version_events.ex:135
 #, elixir-autogen, elixir-format

@@ -16,24 +16,28 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   Returns a map with `:type` and type-specific fields.
   """
-  @spec build(map() | nil, map(), map(), integer()) :: map()
-  def build(nil, _state, _speakers_map, _project_id) do
+  @spec build(map() | nil, map(), map(), integer(), map() | nil) :: map()
+  def build(node, state, speakers_map, project_id, resolved_content \\ nil)
+
+  def build(nil, _state, _speakers_map, _project_id, _resolved_content) do
     %{type: :empty}
   end
 
-  def build(%{type: "dialogue"} = node, state, speakers_map, _project_id) do
+  def build(%{type: "dialogue"} = node, state, speakers_map, _project_id, resolved_content) do
     data = node.data || %{}
     speaker_info = resolve_speaker_info(data["speaker_sheet_id"], speakers_map)
-    speaker = build_speaker(speaker_info)
+    speaker = build_speaker(speaker_info, resolved_content)
     avatar_url = resolve_avatar_url(data["avatar_id"], speaker_info, speaker)
 
     text =
-      (data["text"] || "")
+      resolved_content
+      |> resolved_value(:text, data["text"] || "")
       |> HtmlSanitizer.sanitize_html()
       |> Flows.interpolate_player_rich_text(state.variables, &render_variable_resolution/1)
 
-    stage_directions = data["stage_directions"] || ""
-    menu_text = data["menu_text"] || ""
+    stage_directions = resolved_value(resolved_content, :stage_directions, data["stage_directions"] || "")
+    menu_text = resolved_value(resolved_content, :menu_text, data["menu_text"] || "")
+    response_texts = resolved_value(resolved_content, :response_texts, %{})
 
     responses =
       case state.pending_choices do
@@ -43,7 +47,10 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
           |> Enum.map(fn {resp, idx} ->
             %{
               id: resp.id,
-              text: Flows.interpolate_player_response_text(resp.text || "", state.variables),
+              text:
+                response_texts
+                |> Map.get(to_string(resp.id), resp.text || "")
+                |> Flows.interpolate_player_response_text(state.variables),
               valid: resp.valid,
               number: idx,
               has_condition: resp[:rule_details] != nil and resp[:rule_details] != []
@@ -68,14 +75,14 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     }
   end
 
-  def build(%{type: "exit"} = node, state, _speakers_map, _project_id) do
+  def build(%{type: "exit"} = node, state, _speakers_map, _project_id, _resolved_content) do
     node
     |> Flows.build_player_outcome(state)
     |> Map.put(:type, :outcome)
     |> Map.update!(:label, &(&1 || dgettext("flows", "The End")))
   end
 
-  def build(_node, _state, _speakers_map, _project_id) do
+  def build(_node, _state, _speakers_map, _project_id, _resolved_content) do
     %{type: :empty}
   end
 
@@ -90,12 +97,17 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
 
   defp resolve_speaker_info(_, _), do: nil
 
-  defp build_speaker(nil), do: %{name: nil, initials: "?", color: nil, avatar_url: nil}
+  defp build_speaker(nil, resolved_content) do
+    name = resolved_value(resolved_content, :speaker_name, nil)
+    %{name: name, initials: speaker_initials(name), color: nil, avatar_url: nil}
+  end
 
-  defp build_speaker(info) do
+  defp build_speaker(info, resolved_content) do
+    name = resolved_value(resolved_content, :speaker_name, info.name)
+
     %{
-      name: info.name,
-      initials: speaker_initials(info.name),
+      name: name,
+      initials: speaker_initials(name),
       color: info[:color],
       avatar_url: info[:avatar_url]
     }
@@ -122,6 +134,12 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
   end
 
   defp parse_speaker_id(_), do: nil
+
+  defp resolved_value(nil, _key, fallback), do: fallback
+
+  defp resolved_value(resolved_content, key, fallback) when is_map(resolved_content) do
+    Map.get(resolved_content, key, Map.get(resolved_content, Atom.to_string(key), fallback))
+  end
 
   defp speaker_initials(nil), do: "?"
 

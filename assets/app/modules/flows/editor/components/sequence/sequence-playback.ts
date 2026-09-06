@@ -1,4 +1,9 @@
-import type { SequenceVisualLayer } from "@modules/flows/sequence/types";
+import type {
+  SequenceVisualLayer,
+  SequenceDialogueVoice,
+  SequenceLanguageOption,
+  SequenceLocalizationState,
+} from "@modules/flows/sequence/types";
 import type { PlayerAudioTrack } from "@modules/flows/player/components/PlayerAudioTracks.vue";
 import type { ResponseData } from "@modules/flows/player/components/PlayerChoices.vue";
 import type { SlideData } from "@modules/flows/player/components/PlayerSlide.vue";
@@ -9,7 +14,10 @@ export interface SequencePlaybackState {
   slide: SlideData & { responses?: ResponseData[]; label?: string; node_id?: number };
   visualLayers: SequenceVisualLayer[];
   audioTracks: PlayerAudioTrack[];
-  voice: { key: string; url: string } | null;
+  voice: (SequenceDialogueVoice & { key: string; url: string }) | null;
+  contentLocale?: string | null;
+  languageOptions?: SequenceLanguageOption[];
+  localizationStatus?: SequenceLocalizationState | null;
   canGoBack: boolean;
   showContinue: boolean;
   isFinished: boolean;

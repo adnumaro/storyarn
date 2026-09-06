@@ -40,6 +40,7 @@ interface FlowDebugSurface {
   state: FlowDebugPanelProps["state"];
   nodes: FlowDebugPanelProps["nodes"];
   controls: FlowDebugPanelProps["controls"];
+  composition?: FlowDebugPanelProps["composition"];
 }
 
 interface FlowSurface {
@@ -66,6 +67,20 @@ const emptyStage: SequenceStageState = { status: "empty" };
 const stage = computed(() => surface.value.stage ?? emptyStage);
 const sequencePanelOpen = computed(() => Boolean(surface.value.sequencePanelOpen));
 const debugOpen = computed(() => Boolean(surface.value.debug?.open && surface.value.debug.state));
+const sequenceWorkspace = ref<InstanceType<typeof FlowSequenceWorkspace> | null>(null);
+const workspaceData = computed<SequenceConfigPanelData | null>(() => {
+  if (!debugOpen.value) return surface.value.sequenceWorkspace?.data ?? null;
+  const owner = stage.value.owner;
+  if (!owner) return null;
+  const effective = stage.value.composition;
+  return {
+    owner_id: owner.nodeId,
+    owner_type: owner.type,
+    composition_source_id: owner.compositionSourceId,
+    visual_layers: effective?.layers ?? [],
+    tracks: effective?.audioTracks ?? [],
+  };
+});
 const root = ref<HTMLElement | null>(null);
 const visualEditorOpen = ref(false);
 const fitViewRequest = ref(0);
@@ -155,8 +170,44 @@ function onDocumentKeydown(event: KeyboardEvent) {
 watch(
   () => surface.value.canvas.key,
   () => {
-    visualEditorOpen.value = false;
+    visualEditorOpen.value = debugOpen.value;
     upperFullscreen.value = false;
+  },
+);
+
+type DebugPlaybackAction = "step" | "back" | "choice" | "pause" | "reset" | "stop";
+function handleDebugPlaybackAction(action: DebugPlaybackAction) {
+  if (action === "pause") sequenceWorkspace.value?.pausePreviews();
+  else if (action === "reset" || action === "stop") sequenceWorkspace.value?.stopPreviews();
+  else sequenceWorkspace.value?.stopVoicePreview();
+}
+let editorBeforeDebug = false;
+watch(
+  debugOpen,
+  (open, previous) => {
+    if (open) {
+      editorBeforeDebug = visualEditorOpen.value;
+      visualEditorOpen.value = true;
+      if (surface.value.sequencePlayback) live.pushEvent("sequence_playback", { action: "stop" });
+    } else if (previous) {
+      sequenceWorkspace.value?.stopPreviews();
+      visualEditorOpen.value = editorBeforeDebug;
+      if (!visualEditorOpen.value) upperFullscreen.value = false;
+      fitViewRequest.value++;
+    }
+  },
+  { immediate: true },
+);
+watch(
+  () => surface.value.debug?.state?.step_count,
+  (next, previous) => {
+    if (next !== previous) sequenceWorkspace.value?.stopVoicePreview();
+  },
+);
+watch(
+  () => surface.value.debug?.controls.autoPlaying,
+  (next, previous) => {
+    if (previous && !next) sequenceWorkspace.value?.pausePreviews();
   },
 );
 
@@ -169,26 +220,35 @@ onUnmounted(() => {
 
 <template>
   <div ref="root" class="h-full min-h-0 relative flex flex-col bg-background">
-    <div
-      v-if="visualEditorOpen"
-      data-flow-upper-workspace
-      :class="[
-        upperFullscreen ? 'fixed inset-0 z-30 h-dvh bg-background' : 'relative min-h-0 shrink-0',
-        !upperFullscreen && sequencePanelOpen ? 'md:pr-[24.75rem]' : undefined,
-        'transition-[padding] duration-200 ease-out',
-      ]"
-      :style="upperFullscreen ? undefined : { height: `${splitPercent}%` }"
-    >
-      <FlowSequenceWorkspace
-        :stage="stage"
-        :data="surface.sequenceWorkspace?.data ?? null"
-        :sheets="surface.sequenceWorkspace?.sheets ?? []"
-        :can-edit="surface.dock.canEdit && !surface.canvas.readonly"
-        :fullscreen="upperFullscreen"
-        :playback="surface.sequencePlayback ?? null"
-        @toggle-fullscreen="toggleUpperFullscreen"
-      />
-    </div>
+    <Teleport to="body" :disabled="!upperFullscreen">
+      <div
+        v-if="visualEditorOpen"
+        data-flow-upper-workspace
+        :class="[
+          upperFullscreen ? 'fixed inset-0 z-45 h-dvh bg-background' : 'relative min-h-0 shrink-0',
+          !upperFullscreen && sequencePanelOpen ? 'md:pr-[24.75rem]' : undefined,
+          'transition-[padding] duration-200 ease-out',
+        ]"
+        :style="upperFullscreen ? undefined : { height: `${splitPercent}%` }"
+      >
+        <FlowSequenceWorkspace
+          ref="sequenceWorkspace"
+          :debugging="debugOpen"
+          :stage="stage"
+          :data="workspaceData"
+          :sheets="surface.sequenceWorkspace?.sheets ?? []"
+          :can-edit="surface.dock.canEdit && !surface.canvas.readonly && !debugOpen"
+          :fullscreen="upperFullscreen"
+          :playback="debugOpen ? null : (surface.sequencePlayback ?? null)"
+          :comments="
+            surface.canvas.comments
+              ? { state: surface.canvas.comments, pins: surface.canvas.commentPins ?? [] }
+              : null
+          "
+          @toggle-fullscreen="toggleUpperFullscreen"
+        />
+      </div>
+    </Teleport>
 
     <div
       v-if="visualEditorOpen"
@@ -256,6 +316,8 @@ onUnmounted(() => {
           :open="surface.debug.open"
           :state="surface.debug.state"
           :nodes="surface.debug.nodes"
+          :composition="surface.debug.composition"
+          @playback-action="handleDebugPlaybackAction"
           :controls="surface.debug.controls"
         />
       </div>

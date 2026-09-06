@@ -73,7 +73,11 @@ const commentsPanelOpen = computed(
 
 <template>
   <div class="contents">
-    <div v-if="panels.comments" id="flow-comments-panel" class="contents">
+    <div
+      v-if="panels.comments && panels.comments.presentation !== 'workspace'"
+      id="flow-comments-panel"
+      class="contents"
+    >
       <FlowCommentsPanel :state="panels.comments" />
     </div>
     <div id="flow-versions-panel" class="contents">
