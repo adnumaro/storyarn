@@ -14,6 +14,7 @@ import {
   Upload,
 } from "@lucide/vue";
 import { Button } from "@components/ui/button";
+import AssetUploadDecisionDialog from "@shared/components/assets/AssetUploadDecisionDialog.vue";
 import {
   Select,
   SelectContent,
@@ -74,6 +75,12 @@ const {
   fileName,
   errors: uploadErrors,
   importImages,
+  dialog: uploadDialog,
+  uploading: uploadingImage,
+  progress: uploadProgress,
+  error: uploadError,
+  confirmDecision,
+  cancelDecision,
 } = useSequenceImageImport(() => canEdit && !playback);
 const selectedLayerKey = ref<string | null>(null);
 const lockedLayerKeys = ref<string[]>([]);
@@ -668,6 +675,14 @@ function selectLayer(key: string | null) {
         </details>
       </aside>
     </div>
+    <AssetUploadDecisionDialog
+      :state="uploadDialog"
+      :uploading="uploadingImage"
+      :progress="uploadProgress"
+      :error="uploadError"
+      @confirm="confirmDecision"
+      @cancel="cancelDecision"
+    />
   </section>
 </template>
 

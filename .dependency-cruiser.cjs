@@ -44,7 +44,8 @@ const flowSharedTechnicalPorts = [
   "^assets/app/components/toolbar/(ToolbarTooltip\\.vue|index\\.ts)$",
   "^assets/app/i18n\\.ts$",
   "^assets/app/plugins/expression-editor/theme\\.ts$",
-  "^assets/app/shared/composables/(useColumnResize|useLive|useRemotePickerSearch|useUpload|useVerticalResize)\\.ts$",
+  "^assets/app/shared/composables/(useAssetDecisionUpload|useColumnResize|useLive|useRemotePickerSearch|useUpload|useVerticalResize)\\.ts$",
+  "^assets/app/shared/components/assets/AssetUploadDecisionDialog\\.vue$",
   "^assets/app/shared/utils/date-utils\\.ts$",
   "^assets/app/shell/(DashboardContent|Sidebar|SidebarFrame)\\.vue$",
 ];

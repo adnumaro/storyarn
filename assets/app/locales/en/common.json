@@ -247,6 +247,7 @@
         "source_exists": "This image already exists in the project, so the original will not be uploaded again.",
         "variant_exists": "The adapted version already exists and will be reused.",
         "variant_required": "An adapted {size} version will be created for this placement.",
+        "web_variant_required": "We’ll keep the original image in Assets and create a compressed WebP copy for use on the web.",
         "original_ready": "This image can be used as-is.",
         "processing": "Uploading and processing image...",
         "confirm": "Continue"

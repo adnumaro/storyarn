@@ -1,6 +1,6 @@
 import { onUnmounted, ref } from "vue";
 import { useI18n } from "vue-i18n";
-import { useUpload } from "@shared/composables/useUpload";
+import { useAssetDecisionUpload } from "@shared/composables/useAssetDecisionUpload";
 import type { SequenceAssetEntry } from "@modules/flows/sequence/types";
 
 // Matches the existing project upload policy; other image formats are rejected there.
@@ -8,7 +8,15 @@ export const SEQUENCE_IMAGE_ACCEPT = "image/jpeg,image/png,image/gif,image/webp"
 const IMAGE_TYPES = new Set(SEQUENCE_IMAGE_ACCEPT.split(","));
 
 export function useSequenceImageImport(canUpload: () => boolean) {
-  const { uploadFile } = useUpload();
+  const {
+    uploadWithDecision,
+    dialog,
+    uploading,
+    progress,
+    error,
+    confirmDecision,
+    cancelDecision,
+  } = useAssetDecisionUpload();
   const { t } = useI18n();
   const importing = ref(false);
   const fileName = ref("");
@@ -29,8 +37,9 @@ export function useSequenceImageImport(canUpload: () => boolean) {
       return;
     }
     try {
-      const asset = await uploadFile(file, "image");
+      const asset = await uploadWithDecision(file, "scene_background");
       if (active && asset) await onUploaded({ ...asset, filename: file.name });
+      else if (active && error.value) errors.value.push(`${file.name}: ${error.value}`);
     } catch (reason) {
       if (!active) return;
       const message = reason instanceof Error ? reason.message : t("common.assets.upload_failed");
@@ -56,5 +65,16 @@ export function useSequenceImageImport(canUpload: () => boolean) {
     }
   }
 
-  return { importing, fileName, errors, importImages };
+  return {
+    importing,
+    fileName,
+    errors,
+    importImages,
+    dialog,
+    uploading,
+    progress,
+    error,
+    confirmDecision,
+    cancelDecision,
+  };
 }

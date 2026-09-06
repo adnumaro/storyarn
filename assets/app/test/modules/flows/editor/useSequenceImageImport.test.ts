@@ -1,5 +1,5 @@
 import { flushPromises } from "@vue/test-utils";
-import type { App } from "vue";
+import { ref, type App } from "vue";
 import { useSequenceImageImport } from "@modules/flows/editor/composables/useSequenceImageImport";
 import { withSetup } from "../../../setup";
 
@@ -9,7 +9,17 @@ interface UploadedAsset {
 }
 
 const uploadFile = vi.fn<(file: File, purpose: string) => Promise<UploadedAsset | null>>();
-vi.mock("@shared/composables/useUpload", () => ({ useUpload: () => ({ uploadFile }) }));
+vi.mock("@shared/composables/useAssetDecisionUpload", () => ({
+  useAssetDecisionUpload: () => ({
+    uploadWithDecision: uploadFile,
+    dialog: ref(null),
+    uploading: ref(false),
+    progress: ref(0),
+    error: ref<string | null>(null),
+    confirmDecision: vi.fn(),
+    cancelDecision: vi.fn(),
+  }),
+}));
 vi.mock("vue-i18n", async (importOriginal) => ({
   ...(await importOriginal<typeof import("vue-i18n")>()),
   useI18n: () => ({
@@ -50,7 +60,7 @@ describe("useSequenceImageImport", () => {
     mountedApps.clear();
   });
 
-  it("uploads sequentially with purpose=image and waits for each attachment before continuing", async () => {
+  it("uploads sequentially with the Scenes optimization profile and waits for each attachment before continuing", async () => {
     const firstUpload = deferred<UploadedAsset>();
     const secondUpload = deferred<UploadedAsset>();
     const attachment = deferred<void>();
@@ -63,7 +73,7 @@ describe("useSequenceImageImport", () => {
 
     expect(api.importing.value).toBe(true);
     expect(api.fileName.value).toBe("hero.png");
-    expect(uploadFile).toHaveBeenCalledExactlyOnceWith(first, "image");
+    expect(uploadFile).toHaveBeenCalledExactlyOnceWith(first, "scene_background");
     firstUpload.resolve({ id: 101, url: "/media/assets/101" });
     await flushPromises();
     expect(onUploaded).toHaveBeenCalledExactlyOnceWith({
@@ -76,7 +86,7 @@ describe("useSequenceImageImport", () => {
     attachment.resolve();
     await flushPromises();
     expect(api.fileName.value).toBe("room.webp");
-    expect(uploadFile).toHaveBeenNthCalledWith(2, second, "image");
+    expect(uploadFile).toHaveBeenNthCalledWith(2, second, "scene_background");
     secondUpload.resolve({ id: 202, url: "/media/assets/202" });
     await importing;
     expect(onUploaded).toHaveBeenNthCalledWith(2, {

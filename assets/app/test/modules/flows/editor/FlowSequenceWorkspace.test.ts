@@ -1,5 +1,5 @@
 import { flushPromises, mount } from "@vue/test-utils";
-import { defineComponent, nextTick } from "vue";
+import { defineComponent, nextTick, ref } from "vue";
 import { Select } from "@components/ui/select";
 import type {
   SequenceConfigPanelData,
@@ -10,7 +10,17 @@ import type {
 const pushEvent = vi.fn();
 const uploadFile = vi.fn();
 vi.mock("@shared/composables/useLive", () => ({ useLive: () => ({ pushEvent }) }));
-vi.mock("@shared/composables/useUpload", () => ({ useUpload: () => ({ uploadFile }) }));
+vi.mock("@shared/composables/useAssetDecisionUpload", () => ({
+  useAssetDecisionUpload: () => ({
+    uploadWithDecision: uploadFile,
+    dialog: ref(null),
+    uploading: ref(false),
+    progress: ref(0),
+    error: ref<string | null>(null),
+    confirmDecision: vi.fn(),
+    cancelDecision: vi.fn(),
+  }),
+}));
 const { default: FlowSequenceWorkspace } =
   await import("@modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue");
 
@@ -337,7 +347,7 @@ describe("FlowSequenceWorkspace", () => {
     Object.defineProperty(input.element, "files", { value: [file] });
     await input.trigger("change");
     await flushPromises();
-    expect(uploadFile).toHaveBeenCalledWith(file, "image");
+    expect(uploadFile).toHaveBeenCalledWith(file, "scene_background");
     expect(wrapper.getComponent(Library).props("uploadedAssets")).toEqual([
       { id: 900, url: "/uploaded.png", filename: "portrait.png" },
     ]);
