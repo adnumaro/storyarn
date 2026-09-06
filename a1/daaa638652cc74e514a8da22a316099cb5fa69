@@ -1,0 +1,71 @@
+assets/app/modules/flows/editor/components/sequence/sequence-library.ts
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 1,5-15
+  s_5af6a6d0a150f1::t_e5c912951ae40b 16
+test/storyarn_web/live/flow_live/picker_search_test.exs
+  s_5af6a6d0a150f1::t_5d0dd49c4cb186 42-67
+assets/app/test/modules/flows/editor/FlowSequenceLibrary.test.ts
+  s_5af6a6d0a150f1::t_e50981e8486740 171-188,193-196,211-219,268
+  s_5af6a6d0a150f1::t_2348e43d530ec9 189-192,197-210
+  s_5af6a6d0a150f1::t_c310b7ab016eb6 370-376,380-392
+  s_5af6a6d0a150f1::t_19aa285222c0f2 377-379
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 770-771
+lib/storyarn/flows/editor/queries/editor_catalog.ex
+  s_5af6a6d0a150f1::t_5ddb7b47e57b54 335-384
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 139-145,148
+  s_5af6a6d0a150f1::t_6466155f166925 385-386
+assets/app/modules/flows/sequence/types.ts
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 57-59
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 288,303
+lib/storyarn_web/controllers/upload_controller.ex
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 162-163
+assets/app/modules/flows/editor/components/sequence/FlowSequenceLibrary.vue
+  s_5af6a6d0a150f1::t_92eaff49d0788a 131,144,148
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 10,111,147
+test/storyarn/flows/editor/queries/editor_catalog_test.exs
+  s_5af6a6d0a150f1::t_46e4fbb6bf2be4 385-386
+  s_5af6a6d0a150f1::t_83cca767ec5929 387
+  s_5af6a6d0a150f1::t_a0ca1dfc75e373 402
+  s_5af6a6d0a150f1::t_5d0dd49c4cb186 345-384,388-401,403
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 8-9
+assets/app/test/modules/flows/editor/useSequenceImageImport.test.ts
+  s_5af6a6d0a150f1::t_c310b7ab016eb6 9-10,79,84-85
+lib/storyarn_web/live/flow_live/picker_search.ex
+  s_5af6a6d0a150f1::t_8d3efe5169cf06 64-74
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_1c3d571f7fdbbe 53
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_a3d4dac8bafb25 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_f267949abb17bd 48,63-64,152,164,191,196,201,347,379,384,389,394,482,487
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_304d4a22de780e 34-35,102
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_494529973b5068 53
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_7f45c979eafcb1 48,63-64,152,164,191,196,201,347,379,384,389,394,482,487
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_dffe0966772fb9 34-35,102
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_86ffd85a4d9a80 48,63-64,152,164,191,196,201,347,379,384,389,394,482,487
+priv/gettext/versioning.pot
+  s_5af6a6d0a150f1::t_1895ea8568863e 34-35,102
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "a1daaa638652cc74e514a8da22a316099cb5fa69",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
