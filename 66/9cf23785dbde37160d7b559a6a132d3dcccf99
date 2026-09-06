@@ -1,0 +1,71 @@
+assets/app/test/live/flow/show/FlowSurface.test.ts
+  s_5af6a6d0a150f1::t_d19d9ad0a212ab 118-120
+  s_5af6a6d0a150f1::t_7b5f722e8bc9a0 123-127
+  s_5af6a6d0a150f1::t_864483b4a6102f 133-136,138,142,144-146,148
+  s_5af6a6d0a150f1::t_0721ae2b122586 69,83,99
+  s_5af6a6d0a150f1::t_0b88d9bcaa698b 31-34,36,70,87-91,94-95,103-108,116,141
+  s_5af6a6d0a150f1::t_ae44f7a4f9ff71 92-93
+  s_5af6a6d0a150f1::t_c4440552dc1a3f 25-28,35,114-115,117,121-122,128-132,149-150
+assets/app/test/modules/flows/editor/DockActionsPanel.test.ts
+  s_5af6a6d0a150f1::t_8be36c8e907700 1-20
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_04359ae25dc45c 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 14,19,24,48,63-64,103,106,135,152,164,169,191,196,201,228,233,347,378-379,384,389,394
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 51-53
+assets/app/locales/en/flows.json
+  s_5af6a6d0a150f1::t_e041cbf1a63a48 171,180-183
+  s_5af6a6d0a150f1::t_5fe359c2dac074 212-214
+assets/app/locales/es/flows.json
+  s_5af6a6d0a150f1::t_e041cbf1a63a48 171,180-183
+  s_5af6a6d0a150f1::t_5fe359c2dac074 212-214
+priv/gettext/es/LC_MESSAGES/sheets.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 312,461,466,471
+assets/app/modules/flows/editor/components/chrome/dock/FlowDock.vue
+  s_5af6a6d0a150f1::t_60b9e18d9f1ac2 22,27-31,59-60,145,147
+  s_5af6a6d0a150f1::t_73d10a9dbb0232 61-62
+assets/app/modules/flows/editor/components/chrome/dock/DockActionsPanel.vue
+  s_5af6a6d0a150f1::t_60b9e18d9f1ac2 2,4,6,11,38-41,43-44,47-49
+  s_5af6a6d0a150f1::t_686e06024c4000 51
+  s_5af6a6d0a150f1::t_73d10a9dbb0232 35-37,42,45
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 51-53
+priv/gettext/en/LC_MESSAGES/sheets.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 312,461,466,471
+assets/app/live/flow/show/FlowSurface.vue
+  s_5af6a6d0a150f1::t_650f33bc97796c 126
+  s_5af6a6d0a150f1::t_bf0aa3926dc2b2 167
+  s_5af6a6d0a150f1::t_cf57c3355fbdd8 3,54,57,63,65-68,78-125,127-133,137-139,141-144,153-158,162-163,165,171-181,183-199,201-205
+  s_5af6a6d0a150f1::t_864483b4a6102f 46,61,166,168-170
+  s_5af6a6d0a150f1::t_0bce58f44b8f8c 64,134-136,140,145-152,164,182,229-230
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_5fe359c2dac074 1616,1683
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_097e658ec0a700 38,109
+assets/app/modules/flows/editor/components/sequence/FlowSequenceStage.vue
+  s_5af6a6d0a150f1::t_650f33bc97796c 22-26
+  s_5af6a6d0a150f1::t_40dd8c90d985f4 3-10,29-33,309,335-336,343-363,460,463-476
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_04359ae25dc45c 191
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_04359ae25dc45c 14,19,24,48,63-64,103,106,135,152,164,169,191,196,201,228,233,347,378-379,384,389,394
+assets/app/test/utils/posthog.test.ts
+  s_5af6a6d0a150f1::t_f30f9284213230 121
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "669cf23785dbde37160d7b559a6a132d3dcccf99",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
