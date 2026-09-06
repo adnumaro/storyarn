@@ -1,0 +1,42 @@
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_feb54ecb28b43f 770,799,868,905,928,959,1019,1061,1085,1109,1135,1168,1230
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_5d7c0ea0d433e6 1365-1367,1369-1440,1442-1466,1468-1476,1478-1479,1481-1495,2702-2714,2716-2742
+  s_5af6a6d0a150f1::t_8be89ac6754ac0 1368
+  s_5af6a6d0a150f1::t_679dfe92799a1f 1441
+  s_5af6a6d0a150f1::t_c5be8973798b2e 1467,1477,1480,2715
+  s_5af6a6d0a150f1::t_1bec088213564c 2743
+test/storyarn_web/live/flow_live/sequence_versioning_test.exs
+  s_5af6a6d0a150f1::t_0fc9aaf113dcc8 1-137,140-270
+  s_5af6a6d0a150f1::t_317a6bae751848 138-139
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_5af6a6d0a150f1::t_5d8272e6656766 159-164
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_05c4c823414fff 53
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_c633adf899cbbf 53
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_af35b4d554fead 48,63-64,106,152,164,191,196,201,347,379,384,389,394,482,487
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_d6ad9edb886ec8 53
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_3c7f70263a9af9 48,63-64,106,152,164,191,196,201,347,379,384,389,394,482,487
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_fd183d6413e90b 48,63-64,106,152,164,191,196,201,347,379,384,389,394,482,487
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ac30e84fed6d3dc9d6e8abbe1dff65434eff08e4",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
