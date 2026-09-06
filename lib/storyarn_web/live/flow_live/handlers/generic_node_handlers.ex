@@ -767,6 +767,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "sequence-name")
        |> CollaborationHelpers.push_remote_change_event(:sequence_renamed, payload)
        |> CollaborationHelpers.broadcast_change(:sequence_renamed, payload)}
@@ -795,6 +796,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "sequence-config")
        |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_config_updated, %{
@@ -863,6 +865,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "visual-layer-create")
        |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
@@ -899,6 +902,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, layer_history_key(params, parsed_layer_id))
        |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
@@ -921,6 +925,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(owner_id, history, "visual-layer-order-#{System.unique_integer([:positive])}")
        |> refresh_sequence_editor(owner_id)
        |> broadcast_composition_change(:sequence_visual_layer_changed, owner_id, %{})}
@@ -951,6 +956,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "visual-layer-#{parsed_layer_id}")
        |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.broadcast_change(:sequence_visual_layer_changed, %{
@@ -1010,6 +1016,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
        |> CollaborationHelpers.broadcast_change(:sequence_track_upserted, %{
          sequence_id: parsed_id,
@@ -1051,6 +1058,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> assign(:sequence_panel_data, build_sequence_panel_data(socket, seq))
        |> CollaborationHelpers.broadcast_change(:sequence_track_cleared, %{
          sequence_id: parsed_id,
@@ -1074,6 +1082,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "composition-source")
        |> refresh_sequence_editor(parsed_id)
        |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{})}
@@ -1097,6 +1106,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, layer_history_key(params, layer_key))
        |> refresh_sequence_editor(parsed_id)
        |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
@@ -1122,6 +1132,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "visual-layer-#{layer_key}")
        |> refresh_sequence_editor(parsed_id)
        |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
@@ -1154,6 +1165,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> record_sequence_history(parsed_id, history, "visual-layer-#{layer_key}")
        |> refresh_sequence_editor(parsed_id)
        |> broadcast_composition_change(:sequence_visual_layer_changed, parsed_id, %{
@@ -1215,6 +1227,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       {:noreply,
        socket
        |> mark_saved()
+       |> schedule(:flow)
        |> refresh_sequence_editor(parsed_id)
        |> CollaborationHelpers.push_remote_change_event(:sequence_config_updated, payload)
        |> CollaborationHelpers.broadcast_change(:sequence_config_updated, payload)}
