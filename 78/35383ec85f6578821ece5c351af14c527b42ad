@@ -1,0 +1,31 @@
+assets/app/test/live/flow/show/FlowSurface.test.ts
+  s_5af6a6d0a150f1::t_e39c2d34468ab8 16,96
+assets/app/live/flow/show/FlowSurface.vue
+  s_5af6a6d0a150f1::t_addd85d208b320 65,137,224
+assets/app/live/flow/show/FlowCanvas.vue
+  s_641586ddf316b8::t_a17f00050c4b64 3,28,39,94-101
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7835383ec85f6578821ece5c351af14c527b42ad",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_641586ddf316b8": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a0768a-3e61-7250-9617-e6c201003f88",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
