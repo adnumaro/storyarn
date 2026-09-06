@@ -1,0 +1,43 @@
+assets/app/modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue
+  s_5af6a6d0a150f1::t_d2382932666ba3 17,78-83,678-685
+assets/app/shared/composables/useAssetDecisionUpload.ts
+  s_5af6a6d0a150f1::t_d2382932666ba3 1,215-223,242-254,259,285
+  s_5af6a6d0a150f1::t_74da69e44656c5 273,278
+  s_5af6a6d0a150f1::t_6942e2af1bf713 265-267
+assets/app/modules/flows/editor/composables/useSequenceImageImport.ts
+  s_5af6a6d0a150f1::t_d2382932666ba3 3,11-19,40,42,68-77,79
+  s_5af6a6d0a150f1::t_4668296ac0ae18 78
+assets/app/test/composables/useAssetDecisionUpload.test.ts
+  s_5af6a6d0a150f1::t_74da69e44656c5 48-86
+  s_5af6a6d0a150f1::t_c6376bc917c7e2 1-3,18-47,87-107
+assets/app/locales/es/common.json
+  s_5af6a6d0a150f1::t_d2382932666ba3 250
+assets/app/locales/en/common.json
+  s_5af6a6d0a150f1::t_d2382932666ba3 250
+assets/app/shared/components/assets/AssetUploadDecisionDialog.vue
+  s_5af6a6d0a150f1::t_d2382932666ba3 71-73
+.dependency-cruiser.cjs
+  s_5af6a6d0a150f1::t_621a7727ae83e8 47-48
+assets/app/test/modules/flows/editor/FlowSequenceWorkspace.test.ts
+  s_5af6a6d0a150f1::t_248b9d6aee0f39 2,13-23,350
+assets/app/test/modules/flows/editor/useSequenceImageImport.test.ts
+  s_5af6a6d0a150f1::t_1fbef461df3eea 2,12-22,63,76,89
+assets/app/test/shared/components/assets/AssetUploadDecisionDialog.test.ts
+  s_5af6a6d0a150f1::t_fbc2e5805d3072 1-36
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "ccadaf92df49c8f99c946333e8f62a8ef91f538d",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
