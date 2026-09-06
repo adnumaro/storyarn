@@ -9,11 +9,20 @@ defmodule Storyarn.Flows.Editor do
   """
 
   alias Storyarn.Flows.ConnectionCrud
+  alias Storyarn.Flows.Editor.Commands.CompositionSourceUpdate
   alias Storyarn.Flows.Editor.Commands.DialogueAudio
   alias Storyarn.Flows.Editor.Commands.ItemCapacity
   alias Storyarn.Flows.Editor.Commands.NodeRestore
+  alias Storyarn.Flows.Editor.Commands.SequenceCreate
+  alias Storyarn.Flows.Editor.Commands.SequenceDelete
+  alias Storyarn.Flows.Editor.Commands.SequenceRestore
+  alias Storyarn.Flows.Editor.Commands.SequenceTracks
+  alias Storyarn.Flows.Editor.Commands.SequenceUpdate
+  alias Storyarn.Flows.Editor.Commands.SequenceVisualLayers
+  alias Storyarn.Flows.Editor.Commands.SequenceWrap
   alias Storyarn.Flows.Editor.Commands.Tracked
   alias Storyarn.Flows.Editor.Queries.CanvasSerializer
+  alias Storyarn.Flows.Editor.Queries.Sequences
   alias Storyarn.Flows.EditorCatalog
   alias Storyarn.Flows.ExitTargetScenes
   alias Storyarn.Flows.Flow
@@ -27,7 +36,6 @@ defmodule Storyarn.Flows.Editor do
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.RuntimeKey
   alias Storyarn.Flows.SequenceCompositionIntegrity
-  alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.ShortcutGenerator
   alias Storyarn.Flows.TreeOperations
 
@@ -286,34 +294,43 @@ defmodule Storyarn.Flows.Editor do
     to: SequenceCompositionIntegrity,
     as: :validate_nodes
 
-  defdelegate list_sequences(flow_id), to: SequenceCrud
-  defdelegate list_deleted_sequences(flow_id), to: SequenceCrud, as: :list_deleted
-  defdelegate get_sequence(flow_id, id), to: SequenceCrud
-  defdelegate get_sequence!(flow_id, id), to: SequenceCrud
-  defdelegate get_sequence_config(sequence_id), to: SequenceCrud
-  defdelegate create_sequence(flow_id, attrs), to: SequenceCrud
-  defdelegate update_sequence(sequence, attrs), to: SequenceCrud
-  defdelegate delete_sequence(sequence), to: SequenceCrud
-  defdelegate restore_sequence(sequence), to: SequenceCrud
-  defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceCrud
-  defdelegate set_composition_source(owner_id, source_id), to: SequenceCrud
-  defdelegate list_sequence_visual_layers(sequence_id), to: SequenceCrud
-  defdelegate get_sequence_visual_layer(sequence_id, id), to: SequenceCrud
-  defdelegate get_sequence_visual_layer_by_key(owner_id, layer_key), to: SequenceCrud
-  defdelegate create_sequence_visual_layer(sequence_id, attrs), to: SequenceCrud
-  defdelegate update_sequence_visual_layer(layer, attrs), to: SequenceCrud
-  defdelegate delete_sequence_visual_layer(layer), to: SequenceCrud
-  defdelegate override_sequence_visual_layer(owner_id, layer_key, attrs), to: SequenceCrud
-  defdelegate revert_sequence_visual_layer_fields(owner_id, layer_key, fields), to: SequenceCrud
-  defdelegate remove_sequence_visual_layer(owner_id, layer_key), to: SequenceCrud
-  defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: SequenceCrud
-  defdelegate list_sequence_tracks(sequence_id), to: SequenceCrud
-  defdelegate get_sequence_track(sequence_id, kind), to: SequenceCrud
-  defdelegate get_sequence_track_by_key(owner_id, track_key), to: SequenceCrud
-  defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceCrud
-  defdelegate clear_sequence_track(sequence_id, kind), to: SequenceCrud
-  defdelegate override_sequence_track(owner_id, track_key, attrs), to: SequenceCrud
-  defdelegate revert_sequence_track_fields(owner_id, track_key, fields), to: SequenceCrud
-  defdelegate remove_sequence_track(owner_id, track_key), to: SequenceCrud
-  defdelegate restore_sequence_track(owner_id, track_key), to: SequenceCrud
+  defdelegate list_sequences(flow_id), to: Sequences, as: :list
+  def list_deleted_sequences(flow_id), do: Sequences.list(flow_id, true)
+  defdelegate get_sequence(flow_id, id), to: Sequences, as: :get
+  defdelegate get_sequence!(flow_id, id), to: Sequences, as: :get!
+  defdelegate get_sequence_config(sequence_id), to: Sequences, as: :get_config
+  defdelegate create_sequence(flow_id, attrs), to: SequenceCreate
+  defdelegate update_sequence(sequence, attrs), to: SequenceUpdate
+  defdelegate delete_sequence(sequence), to: SequenceDelete
+  defdelegate restore_sequence(sequence), to: SequenceRestore
+  defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceWrap
+  defdelegate set_composition_source(owner_id, source_id), to: CompositionSourceUpdate, as: :set
+  def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id), do: Sequences.list_visual_layers(sequence_id)
+
+  def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id),
+    do: Sequences.get_visual_layer(sequence_id, id)
+
+  def get_sequence_visual_layer_by_key(owner_id, layer_key) when is_integer(owner_id) and is_binary(layer_key),
+    do: Sequences.get_visual_layer_by_key(owner_id, layer_key)
+
+  defdelegate create_sequence_visual_layer(sequence_id, attrs), to: SequenceVisualLayers
+  defdelegate update_sequence_visual_layer(layer, attrs), to: SequenceVisualLayers
+  defdelegate delete_sequence_visual_layer(layer), to: SequenceVisualLayers
+  defdelegate override_sequence_visual_layer(owner_id, layer_key, attrs), to: SequenceVisualLayers
+  defdelegate revert_sequence_visual_layer_fields(owner_id, layer_key, fields), to: SequenceVisualLayers
+  defdelegate remove_sequence_visual_layer(owner_id, layer_key), to: SequenceVisualLayers
+  defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: SequenceVisualLayers
+  def list_sequence_tracks(sequence_id) when is_integer(sequence_id), do: Sequences.list_tracks(sequence_id)
+
+  def get_sequence_track(sequence_id, kind) when is_binary(kind), do: Sequences.get_track(sequence_id, kind)
+
+  def get_sequence_track_by_key(owner_id, track_key) when is_integer(owner_id) and is_binary(track_key),
+    do: Sequences.get_track_by_key(owner_id, track_key)
+
+  defdelegate upsert_sequence_track(sequence_id, kind, attrs), to: SequenceTracks
+  defdelegate clear_sequence_track(sequence_id, kind), to: SequenceTracks
+  defdelegate override_sequence_track(owner_id, track_key, attrs), to: SequenceTracks
+  defdelegate revert_sequence_track_fields(owner_id, track_key, fields), to: SequenceTracks
+  defdelegate remove_sequence_track(owner_id, track_key), to: SequenceTracks
+  defdelegate restore_sequence_track(owner_id, track_key), to: SequenceTracks
 end
