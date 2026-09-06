@@ -1818,8 +1818,9 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
              true <- optional_bounded_string?(layer["label"], 120),
              true <- is_integer(layer["z_index"]),
              true <- layer["slot"] in SequenceVisualLayer.slots(),
-             true <- normalized_snapshot_fields?(layer, ~w(x y anchor_x anchor_y opacity)),
-             true <- unit_dimension_snapshot_fields?(layer, ~w(width height)),
+             true <- stage_position_snapshot_fields?(layer, ~w(x y)),
+             true <- normalized_snapshot_fields?(layer, ~w(anchor_x anchor_y opacity)),
+             true <- stage_dimension_snapshot_fields?(layer, ~w(width height)),
              true <- layer["fit"] in SequenceVisualLayer.fits(),
              true <- is_boolean(layer["visible"]) do
           :ok
@@ -2587,10 +2588,17 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilder do
     end)
   end
 
-  defp unit_dimension_snapshot_fields?(payload, fields) do
+  defp stage_position_snapshot_fields?(payload, fields) do
     Enum.all?(fields, fn field ->
       value = payload[field]
-      is_number(value) and value > 0 and value <= 1
+      is_number(value) and value >= -10 and value <= 10
+    end)
+  end
+
+  defp stage_dimension_snapshot_fields?(payload, fields) do
+    Enum.all?(fields, fn field ->
+      value = payload[field]
+      is_number(value) and value > 0 and value <= 20
     end)
   end
 

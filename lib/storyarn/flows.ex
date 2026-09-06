@@ -1324,6 +1324,9 @@ defmodule Storyarn.Flows do
   @doc "Restores a local tombstone or materializes an inherited tombstoned layer."
   defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: Editor
 
+  @doc "Atomically orders all effective visual layers, from back to front, for one composition owner."
+  defdelegate reorder_sequence_visual_layers(owner_id, layer_keys), to: Editor
+
   @doc "Lists all local track and inherited-patch rows for a composition owner."
   defdelegate list_sequence_tracks(sequence_id), to: Editor
 

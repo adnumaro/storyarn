@@ -22,7 +22,7 @@ const FlowCanvasStub = defineComponent({
 });
 
 const FlowSequenceStageStub = defineComponent({
-  name: "FlowSequenceStage",
+  name: "FlowSequenceWorkspace",
   props: ["stage", "canEdit", "fullscreen"],
   emits: ["toggle-fullscreen"],
   template:
@@ -66,7 +66,7 @@ function mountSurface(surface: SurfaceData) {
     global: {
       stubs: {
         FlowCanvas: FlowCanvasStub,
-        FlowSequenceStage: FlowSequenceStageStub,
+        FlowSequenceWorkspace: FlowSequenceStageStub,
         FlowDebugPanel: true,
         FlowDock: FlowDockStub,
         FlowCollabToast: true,

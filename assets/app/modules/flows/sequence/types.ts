@@ -19,6 +19,8 @@ export interface SequenceVisualLayerRecord {
   sequenceId?: SequenceEntityId | null;
   sequence_depth?: number | null;
   sequenceDepth?: number | null;
+  stack_index?: number | null;
+  stackIndex?: number | null;
   inherited?: boolean;
   overridden_fields?: string[] | null;
   overriddenFields?: string[] | null;
@@ -93,6 +95,7 @@ export interface SequenceConfigPanelData {
 
 export interface SequenceStageIntervention {
   nodeId: SequenceEntityId;
+  speakerSheetId?: SequenceEntityId | null;
   speakerName?: string | null;
   speakerInitials?: string | null;
   speakerAvatarUrl?: string | null;

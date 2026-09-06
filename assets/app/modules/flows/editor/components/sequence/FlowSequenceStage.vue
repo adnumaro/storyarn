@@ -1,305 +1,251 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   Layers,
   Maximize2,
   Minimize2,
   MoveDiagonal2,
   PanelRightOpen,
+  Scan,
   TriangleAlert,
+  ZoomIn,
+  ZoomOut,
 } from "@lucide/vue";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { useLive } from "@shared/composables/useLive";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
-import type {
-  SequenceEntityId,
-  SequenceStageState,
-  SequenceVisualLayer,
-} from "@modules/flows/sequence/types";
+import { compareSequenceLayers } from "@modules/flows/sequence/layerOrder";
+import type { SequenceStageState, SequenceVisualLayer } from "@modules/flows/sequence/types";
+import { useSequenceStageManipulation } from "../../composables/useSequenceStageManipulation";
+import {
+  clamp,
+  layerFrameStyle,
+  RESIZE_CORNERS,
+  RESIZE_SIDES,
+} from "../../lib/sequence-stage-geometry";
+import {
+  parseSequenceLibraryImage,
+  SEQUENCE_LIBRARY_IMAGE_MIME,
+  type SequenceLibraryImage,
+} from "./sequence-library";
 
 const {
   stage,
   canEdit = false,
   fullscreen = false,
+  embedded = false,
+  selectedLayerKey: selectedLayerKeyProp,
+  lockedLayerKeys = [],
 } = defineProps<{
   stage: SequenceStageState;
   canEdit?: boolean;
   fullscreen?: boolean;
+  embedded?: boolean;
+  selectedLayerKey?: string | null;
+  lockedLayerKeys?: string[];
 }>();
 
 const emit = defineEmits<{
   "toggle-fullscreen": [];
+  "update:selectedLayerKey": [key: string | null];
+  "add-image": [payload: { image: SequenceLibraryImage; x: number; y: number }];
 }>();
 
 const live = useLive();
 const viewport = ref<HTMLElement | null>(null);
-const selectedLayerKey = ref<string | null>(null);
-
-interface LayerGeometry {
-  x: number;
-  y: number;
-  width: number;
-  height: number;
+const canvas = ref<HTMLElement | null>(null);
+const localSelection = ref<string | null>(null);
+const selectedLayerKey = computed(() =>
+  selectedLayerKeyProp === undefined ? localSelection.value : selectedLayerKeyProp,
+);
+function setSelection(key: string | null) {
+  localSelection.value = key;
+  emit("update:selectedLayerKey", key);
 }
-
-const draftGeometry = ref<LayerGeometry | null>(null);
-
-interface PointerSession {
-  mode: "move" | "resize";
-  key: string;
-  sequenceId: SequenceEntityId | null;
-  rowId: SequenceEntityId | null;
-  startClientX: number;
-  startClientY: number;
-  viewportWidth: number;
-  viewportHeight: number;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-let pointerSession: PointerSession | null = null;
-
+const { canManipulate, displayLayers, layerKey, isLocked, startPointer, nudge, cancel } =
+  useSequenceStageManipulation({
+    stage: () => stage,
+    canEdit: () => canEdit,
+    selectedKey: () => selectedLayerKey.value,
+    select: setSelection,
+    lockedKeys: () => lockedLayerKeys,
+    viewport,
+    live,
+  });
 const intervention = computed(() => stage.intervention ?? null);
-const composition = computed(() => stage.composition ?? null);
-const layers = computed(() => composition.value?.layers ?? []);
-const displayLayers = computed(() => {
-  if (!selectedLayerKey.value || !draftGeometry.value) return layers.value;
-  return layers.value.map((layer) =>
-    layerKey(layer) === selectedLayerKey.value ? { ...layer, ...draftGeometry.value } : layer,
-  );
-});
+const owner = computed(() => stage.owner ?? null);
 const interactiveLayers = computed(() =>
   [...displayLayers.value]
     .filter((layer) => layer.visible !== false && Boolean(layer.url?.trim()))
-    .sort((a, b) => {
-      const depthDelta = layerDepth(a) - layerDepth(b);
-      if (depthDelta !== 0) return depthDelta;
-      const zDelta = layerZIndex(a) - layerZIndex(b);
-      if (zDelta !== 0) return zDelta;
-      return String(a.id).localeCompare(String(b.id));
-    }),
+    .sort(compareSequenceLayers),
 );
-const diagnostics = computed(() => composition.value?.diagnostics ?? []);
+const diagnostics = computed(() => stage.composition?.diagnostics ?? []);
 const hasVisibleLayers = computed(() => interactiveLayers.value.length > 0);
-const owner = computed(() => stage.owner ?? null);
-const canManipulate = computed(() => canEdit && stage.status === "ready" && owner.value != null);
 const speakerInitials = computed(() => {
   if (intervention.value?.speakerInitials) return intervention.value.speakerInitials;
-
   const name = intervention.value?.speakerName?.trim();
   if (!name) return "?";
-
-  const parts = name.split(/\s+/).filter(Boolean);
-  return parts
+  return name
+    .split(/\s+/)
+    .filter(Boolean)
     .slice(0, 2)
     .map((part) => part[0])
     .join("")
     .toUpperCase();
 });
+watch(
+  () => stage.composition?.layers ?? [],
+  (layers) => {
+    if (
+      selectedLayerKey.value &&
+      !layers.some((layer) => layerKey(layer) === selectedLayerKey.value)
+    )
+      setSelection(null);
+  },
+);
+function openInspector() {
+  if (owner.value) live.pushEvent("open_sequence_config", { id: owner.value.nodeId });
+}
+function selectLayer(layer: SequenceVisualLayer) {
+  if (!isLocked(layer)) setSelection(layerKey(layer));
+}
+function clearSelection() {
+  cancel();
+  setSelection(null);
+}
 
+const zoom = ref(1);
+const pan = ref({ x: 0, y: 0 });
+const fittedWidth = ref(0);
+const spaceHeld = ref(false);
+let observer: ResizeObserver | null = null;
+let panGesture: {
+  x: number;
+  y: number;
+  initialX: number;
+  initialY: number;
+  pointerId: number;
+} | null = null;
+const viewStyle = computed(() => ({
+  width: fittedWidth.value > 0 ? `${fittedWidth.value}px` : "80%",
+  transform: `translate(-50%, -50%) translate(${pan.value.x}px, ${pan.value.y}px) scale(${zoom.value})`,
+}));
+function fitView() {
+  cancel();
+  zoom.value = 1;
+  pan.value = { x: 0, y: 0 };
+}
+function changeZoom(amount: number) {
+  cancel();
+  zoom.value = clamp(zoom.value + amount, 0.25, 3);
+}
+function wheelZoom(event: WheelEvent) {
+  if (!event.ctrlKey && !event.metaKey) return;
+  event.preventDefault();
+  changeZoom(event.deltaY < 0 ? 0.1 : -0.1);
+}
+function startPan(event: PointerEvent) {
+  if (event.button !== 1 && !(event.button === 0 && spaceHeld.value)) return;
+  event.preventDefault();
+  event.stopPropagation();
+  cancel();
+  panGesture = {
+    x: event.clientX,
+    y: event.clientY,
+    initialX: pan.value.x,
+    initialY: pan.value.y,
+    pointerId: event.pointerId,
+  };
+  window.addEventListener("pointermove", movePan);
+  window.addEventListener("pointerup", endPan);
+  window.addEventListener("pointercancel", cancelPan);
+}
+function movePan(event: PointerEvent) {
+  if (panGesture && panGesture.pointerId === event.pointerId) {
+    pan.value = {
+      x: panGesture.initialX + event.clientX - panGesture.x,
+      y: panGesture.initialY + event.clientY - panGesture.y,
+    };
+  }
+}
+function endPan(event?: PointerEvent) {
+  if (event && panGesture?.pointerId !== event.pointerId) return;
+  window.removeEventListener("pointermove", movePan);
+  window.removeEventListener("pointerup", endPan);
+  window.removeEventListener("pointercancel", cancelPan);
+  panGesture = null;
+}
+function cancelPan(event?: PointerEvent) {
+  if (event && panGesture?.pointerId !== event.pointerId) return;
+  if (panGesture) pan.value = { x: panGesture.initialX, y: panGesture.initialY };
+  endPan();
+}
+function viewKeydown(event: KeyboardEvent) {
+  if (event.key === " " && !(event.target as HTMLElement).closest("[data-sequence-view-tools]")) {
+    event.preventDefault();
+    spaceHeld.value = true;
+  } else if (event.key === "Escape") {
+    cancelPan();
+    cancel();
+  }
+}
+function releaseSpace(event?: KeyboardEvent) {
+  if (!event || event.key === " ") spaceHeld.value = false;
+}
+function blurView() {
+  releaseSpace();
+  cancelPan();
+}
+function allowDrop(event: DragEvent) {
+  if (!canManipulate.value || !event.dataTransfer?.types.includes(SEQUENCE_LIBRARY_IMAGE_MIME))
+    return;
+  event.preventDefault();
+  event.dataTransfer.dropEffect = "copy";
+}
+function dropImage(event: DragEvent) {
+  if (!canManipulate.value || !viewport.value) return;
+  const image = parseSequenceLibraryImage(
+    event.dataTransfer?.getData(SEQUENCE_LIBRARY_IMAGE_MIME) ?? "",
+  );
+  if (!image) return;
+  const bounds = viewport.value.getBoundingClientRect();
+  if (bounds.width <= 0 || bounds.height <= 0) return;
+  event.preventDefault();
+  emit("add-image", {
+    image,
+    x: clamp((event.clientX - bounds.left) / bounds.width, -10, 10),
+    y: clamp((event.clientY - bounds.top) / bounds.height, -10, 10),
+  });
+}
+onMounted(() => {
+  if (canvas.value && typeof ResizeObserver !== "undefined") {
+    observer = new ResizeObserver(([entry]) => {
+      if (!entry) return;
+      cancel();
+      fittedWidth.value = Math.max(
+        1,
+        Math.min(entry.contentRect.width - 64, ((entry.contentRect.height - 48) * 16) / 9),
+      );
+    });
+    observer.observe(canvas.value);
+  }
+  window.addEventListener("keyup", releaseSpace);
+  window.addEventListener("blur", blurView);
+});
 watch(
   () => owner.value?.nodeId,
   () => {
-    cancelPointerInteraction();
-    clearSelection();
+    cancelPan();
+    fitView();
   },
 );
-
-watch(
-  () => layers.value.map(layerKey).join(":"),
-  () => {
-    if (!layers.value.some((layer) => layerKey(layer) === selectedLayerKey.value)) clearSelection();
-  },
-);
-
-function layerKey(layer: SequenceVisualLayer): string {
-  return String(layer.key ?? layer.id);
-}
-
-function layerDepth(layer: SequenceVisualLayer): number {
-  return layer.sequence_depth ?? layer.sequenceDepth ?? 0;
-}
-
-function layerZIndex(layer: SequenceVisualLayer): number {
-  return layer.z_index ?? layer.zIndex ?? 0;
-}
-
-function sameEntityId(
-  left: SequenceEntityId | null | undefined,
-  right: SequenceEntityId | null | undefined,
-): boolean {
-  return left != null && right != null && String(left) === String(right);
-}
-
-function normalized(value: number | null | undefined, fallback: number): number {
-  if (typeof value !== "number" || Number.isNaN(value)) return fallback;
-  return Math.min(1, Math.max(0, value));
-}
-
-function layerFrameStyle(layer: SequenceVisualLayer, stackIndex: number) {
-  const x = normalized(layer.x, 0);
-  const y = normalized(layer.y, 0);
-  const width = normalized(layer.width, 1);
-  const height = normalized(layer.height, 1);
-  const anchorX = normalized(layer.anchor_x ?? layer.anchorX, 0);
-  const anchorY = normalized(layer.anchor_y ?? layer.anchorY, 0);
-
-  return {
-    left: `${x * 100}%`,
-    top: `${y * 100}%`,
-    width: `${width * 100}%`,
-    height: `${height * 100}%`,
-    transform: `translate(${-anchorX * 100}%, ${-anchorY * 100}%)`,
-    zIndex: stackIndex,
-  };
-}
-
-function openInspector() {
-  if (!owner.value) return;
-  live.pushEvent("open_sequence_config", { id: owner.value.nodeId });
-}
-
-function selectLayer(layer: SequenceVisualLayer) {
-  selectedLayerKey.value = layerKey(layer);
-}
-
-function clearSelection() {
-  selectedLayerKey.value = null;
-  draftGeometry.value = null;
-}
-
-function startPointerInteraction(
-  event: PointerEvent,
-  layer: SequenceVisualLayer,
-  mode: PointerSession["mode"],
-) {
-  if (!canManipulate.value || !viewport.value) return;
-
-  event.preventDefault();
-  event.stopPropagation();
-  selectLayer(layer);
-
-  const bounds = viewport.value.getBoundingClientRect();
-  if (bounds.width <= 0 || bounds.height <= 0) return;
-
-  pointerSession = {
-    mode,
-    key: layerKey(layer),
-    sequenceId: layer.sequence_id ?? layer.sequenceId ?? null,
-    rowId: layer.row_id ?? layer.rowId ?? null,
-    startClientX: event.clientX,
-    startClientY: event.clientY,
-    viewportWidth: bounds.width,
-    viewportHeight: bounds.height,
-    x: normalized(layer.x, 0),
-    y: normalized(layer.y, 0),
-    width: normalized(layer.width, 1),
-    height: normalized(layer.height, 1),
-  };
-  draftGeometry.value = {
-    x: pointerSession.x,
-    y: pointerSession.y,
-    width: pointerSession.width,
-    height: pointerSession.height,
-  };
-
-  window.addEventListener("pointermove", updatePointerInteraction);
-  window.addEventListener("pointerup", finishPointerInteraction, { once: true });
-  window.addEventListener("pointercancel", cancelPointerInteraction, { once: true });
-}
-
-function updatePointerInteraction(event: PointerEvent) {
-  if (!pointerSession) return;
-
-  const dx = (event.clientX - pointerSession.startClientX) / pointerSession.viewportWidth;
-  const dy = (event.clientY - pointerSession.startClientY) / pointerSession.viewportHeight;
-
-  if (pointerSession.mode === "move") {
-    draftGeometry.value = {
-      x: clamp(pointerSession.x + dx, 0, 1),
-      y: clamp(pointerSession.y + dy, 0, 1),
-      width: pointerSession.width,
-      height: pointerSession.height,
-    };
-  } else {
-    draftGeometry.value = {
-      x: pointerSession.x,
-      y: pointerSession.y,
-      width: clamp(pointerSession.width + dx, 0.02, 1),
-      height: clamp(pointerSession.height + dy, 0.02, 1),
-    };
-  }
-}
-
-function finishPointerInteraction() {
-  window.removeEventListener("pointermove", updatePointerInteraction);
-  window.removeEventListener("pointercancel", cancelPointerInteraction);
-
-  const session = pointerSession;
-  const geometry = draftGeometry.value;
-  pointerSession = null;
-
-  if (!session || !geometry || !owner.value) return;
-
-  if (session.mode === "move") {
-    const x = rounded(geometry.x);
-    const y = rounded(geometry.y);
-
-    if (x !== rounded(session.x) || y !== rounded(session.y)) {
-      persistLayerGeometry(session, { x, y });
-    }
-  } else {
-    const width = rounded(geometry.width);
-    const height = rounded(geometry.height);
-
-    if (width !== rounded(session.width) || height !== rounded(session.height)) {
-      persistLayerGeometry(session, { width, height });
-    }
-  }
-  draftGeometry.value = null;
-}
-
-function persistLayerGeometry(session: PointerSession, geometry: Partial<LayerGeometry>) {
-  if (!owner.value) return;
-
-  if (sameEntityId(session.sequenceId, owner.value.nodeId) && session.rowId != null) {
-    live.pushEvent("update_sequence_visual_layer", {
-      id: owner.value.nodeId,
-      layer_id: session.rowId,
-      ...geometry,
-    });
-    return;
-  }
-
-  live.pushEvent("override_sequence_visual_layer", {
-    id: owner.value.nodeId,
-    layer_key: session.key,
-    ...geometry,
-  });
-}
-
-function clamp(value: number, min: number, max: number): number {
-  return Math.min(max, Math.max(min, value));
-}
-
-function rounded(value: number): number {
-  return Math.round(value * 10_000) / 10_000;
-}
-
-function cancelPointerInteraction() {
-  window.removeEventListener("pointermove", updatePointerInteraction);
-  window.removeEventListener("pointerup", finishPointerInteraction);
-  window.removeEventListener("pointercancel", cancelPointerInteraction);
-  pointerSession = null;
-  draftGeometry.value = null;
-}
-
 onUnmounted(() => {
-  cancelPointerInteraction();
+  observer?.disconnect();
+  endPan();
+  window.removeEventListener("keyup", releaseSpace);
+  window.removeEventListener("blur", blurView);
 });
 </script>
 
@@ -310,6 +256,7 @@ onUnmounted(() => {
     :data-status="stage.status"
   >
     <header
+      v-if="!embedded"
       class="min-h-9 shrink-0 px-3 py-1.5 flex flex-wrap items-center gap-2 border-b border-border/70 bg-background/80"
     >
       <Layers class="size-3.5 text-muted-foreground" />
@@ -365,13 +312,34 @@ onUnmounted(() => {
       </div>
     </header>
 
-    <div class="flex-1 min-h-0 px-3 py-2.5 grid place-items-center overflow-hidden">
+    <div
+      ref="canvas"
+      class="relative flex-1 min-h-0 overflow-hidden outline-none bg-muted/40"
+      :class="spaceHeld ? 'cursor-grab' : undefined"
+      tabindex="0"
+      data-sequence-canvas
+      @pointerdown.capture="startPan"
+      @pointerdown.self="clearSelection"
+      @keydown="viewKeydown"
+      @wheel="wheelZoom"
+      @dragover="allowDrop"
+      @drop="dropImage"
+    >
       <div
         ref="viewport"
-        class="flow-sequence-viewport relative h-full max-w-full aspect-video overflow-hidden rounded-lg border border-border/80 bg-background shadow-sm"
+        class="flow-sequence-viewport absolute left-1/2 top-1/2 aspect-video border border-border/80 bg-background shadow-sm"
+        :style="viewStyle"
         @pointerdown.self="clearSelection"
       >
-        <SequenceVisualLayers v-if="stage.status === 'ready'" :layers="displayLayers" />
+        <SequenceVisualLayers
+          v-if="stage.status === 'ready'"
+          :layers="displayLayers"
+          style="overflow: visible"
+        />
+        <div
+          class="pointer-events-none absolute inset-0 z-[1] shadow-[0_0_0_9999px_color-mix(in_oklch,var(--background)_40%,transparent)]"
+          aria-hidden="true"
+        />
 
         <div
           v-if="canManipulate"
@@ -382,12 +350,15 @@ onUnmounted(() => {
             v-for="(layer, stackIndex) in interactiveLayers"
             :key="layerKey(layer)"
             type="button"
-            class="pointer-events-auto absolute cursor-move border border-transparent outline-none transition-[border-color,box-shadow] hover:border-primary/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
-            :class="
+            class="absolute cursor-move touch-none border border-transparent outline-none transition-[border-color,box-shadow] hover:border-primary/60 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/40"
+            :class="[
+              isLocked(layer) ? 'pointer-events-none' : 'pointer-events-auto',
               selectedLayerKey === layerKey(layer)
                 ? 'border-primary shadow-[inset_0_0_0_1px_var(--primary)]'
-                : undefined
-            "
+                : undefined,
+            ]"
+            :tabindex="isLocked(layer) ? -1 : 0"
+            :aria-disabled="isLocked(layer) || undefined"
             :style="layerFrameStyle(layer, stackIndex)"
             :aria-label="
               $t('flows.sequence_stage.select_layer', {
@@ -397,7 +368,8 @@ onUnmounted(() => {
             :data-layer-control="layerKey(layer)"
             :data-selected="selectedLayerKey === layerKey(layer) || undefined"
             @click="selectLayer(layer)"
-            @pointerdown="startPointerInteraction($event, layer, 'move')"
+            @pointerdown="startPointer($event, layer)"
+            @keydown="nudge($event, layer)"
           >
             <span
               v-if="selectedLayerKey === layerKey(layer)"
@@ -407,16 +379,46 @@ onUnmounted(() => {
               <MoveDiagonal2 class="size-2.5" />
               <span class="truncate">{{ layer.label || layer.kind }}</span>
             </span>
-            <span
-              v-if="selectedLayerKey === layerKey(layer)"
-              class="absolute bottom-0 right-0 grid size-5 translate-x-1/2 translate-y-1/2 cursor-se-resize place-items-center rounded-sm border border-primary bg-background text-primary shadow-sm outline-none focus-visible:ring-2 focus-visible:ring-primary/50"
-              aria-hidden="true"
-              :title="$t('flows.sequence_stage.resize_layer', { name: layer.label || layer.kind })"
-              data-layer-resize-handle
-              @pointerdown="startPointerInteraction($event, layer, 'resize')"
-            >
-              <MoveDiagonal2 class="size-3" />
-            </span>
+            <template v-if="selectedLayerKey === layerKey(layer) && !isLocked(layer)">
+              <span
+                v-for="corner in RESIZE_CORNERS"
+                :key="corner"
+                class="absolute size-2.5 rounded-[2px] border border-primary bg-background shadow-sm"
+                :class="[
+                  corner.startsWith('n') ? 'top-0 -translate-y-1/2' : 'bottom-0 translate-y-1/2',
+                  corner.endsWith('w') ? 'left-0 -translate-x-1/2' : 'right-0 translate-x-1/2',
+                  corner === 'nw' || corner === 'se' ? 'cursor-nwse-resize' : 'cursor-nesw-resize',
+                ]"
+                aria-hidden="true"
+                :title="
+                  $t('flows.sequence_stage.resize_layer', { name: layer.label || layer.kind })
+                "
+                :data-layer-resize-handle="corner"
+                @pointerdown="startPointer($event, layer, corner)"
+              />
+              <span
+                v-for="side in RESIZE_SIDES"
+                :key="side"
+                class="absolute rounded-[2px] border border-primary bg-background shadow-sm"
+                :class="[
+                  side === 'n' || side === 's'
+                    ? 'left-1/2 h-1.5 w-3 -translate-x-1/2 cursor-ns-resize'
+                    : 'top-1/2 h-3 w-1.5 -translate-y-1/2 cursor-ew-resize',
+                  {
+                    'top-0 -translate-y-1/2': side === 'n',
+                    'bottom-0 translate-y-1/2': side === 's',
+                    'left-0 -translate-x-1/2': side === 'w',
+                    'right-0 translate-x-1/2': side === 'e',
+                  },
+                ]"
+                aria-hidden="true"
+                :title="
+                  $t('flows.sequence_stage.resize_layer', { name: layer.label || layer.kind })
+                "
+                :data-layer-resize-handle="side"
+                @pointerdown="startPointer($event, layer, side)"
+              />
+            </template>
           </button>
         </div>
 
@@ -463,7 +465,7 @@ onUnmounted(() => {
           <div class="flex max-w-sm flex-col items-center gap-3">
             <p>{{ $t("flows.sequence_stage.no_layers") }}</p>
             <Button
-              v-if="owner && canEdit"
+              v-if="owner && canEdit && !embedded"
               type="button"
               size="sm"
               class="gap-1.5"
@@ -478,7 +480,7 @@ onUnmounted(() => {
 
         <div
           v-if="stage.status === 'ready' && intervention"
-          class="pointer-events-none absolute inset-x-0 bottom-0 z-[2000] border-t border-white/10 bg-slate-950/88 px-4 py-3 text-slate-100 backdrop-blur-sm"
+          class="pointer-events-none absolute inset-x-0 bottom-0 z-20 border-t border-white/10 bg-slate-950/88 px-4 py-3 text-slate-100 backdrop-blur-sm"
           data-sequence-intervention
         >
           <div class="mx-auto flex max-w-3xl items-start gap-3">
@@ -520,6 +522,44 @@ onUnmounted(() => {
           </div>
         </div>
       </div>
+      <div
+        class="absolute bottom-2 left-2 z-30 flex items-center gap-0.5 rounded-md border border-border bg-background/95 p-0.5 shadow-sm"
+        data-sequence-view-tools
+      >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          :aria-label="$t('flows.sequence_stage.zoom_out')"
+          @click="changeZoom(-0.25)"
+          ><ZoomOut class="size-3.5"
+        /></Button>
+        <span class="min-w-9 text-center text-[10px] tabular-nums text-muted-foreground"
+          >{{ Math.round(zoom * 100) }}%</span
+        >
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          :aria-label="$t('flows.sequence_stage.zoom_in')"
+          @click="changeZoom(0.25)"
+          ><ZoomIn class="size-3.5"
+        /></Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          :title="$t('flows.sequence_stage.fit_view')"
+          :aria-label="$t('flows.sequence_stage.fit_view')"
+          data-fit-sequence-view
+          @click="fitView"
+          ><Scan class="size-3.5"
+        /></Button>
+      </div>
+      <span
+        class="pointer-events-none absolute bottom-3 right-3 z-30 hidden text-[10px] text-muted-foreground 2xl:block"
+        >{{ $t("flows.sequence_stage.canvas_hint") }}</span
+      >
     </div>
   </section>
 </template>

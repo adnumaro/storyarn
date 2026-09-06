@@ -16,6 +16,7 @@ defmodule Storyarn.Flows.SequenceComposition do
           optional(:track_key) => String.t(),
           optional(:asset_source_row_id) => integer() | nil,
           optional(:continuity_key) => String.t(),
+          optional(:stack_index) => non_neg_integer(),
           item: map(),
           sequence_id: integer(),
           owner_node_id: integer(),
@@ -175,7 +176,39 @@ defmodule Storyarn.Flows.SequenceComposition do
 
     {visible_layers, removed_layers} = Enum.split_with(layers, &(not &1.removed))
 
-    {Enum.map(visible_layers, &Map.delete(&1, :removed)), removed_layers, Enum.reverse(diagnostics)}
+    ordered_layers =
+      visible_layers
+      |> order_visual_layers(chain)
+      |> Enum.with_index()
+      |> Enum.map(fn {layer, index} -> layer |> Map.delete(:removed) |> Map.put(:stack_index, index) end)
+
+    {ordered_layers, removed_layers, Enum.reverse(diagnostics)}
+  end
+
+  # Old compositions retain their exact depth/z order until an author reorders
+  # them. The nearest explicit order wins and is inherited by subsequent owners.
+  # Unknown keys (layers added later) follow known keys in deterministic legacy
+  # order. Stale keys from removed layers or a replaced source are ignored.
+  defp order_visual_layers(layers, chain) do
+    order =
+      Enum.reduce(chain, nil, fn node, inherited ->
+        case value(node, :data, %{}) do
+          %{"composition_layer_order" => keys} when is_list(keys) -> keys
+          _data -> inherited
+        end
+      end)
+
+    if is_list(order) do
+      ranks = order |> Enum.with_index() |> Map.new()
+      appended_rank = length(order)
+
+      layers
+      |> Enum.with_index()
+      |> Enum.sort_by(fn {layer, legacy_index} -> {Map.get(ranks, layer.layer_key, appended_rank), legacy_index} end)
+      |> Enum.map(&elem(&1, 0))
+    else
+      layers
+    end
   end
 
   defp compose_audio_tracks(chain) do

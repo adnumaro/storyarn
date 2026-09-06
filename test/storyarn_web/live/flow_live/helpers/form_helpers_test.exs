@@ -122,6 +122,32 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpersTest do
       assert result["10"].avatar_url == nil
     end
 
+    test "projects real asset identities independently from avatar and gallery row IDs" do
+      sheet = %{
+        id: 7,
+        name: "Hero",
+        color: nil,
+        banner_asset: nil,
+        avatars: [
+          %{
+            id: 11,
+            position: 0,
+            is_default: true,
+            name: "Neutral",
+            asset: %{id: 501, filename: "portrait.png"}
+          }
+        ]
+      }
+
+      gallery = %{7 => [%{id: 21, label: nil, asset: %{id: 601, filename: "standing.png"}}]}
+      result = FormHelpers.sheets_map([sheet], gallery)["7"]
+
+      assert [%{id: 11, asset_id: 501, url: "/media/assets/501"}] = result.avatars
+
+      assert [%{id: 21, asset_id: 601, url: "/media/assets/601", label: "standing.png"}] =
+               result.gallery_images
+    end
+
     test "handles banner_asset without url key" do
       sheets = [%{id: 10, name: "NPC", color: nil, avatars: [], banner_asset: %{}}]
       result = FormHelpers.sheets_map(sheets)

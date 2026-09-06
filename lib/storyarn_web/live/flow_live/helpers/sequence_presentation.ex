@@ -89,7 +89,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
         type: value(node, :type),
         compositionSourceId: value(node, :composition_source_id)
       },
-      intervention: serialize_intervention(slide, node_id),
+      intervention: serialize_intervention(slide, node),
       composition: %{
         layers: visual_layers(composition, node_id),
         diagnostics: serialized_diagnostics
@@ -103,11 +103,12 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
     end
   end
 
-  defp serialize_intervention(%{type: :empty}, _node_id), do: nil
+  defp serialize_intervention(%{type: :empty}, _node), do: nil
 
-  defp serialize_intervention(slide, node_id) do
+  defp serialize_intervention(slide, node) do
     %{
-      nodeId: node_id,
+      nodeId: value(node, :id),
+      speakerSheetId: node |> value(:data, %{}) |> value(:speaker_sheet_id),
       speakerName: slide[:speaker_name],
       speakerInitials: slide[:speaker_initials] || "?",
       speakerAvatarUrl: slide[:speaker_avatar_url],
@@ -145,6 +146,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.SequencePresentation do
           assetId: value(layer, :asset_id),
           sequenceId: definition_owner_id,
           sequenceDepth: value(composed, :depth, 0),
+          stackIndex: value(composed, :stack_index),
           kind: value(layer, :kind, "prop"),
           label: value(layer, :label),
           url: url || "",

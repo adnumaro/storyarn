@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from "vue";
 import type { SequenceVisualLayer } from "../types";
+import { compareSequenceLayers } from "../layerOrder";
 
 const { layers = [] } = defineProps<{
   layers?: SequenceVisualLayer[];
@@ -9,26 +10,20 @@ const { layers = [] } = defineProps<{
 const visibleLayers = computed(() =>
   [...layers]
     .filter((layer) => layer.visible !== false && Boolean(layer.url?.trim()))
-    .sort((a, b) => {
-      const depthDelta = layerDepth(a) - layerDepth(b);
-      if (depthDelta !== 0) return depthDelta;
-      const zDelta = layerZIndex(a) - layerZIndex(b);
-      if (zDelta !== 0) return zDelta;
-      return String(a.id).localeCompare(String(b.id));
-    }),
+    .sort(compareSequenceLayers),
 );
 
 function layerDepth(layer: SequenceVisualLayer): number {
   return layer.sequence_depth ?? layer.sequenceDepth ?? 0;
 }
 
-function layerZIndex(layer: SequenceVisualLayer): number {
-  return layer.z_index ?? layer.zIndex ?? 0;
+function normalized(value: number | null | undefined, fallback: number): number {
+  if (typeof value !== "number" || !Number.isFinite(value)) return fallback;
+  return Math.min(1, Math.max(0, value));
 }
 
-function normalized(value: number | null | undefined, fallback: number): number {
-  if (typeof value !== "number" || Number.isNaN(value)) return fallback;
-  return Math.min(1, Math.max(0, value));
+function finite(value: number | null | undefined, fallback: number): number {
+  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 function layerKey(layer: SequenceVisualLayer, index: number): string {
@@ -36,10 +31,10 @@ function layerKey(layer: SequenceVisualLayer, index: number): string {
 }
 
 function layerFrameStyle(layer: SequenceVisualLayer, stackIndex: number) {
-  const x = normalized(layer.x, 0);
-  const y = normalized(layer.y, 0);
-  const width = normalized(layer.width, 1);
-  const height = normalized(layer.height, 1);
+  const x = finite(layer.x, 0);
+  const y = finite(layer.y, 0);
+  const width = Math.max(0, finite(layer.width, 1));
+  const height = Math.max(0, finite(layer.height, 1));
   const anchorX = normalized(layer.anchor_x ?? layer.anchorX, 0);
   const anchorY = normalized(layer.anchor_y ?? layer.anchorY, 0);
   const opacity = normalized(layer.opacity, 1);

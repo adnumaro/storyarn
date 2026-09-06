@@ -362,6 +362,7 @@ export interface SequenceCompositionSnapshot {
   flow_id: number;
   owner_type: "sequence" | "dialogue";
   composition_source_id: number | null;
+  composition_layer_order?: string[] | null;
   position_x: number;
   position_y: number;
   config: { name: string; width: number; height: number } | null;

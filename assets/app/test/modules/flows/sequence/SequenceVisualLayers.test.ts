@@ -50,6 +50,26 @@ const layers: SequenceVisualLayer[] = [
 ];
 
 describe("SequenceVisualLayers", () => {
+  it("uses resolved stack order and offstage geometry identically in every surface", () => {
+    const wrapper = mount(SequenceVisualLayers, {
+      props: {
+        layers: [
+          { ...layers[0]!, stackIndex: 0 },
+          { ...layers[1]!, stackIndex: 1, x: -0.5, y: 1.2, width: 2.5, height: 1.5 },
+        ],
+      },
+    });
+    const rendered = wrapper.findAll(".sequence-visual-layer");
+    expect(rendered.map((layer) => layer.attributes("data-layer-id"))).toEqual([
+      "character",
+      "backdrop",
+    ]);
+    expect(rendered[1]!.attributes("style")).toContain("left: -50%");
+    expect(rendered[1]!.attributes("style")).toContain("top: 120%");
+    expect(rendered[1]!.attributes("style")).toContain("width: 250%");
+    wrapper.unmount();
+  });
+
   it("renders the resolved stack in depth and z-index order", () => {
     const wrapper = mount(SequenceVisualLayers, { props: { layers } });
     const rendered = wrapper.findAll(".sequence-visual-layer");

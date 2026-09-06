@@ -4,8 +4,10 @@ import { computed, onMounted, onUnmounted, ref, watch } from "vue";
 import FlowDock from "@modules/flows/editor/components/chrome/dock/FlowDock.vue";
 import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast.vue";
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
-import FlowSequenceStage from "@modules/flows/editor/components/sequence/FlowSequenceStage.vue";
-import type { SequenceStageState } from "@modules/flows/sequence/types";
+import FlowSequenceWorkspace from "@modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue";
+import type { SequenceLibrarySheet } from "@modules/flows/editor/components/sequence/sequence-library";
+import type { SequenceConfigPanelData, SequenceStageState } from "@modules/flows/sequence/types";
+import { useLive } from "@shared/composables/useLive";
 import FlowCanvas from "./FlowCanvas.vue";
 import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 
@@ -44,6 +46,7 @@ interface FlowSurface {
   dock: FlowDockSurface;
   stage?: SequenceStageState;
   sequencePanelOpen?: boolean;
+  sequenceWorkspace?: { data: SequenceConfigPanelData | null; sheets: SequenceLibrarySheet[] };
   debug?: FlowDebugSurface;
 }
 
@@ -52,6 +55,7 @@ const { surface: initialSurface } = defineProps<{
 }>();
 
 const liveVue = useLiveVue();
+const live = useLive();
 // `v-inject` keeps this boundary alive while route diffs replace the surface payload.
 const surface = computed(
   () => (liveVue.vue?.props?.surface as FlowSurface | undefined) ?? initialSurface,
@@ -134,6 +138,7 @@ function toggleUpperFullscreen() {
 
 function toggleVisualEditor() {
   visualEditorOpen.value = !visualEditorOpen.value;
+  live.pushEvent("set_sequence_workspace", { open: visualEditorOpen.value });
   if (visualEditorOpen.value) fitViewRequest.value++;
   if (!visualEditorOpen.value) upperFullscreen.value = false;
 }
@@ -172,8 +177,10 @@ onUnmounted(() => {
       ]"
       :style="upperFullscreen ? undefined : { height: `${splitPercent}%` }"
     >
-      <FlowSequenceStage
+      <FlowSequenceWorkspace
         :stage="stage"
+        :data="surface.sequenceWorkspace?.data ?? null"
+        :sheets="surface.sequenceWorkspace?.sheets ?? []"
         :can-edit="surface.dock.canEdit && !surface.canvas.readonly"
         :fullscreen="upperFullscreen"
         @toggle-fullscreen="toggleUpperFullscreen"

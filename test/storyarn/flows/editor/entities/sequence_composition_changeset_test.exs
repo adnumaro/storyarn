@@ -9,6 +9,25 @@ defmodule Storyarn.Flows.SequenceCompositionChangesetTest do
     {SequenceVisualLayer, %{flow_node_id: 1, asset_id: 1, kind: "backdrop", layer_key: "layer-test"}, "opacity"}
   ]
 
+  test "visual geometry permits offstage and oversized images while bounding transforms" do
+    attrs = %{flow_node_id: 1, asset_id: 1, kind: "character", x: -10, y: 10, width: 20, height: 2.5}
+    assert SequenceVisualLayer.create_changeset(%SequenceVisualLayer{}, attrs).valid?
+
+    for {field, value} <- [
+          {:x, -10.01},
+          {:y, 10.01},
+          {:width, 0},
+          {:height, 20.01},
+          {:anchor_x, -0.01},
+          {:anchor_y, 1.01},
+          {:opacity, 1.01}
+        ] do
+      changeset = SequenceVisualLayer.create_changeset(%SequenceVisualLayer{}, Map.put(attrs, field, value))
+      refute changeset.valid?
+      assert Keyword.has_key?(changeset.errors, field)
+    end
+  end
+
   test "create and override changesets reject a nil override mask" do
     for {module, attrs, _field} <- @subjects,
         changeset_function <- [:create_changeset, :override_changeset] do

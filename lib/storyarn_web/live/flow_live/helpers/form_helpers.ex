@@ -55,6 +55,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     |> Enum.map(fn a ->
       %{
         id: a.id,
+        asset_id: a.asset && a.asset.id,
         url: PrivateMedia.asset_url(a.asset),
         name: a.name,
         is_default: a.is_default
@@ -75,6 +76,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.FormHelpers do
     |> Enum.map(fn gi ->
       %{
         id: gi.id,
+        asset_id: gi.asset && gi.asset.id,
         url: PrivateMedia.asset_url(gi.asset),
         label: gi.label || (gi.asset && gi.asset.filename)
       }

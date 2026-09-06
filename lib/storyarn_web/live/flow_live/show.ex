@@ -206,6 +206,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:node_form, nil)
       |> assign(:editing_mode, nil)
       |> assign(:sequence_panel_data, nil)
+      |> assign(:sequence_workspace_open, false)
       |> assign(:sequence_stage, SequencePresentation.empty_stage())
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
@@ -597,6 +598,10 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_open_sequence_config(params, CommentHandlers.close(socket))
   end
 
+  def handle_event("set_sequence_workspace", params, socket) do
+    GenericNodeHandlers.handle_set_sequence_workspace(params, socket)
+  end
+
   def handle_event("close_sequence_config", _params, socket) do
     {:noreply,
      socket
@@ -657,6 +662,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_sequence_visual_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("reorder_sequence_visual_layers", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_reorder_sequence_visual_layers(params, authorized_socket)
     end)
   end
 
@@ -1346,6 +1357,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       socket
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
+      |> assign(:sequence_workspace_open, false)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
@@ -1479,6 +1491,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           node.type
           |> NodeTypeRegistry.on_select(node, socket)
           |> assign(:sequence_stage, sequence_stage)
+          |> GenericNodeHandlers.refresh_workspace_panel(node)
 
         {:noreply, assign(socket, :node_select_loading, false)}
 
@@ -1613,7 +1626,16 @@ defmodule StoryarnWeb.FlowLive.Show do
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
       stage: assigns.sequence_stage,
-      sequencePanelOpen: sequence_config_open?(assigns.editing_mode, assigns.selected_node),
+      sequencePanelOpen:
+        !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, assigns.selected_node),
+      sequenceWorkspace: %{
+        data: if(assigns.sequence_workspace_open, do: assigns.sequence_panel_data),
+        sheets:
+          if(assigns.sequence_workspace_open,
+            do: assigns.all_sheets |> FormHelpers.sheets_map(assigns.gallery_by_sheet) |> Map.values(),
+            else: []
+          )
+      },
       debug: flow_panels_debug(assigns)
     }
   end
@@ -1758,7 +1780,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     selected_node = assigns.selected_node
 
     %{
-      open: sequence_config_open?(assigns.editing_mode, selected_node),
+      open: !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, selected_node),
       data: assigns.sequence_panel_data,
       canEdit: assigns.can_edit
     }

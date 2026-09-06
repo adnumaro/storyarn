@@ -46,6 +46,41 @@ defmodule Storyarn.Flows.VersioningFlowSnapshotTest do
   end
 
   describe "shared snapshot contract" do
+    test "snapshot restores offstage geometry and explicit layer order", %{user: user, project: project, flow: flow} do
+      image = uploaded_asset(project, user, "offstage.png", "offstage image", "image/png")
+      owner = node_fixture(flow)
+
+      {:ok, background} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop"})
+
+      {:ok, character} =
+        Flows.create_sequence_visual_layer(owner.id, %{
+          asset_id: image.id,
+          kind: "character",
+          x: -1.5,
+          y: 2.2,
+          width: 3.0,
+          height: 4.0
+        })
+
+      order = [character.layer_key, background.layer_key]
+      {:ok, _} = Flows.reorder_sequence_visual_layers(owner.id, order)
+      snapshot = FlowSnapshot.build_snapshot(flow)
+      assert :ok = FlowSnapshotValidator.validate(snapshot, flow.id)
+      assert :ok = LegacyFlowBuilder.validate_portable_snapshot(snapshot)
+      {:ok, _} = Flows.reorder_sequence_visual_layers(owner.id, Enum.reverse(order))
+      {:ok, _} = Flows.update_sequence_visual_layer(character, %{x: 0.5, width: 0.5})
+
+      assert {:ok, restored} =
+               FlowSnapshot.restore_snapshot(flow, snapshot, restore_action: {:entity_version_restore, "flow"})
+
+      restored_owner = Enum.find(restored.nodes, &(&1.id == owner.id))
+      assert restored_owner.data["composition_layer_order"] == order
+      restored_character = Enum.find(restored_owner.sequence_visual_layers, &(&1.layer_key == character.layer_key))
+
+      assert {restored_character.x, restored_character.y, restored_character.width, restored_character.height} ==
+               {-1.5, 2.2, 3.0, 4.0}
+    end
+
     test "keeps localized conflict contexts and reports malformed rich-text mentions" do
       snapshot = %{
         "nodes" => [

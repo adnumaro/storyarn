@@ -871,7 +871,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotRestoreTest do
         {:invalid_sequence_visual_layer_snapshot,
          update_snapshot_node(snapshot, sequence.id, fn node ->
            update_in(node["sequence_visual_layers"], fn [layer] ->
-             [Map.put(layer, "x", -0.1)]
+             [Map.put(layer, "x", -10.1)]
            end)
          end)},
         {:invalid_sequence_visual_layer_snapshot,

@@ -305,8 +305,9 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
          true <- optional_bounded_string?(layer["label"], 120),
          true <- is_integer(layer["z_index"]),
          true <- layer["slot"] in SequenceVisualLayer.slots(),
-         true <- Enum.all?(~w(x y anchor_x anchor_y opacity), &normalized_number?(layer[&1])),
-         true <- Enum.all?(~w(width height), &unit_dimension?(layer[&1])),
+         true <- Enum.all?(~w(x y), &stage_position?(layer[&1])),
+         true <- Enum.all?(~w(anchor_x anchor_y opacity), &normalized_number?(layer[&1])),
+         true <- Enum.all?(~w(width height), &stage_dimension?(layer[&1])),
          true <- layer["fit"] in SequenceVisualLayer.fits(),
          true <- is_boolean(layer["visible"]) do
       :ok
@@ -877,7 +878,8 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshotValidator do
   defp decimal_range?(_value, _minimum, _maximum), do: false
 
   defp normalized_number?(value), do: is_number(value) and value >= 0 and value <= 1
-  defp unit_dimension?(value), do: is_number(value) and value > 0 and value <= 1
+  defp stage_position?(value), do: is_number(value) and value >= -10 and value <= 10
+  defp stage_dimension?(value), do: is_number(value) and value > 0 and value <= 20
 
   defp datetime?(nil), do: true
   defp datetime?(%DateTime{}), do: true

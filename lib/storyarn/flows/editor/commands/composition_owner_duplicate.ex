@@ -73,6 +73,7 @@ defmodule Storyarn.Flows.Editor.Commands.CompositionOwnerDuplicate do
              :sequence_visual_layers
            ]),
          {:ok, duplicate} <- insert_composition_duplicate(locked_flow, source, project_id),
+         {:ok, duplicate} <- copy_layer_order(source, duplicate),
          {:ok, duplicate} <- CompositionSourceUpdate.set(duplicate.id, source.composition_source_id),
          :ok <- duplicate_visual_layers(source, duplicate.id, project_id),
          :ok <- duplicate_tracks(source, duplicate.id, project_id) do
@@ -128,6 +129,11 @@ defmodule Storyarn.Flows.Editor.Commands.CompositionOwnerDuplicate do
   end
 
   defp insert_composition_duplicate(_flow, _source, _project_id), do: {:error, :invalid_sequence_config}
+
+  defp copy_layer_order(source, duplicate) do
+    data = Map.merge(duplicate.data || %{}, Map.take(source.data || %{}, ["composition_layer_order"]))
+    duplicate |> Ecto.Changeset.change(data: data) |> Repo.update()
+  end
 
   defp duplicate_visual_layers(source, duplicate_id, project_id) do
     source.sequence_visual_layers
