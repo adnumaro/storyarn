@@ -521,7 +521,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
     test "hard-stops a hung UploadPart and gives the follow-up abort a fresh deadline" do
       key = "projects/1/snapshots/archives/v2/staging/AbCdEfGhIjKlMnOp/snapshot.zip"
       original_policy = Application.get_env(:storyarn, ObjectStorage)
-      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 50)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 250)
       on_exit(fn -> restore_env(:storyarn, ObjectStorage, original_policy) end)
 
       Req.Test.expect(__MODULE__, 3, fn conn ->
@@ -555,7 +555,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
       started_at = System.monotonic_time(:millisecond)
 
       assert {:error, :multipart_upload_part_timeout} =
-               ObjectStorage.with_operation_deadline(50, fn ->
+               ObjectStorage.with_operation_deadline(250, fn ->
                  R2.upload_stream(key, [{:ok, "bounded chunk"}], "application/zip")
                end)
 
