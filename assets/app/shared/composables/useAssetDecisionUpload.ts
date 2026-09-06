@@ -5,6 +5,8 @@ export type AssetUploadPurpose = "avatar" | "banner" | "scene_background";
 export interface UploadResult {
   id: number;
   url: string;
+  size?: number;
+  original_asset_id?: number | string | null;
   reused?: boolean;
   action?: string | null;
 }

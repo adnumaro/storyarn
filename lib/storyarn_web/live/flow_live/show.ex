@@ -767,7 +767,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           PickerSearch.asset_options(socket.assigns.project.id, kind,
             query: query,
             limit: picker_limit(params["limit"], PickerSearch.asset_limit()),
-            selected_id: selected_id
+            selected_id: selected_id,
+            sequence_library: params["sequence_library"] == true
           )
 
         {"entity", "sheet"} ->

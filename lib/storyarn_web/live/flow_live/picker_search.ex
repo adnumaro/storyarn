@@ -61,6 +61,17 @@ defmodule StoryarnWeb.FlowLive.PickerSearch do
     Flows.search_variable_options(variables, opts)
   end
 
+  defp serialize_asset(%{family_id: family_id, size: size} = asset) do
+    %{
+      id: asset.id,
+      filename: asset.filename,
+      url: PrivateMedia.asset_url(%{id: asset.id}),
+      content_type: asset.content_type,
+      family_id: family_id,
+      size: size
+    }
+  end
+
   defp serialize_asset(asset) do
     %{
       id: asset.id,

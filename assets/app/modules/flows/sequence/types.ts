@@ -54,6 +54,9 @@ export interface SequenceVisualLayer extends SequenceVisualLayerRecord {
 
 export interface SequenceAssetEntry {
   id: SequenceEntityId;
+  family_id?: SequenceEntityId;
+  original_asset_id?: SequenceEntityId | null;
+  size?: number;
   filename: string;
   url?: string | null;
   content_type?: string | null;

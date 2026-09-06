@@ -6,6 +6,8 @@ import { withSetup } from "../../../setup";
 interface UploadedAsset {
   id: number;
   url: string;
+  size?: number;
+  original_asset_id?: number;
 }
 
 const uploadFile = vi.fn<(file: File, purpose: string) => Promise<UploadedAsset | null>>();
@@ -74,11 +76,13 @@ describe("useSequenceImageImport", () => {
     expect(api.importing.value).toBe(true);
     expect(api.fileName.value).toBe("hero.png");
     expect(uploadFile).toHaveBeenCalledExactlyOnceWith(first, "scene_background");
-    firstUpload.resolve({ id: 101, url: "/media/assets/101" });
+    firstUpload.resolve({ id: 101, url: "/media/assets/101", size: 1_000, original_asset_id: 100 });
     await flushPromises();
     expect(onUploaded).toHaveBeenCalledExactlyOnceWith({
       id: 101,
       url: "/media/assets/101",
+      size: 1_000,
+      original_asset_id: 100,
       filename: "hero.png",
     });
     expect(uploadFile).toHaveBeenCalledOnce();

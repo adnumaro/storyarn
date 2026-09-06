@@ -1,6 +1,18 @@
-import type { SequenceEntityId } from "@modules/flows/sequence/types";
+import type { SequenceAssetEntry, SequenceEntityId } from "@modules/flows/sequence/types";
 
 export const SEQUENCE_LIBRARY_IMAGE_MIME = "application/x-storyarn-sequence-image";
+
+export function lightestSequenceAssets(assets: SequenceAssetEntry[]): SequenceAssetEntry[] {
+  const families = new Map<string, SequenceAssetEntry>();
+  for (const asset of assets) {
+    const key = String(asset.family_id ?? asset.original_asset_id ?? asset.id);
+    const current = families.get(key);
+    if (!current || (asset.size ?? Infinity) < (current.size ?? Infinity)) {
+      families.set(key, asset);
+    }
+  }
+  return [...families.values()];
+}
 
 export interface SequenceLibraryImage {
   asset_id: SequenceEntityId;

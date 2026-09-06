@@ -45,7 +45,7 @@ msgstr ""
 msgid "Could not delete flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1358
+#: lib/storyarn_web/live/flow_live/show.ex:1359
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr ""
@@ -60,8 +60,8 @@ msgstr ""
 msgid "Could not save flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1384
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1388
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1377
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1381
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr ""
@@ -149,7 +149,7 @@ msgstr ""
 msgid "No entry node found in this flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1383
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1376
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr ""
@@ -161,7 +161,7 @@ msgstr ""
 msgid "Subflow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1416
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1409
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr ""
@@ -188,17 +188,17 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr "Could not restore flow name."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1884
+#: lib/storyarn_web/live/flow_live/show.ex:1885
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "Could not create linked flow."
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:624
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:617
 #, elixir-autogen, elixir-format
 msgid "Could not update node positions."
 msgstr "Could not update node positions."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1092
+#: lib/storyarn_web/live/flow_live/show.ex:1093
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr ""
@@ -344,7 +344,7 @@ msgstr ""
 msgid "Renamed flow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1031
+#: lib/storyarn_web/live/flow_live/show.ex:1032
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr ""
@@ -376,22 +376,22 @@ msgid "Debug session started"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:154
-#: lib/storyarn_web/live/flow_live/show.ex:1298
+#: lib/storyarn_web/live/flow_live/show.ex:1299
 #, elixir-autogen, elixir-format
 msgid "Could not create sequence"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1294
+#: lib/storyarn_web/live/flow_live/show.ex:1295
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1287
+#: lib/storyarn_web/live/flow_live/show.ex:1288
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1284
+#: lib/storyarn_web/live/flow_live/show.ex:1285
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr ""
@@ -479,12 +479,12 @@ msgstr ""
 msgid "This conversation or its source is no longer available."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1374
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1367
 #, elixir-autogen, elixir-format
 msgid "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:935
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:928
 #, elixir-autogen, elixir-format
 msgid "Could not reorder layers. The composition may have changed."
 msgstr "Could not reorder layers. The composition may have changed."

@@ -31,8 +31,8 @@ msgstr "Antes de restaurar a v%{number}"
 msgid "Could not create safety backup before restoring. Restore aborted."
 msgstr "No se pudo crear la copia de seguridad antes de restaurar. Restauración cancelada."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1501
-#: lib/storyarn_web/live/flow_live/show.ex:1931
+#: lib/storyarn_web/live/flow_live/show.ex:1502
+#: lib/storyarn_web/live/flow_live/show.ex:1932
 #: lib/storyarn_web/live/flow_live/version_events.ex:157
 #: lib/storyarn_web/live/flow_live/version_events.ex:160
 #: lib/storyarn_web/live/scene_live/version_events.ex:157
@@ -99,7 +99,7 @@ msgstr "La copia de seguridad ya no está disponible. La restauración se cancel
 msgid "The sheet changed while restore was being prepared. Review the latest changes and try again."
 msgstr "La ficha cambió mientras se preparaba la restauración. Revisa los últimos cambios e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1930
+#: lib/storyarn_web/live/flow_live/show.ex:1931
 #: lib/storyarn_web/live/scene_live/version_events.ex:151
 #: lib/storyarn_web/live/sheet_live/version_events.ex:135
 #, elixir-autogen, elixir-format

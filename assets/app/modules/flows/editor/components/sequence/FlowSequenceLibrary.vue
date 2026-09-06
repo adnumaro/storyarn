@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@components/ui/tabs";
 import type { SequenceAssetEntry, SequenceEntityId } from "@modules/flows/sequence/types";
 import { useLive } from "@shared/composables/useLive";
 import {
+  lightestSequenceAssets,
   SEQUENCE_LIBRARY_IMAGE_MIME,
   type SequenceLibraryImage,
   type SequenceLibrarySheet,
@@ -107,6 +108,7 @@ function scheduleSearch() {
       {
         resource: "asset",
         kind: "image",
+        sequence_library: true,
         query: query.value.trim(),
         limit: 100,
         request_id: requestId,
@@ -126,8 +128,7 @@ onUnmounted(() => {
 
 const availableAssets = computed(() => {
   const uploaded = uploadedAssets.filter((asset) => matches(asset.filename));
-  const ids = new Set(uploaded.map((asset) => String(asset.id)));
-  return [...uploaded, ...searchResults.value.filter((asset) => !ids.has(String(asset.id)))];
+  return lightestSequenceAssets([...uploaded, ...searchResults.value]);
 });
 
 const searchResults = computed(() => {
@@ -140,8 +141,11 @@ watch(
   () => uploadedAssets,
   () => {
     if (!uploadedAssets.length) return;
+    const previousResults = remoteActive.value && !query.value.trim() ? remoteAssets.value : null;
     tab.value = "assets";
     query.value = "";
+    scheduleSearch();
+    if (previousResults) remoteAssets.value = previousResults;
   },
 );
 

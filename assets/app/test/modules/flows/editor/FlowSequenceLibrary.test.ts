@@ -168,6 +168,55 @@ describe("FlowSequenceLibrary", () => {
       [{ asset_id: 75, url: "/image-75.png", label: "image-75.png", source: "asset" }],
     ]);
   });
+
+  it("shows the lightest member once and uses its asset for click and drag", async () => {
+    const wrapper = mountLibrary({
+      imageAssets: [
+        { id: 10, family_id: "10", filename: "scene.png", url: "/original.png", size: 50_000 },
+        { id: 11, family_id: "10", filename: "scene.webp", url: "/small.webp", size: 1_000 },
+        { id: 12, family_id: "12", filename: "scene.png", url: "/different.png", size: 500 },
+      ],
+    });
+    await switchToAssets(wrapper);
+    expect(wrapper.findAll("[data-library-item]")).toHaveLength(2);
+    expect(wrapper.find('[data-library-item="asset-10"]').exists()).toBe(false);
+    const button = wrapper.get('[data-library-item="asset-11"] [data-library-add]');
+    await button.trigger("click");
+    const image = { asset_id: 11, url: "/small.webp", label: "scene.webp", source: "asset" };
+    expect(wrapper.emitted("add-image")).toEqual([[image]]);
+    const dataTransfer = { setData: vi.fn() };
+    await button.trigger("dragstart", { dataTransfer });
+    expect(dataTransfer.setData).toHaveBeenCalledWith(
+      SEQUENCE_LIBRARY_IMAGE_MIME,
+      JSON.stringify(image),
+    );
+    wrapper.unmount();
+  });
+
+  it("merges a newly uploaded variant with its original, retaining whichever weighs less", async () => {
+    const original = {
+      id: 10,
+      family_id: "10",
+      filename: "scene.png",
+      url: "/original.png",
+      size: 5_000,
+    };
+    const uploaded = {
+      id: 11,
+      original_asset_id: 10,
+      filename: "scene.png",
+      url: "/small.webp",
+      size: 1_000,
+    };
+    const wrapper = mountLibrary({ imageAssets: [original] });
+    await wrapper.setProps({ uploadedAssets: [uploaded] });
+    expect(wrapper.findAll("[data-library-item]")).toHaveLength(1);
+    expect(wrapper.get("[data-library-item]").attributes("data-library-item")).toBe("asset-11");
+    await wrapper.setProps({ uploadedAssets: [{ ...uploaded, size: 10_000 }] });
+    expect(wrapper.findAll("[data-library-item]")).toHaveLength(1);
+    expect(wrapper.get("[data-library-item]").attributes("data-library-item")).toBe("asset-10");
+    wrapper.unmount();
+  });
 });
 
 describe("sequence library global asset search", () => {
@@ -216,6 +265,7 @@ describe("sequence library global asset search", () => {
       expect.objectContaining({
         resource: "asset",
         kind: "image",
+        sequence_library: true,
         query: "remote-999",
         limit: 100,
       }),
@@ -316,6 +366,29 @@ describe("sequence library global asset search", () => {
     await vi.advanceTimersByTimeAsync(160);
     await reply(request().request_id, [900]);
     expect(wrapper.findAll('[data-library-item="asset-900"]')).toHaveLength(1);
+  });
+
+  it("refreshes the family after upload and replaces a larger upload with the lighter stored member", async () => {
+    wrapper = mountLibrary({ remoteSearch: true });
+    await switchToAssets(wrapper);
+    await vi.advanceTimersByTimeAsync(160);
+    await reply(request().request_id, []);
+    await wrapper.setProps({
+      uploadedAssets: [
+        { id: 901, original_asset_id: 900, filename: "new.png", url: "/901.webp", size: 5_000 },
+      ],
+    });
+    await vi.advanceTimersByTimeAsync(160);
+    expect(mockLive.pushEvent).toHaveBeenCalledTimes(2);
+    const handler = vi.mocked(mockLive.handleEvent).mock.calls[0]![1];
+    handler({
+      request_id: request().request_id,
+      results: [{ id: 900, family_id: "900", filename: "new.png", url: "/900.png", size: 1_000 }],
+      has_more: false,
+    });
+    await nextTick();
+    expect(wrapper.findAll("[data-library-item]")).toHaveLength(1);
+    expect(wrapper.get("[data-library-item]").attributes("data-library-item")).toBe("asset-900");
   });
 });
 

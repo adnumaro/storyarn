@@ -285,8 +285,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     removed_visual_layers = removed_visual_layers(composition, owner_id, local_visual_layers)
     tracks = Flows.list_sequence_tracks(owner_id)
 
-    image_asset_ids =
-      selected_asset_ids(local_visual_layers) ++ selected_serialized_asset_ids(visual_layers)
+    {image_assets, _has_more} = PickerSearch.asset_options(project_id, "image", sequence_library: true)
 
     audio_asset_ids = selected_asset_ids(tracks)
 
@@ -301,7 +300,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
       removed_visual_layers: removed_visual_layers,
       tracks: Enum.map(tracks, &serialize_sequence_track/1),
       diagnostics: SequencePresentation.diagnostics(composition),
-      image_assets: PickerSearch.initial_asset_options(project_id, "image", Enum.uniq(image_asset_ids)),
+      image_assets: image_assets,
       audio_assets: PickerSearch.initial_asset_options(project_id, "audio", Enum.uniq(audio_asset_ids))
     }
   end
@@ -430,12 +429,6 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
     |> Enum.map(&Map.get(&1, :asset_id))
     |> Enum.reject(&is_nil/1)
     |> Enum.uniq()
-  end
-
-  defp selected_serialized_asset_ids(records) do
-    records
-    |> Enum.map(&(Map.get(&1, :asset_id) || Map.get(&1, "asset_id")))
-    |> Enum.reject(&is_nil/1)
   end
 
   @doc """
