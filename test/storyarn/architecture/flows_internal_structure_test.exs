@@ -29,6 +29,7 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
   @stable_type_dependencies ~w(
     Storyarn.Flows.EditorCatalog
     Storyarn.Flows.FlowNode
+    Storyarn.Flows.PlayerCatalog
     Storyarn.Flows.StructuralAnalysis.Analysis
     Storyarn.Flows.VariableSearch
   )
