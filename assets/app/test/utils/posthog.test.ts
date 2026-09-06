@@ -118,7 +118,7 @@ describe("PostHog frontend utility", () => {
     expect(routeFamilyForPath("/es/blogger")).toBe("other");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/8")).toBe("sheets");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/sheets/9")).toBe("sheets");
-    expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flow_player");
+    expect(routeFamilyForPath("/workspaces/ws/projects/project/flows/1/play")).toBe("flows");
     expect(routeFamilyForPath("/workspaces/ws/projects/project/scenes/1/explore")).toBe(
       "scene_exploration",
     );

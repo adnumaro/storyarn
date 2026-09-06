@@ -1,13 +1,14 @@
 <script setup lang="ts">
-import { Bug, History, Play } from "@lucide/vue";
+import { Bug, History, Play, Square } from "@lucide/vue";
 
-const { debugPanelOpen = false, playUrl } = defineProps<{
+const { debugPanelOpen = false, visualEditorOpen = false } = defineProps<{
   debugPanelOpen: boolean;
-  playUrl: string;
+  visualEditorOpen: boolean;
 }>();
 
 const emit = defineEmits<{
   "open-versions": [];
+  "toggle-visual-editor": [];
   "toggle-debug": [];
 }>();
 </script>
@@ -31,13 +32,23 @@ const emit = defineEmits<{
 
   <!-- Play -->
   <div class="dock-item group relative">
-    <a :href="playUrl" data-phx-link="redirect" data-phx-link-state="push" class="dock-btn">
-      <Play class="size-5" />
-    </a>
+    <button
+      type="button"
+      class="dock-btn"
+      :class="{ 'dock-btn-active': visualEditorOpen }"
+      :aria-label="visualEditorOpen ? $t('flows.dock.stop') : $t('flows.dock.play')"
+      data-toggle-visual-editor
+      @click="$emit('toggle-visual-editor')"
+    >
+      <Square v-if="visualEditorOpen" class="size-4 fill-current" data-stop-icon />
+      <Play v-else class="size-5" data-play-icon />
+    </button>
     <div class="dock-tooltip">
-      <div class="text-sm font-semibold mb-0.5">{{ $t("flows.dock.play") }}</div>
+      <div class="text-sm font-semibold mb-0.5">
+        {{ visualEditorOpen ? $t("flows.dock.stop") : $t("flows.dock.play") }}
+      </div>
       <div class="text-xs text-muted-foreground leading-relaxed">
-        {{ $t("flows.dock.play_desc") }}
+        {{ visualEditorOpen ? $t("flows.dock.stop_desc") : $t("flows.dock.play_desc") }}
       </div>
     </div>
   </div>

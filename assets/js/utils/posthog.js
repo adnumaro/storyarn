@@ -37,7 +37,6 @@ const routeFamilies = [
   [(pathname) => pathname.includes("/settings"), "project_settings"],
   [(pathname) => pathname.includes("/localization"), "localization"],
   [(pathname) => pathname.includes("/assets"), "assets"],
-  [(pathname) => pathname.includes("/flows/") && pathname.endsWith("/play"), "flow_player"],
   [
     (pathname) => pathname.includes("/scenes/") && pathname.endsWith("/explore"),
     "scene_exploration",

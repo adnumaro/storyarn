@@ -19,16 +19,16 @@ const {
   canEdit = false,
   compact = false,
   debugPanelOpen = false,
-  workspaceSlug,
-  projectSlug,
-  flowId,
+  visualEditorOpen = false,
 } = defineProps<{
   canEdit: boolean;
   compact: boolean;
   debugPanelOpen: boolean;
-  workspaceSlug: string;
-  projectSlug: string;
-  flowId: string | number;
+  visualEditorOpen: boolean;
+}>();
+
+const emit = defineEmits<{
+  "toggle-visual-editor": [];
 }>();
 
 const live = useLive();
@@ -56,6 +56,10 @@ function toggleDebug() {
   live.pushEvent(debugPanelOpen ? "debug_stop" : "debug_start", {});
 }
 
+function toggleVisualEditor() {
+  emit("toggle-visual-editor");
+}
+
 function setTool(tool: FlowTool): void {
   activeFlowTool.value = tool;
 }
@@ -65,8 +69,6 @@ const activePlacementType = computed(() =>
 );
 
 const annotationPlacementActive = computed(() => activeFlowPlacement.value?.kind === "annotation");
-
-const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${flowId}/play`;
 </script>
 
 <template>
@@ -140,8 +142,9 @@ const playUrl = `/workspaces/${workspaceSlug}/projects/${projectSlug}/flows/${fl
       <template v-if="!compact">
         <DockActionsPanel
           :debug-panel-open="debugPanelOpen"
-          :play-url="playUrl"
+          :visual-editor-open="visualEditorOpen"
           @open-versions="openVersions"
+          @toggle-visual-editor="toggleVisualEditor"
           @toggle-debug="toggleDebug"
         />
       </template>

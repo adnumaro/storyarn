@@ -103,7 +103,6 @@ msgstr ""
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:434
 #: lib/storyarn_web/live/flow_live/index.ex:460
 #: lib/storyarn_web/live/flow_live/index.ex:481
-#: lib/storyarn_web/live/flow_live/player_live.ex:70
 #: lib/storyarn_web/live/flow_live/show.ex:370
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
@@ -146,7 +145,6 @@ msgid "Jump"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/debug_session_handlers.ex:168
-#: lib/storyarn_web/live/flow_live/player_live.ex:271
 #, elixir-autogen, elixir-format
 msgid "No entry node found in this flow."
 msgstr ""
@@ -185,29 +183,12 @@ msgstr ""
 msgid "Invalid number \"%{value}\", using 0"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/player_live.ex:244
-#, elixir-autogen, elixir-format
-msgid "Could not select that response."
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/player_live.ex:252
-#: lib/storyarn_web/live/flow_live/player_live.ex:275
-#, elixir-autogen, elixir-format
-msgid "Error advancing through flow."
-msgstr ""
-
-#: lib/storyarn_web/live/flow_live/player_live.ex:248
-#: lib/storyarn_web/live/flow_live/player_live.ex:273
-#, elixir-autogen, elixir-format
-msgid "Target flow has no entry node."
-msgstr ""
-
 #: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:137
 #, elixir-autogen, elixir-format
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1820
+#: lib/storyarn_web/live/flow_live/show.ex:1818
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -380,7 +361,6 @@ msgid "Someone"
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/player/slide.ex:75
-#: lib/storyarn_web/live/flow_live/player_live.ex:310
 #, elixir-autogen, elixir-format
 msgid "The End"
 msgstr ""

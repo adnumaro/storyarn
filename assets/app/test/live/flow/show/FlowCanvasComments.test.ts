@@ -154,9 +154,6 @@ describe("FlowCanvas spatial comment boundary", () => {
         canEdit: false,
         compact: false,
         debugPanelOpen: false,
-        workspaceSlug: "team",
-        projectSlug: "story",
-        flowId: 7,
       },
     };
     liveProjection.vue.props.surface = surface;

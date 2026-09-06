@@ -156,9 +156,6 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     # public facade; this integration test checks authorization and event wiring.
     "test/storyarn_web/live/flow_live/comments_test.exs" => [
       "Storyarn.Projects"
-    ],
-    "test/storyarn_web/live/flow_live/player/player_live_test.exs" => [
-      "Storyarn.Sheets"
     ]
   }
 

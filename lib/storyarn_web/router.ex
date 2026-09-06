@@ -232,12 +232,6 @@ defmodule StoryarnWeb.Router do
            SheetLive.VersionViewer,
            :view
 
-      # Flows — immersive player and compare views keep their own chromeless
-      # layouts, while sharing the authenticated app live_session for fast nav.
-      live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/play",
-           FlowLive.PlayerLive,
-           :play
-
       live "/workspaces/:workspace_slug/projects/:project_slug/flows/:id/compare/:version_number",
            FlowLive.Compare,
            :compare

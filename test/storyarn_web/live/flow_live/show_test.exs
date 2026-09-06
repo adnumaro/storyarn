@@ -35,7 +35,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       assert header.props["flow-name"] == "Canonical Flow"
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
-      assert surface.props["surface"]["dock"]["flowId"] == flow.id
+      refute Map.has_key?(surface.props["surface"]["dock"], "flowId")
       assert surface.props["surface"]["stage"] == %{"status" => "empty"}
       assert surface.props["surface"]["debug"]["open"] == false
       assert panels.props["panels"]["debug"]["open"] == false
@@ -106,6 +106,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
       assert panels.props["panels"]["sequence"]["open"] == true
       assert panels.props["panels"]["sequence"]["data"]["owner_id"] == second.id
+      assert surface.props["surface"]["sequencePanelOpen"] == true
       assert surface.props["surface"]["stage"]["owner"]["nodeId"] == second.id
     end
 

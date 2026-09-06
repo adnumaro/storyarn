@@ -1613,6 +1613,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
       stage: assigns.sequence_stage,
+      sequencePanelOpen: sequence_config_open?(assigns.editing_mode, assigns.selected_node),
       debug: flow_panels_debug(assigns)
     }
   end
@@ -1679,10 +1680,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{
       canEdit: assigns.can_edit,
       compact: false,
-      debugPanelOpen: assigns.debug_panel_open,
-      workspaceSlug: assigns.workspace.slug,
-      projectSlug: assigns.project.slug,
-      flowId: assigns.flow.id
+      debugPanelOpen: assigns.debug_panel_open
     }
   end
 

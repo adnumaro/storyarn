@@ -1,6 +1,13 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
-import { Layers, MoveDiagonal2, PanelRightOpen, TriangleAlert } from "@lucide/vue";
+import {
+  Layers,
+  Maximize2,
+  Minimize2,
+  MoveDiagonal2,
+  PanelRightOpen,
+  TriangleAlert,
+} from "@lucide/vue";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
@@ -12,9 +19,18 @@ import type {
   SequenceVisualLayer,
 } from "@modules/flows/sequence/types";
 
-const { stage, canEdit = false } = defineProps<{
+const {
+  stage,
+  canEdit = false,
+  fullscreen = false,
+} = defineProps<{
   stage: SequenceStageState;
   canEdit?: boolean;
+  fullscreen?: boolean;
+}>();
+
+const emit = defineEmits<{
+  "toggle-fullscreen": [];
 }>();
 
 const live = useLive();
@@ -290,7 +306,7 @@ onUnmounted(() => {
 <template>
   <section
     id="flow-sequence-stage"
-    class="h-[38%] min-h-56 max-h-96 shrink-0 border-b border-border bg-muted/20 flex flex-col"
+    class="h-full min-h-0 bg-muted/20 flex flex-col"
     :data-status="stage.status"
   >
     <header
@@ -316,13 +332,35 @@ onUnmounted(() => {
           v-if="owner"
           type="button"
           variant="ghost"
-          size="icon-xs"
+          size="sm"
+          class="h-7 gap-1.5 px-2 text-xs"
           :title="$t('flows.sequence_stage.open_inspector')"
           :aria-label="$t('flows.sequence_stage.open_inspector')"
           data-open-sequence-inspector
           @click="openInspector"
         >
           <PanelRightOpen class="size-3.5" />
+          <span>{{ $t("flows.sequence_stage.edit_composition") }}</span>
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-xs"
+          :title="
+            fullscreen
+              ? $t('flows.sequence_stage.exit_fullscreen')
+              : $t('flows.sequence_stage.fullscreen')
+          "
+          :aria-label="
+            fullscreen
+              ? $t('flows.sequence_stage.exit_fullscreen')
+              : $t('flows.sequence_stage.fullscreen')
+          "
+          data-toggle-sequence-fullscreen
+          @click="emit('toggle-fullscreen')"
+        >
+          <Minimize2 v-if="fullscreen" class="size-3.5" />
+          <Maximize2 v-else class="size-3.5" />
         </Button>
       </div>
     </header>
@@ -419,10 +457,23 @@ onUnmounted(() => {
 
         <div
           v-else-if="!hasVisibleLayers"
-          class="absolute inset-0 z-0 grid place-items-center text-xs text-muted-foreground sequence-stage-grid"
+          class="absolute inset-0 z-0 grid place-items-center px-6 text-center text-xs text-muted-foreground sequence-stage-grid"
           data-sequence-empty-composition
         >
-          {{ $t("flows.sequence_stage.no_layers") }}
+          <div class="flex max-w-sm flex-col items-center gap-3">
+            <p>{{ $t("flows.sequence_stage.no_layers") }}</p>
+            <Button
+              v-if="owner && canEdit"
+              type="button"
+              size="sm"
+              class="gap-1.5"
+              data-empty-sequence-inspector
+              @click="openInspector"
+            >
+              <PanelRightOpen class="size-3.5" />
+              {{ $t("flows.sequence_stage.edit_composition") }}
+            </Button>
+          </div>
         </div>
 
         <div
