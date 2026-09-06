@@ -351,6 +351,8 @@
       "response_placeholder": "Texto de respuesta..."
     },
     "version_history": {
+      "creating": "Creando versión…",
+      "creation_failed": "No se ha podido guardar la versión. Vuelve a intentarlo.",
       "title": "Historial de versiones"
     },
     "exit_modes": {

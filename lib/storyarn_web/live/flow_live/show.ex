@@ -179,6 +179,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
+      Flows.subscribe_version_requests(project.id)
+
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
         ProjectChromeHelpers.shell_topic(project.id)
@@ -1491,8 +1493,27 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:try_auto_snapshot, token}, socket) do
     if token == socket.assigns[:auto_snapshot_ref] do
       %{flow: flow, current_scope: scope} = socket.assigns
-      Flows.maybe_create_version(flow, scope.user.id)
-      {:noreply, socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)}
+      result = Flows.request_version(flow, scope.user.id, is_auto: true)
+      socket = socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)
+      socket = if socket.assigns.versions_panel_open, do: reload_history_data(socket), else: socket
+
+      case result do
+        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        _ -> {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:flow_version_request_finished, flow_id, user_id, status, is_auto}, socket) do
+    if socket.assigns.flow && socket.assigns.flow.id == flow_id do
+      socket =
+        if socket.assigns.versions_panel_open, do: reload_history_data(socket), else: assign(socket, :history_data, nil)
+
+      socket = notify_version_request(socket, user_id, status, is_auto)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -1737,6 +1758,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       autoVersions: history_value(history_data, :auto_versions, []),
       hasMore: history_value(history_data, :has_more, false),
       canNameVersion: history_value(history_data, :can_name_version, false),
+      creationPending: history_value(history_data, :creation_pending, false),
+      creationFailed: history_value(history_data, :creation_failed, false),
       currentVersionId: history_value(history_data, :current_version_id, nil),
       canEdit: assigns.can_edit,
       restoreEnabled:
@@ -1901,4 +1924,14 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp parse_picker_integer(_value), do: nil
+
+  defp notify_version_request(socket, user_id, status, false) do
+    case {user_id == socket.assigns.current_scope.user.id, status} do
+      {true, "completed"} -> put_flash(socket, :info, dgettext("versioning", "Version created."))
+      {true, "failed"} -> put_flash(socket, :error, dgettext("versioning", "Could not create version."))
+      _ -> socket
+    end
+  end
+
+  defp notify_version_request(socket, _user_id, _status, _is_auto), do: socket
 end

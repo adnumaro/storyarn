@@ -144,6 +144,9 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Persistence.FlowRecord",
       "Storyarn.Projects.Versioning.Builders.FlowBuilder"
     ],
+    "test/storyarn/flows/versioning/integration/version_requests_test.exs" => [
+      "Storyarn.Projects.Assets"
+    ],
     "test/storyarn/flows/versioning/integration/versioning_test.exs" => [
       "Storyarn.Projects.Versioning"
     ],

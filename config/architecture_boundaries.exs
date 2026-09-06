@@ -1803,6 +1803,7 @@ boundaries = %{
   flows: [
     "lib/storyarn/flows.ex",
     "lib/storyarn/flows/",
+    "lib/storyarn/workers/flows/",
     "lib/storyarn_web/live/flow_live/",
     "lib/storyarn_web/live/flow_sidebar_live.ex"
   ],
@@ -2386,6 +2387,13 @@ localization_role_dependency_denials =
       reason: "Localization role folders must preserve read, policy, data, and effect direction"
     }
   end
+
+flow_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/flows/",
+  target_root: "lib/storyarn/flows/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Flow workers must orchestrate through the Storyarn.Flows facade"
+}
 
 localization_worker_facade_denial = %{
   source_root: "lib/storyarn/workers/localization/",
@@ -3791,7 +3799,7 @@ policy = %{
       [projects_worker_facade_denial] ++
       localization_internal_path_denials ++
       localization_role_dependency_denials ++
-      [localization_worker_facade_denial] ++
+      [flow_worker_facade_denial, localization_worker_facade_denial] ++
       sheet_internal_path_denials ++
       sheet_root_facade_path_denials ++
       sheet_role_dependency_denials ++

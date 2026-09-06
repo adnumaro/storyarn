@@ -351,6 +351,8 @@
       "minimize": "Back to side panel"
     },
     "version_history": {
+      "creating": "Creating version…",
+      "creation_failed": "The version could not be saved. Please try again.",
       "title": "Version History"
     },
     "exit_modes": {

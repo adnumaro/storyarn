@@ -6,6 +6,7 @@ defmodule Storyarn.Flows.Versioning.Commands.VersionLifecycle do
   import Ecto.Query, warn: false
 
   alias Storyarn.Flows.Flow
+  alias Storyarn.Flows.Versioning.AssetCatalog
   alias Storyarn.Flows.Versioning.Commands.NamedVersionCapacity
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.Execution.SnapshotReader
@@ -22,6 +23,61 @@ defmodule Storyarn.Flows.Versioning.Commands.VersionLifecycle do
   @entity_type "flow"
   @default_min_interval_seconds 600
   @max_insert_retries 3
+
+  @doc false
+  def automatic_version_due(%Flow{} = flow) do
+    cond do
+      not auto_versioning_enabled?(flow.project_id) -> {:skipped, :auto_versioning_disabled}
+      not version_due?(History.get_latest_version(flow.id), @default_min_interval_seconds) -> {:skipped, :too_recent}
+      true -> :ok
+    end
+  end
+
+  @doc false
+  def create_captured_version(%Flow{} = flow, user_id, snapshot, opts) do
+    with :ok <- validate_flow_scope(flow, flow.project_id),
+         :ok <- validate_actor_id(user_id),
+         :ok <- AssetCatalog.verify_captured_catalog(flow.project_id, snapshot) do
+      flow.id
+      |> VersionNumberLock.run(fn -> create_captured_version_locked(flow, user_id, snapshot, opts) end)
+      |> normalize_maybe_create_result()
+    end
+  end
+
+  defp create_captured_version_locked(flow, user_id, snapshot, opts) do
+    case if(Keyword.get(opts, :is_auto, false), do: automatic_version_due(flow), else: :ok) do
+      :ok -> store_captured_version(flow, user_id, snapshot, opts)
+      {:skipped, reason} -> {:ok, {:skipped, reason}}
+    end
+  end
+
+  # Only the request and version-number locks span storage I/O. Project/Flow
+  # editors remain writable until the short final publication transaction.
+  defp store_captured_version(flow, user_id, snapshot, opts) do
+    params = version_params(flow, flow.project_id, user_id, snapshot, opts)
+    number = History.next_version_number(flow.id)
+
+    with {:ok, key, size, checksum} <- SnapshotStorage.store_snapshot(flow.project_id, flow.id, number, snapshot) do
+      result = publish_captured_version(flow, params, number, key, size, checksum)
+      if !match?({:ok, %EntityVersionRecord{}}, result), do: SnapshotStorage.delete(key)
+      result
+    end
+  end
+
+  defp publish_captured_version(flow, params, number, key, size, checksum) do
+    with {:ok, project} <- NamedVersionCapacity.lock_project(flow.project_id),
+         :ok <- validate_flow_scope(flow, flow.project_id),
+         :ok <- captured_capacity(flow, project, params.is_auto) do
+      insert_stored_version(params, number, key, size, checksum, 1)
+    else
+      {:skipped, reason} -> {:ok, {:skipped, reason}}
+      {:error, reason, metadata} -> {:error, {reason, metadata}}
+      {:error, _reason} = error -> error
+    end
+  end
+
+  defp captured_capacity(flow, _project, true), do: automatic_version_due(flow)
+  defp captured_capacity(_flow, project, false), do: NamedVersionCapacity.ensure_capacity(project)
 
   @type version :: EntityVersionRecord.t()
 
@@ -130,25 +186,29 @@ defmodule Storyarn.Flows.Versioning.Commands.VersionLifecycle do
   defp create_from_snapshot_locked(flow, project_id, user_id, snapshot, opts) do
     case ensure_named_version_capacity(project_id, opts) do
       :ok ->
-        {change_summary, change_details} = change_data(flow.id, snapshot, opts)
-
-        params = %{
-          entity_id: flow.id,
-          project_id: project_id,
-          created_by_id: user_id,
-          title: Keyword.get(opts, :title),
-          description: Keyword.get(opts, :description),
-          is_auto: Keyword.get(opts, :is_auto, false),
-          change_summary: change_summary,
-          change_details: change_details,
-          snapshot: snapshot
-        }
+        params = version_params(flow, project_id, user_id, snapshot, opts)
 
         store_and_insert(params, 1)
 
       {:error, reason, metadata} ->
         {:error, {reason, metadata}}
     end
+  end
+
+  defp version_params(flow, project_id, user_id, snapshot, opts) do
+    {change_summary, change_details} = change_data(flow.id, snapshot, opts)
+
+    %{
+      entity_id: flow.id,
+      project_id: project_id,
+      created_by_id: user_id,
+      title: Keyword.get(opts, :title),
+      description: Keyword.get(opts, :description),
+      is_auto: Keyword.get(opts, :is_auto, false),
+      change_summary: change_summary,
+      change_details: change_details,
+      snapshot: snapshot
+    }
   end
 
   defp store_and_insert(params, attempt) do

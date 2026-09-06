@@ -45,7 +45,7 @@ msgstr "No se pudo crear el flujo."
 msgid "Could not delete flow."
 msgstr "No se pudo eliminar el flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1356
+#: lib/storyarn_web/live/flow_live/show.ex:1358
 #, elixir-autogen, elixir-format
 msgid "Could not load flow data."
 msgstr "No se pudieron cargar los datos del flujo."
@@ -103,7 +103,7 @@ msgstr "Flujo movido a la papelera."
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:434
 #: lib/storyarn_web/live/flow_live/index.ex:460
 #: lib/storyarn_web/live/flow_live/index.ex:481
-#: lib/storyarn_web/live/flow_live/show.ex:374
+#: lib/storyarn_web/live/flow_live/show.ex:376
 #, elixir-autogen, elixir-format
 msgid "Flow not found."
 msgstr "Flujo no encontrado."
@@ -188,7 +188,7 @@ msgstr "Numero invalido \"%{value}\", usando 0"
 msgid "Could not restore flow name."
 msgstr "No se pudo restaurar el nombre del flujo."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1861
+#: lib/storyarn_web/live/flow_live/show.ex:1884
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr "No se pudo crear el flujo enlazado."
@@ -198,7 +198,7 @@ msgstr "No se pudo crear el flujo enlazado."
 msgid "Could not update node positions."
 msgstr "No se pudieron actualizar las posiciones de los nodos."
 
-#: lib/storyarn_web/live/flow_live/show.ex:1090
+#: lib/storyarn_web/live/flow_live/show.ex:1092
 #, elixir-autogen, elixir-format
 msgid "Could not update scene map."
 msgstr "No se pudo actualizar la escena."
@@ -344,7 +344,7 @@ msgstr "Conexión eliminada"
 msgid "Renamed flow"
 msgstr "Flujo renombrado"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1029
+#: lib/storyarn_web/live/flow_live/show.ex:1031
 #, elixir-autogen, elixir-format
 msgid "Node not found."
 msgstr "Nodo no encontrado."
@@ -376,22 +376,22 @@ msgid "Debug session started"
 msgstr "Sesión de depuración iniciada"
 
 #: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:154
-#: lib/storyarn_web/live/flow_live/show.ex:1296
+#: lib/storyarn_web/live/flow_live/show.ex:1298
 #, elixir-autogen, elixir-format
 msgid "Could not create sequence"
 msgstr "No se pudo crear la secuencia"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1292
+#: lib/storyarn_web/live/flow_live/show.ex:1294
 #, elixir-autogen, elixir-format
 msgid "Nodes must belong to the same container"
 msgstr "Los nodos deben pertenecer al mismo contenedor"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1285
+#: lib/storyarn_web/live/flow_live/show.ex:1287
 #, elixir-autogen, elixir-format
 msgid "Select at least one node first"
 msgstr "Selecciona al menos un nodo primero"
 
-#: lib/storyarn_web/live/flow_live/show.ex:1282
+#: lib/storyarn_web/live/flow_live/show.ex:1284
 #, elixir-autogen, elixir-format
 msgid "Sequence created"
 msgstr "Secuencia creada"

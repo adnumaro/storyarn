@@ -19,12 +19,17 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
           stream_result: :delegate,
           delete_if_matches_result: :delegate,
           io_observer: nil,
+          upload_callback: nil,
           namespace_observer: nil,
           namespace_fingerprint_override: nil
         }
       end,
       name: __MODULE__
     )
+  end
+
+  def on_upload(callback) when is_function(callback, 3) do
+    Agent.update(__MODULE__, &%{&1 | upload_callback: callback})
   end
 
   def reset_counts do
@@ -111,7 +116,10 @@ defmodule Storyarn.SnapshotReadSwitchStorage do
   end
 
   @impl true
-  defdelegate upload(key, data, content_type), to: Local
+  def upload(key, data, content_type) do
+    if callback = Agent.get(__MODULE__, & &1.upload_callback), do: callback.(key, data, content_type)
+    Local.upload(key, data, content_type)
+  end
 
   @impl true
   def upload_stream(key, chunks, content_type) do

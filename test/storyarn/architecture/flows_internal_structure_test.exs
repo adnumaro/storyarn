@@ -65,6 +65,13 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
     list_versions: 2,
     list_versions: 3,
     load_version_snapshot: 1,
+    recover_version_requests: 0,
+    request_version: 2,
+    request_version: 3,
+    perform_version_request: 1,
+    perform_version_request: 2,
+    subscribe_version_requests: 1,
+    version_request_status: 1,
     maybe_create_version: 2,
     maybe_create_version: 3,
     maybe_create_version: 4,
@@ -186,7 +193,9 @@ defmodule Storyarn.Architecture.FlowsInternalStructureTest do
            |> delegate_targets()
            |> Enum.uniq()
            |> Enum.sort() ==
-             Enum.sort(~w(History NamedVersionCapacity Restore SnapshotReader SnapshotViewer Tracked VersionLifecycle))
+             Enum.sort(
+               ~w(History NamedVersionCapacity PublishVersion RecoverRequests RequestVersion Restore SnapshotReader SnapshotViewer Tracked VersionLifecycle VersionRequests)
+             )
 
     assert :functions |> Storyarn.Flows.Versioning.__info__() |> Enum.sort() ==
              Enum.sort(@versioning_facade_contract)

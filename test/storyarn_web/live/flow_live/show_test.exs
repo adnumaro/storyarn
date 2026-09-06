@@ -980,6 +980,12 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
       versions = panels.props["panels"]["versions"]
 
+      assert versions["creationPending"]
+      perform_pending_version(flow)
+      :sys.get_state(view.pid)
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      versions = panels.props["panels"]["versions"]
+      refute versions["creationPending"]
       refute versions["canNameVersion"]
       assert length(versions["namedVersions"]) == 10
     end
@@ -992,6 +998,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
         "description" => "Initial playable flow"
       })
 
+      assert Flows.count_versions(flow.id) == 0
+      GenServer.stop(view.pid, :normal)
+      perform_pending_version(flow)
       version = Flows.get_version(flow.id, 1)
       assert version.title == "First milestone"
       assert version.description == "Initial playable flow"
@@ -1087,5 +1096,10 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     {:ok, view, _html} = live(conn, url)
     await_async(view)
     view
+  end
+
+  defp perform_pending_version(flow) do
+    request = Repo.get_by!(Flows.Versioning.VersionRequest, flow_id: flow.id, status: "pending")
+    assert :ok = Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
   end
 end

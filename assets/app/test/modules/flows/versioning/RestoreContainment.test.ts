@@ -33,6 +33,22 @@ function liveGlobal() {
 }
 
 describe("restore containment", () => {
+  it("shows pending and failed creation without exposing an unfinished version", async () => {
+    const { global } = liveGlobal();
+    const wrapper = mount(VersionHistory, {
+      props: { restoreEnabled: false, creation: { pending: true, failed: false } },
+      global,
+    });
+    expect(wrapper.get("#flow-version-creation-pending").text()).toBe("Creating version…");
+    expect(wrapper.find("#flow-version-creation-failed").exists()).toBe(false);
+    expect(wrapper.find('[data-testid^="restore-version-"]').exists()).toBe(false);
+    await wrapper.setProps({ creation: { pending: false, failed: true } });
+    expect(wrapper.find("#flow-version-creation-pending").exists()).toBe(false);
+    expect(wrapper.get("#flow-version-creation-failed").attributes("role")).toBe("alert");
+    await wrapper.setProps({ creation: { pending: false, failed: false } });
+    expect(wrapper.find("#flow-version-creation-failed").exists()).toBe(false);
+  });
+
   it("hides version restore while preserving compare and delete", async () => {
     const { live, global } = liveGlobal();
 

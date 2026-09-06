@@ -22,6 +22,8 @@ interface FlowVersionsPanel {
   canEdit: boolean;
   restoreEnabled: boolean;
   loading: boolean;
+  creationPending?: boolean;
+  creationFailed?: boolean;
 }
 
 interface FlowBuilderPanelState {
@@ -77,7 +79,6 @@ const commentsPanelOpen = computed(
     <div id="flow-versions-panel" class="contents">
       <FlowVersionHistoryPanel
         :open="panels.versions.open && !commentsPanelOpen"
-        :versions="panels.versions.versions"
         :named-versions="panels.versions.namedVersions"
         :auto-versions="panels.versions.autoVersions"
         :has-more="panels.versions.hasMore"
@@ -86,6 +87,10 @@ const commentsPanelOpen = computed(
         :can-edit="panels.versions.canEdit"
         :restore-enabled="panels.versions.restoreEnabled"
         :loading="panels.versions.loading"
+        :creation="{
+          pending: panels.versions.creationPending ?? false,
+          failed: panels.versions.creationFailed ?? false,
+        }"
       />
     </div>
 

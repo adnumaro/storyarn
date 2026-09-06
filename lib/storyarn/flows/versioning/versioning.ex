@@ -10,15 +10,25 @@ defmodule Storyarn.Flows.Versioning do
 
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.Versioning.Commands.NamedVersionCapacity
+  alias Storyarn.Flows.Versioning.Commands.PublishVersion
+  alias Storyarn.Flows.Versioning.Commands.RecoverRequests
+  alias Storyarn.Flows.Versioning.Commands.RequestVersion
   alias Storyarn.Flows.Versioning.Commands.Tracked
   alias Storyarn.Flows.Versioning.Commands.VersionLifecycle
   alias Storyarn.Flows.Versioning.EntityVersionRecord
   alias Storyarn.Flows.Versioning.Execution.Restore
   alias Storyarn.Flows.Versioning.Execution.SnapshotReader
   alias Storyarn.Flows.Versioning.Queries.History
+  alias Storyarn.Flows.Versioning.Queries.VersionRequests
   alias Storyarn.Flows.Versioning.SnapshotViewer
 
   @type version :: EntityVersionRecord.t()
+
+  defdelegate recover_version_requests(), to: RecoverRequests, as: :recover
+  defdelegate request_version(flow, user_id, opts \\ []), to: RequestVersion, as: :request
+  defdelegate perform_version_request(id, opts \\ []), to: PublishVersion, as: :perform
+  defdelegate subscribe_version_requests(project_id), to: PublishVersion, as: :subscribe
+  defdelegate version_request_status(flow_id), to: VersionRequests, as: :status
 
   defdelegate can_create_named_version?(project_id, workspace_id),
     to: NamedVersionCapacity,

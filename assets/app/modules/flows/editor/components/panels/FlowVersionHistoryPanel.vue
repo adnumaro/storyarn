@@ -6,7 +6,6 @@ import type { VersionEntry } from "../versioning/useVersionHistory";
 import { useLive } from "../../../../../shared/composables/useLive";
 
 const {
-  versions = [],
   namedVersions = [],
   autoVersions = [],
   hasMore = false,
@@ -15,9 +14,9 @@ const {
   canEdit = false,
   restoreEnabled,
   loading = false,
+  creation = { pending: false, failed: false },
   open = false,
 } = defineProps<{
-  versions?: VersionEntry[];
   namedVersions?: VersionEntry[];
   autoVersions?: VersionEntry[];
   hasMore?: boolean;
@@ -26,6 +25,7 @@ const {
   canEdit?: boolean;
   restoreEnabled: boolean;
   loading?: boolean;
+  creation?: { pending: boolean; failed: boolean };
   open?: boolean;
 }>();
 
@@ -54,7 +54,6 @@ function close() {
       </div>
     </template>
     <VersionHistory
-      :versions="versions"
       :named-versions="namedVersions"
       :auto-versions="autoVersions"
       :has-more="hasMore"
@@ -63,6 +62,7 @@ function close() {
       :can-edit="canEdit"
       :restore-enabled="restoreEnabled"
       :loading="loading"
+      :creation="creation"
     />
   </Sidebar>
 </template>

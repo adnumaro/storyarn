@@ -1163,6 +1163,12 @@ defmodule Storyarn.Flows do
   # Versioning
   # =============================================================================
 
+  defdelegate recover_version_requests(), to: Versioning
+  defdelegate request_version(flow, user_id, opts \\ []), to: Versioning
+  defdelegate perform_version_request(id, opts \\ []), to: Versioning
+  defdelegate subscribe_version_requests(project_id), to: Versioning
+  defdelegate version_request_status(flow_id), to: Versioning
+
   @doc """
   Creates a new version snapshot of the given flow.
   """

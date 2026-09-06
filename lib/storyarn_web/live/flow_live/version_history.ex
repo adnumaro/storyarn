@@ -64,6 +64,8 @@ defmodule StoryarnWeb.FlowLive.VersionHistory do
     can_name =
       Flows.can_create_named_version?(project_id, workspace_id) == :ok
 
+    request_status = Flows.version_request_status(flow.id)
+
     assign(socket, :history_data, %{
       versions: serialize_versions(versions),
       named_versions: serialize_versions(named),
@@ -71,6 +73,8 @@ defmodule StoryarnWeb.FlowLive.VersionHistory do
       has_more: has_more,
       page: 1,
       can_name_version: can_name,
+      creation_pending: request_status.pending,
+      creation_failed: request_status.failed,
       current_version_id: flow.current_version_id,
       raw_versions: versions
     })
