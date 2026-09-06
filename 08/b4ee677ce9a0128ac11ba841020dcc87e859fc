@@ -1,0 +1,143 @@
+lib/storyarn/flows/versioning/entities/version_request.ex
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 1-17
+assets/app/modules/flows/editor/components/versioning/VersionHistory.vue
+  s_5af6a6d0a150f1::t_de2319a177df34 80,82-85,89,91-94
+  s_5af6a6d0a150f1::t_7a7edc55e62366 39,49,81,90,112
+  s_5af6a6d0a150f1::t_895fb2e2219848 86-88,95-96
+lib/storyarn_web/live/flow_live/version_history.ex
+  s_5af6a6d0a150f1::t_895fb2e2219848 67-68,76-77
+lib/storyarn/flows/versioning/execution/flow_snapshot.ex
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 62-77,82,265,533,541
+  s_5af6a6d0a150f1::t_34b46664f85044 244
+lib/storyarn/workers/flows/create_flow_version_worker.ex
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 1-10,14,16-22
+  s_5af6a6d0a150f1::t_37309d6e5e066d 11
+  s_5af6a6d0a150f1::t_06a11e34fa3049 15
+  s_5af6a6d0a150f1::t_c265d9ad863eac 12-13
+lib/storyarn/workers/flows/recover_flow_versions_worker.ex
+  s_5af6a6d0a150f1::t_c265d9ad863eac 1-10
+lib/storyarn_web/live/flow_live/show.ex
+  s_5af6a6d0a150f1::t_dd76fb8652bd5f 1514,1927-1936
+  s_5af6a6d0a150f1::t_895fb2e2219848 182,1496-1510,1516,1761-1762
+  s_5af6a6d0a150f1::t_de656c8532d101 183,1511-1513,1515
+lib/storyarn_web/live/flow_live/version_events.ex
+  s_5af6a6d0a150f1::t_895fb2e2219848 141,143,151
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 1002,1103
+  s_5af6a6d0a150f1::t_de656c8532d101 1100,1102
+  s_5af6a6d0a150f1::t_06a11e34fa3049 983-988,1001,1003,1101,1104
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_c265d9ad863eac 206,402-403
+  s_5af6a6d0a150f1::t_06a11e34fa3049 207-212
+  s_5af6a6d0a150f1::t_6453165285f10e 352
+lib/storyarn/flows/versioning/execution/asset_catalog.ex
+  s_5af6a6d0a150f1::t_de656c8532d101 60-61,68-83
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 48-50,55,63-67,84-85
+  s_5af6a6d0a150f1::t_df651dded708e9 62
+assets/app/live/flow/show/FlowPanels.vue
+  s_5af6a6d0a150f1::t_895fb2e2219848 25-26
+  s_5af6a6d0a150f1::t_7a7edc55e62366 90-93
+priv/gettext/en/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_7a7edc55e62366 293
+  s_5af6a6d0a150f1::t_920d92013c3a1a 34-35,53,102,289-292
+lib/storyarn/flows/versioning/commands/recover_requests.ex
+  s_5af6a6d0a150f1::t_c265d9ad863eac 1-3,5-10,12-17,19-20,22-27,36-38,48-49,51,60-63
+  s_5af6a6d0a150f1::t_37309d6e5e066d 4,11,18,21,28-35,39-46,52-59
+  s_5af6a6d0a150f1::t_d7a7e5ca07bb0a 47,50
+test/storyarn_web/live/flow_live/sequence_versioning_test.exs
+  s_5af6a6d0a150f1::t_06a11e34fa3049 243-244
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 245
+priv/repo/migrations/20260906190000_create_flow_version_requests.exs
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 1-29
+lib/storyarn/flows/versioning/commands/request_version.ex
+  s_5af6a6d0a150f1::t_dd76fb8652bd5f 15,21-32,72
+  s_5af6a6d0a150f1::t_de656c8532d101 16,48-51,56-65
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 12-14,19-20
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 1-11,17-18,33-47,52-55,66-71,73-74
+lib/storyarn/flows/versioning/commands/publish_version.ex
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 1-3,5-6,8-13,24,37-51,53-62,68-70,78,80-81,88-95,101,103-104
+  s_5af6a6d0a150f1::t_de656c8532d101 4,7,67,71,79,82-87,96-100,102
+  s_5af6a6d0a150f1::t_06a11e34fa3049 14-17,20-21,25-26,63-66
+  s_5af6a6d0a150f1::t_c265d9ad863eac 18-19
+  s_5af6a6d0a150f1::t_dd76fb8652bd5f 22-23,27-36
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 52,72-77
+test/storyarn/flows/versioning/integration/version_requests_test.exs
+  s_5af6a6d0a150f1::t_37309d6e5e066d 11,131-141,143-157
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 41,173-180,183,188
+  s_5af6a6d0a150f1::t_86c31de9c1d6e0 1-10,12-40,42-97,99-110,112-127,164,169-170,172,181-182,184-187,189-191
+  s_5af6a6d0a150f1::t_23f43f09d1cc18 98,111,128-130,142,158-163,165-168,171
+assets/app/locales/es/flows.json
+  s_5af6a6d0a150f1::t_06a11e34fa3049 354-355
+test/storyarn/architecture/flows_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_06a11e34fa3049 69-74
+  s_5af6a6d0a150f1::t_c265d9ad863eac 68,197
+  s_5af6a6d0a150f1::t_cc5b7ce72dd066 196,198
+lib/storyarn/flows/versioning/queries/version_requests.ex
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 1-3,5-12,17-20,22-27
+  s_5af6a6d0a150f1::t_de656c8532d101 4,13-16,21
+priv/gettext/es/LC_MESSAGES/versioning.po
+  s_5af6a6d0a150f1::t_7a7edc55e62366 293
+  s_5af6a6d0a150f1::t_b5dd26f4947ece 34-35,53,102,289-292
+assets/app/modules/flows/editor/components/panels/FlowVersionHistoryPanel.vue
+  s_5af6a6d0a150f1::t_7a7edc55e62366 17,28,65
+config/config.exs
+  s_5af6a6d0a150f1::t_1ee3cddd10f578 119
+  s_5af6a6d0a150f1::t_c265d9ad863eac 164
+lib/storyarn/flows/versioning/commands/version_lifecycle.ex
+  s_5af6a6d0a150f1::t_dd76fb8652bd5f 42,44-48,50,73
+  s_5af6a6d0a150f1::t_06a11e34fa3049 41,43
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 27-40,51-52,64-65,76-77,212
+  s_5af6a6d0a150f1::t_ecfe70afb5cf0a 9,49,53-63,66-72,74-75,78-81,189,198-211,213
+lib/storyarn/flows/versioning/versioning.ex
+  s_5af6a6d0a150f1::t_de656c8532d101 15,22
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 13,28-31
+  s_5af6a6d0a150f1::t_c265d9ad863eac 14,27
+  s_5af6a6d0a150f1::t_74481e912d468b 32
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_c265d9ad863eac 1166
+  s_5af6a6d0a150f1::t_8d8ddebe152d66 1167-1171
+assets/app/locales/en/flows.json
+  s_5af6a6d0a150f1::t_06a11e34fa3049 354-355
+assets/app/test/modules/flows/versioning/RestoreContainment.test.ts
+  s_5af6a6d0a150f1::t_997de17db2d334 36-51
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_13d0628b8ebb77 1806,2391-2397,3802
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_2fb6cd7fb66565 53,70,77,123
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_00f785381240b7 53,70,77,123
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_4a7c6e61903d8e 48,106,191,201,347,379,384,389,394
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_fe9d619d0d1107 53,70,77,123
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_5af6a6d0a150f1::t_007872a65f2097 48,106,191,201,347,379,384,389,394
+priv/gettext/flows.pot
+  s_5af6a6d0a150f1::t_23b67910bcd378 48,106,191,201,347,379,384,389,394
+priv/gettext/versioning.pot
+  s_5af6a6d0a150f1::t_824874cbfb1779 34-35,53,102,289-293
+test/storyarn/architecture/flows_test_dependency_boundary_test.exs
+  s_5af6a6d0a150f1::t_d1ffa458915f0c 147-149
+test/storyarn/architecture/worker_ownership_boundary_test.exs
+  s_5af6a6d0a150f1::t_e7018c5b00dd0e 4
+test/storyarn/flows/versioning/commands/named_version_capacity_concurrency_test.exs
+  s_5af6a6d0a150f1::t_235c2cdcd258a4 17,50-106
+test/support/snapshot_read_switch_storage.ex
+  s_5af6a6d0a150f1::t_709ccc8029b91a 22,31-34,119-122
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "08b4ee677ce9a0128ac11ba841020dcc87e859fc",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
