@@ -35,4 +35,38 @@ describe("sequence workspace keyboard boundary", () => {
       workspace.remove();
     }
   });
+
+  it("handles Alt+arrows inside the workspace without using browser history", () => {
+    const pushEvent = vi.fn();
+    const hook = { selectedNodeId: 20, pushEvent } as unknown as HookProxy;
+    const handler = keyboard(hook, null);
+    const workspace = document.createElement("section");
+    workspace.dataset.sequenceWorkspace = "";
+    const layer = document.createElement("button");
+    workspace.append(layer);
+    document.body.append(workspace);
+    handler.init();
+
+    try {
+      for (const [key, navigation] of [
+        ["ArrowLeft", "nav_back"],
+        ["ArrowRight", "nav_forward"],
+      ]) {
+        const event = new KeyboardEvent("keydown", {
+          key,
+          altKey: true,
+          bubbles: true,
+          cancelable: true,
+        });
+        layer.dispatchEvent(event);
+        expect(event.defaultPrevented).toBe(true);
+        expect(pushEvent).toHaveBeenLastCalledWith(navigation, {});
+      }
+      expect(pushEvent).toHaveBeenCalledTimes(2);
+      expect(hook.selectedNodeId).toBe(20);
+    } finally {
+      handler.destroy();
+      workspace.remove();
+    }
+  });
 });

@@ -30,7 +30,7 @@ export function useSequenceImageImport(canUpload: () => boolean) {
     }
     try {
       const asset = await uploadFile(file, "image");
-      if (active && canUpload() && asset) await onUploaded({ ...asset, filename: file.name });
+      if (active && asset) await onUploaded({ ...asset, filename: file.name });
     } catch (reason) {
       if (!active) return;
       const message = reason instanceof Error ? reason.message : t("common.assets.upload_failed");

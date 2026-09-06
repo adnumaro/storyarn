@@ -33,6 +33,19 @@ function player(overrides: Partial<SequencePlaybackState> = {}) {
 describe("FlowSequencePlayback", () => {
   afterEach(() => vi.restoreAllMocks());
 
+  it("renders stage directions as plain text beneath the dialogue and omits empty directions", async () => {
+    const wrapper = player({
+      slide: { type: "dialogue", text: "Hello", stage_directions: "<quietly> Look away" },
+    });
+    const directions = wrapper.get("[data-playback-stage-directions]");
+    expect(directions.text()).toBe("<quietly> Look away");
+    expect(directions.find("quietly").exists()).toBe(false);
+    expect(directions.element.previousElementSibling?.textContent).toBe("Hello");
+    await wrapper.setProps({ state: state() });
+    expect(wrapper.find("[data-playback-stage-directions]").exists()).toBe(false);
+    wrapper.unmount();
+  });
+
   it("shows only valid choices inside a clipped frame and emits the chosen response", async () => {
     const wrapper = player();
     expect(wrapper.get("[data-playback-frame]").classes()).toContain("overflow-hidden");

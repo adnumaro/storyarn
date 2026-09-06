@@ -1,5 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { defineComponent, nextTick } from "vue";
+import { Select } from "@components/ui/select";
 import type {
   SequenceConfigPanelData,
   SequenceStageState,
@@ -72,7 +73,7 @@ function props() {
   return { stage, data, canEdit: true };
 }
 
-function workspace(overrides: Partial<ReturnType<typeof props>> = {}) {
+function workspace(overrides: Partial<InstanceType<typeof FlowSequenceWorkspace>["$props"]> = {}) {
   return mount(FlowSequenceWorkspace, {
     props: { ...props(), ...overrides },
     global: {
@@ -119,7 +120,7 @@ describe("FlowSequenceWorkspace", () => {
     await wrapper.get('[data-select-layer="background"]').trigger("click");
     expect(wrapper.getComponent(Stage).props("selectedLayerKey")).toBe("background");
     await wrapper
-      .get('[data-layer-row="background"] button[aria-label="Lock or unlock position"]')
+      .get('[data-layer-row="background"] button[aria-label="Lock or unlock position: Room"]')
       .trigger("click");
     expect(wrapper.getComponent(Stage).props("lockedLayerKeys")).toEqual(["background"]);
     expect(wrapper.getComponent(Inspector).props("locked")).toBe(true);
@@ -240,6 +241,33 @@ describe("FlowSequenceWorkspace", () => {
     });
     expect(wrapper.getComponent(Stage).props("canEdit")).toBe(false);
     expect(wrapper.getComponent(Inspector).props("layer")).toBeNull();
+    wrapper.unmount();
+  });
+
+  it("allows repairing the source of an invalid composition while stage edits remain disabled", async () => {
+    const invalidStage: SequenceStageState = {
+      ...props().stage,
+      status: "error",
+      composition: { layers: [], diagnostics: [{ code: "composition_cycle", severity: "error" }] },
+    };
+    const wrapper = workspace({ stage: invalidStage });
+    const source = () => wrapper.findAllComponents(Select)[0]!;
+    expect(source().props("disabled")).toBe(false);
+    expect(wrapper.getComponent(Stage).props("canEdit")).toBe(false);
+    source().vm.$emit("update:modelValue", "__initial__");
+    expect(pushEvent).toHaveBeenCalledExactlyOnceWith("set_composition_source", {
+      id: 20,
+      source_id: null,
+    });
+
+    pushEvent.mockClear();
+    await wrapper.setProps({ canEdit: false });
+    expect(source().props("disabled")).toBe(true);
+    source().vm.$emit("update:modelValue", "10");
+    expect(pushEvent).not.toHaveBeenCalled();
+
+    await wrapper.setProps({ canEdit: true, data: { ...props().data, owner_id: 30 } });
+    expect(wrapper.find("[data-workspace-source]").exists()).toBe(false);
     wrapper.unmount();
   });
 
@@ -390,6 +418,37 @@ describe("FlowSequenceWorkspace", () => {
     finish({ id: 900, url: "/portrait.png" });
     await flushPromises();
     expect(wrapper.getComponent(Library).props("uploadedAssets")).toHaveLength(1);
+    expect(TestImage.images).toHaveLength(0);
+    expect(pushEvent).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("keeps a completed stage upload visible after edit permission changes without creating a layer", async () => {
+    let finish!: (asset: { id: number; url: string }) => void;
+    uploadFile.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const wrapper = workspace();
+    vi.spyOn(wrapper.get("[data-sequence-frame]").element, "getBoundingClientRect").mockReturnValue(
+      { left: 0, top: 0, width: 800, height: 450 } as DOMRect,
+    );
+    await wrapper.get("[data-stage]").trigger("drop", {
+      dataTransfer: {
+        types: ["Files"],
+        files: [new File(["image"], "portrait.png", { type: "image/png" })],
+      },
+      clientX: 400,
+      clientY: 225,
+    });
+    await wrapper.setProps({ canEdit: false });
+    finish({ id: 900, url: "/portrait.png" });
+    await flushPromises();
+    expect(wrapper.getComponent(Library).props("uploadedAssets")).toEqual([
+      { id: 900, url: "/portrait.png", filename: "portrait.png" },
+    ]);
     expect(TestImage.images).toHaveLength(0);
     expect(pushEvent).not.toHaveBeenCalled();
     wrapper.unmount();

@@ -2,6 +2,7 @@
 import { computed } from "vue";
 import type { SequenceVisualLayer } from "../types";
 import { compareSequenceLayers } from "../layerOrder";
+import { finiteValue } from "../numbers";
 
 const { layers = [] } = defineProps<{
   layers?: SequenceVisualLayer[];
@@ -22,19 +23,15 @@ function normalized(value: number | null | undefined, fallback: number): number 
   return Math.min(1, Math.max(0, value));
 }
 
-function finite(value: number | null | undefined, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
-}
-
 function layerKey(layer: SequenceVisualLayer, index: number): string {
   return String(layer.key ?? layer.id ?? `${layer.url}:${index}`);
 }
 
 function layerFrameStyle(layer: SequenceVisualLayer, stackIndex: number) {
-  const x = finite(layer.x, 0);
-  const y = finite(layer.y, 0);
-  const width = Math.max(0, finite(layer.width, 1));
-  const height = Math.max(0, finite(layer.height, 1));
+  const x = finiteValue(layer.x, 0);
+  const y = finiteValue(layer.y, 0);
+  const width = Math.max(0, finiteValue(layer.width, 1));
+  const height = Math.max(0, finiteValue(layer.height, 1));
   const anchorX = normalized(layer.anchor_x ?? layer.anchorX, 0);
   const anchorY = normalized(layer.anchor_y ?? layer.anchorY, 0);
   const opacity = normalized(layer.opacity, 1);

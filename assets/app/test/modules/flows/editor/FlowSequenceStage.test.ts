@@ -2,6 +2,8 @@ import { mount } from "@vue/test-utils";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SequenceStageState } from "@modules/flows/sequence/types";
 import { SEQUENCE_LIBRARY_IMAGE_MIME } from "@modules/flows/editor/components/sequence/sequence-library";
+import { keyboard } from "@modules/flows/editor/services/keyboard";
+import type { HookProxy } from "@modules/flows/editor/services/editorHandlers";
 import { createMockLive } from "../../../setup";
 
 const mockLive = createMockLive();
@@ -217,6 +219,47 @@ describe("FlowSequenceStage", () => {
       expect.any(Function),
     );
     wrapper.unmount();
+  });
+
+  it("allows Flow Alt-navigation from a layer while plain arrows nudge and graph mutations stay blocked", async () => {
+    const wrapper = mountStage();
+    const workspace = document.createElement("section");
+    workspace.dataset.sequenceWorkspace = "";
+    document.body.append(workspace);
+    workspace.append(wrapper.element);
+    const pushEvent = vi.fn();
+    const hook = { selectedNodeId: 42, pushEvent } as unknown as HookProxy;
+    const handler = keyboard(hook, null);
+    handler.init();
+    try {
+      const layer = wrapper.get('[data-layer-control="hero"]');
+      const navigation = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      layer.element.dispatchEvent(navigation);
+      expect(navigation.defaultPrevented).toBe(true);
+      expect(pushEvent).toHaveBeenCalledExactlyOnceWith("nav_forward", {});
+      expect(mockLive.pushEvent).not.toHaveBeenCalled();
+      await layer.trigger("keydown", { key: "ArrowRight" });
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+      expect(mockLive.pushEvent).toHaveBeenCalledOnce();
+      for (const [key, metaKey] of [
+        ["Delete", false],
+        ["d", true],
+        ["Escape", false],
+      ] as const) {
+        await layer.trigger("keydown", { key, metaKey });
+      }
+      expect(pushEvent).toHaveBeenCalledTimes(1);
+      expect(hook.selectedNodeId).toBe(42);
+    } finally {
+      handler.destroy();
+      wrapper.unmount();
+      workspace.remove();
+    }
   });
 
   it("keeps proportions and updates anchor coordinates while resizing", async () => {

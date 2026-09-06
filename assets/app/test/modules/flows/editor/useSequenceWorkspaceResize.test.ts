@@ -130,6 +130,23 @@ describe("useSequenceWorkspaceResize", () => {
     wrapper.unmount();
   });
 
+  it.each(["library", "inspector"] as const)(
+    "keeps the other panel's preferred width after resizing %s in a narrow workspace",
+    async (panel) => {
+      const { api, wrapper } = harness();
+      await nextTick();
+      await resizeRoot(800);
+      const startWidth = panel === "library" ? api.libraryWidth.value : api.inspectorWidth.value;
+      const releaseX = panel === "library" ? 90 : 110;
+      pointer(wrapper.get(`[data-panel="${panel}"]`).element, "pointerdown");
+      pointer(window, "pointerup", releaseX);
+      await resizeRoot(1200);
+      expect(api.libraryWidth.value).toBe(panel === "library" ? startWidth - 10 : 240);
+      expect(api.inspectorWidth.value).toBe(panel === "inspector" ? startWidth - 10 : 288);
+      wrapper.unmount();
+    },
+  );
+
   it.each(["pointercancel", "escape", "blur", "fold", "compact", "unmount"])(
     "rolls back and clears browser styles on %s",
     async (reason) => {

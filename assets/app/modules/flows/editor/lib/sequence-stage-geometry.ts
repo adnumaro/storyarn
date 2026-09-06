@@ -1,4 +1,7 @@
 import type { SequenceVisualLayer } from "@modules/flows/sequence/types";
+import { finiteValue } from "@modules/flows/sequence/numbers";
+
+export { finiteValue };
 
 export interface LayerGeometry {
   x: number;
@@ -22,10 +25,6 @@ interface ResizeAxis {
 
 export function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
-}
-
-export function finiteValue(value: number | null | undefined, fallback: number): number {
-  return typeof value === "number" && Number.isFinite(value) ? value : fallback;
 }
 
 export function layerGeometry(layer: SequenceVisualLayer): LayerGeometry {

@@ -344,7 +344,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
   # cover semantic signatures, docs/defaults, public types, and specs.
   @docs_digest "5855a3433528990f688bd9a01ab2f10dea91fb00e1133805fa11abe2deca8af9"
   @types_digest "185b2bf999eed11bd7b86968d880d33cccdc414a7f9f5b23921412d98bc03805"
-  @specs_digest "c01ed8ba241c0ab1a5717cc1ca8f1147a6f0fa96b86bcabf26c07e4fc9937e02"
+  @specs_digest "bd18a0b279dbb4bd19061bf1aa4862a5119093e86316104f83366dc3062d9b30"
 
   test "the root facade preserves every established function and arity" do
     public_functions =
@@ -431,7 +431,7 @@ defmodule Storyarn.Architecture.FlowsFacadeContractTest do
       end)
       |> Enum.sort()
 
-    assert length(normalized_specs) == 96
+    assert length(normalized_specs) == 97
     assert digest(normalized_specs) == @specs_digest
     refute Enum.any?(normalized_specs, fn {_name, _arity, spec} -> spec =~ ".Data." end)
   end

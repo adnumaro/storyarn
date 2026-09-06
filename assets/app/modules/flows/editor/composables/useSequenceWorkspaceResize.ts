@@ -155,6 +155,11 @@ export function useSequenceWorkspaceResize(options: ResizeOptions) {
     for (const { property, value, priority } of gesture?.bodyStyles ?? []) {
       document.body.style.setProperty(property, value, priority);
     }
+    if (gesture) {
+      // Fitting the other panel is temporary; resizing only changes this panel's preference.
+      const other = gesture.panel === "library" ? "inspector" : "library";
+      preferred.value[other] = gesture.previous[other];
+    }
     gesture = null;
     resizing.value = null;
   }

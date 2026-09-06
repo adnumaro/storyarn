@@ -183,10 +183,12 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
   return {
     init() {
       this._keydownListener = (e: KeyboardEvent) => {
-        // Composition objects share undo history, but graph shortcuts must
-        // never delete or modify the selected speaker from inside the stage.
-        if (isSequenceWorkspace(e.target)) handleUndoRedo(e);
-        else handleKeyboard(e);
+        // Keep Flow navigation and shared undo inside the composition workspace.
+        // Escape belongs to the stage/fullscreen; graph mutation shortcuts stay outside.
+        if (isSequenceWorkspace(e.target)) {
+          if (handleNavigation(e)) return;
+          handleUndoRedo(e);
+        } else handleKeyboard(e);
       };
       document.addEventListener("keydown", this._keydownListener);
     },

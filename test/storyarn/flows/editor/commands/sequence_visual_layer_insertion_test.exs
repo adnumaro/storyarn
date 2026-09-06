@@ -17,6 +17,22 @@ defmodule Storyarn.Flows.SequenceVisualLayerInsertionTest do
     %{flow: flow, owner: owner, image: image}
   end
 
+  test "exhausting PostgreSQL z-index range returns a changeset error without changing the stack", context do
+    %{flow: flow, owner: owner, image: image} = context
+
+    {:ok, highest} =
+      Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop", z_index: 2_147_483_647})
+
+    {:ok, before} = Flows.capture_sequence_composition(owner.id)
+
+    assert {:error, %Ecto.Changeset{} = changeset} =
+             Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "character"})
+
+    assert Keyword.has_key?(changeset.errors, :z_index)
+    assert keys(flow.id, owner.id) == [highest.layer_key]
+    assert {:ok, ^before} = Flows.capture_sequence_composition(owner.id)
+  end
+
   test "new images stay above an existing backdrop regardless of their default kind order", context do
     %{flow: flow, owner: owner, image: image} = context
     {:ok, backdrop} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop", z_index: 900})

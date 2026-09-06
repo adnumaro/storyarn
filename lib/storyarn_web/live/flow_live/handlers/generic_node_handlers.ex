@@ -241,6 +241,8 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def handle_set_sequence_workspace(%{"open" => open}, socket) when is_boolean(open) do
     socket = assign(socket, :sequence_workspace_open, open)
 
+    socket = if open, do: assign(socket, :editing_mode, :toolbar), else: socket
+
     closed_mode =
       if socket.assigns[:editing_mode] == :sequence_config,
         do: :toolbar,

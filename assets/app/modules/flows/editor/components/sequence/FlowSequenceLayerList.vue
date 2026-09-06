@@ -104,13 +104,12 @@ function drop(target: number) {
           variant="ghost"
           size="icon-xs"
           :disabled="!canEdit"
-          :aria-label="
-            $t(
-              layer.visible === false
-                ? 'flows.sequence_workspace.show_layer'
-                : 'flows.sequence_workspace.hide_layer',
-            )
-          "
+          :aria-pressed="layer.visible !== false"
+          :aria-label="`${$t(
+            layer.visible === false
+              ? 'flows.sequence_workspace.show_layer'
+              : 'flows.sequence_workspace.hide_layer',
+          )}: ${layer.label?.trim() || sequenceLayerKey(layer)}`"
           @click="emit('visibility', layer, layer.visible === false)"
         >
           <EyeOff v-if="layer.visible === false" class="size-3.5" /><Eye v-else class="size-3.5" />
@@ -120,7 +119,7 @@ function drop(target: number) {
           size="icon-xs"
           :disabled="!canEdit"
           :aria-pressed="lockedKeys.includes(sequenceLayerKey(layer))"
-          :aria-label="$t('flows.sequence_workspace.lock_layer')"
+          :aria-label="`${$t('flows.sequence_workspace.lock_layer')}: ${layer.label?.trim() || sequenceLayerKey(layer)}`"
           @click="emit('lock', sequenceLayerKey(layer))"
         >
           <Lock v-if="lockedKeys.includes(sequenceLayerKey(layer))" class="size-3.5" /><Unlock

@@ -7,6 +7,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
   import Storyarn.ProjectsFixtures
 
   alias Storyarn.Flows
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.SequenceCompositionHistory
 
   setup do
@@ -15,6 +16,24 @@ defmodule Storyarn.Flows.SequenceCompositionHistoryTest do
     flow = flow_fixture(project)
 
     %{user: user, project: project, flow: flow}
+  end
+
+  test "restoring or removing layer order keeps the derivative fingerprint current", context do
+    %{user: user, project: project, flow: flow} = context
+    owner = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Keep this line"}})
+    image = image_asset_fixture(project, user)
+    {:ok, first} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "backdrop"})
+    {:ok, second} = Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "character"})
+    {:ok, original} = Flows.capture_sequence_composition(owner.id)
+    ordered = Map.put(original, "composition_layer_order", [second.layer_key, first.layer_key])
+
+    for snapshot <- [ordered, original] do
+      assert {:ok, ^snapshot} = Flows.restore_sequence_composition(owner.id, snapshot)
+      restored = Flows.get_node!(flow.id, owner.id)
+      assert restored.data["text"] == "Keep this line"
+      assert restored.data["composition_layer_order"] == snapshot["composition_layer_order"]
+      assert restored.derivatives_fingerprint == NodeUpdate.derivatives_fingerprint(restored.type, restored.data)
+    end
   end
 
   test "capture and restore round-trip source, sequence config, position, and layers", %{

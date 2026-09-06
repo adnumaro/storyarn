@@ -33,10 +33,15 @@ export interface SequenceLibrarySheet {
   gallery_images?: SequenceLibraryGalleryImage[];
 }
 
+const MAX_PG_BIGINT_STRING = "9223372036854775807";
+
 function validId(value: unknown): value is SequenceEntityId {
+  if (typeof value === "number") return Number.isSafeInteger(value) && value > 0;
   return (
-    (typeof value === "number" && Number.isSafeInteger(value) && value > 0) ||
-    (typeof value === "string" && /^[1-9]\d*$/.test(value))
+    typeof value === "string" &&
+    /^[1-9]\d*$/.test(value) &&
+    (value.length < MAX_PG_BIGINT_STRING.length ||
+      (value.length === MAX_PG_BIGINT_STRING.length && value <= MAX_PG_BIGINT_STRING))
   );
 }
 

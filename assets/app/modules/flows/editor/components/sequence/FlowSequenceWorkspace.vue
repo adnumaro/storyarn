@@ -104,9 +104,8 @@ const ownerReady = computed(
   () =>
     ownerId.value != null && String(data?.owner_id ?? data?.sequence_id) === String(ownerId.value),
 );
-const writable = computed(
-  () => canEdit && !playback && stage.status === "ready" && ownerReady.value,
-);
+const sourceWritable = computed(() => canEdit && !playback && ownerReady.value);
+const writable = computed(() => sourceWritable.value && stage.status === "ready");
 const layers = computed(() =>
   [...(ownerReady.value ? (data?.visual_layers ?? []) : [])].sort(compareSequenceLayers),
 );
@@ -208,7 +207,11 @@ function toggleLock(key: string) {
 
 function sourceChanged(value: string | string[]) {
   const next = Array.isArray(value) ? value[0] : value;
-  if (next) push("set_composition_source", { source_id: next === ROOT_SOURCE ? null : next });
+  if (next && sourceWritable.value)
+    live.pushEvent("set_composition_source", {
+      id: ownerId.value,
+      source_id: next === ROOT_SOURCE ? null : next,
+    });
 }
 
 function imageRatio(url: string): Promise<number> {
@@ -389,7 +392,7 @@ function selectLayer(key: string | null) {
         >
         <Select
           :model-value="sourceValue"
-          :disabled="!writable"
+          :disabled="!sourceWritable"
           @update:model-value="sourceChanged"
         >
           <SelectTrigger

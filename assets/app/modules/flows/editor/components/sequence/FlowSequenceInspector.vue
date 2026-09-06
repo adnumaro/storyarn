@@ -88,7 +88,7 @@ function opacity(event: Event) {
         preview-fit="contain"
         search-event="picker_search"
         :search-payload="{ resource: 'asset', kind: 'image' }"
-        @select="emit('update', { asset_id: $event.id })"
+        @select="emit('update', { asset_id: $event.id, label: $event.filename })"
         @clear="emit('remove')"
       />
       <div class="grid grid-cols-2 gap-2">

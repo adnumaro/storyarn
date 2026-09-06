@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
 
   alias Storyarn.Flows.Editor.Projections.AssetRecord
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.References
   alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.SequenceConfig
@@ -606,7 +607,12 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
         do: Map.delete(data, "composition_layer_order"),
         else: Map.put(data, "composition_layer_order", order)
 
-    owner |> Ecto.Changeset.change(data: data) |> Repo.update()
+    owner
+    |> Ecto.Changeset.change(
+      data: data,
+      derivatives_fingerprint: NodeUpdate.derivatives_fingerprint(owner.type, data)
+    )
+    |> Repo.update()
   end
 
   defp restore_position(owner, %{"position_x" => x, "position_y" => y}) do

@@ -14,6 +14,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Health
   alias Storyarn.Flows.Localization
+  alias Storyarn.Flows.PlayerCatalog
   alias Storyarn.Flows.References
   alias Storyarn.Flows.Runtime
   alias Storyarn.Flows.StructuralAnalysis.Analysis
@@ -400,10 +401,11 @@ defmodule Storyarn.Flows do
 
   Speakers are Flows-owned DTOs and do not expose foreign persistence records.
   """
-  @spec load_player_speakers(integer()) :: [Storyarn.Flows.PlayerCatalog.speaker()]
+  @spec load_player_speakers(integer()) :: [PlayerCatalog.speaker()]
   defdelegate load_player_speakers(project_id), to: Runtime
 
   @doc "Resolves an active dialogue voice asset within its project."
+  @spec get_player_audio_asset(integer(), integer()) :: PlayerCatalog.media_ref() | nil
   defdelegate get_player_audio_asset(project_id, asset_id), to: Runtime
 
   @doc """

@@ -117,6 +117,13 @@ function keydown(event: KeyboardEvent) {
                 class="prose prose-sm prose-invert max-w-none text-sm"
                 v-html="state.slide.text"
               />
+              <p
+                v-if="state.slide.stage_directions"
+                class="text-xs italic text-slate-300"
+                data-playback-stage-directions
+              >
+                {{ state.slide.stage_directions }}
+              </p>
               <audio
                 v-if="state.voice"
                 :key="state.voice.key"

@@ -184,7 +184,7 @@ describe("useSequenceImageImport", () => {
     expect(onUploaded).toHaveBeenCalledOnce();
   });
 
-  it("blocks imports without permission and suppresses callbacks if permission is revoked during upload", async () => {
+  it("blocks new uploads after permission changes but registers an asset already uploaded", async () => {
     let allowed = false;
     const pending = deferred<UploadedAsset>();
     uploadFile.mockReturnValue(pending.promise);
@@ -201,7 +201,11 @@ describe("useSequenceImageImport", () => {
     await importing;
 
     expect(uploadFile).toHaveBeenCalledOnce();
-    expect(onUploaded).not.toHaveBeenCalled();
+    expect(onUploaded).toHaveBeenCalledExactlyOnceWith({
+      id: 1,
+      url: "/media/assets/1",
+      filename: "first.png",
+    });
     expect(api.importing.value).toBe(false);
     expect(api.errors.value).toEqual([]);
   });

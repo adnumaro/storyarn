@@ -628,6 +628,30 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   describe "sequence workspace" do
     setup :register_and_log_in_user
 
+    test "opening the workspace closes the active dialogue or builder panel", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      condition = node_fixture(flow, %{type: "condition"})
+      view = mount_flow(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
+
+      for {node, event, panel} <- [
+            {dialogue, "open_dialogue_panel", "dialogue"},
+            {dialogue, "open_dialogue_fullscreen", "dialogueFullscreen"},
+            {condition, "open_builder", "builder"}
+          ] do
+        render_hook(view, "node_selected", %{"id" => node.id})
+        render_hook(view, event, %{})
+        assert LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"][panel]["open"]
+        render_hook(view, "set_sequence_workspace", %{"open" => true})
+        panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]
+        refute panels["dialogue"]["open"]
+        refute panels["dialogueFullscreen"]["open"]
+        refute panels["builder"]["open"]
+        render_hook(view, "set_sequence_workspace", %{"open" => false})
+      end
+    end
+
     test "runs playback inline and discards the session when closing the workspace", %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)
       flow = flow_fixture(project)

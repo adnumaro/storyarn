@@ -320,6 +320,19 @@ describe("sequence library global asset search", () => {
 });
 
 describe("sequence library drag contract", () => {
+  it("accepts bigint string boundaries and rejects oversized asset or sheet identifiers", () => {
+    for (const key of ["asset_id", "sheet_id"]) {
+      const accepted = { ...zoraImage, [key]: "9223372036854775807" };
+      expect(parseSequenceLibraryImage(JSON.stringify(accepted))).toEqual(accepted);
+
+      for (const value of ["9223372036854775808", "10000000000000000000", "9".repeat(100)]) {
+        expect(
+          parseSequenceLibraryImage(JSON.stringify({ ...zoraImage, [key]: value })),
+        ).toBeNull();
+      }
+    }
+  });
+
   it("rejects malformed payloads and non-asset associations", () => {
     for (const raw of [
       "",
