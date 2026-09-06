@@ -166,7 +166,7 @@ onUnmounted(() => {
       v-if="visualEditorOpen"
       data-flow-upper-workspace
       :class="[
-        upperFullscreen ? 'fixed inset-0 z-[100] h-dvh bg-background' : 'relative min-h-0 shrink-0',
+        upperFullscreen ? 'fixed inset-0 z-30 h-dvh bg-background' : 'relative min-h-0 shrink-0',
         !upperFullscreen && sequencePanelOpen ? 'md:pr-[24.75rem]' : undefined,
         'transition-[padding] duration-200 ease-out',
       ]"

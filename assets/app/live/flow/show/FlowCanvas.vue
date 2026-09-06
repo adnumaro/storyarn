@@ -96,7 +96,8 @@ watch(
   () =>
     requestAnimationFrame(() => {
       const nodes = editor.value?.getNodes() ?? [];
-      if (area.value && nodes.length > 0) void AreaExtensions.zoomAt(area.value, nodes);
+      if (containerRef.value?.isConnected && area.value && nodes.length > 0)
+        void AreaExtensions.zoomAt(area.value, nodes);
     }),
 );
 function safeParse(json: string, fallback: Record<string, unknown> = {}): Record<string, unknown> {

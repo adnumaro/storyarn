@@ -148,7 +148,7 @@ describe("FlowSurface sequence workspace", () => {
     await wrapper.get("[data-stage-fullscreen]").trigger("click");
 
     expect(upperWorkspace.classes()).not.toContain("md:pr-[24.75rem]");
-    expect(wrapper.get("[data-flow-upper-workspace]").classes()).toContain("fixed");
+    expect(wrapper.get("[data-flow-upper-workspace]").classes()).toContain("z-30");
     expect(wrapper.get("#flow-lower-workspace").isVisible()).toBe(false);
     expect(wrapper.get("[data-canvas-stub]").element).toBe(canvas);
     wrapper.unmount();
