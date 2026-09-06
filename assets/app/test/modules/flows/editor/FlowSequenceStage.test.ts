@@ -91,6 +91,7 @@ describe("FlowSequenceStage", () => {
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Aria Vale");
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Open the gate.");
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Barely above a whisper");
+    expect(wrapper.get("[data-sequence-intervention]").classes()).toContain("pointer-events-none");
     expect(wrapper.get("[data-sequence-diagnostics]").text()).toContain("1 composition issue");
   });
 
@@ -217,6 +218,30 @@ describe("FlowSequenceStage", () => {
       x: 0.3,
       y: 0.4,
     });
+    wrapper.unmount();
+  });
+
+  it("cancels an active layer gesture without persisting its draft geometry", () => {
+    const wrapper = mountStage(editableStage(), true);
+    const viewport = wrapper.get(".flow-sequence-viewport");
+    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 1000,
+      bottom: 500,
+      width: 1000,
+      height: 500,
+      toJSON: () => ({}),
+    });
+
+    dispatchPointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown", 100, 100);
+    dispatchPointer(window, "pointermove", 200, 150);
+    dispatchPointer(window, "pointercancel", 200, 150);
+    dispatchPointer(window, "pointerup", 200, 150);
+
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 

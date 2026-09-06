@@ -123,7 +123,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
       |> SocketHelpers.reload_flow_data()
       |> CollaborationHelpers.push_remote_change_event(:node_updated, payload)
       |> CollaborationHelpers.show_collab_toast(:node_updated, payload)
-      |> refresh_sequence_surfaces()
+      |> refresh_selected_composition()
 
     {:noreply, socket}
   end

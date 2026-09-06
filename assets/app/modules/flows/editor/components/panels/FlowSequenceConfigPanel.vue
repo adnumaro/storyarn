@@ -138,6 +138,7 @@ const NUMERIC_LAYER_FIELDS: ReadonlyArray<{
 
 const ownerId = computed(() => data?.owner_id ?? data?.sequence_id ?? null);
 const ownerType = computed(() => data?.owner_type ?? "sequence");
+const audioTracksEnabled = computed(() => ownerType.value === "sequence");
 const sourceValue = computed(() =>
   data?.composition_source_id == null ? ROOT_SOURCE_VALUE : String(data.composition_source_id),
 );
@@ -610,12 +611,15 @@ function diagnosticLabel(code: string): string {
       </div>
 
       <Tabs default-value="visual" class="flex min-w-0 flex-col gap-3">
-        <TabsList class="grid h-8 w-full grid-cols-2">
+        <TabsList
+          class="grid h-8 w-full"
+          :class="audioTracksEnabled ? 'grid-cols-2' : 'grid-cols-1'"
+        >
           <TabsTrigger value="visual" class="gap-1.5 text-xs">
             <Layers class="size-3.5" />
             {{ $t("flows.sequences.visual_layers.title") }}
           </TabsTrigger>
-          <TabsTrigger value="audio" class="gap-1.5 text-xs">
+          <TabsTrigger v-if="audioTracksEnabled" value="audio" class="gap-1.5 text-xs">
             <Music class="size-3.5" />
             {{ $t("flows.sequences.config_panel.audio_title") }}
           </TabsTrigger>
@@ -905,7 +909,7 @@ function diagnosticLabel(code: string): string {
           </section>
         </TabsContent>
 
-        <TabsContent value="audio" class="mt-0">
+        <TabsContent v-if="audioTracksEnabled" value="audio" class="mt-0">
           <section class="flex min-w-0 flex-col gap-3">
             <AudioAsset
               v-for="kind in TRACK_KINDS"

@@ -1172,10 +1172,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
   def refresh_sequence_editor(socket, owner_id) do
     case Flows.get_node(socket.assigns.flow.id, owner_id) do
       %{type: type} = owner when type in ["sequence", "dialogue"] ->
-        graph = Flows.load_runtime_graph(socket.assigns.flow.id)
-        speakers_map = FormHelpers.player_speakers_map(socket.assigns.all_sheets)
-
-        maybe_refresh_selected_sequence_surfaces(socket, owner, graph, speakers_map)
+        maybe_refresh_selected_sequence_surfaces(socket, owner)
 
       _other ->
         socket
@@ -1198,26 +1195,15 @@ defmodule StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers do
 
   defp maybe_refresh_selected_sequence_surfaces(
          %{assigns: %{selected_node: %{id: owner_id}}} = socket,
-         %{id: owner_id} = owner,
-         graph,
-         speakers_map
+         %{id: owner_id} = owner
        ) do
     socket
     |> maybe_refresh_selected_owner(owner)
-    |> assign(
-      :sequence_stage,
-      SequencePresentation.stage(
-        owner.id,
-        graph.nodes,
-        speakers_map,
-        socket.assigns.project.id,
-        nil
-      )
-    )
+    |> NodeHelpers.refresh_sequence_stage(owner)
     |> maybe_refresh_sequence_panel(owner)
   end
 
-  defp maybe_refresh_selected_sequence_surfaces(socket, _owner, _graph, _speakers_map), do: socket
+  defp maybe_refresh_selected_sequence_surfaces(socket, _owner), do: socket
 
   defp maybe_refresh_sequence_panel(socket, owner) do
     if socket.assigns[:editing_mode] == :sequence_config,

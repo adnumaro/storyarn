@@ -283,6 +283,11 @@ describe("FlowSequenceConfigPanel", () => {
     expect(wrapper.text()).toContain("Dialogue · #20");
     expect(wrapper.text()).toContain("Courtyard");
     expect(wrapper.get("[data-composition-diagnostics]").text()).toContain("1 composition issue");
+    expect(wrapper.findAll('[data-stub="tabs-trigger"]').map((item) => item.text().trim())).toEqual(
+      ["Visual composition"],
+    );
+    expect(wrapper.findAll('[data-stub="audio-asset"]')).toHaveLength(0);
+    expect(wrapper.findAllComponents({ name: "ImageAsset" })).not.toHaveLength(0);
 
     wrapper.getComponent({ name: "Select" }).vm.$emit("update:modelValue", "11");
     expect(mockLive.pushEvent).toHaveBeenCalledWith("set_composition_source", {

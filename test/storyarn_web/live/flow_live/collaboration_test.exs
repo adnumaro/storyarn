@@ -470,6 +470,89 @@ defmodule StoryarnWeb.FlowLive.CollaborationTest do
       assert html
     end
 
+    test "keeps sequence composition history for an unrelated remote node update", %{
+      conn: conn,
+      user: user
+    } do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Unrelated remote update"})
+
+      {:ok, sequence} =
+        Storyarn.Flows.create_sequence(flow.id, %{"name" => "Selected sequence"})
+
+      hub = node_fixture(flow, %{type: "hub", data: %{"label" => "Before"}})
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      load_flow(view)
+      render_click(view, "node_selected", %{"id" => sequence.id})
+
+      other_user = user_fixture()
+
+      send(
+        view.pid,
+        {:remote_change, :node_updated,
+         %{
+           user_id: other_user.id,
+           user_email: other_user.email,
+           user_color: "#00ff00",
+           node_id: hub.id,
+           node_data: %{"label" => "After"}
+         }}
+      )
+
+      render(view)
+      refute_push_event(view, "sequence_composition_history_invalidated", %{})
+    end
+
+    test "forwards sequence names in remote config updates", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project, %{name: "Remote sequence config"})
+
+      {:ok, sequence} =
+        Storyarn.Flows.create_sequence(flow.id, %{"name" => "Original name"})
+
+      sequence_id = sequence.id
+
+      {:ok, view, _html} =
+        live(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+        )
+
+      load_flow(view)
+      other_user = user_fixture()
+
+      send(
+        view.pid,
+        {:remote_change, :sequence_config_updated,
+         %{
+           user_id: other_user.id,
+           user_email: other_user.email,
+           user_color: "#00ff00",
+           sequence_id: sequence_id,
+           name: "Restored name",
+           position_x: 120.0,
+           position_y: 80.0,
+           width: 420.0,
+           height: 260.0
+         }}
+      )
+
+      assert_push_event(view, "sequence_config_updated", %{
+        sequence_id: ^sequence_id,
+        name: "Restored name",
+        position_x: 120.0,
+        position_y: 80.0,
+        width: 420.0,
+        height: 260.0
+      })
+    end
+
     test "recomposes the selected dialogue stage on a remote node_updated", %{
       conn: conn,
       user: user

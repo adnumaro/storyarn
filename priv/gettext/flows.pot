@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:409
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:411
 #, elixir-autogen, elixir-format
 msgid "A flow cannot reference itself."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:405
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:407
 #, elixir-autogen, elixir-format
 msgid "Cannot reference the current flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:416
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:418
 #, elixir-autogen, elixir-format
 msgid "Circular reference detected. This flow is already referenced by the target."
 msgstr ""
@@ -60,8 +60,8 @@ msgstr ""
 msgid "Could not save flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1323
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1327
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1309
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1313
 #, elixir-autogen, elixir-format
 msgid "Could not save shortcut."
 msgstr ""
@@ -100,7 +100,7 @@ msgid "Flow moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:428
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:430
 #: lib/storyarn_web/live/flow_live/index.ex:460
 #: lib/storyarn_web/live/flow_live/index.ex:481
 #: lib/storyarn_web/live/flow_live/player_live.ex:70
@@ -133,7 +133,7 @@ msgstr ""
 msgid "Invalid flow ID."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:432
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:434
 #, elixir-autogen, elixir-format
 msgid "Invalid flow reference."
 msgstr ""
@@ -151,7 +151,7 @@ msgstr ""
 msgid "No entry node found in this flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1322
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1308
 #, elixir-autogen, elixir-format
 msgid "Shortcut %{error}"
 msgstr ""
@@ -163,12 +163,12 @@ msgstr ""
 msgid "Subflow"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1355
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1341
 #, elixir-autogen, elixir-format
 msgid "This node is being edited by %{user}"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:424
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:426
 #, elixir-autogen, elixir-format
 msgid "This would create a circular reference."
 msgstr ""
@@ -207,7 +207,7 @@ msgstr ""
 msgid "Could not restore flow name."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/show.ex:1819
+#: lib/storyarn_web/live/flow_live/show.ex:1820
 #, elixir-autogen, elixir-format
 msgid "Could not create linked flow."
 msgstr ""
@@ -499,7 +499,7 @@ msgstr ""
 msgid "This conversation or its source is no longer available."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1313
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1299
 #, elixir-autogen, elixir-format
 msgid "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
 msgstr ""

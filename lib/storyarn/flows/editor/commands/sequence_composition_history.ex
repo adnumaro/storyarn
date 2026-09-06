@@ -482,6 +482,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
   defp integrity_track(%SequenceTrack{} = track) do
     %{
       "track_key" => track.track_key,
+      "kind" => track.kind,
       "is_override" => track.is_override,
       "overridden_fields" => track.overridden_fields,
       "removed" => track.removed

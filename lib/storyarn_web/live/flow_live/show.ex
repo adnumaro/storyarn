@@ -1612,7 +1612,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
-      stage: assigns.sequence_stage
+      stage: assigns.sequence_stage,
+      debug: flow_panels_debug(assigns)
     }
   end
 

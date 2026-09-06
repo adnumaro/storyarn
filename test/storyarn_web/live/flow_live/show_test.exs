@@ -37,6 +37,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       assert surface.props["surface"]["canvas"]["canvasId"] == "flow-canvas-#{flow.id}"
       assert surface.props["surface"]["dock"]["flowId"] == flow.id
       assert surface.props["surface"]["stage"] == %{"status" => "empty"}
+      assert surface.props["surface"]["debug"]["open"] == false
       assert panels.props["panels"]["debug"]["open"] == false
     end
 

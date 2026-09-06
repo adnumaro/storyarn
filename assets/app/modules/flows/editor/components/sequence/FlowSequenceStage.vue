@@ -193,6 +193,7 @@ function startPointerInteraction(
 
   window.addEventListener("pointermove", updatePointerInteraction);
   window.addEventListener("pointerup", finishPointerInteraction, { once: true });
+  window.addEventListener("pointercancel", cancelPointerInteraction, { once: true });
 }
 
 function updatePointerInteraction(event: PointerEvent) {
@@ -220,6 +221,7 @@ function updatePointerInteraction(event: PointerEvent) {
 
 function finishPointerInteraction() {
   window.removeEventListener("pointermove", updatePointerInteraction);
+  window.removeEventListener("pointercancel", cancelPointerInteraction);
 
   const session = pointerSession;
   const geometry = draftGeometry.value;
@@ -275,6 +277,7 @@ function rounded(value: number): number {
 function cancelPointerInteraction() {
   window.removeEventListener("pointermove", updatePointerInteraction);
   window.removeEventListener("pointerup", finishPointerInteraction);
+  window.removeEventListener("pointercancel", cancelPointerInteraction);
   pointerSession = null;
   draftGeometry.value = null;
 }
@@ -424,7 +427,7 @@ onUnmounted(() => {
 
         <div
           v-if="stage.status === 'ready' && intervention"
-          class="absolute inset-x-0 bottom-0 z-[2000] border-t border-white/10 bg-slate-950/88 px-4 py-3 text-slate-100 backdrop-blur-sm"
+          class="pointer-events-none absolute inset-x-0 bottom-0 z-[2000] border-t border-white/10 bg-slate-950/88 px-4 py-3 text-slate-100 backdrop-blur-sm"
           data-sequence-intervention
         >
           <div class="mx-auto flex max-w-3xl items-start gap-3">
