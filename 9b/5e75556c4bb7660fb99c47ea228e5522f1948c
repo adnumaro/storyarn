@@ -1,0 +1,47 @@
+lib/storyarn/flows/editor/commands/composition_source_update.ex
+  s_5af6a6d0a150f1::t_b298c98d938c01 1-94
+lib/storyarn/flows/editor/commands/sequence_visual_layers.ex
+  s_5af6a6d0a150f1::t_7f7cfd2079aca9 1-546
+lib/storyarn/flows/editor/commands/sequence_update.ex
+  s_5af6a6d0a150f1::t_1604ef4eb1bb26 1-82
+lib/storyarn/flows/editor/commands/sequence_restore.ex
+  s_5af6a6d0a150f1::t_1604ef4eb1bb26 1-59
+lib/storyarn/flows/editor/commands/sequence_wrap.ex
+  s_5af6a6d0a150f1::t_1604ef4eb1bb26 1-88
+lib/storyarn/flows/editor/commands/sequence_tracks.ex
+  s_5af6a6d0a150f1::t_3defabdf31d06e 1-373
+lib/storyarn/flows/editor/editor.ex
+  s_5af6a6d0a150f1::t_027cb21b327665 307
+  s_5af6a6d0a150f1::t_886f7420906f90 308-309,311-313,315-318,326-334
+  s_5af6a6d0a150f1::t_70ed115af53545 12,16-22,25,297-306,310,314,319-325,335
+lib/storyarn/flows/editor/commands/sequence_create.ex
+  s_5af6a6d0a150f1::t_1604ef4eb1bb26 1-68
+lib/storyarn/flows/editor/commands/sequence_delete.ex
+  s_5af6a6d0a150f1::t_1604ef4eb1bb26 1-40
+lib/storyarn/flows/editor/queries/sequence_composition.ex
+  s_5af6a6d0a150f1::t_3aaa00dd09b89f 1-125
+lib/storyarn/flows/editor/commands/tracked.ex
+  s_5af6a6d0a150f1::t_027cb21b327665 34
+  s_5af6a6d0a150f1::t_70ed115af53545 54,64,74,96,113
+  s_5af6a6d0a150f1::t_f6005b395a709d 9-13
+lib/storyarn/flows/editor/commands/composition_owner_duplicate.ex
+  s_5af6a6d0a150f1::t_be0c68e610d2a1 1-198
+lib/storyarn/flows/editor/commands/sequence_composition_write.ex
+  s_5af6a6d0a150f1::t_38af83b90cc91d 1-183
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "9b5e75556c4bb7660fb99c47ea228e5522f1948c",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-5.6-sol"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
