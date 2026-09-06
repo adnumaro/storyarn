@@ -136,10 +136,16 @@ defmodule Storyarn.Flows.EditorCatalog do
     selected_id = parse_id(Keyword.get(opts, :selected_id))
     query = opts |> Keyword.get(:query, "") |> normalize_query()
 
-    candidates = list_asset_records(project_id, kind, query, limit + 1)
+    sequence_library? = kind == "image" and Keyword.get(opts, :sequence_library, false)
+
+    candidates =
+      if sequence_library?,
+        do: list_sequence_image_records(project_id, query, limit + 1),
+        else: list_asset_records(project_id, kind, query, limit + 1)
+
     page = Enum.take(candidates, limit)
     has_more = length(candidates) > limit
-    selected = selected_id && get_active_asset(project_id, selected_id, kind)
+    selected = if !sequence_library? && selected_id, do: get_active_asset(project_id, selected_id, kind)
 
     options = maybe_include_selected_asset(page, selected, query)
     {options, has_more}
@@ -324,6 +330,58 @@ defmodule Storyarn.Flows.EditorCatalog do
       search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
       Repo.all(where(base, [asset], ilike(asset.filename, ^search_term)), log: false)
     end
+  end
+
+  # Only interchangeable, uncropped variants share a library entry. Sheet avatar
+  # and banner crops remain separate images even when they have the same source.
+  defp list_sequence_image_records(project_id, query, limit) do
+    images =
+      from(asset in AssetRecord,
+        where:
+          asset.project_id == ^project_id and is_nil(asset.deleted_at) and
+            ilike(asset.content_type, "image/%"),
+        select: %{
+          id: asset.id,
+          filename: asset.filename,
+          content_type: asset.content_type,
+          size: asset.size,
+          inserted_at: asset.inserted_at,
+          family_id:
+            fragment(
+              "CASE WHEN COALESCE(?->>'variant_profile', 'scene_background_web') = 'scene_background_web' THEN COALESCE(?->>'original_asset_id', ?::text) ELSE ?::text END",
+              asset.metadata,
+              asset.metadata,
+              asset.id,
+              asset.id
+            )
+        }
+      )
+
+    lightest =
+      from(image in subquery(images),
+        distinct: image.family_id,
+        order_by: [asc: image.family_id, asc: image.size, asc: image.id]
+      )
+
+    search_term = "%#{SearchHelpers.sanitize_like_query(query)}%"
+
+    matching_families =
+      from(image in subquery(images),
+        where: ilike(image.filename, ^search_term),
+        group_by: image.family_id,
+        select: %{family_id: image.family_id, inserted_at: max(image.inserted_at)}
+      )
+
+    Repo.all(
+      from(image in subquery(lightest),
+        join: family in subquery(matching_families),
+        on: family.family_id == image.family_id,
+        order_by: [desc: family.inserted_at, desc: image.id],
+        limit: ^limit,
+        select: map(image, [:id, :filename, :content_type, :size, :family_id])
+      ),
+      log: false
+    )
   end
 
   defp get_active_asset(project_id, asset_id, kind) do

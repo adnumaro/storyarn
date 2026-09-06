@@ -45,17 +45,44 @@ defmodule Storyarn.Flows.Versioning.AssetCatalog do
   @doc "Captures the portable catalog entries for a bounded set of active assets."
   @spec capture_snapshot_asset_catalog(pos_integer(), [pos_integer() | nil]) ::
           {:ok, {map(), map()}} | {:error, term()}
-  def capture_snapshot_asset_catalog(project_id, asset_ids)
+  def capture_snapshot_asset_catalog(project_id, asset_ids, mode \\ :verified)
+
+  def capture_snapshot_asset_catalog(project_id, asset_ids, mode)
       when is_integer(project_id) and project_id > 0 and is_list(asset_ids) do
     with {:ok, ids} <- normalize_snapshot_catalog_ids(asset_ids),
          assets = snapshot_catalog_assets(ids),
          :ok <- validate_snapshot_catalog_assets(assets, ids, project_id),
-         :ok <- ensure_snapshot_catalog_blobs(project_id, assets) do
+         :ok <- maybe_verify_catalog(project_id, assets, mode) do
       {:ok, snapshot_catalog_maps(assets)}
     end
   end
 
-  def capture_snapshot_asset_catalog(_project_id, _asset_ids), do: {:error, :invalid_snapshot_asset_catalog_request}
+  def capture_snapshot_asset_catalog(_project_id, _asset_ids, _mode),
+    do: {:error, :invalid_snapshot_asset_catalog_request}
+
+  defp maybe_verify_catalog(_project_id, _assets, :metadata), do: :ok
+  defp maybe_verify_catalog(project_id, assets, :verified), do: ensure_snapshot_catalog_blobs(project_id, assets)
+
+  @doc "Verifies the immutable asset identities captured by a queued version, including deleted source assets."
+  def verify_captured_catalog(project_id, snapshot) do
+    assets =
+      Enum.map(snapshot["asset_blob_hashes"], fn {id, hash} ->
+        metadata = snapshot["asset_metadata"][id]
+
+        %AssetRecord{
+          id: String.to_integer(id),
+          project_id: project_id,
+          blob_hash: hash,
+          key: metadata["key"],
+          filename: metadata["filename"],
+          size: metadata["size"],
+          content_type: metadata["content_type"],
+          metadata: %{"sanitized_svg" => metadata["sanitized_svg"]}
+        }
+      end)
+
+    ensure_snapshot_catalog_blobs(project_id, assets)
+  end
 
   @doc "Runs one Flow restore under a shared storage-compensation and materialization cache."
   @spec with_snapshot_asset_restore_scope(pos_integer(), (reference() -> term())) :: term()

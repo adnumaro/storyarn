@@ -14,6 +14,7 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
+  alias Storyarn.SnapshotReadSwitchStorage
   alias Storyarn.Workspaces.Workspace
 
   setup do
@@ -44,6 +45,63 @@ defmodule Storyarn.Flows.NamedVersionLimitConcurrencyTest do
 
     on_exit(fn -> cleanup_fixtures(fixtures) end)
     fixtures
+  end
+
+  test "a queued version upload does not block editing its Flow", %{flow: flow, user: user} do
+    original_storage = Application.fetch_env!(:storyarn, :storage)
+    {:ok, storage_pid} = SnapshotReadSwitchStorage.start_link(%{})
+    Process.unlink(storage_pid)
+    Application.put_env(:storyarn, :storage, Keyword.put(original_storage, :adapter, SnapshotReadSwitchStorage))
+
+    on_exit(fn ->
+      Application.put_env(:storyarn, :storage, original_storage)
+      if Process.alive?(storage_pid), do: Agent.stop(storage_pid)
+    end)
+
+    request =
+      Sandbox.unboxed_run(Repo, fn ->
+        {:ok, request} = Flows.request_version(flow, user.id, title: "During upload")
+        request
+      end)
+
+    parent = self()
+
+    SnapshotReadSwitchStorage.on_upload(fn _key, _data, _type ->
+      send(parent, {:upload_started, self()})
+
+      receive do
+        :finish_upload -> :ok
+      after
+        5_000 -> raise "test did not release the upload"
+      end
+    end)
+
+    task = Task.async(fn -> Sandbox.unboxed_run(Repo, fn -> Flows.perform_version_request(request.id) end) end)
+    assert_receive {:upload_started, writer}, 5_000
+
+    try do
+      result =
+        Sandbox.unboxed_run(Repo, fn ->
+          Repo.transaction(fn ->
+            Repo.query!("SET LOCAL lock_timeout = '1s'")
+            Flows.update_flow(flow, %{name: "Edited during upload"})
+          end)
+        end)
+
+      assert {:ok, {:ok, edited}} = result
+      assert edited.name == "Edited during upload"
+    after
+      send(writer, :finish_upload)
+    end
+
+    assert {:ok, completed} = Task.await(task, 5_000)
+    assert completed.status == "completed"
+
+    Sandbox.unboxed_run(Repo, fn ->
+      version = Flows.get_latest_version(flow.id)
+      assert {:ok, snapshot} = Flows.load_version_snapshot(version)
+      assert snapshot["name"] == flow.name
+    end)
   end
 
   test "concurrent promotions consume the final named-version slot atomically", %{

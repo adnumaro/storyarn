@@ -144,6 +144,9 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
       "Storyarn.Projects.Persistence.FlowRecord",
       "Storyarn.Projects.Versioning.Builders.FlowBuilder"
     ],
+    "test/storyarn/flows/versioning/integration/version_requests_test.exs" => [
+      "Storyarn.Projects.Assets"
+    ],
     "test/storyarn/flows/versioning/integration/versioning_test.exs" => [
       "Storyarn.Projects.Versioning"
     ],
@@ -156,6 +159,12 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     # public facade; this integration test checks authorization and event wiring.
     "test/storyarn_web/live/flow_live/comments_test.exs" => [
       "Storyarn.Projects"
+    ],
+    # Sequence versions integrate project-owned opt-out settings and uploaded
+    # asset bytes. Keep those two contracts explicit for this LiveView test.
+    "test/storyarn_web/live/flow_live/sequence_versioning_test.exs" => [
+      "Storyarn.Projects",
+      "Storyarn.Projects.Assets"
     ]
   }
 

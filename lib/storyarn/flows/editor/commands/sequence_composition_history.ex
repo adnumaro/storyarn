@@ -11,6 +11,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
 
   alias Storyarn.Flows.Editor.Projections.AssetRecord
   alias Storyarn.Flows.FlowNode
+  alias Storyarn.Flows.NodeUpdate
   alias Storyarn.Flows.References
   alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.SequenceConfig
@@ -172,6 +173,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
       "flow_id" => owner.flow_id,
       "owner_type" => owner.type,
       "composition_source_id" => owner.composition_source_id,
+      "composition_layer_order" => Map.get(owner.data || %{}, "composition_layer_order"),
       "position_x" => owner.position_x,
       "position_y" => owner.position_y,
       "config" => serialize_config(owner.sequence_config),
@@ -227,6 +229,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          {:ok, flow_id} <- normalize_required_id(snapshot["flow_id"]),
          owner_type when owner_type in ["sequence", "dialogue"] <- snapshot["owner_type"],
          {:ok, source_id} <- normalize_optional_id(snapshot["composition_source_id"]),
+         {:ok, layer_order} <- normalize_layer_order(snapshot["composition_layer_order"]),
          {:ok, position_x} <- normalize_number(snapshot, "position_x"),
          {:ok, position_y} <- normalize_number(snapshot, "position_y"),
          {:ok, config} <- normalize_config(owner_type, snapshot),
@@ -239,6 +242,7 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          "flow_id" => flow_id,
          "owner_type" => owner_type,
          "composition_source_id" => source_id,
+         "composition_layer_order" => layer_order,
          "position_x" => position_x,
          "position_y" => position_y,
          "config" => config,
@@ -287,10 +291,10 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
          {:ok, label} <- normalize_optional_label(row["label"]),
          {:ok, z_index} <- normalize_int32(row["z_index"]),
          slot when slot in @visual_slots <- row["slot"],
-         {:ok, x} <- normalize_unit_number(row["x"], false),
-         {:ok, y} <- normalize_unit_number(row["y"], false),
-         {:ok, width} <- normalize_unit_number(row["width"], true),
-         {:ok, height} <- normalize_unit_number(row["height"], true),
+         {:ok, x} <- normalize_position(row["x"]),
+         {:ok, y} <- normalize_position(row["y"]),
+         {:ok, width} <- normalize_size(row["width"]),
+         {:ok, height} <- normalize_size(row["height"]),
          {:ok, anchor_x} <- normalize_unit_number(row["anchor_x"], false),
          {:ok, anchor_y} <- normalize_unit_number(row["anchor_y"], false),
          fit when fit in @visual_fits <- row["fit"],
@@ -322,6 +326,17 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
   end
 
   defp normalize_visual_layer(_row), do: {:error, :invalid_composition_snapshot}
+
+  defp normalize_layer_order(nil), do: {:ok, nil}
+
+  defp normalize_layer_order(keys) when is_list(keys) do
+    if length(keys) == length(Enum.uniq(keys)) and
+         Enum.all?(keys, &(is_binary(&1) and String.length(&1) in 1..@max_key_length)),
+       do: {:ok, keys},
+       else: {:error, :invalid_composition_snapshot}
+  end
+
+  defp normalize_layer_order(_keys), do: {:error, :invalid_composition_snapshot}
 
   defp normalize_rows(rows, normalize) do
     rows
@@ -389,6 +404,12 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
   end
 
   defp normalize_unit_number(_value, _strictly_positive?), do: {:error, :invalid_composition_snapshot}
+
+  defp normalize_position(value) when is_number(value) and value >= -10 and value <= 10, do: {:ok, value}
+  defp normalize_position(_value), do: {:error, :invalid_composition_snapshot}
+
+  defp normalize_size(value) when is_number(value) and value > 0 and value <= 20, do: {:ok, value}
+  defp normalize_size(_value), do: {:error, :invalid_composition_snapshot}
 
   defp normalize_int32(value) when is_integer(value) and value >= @int32_min and value <= @int32_max, do: {:ok, value}
 
@@ -572,9 +593,26 @@ defmodule Storyarn.Flows.SequenceCompositionHistory do
            |> FlowNode.composition_source_changeset(%{composition_source_id: source_id})
            |> Repo.update(),
          {:ok, owner} <- restore_position(owner, snapshot),
+         {:ok, owner} <- restore_layer_order(owner, snapshot["composition_layer_order"]),
          :ok <- restore_config(owner, snapshot["config"]) do
       {:ok, owner}
     end
+  end
+
+  defp restore_layer_order(owner, order) do
+    data = owner.data || %{}
+
+    data =
+      if is_nil(order),
+        do: Map.delete(data, "composition_layer_order"),
+        else: Map.put(data, "composition_layer_order", order)
+
+    owner
+    |> Ecto.Changeset.change(
+      data: data,
+      derivatives_fingerprint: NodeUpdate.derivatives_fingerprint(owner.type, data)
+    )
+    |> Repo.update()
   end
 
   defp restore_position(owner, %{"position_x" => x, "position_y" => y}) do

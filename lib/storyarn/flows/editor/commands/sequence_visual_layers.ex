@@ -8,7 +8,7 @@ defmodule Storyarn.Flows.Editor.Commands.SequenceVisualLayers do
   alias Storyarn.Flows.SequenceVisualLayer
   alias Storyarn.Repo
 
-  @doc "Creates a local visual-layer definition. `kind` drives sensible stage defaults, and explicit attrs override those defaults."
+  @doc "Creates a local visual-layer definition above existing layers unless an explicit z-index is supplied."
   @spec create_sequence_visual_layer(integer(), map()) ::
           {:ok, SequenceVisualLayer.t()} | {:error, Ecto.Changeset.t()}
   def create_sequence_visual_layer(sequence_id, attrs) when is_integer(sequence_id) and is_map(attrs) do
@@ -18,6 +18,7 @@ defmodule Storyarn.Flows.Editor.Commands.SequenceVisualLayers do
       |> Map.drop(~w(flow_node_id layer_key overridden_fields removed))
 
     kind = Map.get(attrs, "kind", "prop")
+    explicit_z_index? = Map.has_key?(attrs, "z_index")
     slot = normalize_visual_slot(kind, Map.get(attrs, "slot", default_slot_for_visual_kind(kind)))
 
     attrs =
@@ -30,6 +31,7 @@ defmodule Storyarn.Flows.Editor.Commands.SequenceVisualLayers do
 
     Repo.transaction(fn ->
       with {:ok, %{project_id: project_id}} <- SequenceCompositionWrite.lock_owner(sequence_id),
+           attrs = default_insertion_order(attrs, sequence_id, explicit_z_index?),
            changeset = SequenceVisualLayer.create_changeset(%SequenceVisualLayer{}, attrs),
            asset_id = Ecto.Changeset.get_field(changeset, :asset_id),
            {:ok, asset_id} <-
@@ -48,6 +50,25 @@ defmodule Storyarn.Flows.Editor.Commands.SequenceVisualLayers do
         {:error, reason} -> Repo.rollback(reason)
       end
     end)
+  end
+
+  defp default_insertion_order(attrs, _owner_id, true), do: attrs
+
+  defp default_insertion_order(attrs, owner_id, false) do
+    highest_z_index =
+      Repo.one(
+        from(layer in SequenceVisualLayer,
+          where: layer.flow_node_id == ^owner_id,
+          select: max(layer.z_index)
+        )
+      )
+
+    # A new logical key follows manually ordered keys, and local definitions
+    # follow inherited definitions. Only its place among other local keys needs
+    # a new z-index; preserving the owner's order also preserves live inheritance.
+    if is_integer(highest_z_index),
+      do: Map.put(attrs, "z_index", max(attrs["z_index"], highest_z_index + 1)),
+      else: attrs
   end
 
   @doc "Updates a local visual-layer row."

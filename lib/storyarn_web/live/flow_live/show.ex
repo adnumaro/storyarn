@@ -12,6 +12,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
+  alias StoryarnWeb.FlowLive.Handlers.SequencePlaybackHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
@@ -178,6 +179,8 @@ defmodule StoryarnWeb.FlowLive.Show do
     %{project: project, can_edit: can_edit} = socket.assigns
 
     if connected?(socket) do
+      Flows.subscribe_version_requests(project.id)
+
       Phoenix.PubSub.subscribe(
         Storyarn.PubSub,
         ProjectChromeHelpers.shell_topic(project.id)
@@ -206,6 +209,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:node_form, nil)
       |> assign(:editing_mode, nil)
       |> assign(:sequence_panel_data, nil)
+      |> assign(:sequence_workspace_open, false)
+      |> assign(:sequence_playback_session, nil)
+      |> assign(:sequence_playback, nil)
       |> assign(:sequence_stage, SequencePresentation.empty_stage())
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
@@ -375,6 +381,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> teardown_previous_flow(flow)
         |> CommentHandlers.init()
         |> assign(:loading, true)
+        |> assign(:sequence_playback_session, nil)
+        |> assign(:sequence_playback, nil)
         |> assign(:flow, flow)
         |> maybe_start_flow_load(flow)
     end
@@ -597,6 +605,25 @@ defmodule StoryarnWeb.FlowLive.Show do
     GenericNodeHandlers.handle_open_sequence_config(params, CommentHandlers.close(socket))
   end
 
+  def handle_event("set_sequence_workspace", params, socket) do
+    {:noreply, socket} = GenericNodeHandlers.handle_set_sequence_workspace(params, socket)
+
+    if socket.assigns.sequence_workspace_open do
+      {:noreply, socket}
+    else
+      SequencePlaybackHandlers.handle_event(%{"action" => "stop"}, socket)
+    end
+  end
+
+  # Playback changes an ephemeral runtime session, never authored content or project variables.
+  def handle_event("sequence_playback", params, socket) do
+    if socket.assigns.sequence_workspace_open && !socket.assigns.loading do
+      SequencePlaybackHandlers.handle_event(params, socket)
+    else
+      {:noreply, socket}
+    end
+  end
+
   def handle_event("close_sequence_config", _params, socket) do
     {:noreply,
      socket
@@ -657,6 +684,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("update_sequence_visual_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_update_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("reorder_sequence_visual_layers", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_reorder_sequence_visual_layers(params, authorized_socket)
     end)
   end
 
@@ -734,7 +767,8 @@ defmodule StoryarnWeb.FlowLive.Show do
           PickerSearch.asset_options(socket.assigns.project.id, kind,
             query: query,
             limit: picker_limit(params["limit"], PickerSearch.asset_limit()),
-            selected_id: selected_id
+            selected_id: selected_id,
+            sequence_library: params["sequence_library"] == true
           )
 
         {"entity", "sheet"} ->
@@ -1346,6 +1380,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       socket
       |> assign(:flow, flow)
       |> assign(:flow_data, data.flow_data)
+      |> assign(:sequence_workspace_open, false)
       |> assign(:all_sheets, data.all_sheets)
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
@@ -1459,8 +1494,27 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_info({:try_auto_snapshot, token}, socket) do
     if token == socket.assigns[:auto_snapshot_ref] do
       %{flow: flow, current_scope: scope} = socket.assigns
-      Flows.maybe_create_version(flow, scope.user.id)
-      {:noreply, socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)}
+      result = Flows.request_version(flow, scope.user.id, is_auto: true)
+      socket = socket |> assign(:auto_snapshot_ref, nil) |> assign(:auto_snapshot_timer, nil)
+      socket = if socket.assigns.versions_panel_open, do: reload_history_data(socket), else: socket
+
+      case result do
+        {:error, _} -> {:noreply, put_flash(socket, :error, dgettext("versioning", "Could not create version."))}
+        _ -> {:noreply, socket}
+      end
+    else
+      {:noreply, socket}
+    end
+  end
+
+  def handle_info({:flow_version_request_finished, flow_id, user_id, status, is_auto}, socket) do
+    if socket.assigns.flow && socket.assigns.flow.id == flow_id do
+      socket =
+        if socket.assigns.versions_panel_open, do: reload_history_data(socket), else: assign(socket, :history_data, nil)
+
+      socket = notify_version_request(socket, user_id, status, is_auto)
+
+      {:noreply, socket}
     else
       {:noreply, socket}
     end
@@ -1479,6 +1533,7 @@ defmodule StoryarnWeb.FlowLive.Show do
           node.type
           |> NodeTypeRegistry.on_select(node, socket)
           |> assign(:sequence_stage, sequence_stage)
+          |> GenericNodeHandlers.refresh_workspace_panel(node)
 
         {:noreply, assign(socket, :node_select_loading, false)}
 
@@ -1613,7 +1668,17 @@ defmodule StoryarnWeb.FlowLive.Show do
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
       stage: assigns.sequence_stage,
-      sequencePanelOpen: sequence_config_open?(assigns.editing_mode, assigns.selected_node),
+      sequencePlayback: assigns.sequence_playback,
+      sequencePanelOpen:
+        !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, assigns.selected_node),
+      sequenceWorkspace: %{
+        data: if(assigns.sequence_workspace_open, do: assigns.sequence_panel_data),
+        sheets:
+          if(assigns.sequence_workspace_open,
+            do: assigns.all_sheets |> FormHelpers.sheets_map(assigns.gallery_by_sheet) |> Map.values(),
+            else: []
+          )
+      },
       debug: flow_panels_debug(assigns)
     }
   end
@@ -1694,6 +1759,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       autoVersions: history_value(history_data, :auto_versions, []),
       hasMore: history_value(history_data, :has_more, false),
       canNameVersion: history_value(history_data, :can_name_version, false),
+      creationPending: history_value(history_data, :creation_pending, false),
+      creationFailed: history_value(history_data, :creation_failed, false),
       currentVersionId: history_value(history_data, :current_version_id, nil),
       canEdit: assigns.can_edit,
       restoreEnabled:
@@ -1758,7 +1825,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     selected_node = assigns.selected_node
 
     %{
-      open: sequence_config_open?(assigns.editing_mode, selected_node),
+      open: !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, selected_node),
       data: assigns.sequence_panel_data,
       canEdit: assigns.can_edit
     }
@@ -1858,4 +1925,14 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp parse_picker_integer(_value), do: nil
+
+  defp notify_version_request(socket, user_id, status, false) do
+    case {user_id == socket.assigns.current_scope.user.id, status} do
+      {true, "completed"} -> put_flash(socket, :info, dgettext("versioning", "Version created."))
+      {true, "failed"} -> put_flash(socket, :error, dgettext("versioning", "Could not create version."))
+      _ -> socket
+    end
+  end
+
+  defp notify_version_request(socket, _user_id, _status, _is_auto), do: socket
 end

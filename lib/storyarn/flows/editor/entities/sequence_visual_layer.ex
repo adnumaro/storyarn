@@ -201,12 +201,16 @@ defmodule Storyarn.Flows.SequenceVisualLayer do
     |> validate_inclusion(:slot, @slots)
     |> validate_inclusion(:fit, @fits)
     |> validate_length(:label, max: 120)
-    |> validate_normalized(:x)
-    |> validate_normalized(:y)
+    |> validate_number(:z_index,
+      greater_than_or_equal_to: -2_147_483_648,
+      less_than_or_equal_to: 2_147_483_647
+    )
+    |> validate_number(:x, greater_than_or_equal_to: -10, less_than_or_equal_to: 10)
+    |> validate_number(:y, greater_than_or_equal_to: -10, less_than_or_equal_to: 10)
     |> validate_normalized(:anchor_x)
     |> validate_normalized(:anchor_y)
-    |> validate_number(:width, greater_than: 0, less_than_or_equal_to: 1)
-    |> validate_number(:height, greater_than: 0, less_than_or_equal_to: 1)
+    |> validate_number(:width, greater_than: 0, less_than_or_equal_to: 20)
+    |> validate_number(:height, greater_than: 0, less_than_or_equal_to: 20)
     |> validate_normalized(:opacity)
     |> validate_override_fields()
   end

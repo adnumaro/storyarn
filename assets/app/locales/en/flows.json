@@ -182,7 +182,11 @@
       "exit_fullscreen": "Exit full screen",
       "resize_split": "Resize sequence and Flow views",
       "select_layer": "Select layer {name}",
-      "resize_layer": "Resize layer {name}"
+      "resize_layer": "Resize layer {name}",
+      "zoom_in": "Zoom in",
+      "zoom_out": "Zoom out",
+      "fit_view": "Fit view",
+      "canvas_hint": "Space + drag to pan · Arrows to move"
     },
     "node_types": {
       "dialogue": "Dialogue",
@@ -347,6 +351,8 @@
       "minimize": "Back to side panel"
     },
     "version_history": {
+      "creating": "Creating version…",
+      "creation_failed": "The version could not be saved. Please try again.",
       "title": "Version History"
     },
     "exit_modes": {
@@ -565,6 +571,67 @@
       "threads": "Comment threads",
       "load_threads": "Load more threads",
       "node_count": "{count} open thread | {count} open threads"
+    },
+    "sequence_library": {
+      "title": "Library",
+      "sheets": "Sheets",
+      "assets": "Assets",
+      "search": "Search images or sheets…",
+      "current_speaker": "Current speaker",
+      "add": "Add {name}",
+      "gallery": "Gallery",
+      "portrait": "Cropped portrait",
+      "unavailable": "Image unavailable",
+      "replace": "Replace with {name}",
+      "replace_selected": "Replace selected image",
+      "empty_sheets": "No images found in these sheets.",
+      "empty_assets": "No images found.",
+      "show_more": "Show more",
+      "hint": "Drag an image onto the stage or select it to add.",
+      "refine_search": "More images match. Refine your search.",
+      "search_failed": "Images could not be loaded. Try again.",
+      "upload_images": "Upload images",
+      "drop_in_library": "Drop images here to save them in Assets",
+      "drop_on_stage": "Drop images to save them in Assets and place them on the stage",
+      "unsupported_image": "{name}: use a JPEG, PNG, GIF or WebP image"
+    },
+    "sequence_workspace": {
+      "title": "Composition",
+      "layers": "Layers",
+      "front_to_back": "Front → back",
+      "show_layer": "Show layer",
+      "hide_layer": "Hide layer",
+      "lock_layer": "Lock or unlock position",
+      "no_layers": "Add an image from the library.",
+      "bring_forward": "Bring forward",
+      "send_backward": "Send backward",
+      "select_layer": "Select an object to edit its properties.",
+      "layer_name": "Layer name",
+      "image": "Image",
+      "position_locked": "Unlock this layer to change its position or size.",
+      "inherited_from": "Continues from #{id}",
+      "reset_changes": "Reset local changes",
+      "continues_from": "Continues from",
+      "initial": "Initial composition",
+      "inspector": "Layers and properties",
+      "add_as": "Add as",
+      "add_image": "Upload or choose image",
+      "panels": {
+        "library": "Library",
+        "stage": "Stage",
+        "inspector": "Layers"
+      },
+      "resize_library": "Resize library",
+      "resize_inspector": "Resize layers and inspector"
+    },
+    "sequence_playback": {
+      "start": "Play",
+      "start_hint": "Play from this dialogue using the initial variable values",
+      "stop": "Stop playback",
+      "title": "Scene playback",
+      "finished": "End of playback",
+      "error": "Playback could not continue. Try again or restart.",
+      "voice": "Dialogue audio"
     }
   }
 }

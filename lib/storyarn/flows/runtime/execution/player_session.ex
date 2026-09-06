@@ -34,6 +34,7 @@ defmodule Storyarn.Flows.PlayerSession do
   @type error_reason ::
           :advance_failed
           | :entry_not_found
+          | :invalid_start_node
           | :invalid_response
           | :no_history
           | :transition_limit
@@ -42,21 +43,37 @@ defmodule Storyarn.Flows.PlayerSession do
 
   @type result :: {:ok, t()} | {:error, error_reason(), t()}
 
-  @doc "Creates and advances a player session to its first interaction."
-  @spec start(Flow.t(), map()) :: {:ok, t()} | {:error, error_reason()}
-  def start(%Flow{} = flow, variables) when is_map(variables) do
+  @doc """
+  Creates and advances a player session to its first interaction.
+
+  `:start_node_id` starts at an existing node in this Flow instead of its entry.
+  Variables begin at their supplied values; earlier instructions are not replayed.
+  """
+  @spec start(Flow.t(), map(), keyword()) :: {:ok, t()} | {:error, error_reason()}
+  def start(%Flow{} = flow, variables, opts \\ []) when is_map(variables) do
     session = load_session(flow, variables)
 
-    case RuntimeGraph.entry_node_id(session.nodes) do
-      nil ->
-        {:error, :entry_not_found}
+    with {:ok, start_node_id} <- start_node_id(session.nodes, opts) do
+      state = variables |> Engine.init(start_node_id) |> Map.put(:current_flow_id, flow.id)
 
-      entry_id ->
-        state = variables |> Engine.init(entry_id) |> Map.put(:current_flow_id, flow.id)
+      case advance(session, state, [], 0) do
+        {:ok, session} -> {:ok, session}
+        {:error, reason, _session} -> {:error, reason}
+      end
+    end
+  end
 
-        case advance(session, state, [], 0) do
-          {:ok, session} -> {:ok, session}
-          {:error, reason, _session} -> {:error, reason}
+  defp start_node_id(nodes, opts) do
+    case Keyword.fetch(opts, :start_node_id) do
+      {:ok, node_id} ->
+        if is_integer(node_id) and Map.has_key?(nodes, node_id),
+          do: {:ok, node_id},
+          else: {:error, :invalid_start_node}
+
+      :error ->
+        case RuntimeGraph.entry_node_id(nodes) do
+          nil -> {:error, :entry_not_found}
+          node_id -> {:ok, node_id}
         end
     end
   end

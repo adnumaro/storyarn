@@ -39,6 +39,32 @@ defmodule StoryarnWeb.FlowLive.PickerSearchTest do
              {[%{id: matching.id, name: matching.name}], false}
   end
 
+  test "the sequence library serves the lightest member even when searching the original filename" do
+    user = user_fixture()
+    project = project_fixture(user)
+    original = image_asset_fixture(project, user, %{filename: "portrait.png", size: 50_000})
+
+    variant =
+      image_asset_fixture(project, user, %{
+        filename: "portrait.webp",
+        content_type: "image/webp",
+        size: 1_000,
+        metadata: %{"original_asset_id" => original.id, "variant_profile" => "scene_background_web"}
+      })
+
+    assert PickerSearch.asset_options(project.id, "image", sequence_library: true, query: "portrait.png") ==
+             {[
+                %{
+                  id: variant.id,
+                  filename: variant.filename,
+                  content_type: variant.content_type,
+                  url: "/media/assets/#{variant.id}",
+                  size: variant.size,
+                  family_id: to_string(original.id)
+                }
+              ], false}
+  end
+
   test "returns the Flow-owned variable search projection without reshaping it" do
     variables = [
       %{sheet_shortcut: "hero", variable_name: "health", label: "Hero health"},

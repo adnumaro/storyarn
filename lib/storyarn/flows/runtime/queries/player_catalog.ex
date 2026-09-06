@@ -9,6 +9,7 @@ defmodule Storyarn.Flows.PlayerCatalog do
 
   import Ecto.Query
 
+  alias Storyarn.Flows.Runtime.Projections.AssetRecord
   alias Storyarn.Flows.Runtime.Projections.SheetRecord
   alias Storyarn.Repo
 
@@ -37,6 +38,18 @@ defmodule Storyarn.Flows.PlayerCatalog do
     )
     |> Repo.all()
     |> Enum.map(&to_speaker/1)
+  end
+
+  @doc "Resolves an active dialogue audio reference within its project."
+  @spec get_audio_asset(integer(), integer()) :: media_ref() | nil
+  def get_audio_asset(project_id, asset_id) do
+    from(asset in AssetRecord,
+      where:
+        asset.project_id == ^project_id and asset.id == ^asset_id and is_nil(asset.deleted_at) and
+          like(asset.content_type, "audio/%")
+    )
+    |> Repo.one()
+    |> media_ref()
   end
 
   defp to_speaker(sheet) do

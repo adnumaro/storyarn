@@ -1362,6 +1362,137 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     assert Decimal.equal?(restored_patch.volume, Decimal.new("0.3"))
   end
 
+  test "restores dialogue composition order and offstage geometry from a full project archive" do
+    user = user_fixture()
+    project = project_fixture(user)
+    on_exit(fn -> delete_project_storage(project.id) end)
+    scope = user_scope_fixture(user)
+    flow = flow_fixture(project, %{name: "Archived visual composition"})
+    image_bytes = "snapshot-owned sequence image"
+    audio_bytes = "snapshot-owned sequence ambience"
+
+    assert {:ok, image} =
+             Assets.upload_binary_and_create_asset(
+               image_bytes,
+               %{filename: "composition.png", content_type: "image/png"},
+               project,
+               user
+             )
+
+    assert {:ok, audio} =
+             Assets.upload_binary_and_create_asset(
+               audio_bytes,
+               %{filename: "ambience.mp3", content_type: "audio/mpeg"},
+               project,
+               user
+             )
+
+    assert {:ok, source} = Storyarn.Flows.create_sequence(flow.id, %{"name" => "Source stage"})
+    dialogue = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Archived line", "responses" => []}})
+    assert {:ok, dialogue} = Storyarn.Flows.set_composition_source(dialogue.id, source.id)
+
+    assert {:ok, inherited} =
+             Storyarn.Flows.create_sequence_visual_layer(source.id, %{
+               asset_id: image.id,
+               kind: "backdrop",
+               z_index: 5,
+               x: -0.3,
+               y: -0.2,
+               width: 1.5,
+               height: 1.2
+             })
+
+    assert {:ok, local} =
+             Storyarn.Flows.create_sequence_visual_layer(dialogue.id, %{
+               asset_id: image.id,
+               kind: "character",
+               z_index: 100,
+               x: 1.2,
+               y: 2.2,
+               width: 3.0,
+               height: 4.0
+             })
+
+    assert {:ok, _layer_patch} =
+             Storyarn.Flows.override_sequence_visual_layer(dialogue.id, inherited.layer_key, %{x: -0.5})
+
+    assert {:ok, track} =
+             Storyarn.Flows.upsert_sequence_track(source.id, "ambience", %{
+               asset_id: audio.id,
+               volume: Decimal.new("0.75")
+             })
+
+    assert {:ok, _track_patch} =
+             Storyarn.Flows.override_sequence_track(dialogue.id, track.track_key, %{volume: Decimal.new("0.3")})
+
+    order = [local.layer_key, inherited.layer_key]
+    assert {:ok, _dialogue} = Storyarn.Flows.reorder_sequence_visual_layers(dialogue.id, order)
+    snapshot = stored_full_snapshot_fixture(project)
+
+    assert {:ok, _dialogue} = Storyarn.Flows.reorder_sequence_visual_layers(dialogue.id, Enum.reverse(order))
+    assert {:ok, _local} = Storyarn.Flows.update_sequence_visual_layer(local, %{x: 0.5, width: 0.5})
+
+    for asset <- [image, audio] do
+      assert :ok = Local.delete(asset.key)
+      extension = BlobStore.ext_from_content_type(asset.content_type)
+      assert :ok = Local.delete(BlobStore.blob_key(project.id, asset.blob_hash, extension))
+    end
+
+    restore = request_and_claim_restore(scope, project, snapshot)
+    assert {:ok, result} = ProjectSnapshotRestoreExecutor.execute(restore, [])
+    assert is_binary(result.semantic_digest)
+    assert Repo.get!(ProjectSnapshotRestore, restore.id).status == "completed"
+
+    restored_flow =
+      Repo.one!(from(candidate in Flow, where: candidate.project_id == ^project.id and is_nil(candidate.deleted_at)))
+
+    restored_nodes =
+      Repo.all(
+        from(node in FlowNode,
+          where: node.flow_id == ^restored_flow.id and is_nil(node.deleted_at),
+          preload: [:sequence_tracks, :sequence_visual_layers]
+        )
+      )
+
+    restored_source = Enum.find(restored_nodes, &(&1.type == "sequence"))
+    restored_dialogue = Enum.find(restored_nodes, &(&1.type == "dialogue"))
+    refute restored_dialogue.id == dialogue.id
+    refute restored_source.id == source.id
+    assert restored_dialogue.data["text"] == "Archived line"
+    assert restored_dialogue.data["composition_layer_order"] == order
+    assert restored_dialogue.composition_source_id == restored_source.id
+
+    assert [restored_inherited] = restored_source.sequence_visual_layers
+    assert restored_inherited.layer_key == inherited.layer_key
+
+    assert {restored_inherited.x, restored_inherited.y, restored_inherited.width, restored_inherited.height} ==
+             {-0.3, -0.2, 1.5, 1.2}
+
+    graph = Storyarn.Flows.load_runtime_graph(restored_flow.id)
+    composition = Storyarn.Flows.compose_node_sequences(restored_dialogue.id, graph.nodes)
+    assert composition.diagnostics == []
+    assert Enum.map(composition.visual_layers, & &1.layer_key) == order
+    assert Enum.map(composition.visual_layers, & &1.stack_index) == [0, 1]
+    assert [local_result, inherited_result] = composition.visual_layers
+
+    assert {local_result.item.x, local_result.item.y, local_result.item.width, local_result.item.height} ==
+             {1.2, 2.2, 3.0, 4.0}
+
+    assert local_result.item.z_index == 100
+    assert inherited_result.item.z_index == 5
+    assert inherited_result.item.x == -0.5
+    assert inherited_result.item.width == 1.5
+    assert inherited_result.item.asset_id == local_result.item.asset_id
+    refute local_result.item.asset_id == image.id
+    assert {:ok, ^image_bytes} = Storage.download(Repo.get!(Asset, local_result.item.asset_id).key)
+
+    assert [audio_result] = composition.audio_tracks
+    assert audio_result.track_key == track.track_key
+    assert Decimal.equal?(audio_result.item.volume, Decimal.new("0.3"))
+    refute audio_result.item.asset_id == audio.id
+    assert {:ok, ^audio_bytes} = Storage.download(Repo.get!(Asset, audio_result.item.asset_id).key)
+  end
+
   test "exact restore postverifies a project snapshot from before composition inheritance", context do
     project = Repo.get!(Project, context.restore.project_id)
     flow = flow_fixture(project, %{name: "Legacy sequence composition restore"})
@@ -2566,6 +2697,48 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
              )
 
     restore
+  end
+
+  defp stored_full_snapshot_fixture(project) do
+    assets = Assets.list_assets_for_export(project.id)
+    {hashes, metadata} = AssetHashResolver.capture_catalog_maps(assets)
+
+    capture =
+      project.id
+      |> capture_project_object()
+      |> Map.put("asset_restore_contract_version", AssetHashResolver.exact_restore_contract_version())
+      |> Map.put("asset_blob_hashes", hashes)
+      |> Map.put("asset_metadata", metadata)
+
+    assert {:ok, prepared} =
+             SnapshotArchiveStorage.prepare(project.id, capture, assets, source_key_mode: :protected_blob)
+
+    assert {:ok, zip_plan} = ProjectSnapshotZip.prepare_capture(project.id, prepared)
+    archive = zip_plan |> ProjectSnapshotZip.stream() |> Enum.to_list() |> IO.iodata_to_binary()
+    prefix = SnapshotArchiveStorage.ready_prefix(project.id, archive_token())
+    archive_key = SnapshotArchiveStorage.archive_key(prefix)
+    manifest_key = SnapshotArchiveStorage.manifest_key(prefix)
+    assert {:ok, _url} = Storage.upload(archive_key, archive, "application/zip")
+    assert {:ok, _url} = Storage.upload(manifest_key, prepared.manifest_json, "application/json")
+
+    full_project_snapshot_fixture(project, %{
+      object_prefix: prefix,
+      archive_storage_key: archive_key,
+      archive_size_bytes: byte_size(archive),
+      archive_checksum: sha256(archive),
+      project_size_bytes: prepared.project_size_bytes,
+      project_checksum: prepared.project_checksum,
+      manifest_storage_key: manifest_key,
+      manifest_size_bytes: prepared.manifest_size_bytes,
+      manifest_checksum: prepared.manifest_checksum,
+      total_size_bytes: byte_size(archive) + prepared.manifest_size_bytes,
+      accounted_size_bytes: byte_size(archive) + prepared.manifest_size_bytes,
+      asset_blob_size_bytes: prepared.asset_blob_size_bytes,
+      asset_count: length(assets),
+      blob_count: assets |> Enum.map(& &1.blob_hash) |> Enum.uniq() |> length(),
+      capture_digest: prepared.capture_digest,
+      entity_counts: capture["entity_counts"]
+    })
   end
 
   defp archive_token do

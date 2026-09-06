@@ -59,12 +59,27 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
   @doc false
   def build_snapshot(%Flow{} = flow), do: build(flow)
 
-  defp build_transaction(flow_id, project_id) do
+  @doc "Captures a coherent database state and persists its request in the same transaction, without object I/O."
+  def capture(%Flow{id: flow_id, project_id: project_id}, persist) when is_function(persist, 1) do
+    Repo.transaction(
+      fn ->
+        snapshot = build_transaction(flow_id, project_id, :metadata)
+
+        case persist.(snapshot) do
+          {:ok, result} -> result
+          {:error, reason} -> Repo.rollback(reason)
+        end
+      end,
+      isolation: :repeatable_read
+    )
+  end
+
+  defp build_transaction(flow_id, project_id, mode \\ :verified) do
     with {:ok, _project} <- References.lock_active_project(project_id),
          {:ok, flow} <- lock_source_flow_for_snapshot(flow_id, project_id),
          :ok <- emit_source_locked(flow),
          :ok <- lock_localization_inventory(project_id),
-         {:ok, snapshot} <- build_locked(flow) do
+         {:ok, snapshot} <- build_locked(flow, mode) do
       snapshot
     else
       {:error, reason} -> Repo.rollback(reason)
@@ -226,7 +241,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
     Localization.lock_inventory!(project_id)
   end
 
-  defp build_locked(flow) do
+  defp build_locked(flow, mode \\ :verified) do
     nodes =
       Repo.all(
         from(node in FlowNode,
@@ -247,7 +262,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
          :ok <- validate_dynamic_pins(connections, normalized_nodes),
          localization = complete_snapshot_localization(localization, normalized_nodes, target_locales),
          {:ok, {asset_blob_hashes, asset_metadata}} <-
-           capture_asset_catalog(normalized_nodes, localization, flow.project_id) do
+           capture_asset_catalog(normalized_nodes, localization, flow.project_id, mode) do
       id_to_index =
         normalized_nodes
         |> Enum.with_index()
@@ -515,7 +530,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
       else: data
   end
 
-  defp capture_asset_catalog(nodes, localization, project_id) do
+  defp capture_asset_catalog(nodes, localization, project_id, mode) do
     asset_ids =
       Enum.flat_map(nodes, fn node ->
         [(node.data || %{})["audio_asset_id"]] ++
@@ -523,7 +538,7 @@ defmodule Storyarn.Flows.Versioning.FlowSnapshot do
           Enum.map(sequence_layers(node), & &1.asset_id)
       end) ++ Enum.map(localization, & &1["vo_asset_id"])
 
-    AssetCatalog.capture_snapshot_asset_catalog(project_id, asset_ids)
+    AssetCatalog.capture_snapshot_asset_catalog(project_id, asset_ids, mode)
   end
 
   defp capture_localization(nodes, project_id, target_locales) do

@@ -116,6 +116,7 @@ config :storyarn, Oban,
   # much latency.
   stage_interval: to_timeout(minute: 15),
   queues: [
+    flow_versions: 1,
     default: 10,
     templates: 1,
     template_installs: 2,
@@ -160,6 +161,7 @@ config :storyarn, Oban,
       # Each entry is paired with the window it enforces. Nothing may be finer
       # than 15 minutes without re-doing the compute-budget arithmetic in ENG-37.
       crontab: [
+        {"*/15 * * * *", Storyarn.Workers.RecoverFlowVersionsWorker},
         # 24h retention (`Billing.Plan` `trash_retention_hours: 24`); 4h is still
         # six times finer than the window.
         {"0 */4 * * *", TrashRetentionWorker},

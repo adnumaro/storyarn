@@ -3,6 +3,40 @@ defmodule Storyarn.Flows.SequenceCompositionTest do
 
   alias Storyarn.Flows
 
+  test "explicit layer order crosses inheritance depth and is inherited by the next intervention" do
+    nodes = %{
+      1 => sequence(1, nil, [layer(11, 20), layer(12, 10)], []),
+      2 =>
+        2
+        |> sequence(1, [layer(21, -10)], [])
+        |> Map.put(:data, %{"composition_layer_order" => ["legacy-layer-21", "legacy-layer-11", "legacy-layer-12"]}),
+      3 => %{id: 3, type: "dialogue", parent_id: 2}
+    }
+
+    assert %{visual_layers: layers} = Flows.compose_node_sequences(3, nodes)
+    assert Enum.map(layers, & &1.item.id) == [21, 11, 12]
+    assert Enum.map(layers, & &1.stack_index) == [0, 1, 2]
+    assert Enum.map(Flows.compose_node_sequences(1, nodes).visual_layers, & &1.item.id) == [12, 11]
+  end
+
+  test "the nearest order wins and later layers append deterministically without stale keys" do
+    nodes = %{
+      1 =>
+        1
+        |> sequence(nil, [layer(11, 20), layer(12, 10), layer(13, 15)], [])
+        |> Map.put(:data, %{"composition_layer_order" => ["legacy-layer-11", "legacy-layer-12"]}),
+      2 =>
+        2
+        |> sequence(1, [layer(21, -10)], [])
+        |> Map.put(:data, %{
+          "composition_layer_order" => ["legacy-layer-21", "removed-key", "legacy-layer-12", "legacy-layer-11"]
+        })
+    }
+
+    assert Enum.map(Flows.compose_node_sequences(1, nodes).visual_layers, & &1.item.id) == [11, 12, 13]
+    assert Enum.map(Flows.compose_node_sequences(2, nodes).visual_layers, & &1.item.id) == [21, 12, 11, 13]
+  end
+
   test "composes visible non-removed visual layers in deterministic depth and z order for the player" do
     nodes = %{
       1 => sequence(1, nil, [layer(11, 20), layer(12, 10), layer(13, 0, false)], []),

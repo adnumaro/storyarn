@@ -9,6 +9,13 @@ defmodule Storyarn.Projects.Persistence.SequenceCompositionChangesetTest do
     {SequenceVisualLayerRecord, %{flow_node_id: 1, asset_id: 1, kind: "backdrop", layer_key: "layer-test"}, "opacity"}
   ]
 
+  test "reconstitution accepts the same bounded offstage geometry as the Flow editor" do
+    attrs = %{flow_node_id: 1, asset_id: 1, kind: "character", x: -10, y: 10, width: 20, height: 2.5}
+    assert SequenceVisualLayerRecord.create_changeset(%SequenceVisualLayerRecord{}, attrs).valid?
+    changeset = SequenceVisualLayerRecord.create_changeset(%SequenceVisualLayerRecord{}, Map.put(attrs, :width, 20.01))
+    refute changeset.valid?
+  end
+
   test "create and override changesets reject a nil override mask" do
     for {module, attrs, _field} <- @subjects,
         changeset_function <- [:create_changeset, :override_changeset] do

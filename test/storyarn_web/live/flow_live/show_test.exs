@@ -9,6 +9,8 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Flows
+  alias Storyarn.Flows.Editor.Projections.GalleryImageRecord
+  alias Storyarn.Flows.Editor.Projections.SheetAvatarRecord
   alias Storyarn.Repo
   alias StoryarnWeb.FlowLive.Show
   alias StoryarnWeb.FlowSidebarLive
@@ -623,6 +625,223 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     end
   end
 
+  describe "sequence workspace" do
+    setup :register_and_log_in_user
+
+    test "opening the workspace closes the active dialogue or builder panel", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      dialogue = node_fixture(flow, %{type: "dialogue"})
+      condition = node_fixture(flow, %{type: "condition"})
+      view = mount_flow(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
+
+      for {node, event, panel} <- [
+            {dialogue, "open_dialogue_panel", "dialogue"},
+            {dialogue, "open_dialogue_fullscreen", "dialogueFullscreen"},
+            {condition, "open_builder", "builder"}
+          ] do
+        render_hook(view, "node_selected", %{"id" => node.id})
+        render_hook(view, event, %{})
+        assert LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"][panel]["open"]
+        render_hook(view, "set_sequence_workspace", %{"open" => true})
+        panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]
+        refute panels["dialogue"]["open"]
+        refute panels["dialogueFullscreen"]["open"]
+        refute panels["builder"]["open"]
+        render_hook(view, "set_sequence_workspace", %{"open" => false})
+      end
+    end
+
+    test "runs playback inline and discards the session when closing the workspace", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      first = node_fixture(flow, %{type: "dialogue", data: %{"text" => "First", "responses" => []}})
+      second = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Second", "responses" => []}})
+      connection_fixture(flow, first, second)
+      view = mount_flow(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
+
+      render_hook(view, "sequence_playback", %{"action" => "start", "id" => first.id})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+      render_hook(view, "node_selected", %{"id" => first.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      original = workspace_surface(view)
+      render_hook(view, "sequence_playback", %{"action" => "start", "id" => first.id})
+      assert workspace_surface(view)["sequencePlayback"]["slide"]["node_id"] == first.id
+      render_hook(view, "sequence_playback", %{"action" => "continue"})
+      playing = workspace_surface(view)
+      assert playing["sequencePlayback"]["slide"]["node_id"] == second.id
+      assert playing["stage"] == original["stage"]
+      assert playing["canvas"]["key"] == original["canvas"]["key"]
+      assert playing["debug"]["open"] == false
+
+      render_hook(view, "set_sequence_workspace", %{"open" => false})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      render_hook(view, "sequence_playback", %{"action" => "continue"})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+    end
+
+    test "loads the catalog, follows speaker selection, and closes without leaving the sidebar open",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      speaker = sheet_fixture(project, %{name: "Hero"})
+      portrait = image_asset_fixture(project, user, %{filename: "portrait.png"})
+      sprite = image_asset_fixture(project, user, %{filename: "standing.png"})
+      gallery = block_fixture(speaker, %{type: "gallery"})
+      now = DateTime.to_naive(Storyarn.Platform.Shared.TimeHelpers.now())
+
+      {1, [avatar]} =
+        Repo.insert_all(
+          SheetAvatarRecord.__schema__(:source),
+          [%{sheet_id: speaker.id, asset_id: portrait.id, is_default: true, inserted_at: now, updated_at: now}],
+          returning: [:id]
+        )
+
+      {1, [gallery_image]} =
+        Repo.insert_all(
+          GalleryImageRecord.__schema__(:source),
+          [%{block_id: gallery.id, asset_id: sprite.id, inserted_at: now, updated_at: now}],
+          returning: [:id]
+        )
+
+      first =
+        node_fixture(flow, %{
+          type: "dialogue",
+          data: %{"text" => "First", "speaker_sheet_id" => speaker.id}
+        })
+
+      second = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Second"}})
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+      assert workspace_surface(view)["sequenceWorkspace"] == %{"data" => nil, "sheets" => []}
+
+      render_hook(view, "open_sequence_config", %{"id" => first.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      surface = workspace_surface(view)
+      assert surface["sequenceWorkspace"]["data"]["owner_id"] == first.id
+      assert surface["stage"]["intervention"]["speakerSheetId"] == speaker.id
+      refute surface["sequencePanelOpen"]
+      refute workspace_sidebar_open?(view)
+
+      sheet = Enum.find(surface["sequenceWorkspace"]["sheets"], &(&1["id"] == speaker.id))
+      assert [%{"id" => avatar_id, "asset_id" => portrait_id}] = sheet["avatars"]
+      assert avatar_id == avatar.id
+      assert portrait_id == portrait.id
+      assert [%{"id" => gallery_id, "asset_id" => sprite_id}] = sheet["gallery_images"]
+      assert gallery_id == gallery_image.id
+      assert sprite_id == sprite.id
+
+      render_hook(view, "node_selected", %{"id" => second.id})
+      surface = workspace_surface(view)
+      assert surface["sequenceWorkspace"]["data"]["owner_id"] == second.id
+      assert surface["stage"]["owner"]["nodeId"] == second.id
+      refute surface["sequencePanelOpen"]
+      refute workspace_sidebar_open?(view)
+
+      render_hook(view, "set_sequence_workspace", %{"open" => false})
+      surface = workspace_surface(view)
+      assert surface["sequenceWorkspace"] == %{"data" => nil, "sheets" => []}
+      refute surface["sequencePanelOpen"]
+      refute workspace_sidebar_open?(view)
+      assert surface["debug"]["open"] == false
+
+      render_hook(view, "open_sequence_config", %{"id" => second.id})
+      assert workspace_surface(view)["sequencePanelOpen"]
+      assert workspace_sidebar_open?(view)
+    end
+
+    test "navigating to another flow clears the workspace's server state", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      first_flow = flow_fixture(project)
+      second_flow = flow_fixture(project)
+      first = node_fixture(first_flow, %{type: "dialogue"})
+      second = node_fixture(second_flow, %{type: "dialogue"})
+
+      view =
+        mount_flow(
+          conn,
+          ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{first_flow.id}"
+        )
+
+      render_hook(view, "node_selected", %{"id" => first.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      assert workspace_surface(view)["sequenceWorkspace"]["data"]["owner_id"] == first.id
+
+      render_patch(
+        view,
+        ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{second_flow.id}"
+      )
+
+      await_async(view)
+      surface = workspace_surface(view)
+      assert surface["canvas"]["canvasId"] == "flow-canvas-#{second_flow.id}"
+      assert surface["sequenceWorkspace"] == %{"data" => nil, "sheets" => []}
+
+      render_hook(view, "open_sequence_config", %{"id" => second.id})
+      assert workspace_surface(view)["sequencePanelOpen"]
+      assert workspace_sidebar_open?(view)
+    end
+
+    test "reorders an inherited layer above a local layer and publishes reversible history",
+         %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      {source, owner, inherited, local} = workspace_stack(flow, project, user)
+      {:ok, source_before} = Flows.capture_sequence_composition(source.id)
+      order = [local.layer_key, inherited.layer_key]
+      owner_id = owner.id
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+      render_hook(view, "node_selected", %{"id" => owner.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+
+      render_hook(view, "reorder_sequence_visual_layers", %{"id" => owner.id, "layer_keys" => order})
+
+      assert_push_event(view, "sequence_composition_changed", %{
+        owner_id: ^owner_id,
+        previous: previous,
+        current: current
+      })
+
+      assert previous["composition_layer_order"] == nil
+      assert current["composition_layer_order"] == order
+      assert {:ok, ^source_before} = Flows.capture_sequence_composition(source.id)
+      assert Flows.get_node!(flow.id, owner.id).composition_source_id == source.id
+      surface = workspace_surface(view)
+      layers = surface["stage"]["composition"]["layers"]
+      assert Enum.map(layers, & &1["key"]) == order
+      assert Enum.map(layers, & &1["stackIndex"]) == [0, 1]
+      assert List.last(layers)["origin"]["inherited"]
+
+      assert Enum.map(surface["sequenceWorkspace"]["data"]["visual_layers"], & &1["key"]) ==
+               order
+    end
+
+    test "a viewer can inspect the workspace but cannot reorder its layers", %{conn: conn, user: user} do
+      author = Storyarn.AccountsFixtures.user_fixture()
+      project = author |> project_fixture() |> Repo.preload(:workspace)
+      membership_fixture(project, user, "viewer")
+      flow = flow_fixture(project)
+      {source, owner, inherited, local} = workspace_stack(flow, project, author)
+      {:ok, before} = Flows.capture_sequence_composition(owner.id)
+      {:ok, source_before} = Flows.capture_sequence_composition(source.id)
+      url = ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}"
+      view = mount_flow(conn, url)
+      render_hook(view, "node_selected", %{"id" => owner.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      assert workspace_surface(view)["sequenceWorkspace"]["data"]["owner_id"] == owner.id
+
+      render_hook(view, "reorder_sequence_visual_layers", %{
+        "id" => owner.id,
+        "layer_keys" => [local.layer_key, inherited.layer_key]
+      })
+
+      assert {:ok, ^before} = Flows.capture_sequence_composition(owner.id)
+      assert {:ok, ^source_before} = Flows.capture_sequence_composition(source.id)
+    end
+  end
+
   describe "picker search" do
     setup :register_and_log_in_user
 
@@ -761,6 +980,12 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
       versions = panels.props["panels"]["versions"]
 
+      assert versions["creationPending"]
+      perform_pending_version(flow)
+      :sys.get_state(view.pid)
+      panels = LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels")
+      versions = panels.props["panels"]["versions"]
+      refute versions["creationPending"]
       refute versions["canNameVersion"]
       assert length(versions["namedVersions"]) == 10
     end
@@ -773,6 +998,9 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
         "description" => "Initial playable flow"
       })
 
+      assert Flows.count_versions(flow.id) == 0
+      GenServer.stop(view.pid, :normal)
+      perform_pending_version(flow)
       version = Flows.get_version(flow.id, 1)
       assert version.title == "First milestone"
       assert version.description == "Initial playable flow"
@@ -842,9 +1070,36 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
     end
   end
 
+  defp workspace_surface(view) do
+    LiveVue.Test.get_vue(view, name: "live/flow/show/FlowSurface").props["surface"]
+  end
+
+  defp workspace_sidebar_open?(view) do
+    LiveVue.Test.get_vue(view, name: "live/flow/show/FlowPanels").props["panels"]["sequence"]["open"]
+  end
+
+  defp workspace_stack(flow, project, user) do
+    source = node_fixture(flow, %{type: "dialogue"})
+    owner = node_fixture(flow, %{type: "dialogue", composition_source_id: source.id})
+    image = image_asset_fixture(project, user)
+
+    {:ok, inherited} =
+      Flows.create_sequence_visual_layer(source.id, %{asset_id: image.id, kind: "character"})
+
+    {:ok, local} =
+      Flows.create_sequence_visual_layer(owner.id, %{asset_id: image.id, kind: "overlay"})
+
+    {source, owner, inherited, local}
+  end
+
   defp mount_flow(conn, url) do
     {:ok, view, _html} = live(conn, url)
     await_async(view)
     view
+  end
+
+  defp perform_pending_version(flow) do
+    request = Repo.get_by!(Flows.Versioning.VersionRequest, flow_id: flow.id, status: "pending")
+    assert :ok = Oban.Testing.perform_job(Storyarn.Workers.CreateFlowVersionWorker, %{request_id: request.id}, repo: Repo)
   end
 end

@@ -138,9 +138,9 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
   defp create_named_version(socket, config, title, description) do
     current_scope = socket.assigns.current_scope
 
-    case Flows.create_named_version(
-           current_scope,
+    case Flows.request_version(
            entity(socket),
+           current_scope.user.id,
            title: title,
            description: description
          ) do
@@ -148,7 +148,7 @@ defmodule StoryarnWeb.FlowLive.VersionEvents do
         {:noreply,
          socket
          |> config.reload_history.()
-         |> put_flash(:info, dgettext("versioning", "Version created."))}
+         |> put_flash(:info, dgettext("versioning", "Creating version…"))}
 
       {:error, :title_required} ->
         {:noreply, put_flash(socket, :error, dgettext("versioning", "Title is required."))}

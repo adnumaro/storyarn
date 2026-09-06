@@ -1,10 +1,12 @@
-import { computed, ref } from "vue";
+import { computed, getCurrentScope, onScopeDispose, ref } from "vue";
 
 export type AssetUploadPurpose = "avatar" | "banner" | "scene_background";
 
 export interface UploadResult {
   id: number;
   url: string;
+  size?: number;
+  original_asset_id?: number | string | null;
   reused?: boolean;
   action?: string | null;
 }
@@ -212,6 +214,15 @@ export function useAssetDecisionUpload() {
   const dialog = ref<AssetUploadDialogState | null>(null);
   let errorDismissTimeout: ReturnType<typeof setTimeout> | null = null;
   let pendingConfirmation: PendingConfirmation | null = null;
+  let active = true;
+
+  if (getCurrentScope()) {
+    onScopeDispose(() => {
+      active = false;
+      cancelDecision();
+      clearError();
+    });
+  }
 
   const busy = computed(() => uploading.value);
 
@@ -230,41 +241,50 @@ export function useAssetDecisionUpload() {
     errorDismissTimeout = setTimeout(clearError, ERROR_DISMISS_MS);
   }
 
+  async function prepareUpload(file: File, purpose: AssetUploadPurpose) {
+    const metadata = await fileMetadata(file);
+    if (!active) return null;
+    const decision = await inspectUpload(file, purpose, metadata);
+    if (!active) return null;
+
+    if (shouldAskForConfirmation(decision)) {
+      const accepted = await askForConfirmation(file, purpose, decision);
+      if (!accepted || !active) return null;
+    }
+    return { metadata, decision };
+  }
+
   async function uploadWithDecision(
     file: File,
     purpose: AssetUploadPurpose,
   ): Promise<UploadResult | null> {
-    if (!file) return null;
+    if (!file || !active) return null;
 
     clearError();
     progress.value = 0;
 
     try {
-      const metadata = await fileMetadata(file);
-      const decision = await inspectUpload(file, purpose, metadata);
-
-      if (shouldAskForConfirmation(decision)) {
-        const accepted = await askForConfirmation(file, purpose, decision);
-        if (!accepted) return null;
-      }
+      const prepared = await prepareUpload(file, purpose);
+      if (!prepared) return null;
+      const { metadata, decision } = prepared;
 
       uploading.value = true;
 
       if (decision.asset_id && decision.variant_exists) {
         progress.value = 100;
-        return materializeUpload(purpose, metadata);
+        return await materializeUpload(purpose, metadata);
       }
 
       if (decision.source_exists) {
         progress.value = 100;
-        return materializeUpload(purpose, metadata);
+        return await materializeUpload(purpose, metadata);
       }
 
       return await uploadFile(file, purpose, (value) => {
         progress.value = value;
       });
     } catch (reason) {
-      setError(reason instanceof Error ? reason.message : String(reason));
+      if (active) setError(reason instanceof Error ? reason.message : String(reason));
       return null;
     } finally {
       uploading.value = false;

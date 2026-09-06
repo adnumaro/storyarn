@@ -182,7 +182,11 @@
       "exit_fullscreen": "Salir de pantalla completa",
       "resize_split": "Redimensionar las vistas de secuencia y Flow",
       "select_layer": "Seleccionar capa {name}",
-      "resize_layer": "Redimensionar capa {name}"
+      "resize_layer": "Redimensionar capa {name}",
+      "zoom_in": "Acercar",
+      "zoom_out": "Alejar",
+      "fit_view": "Ajustar vista",
+      "canvas_hint": "Espacio + arrastrar para desplazar · Flechas para mover"
     },
     "node_types": {
       "dialogue": "Diálogo",
@@ -347,6 +351,8 @@
       "response_placeholder": "Texto de respuesta..."
     },
     "version_history": {
+      "creating": "Creando versión…",
+      "creation_failed": "No se ha podido guardar la versión. Vuelve a intentarlo.",
       "title": "Historial de versiones"
     },
     "exit_modes": {
@@ -565,6 +571,67 @@
       "threads": "Hilos de comentarios",
       "load_threads": "Cargar más hilos",
       "node_count": "{count} hilo abierto | {count} hilos abiertos"
+    },
+    "sequence_library": {
+      "title": "Biblioteca",
+      "sheets": "Fichas",
+      "assets": "Assets",
+      "search": "Buscar imágenes o fichas…",
+      "current_speaker": "Quien habla",
+      "add": "Añadir {name}",
+      "gallery": "Galería",
+      "portrait": "Retrato recortado",
+      "unavailable": "Imagen no disponible",
+      "replace": "Reemplazar por {name}",
+      "replace_selected": "Reemplazar imagen seleccionada",
+      "empty_sheets": "No se encontraron imágenes en estas fichas.",
+      "empty_assets": "No se encontraron imágenes.",
+      "show_more": "Mostrar más",
+      "hint": "Arrastra una imagen al escenario o selecciónala para añadirla.",
+      "refine_search": "Hay más imágenes. Afina la búsqueda.",
+      "search_failed": "No se pudieron cargar las imágenes. Inténtalo de nuevo.",
+      "upload_images": "Subir imágenes",
+      "drop_in_library": "Suelta imágenes aquí para guardarlas en Assets",
+      "drop_on_stage": "Suelta imágenes para guardarlas en Assets y colocarlas en el escenario",
+      "unsupported_image": "{name}: utiliza una imagen JPEG, PNG, GIF o WebP"
+    },
+    "sequence_workspace": {
+      "title": "Composición",
+      "layers": "Capas",
+      "front_to_back": "Delante → detrás",
+      "show_layer": "Mostrar capa",
+      "hide_layer": "Ocultar capa",
+      "lock_layer": "Bloquear o desbloquear posición",
+      "no_layers": "Añade una imagen desde la biblioteca.",
+      "bring_forward": "Traer hacia delante",
+      "send_backward": "Enviar hacia atrás",
+      "select_layer": "Selecciona un objeto para editar sus propiedades.",
+      "layer_name": "Nombre de la capa",
+      "image": "Imagen",
+      "position_locked": "Desbloquea esta capa para cambiar su posición o tamaño.",
+      "inherited_from": "Continúa desde #{id}",
+      "reset_changes": "Restablecer cambios locales",
+      "continues_from": "Continúa desde",
+      "initial": "Composición inicial",
+      "inspector": "Capas y propiedades",
+      "add_as": "Añadir como",
+      "add_image": "Subir o elegir imagen",
+      "panels": {
+        "library": "Biblioteca",
+        "stage": "Escenario",
+        "inspector": "Capas"
+      },
+      "resize_library": "Ajustar ancho de biblioteca",
+      "resize_inspector": "Ajustar ancho de capas e inspector"
+    },
+    "sequence_playback": {
+      "start": "Reproducir",
+      "start_hint": "Reproducir desde este diálogo con los valores iniciales de las variables",
+      "stop": "Detener reproducción",
+      "title": "Reproducción de escena",
+      "finished": "Fin de la reproducción",
+      "error": "No se pudo continuar la reproducción. Vuelve a intentarlo o reinicia.",
+      "voice": "Audio del diálogo"
     }
   }
 }

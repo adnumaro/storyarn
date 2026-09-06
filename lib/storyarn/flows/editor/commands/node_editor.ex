@@ -90,7 +90,9 @@ defmodule Storyarn.Flows.NodeEditor do
       snapshot_data = stringify_keys(restored_data)
 
       restored_data =
-        Map.take(snapshot_data, Map.get(@restorable_fields, node.type, []) ++ extension_fields)
+        snapshot_data
+        |> Map.take(Map.get(@restorable_fields, node.type, []) ++ extension_fields)
+        |> Map.delete("composition_layer_order")
 
       base_data =
         defaults

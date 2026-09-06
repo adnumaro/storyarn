@@ -14,6 +14,7 @@ defmodule Storyarn.Flows do
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.Health
   alias Storyarn.Flows.Localization
+  alias Storyarn.Flows.PlayerCatalog
   alias Storyarn.Flows.References
   alias Storyarn.Flows.Runtime
   alias Storyarn.Flows.StructuralAnalysis.Analysis
@@ -400,8 +401,12 @@ defmodule Storyarn.Flows do
 
   Speakers are Flows-owned DTOs and do not expose foreign persistence records.
   """
-  @spec load_player_speakers(integer()) :: [Storyarn.Flows.PlayerCatalog.speaker()]
+  @spec load_player_speakers(integer()) :: [PlayerCatalog.speaker()]
   defdelegate load_player_speakers(project_id), to: Runtime
+
+  @doc "Resolves an active dialogue voice asset within its project."
+  @spec get_player_audio_asset(integer(), integer()) :: PlayerCatalog.media_ref() | nil
+  defdelegate get_player_audio_asset(project_id, asset_id), to: Runtime
 
   @doc """
   Resolves the current speaker name for the editor preview.
@@ -822,7 +827,7 @@ defmodule Storyarn.Flows do
   defdelegate player_step_until_interactive(state, nodes, connections, opts \\ []), to: Runtime
 
   @doc "Creates and advances a Flow-owned player runtime session."
-  defdelegate start_player_session(flow, variables), to: Runtime
+  defdelegate start_player_session(flow, variables, opts \\ []), to: Runtime
 
   @doc "Reconstitutes a previously stored ephemeral player session."
   defdelegate restore_player_session(flow, state, nodes, connections, scene_id), to: Runtime
@@ -1158,6 +1163,12 @@ defmodule Storyarn.Flows do
   # Versioning
   # =============================================================================
 
+  defdelegate recover_version_requests(), to: Versioning
+  defdelegate request_version(flow, user_id, opts \\ []), to: Versioning
+  defdelegate perform_version_request(id, opts \\ []), to: Versioning
+  defdelegate subscribe_version_requests(project_id), to: Versioning
+  defdelegate version_request_status(flow_id), to: Versioning
+
   @doc """
   Creates a new version snapshot of the given flow.
   """
@@ -1323,6 +1334,9 @@ defmodule Storyarn.Flows do
 
   @doc "Restores a local tombstone or materializes an inherited tombstoned layer."
   defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: Editor
+
+  @doc "Atomically orders all effective visual layers, from back to front, for one composition owner."
+  defdelegate reorder_sequence_visual_layers(owner_id, layer_keys), to: Editor
 
   @doc "Lists all local track and inherited-patch rows for a composition owner."
   defdelegate list_sequence_tracks(sequence_id), to: Editor

@@ -342,6 +342,65 @@ defmodule Storyarn.Flows.EditorCatalogTest do
       assert length(results) == 2
       assert Enum.any?(results, &(&1.id == selected.id))
     end
+
+    test "sequence pages count image families and choose by bytes, not file extension" do
+      user = user_fixture()
+      project = project_fixture(user)
+      original = image_asset_fixture(project, user, %{filename: "background.png", size: 500})
+      _larger = sequence_variant(project, user, original, 2_000)
+
+      {results, has_more} =
+        Flows.search_asset_options(project.id, "image", limit: 1, sequence_library: true)
+
+      refute has_more
+      assert [%{id: original_id, family_id: family_id, size: 500}] = results
+      assert original_id == original.id
+      assert family_id == to_string(original.id)
+
+      other = image_asset_fixture(project, user, %{filename: "background.png", size: 5_000})
+      smaller = sequence_variant(project, user, other, 1_000)
+      # A previously selected original must not be reintroduced as a duplicate.
+      {page, has_more} =
+        Flows.search_asset_options(project.id, "image",
+          sequence_library: true,
+          limit: 1,
+          selected_id: other.id
+        )
+
+      assert has_more
+      assert Enum.map(page, & &1.id) == [smaller.id]
+      {all, false} = Flows.search_asset_options(project.id, "image", sequence_library: true)
+      assert Enum.map(all, & &1.id) == [smaller.id, original.id]
+    end
+
+    test "sequence images exclude deleted and foreign assets while keeping distinct crops" do
+      user = user_fixture()
+      project = project_fixture(user)
+      original = image_asset_fixture(project, user, %{size: 10_000})
+      variant = sequence_variant(project, user, original, 1_000)
+
+      crop =
+        sequence_variant(project, user, original, 100, %{"variant_profile" => "sheet_avatar_500"})
+
+      deleted = image_asset_fixture(project, user, %{size: 50})
+      assert {:ok, _} = Assets.delete_asset(deleted)
+
+      _foreign = image_asset_fixture(project_fixture(user), user, %{size: 10})
+      _audio = audio_asset_fixture(project, user)
+
+      {results, false} = Flows.search_asset_options(project.id, "image", sequence_library: true)
+      assert Enum.sort(Enum.map(results, & &1.id)) == Enum.sort([variant.id, crop.id])
+      assert Repo.get!(Asset, original.id).deleted_at == nil
+    end
+  end
+
+  defp sequence_variant(project, user, original, size, metadata \\ %{}) do
+    image_asset_fixture(project, user, %{
+      filename: "optimized.webp",
+      content_type: "image/webp",
+      size: size,
+      metadata: Map.merge(%{"original_asset_id" => original.id, "variant_profile" => "scene_background_web"}, metadata)
+    })
   end
 
   describe "Flow schema boundary" do

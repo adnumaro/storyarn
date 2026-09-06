@@ -23,6 +23,10 @@ function isEditable(el: Element): boolean {
   );
 }
 
+function isSequenceWorkspace(target: EventTarget | null): boolean {
+  return target instanceof Element && target.closest("[data-sequence-workspace]") !== null;
+}
+
 export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): KeyboardHandler {
   function enterInlineEdit(reteNodeId: string): void {
     const node = hook.editor.getNode(reteNodeId);
@@ -178,7 +182,14 @@ export function keyboard(hook: HookProxy, lockHandler: LocksHandler | null): Key
 
   return {
     init() {
-      this._keydownListener = (e: KeyboardEvent) => handleKeyboard(e);
+      this._keydownListener = (e: KeyboardEvent) => {
+        // Keep Flow navigation and shared undo inside the composition workspace.
+        // Escape belongs to the stage/fullscreen; graph mutation shortcuts stay outside.
+        if (isSequenceWorkspace(e.target)) {
+          if (handleNavigation(e)) return;
+          handleUndoRedo(e);
+        } else handleKeyboard(e);
+      };
       document.addEventListener("keydown", this._keydownListener);
     },
 

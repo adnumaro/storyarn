@@ -28,7 +28,6 @@ import {
 type Version = VersionEntry;
 
 const {
-  versions = [],
   namedVersions = [],
   autoVersions = [],
   hasMore = false,
@@ -37,8 +36,8 @@ const {
   canEdit = false,
   restoreEnabled,
   loading = false,
+  creation = { pending: false, failed: false },
 } = defineProps<{
-  versions?: Version[];
   namedVersions?: Version[];
   autoVersions?: Version[];
   hasMore?: boolean;
@@ -47,6 +46,7 @@ const {
   canEdit?: boolean;
   restoreEnabled: boolean;
   loading?: boolean;
+  creation?: { pending: boolean; failed: boolean };
 }>();
 
 const live = useLive();
@@ -77,6 +77,23 @@ function changeActionColor(action: string) {
 </script>
 
 <template>
+  <p
+    v-if="creation.pending"
+    id="flow-version-creation-pending"
+    role="status"
+    class="mb-4 flex items-center gap-2 text-sm text-muted-foreground"
+  >
+    <Loader2 class="size-4 animate-spin" />
+    {{ $t("flows.version_history.creating") }}
+  </p>
+  <p
+    v-else-if="creation.failed"
+    id="flow-version-creation-failed"
+    role="alert"
+    class="mb-4 text-sm text-destructive"
+  >
+    {{ $t("flows.version_history.creation_failed") }}
+  </p>
   <VersionTransportError
     v-if="showTransportErrorOutsideDialog"
     :visible="h.transportError.value"
@@ -92,7 +109,7 @@ function changeActionColor(action: string) {
 
   <!-- Empty state -->
   <div
-    v-else-if="versions.length === 0"
+    v-else-if="namedVersions.length === 0 && autoVersions.length === 0"
     class="rounded-xl border border-border/60 bg-card p-8 text-center"
   >
     <Clock class="size-10 mx-auto text-muted-foreground/20 mb-3" />

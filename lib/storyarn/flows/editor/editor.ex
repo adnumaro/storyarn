@@ -15,6 +15,7 @@ defmodule Storyarn.Flows.Editor do
   alias Storyarn.Flows.Editor.Commands.NodeRestore
   alias Storyarn.Flows.Editor.Commands.SequenceCreate
   alias Storyarn.Flows.Editor.Commands.SequenceDelete
+  alias Storyarn.Flows.Editor.Commands.SequenceLayerReorder
   alias Storyarn.Flows.Editor.Commands.SequenceRestore
   alias Storyarn.Flows.Editor.Commands.SequenceTracks
   alias Storyarn.Flows.Editor.Commands.SequenceUpdate
@@ -335,6 +336,7 @@ defmodule Storyarn.Flows.Editor do
   defdelegate revert_sequence_visual_layer_fields(owner_id, layer_key, fields), to: SequenceVisualLayers
   defdelegate remove_sequence_visual_layer(owner_id, layer_key), to: SequenceVisualLayers
   defdelegate restore_sequence_visual_layer(owner_id, layer_key), to: SequenceVisualLayers
+  defdelegate reorder_sequence_visual_layers(owner_id, layer_keys), to: SequenceLayerReorder, as: :reorder
   def list_sequence_tracks(sequence_id) when is_integer(sequence_id), do: Sequences.list_tracks(sequence_id)
 
   def get_sequence_track(sequence_id, kind) when is_binary(kind), do: Sequences.get_track(sequence_id, kind)

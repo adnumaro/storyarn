@@ -159,6 +159,8 @@ defmodule StoryarnWeb.UploadController do
     %{
       id: asset.id,
       url: PrivateMedia.asset_url(asset),
+      size: asset.size,
+      original_asset_id: (asset.metadata || %{})["original_asset_id"],
       reused: Map.get(meta, :reused, false),
       action: meta |> Map.get(:action) |> maybe_to_string()
     }

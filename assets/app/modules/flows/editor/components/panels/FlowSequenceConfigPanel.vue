@@ -43,6 +43,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../../../../compone
 import { ToggleGroup, ToggleGroupItem } from "../../../../../components/ui/toggle-group";
 import Sidebar from "../../../../../shell/Sidebar.vue";
 import { useLive } from "../../../../../shared/composables/useLive";
+import { sequenceLayerKey as layerKey } from "../../../sequence/layerOrder";
 import type {
   SequenceAssetEntry as AssetEntry,
   SequenceConfigPanelData,
@@ -182,10 +183,6 @@ function createVisualLayer(kind: VisualKind, asset: AssetEntry) {
     slot: defaultSlot(kind),
     ...geometryForSlot(kind, defaultSlot(kind)),
   });
-}
-
-function layerKey(layer: SequenceVisualLayer): string {
-  return String(layer.key ?? layer.layer_key ?? layer.id);
 }
 
 function layerSequenceId(layer: SequenceVisualLayer): EntityId | null {

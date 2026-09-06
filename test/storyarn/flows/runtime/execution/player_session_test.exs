@@ -10,6 +10,54 @@ defmodule Storyarn.Flows.PlayerSessionTest do
   alias Storyarn.Flows.Evaluator.Engine
   alias Storyarn.Flows.Flow
 
+  describe "starting at an authored node" do
+    test "starts and restarts at the selected dialogue without traversing earlier nodes" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      first = node_fixture(flow)
+      selected = node_fixture(flow)
+      ending = node_fixture(flow, %{type: "exit"})
+      connection_fixture(flow, entry_node(flow), first)
+      connection_fixture(flow, first, selected)
+      connection_fixture(flow, selected, ending)
+
+      assert {:ok, from_entry} = Flows.start_player_session(flow, %{})
+      assert from_entry.state.current_node_id == first.id
+
+      assert {:ok, session} = Flows.start_player_session(flow, %{}, start_node_id: selected.id)
+      assert session.state.current_node_id == selected.id
+      assert session.state.start_node_id == selected.id
+      assert session.state.execution_path == [selected.id]
+      refute Flows.player_session_can_go_back?(session)
+
+      assert {:ok, finished} = Flows.continue_player_session(session)
+      assert finished.state.status == :finished
+      assert {:ok, restarted} = Flows.restart_player_session(finished)
+      assert restarted.state.current_node_id == selected.id
+      assert restarted.state.execution_path == [selected.id]
+    end
+
+    test "rejects foreign, missing and malformed explicit start nodes" do
+      project = project_fixture(user_fixture())
+      flow = flow_fixture(project)
+      foreign_node = node_fixture(flow_fixture(project))
+
+      for id <- [foreign_node.id, -1, "1", nil] do
+        assert {:error, :invalid_start_node} = Flows.start_player_session(flow, %{}, start_node_id: id)
+      end
+    end
+
+    test "a selected dialogue can run even when the Flow has no entry" do
+      project = project_fixture(user_fixture())
+      flow = raw_flow_fixture(project)
+      selected = node_fixture(flow)
+
+      assert {:error, :entry_not_found} = Flows.start_player_session(flow, %{})
+      assert {:ok, session} = Flows.start_player_session(flow, %{}, start_node_id: selected.id)
+      assert session.state.current_node_id == selected.id
+    end
+  end
+
   describe "continue_player_session/1" do
     test "advances a continue-only dialogue to the next interaction" do
       nodes = nodes([node(1, "entry"), node(2, "dialogue"), node(3, "exit")])

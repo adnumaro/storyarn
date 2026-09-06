@@ -1,28 +1,17 @@
 import { mount } from "@vue/test-utils";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
 import type { SequenceStageState } from "@modules/flows/sequence/types";
+import { SEQUENCE_LIBRARY_IMAGE_MIME } from "@modules/flows/editor/components/sequence/sequence-library";
+import { keyboard } from "@modules/flows/editor/services/keyboard";
+import type { HookProxy } from "@modules/flows/editor/services/editorHandlers";
 import { createMockLive } from "../../../setup";
 
 const mockLive = createMockLive();
-
-vi.mock("@shared/composables/useLive", () => ({
-  useLive: () => mockLive,
-}));
-
+vi.mock("@shared/composables/useLive", () => ({ useLive: () => mockLive }));
 const { default: FlowSequenceStage } =
   await import("@modules/flows/editor/components/sequence/FlowSequenceStage.vue");
-
-function mountStage(stage: SequenceStageState, canEdit = false) {
-  return mount(FlowSequenceStage, { props: { stage, canEdit } });
-}
-
-function dispatchPointer(target: EventTarget, type: string, clientX: number, clientY: number) {
-  target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY }));
-}
-
-type ReadySequenceStage = Extract<SequenceStageState, { status: "ready" }>;
-
-function editableStage(): ReadySequenceStage {
+type ReadyStage = Extract<SequenceStageState, { status: "ready" }>;
+function editableStage(): ReadyStage {
   return {
     status: "ready",
     owner: { nodeId: 42, type: "dialogue", compositionSourceId: 10 },
@@ -45,269 +34,388 @@ function editableStage(): ReadySequenceStage {
     },
   };
 }
+function mountStage(stage: SequenceStageState = editableStage(), extra = {}) {
+  const wrapper = mount(FlowSequenceStage, { props: { stage, canEdit: true, ...extra } });
+  vi.spyOn(wrapper.get(".flow-sequence-viewport").element, "getBoundingClientRect").mockReturnValue(
+    {
+      x: 100,
+      y: 50,
+      left: 100,
+      top: 50,
+      right: 1100,
+      bottom: 550,
+      width: 1000,
+      height: 500,
+      toJSON: () => ({}),
+    },
+  );
+  return wrapper;
+}
+function pointer(target: EventTarget, type: string, clientX = 100, clientY = 100) {
+  target.dispatchEvent(new MouseEvent(type, { bubbles: true, cancelable: true, clientX, clientY }));
+}
+function move(wrapper: ReturnType<typeof mountStage>) {
+  pointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown");
+  pointer(window, "pointermove", 200, 150);
+}
 
 describe("FlowSequenceStage", () => {
-  beforeEach(() => {
-    vi.mocked(mockLive.pushEvent).mockClear();
-  });
+  beforeEach(() => vi.mocked(mockLive.pushEvent).mockClear());
 
-  it("guides the author to select a speaker intervention", () => {
+  it("guides authors when empty and does not retain stale layers on error", async () => {
     const wrapper = mountStage({ status: "empty" });
-
-    expect(wrapper.attributes("data-status")).toBe("empty");
     expect(wrapper.text()).toContain("Select a speaker intervention");
     expect(wrapper.findComponent(SequenceVisualLayers).exists()).toBe(false);
+    await wrapper.setProps({ stage: { status: "error", errorMessage: "Unavailable backdrop" } });
+    expect(wrapper.text()).toContain("Unavailable backdrop");
+    expect(wrapper.findComponent(SequenceVisualLayers).exists()).toBe(false);
+    wrapper.unmount();
   });
 
-  it("renders a ready intervention and its effective visual composition", () => {
-    const stage: SequenceStageState = {
-      status: "ready",
-      intervention: {
-        nodeId: 42,
-        speakerName: "Aria Vale",
-        speakerColor: "#7c3aed",
-        text: "<p>Open the gate.</p>",
-        stageDirections: "Barely above a whisper",
-      },
-      composition: {
-        layers: [
-          {
-            id: 5,
-            kind: "backdrop",
-            label: "Moonlit gate",
-            url: "/gate.png",
-            fit: "cover",
-          },
-        ],
-        diagnostics: [{ code: "missing_prop", severity: "warning" }],
-      },
-    };
+  it("renders effective layers and dialogue and opens its owner's inspector", async () => {
+    const stage = editableStage();
     const wrapper = mountStage(stage);
-
-    expect(wrapper.attributes("data-status")).toBe("ready");
     expect(wrapper.getComponent(SequenceVisualLayers).props("layers")).toEqual(
       stage.composition.layers,
     );
-    expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Aria Vale");
     expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Open the gate.");
-    expect(wrapper.get("[data-sequence-intervention]").text()).toContain("Barely above a whisper");
     expect(wrapper.get("[data-sequence-intervention]").classes()).toContain("pointer-events-none");
-    expect(wrapper.get("[data-sequence-diagnostics]").text()).toContain("1 composition issue");
-  });
-
-  it("renders the server error without stale visual layers", () => {
-    const wrapper = mountStage({
-      status: "error",
-      errorMessage: "The inherited backdrop is unavailable.",
-    });
-
-    expect(wrapper.attributes("data-status")).toBe("error");
-    expect(wrapper.text()).toContain("The inherited backdrop is unavailable.");
-    expect(wrapper.findComponent(SequenceVisualLayers).exists()).toBe(false);
-  });
-
-  it("opens the inspector for the current sequence owner", async () => {
-    const wrapper = mountStage(editableStage());
-
     await wrapper.get("[data-open-sequence-inspector]").trigger("click");
-
     expect(mockLive.pushEvent).toHaveBeenCalledWith("open_sequence_config", { id: 42 });
-  });
-
-  it("keeps direct layer selection in the same stack order as the visual renderer", async () => {
-    const stage: ReadySequenceStage = {
-      ...editableStage(),
-      composition: {
-        layers: [
-          {
-            id: "child-low-z",
-            key: "child-low-z",
-            sequenceDepth: 1,
-            kind: "character",
-            label: "Child",
-            url: "/child.png",
-            zIndex: -1000,
-          },
-          {
-            id: "root-high-z",
-            key: "root-high-z",
-            sequence_depth: 0,
-            kind: "backdrop",
-            label: "Root",
-            url: "/root.png",
-            z_index: 1000,
-          },
-        ],
-      },
-    };
-    const wrapper = mountStage(stage, true);
-    const rendered = wrapper.findAll(".sequence-visual-layer");
-    const controls = wrapper.findAll("[data-layer-control]");
-
-    expect(rendered.map((layer) => layer.attributes("data-layer-id"))).toEqual([
-      "root-high-z",
-      "child-low-z",
-    ]);
-    expect(controls.map((control) => control.attributes("data-layer-control"))).toEqual([
-      "root-high-z",
-      "child-low-z",
-    ]);
-    expect(controls.map((control) => control.attributes("style"))).toEqual([
-      expect.stringContaining("z-index: 0"),
-      expect.stringContaining("z-index: 1"),
-    ]);
-
-    await controls[1]!.trigger("click");
-    expect(controls[1]!.attributes("data-selected")).toBe("true");
-  });
-
-  it("moves an inherited layer and persists its geometry as an override", async () => {
-    const wrapper = mountStage(editableStage(), true);
-    const viewport = wrapper.get(".flow-sequence-viewport");
-    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 1000,
-      bottom: 500,
-      width: 1000,
-      height: 500,
-      toJSON: () => ({}),
-    });
-
-    dispatchPointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown", 100, 100);
-    dispatchPointer(window, "pointermove", 200, 150);
-    dispatchPointer(window, "pointerup", 200, 150);
-
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("override_sequence_visual_layer", {
-      id: 42,
-      layer_key: "hero",
-      x: 0.3,
-      y: 0.4,
-    });
+    await wrapper.setProps({ embedded: true });
+    expect(wrapper.find("header").exists()).toBe(false);
     wrapper.unmount();
   });
 
-  it("moves an owner-defined layer by its persisted row id", () => {
-    const stage = editableStage();
-    const layer = stage.composition.layers[0]!;
-    layer.sequenceId = 42;
-    layer.rowId = 501;
-    const wrapper = mountStage(stage, true);
-    const viewport = wrapper.get(".flow-sequence-viewport");
-    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 1000,
-      bottom: 500,
-      width: 1000,
-      height: 500,
-      toJSON: () => ({}),
-    });
-
-    dispatchPointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown", 100, 100);
-    dispatchPointer(window, "pointermove", 200, 150);
-    dispatchPointer(window, "pointerup", 200, 150);
-
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("update_sequence_visual_layer", {
-      id: 42,
-      layer_id: 501,
-      x: 0.3,
-      y: 0.4,
-    });
-    wrapper.unmount();
-  });
-
-  it("cancels an active layer gesture without persisting its draft geometry", () => {
-    const wrapper = mountStage(editableStage(), true);
-    const viewport = wrapper.get(".flow-sequence-viewport");
-    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 1000,
-      bottom: 500,
-      width: 1000,
-      height: 500,
-      toJSON: () => ({}),
-    });
-
-    dispatchPointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown", 100, 100);
-    dispatchPointer(window, "pointermove", 200, 150);
-    dispatchPointer(window, "pointercancel", 200, 150);
-    dispatchPointer(window, "pointerup", 200, 150);
-
+  it("shares selection with the inspector and makes locked layers click through", async () => {
+    const wrapper = mountStage(editableStage(), { selectedLayerKey: null });
+    await wrapper.get('[data-layer-control="hero"]').trigger("click");
+    expect(wrapper.emitted("update:selectedLayerKey")).toEqual([["hero"]]);
+    expect(wrapper.find("[data-layer-resize-handle]").exists()).toBe(false);
+    await wrapper.setProps({ selectedLayerKey: "hero" });
+    expect(wrapper.findAll("[data-layer-resize-handle]")).toHaveLength(8);
+    await wrapper.setProps({ lockedLayerKeys: ["hero"] });
+    const control = wrapper.get('[data-layer-control="hero"]');
+    expect(control.classes()).toContain("pointer-events-none");
+    expect(wrapper.find("[data-layer-resize-handle]").exists()).toBe(false);
+    pointer(control.element, "pointerdown");
+    pointer(window, "pointerup", 200, 150);
+    await control.trigger("keydown", { key: "ArrowRight" });
     expect(mockLive.pushEvent).not.toHaveBeenCalled();
     wrapper.unmount();
   });
 
-  it("resizes an inherited layer as an override and hides controls in read-only mode", async () => {
-    const readOnly = mountStage(editableStage());
-    expect(readOnly.find("[data-sequence-layer-controls]").exists()).toBe(false);
-
-    const wrapper = mountStage(editableStage(), true);
-    const viewport = wrapper.get(".flow-sequence-viewport");
-    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 1000,
-      bottom: 500,
-      width: 1000,
-      height: 500,
-      toJSON: () => ({}),
+  it("clips oversized images to the screen while keeping resize controls outside its clip", () => {
+    const stage = editableStage();
+    Object.assign(stage.composition.layers[0]!, {
+      x: -0.5,
+      y: -0.5,
+      width: 2,
+      height: 2,
+      zIndex: 99999,
     });
-
-    await wrapper.get('[data-layer-control="hero"]').trigger("click");
-    dispatchPointer(wrapper.get("[data-layer-resize-handle]").element, "pointerdown", 100, 100);
-    dispatchPointer(window, "pointermove", 200, 150);
-    dispatchPointer(window, "pointerup", 200, 150);
-
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("override_sequence_visual_layer", {
-      id: 42,
-      layer_key: "hero",
-      width: 0.5,
-      height: 0.6,
-    });
-    readOnly.unmount();
+    const wrapper = mountStage(stage, { selectedLayerKey: "hero" });
+    const frame = wrapper.get("[data-sequence-frame]");
+    const renderer = wrapper.getComponent(SequenceVisualLayers);
+    const controls = wrapper.get("[data-sequence-layer-controls]");
+    const outline = wrapper.get("[data-sequence-frame-outline]");
+    expect(renderer.classes()).toContain("overflow-hidden");
+    expect((renderer.element as HTMLElement).style.overflow).not.toBe("visible");
+    expect(frame.classes()).not.toContain("overflow-hidden");
+    expect(controls.element.parentElement).toBe(frame.element);
+    expect(renderer.element.contains(controls.element)).toBe(false);
+    expect(wrapper.get('[data-layer-control="hero"]').attributes("style")).toContain("left: -50%");
+    expect(wrapper.get('[data-layer-control="hero"]').attributes("style")).toContain("width: 200%");
+    expect(wrapper.findAll("[data-layer-resize-handle]")).toHaveLength(8);
+    // Image z-indices stay inside the renderer's stacking context, below the frame outline.
+    expect(renderer.classes()).toContain("z-0");
+    expect(outline.classes()).toEqual(expect.arrayContaining(["z-30", "pointer-events-none"]));
+    expect(outline.element.parentElement).toBe(frame.element);
+    pointer(wrapper.get('[data-layer-resize-handle="e"]').element, "pointerdown");
+    pointer(window, "pointerup", 200, 100);
+    expect(mockLive.pushEvent).toHaveBeenCalledOnce();
     wrapper.unmount();
   });
 
-  it("resizes an owner-defined layer by its persisted row id", async () => {
+  it("uses the same authoritative stack order as the renderer", () => {
     const stage = editableStage();
-    const layer = stage.composition.layers[0]!;
-    layer.sequenceId = 42;
-    layer.rowId = 501;
-    const wrapper = mountStage(stage, true);
-    const viewport = wrapper.get(".flow-sequence-viewport");
-    vi.spyOn(viewport.element, "getBoundingClientRect").mockReturnValue({
-      x: 0,
-      y: 0,
-      left: 0,
-      top: 0,
-      right: 1000,
-      bottom: 500,
-      width: 1000,
-      height: 500,
-      toJSON: () => ({}),
-    });
+    stage.composition.layers = [
+      {
+        id: "front",
+        key: "front",
+        kind: "backdrop",
+        url: "/front.png",
+        stack_index: 1,
+        sequence_depth: 0,
+      },
+      {
+        id: "back",
+        key: "back",
+        kind: "character",
+        url: "/back.png",
+        stack_index: 0,
+        sequence_depth: 5,
+      },
+    ];
+    const wrapper = mountStage(stage);
+    expect(
+      wrapper.findAll(".sequence-visual-layer").map((node) => node.attributes("data-layer-id")),
+    ).toEqual(["back", "front"]);
+    expect(
+      wrapper.findAll("[data-layer-control]").map((node) => node.attributes("data-layer-control")),
+    ).toEqual(["back", "front"]);
+    wrapper.unmount();
+  });
 
+  it("keeps a hidden layer selected for inspection and clears selection only when removed", async () => {
+    const wrapper = mountStage(editableStage(), { selectedLayerKey: "hero" });
+    const hidden = editableStage();
+    hidden.composition.layers[0]!.visible = false;
+    await wrapper.setProps({ stage: hidden });
+    expect(wrapper.find('[data-layer-control="hero"]').exists()).toBe(false);
+    expect(wrapper.emitted("update:selectedLayerKey")).toBeUndefined();
+    await wrapper.setProps({ stage: { ...hidden, composition: { layers: [] } } });
+    expect(wrapper.emitted("update:selectedLayerKey")).toEqual([[null]]);
+    wrapper.unmount();
+  });
+
+  it("moves freely outside the frame and persists one override when released", () => {
+    const wrapper = mountStage();
+    pointer(wrapper.get('[data-layer-control="hero"]').element, "pointerdown");
+    pointer(window, "pointermove", -400, 200);
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
+    pointer(window, "pointerup", -400, 200);
+    expect(mockLive.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "override_sequence_visual_layer",
+      {
+        id: 42,
+        layer_key: "hero",
+        interaction_id: expect.any(String),
+        x: -0.3,
+        y: 0.5,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    wrapper.unmount();
+  });
+
+  it("updates a local layer by row id", () => {
+    const stage = editableStage();
+    Object.assign(stage.composition.layers[0]!, { sequenceId: 42, rowId: 501 });
+    const wrapper = mountStage(stage);
+    move(wrapper);
+    pointer(window, "pointerup", 200, 150);
+    expect(mockLive.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "update_sequence_visual_layer",
+      {
+        id: 42,
+        layer_id: 501,
+        interaction_id: expect.any(String),
+        x: 0.3,
+        y: 0.4,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    wrapper.unmount();
+  });
+
+  it("allows Flow Alt-navigation from a layer while plain arrows nudge and graph mutations stay blocked", async () => {
+    const wrapper = mountStage();
+    const workspace = document.createElement("section");
+    workspace.dataset.sequenceWorkspace = "";
+    document.body.append(workspace);
+    workspace.append(wrapper.element);
+    const pushEvent = vi.fn();
+    const hook = { selectedNodeId: 42, pushEvent } as unknown as HookProxy;
+    const handler = keyboard(hook, null);
+    handler.init();
+    try {
+      const layer = wrapper.get('[data-layer-control="hero"]');
+      const navigation = new KeyboardEvent("keydown", {
+        key: "ArrowRight",
+        altKey: true,
+        bubbles: true,
+        cancelable: true,
+      });
+      layer.element.dispatchEvent(navigation);
+      expect(navigation.defaultPrevented).toBe(true);
+      expect(pushEvent).toHaveBeenCalledExactlyOnceWith("nav_forward", {});
+      expect(mockLive.pushEvent).not.toHaveBeenCalled();
+      await layer.trigger("keydown", { key: "ArrowRight" });
+      window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+      expect(mockLive.pushEvent).toHaveBeenCalledOnce();
+      for (const [key, metaKey] of [
+        ["Delete", false],
+        ["d", true],
+        ["Escape", false],
+      ] as const) {
+        await layer.trigger("keydown", { key, metaKey });
+      }
+      expect(pushEvent).toHaveBeenCalledTimes(1);
+      expect(hook.selectedNodeId).toBe(42);
+    } finally {
+      handler.destroy();
+      wrapper.unmount();
+      workspace.remove();
+    }
+  });
+
+  it("keeps proportions and updates anchor coordinates while resizing", async () => {
+    const stage = editableStage();
+    Object.assign(stage.composition.layers[0]!, { anchorX: 0.5, anchorY: 1 });
+    const wrapper = mountStage(stage);
     await wrapper.get('[data-layer-control="hero"]').trigger("click");
-    dispatchPointer(wrapper.get("[data-layer-resize-handle]").element, "pointerdown", 100, 100);
-    dispatchPointer(window, "pointermove", 200, 150);
-    dispatchPointer(window, "pointerup", 200, 150);
+    pointer(wrapper.get('[data-layer-resize-handle="nw"]').element, "pointerdown");
+    pointer(window, "pointermove", 0, 50);
+    pointer(window, "pointerup", 0, 50);
+    expect(mockLive.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "override_sequence_visual_layer",
+      {
+        id: 42,
+        layer_key: "hero",
+        interaction_id: expect.any(String),
+        x: 0.15,
+        width: 0.5,
+        height: 0.625,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    wrapper.unmount();
+  });
 
-    expect(mockLive.pushEvent).toHaveBeenCalledWith("update_sequence_visual_layer", {
-      id: 42,
-      layer_id: 501,
-      width: 0.5,
-      height: 0.6,
+  it.each(["character", "prop", "backdrop"] as const)(
+    "resizes a %s from its side with one commit",
+    async (kind) => {
+      const stage = editableStage();
+      Object.assign(stage.composition.layers[0]!, { kind, anchorX: 0.5, anchorY: 1 });
+      const wrapper = mountStage(stage, { selectedLayerKey: "hero" });
+      pointer(wrapper.get('[data-layer-resize-handle="e"]').element, "pointerdown");
+      pointer(window, "pointermove", 150, 300);
+      pointer(window, "pointermove", 200, 350);
+      expect(mockLive.pushEvent).not.toHaveBeenCalled();
+      pointer(window, "pointerup", 200, 350);
+      expect(mockLive.pushEvent).toHaveBeenCalledExactlyOnceWith(
+        "override_sequence_visual_layer",
+        {
+          id: 42,
+          layer_key: "hero",
+          interaction_id: expect.any(String),
+          x: 0.25,
+          width: 0.5,
+          ...(kind === "character" ? { y: 0.3625, height: 0.625 } : {}),
+        },
+        expect.any(Function),
+        expect.any(Function),
+      );
+      wrapper.unmount();
+    },
+  );
+
+  it("cancels a side resize without persisting", () => {
+    const wrapper = mountStage(editableStage(), { selectedLayerKey: "hero" });
+    pointer(wrapper.get('[data-layer-resize-handle="s"]').element, "pointerdown");
+    pointer(window, "pointermove", 200, 200);
+    pointer(window, "pointercancel");
+    pointer(window, "pointerup", 200, 200);
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it.each(["pointercancel", "escape", "owner", "unmount"])(
+    "cancels safely on %s",
+    async (reason) => {
+      const wrapper = mountStage();
+      move(wrapper);
+      if (reason === "pointercancel") pointer(window, "pointercancel");
+      if (reason === "escape")
+        window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+      if (reason === "owner")
+        await wrapper.setProps({
+          stage: { ...editableStage(), owner: { nodeId: 99, type: "dialogue" } },
+        });
+      if (reason === "unmount") wrapper.unmount();
+      pointer(window, "pointerup", 200, 150);
+      expect(mockLive.pushEvent).not.toHaveBeenCalled();
+      if (reason !== "unmount") wrapper.unmount();
+    },
+  );
+
+  it("groups repeated keyboard nudges into one change with a larger Shift step", async () => {
+    const wrapper = mountStage();
+    const control = wrapper.get('[data-layer-control="hero"]');
+    await control.trigger("keydown", { key: "ArrowRight" });
+    await control.trigger("keydown", { key: "ArrowRight", repeat: true });
+    await control.trigger("keydown", { key: "ArrowRight", shiftKey: true, repeat: true });
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+    expect(mockLive.pushEvent).toHaveBeenCalledExactlyOnceWith(
+      "override_sequence_visual_layer",
+      {
+        id: 42,
+        layer_key: "hero",
+        interaction_id: expect.any(String),
+        x: 0.212,
+      },
+      expect.any(Function),
+      expect.any(Function),
+    );
+    wrapper.unmount();
+  });
+
+  it("keeps rapid gestures cumulative until the server confirms and ignores stale callbacks", async () => {
+    const wrapper = mountStage();
+    const control = wrapper.get('[data-layer-control="hero"]');
+    await control.trigger("keydown", { key: "ArrowRight" });
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+    await control.trigger("keydown", { key: "ArrowRight" });
+    window.dispatchEvent(new KeyboardEvent("keyup", { key: "ArrowRight" }));
+    expect(vi.mocked(mockLive.pushEvent).mock.calls[1]?.[1]).toMatchObject({ x: 0.202 });
+    vi.mocked(mockLive.pushEvent).mock.calls[0]?.[2]?.({});
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(SequenceVisualLayers).props("layers")?.[0]?.x).toBe(0.202);
+    const confirmed = editableStage();
+    confirmed.composition.layers[0]!.x = 0.202;
+    await wrapper.setProps({ stage: confirmed });
+    vi.mocked(mockLive.pushEvent).mock.calls[1]?.[2]?.({});
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(SequenceVisualLayers).props("layers")?.[0]?.x).toBe(0.202);
+    wrapper.unmount();
+  });
+
+  it("rolls back optimistic geometry on transport failure", async () => {
+    const wrapper = mountStage();
+    move(wrapper);
+    pointer(window, "pointerup", 200, 150);
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(SequenceVisualLayers).props("layers")?.[0]?.x).toBe(0.3);
+    vi.mocked(mockLive.pushEvent).mock.calls[0]?.[3]?.(new Error("Disconnected"));
+    await wrapper.vm.$nextTick();
+    expect(wrapper.getComponent(SequenceVisualLayers).props("layers")?.[0]?.x).toBe(0.2);
+    wrapper.unmount();
+  });
+
+  it("emits a dropped library image with coordinates relative to the displayed frame", async () => {
+    const wrapper = mountStage();
+    const image = { asset_id: 12, label: "Aria", url: "/aria.png", source: "asset" };
+    await wrapper.get("[data-sequence-canvas]").trigger("drop", {
+      clientX: 350,
+      clientY: 150,
+      dataTransfer: {
+        getData: (mime: string) =>
+          mime === SEQUENCE_LIBRARY_IMAGE_MIME ? JSON.stringify(image) : "",
+      },
     });
+    expect(wrapper.emitted("add-image")).toEqual([[{ image, x: 0.25, y: 0.2 }]]);
+    expect(mockLive.pushEvent).not.toHaveBeenCalled();
+    wrapper.unmount();
+  });
+
+  it("hides authoring controls when read only", () => {
+    const wrapper = mountStage(editableStage(), { canEdit: false });
+    expect(wrapper.find("[data-sequence-layer-controls]").exists()).toBe(false);
     wrapper.unmount();
   });
 });

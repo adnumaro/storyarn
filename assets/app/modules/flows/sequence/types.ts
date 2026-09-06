@@ -19,6 +19,8 @@ export interface SequenceVisualLayerRecord {
   sequenceId?: SequenceEntityId | null;
   sequence_depth?: number | null;
   sequenceDepth?: number | null;
+  stack_index?: number | null;
+  stackIndex?: number | null;
   inherited?: boolean;
   overridden_fields?: string[] | null;
   overriddenFields?: string[] | null;
@@ -52,6 +54,9 @@ export interface SequenceVisualLayer extends SequenceVisualLayerRecord {
 
 export interface SequenceAssetEntry {
   id: SequenceEntityId;
+  family_id?: SequenceEntityId;
+  original_asset_id?: SequenceEntityId | null;
+  size?: number;
   filename: string;
   url?: string | null;
   content_type?: string | null;
@@ -93,6 +98,7 @@ export interface SequenceConfigPanelData {
 
 export interface SequenceStageIntervention {
   nodeId: SequenceEntityId;
+  speakerSheetId?: SequenceEntityId | null;
   speakerName?: string | null;
   speakerInitials?: string | null;
   speakerAvatarUrl?: string | null;

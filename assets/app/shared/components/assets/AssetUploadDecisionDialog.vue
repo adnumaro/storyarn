@@ -68,6 +68,9 @@ const targetLabel = computed(() => {
           <p v-else-if="state.requiresVariant && targetLabel">
             {{ $t("common.assets.upload_decision.variant_required", { size: targetLabel }) }}
           </p>
+          <p v-else-if="state.requiresVariant">
+            {{ $t("common.assets.upload_decision.web_variant_required") }}
+          </p>
           <p v-else>
             {{ $t("common.assets.upload_decision.original_ready") }}
           </p>
