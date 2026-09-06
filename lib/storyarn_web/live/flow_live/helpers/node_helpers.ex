@@ -323,9 +323,13 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
 
   @doc false
   @spec refresh_sequence_stage(Socket.t(), map()) :: Socket.t()
-  def refresh_sequence_stage(socket, %{type: type, id: node_id}) when type in ["sequence", "dialogue"] do
-    graph = Flows.load_runtime_graph(socket.assigns.flow.id)
-    speakers_map = FormHelpers.player_speakers_map(socket.assigns.all_sheets)
+  def refresh_sequence_stage(%{assigns: %{all_sheets: all_sheets, flow: flow, project: project}} = socket, %{
+        type: type,
+        id: node_id
+      })
+      when type in ["sequence", "dialogue"] do
+    graph = Flows.load_runtime_graph(flow.id)
+    speakers_map = FormHelpers.player_speakers_map(all_sheets)
 
     assign(
       socket,
@@ -334,7 +338,7 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         node_id,
         graph.nodes,
         speakers_map,
-        socket.assigns.project.id,
+        project.id,
         nil
       )
     )

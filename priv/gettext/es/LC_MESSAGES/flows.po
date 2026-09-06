@@ -498,3 +498,8 @@ msgstr "La conversación ha cambiado. Revisa su estado actual e inténtalo de nu
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr "Esta conversación o su origen ya no están disponibles."
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1299
+#, elixir-autogen, elixir-format
+msgid "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+msgstr "Esta composición o alguno de sus descendientes aún depende de ese origen o capa. Reasigna o revierte primero esos cambios locales."

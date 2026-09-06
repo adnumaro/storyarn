@@ -498,3 +498,8 @@ msgstr ""
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr ""
+
+#: lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex:1299
+#, elixir-autogen, elixir-format
+msgid "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+msgstr ""

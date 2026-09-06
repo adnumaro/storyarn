@@ -11,17 +11,17 @@
 msgid ""
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:411
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:415
 #, elixir-autogen, elixir-format
 msgid "A flow cannot reference itself."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:407
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:411
 #, elixir-autogen, elixir-format
 msgid "Cannot reference the current flow."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:418
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:422
 #, elixir-autogen, elixir-format
 msgid "Circular reference detected. This flow is already referenced by the target."
 msgstr ""
@@ -100,7 +100,7 @@ msgid "Flow moved to trash."
 msgstr ""
 
 #: lib/storyarn_web/live/flow_live/handlers/navigation_handlers.ex:24
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:430
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:434
 #: lib/storyarn_web/live/flow_live/index.ex:460
 #: lib/storyarn_web/live/flow_live/index.ex:481
 #: lib/storyarn_web/live/flow_live/player_live.ex:70
@@ -133,7 +133,7 @@ msgstr ""
 msgid "Invalid flow ID."
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:434
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:438
 #, elixir-autogen, elixir-format
 msgid "Invalid flow reference."
 msgstr ""
@@ -168,7 +168,7 @@ msgstr ""
 msgid "This node is being edited by %{user}"
 msgstr ""
 
-#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:426
+#: lib/storyarn_web/live/flow_live/helpers/node_helpers.ex:430
 #, elixir-autogen, elixir-format
 msgid "This would create a circular reference."
 msgstr ""
