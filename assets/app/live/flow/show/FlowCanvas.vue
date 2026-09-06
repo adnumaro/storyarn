@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, watch } from "vue";
+import { AreaExtensions } from "rete-area-plugin";
 import { useLive } from "@shared/composables/useLive";
 import { registerPaletteCommands } from "@shared/command-palette/registry";
 import { useFlowCanvas } from "@modules/flows/editor/composables/useFlowCanvas";
@@ -24,6 +25,7 @@ const {
   canvasId = "flow-canvas",
   toolbarData = "{}",
   comments = null,
+  fitViewRequest = 0,
 } = defineProps<{
   flowData: string | null;
   variableMap: string | null;
@@ -34,6 +36,7 @@ const {
   canvasId: string;
   toolbarData: string;
   comments?: CanvasComments | null;
+  fitViewRequest?: number;
 }>();
 
 const containerRef = ref<HTMLElement | null>(null);
@@ -87,6 +90,15 @@ watch(
   () => toolbarData,
   (val) => setToolbarProps(safeParse(val)),
   { immediate: true },
+);
+watch(
+  () => fitViewRequest,
+  () =>
+    requestAnimationFrame(() => {
+      const nodes = editor.value?.getNodes() ?? [];
+      if (containerRef.value?.isConnected && area.value && nodes.length > 0)
+        void AreaExtensions.zoomAt(area.value, nodes);
+    }),
 );
 function safeParse(json: string, fallback: Record<string, unknown> = {}): Record<string, unknown> {
   try {

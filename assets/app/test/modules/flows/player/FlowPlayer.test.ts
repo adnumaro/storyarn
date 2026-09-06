@@ -138,7 +138,7 @@ describe("FlowPlayer", () => {
           },
         ],
       });
-      const layers = w.findAll(".flow-player-stage-layer");
+      const layers = w.findAll(".sequence-visual-layer");
       expect(layers).toHaveLength(2);
       expect(layers[0]!.attributes("data-kind")).toBe("backdrop");
       expect(layers[0]!.attributes("data-sequence-depth")).toBe("0");
@@ -147,7 +147,7 @@ describe("FlowPlayer", () => {
       expect(layers[1]!.attributes("data-sequence-depth")).toBe("1");
       expect(layers[1]!.attributes("style")).toContain("left: 75%");
 
-      const images = w.findAll(".flow-player-stage-layer-img");
+      const images = w.findAll(".sequence-visual-layer-image");
       expect(images[0]!.attributes("src")).toBe("/outer.png");
       expect(images[0]!.attributes("style")).toContain("object-fit: cover");
       expect(images[0]!.attributes("style")).toContain("object-position: center center");
@@ -175,7 +175,7 @@ describe("FlowPlayer", () => {
 
       const stage = w.find(".player-stage");
       expect(stage.exists()).toBe(true);
-      expect(stage.find(".flow-player-stage-layers").exists()).toBe(true);
+      expect(stage.find(".sequence-visual-layers").exists()).toBe(true);
 
       const mainChildren = w.find(".player-main").element.children;
       expect(mainChildren[0]).toBe(stage.element);
@@ -184,7 +184,7 @@ describe("FlowPlayer", () => {
 
     it("hides visual layers when there are no layer URLs", () => {
       const w = mountPlayer({ visualLayers: [] });
-      expect(w.find(".flow-player-stage-layer").exists()).toBe(false);
+      expect(w.find(".sequence-visual-layer").exists()).toBe(false);
     });
 
     it("renders sequence audio tracks", async () => {

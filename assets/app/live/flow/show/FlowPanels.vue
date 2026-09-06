@@ -3,7 +3,6 @@ import { computed } from "vue";
 import FlowBuilderPanel from "@modules/flows/editor/components/panels/FlowBuilderPanel.vue";
 import FlowCommentsPanel from "@modules/flows/editor/components/panels/FlowCommentsPanel.vue";
 import type { FlowCommentsPanelState } from "@modules/flows/types/comments";
-import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
 import FlowDialogueFullscreenEditor from "@modules/flows/editor/components/panels/FlowDialogueFullscreenEditor.vue";
 import FlowDialoguePanel from "@modules/flows/editor/components/panels/FlowDialoguePanel.vue";
 import FlowPreview from "@modules/flows/editor/components/panels/FlowPreview.vue";
@@ -23,13 +22,6 @@ interface FlowVersionsPanel {
   canEdit: boolean;
   restoreEnabled: boolean;
   loading: boolean;
-}
-
-interface FlowDebugPanelState {
-  open: boolean;
-  state: ServerPayload;
-  nodes: Record<string, ServerPayload>;
-  controls: ServerPayload;
 }
 
 interface FlowBuilderPanelState {
@@ -60,11 +52,11 @@ interface FlowPreviewPanel {
 interface FlowPanels {
   comments?: FlowCommentsPanelState;
   versions: FlowVersionsPanel;
-  debug: FlowDebugPanelState;
   builder: FlowBuilderPanelState;
   dialogue: FlowPanelState;
   dialogueFullscreen: FlowPanelState;
-  sequence: FlowPanelState;
+  // Optional while an already-open editor transitions from the pre-sequence payload.
+  sequence?: FlowPanelState;
   preview: FlowPreviewPanel;
 }
 
@@ -94,15 +86,6 @@ const commentsPanelOpen = computed(
         :can-edit="panels.versions.canEdit"
         :restore-enabled="panels.versions.restoreEnabled"
         :loading="panels.versions.loading"
-      />
-    </div>
-
-    <div id="flow-debug-panel" class="contents">
-      <FlowDebugPanel
-        :open="panels.debug.open && !commentsPanelOpen"
-        :state="panels.debug.state"
-        :nodes="panels.debug.nodes"
-        :controls="panels.debug.controls"
       />
     </div>
 
@@ -137,9 +120,9 @@ const commentsPanelOpen = computed(
 
     <div id="flow-sequence-config-panel" class="contents">
       <FlowSequenceConfigPanel
-        :open="panels.sequence.open && !commentsPanelOpen"
-        :data="panels.sequence.data"
-        :can-edit="panels.sequence.canEdit"
+        :open="Boolean(panels.sequence?.open && !commentsPanelOpen)"
+        :data="panels.sequence?.data ?? null"
+        :can-edit="panels.sequence?.canEdit ?? false"
       />
     </div>
 

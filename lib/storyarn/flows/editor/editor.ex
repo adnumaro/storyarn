@@ -35,6 +35,7 @@ defmodule Storyarn.Flows.Editor do
   alias Storyarn.Flows.NodeLabel
   alias Storyarn.Flows.NodeTypes
   alias Storyarn.Flows.RuntimeKey
+  alias Storyarn.Flows.SequenceCompositionHistory
   alias Storyarn.Flows.SequenceCompositionIntegrity
   alias Storyarn.Flows.ShortcutGenerator
   alias Storyarn.Flows.TreeOperations
@@ -305,6 +306,20 @@ defmodule Storyarn.Flows.Editor do
   defdelegate restore_sequence(sequence), to: SequenceRestore
   defdelegate wrap_selection_in_sequence(flow, node_ids, attrs \\ %{}), to: SequenceWrap
   defdelegate set_composition_source(owner_id, source_id), to: CompositionSourceUpdate, as: :set
+  defdelegate capture_sequence_composition(owner_id), to: SequenceCompositionHistory, as: :capture
+
+  defdelegate transact_sequence_composition(owner_id, mutation),
+    to: SequenceCompositionHistory,
+    as: :transact
+
+  defdelegate restore_sequence_composition(owner_id, snapshot),
+    to: SequenceCompositionHistory,
+    as: :restore
+
+  defdelegate restore_sequence_composition(owner_id, snapshot, expected_current),
+    to: SequenceCompositionHistory,
+    as: :restore
+
   def list_sequence_visual_layers(sequence_id) when is_integer(sequence_id), do: Sequences.list_visual_layers(sequence_id)
 
   def get_sequence_visual_layer(sequence_id, id) when is_integer(sequence_id) and is_integer(id),
