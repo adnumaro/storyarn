@@ -958,7 +958,7 @@ defmodule StoryarnWeb.FlowLive.PlayerLiveTest do
       assert vue.props["slide"]["text"] =~ "Sub flow dialogue"
       assert vue.props["slide"]["speaker_name"] == "Session Speaker"
       assert vue.props["slide"]["speaker_avatar_url"] == speaker_avatar_url
-      refute vue.props["can-go-back"]
+      assert vue.props["can-go-back"]
     end
 
     test "flow_return navigates back to parent flow", %{

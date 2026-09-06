@@ -1303,10 +1303,10 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
                "volume" => Decimal.new("0.75")
              })
 
-    _patch =
-      raw_sequence_track_override_fixture(dialogue, source_track, %{
-        "volume" => Decimal.new("0.3")
-      })
+    assert {:ok, _patch} =
+             Storyarn.Flows.override_sequence_track(dialogue.id, source_track.track_key, %{
+               "volume" => Decimal.new("0.3")
+             })
 
     target_object = active_project_object(project.id)
 

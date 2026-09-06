@@ -69,6 +69,7 @@ defmodule Storyarn.Flows.RuntimeGraph do
          type: node.type,
          data: Map.get(node, :data) || %{},
          parent_id: Map.get(node, :parent_id),
+         composition_source_id: Map.get(node, :composition_source_id),
          sequence_config: Map.get(node, :sequence_config),
          sequence_visual_layers: Map.get(node, :sequence_visual_layers) || [],
          sequence_tracks: Map.get(node, :sequence_tracks) || []

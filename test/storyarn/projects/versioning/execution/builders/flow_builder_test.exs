@@ -276,21 +276,16 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           "kind" => "backdrop"
         })
 
-      _track_patch =
-        raw_sequence_track_override_fixture(middle, track, %{
+      {:ok, _track_patch} =
+        Flows.override_sequence_track(middle.id, track.track_key, %{
           "volume" => Decimal.new("0.250")
         })
 
-      _layer_tombstone =
-        raw_sequence_visual_override_fixture(middle, layer, %{},
-          removed: true,
-          overridden_fields: []
-        )
+      {:ok, _layer_tombstone} =
+        Flows.remove_sequence_visual_layer(middle.id, layer.layer_key)
 
-      reopened_layer =
-        raw_sequence_visual_override_fixture(leaf, layer, %{},
-          overridden_fields: ~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible)
-        )
+      {:ok, reopened_layer} =
+        Flows.restore_sequence_visual_layer(leaf.id, layer.layer_key)
 
       assert MapSet.new(reopened_layer.overridden_fields) ==
                MapSet.new(~w(asset_id kind label z_index slot x y width height anchor_x anchor_y fit opacity visible))
@@ -317,10 +312,11 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           Map.put(node, "sequence_tracks", [])
         end)
 
-      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, middle_id, track_key, reason}} =
+      inheritance_error = :invalid_sequence_resource_inheritance
+
+      assert {:error, {^inheritance_error, :sequence_track, middle_id, track_key, :missing_inherited_identity}} =
                FlowBuilder.validate_portable_snapshot(without_track_base)
 
-      assert reason == :missing_inherited_identity
       assert middle_id == middle.id
       assert track_key == track.track_key
 
@@ -355,10 +351,9 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           end)
         end)
 
-      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, root_id, ^track_key, reason}} =
+      assert {:error, {^inheritance_error, :sequence_track, root_id, ^track_key, :incomplete_local_definition}} =
                FlowBuilder.validate_portable_snapshot(incomplete_local_definition)
 
-      assert reason == :incomplete_local_definition
       assert root_id == root.id
 
       local_tombstone =
@@ -368,10 +363,8 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
           end)
         end)
 
-      assert {:error, {:invalid_sequence_resource_inheritance, :sequence_track, ^root_id, ^track_key, reason}} =
+      assert {:error, {^inheritance_error, :sequence_track, ^root_id, ^track_key, :local_definition_tombstone}} =
                FlowBuilder.validate_portable_snapshot(local_tombstone)
-
-      assert reason == :local_definition_tombstone
     end
 
     test "rejects cross-project assets from every Flow asset-bearing surface", %{
@@ -2913,16 +2906,13 @@ defmodule Storyarn.Projects.Versioning.Builders.FlowBuilderTest do
                  "label" => "Shared source"
                })
 
-      track_patch =
-        raw_sequence_track_override_fixture(dialogue, source_track, %{
-          "volume" => Decimal.new("0.2")
-        })
+      assert {:ok, track_patch} =
+               Flows.override_sequence_track(dialogue.id, source_track.track_key, %{
+                 "volume" => Decimal.new("0.2")
+               })
 
-      layer_tombstone =
-        raw_sequence_visual_override_fixture(dialogue, source_layer, %{},
-          removed: true,
-          overridden_fields: []
-        )
+      assert {:ok, layer_tombstone} =
+               Flows.remove_sequence_visual_layer(dialogue.id, source_layer.layer_key)
 
       snapshot = FlowBuilder.build_snapshot(flow)
       target_project = project_fixture(user)

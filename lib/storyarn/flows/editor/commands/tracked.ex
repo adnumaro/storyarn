@@ -6,12 +6,16 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
   not own either the event vocabulary or its payload contract.
   """
 
+  alias Storyarn.Flows.Editor.Commands.CompositionOwnerDuplicate
+  alias Storyarn.Flows.Editor.Commands.SequenceCreate
+  alias Storyarn.Flows.Editor.Commands.SequenceTracks
+  alias Storyarn.Flows.Editor.Commands.SequenceVisualLayers
+  alias Storyarn.Flows.Editor.Commands.SequenceWrap
   alias Storyarn.Flows.Editor.Events
   alias Storyarn.Flows.Flow
   alias Storyarn.Flows.FlowNode
   alias Storyarn.Flows.NodeCrud
   alias Storyarn.Flows.NodeTypes
-  alias Storyarn.Flows.SequenceCrud
   alias Storyarn.Flows.SequenceVisualLayer
 
   @spec create_node(term(), Flow.t(), map(), String.t()) ::
@@ -27,7 +31,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
   def duplicate_node(scope, %Flow{} = flow, %FlowNode{} = node) do
     if node.type in ["sequence", "dialogue"] do
       flow
-      |> SequenceCrud.duplicate_composition_owner(node)
+      |> CompositionOwnerDuplicate.duplicate(node)
       |> tap_success(fn duplicate -> emit_node_created(scope, flow, duplicate, "duplicate") end)
     else
       attrs = %{
@@ -47,7 +51,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
     attrs = put_default_sequence_name(attrs)
 
     flow.id
-    |> SequenceCrud.create_sequence(attrs)
+    |> SequenceCreate.create_sequence(attrs)
     |> tap_success(fn sequence ->
       emit_node_created(scope, flow, sequence, creation_method)
     end)
@@ -57,7 +61,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
           {:ok, FlowNode.t()} | {:error, term()}
   def wrap_selection_in_sequence(scope, %Flow{} = flow, node_ids, attrs) do
     flow
-    |> SequenceCrud.wrap_selection_in_sequence(node_ids, attrs)
+    |> SequenceWrap.wrap_selection_in_sequence(node_ids, attrs)
     |> tap_success(fn sequence ->
       emit_node_created(scope, flow, sequence, "wrap_selection")
     end)
@@ -67,7 +71,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
           {:ok, SequenceVisualLayer.t()} | {:error, term()}
   def create_sequence_visual_layer(scope, %Flow{} = flow, sequence_id, attrs) do
     sequence_id
-    |> SequenceCrud.create_sequence_visual_layer(attrs)
+    |> SequenceVisualLayers.create_sequence_visual_layer(attrs)
     |> tap_success(fn layer ->
       emit_visual_layer(
         scope,
@@ -89,7 +93,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
         ) :: {:ok, SequenceVisualLayer.t()} | {:error, term()}
   def update_sequence_visual_layer(scope, %Flow{} = flow, sequence_id, layer, attrs) do
     layer
-    |> SequenceCrud.update_sequence_visual_layer(attrs)
+    |> SequenceVisualLayers.update_sequence_visual_layer(attrs)
     |> tap_success(fn updated_layer ->
       emit_visual_layer(
         scope,
@@ -106,7 +110,7 @@ defmodule Storyarn.Flows.Editor.Commands.Tracked do
           {:ok, term()} | {:error, term()}
   def upsert_sequence_track(scope, %Flow{} = flow, sequence_id, kind, attrs) do
     sequence_id
-    |> SequenceCrud.upsert_sequence_track(kind, attrs)
+    |> SequenceTracks.upsert_sequence_track(kind, attrs)
     |> tap_success(fn track ->
       Events.emit(scope, :sequence_track_updated, %{
         changed_asset: has_attr?(attrs, :asset_id),
