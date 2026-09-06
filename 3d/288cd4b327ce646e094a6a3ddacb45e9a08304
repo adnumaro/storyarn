@@ -1,0 +1,19 @@
+lib/storyarn/workers/flows/recover_flow_versions_worker.ex
+  s_5af6a6d0a150f1::t_a5730b38f332f9 6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "3d288cd4b327ce646e094a6a3ddacb45e9a08304",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
