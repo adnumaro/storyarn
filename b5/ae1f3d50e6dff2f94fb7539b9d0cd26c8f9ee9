@@ -54,6 +54,7 @@ lib/storyarn/flows/editor/commands/sequence_composition_history.ex
   s_5af6a6d0a150f1::t_88482a2d2a3185 1-618
 lib/storyarn/flows/editor/editor.ex
   s_5af6a6d0a150f1::t_ad27d420d59f2e 38,309-314,318-322
+  s_5af6a6d0a150f1::t_35f98f7aee8a35 315-317
 lib/storyarn_web/live/flow_live/handlers/collaboration_event_handlers.ex
   s_5af6a6d0a150f1::t_b511191115448e 95-98,101-103,105-108,110,113-115,117-128,142-154
 lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
@@ -68,6 +69,8 @@ lib/storyarn_web/live/flow_live/show.ex
   s_5af6a6d0a150f1::t_120aa2bf849fd2 22,209,596-597,681-716,1356,1476-1482,1490-1493,1614-1615,1619-1636,1768
 test/storyarn/architecture/flows_facade_contract_test.exs
   s_5af6a6d0a150f1::t_ebe5130fc79a13 20,268-269,310
+  s_5af6a6d0a150f1::t_15b7dbd80a7763 392-393
+  s_5af6a6d0a150f1::t_bad5b6a6a57ae7 342
 test/storyarn/flows/editor/commands/sequence_composition_history_test.exs
   s_5af6a6d0a150f1::t_1dae770c66f7d7 1-452
 test/storyarn_web/live/flow_live/collaboration_test.exs
