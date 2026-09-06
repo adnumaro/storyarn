@@ -13,6 +13,7 @@ type SurfaceData = InstanceType<typeof FlowSurface>["$props"]["surface"];
 const canvasMounts = vi.fn();
 const FlowCanvasStub = defineComponent({
   name: "FlowCanvas",
+  props: ["fitViewRequest"],
   setup() {
     onMounted(canvasMounts);
     return {};
@@ -92,6 +93,7 @@ describe("FlowSurface sequence workspace", () => {
     expect(wrapper.find("[data-stage-stub]").exists()).toBe(true);
     expect(wrapper.find("[data-flow-splitter]").exists()).toBe(true);
     expect(wrapper.getComponent(FlowDockStub).props("visualEditorOpen")).toBe(true);
+    expect(wrapper.getComponent(FlowCanvasStub).props("fitViewRequest")).toBe(1);
     expect(wrapper.get("[data-canvas-stub]").element).toBe(canvas);
 
     liveProjection.vue.props.surface = {

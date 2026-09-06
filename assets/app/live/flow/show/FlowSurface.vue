@@ -62,6 +62,7 @@ const sequencePanelOpen = computed(() => Boolean(surface.value.sequencePanelOpen
 const debugOpen = computed(() => Boolean(surface.value.debug?.open && surface.value.debug.state));
 const root = ref<HTMLElement | null>(null);
 const visualEditorOpen = ref(false);
+const fitViewRequest = ref(0);
 const splitPercent = ref(60);
 const upperFullscreen = ref(false);
 let resizing = false;
@@ -133,6 +134,7 @@ function toggleUpperFullscreen() {
 
 function toggleVisualEditor() {
   visualEditorOpen.value = !visualEditorOpen.value;
+  if (visualEditorOpen.value) fitViewRequest.value++;
   if (!visualEditorOpen.value) upperFullscreen.value = false;
 }
 
@@ -219,6 +221,7 @@ onUnmounted(() => {
           :canvas-id="surface.canvas.canvasId"
           :toolbar-data="surface.canvas.toolbarData"
           :comments="comments"
+          :fit-view-request="fitViewRequest"
         />
 
         <div id="flow-dock" class="contents">
