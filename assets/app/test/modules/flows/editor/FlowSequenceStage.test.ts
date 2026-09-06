@@ -103,6 +103,38 @@ describe("FlowSequenceStage", () => {
     wrapper.unmount();
   });
 
+  it("clips oversized images to the screen while keeping resize controls outside its clip", () => {
+    const stage = editableStage();
+    Object.assign(stage.composition.layers[0]!, {
+      x: -0.5,
+      y: -0.5,
+      width: 2,
+      height: 2,
+      zIndex: 99999,
+    });
+    const wrapper = mountStage(stage, { selectedLayerKey: "hero" });
+    const frame = wrapper.get("[data-sequence-frame]");
+    const renderer = wrapper.getComponent(SequenceVisualLayers);
+    const controls = wrapper.get("[data-sequence-layer-controls]");
+    const outline = wrapper.get("[data-sequence-frame-outline]");
+    expect(renderer.classes()).toContain("overflow-hidden");
+    expect((renderer.element as HTMLElement).style.overflow).not.toBe("visible");
+    expect(frame.classes()).not.toContain("overflow-hidden");
+    expect(controls.element.parentElement).toBe(frame.element);
+    expect(renderer.element.contains(controls.element)).toBe(false);
+    expect(wrapper.get('[data-layer-control="hero"]').attributes("style")).toContain("left: -50%");
+    expect(wrapper.get('[data-layer-control="hero"]').attributes("style")).toContain("width: 200%");
+    expect(wrapper.findAll("[data-layer-resize-handle]")).toHaveLength(8);
+    // Image z-indices stay inside the renderer's stacking context, below the frame outline.
+    expect(renderer.classes()).toContain("z-0");
+    expect(outline.classes()).toEqual(expect.arrayContaining(["z-30", "pointer-events-none"]));
+    expect(outline.element.parentElement).toBe(frame.element);
+    pointer(wrapper.get('[data-layer-resize-handle="e"]').element, "pointerdown");
+    pointer(window, "pointerup", 200, 100);
+    expect(mockLive.pushEvent).toHaveBeenCalledOnce();
+    wrapper.unmount();
+  });
+
   it("uses the same authoritative stack order as the renderer", () => {
     const stage = editableStage();
     stage.composition.layers = [

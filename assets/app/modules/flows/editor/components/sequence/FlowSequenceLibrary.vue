@@ -34,6 +34,7 @@ const {
   canReplace = false,
   canEdit = false,
   remoteSearch = false,
+  uploadedAssets = [],
 } = defineProps<{
   sheets?: SequenceLibrarySheet[];
   imageAssets?: SequenceAssetEntry[];
@@ -42,6 +43,7 @@ const {
   canReplace?: boolean;
   canEdit?: boolean;
   remoteSearch?: boolean;
+  uploadedAssets?: SequenceAssetEntry[];
 }>();
 
 const emit = defineEmits<{
@@ -123,10 +125,25 @@ onUnmounted(() => {
 });
 
 const availableAssets = computed(() => {
+  const uploaded = uploadedAssets.filter((asset) => matches(asset.filename));
+  const ids = new Set(uploaded.map((asset) => String(asset.id)));
+  return [...uploaded, ...searchResults.value.filter((asset) => !ids.has(String(asset.id)))];
+});
+
+const searchResults = computed(() => {
   if (!remoteActive.value) return imageAssets.filter((asset) => matches(asset.filename));
   if (remoteAssets.value !== null) return remoteAssets.value;
   return !query.value.trim() && !searchFailed.value ? imageAssets : [];
 });
+
+watch(
+  () => uploadedAssets,
+  () => {
+    if (!uploadedAssets.length) return;
+    tab.value = "assets";
+    query.value = "";
+  },
+);
 
 function normalizeSearchText(value: string): string {
   return value

@@ -403,6 +403,9 @@ defmodule Storyarn.Flows do
   @spec load_player_speakers(integer()) :: [Storyarn.Flows.PlayerCatalog.speaker()]
   defdelegate load_player_speakers(project_id), to: Runtime
 
+  @doc "Resolves an active dialogue voice asset within its project."
+  defdelegate get_player_audio_asset(project_id, asset_id), to: Runtime
+
   @doc """
   Resolves the current speaker name for the editor preview.
 
@@ -822,7 +825,7 @@ defmodule Storyarn.Flows do
   defdelegate player_step_until_interactive(state, nodes, connections, opts \\ []), to: Runtime
 
   @doc "Creates and advances a Flow-owned player runtime session."
-  defdelegate start_player_session(flow, variables), to: Runtime
+  defdelegate start_player_session(flow, variables, opts \\ []), to: Runtime
 
   @doc "Reconstitutes a previously stored ephemeral player session."
   defdelegate restore_player_session(flow, state, nodes, connections, scene_id), to: Runtime

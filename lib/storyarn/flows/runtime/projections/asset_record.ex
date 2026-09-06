@@ -1,5 +1,5 @@
 defmodule Storyarn.Flows.Runtime.Projections.AssetRecord do
-  @moduledoc "Runtime-owned media projection used to render speaker avatars."
+  @moduledoc "Runtime-owned media projection used to render speaker avatars and dialogue voice."
 
   use Ecto.Schema
 
@@ -7,6 +7,8 @@ defmodule Storyarn.Flows.Runtime.Projections.AssetRecord do
 
   schema "assets" do
     field :filename, :string
+    field :project_id, :id
+    field :content_type, :string
     field :metadata, :map, default: %{}
     field :deleted_at, :utc_datetime
 

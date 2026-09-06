@@ -327,18 +327,16 @@ onUnmounted(() => {
     >
       <div
         ref="viewport"
+        data-sequence-frame
         class="flow-sequence-viewport absolute left-1/2 top-1/2 aspect-video border border-border/80 bg-background shadow-sm"
         :style="viewStyle"
         @pointerdown.self="clearSelection"
       >
-        <SequenceVisualLayers
-          v-if="stage.status === 'ready'"
-          :layers="displayLayers"
-          style="overflow: visible"
-        />
+        <SequenceVisualLayers v-if="stage.status === 'ready'" :layers="displayLayers" />
         <div
-          class="pointer-events-none absolute inset-0 z-[1] shadow-[0_0_0_9999px_color-mix(in_oklch,var(--background)_40%,transparent)]"
+          class="sequence-frame-outline pointer-events-none absolute inset-0 z-30"
           aria-hidden="true"
+          data-sequence-frame-outline
         />
 
         <div
@@ -354,7 +352,7 @@ onUnmounted(() => {
             :class="[
               isLocked(layer) ? 'pointer-events-none' : 'pointer-events-auto',
               selectedLayerKey === layerKey(layer)
-                ? 'border-primary shadow-[inset_0_0_0_1px_var(--primary)]'
+                ? 'border-primary shadow-[inset_0_0_0_1px_hsl(var(--primary))]'
                 : undefined,
             ]"
             :tabindex="isLocked(layer) ? -1 : 0"
@@ -565,6 +563,10 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
+.sequence-frame-outline {
+  border: 1px solid hsl(var(--foreground) / 0.75);
+  box-shadow: 0 0 0 1px hsl(var(--background) / 0.9);
+}
 .sequence-stage-grid {
   background-image:
     linear-gradient(

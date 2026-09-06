@@ -298,6 +298,25 @@ describe("sequence library global asset search", () => {
     expect(mockLive.pushEvent).toHaveBeenCalledTimes(2);
     expect(mockLive.removeHandleEvent).toHaveBeenCalledWith(42);
   });
+
+  it("immediately shows new uploads even with cached remote results and deduplicates later replies", async () => {
+    wrapper = mountLibrary({ remoteSearch: true });
+    await switchToAssets(wrapper);
+    await vi.advanceTimersByTimeAsync(160);
+    await reply(request().request_id, [100]);
+    await wrapper.setProps({ uploadedAssets: [{ id: 900, filename: "new.png", url: "/new.png" }] });
+    expect(
+      wrapper.findAll("[data-library-item]").map((item) => item.attributes("data-library-item")),
+    ).toEqual(["asset-900", "asset-100"]);
+    await wrapper.get('[data-library-item="asset-900"] [data-library-add]').trigger("click");
+    expect(wrapper.emitted("add-image")).toEqual([
+      [{ asset_id: 900, label: "new.png", url: "/new.png", source: "asset" }],
+    ]);
+    await wrapper.get("[data-library-search]").setValue("new");
+    await vi.advanceTimersByTimeAsync(160);
+    await reply(request().request_id, [900]);
+    expect(wrapper.findAll('[data-library-item="asset-900"]')).toHaveLength(1);
+  });
 });
 
 describe("sequence library drag contract", () => {

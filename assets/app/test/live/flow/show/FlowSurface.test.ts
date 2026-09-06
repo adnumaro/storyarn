@@ -23,7 +23,7 @@ const FlowCanvasStub = defineComponent({
 
 const FlowSequenceStageStub = defineComponent({
   name: "FlowSequenceWorkspace",
-  props: ["stage", "canEdit", "fullscreen"],
+  props: ["stage", "canEdit", "fullscreen", "playback"],
   emits: ["toggle-fullscreen"],
   template:
     '<div data-stage-stub="true" :data-status="stage.status" :data-can-edit="canEdit"><button data-stage-fullscreen @click="$emit(\'toggle-fullscreen\')" /></div>',
@@ -99,9 +99,21 @@ describe("FlowSurface sequence workspace", () => {
     liveProjection.vue.props.surface = {
       ...surface,
       stage: { status: "ready", composition: { layers: [] } },
+      sequencePlayback: {
+        slide: { type: "dialogue", text: "Hello" },
+        visualLayers: [],
+        audioTracks: [],
+        voice: null,
+        canGoBack: false,
+        showContinue: true,
+        isFinished: false,
+        error: null,
+      },
     };
     await wrapper.vm.$nextTick();
     expect(wrapper.get("[data-stage-stub]").attributes("data-status")).toBe("ready");
+    expect(wrapper.getComponent(FlowSequenceStageStub).props("playback").slide.text).toBe("Hello");
+    expect(wrapper.get("[data-canvas-stub]").element).toBe(canvas);
 
     await toggle.trigger("click");
 

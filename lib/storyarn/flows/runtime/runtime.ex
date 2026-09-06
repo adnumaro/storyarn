@@ -39,6 +39,7 @@ defmodule Storyarn.Flows.Runtime do
 
   defdelegate resolve_scene_id(flow, opts \\ []), to: SceneResolver
   defdelegate load_player_speakers(project_id), to: PlayerCatalog, as: :load_speakers
+  defdelegate get_player_audio_asset(project_id, asset_id), to: PlayerCatalog, as: :get_audio_asset
 
   defdelegate evaluator_init(variables, start_node_id), to: Engine, as: :init
 
@@ -46,7 +47,7 @@ defmodule Storyarn.Flows.Runtime do
     to: PlayerEngine,
     as: :step_until_interactive
 
-  defdelegate start_player_session(flow, variables), to: PlayerSession, as: :start
+  defdelegate start_player_session(flow, variables, opts \\ []), to: PlayerSession, as: :start
 
   defdelegate restore_player_session(flow, state, nodes, connections, scene_id),
     to: PlayerSession,

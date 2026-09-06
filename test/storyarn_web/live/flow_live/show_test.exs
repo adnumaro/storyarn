@@ -628,6 +628,35 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
   describe "sequence workspace" do
     setup :register_and_log_in_user
 
+    test "runs playback inline and discards the session when closing the workspace", %{conn: conn, user: user} do
+      project = user |> project_fixture() |> Repo.preload(:workspace)
+      flow = flow_fixture(project)
+      first = node_fixture(flow, %{type: "dialogue", data: %{"text" => "First", "responses" => []}})
+      second = node_fixture(flow, %{type: "dialogue", data: %{"text" => "Second", "responses" => []}})
+      connection_fixture(flow, first, second)
+      view = mount_flow(conn, ~p"/workspaces/#{project.workspace.slug}/projects/#{project.slug}/flows/#{flow.id}")
+
+      render_hook(view, "sequence_playback", %{"action" => "start", "id" => first.id})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+      render_hook(view, "node_selected", %{"id" => first.id})
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      original = workspace_surface(view)
+      render_hook(view, "sequence_playback", %{"action" => "start", "id" => first.id})
+      assert workspace_surface(view)["sequencePlayback"]["slide"]["node_id"] == first.id
+      render_hook(view, "sequence_playback", %{"action" => "continue"})
+      playing = workspace_surface(view)
+      assert playing["sequencePlayback"]["slide"]["node_id"] == second.id
+      assert playing["stage"] == original["stage"]
+      assert playing["canvas"]["key"] == original["canvas"]["key"]
+      assert playing["debug"]["open"] == false
+
+      render_hook(view, "set_sequence_workspace", %{"open" => false})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+      render_hook(view, "set_sequence_workspace", %{"open" => true})
+      render_hook(view, "sequence_playback", %{"action" => "continue"})
+      assert workspace_surface(view)["sequencePlayback"] == nil
+    end
+
     test "loads the catalog, follows speaker selection, and closes without leaving the sidebar open",
          %{conn: conn, user: user} do
       project = user |> project_fixture() |> Repo.preload(:workspace)

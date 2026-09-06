@@ -587,7 +587,11 @@
       "show_more": "Show more",
       "hint": "Drag an image onto the stage or select it to add.",
       "refine_search": "More images match. Refine your search.",
-      "search_failed": "Images could not be loaded. Try again."
+      "search_failed": "Images could not be loaded. Try again.",
+      "upload_images": "Upload images",
+      "drop_in_library": "Drop images here to save them in Assets",
+      "drop_on_stage": "Drop images to save them in Assets and place them on the stage",
+      "unsupported_image": "{name}: use a JPEG, PNG, GIF or WebP image"
     },
     "sequence_workspace": {
       "title": "Composition",
@@ -614,7 +618,18 @@
         "library": "Library",
         "stage": "Stage",
         "inspector": "Layers"
-      }
+      },
+      "resize_library": "Resize library",
+      "resize_inspector": "Resize layers and inspector"
+    },
+    "sequence_playback": {
+      "start": "Play",
+      "start_hint": "Play from this dialogue using the initial variable values",
+      "stop": "Stop playback",
+      "title": "Scene playback",
+      "finished": "End of playback",
+      "error": "Playback could not continue. Try again or restart.",
+      "voice": "Dialogue audio"
     }
   }
 }

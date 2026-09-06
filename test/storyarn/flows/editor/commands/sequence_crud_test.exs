@@ -305,13 +305,15 @@ defmodule Storyarn.Flows.SequenceCrudTest do
       {:ok, character_layer} =
         Flows.create_sequence_visual_layer(seq.id, %{
           "kind" => "character",
-          "asset_id" => character.id
+          "asset_id" => character.id,
+          "z_index" => 100
         })
 
       {:ok, backdrop_layer} =
         Flows.create_sequence_visual_layer(seq.id, %{
           "kind" => "backdrop",
-          "asset_id" => backdrop.id
+          "asset_id" => backdrop.id,
+          "z_index" => 0
         })
 
       assert seq.id |> Flows.list_sequence_visual_layers() |> Enum.map(& &1.id) == [

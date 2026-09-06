@@ -128,7 +128,7 @@ onUnmounted(() => {
       :data-position="track.position ?? 0"
       :data-filename="track.filename || undefined"
       :data-content-type="track.content_type ?? track.contentType ?? undefined"
-      loop
+      :loop="track.kind === 'music' || track.kind === 'ambience'"
       autoplay
       preload="auto"
     />

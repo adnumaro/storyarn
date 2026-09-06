@@ -6,6 +6,7 @@ import FlowCollabToast from "@modules/flows/editor/components/collab/CollabToast
 import FlowDebugPanel from "@modules/flows/editor/components/panels/FlowDebugPanel.vue";
 import FlowSequenceWorkspace from "@modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue";
 import type { SequenceLibrarySheet } from "@modules/flows/editor/components/sequence/sequence-library";
+import type { SequencePlaybackState } from "@modules/flows/editor/components/sequence/sequence-playback";
 import type { SequenceConfigPanelData, SequenceStageState } from "@modules/flows/sequence/types";
 import { useLive } from "@shared/composables/useLive";
 import FlowCanvas from "./FlowCanvas.vue";
@@ -47,6 +48,7 @@ interface FlowSurface {
   stage?: SequenceStageState;
   sequencePanelOpen?: boolean;
   sequenceWorkspace?: { data: SequenceConfigPanelData | null; sheets: SequenceLibrarySheet[] };
+  sequencePlayback?: SequencePlaybackState | null;
   debug?: FlowDebugSurface;
 }
 
@@ -183,6 +185,7 @@ onUnmounted(() => {
         :sheets="surface.sequenceWorkspace?.sheets ?? []"
         :can-edit="surface.dock.canEdit && !surface.canvas.readonly"
         :fullscreen="upperFullscreen"
+        :playback="surface.sequencePlayback ?? null"
         @toggle-fullscreen="toggleUpperFullscreen"
       />
     </div>

@@ -16,6 +16,25 @@ defmodule Storyarn.Flows.PlayerCatalogTest do
   alias StoryarnWeb.FlowLive.Helpers.FormHelpers
   alias StoryarnWeb.PrivateMedia
 
+  test "dialogue audio lookup is scoped to active audio in its project" do
+    user = user_fixture()
+    project = project_fixture(user)
+    audio = audio_asset_fixture(project, user)
+    image = image_asset_fixture(project, user)
+    foreign_audio = audio_asset_fixture(project_fixture(user), user)
+
+    assert Flows.get_player_audio_asset(project.id, audio.id) == %{id: audio.id, filename: audio.filename}
+    assert Flows.get_player_audio_asset(project.id, image.id) == nil
+    assert Flows.get_player_audio_asset(project.id, foreign_audio.id) == nil
+
+    Repo.update_all(
+      from(record in Asset, where: record.id == ^audio.id),
+      set: [deleted_at: TimeHelpers.now(), deletion_reason: "system", deletion_generation: 1]
+    )
+
+    assert Flows.get_player_audio_asset(project.id, audio.id) == nil
+  end
+
   describe "load_player_speakers/1" do
     test "returns the player-owned speaker projection with optimized avatar media" do
       user = user_fixture()

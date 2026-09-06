@@ -587,7 +587,11 @@
       "show_more": "Mostrar más",
       "hint": "Arrastra una imagen al escenario o selecciónala para añadirla.",
       "refine_search": "Hay más imágenes. Afina la búsqueda.",
-      "search_failed": "No se pudieron cargar las imágenes. Inténtalo de nuevo."
+      "search_failed": "No se pudieron cargar las imágenes. Inténtalo de nuevo.",
+      "upload_images": "Subir imágenes",
+      "drop_in_library": "Suelta imágenes aquí para guardarlas en Assets",
+      "drop_on_stage": "Suelta imágenes para guardarlas en Assets y colocarlas en el escenario",
+      "unsupported_image": "{name}: utiliza una imagen JPEG, PNG, GIF o WebP"
     },
     "sequence_workspace": {
       "title": "Composición",
@@ -614,7 +618,18 @@
         "library": "Biblioteca",
         "stage": "Escenario",
         "inspector": "Capas"
-      }
+      },
+      "resize_library": "Ajustar ancho de biblioteca",
+      "resize_inspector": "Ajustar ancho de capas e inspector"
+    },
+    "sequence_playback": {
+      "start": "Reproducir",
+      "start_hint": "Reproducir desde este diálogo con los valores iniciales de las variables",
+      "stop": "Detener reproducción",
+      "title": "Reproducción de escena",
+      "finished": "Fin de la reproducción",
+      "error": "No se pudo continuar la reproducción. Vuelve a intentarlo o reinicia.",
+      "voice": "Audio del diálogo"
     }
   }
 }

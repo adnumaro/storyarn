@@ -12,6 +12,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Handlers.NavigationHandlers
   alias StoryarnWeb.FlowLive.Handlers.PreviewHandlers
+  alias StoryarnWeb.FlowLive.Handlers.SequencePlaybackHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.ConnectionHelpers
   alias StoryarnWeb.FlowLive.Helpers.DebugSerializer
@@ -207,6 +208,8 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:editing_mode, nil)
       |> assign(:sequence_panel_data, nil)
       |> assign(:sequence_workspace_open, false)
+      |> assign(:sequence_playback_session, nil)
+      |> assign(:sequence_playback, nil)
       |> assign(:sequence_stage, SequencePresentation.empty_stage())
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
@@ -376,6 +379,8 @@ defmodule StoryarnWeb.FlowLive.Show do
         |> teardown_previous_flow(flow)
         |> CommentHandlers.init()
         |> assign(:loading, true)
+        |> assign(:sequence_playback_session, nil)
+        |> assign(:sequence_playback, nil)
         |> assign(:flow, flow)
         |> maybe_start_flow_load(flow)
     end
@@ -599,7 +604,22 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   def handle_event("set_sequence_workspace", params, socket) do
-    GenericNodeHandlers.handle_set_sequence_workspace(params, socket)
+    {:noreply, socket} = GenericNodeHandlers.handle_set_sequence_workspace(params, socket)
+
+    if socket.assigns.sequence_workspace_open do
+      {:noreply, socket}
+    else
+      SequencePlaybackHandlers.handle_event(%{"action" => "stop"}, socket)
+    end
+  end
+
+  # Playback changes an ephemeral runtime session, never authored content or project variables.
+  def handle_event("sequence_playback", params, socket) do
+    if socket.assigns.sequence_workspace_open && !socket.assigns.loading do
+      SequencePlaybackHandlers.handle_event(params, socket)
+    else
+      {:noreply, socket}
+    end
   end
 
   def handle_event("close_sequence_config", _params, socket) do
@@ -1626,6 +1646,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
       stage: assigns.sequence_stage,
+      sequencePlayback: assigns.sequence_playback,
       sequencePanelOpen:
         !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, assigns.selected_node),
       sequenceWorkspace: %{
