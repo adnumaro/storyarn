@@ -1,0 +1,84 @@
+assets/app/test/modules/flows/editor/useSequenceImageImport.test.ts
+  s_5af6a6d0a150f1::t_834abed1c4e74a 187,204-208
+assets/app/test/modules/flows/editor/FlowSequencePlayback.test.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 36-48
+assets/app/modules/flows/editor/components/sequence/FlowSequenceInspector.vue
+  s_5af6a6d0a150f1::t_77864b1fbc35af 91
+assets/app/modules/flows/editor/components/sequence/FlowSequenceLayerList.vue
+  s_5af6a6d0a150f1::t_77864b1fbc35af 107,122
+  s_5af6a6d0a150f1::t_94c87c0b4e24b9 108-112
+assets/app/test/modules/flows/editor/sequence-workspace-keyboard.test.ts
+  s_5af6a6d0a150f1::t_cbc3c0f4764987 51-60
+  s_5af6a6d0a150f1::t_95e53bf45923c5 38-50,61-71
+assets/app/modules/flows/sequence/numbers.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 1-3
+assets/app/modules/flows/editor/components/panels/FlowSequenceConfigPanel.vue
+  s_5af6a6d0a150f1::t_77864b1fbc35af 46
+assets/app/test/modules/flows/editor/useSequenceWorkspaceResize.test.ts
+  s_5af6a6d0a150f1::t_95e53bf45923c5 133-149
+test/storyarn_web/live/flow_live/show_test.exs
+  s_5af6a6d0a150f1::t_834abed1c4e74a 631-654
+assets/app/modules/flows/editor/components/sequence/FlowSequencePlayback.vue
+  s_5af6a6d0a150f1::t_77864b1fbc35af 120-126
+assets/app/modules/flows/editor/composables/useSequenceImageImport.ts
+  s_5af6a6d0a150f1::t_533225904992af 33
+test/storyarn/flows/editor/commands/sequence_visual_layer_insertion_test.exs
+  s_5af6a6d0a150f1::t_731c71744b6143 20-35
+assets/app/test/modules/flows/editor/FlowSequenceLayerList.test.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 1-32
+assets/app/modules/flows/editor/services/keyboard.ts
+  s_5af6a6d0a150f1::t_a4e1c084e5ee57 186-190
+  s_5af6a6d0a150f1::t_cbc3c0f4764987 191
+lib/storyarn/flows/editor/entities/sequence_visual_layer.ex
+  s_5af6a6d0a150f1::t_36bcdd677371ab 204-207
+lib/storyarn/flows.ex
+  s_5af6a6d0a150f1::t_b01f404acb4956 17,404,408
+assets/app/modules/flows/editor/components/sequence/sequence-library.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 36-37,39,41-44
+assets/app/modules/flows/sequence/components/SequenceVisualLayers.vue
+  s_5af6a6d0a150f1::t_77864b1fbc35af 5,31-34
+assets/app/test/modules/flows/editor/FlowSequenceLibrary.test.ts
+  s_5af6a6d0a150f1::t_94c87c0b4e24b9 329-331
+  s_5af6a6d0a150f1::t_77864b1fbc35af 323-328,332-335
+test/storyarn/flows/editor/commands/sequence_composition_history_test.exs
+  s_5af6a6d0a150f1::t_731c71744b6143 10,21-36
+  s_5af6a6d0a150f1::t_1223f8949eb267 37-38
+assets/app/modules/flows/editor/lib/sequence-stage-geometry.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 2-4
+assets/app/modules/flows/editor/components/sequence/FlowSequenceWorkspace.vue
+  s_5af6a6d0a150f1::t_533225904992af 107-108,210-214,395
+assets/app/test/modules/flows/editor/FlowSequenceWorkspace.test.ts
+  s_5af6a6d0a150f1::t_834abed1c4e74a 3,123,247-273,426-431,433-451,453-455
+  s_5af6a6d0a150f1::t_8a9a36e84bd722 76
+  s_5af6a6d0a150f1::t_fc10f7af29ef81 432,452,456
+lib/storyarn/flows/editor/commands/sequence_composition_history.ex
+  s_5af6a6d0a150f1::t_36bcdd677371ab 14,610-615
+assets/app/test/modules/flows/editor/FlowSequenceStage.test.ts
+  s_5af6a6d0a150f1::t_a4e1c084e5ee57 5-6,224-235,242-248,254-262
+  s_5af6a6d0a150f1::t_cbc3c0f4764987 236-241,249-253
+  s_5af6a6d0a150f1::t_5ac5111868eb6a 263-264
+lib/storyarn_web/live/flow_live/handlers/generic_node_handlers.ex
+  s_5af6a6d0a150f1::t_533225904992af 244-245
+test/storyarn/architecture/flows_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_4de2ef20cd8791 347,434
+assets/app/modules/flows/editor/composables/useSequenceWorkspaceResize.ts
+  s_5af6a6d0a150f1::t_a4e1c084e5ee57 158-162
+assets/app/test/modules/flows/editor/FlowSequenceInspector.test.ts
+  s_5af6a6d0a150f1::t_77864b1fbc35af 1-23
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "beb721dd1efce5c71d3db39bf6f951eec3805fde",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
