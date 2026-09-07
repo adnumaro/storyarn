@@ -66,6 +66,26 @@ defmodule Storyarn.Ideation.RecoveryTest do
     end
   end
 
+  test "filtered assisted reveal selections survive capture and restore", ctx do
+    ctx = configure_session(ctx, %{publication_policy: :facilitator_assisted})
+    attrs = %{publication_consent: :facilitator_assisted, configuration_version: ctx.session.configuration_version}
+    idea = idea_fixture(ctx, attrs)
+    idea_fixture(ctx, Map.put(attrs, :state, :discarded))
+
+    {:ok, operation} =
+      Ideation.prepare_idea_reveal(ctx.facilitator, ctx.project.id, ctx.session.id, Ecto.UUID.generate(), %{
+        states: [:active, :parked]
+      })
+
+    assert operation.manifest == [%{"idea_id" => idea.id, "revision" => 1}]
+    capsule = snapshot(ctx)["ideation"]
+    assert :ok = Ideation.validate_recovery(capsule)
+    maps = restore(ctx, capsule)
+    restored = Repo.get!(Reveal, maps["reveals"][operation.id])
+    assert restored.selection == %{"mode" => "eligible", "states" => ["active", "parked"]}
+    assert restored.manifest == [%{"idea_id" => maps["ideas"][idea.id], "revision" => 1}]
+  end
+
   test "canonical capture includes an authenticated compartment; templates exclude it", ctx do
     idea_fixture(ctx, %{body: "<p>Private motive never visible in a download</p>"})
     snapshot = snapshot(ctx)

@@ -62,6 +62,10 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       revision?(index, source["id"], row["source_revision"])
   end
 
+  defp valid_selection?(%{"selection" => %{"mode" => "eligible", "states" => states}}, _) do
+    is_list(states) and length(states) in 1..3 and Enum.all?(states, &(&1 in ~w(active parked discarded)))
+  end
+
   defp valid_selection?(%{"selection" => %{"mode" => "eligible"}}, _), do: true
   defp valid_selection?(%{"selection" => %{"mode" => "creation"}}, _), do: true
 

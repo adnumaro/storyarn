@@ -6,11 +6,11 @@
 >
 > Source of truth: `Storyarn.Ideation`, its Ideas capability, and `test/storyarn/ideation/`
 
-ENG-132 and ENG-133 add the internal contribution and publication domain. The
-board, autosave UI, local input handling, accessible list and socket presentation
-belong to ENG-134. Recovery and private-content release gates from the
-[session contract](brainstorming-contract.md) remain in force. This delivery adds
-no navigation, route, upload, AI execution or shared export entry point.
+ENG-132 and ENG-133 provide the contribution and publication domain. ENG-134
+exposes it through the project board, autosave editor, accessible list and
+LiveView collaboration. Recovery uses the authenticated private compartment in
+format-3 snapshots. Uploads, AI execution and shared export entry points remain
+unavailable. See the [board guide](../features/brainstorming-board.md).
 
 ## Ownership and locking
 
@@ -169,3 +169,36 @@ through an authenticated compartment. See the [privacy and recovery contract](br
 for author identity, retained replacement history, ZIP confidentiality and explicit
 format-2/template exclusions. ENG-147 remains open for future entities; this slice
 covers only the currently persisted sessions and ideas.
+
+## Board transport and local drafts (ENG-134)
+
+The LiveView calls only public facades and sends the same authorized projections
+used by the domain. Session and idea pages contain at most 50 entries. Search
+and visual filters operate on the current authorized page, labeled explicitly;
+state totals count every authorized idea in the session. Member labels use the
+existing project-scoped roster. Cards and list rows enter the same editor.
+
+All mutations reauthorize current editing access. Contributions parse the exact
+positive configuration version seen by the composer; it is never replaced with
+the latest version. Stale saves whose normalized title/body/state equal the head
+are presented as saved; their domain receipts remain intact. Real differences,
+including state-only differences, stay visible with both versions.
+
+The client serializes saves per idea, retains request keys for uncertain retries,
+and never replaces newer typing with an older acknowledgement. Drafts live only
+in the mounted board, not local storage. Project restore, reconnect and permission
+changes invalidate request generations and entity bindings. Unsaved text can be
+reviewed separately and copied deliberately; it is not replayed against restored
+IDs. Access loss clears private client data. Leaving the tool closes its in-memory
+drafts; successful saves and conflicting attempts remain in the domain history.
+
+Content-free invalidations are coalesced in LiveView. Changes received during an
+asynchronous read invalidate that result and schedule a follow-up read. Timed
+reconciliation rechecks access and covers session commands inside an outer
+transaction, which suppress announcements before that transaction commits.
+
+Assisted publication defaults to active and parked ideas. The author/facilitator
+must explicitly include discarded ideas. This state filter is applied before
+preparing the durable manifest; the browser receives only its ID, status and count.
+A retry reuses that selection and confirmation publishes its exact revisions.
+Recovery validation accepts and preserves the optional state filter.

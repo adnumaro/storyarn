@@ -15,6 +15,7 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.Sessions
 
   defdelegate create_session(scope, project_id, attrs), to: Sessions
+  defdelegate subscribe_sessions(scope, project_id), to: Sessions
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Sessions
   defdelegate get_session(scope, project_id, session_id), to: Sessions
 
@@ -47,6 +48,7 @@ defmodule Storyarn.Ideation do
   defdelegate reveal_ideas(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate get_idea_reveal(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate subscribe_ideas(scope, project_id, session_id), to: Ideas
+  defdelegate unsubscribe_ideas(scope, project_id, session_id), to: Ideas
 
   @doc """
   Captures a sealed Ideation recovery capsule. Privileged Project capture port:

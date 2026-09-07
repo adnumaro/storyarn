@@ -4,7 +4,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   alias Storyarn.Architecture.DependencyPolicy
 
   @root "lib/storyarn/ideation"
-  @session_roles ~w(adapters commands entities execution queries)
+  @session_roles ~w(adapters commands entities events execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
   @capabilities ~w(ideas recovery sessions)
   @forbidden_role_edges [
@@ -104,6 +104,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       reopen_session: 4,
       recover_session: 4,
       purge_replaced_session: 4,
+      subscribe_sessions: 2,
       update_session: 5
     ]
 
@@ -124,6 +125,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       prepare_idea_reveal: 5,
       reveal_ideas: 4,
       subscribe_ideas: 3,
+      unsubscribe_ideas: 3,
       update_idea: 6
     ]
 

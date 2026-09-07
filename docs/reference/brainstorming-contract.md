@@ -6,9 +6,9 @@
 >
 > Source of truth: `Storyarn.Ideation` and its session commands/queries
 
-This is the internal session foundation of ENG-130, not a released brainstorming
-tool. The [ideas and publication contract](brainstorming-ideas-contract.md) describes
-the ENG-132/133 capability built on it. The board remains a separate ENG-134 delivery.
+The session foundation of ENG-130 and the [ideas and publication contract](brainstorming-ideas-contract.md)
+from ENG-132/133 power the project brainstorming tool delivered in ENG-134.
+See [the board guide](../features/brainstorming-board.md) for its user-facing workflow.
 The broader plan remains in Linear's Brainstorming initiative.
 
 ## Ownership and entry points
@@ -90,7 +90,7 @@ unavailable author.
 Canonical format-3 Project snapshots now cover sessions and ideas through an
 authenticated private compartment. See the [privacy and recovery contract](brainstorming-recovery-contract.md)
 for identity mapping, replaced sessions, old-format limitations and key custody.
-This foundation still has no navigation, route or board; ENG-134 owns that UI.
+ENG-134 exposes the board inside the existing authenticated project layout.
 Future persisted capabilities must extend ENG-147 coverage before release.
 
 ## Validation

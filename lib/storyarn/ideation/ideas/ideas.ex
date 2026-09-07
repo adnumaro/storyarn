@@ -30,4 +30,7 @@ defmodule Storyarn.Ideation.Ideas do
       Invalidation.subscribe(project_id, session_id, actor_id)
     end
   end
+
+  def unsubscribe_ideas(scope, project_id, session_id),
+    do: Invalidation.unsubscribe(project_id, session_id, scope.user.id)
 end

@@ -2,7 +2,12 @@ defmodule Storyarn.Ideation.Sessions do
   @moduledoc false
 
   alias Storyarn.Ideation.Sessions.Commands
+  alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Queries
+
+  def subscribe_sessions(scope, project_id) do
+    with :ok <- Queries.ProjectAccess.authorize(scope, project_id), do: Invalidation.subscribe(project_id)
+  end
 
   defdelegate create_session(scope, project_id, attrs), to: Commands.Create, as: :run
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Queries.List, as: :run
