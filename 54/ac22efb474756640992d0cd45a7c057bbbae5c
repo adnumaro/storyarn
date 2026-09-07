@@ -1,0 +1,22 @@
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_5af6a6d0a150f1::t_c79fe16a34fbca 246-251
+test/e2e/workspaces/projects/ideation/canvas_test.exs
+  s_5af6a6d0a150f1::t_c79fe16a34fbca 33,79-85
+  s_5af6a6d0a150f1::t_ae5107a1dd1022 86
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "54ac22efb474756640992d0cd45a7c057bbbae5c",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
