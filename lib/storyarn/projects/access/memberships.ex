@@ -151,6 +151,17 @@ defmodule Storyarn.Projects.Memberships do
 
   def authorize_locked(_scope, _project_id, _action, _lock_mode), do: {:error, :unauthorized}
 
+  def check_editor_candidate_locked(scope, project_id, candidate_user_id) when valid_id(candidate_user_id) do
+    with {:ok, project, _actor_membership} <- authorize_locked(scope, project_id, :edit_content) do
+      case locked_effective_membership(project, candidate_user_id) do
+        %ProjectMembership{role: role} -> {:ok, ProjectMembership.can?(role, :edit_content)}
+        nil -> {:ok, false}
+      end
+    end
+  end
+
+  def check_editor_candidate_locked(_scope, _project_id, _candidate_user_id), do: {:error, :invalid_candidate}
+
   defp authorize_membership_locked(project, user_id, action, lock_mode) when action in @canonical_owner_actions do
     with :ok <- ensure_canonical_owner_actor(project, user_id),
          memberships = lock_all_project_memberships(project.id, lock_mode),

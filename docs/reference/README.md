@@ -38,6 +38,7 @@ in this directory.
 - [Component registry](component-registry.md)
 - [Domain patterns](domain-patterns.md)
 - [Bounded-context map](context-map.md)
+- [Brainstorming session contract](brainstorming-contract.md)
 - [Shared utilities](shared-utilities.md)
 - [Flow sequence composition](flow-sequence-composition.md)
 - [Flow dialogue typography](flow-dialogue-typography.md)

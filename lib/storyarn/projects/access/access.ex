@@ -22,6 +22,7 @@ defmodule Storyarn.Projects.Access do
   defdelegate authorize(scope, project_id, action), to: Memberships
   defdelegate authorize_locked(scope, project_id, action), to: Memberships
   defdelegate authorize_locked(scope, project_id, action, lock_mode), to: Memberships
+  defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id), to: Memberships
 
   def transfer_owner(scope, project_id, target_user_id) do
     if Repo.in_transaction?() do

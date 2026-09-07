@@ -5,6 +5,7 @@ defmodule Storyarn.Projects.MembershipsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Projects
   alias Storyarn.Projects.Memberships
 
   test "locked authorization preserves inherited workspace access" do
@@ -123,6 +124,69 @@ defmodule Storyarn.Projects.MembershipsTest do
 
     assert {:error, :ownership_invariant_violation} =
              authorize_locked(user_scope_fixture(owner), project.id, :run_bulk_ai)
+  end
+
+  test "candidate eligibility keeps the real actor distinct and requires current editing access" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+    scope = user_scope_fixture(owner)
+    candidate = user_fixture()
+    membership_fixture(project, candidate)
+    outsider_scope = user_scope_fixture()
+
+    assert {:error, :authorization_transaction_required} =
+             Projects.check_editor_candidate_locked(scope, project.id, candidate.id)
+
+    assert {:ok, true} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
+
+    assert {:error, :not_found} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(outsider_scope, project.id, candidate.id) end)
+
+    viewer = user_fixture()
+    membership_fixture(project, viewer, "viewer")
+
+    assert {:error, :unauthorized} =
+             Repo.transact(fn ->
+               Projects.check_editor_candidate_locked(user_scope_fixture(viewer), project.id, candidate.id)
+             end)
+
+    for invalid <- [nil, -1, "1", 9_223_372_036_854_775_808] do
+      assert {:error, :invalid_candidate} =
+               Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, invalid) end)
+    end
+  end
+
+  test "candidate eligibility uses current direct and inherited permissions without assigning membership" do
+    owner = user_fixture()
+    workspace = workspace_fixture(owner)
+    project = project_fixture(owner, %{workspace: workspace})
+    scope = user_scope_fixture(owner)
+    candidate = user_fixture()
+
+    assert {:ok, false} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
+
+    workspace_membership_fixture(workspace, candidate, "admin")
+
+    assert {:ok, true} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
+
+    assert Projects.get_membership(project.id, candidate.id) == nil
+    membership = membership_fixture(project, candidate, "viewer")
+
+    assert {:ok, false} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
+
+    assert {:ok, _} = Projects.update_member_role(scope, project.id, membership.id, "editor")
+
+    assert {:ok, true} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
+
+    assert {:ok, _} = Projects.delete_project(scope, project.id)
+
+    assert {:error, :not_found} =
+             Repo.transact(fn -> Projects.check_editor_candidate_locked(scope, project.id, candidate.id) end)
   end
 
   defp authorize_locked(scope, project_id, action) do

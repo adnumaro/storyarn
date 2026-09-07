@@ -608,7 +608,8 @@ defmodule Storyarn.Architecture.DependencyPolicyTest do
              :flows,
              :scenes,
              :localization,
-             :ai
+             :ai,
+             :ideation
            ]
 
     assert "lib/mix/tasks/storyarn.ai.diagnose.ex" in policy.boundaries.infrastructure
