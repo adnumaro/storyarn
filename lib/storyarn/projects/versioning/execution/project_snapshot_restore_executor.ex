@@ -852,7 +852,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
          :ok <- verify_localization_inventory(project_id, project_data),
          :ok <- rebuild_active_reference_sources(project_id),
          :ok <- verify_previous_roots_trashed(previous),
-         :ok <- verify_project_fields(project_id, project_data["project"]) do
+         :ok <- verify_project_fields(project_id, project_data["project"]),
+         :ok <- Storyarn.Ideation.verify_recovery(project_id, project_data["ideation"], Map.get(id_maps, :ideation, %{})) do
       verify_semantic_snapshot(
         project_id,
         project_data,
@@ -893,6 +894,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
         {:ok,
          expected_source
          |> canonical_semantic_snapshot(source_maps)
+         |> Map.put("ideation", expected_source["ideation"])
          |> semantic_digest()}
       else
         {:error,
@@ -1002,7 +1004,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutor do
     maps = Map.put(maps, :mention_block_ids, rich_text_block_ids(snapshot))
 
     snapshot
-    |> Map.take(~w(format_version project entity_counts sheets flows scenes tree localization))
+    |> Map.take(~w(project entity_counts sheets flows scenes tree localization))
     |> Map.update!("sheets", &Enum.map(&1, fn entry -> canonical_sheet_entry(entry, maps) end))
     |> Map.update!("flows", &Enum.map(&1, fn entry -> canonical_flow_entry(entry, maps) end))
     |> Map.update!("scenes", &Enum.map(&1, fn entry -> canonical_scene_entry(entry, maps) end))

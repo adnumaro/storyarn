@@ -26,21 +26,24 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
             Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
             do: {field, Input.get(attrs, field)}
 
-      fingerprint = Input.fingerprint({:create, source, fields})
-      Transaction.run(scope, project_id, session_id, &create_locked(&1, key, fingerprint, source, attrs))
+      Transaction.run(scope, project_id, session_id, &create_locked(&1, key, fields, source, attrs))
     end
   end
 
   defp create(_scope, _project_id, _session_id, _source, _attrs), do: {:error, :invalid_idea}
 
-  defp create_locked(access, key, fingerprint, source, attrs) do
+  defp create_locked(access, key, fields, source, attrs) do
     case Repo.get_by(Idea, session_id: access.session_id, author_id: access.user_id, creation_key: key) do
       nil ->
-        insert(access, key, fingerprint, source, attrs)
+        insert(access, key, Input.fingerprint({:create, source, fields}), source, attrs)
 
       idea ->
         edit = Repo.get_by!(Edit, idea_id: idea.id, actor_id: access.user_id, request_key: key)
-        Revisions.replay(edit, fingerprint, idea, access.user_id)
+
+        with {:ok, request_source} <- creation_request_source(idea, source) do
+          fingerprint = Input.fingerprint({:create, request_source, fields})
+          Revisions.replay(edit, fingerprint, idea, access.user_id)
+        end
     end
   end
 
@@ -79,9 +82,18 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp source_content({source_id, number}, access, attrs) do
     with {:ok, source, revision} <- Visible.readable_revision(access.session_id, source_id, number, access.user_id) do
-      fields = %{source_idea_id: source.id, source_revision: revision.number}
+      fields = %{source_idea_id: source.id, creation_source_id: source.id, source_revision: revision.number}
       content = Map.merge(%{title: revision.title, body: revision.body}, Input.content_attrs(attrs))
       {:ok, fields, content}
     end
   end
+
+  defp creation_request_source(%{creation_source_id: nil}, nil), do: {:ok, nil}
+
+  defp creation_request_source(
+         %{source_idea_id: id, source_revision: number, creation_source_id: original},
+         {id, number}
+       ), do: {:ok, {original, number}}
+
+  defp creation_request_source(_, _), do: {:error, :idempotency_conflict}
 end

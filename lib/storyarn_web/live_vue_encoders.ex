@@ -14,7 +14,7 @@ defmodule StoryarnWeb.LiveVueEncoders do
   Protocol.derive(LiveVue.Encoder, Ecto.Schema.Metadata)
 
   # Accounts
-  Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.User)
+  Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.User, except: [:recovery_identity])
   Protocol.derive(LiveVue.Encoder, Storyarn.Accounts.UserToken)
 
   # Assets

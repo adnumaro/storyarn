@@ -46,7 +46,7 @@ defmodule Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilderTest do
     assert Enum.sort(Map.keys(snapshot["tree"])) == ~w(flows scenes sheets)
   end
 
-  test "canonical capture returns only the portable project payload", %{project: project} do
+  test "canonical capture includes a sealed Ideation compartment alongside the portable graph", %{project: project} do
     assert {:ok, snapshot} =
              Repo.transaction(fn ->
                ProjectSnapshotBuilder.build_canonical_snapshot_in_transaction(project.id,
@@ -54,10 +54,10 @@ defmodule Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilderTest do
                )
              end)
 
-    assert snapshot["format_version"] == 2
+    assert snapshot["format_version"] == 3
 
     assert snapshot |> Map.keys() |> Enum.sort() ==
-             ~w(asset_blob_hashes asset_metadata entity_counts flows format_version localization project scenes sheets tree)
+             ~w(asset_blob_hashes asset_metadata entity_counts flows format_version ideation localization project scenes sheets tree)
   end
 
   test "builds an empty portable project graph", %{user: user} do

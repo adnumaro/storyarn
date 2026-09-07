@@ -21,6 +21,8 @@ defmodule Storyarn.Accounts.User do
         }
 
   schema "users" do
+    # Stable recovery identity; never accepted in profile/registration attributes.
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :email, :string
     field :password, :string, virtual: true, redact: true
     field :hashed_password, :string, redact: true

@@ -2674,6 +2674,41 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotRestoreExecutorTest do
     }
   end
 
+  test "a stored archive restores Ideation after the source rows and capture cache are deleted" do
+    ctx = Storyarn.IdeationFixtures.ideation_fixture()
+    private = Storyarn.IdeationFixtures.idea_fixture(ctx, %{body: "<p>Archive-only private draft</p>"})
+    snapshot = stored_full_snapshot_fixture(ctx.project)
+    assert {:ok, archive} = Storage.download(snapshot.archive_storage_key)
+    assert {:ok, entries} = :zip.extract(archive, [:memory])
+    {_, project_json} = Enum.find(entries, fn {name, _} -> List.to_string(name) == "project.json" end)
+    refute project_json =~ "Archive-only private draft"
+    Repo.delete_all(from s in "ideation_sessions", where: s.project_id == ^ctx.project.id)
+    Repo.delete_all(from c in "ideation_recovery_captures", where: c.project_id == ^ctx.project.id)
+
+    restore = request_and_claim_restore(ctx.owner, ctx.project, snapshot)
+    assert {:ok, first_result} = ProjectSnapshotRestoreExecutor.execute(restore, [])
+    assert {:ok, [session]} = Storyarn.Ideation.list_sessions(ctx.owner, ctx.project.id)
+    assert {:ok, [idea]} = Storyarn.Ideation.list_ideas(ctx.author, ctx.project.id, session.id)
+    assert idea.body == "<p>Archive-only private draft</p>"
+    assert idea.id != private.id
+    assert {:ok, []} = Storyarn.Ideation.list_ideas(ctx.owner, ctx.project.id, session.id)
+
+    assert {:ok, _} =
+             Storyarn.Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               session.id,
+               idea.id,
+               1,
+               Storyarn.IdeationFixtures.edit_attrs(%{body: "<p>A different private draft</p>"})
+             )
+
+    next_snapshot = stored_full_snapshot_fixture(ctx.project)
+    next_restore = request_and_claim_restore(ctx.owner, ctx.project, next_snapshot)
+    assert {:ok, second_result} = ProjectSnapshotRestoreExecutor.execute(next_restore, [])
+    refute first_result.semantic_digest == second_result.semantic_digest
+  end
+
   defp request_and_claim_restore(scope, project, snapshot) do
     assert {:ok, requested} =
              Versioning.request_project_snapshot_restore(scope, project, snapshot, %{

@@ -21,6 +21,8 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate archive_session(scope, project_id, session_id, revision), to: Commands.Archive, as: :run
   defdelegate reopen_session(scope, project_id, session_id, revision), to: Commands.Reopen, as: :run
 
+  defdelegate recover_session(scope, project_id, session_id, revision), to: Commands.Recover, as: :run
+
   # Internal capability port: the caller owns the transaction, Sessions owns
   # project access and the session lifecycle lock. Not exposed by Ideation.
   defdelegate lock_for_contribution(scope, project_id, session_id),

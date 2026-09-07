@@ -307,6 +307,27 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImportsIntegrationTest d
     refute_received {:r2_import_request, _method, _params}
   end
 
+  test "a busy Ideation author keeps a snapshot import retryable", context do
+    archive_path = ready_archive_file!(context.scope, context.project)
+
+    assert {:ok, accepted} =
+             Versioning.request_workspace_snapshot_import(context.scope, context.workspace, archive_path, %{
+               original_filename: "busy-author.zip"
+             })
+
+    job = import_job!(accepted)
+
+    assert {:retry, _} =
+             Versioning.perform_workspace_snapshot_import(accepted.id,
+               job_id: job.id,
+               attempt: 1,
+               max_attempts: ImportProjectSnapshotWorker.max_attempts(),
+               materialize_fun: fn _, _, _, _ -> {:error, :ideation_recovery_actors_busy} end
+             )
+
+    assert Repo.get!(WorkspaceSnapshotImport, accepted.id).status == "retrying"
+  end
+
   test "a transient commit failure preserves its durable plan and succeeds on retry", context do
     asset_bytes = "retryable asset bytes"
     _asset = upload_asset!(context.project, context.user, "retry.png", asset_bytes, "image/png")

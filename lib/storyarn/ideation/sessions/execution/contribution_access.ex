@@ -11,7 +11,11 @@ defmodule Storyarn.Ideation.Sessions.Execution.ContributionAccess do
     if Repo.in_transaction?() do
       with {:ok, access} <- ProjectAccess.write(scope, project_id),
            %Session{} = session <-
-             Repo.one(from s in Session, where: s.project_id == ^project_id and s.id == ^session_id, lock: "FOR UPDATE"),
+             Repo.one(
+               from s in Session,
+                 where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id == ^session_id,
+                 lock: "FOR UPDATE"
+             ),
            :open <- session.status do
         {:ok,
          Map.merge(access, %{

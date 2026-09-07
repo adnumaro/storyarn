@@ -6,7 +6,7 @@ defmodule Storyarn.Ideation.Sessions.Revision do
     field :session_id, :id
     field :actor_id, :id
     field :number, :integer
-    field :action, Ecto.Enum, values: [:created, :updated, :responsibilities_assigned, :archived, :reopened]
+    field :action, Ecto.Enum, values: [:created, :updated, :responsibilities_assigned, :archived, :reopened, :recovered]
     field :snapshot, :map
 
     timestamps(type: :utc_datetime_usec, updated_at: false)

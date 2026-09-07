@@ -15,6 +15,7 @@ defmodule Storyarn.Ideation.Sessions.Session do
     field :objective, :string
     field :context, :string
     field :status, Ecto.Enum, values: [:open, :archived], default: :open
+    field :deleted_at, :utc_datetime_usec
     field :archived_at, :utc_datetime
     field :revision, :integer, default: 1
     field :configuration_version, :integer, default: 1

@@ -164,8 +164,8 @@ nulls live actor references and preserves published attribution as unavailable;
 private drafts remain unreadable through ordinary APIs. No automatic retention,
 purge, private export or identity reassignment is introduced.
 
-Project snapshots do not yet include these tables. ENG-147 must integrate and
-test recovery, including encrypted bytes, keys and identity mapping, before the
-board accepts real user content. ENG-129 must close the remaining shared-download,
-transfer and private-attachment policies. Exclusion is explicit; this foundation
-does not claim complete brainstorming backup support.
+Canonical snapshots now capture these tables, including private conflict receipts,
+through an authenticated compartment. See the [privacy and recovery contract](brainstorming-recovery-contract.md)
+for author identity, retained replacement history, ZIP confidentiality and explicit
+format-2/template exclusions. ENG-147 remains open for future entities; this slice
+covers only the currently persisted sessions and ideas.

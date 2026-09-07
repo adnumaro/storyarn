@@ -1954,7 +1954,7 @@ web_to_context_internal_denials =
 
 # Ideation capabilities collaborate through their facades. Root calls remain declarative, reads
 # cannot enter effectful roles, and entities cannot orchestrate persistence.
-ideation_capabilities = ~w(sessions ideas)
+ideation_capabilities = ~w(sessions ideas recovery)
 ideation_private_roles = ~w(adapters commands entities execution queries rules events contracts)
 
 ideation_root_facade_path_denials =
@@ -3012,6 +3012,48 @@ analytics_transport_caller_denials =
 # accepted by the ratchet.
 privileged_entrypoints = [
   %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [capture_recovery: 1],
+    allowed_callers: ["lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex"],
+    reason: "Sealed Ideation recovery is restricted to the authorized Project snapshot and reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [validate_recovery: 1],
+    allowed_callers: ["lib/storyarn/projects/versioning/contracts/snapshot_object_format.ex"],
+    reason: "Sealed Ideation recovery is restricted to the authorized Project snapshot and reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [restore_recovery: 2],
+    allowed_callers: ["lib/storyarn/projects/versioning/execution/project_recovery.ex"],
+    reason: "Sealed Ideation recovery is restricted to the authorized Project snapshot and reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [verify_recovery: 3],
+    allowed_callers: ["lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex"],
+    reason: "Sealed Ideation recovery is restricted to the authorized Project snapshot and reconstitution boundary"
+  },
+  %{
+    module: "Storyarn.Ideation.Recovery",
+    path: "lib/storyarn/ideation/recovery/recovery.ex",
+    functions: :all,
+    allowed_callers: ["lib/storyarn/ideation.ex"],
+    reason: "Only the sealed recovery facade can enter privileged reconstitution"
+  },
+  %{
+    module: "Storyarn.Ideation.Recovery.Restore",
+    path: "lib/storyarn/ideation/recovery/execution/restore.ex",
+    functions: :all,
+    allowed_callers: ["lib/storyarn/ideation/recovery/recovery.ex"],
+    reason: "Only the sealed recovery facade can enter privileged reconstitution"
+  },
+  %{
     module: "Storyarn.Projects.Imports.Materializer",
     path: "lib/storyarn/projects/interchange/imports/execution/materializer.ex",
     functions: :all,
@@ -4011,6 +4053,36 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn/ideation/recovery/adapters/capsule.ex",
+      target: "lib/storyarn/platform/adapters/security/vault.ex",
+      kinds: ["runtime"],
+      reason: "Ideation seals its recovery inventory through the existing application cryptographic adapter"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Project recovery enters the sealed Ideation facade; no ordinary cross-context writes"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/contracts/snapshot_object_format.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Project recovery enters the sealed Ideation facade; no ordinary cross-context writes"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/execution/project_recovery.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Project recovery enters the sealed Ideation facade; no ordinary cross-context writes"
+    },
+    %{
+      source: "lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "Project recovery enters the sealed Ideation facade; no ordinary cross-context writes"
+    },
     %{
       source: "lib/storyarn/ideation/sessions/queries/project_access.ex",
       target: "lib/storyarn/projects.ex",
