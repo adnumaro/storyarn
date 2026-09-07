@@ -13,10 +13,12 @@ The broader plan remains in Linear's Brainstorming initiative.
 ## Ownership and entry points
 
 `Storyarn.Ideation` owns sessions, their independent configuration and session
-revisions. Projects retains project identity and effective access. The exact
-`sessions/adapters/project_access.ex` adapter is the only cross-context edge; it
-uses the public Projects facade. Ideation starts with an empty, sealed dependency
-baseline. No foreign ordinary writer is authorized for its tables.
+revisions. Projects retains project identity and effective access. The session
+read query and mutation adapter enter its public facade through two exact
+cross-context edges. The root Ideation facade delegates through the Sessions
+capability facade; schemas live in its `entities/` folder. Ideation starts with an
+empty, sealed dependency baseline. No foreign ordinary writer is authorized for
+its tables.
 
 The facade exposes create, list, get, update, assign responsibilities, archive,
 reopen and history queries. Every call takes current user scope and project ID.
@@ -30,12 +32,12 @@ Session title, objective, context, settings and their history are shared project
 content. They must never be presented as private drafts. A title is required;
 objective and context are optional. No other entities or participants are needed.
 
-| Operation | Project viewer | Project editor | Current facilitator | Project owner |
-| --- | --- | --- | --- | --- |
-| Read session and history | Yes | Yes | With project access | Yes |
-| Create a session | No | Yes | With editing access | Yes |
-| Change settings / archive / reopen | No | No | With editing access | Yes |
-| Assign responsibilities | No | No | With editing access | Yes |
+| Operation                          | Project viewer | Project editor | Current facilitator | Project owner |
+| ---------------------------------- | -------------- | -------------- | ------------------- | ------------- |
+| Read session and history           | Yes            | Yes            | With project access | Yes           |
+| Create a session                   | No             | Yes            | With editing access | Yes           |
+| Change settings / archive / reopen | No             | No             | With editing access | Yes           |
+| Assign responsibilities            | No             | No             | With editing access | Yes           |
 
 Creation appoints the creator as facilitator and decision owner. These are two
 separate assignments. Decision ownership grants no session-management rights.
@@ -48,6 +50,12 @@ workspace roles, so a direct viewer role denies writing even for a workspace
 editor. Revocation and downgrade apply to already-created scopes; callers cannot
 rely on cached UI permissions. The owner can repair responsibilities if the
 facilitator leaves, including while the session is archived.
+
+Physical account deletion can leave either responsibility unassigned. Repair may
+update one responsibility while preserving the other, including an existing
+unassigned value. Explicit blank assignments are rejected. Candidate eligibility
+is checked by ID through an actor-scoped Projects port; no candidate identity is
+used to authenticate the caller.
 
 ## Configuration and concurrency
 

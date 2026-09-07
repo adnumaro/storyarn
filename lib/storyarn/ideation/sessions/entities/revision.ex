@@ -1,5 +1,5 @@
 defmodule Storyarn.Ideation.Sessions.Revision do
-  @moduledoc false
+  @moduledoc "Session-owned revision record, persisted atomically by the session mutation workflow."
   use Ecto.Schema
 
   schema "ideation_session_revisions" do

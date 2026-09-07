@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.SessionsTest do
   import Storyarn.ProjectsFixtures
   import Storyarn.WorkspacesFixtures
 
+  alias Storyarn.Accounts.User
   alias Storyarn.Ideation
   alias Storyarn.Ideation.Sessions.Revision
   alias Storyarn.Ideation.Sessions.Session
@@ -122,6 +123,48 @@ defmodule Storyarn.Ideation.SessionsTest do
     assert original.snapshot["configuration"]["timer_enabled"] == false
   end
 
+  test "empty and invalid titles return validation errors without losing the persisted session", ctx do
+    session = create_session(ctx)
+
+    for key <- [:title, "title"], value <- [nil, "", " \t\n ", 42, %{}] do
+      assert {:error, changeset} =
+               Ideation.update_session(ctx.editor_scope, ctx.project.id, session.id, 1, %{key => value})
+
+      assert errors_on(changeset).title != []
+      assert {:ok, ^session} = Ideation.get_session(ctx.editor_scope, ctx.project.id, session.id)
+      assert {:ok, [%{number: 1}]} = Ideation.list_session_revisions(ctx.editor_scope, ctx.project.id, session.id)
+    end
+
+    assert {:ok, updated} =
+             Ideation.update_session(ctx.editor_scope, ctx.project.id, session.id, 1, %{title: "  Revised title  "})
+
+    assert updated.title == "Revised title"
+    assert updated.revision == 2
+  end
+
+  test "configuration cannot be removed and failed edits preserve both content and history", ctx do
+    session = create_session(ctx)
+
+    for key <- [:configuration, "configuration"] do
+      assert {:error, changeset} =
+               Ideation.update_session(ctx.editor_scope, ctx.project.id, session.id, 1, %{key => nil})
+
+      assert errors_on(changeset).configuration == ["can't be blank"]
+      assert {:ok, ^session} = Ideation.get_session(ctx.editor_scope, ctx.project.id, session.id)
+      assert {:ok, [%{number: 1}]} = Ideation.list_session_revisions(ctx.editor_scope, ctx.project.id, session.id)
+    end
+
+    assert {:ok, ^session} =
+             Ideation.update_session(ctx.editor_scope, ctx.project.id, session.id, 1, %{configuration: %{}})
+
+    assert {:ok, updated} =
+             Ideation.update_session(ctx.editor_scope, ctx.project.id, session.id, 1, %{
+               configuration: %{rounds_enabled: true}
+             })
+
+    assert updated.configuration_version == 2
+  end
+
   test "rounds and publication settings do not require a clock or each other", ctx do
     assert {:ok, session} =
              Ideation.create_session(ctx.editor_scope, ctx.project.id, %{
@@ -232,6 +275,62 @@ defmodule Storyarn.Ideation.SessionsTest do
     assert errors_on(changeset).decision_owner_id == ["must be a current project editor"]
     assert {:ok, ^session} = Ideation.get_session(ctx.editor_scope, ctx.project.id, session.id)
     assert Repo.aggregate(Revision, :count) == 1
+  end
+
+  test "repairs either responsibility independently after the other account is deleted", ctx do
+    for missing_field <- [:facilitator_id, :decision_owner_id] do
+      departing =
+        %User{}
+        |> User.email_changeset(%{email: unique_user_email()})
+        |> User.confirm_changeset()
+        |> Repo.insert!()
+
+      membership_fixture(ctx.project, departing)
+      session = create_session(ctx)
+
+      assert {:ok, assigned} =
+               Ideation.assign_session_responsibilities(ctx.editor_scope, ctx.project.id, session.id, 1, %{
+                 missing_field => departing.id
+               })
+
+      Repo.delete!(departing)
+
+      assert {:ok, orphaned} = Ideation.get_session(ctx.owner_scope, ctx.project.id, session.id)
+      assert Map.fetch!(orphaned, missing_field) == nil
+      other_field = if missing_field == :facilitator_id, do: :decision_owner_id, else: :facilitator_id
+
+      assert {:ok, repaired} =
+               Ideation.assign_session_responsibilities(
+                 ctx.owner_scope,
+                 ctx.project.id,
+                 session.id,
+                 assigned.revision,
+                 %{other_field => ctx.owner.id}
+               )
+
+      assert Map.fetch!(repaired, other_field) == ctx.owner.id
+      assert Map.fetch!(repaired, missing_field) == nil
+      assert repaired.revision == assigned.revision + 1
+
+      assert {:ok, [latest | _older]} = Ideation.list_session_revisions(ctx.owner_scope, ctx.project.id, session.id)
+      assert latest.snapshot[Atom.to_string(missing_field)] == nil
+      assert latest.snapshot[Atom.to_string(other_field)] == ctx.owner.id
+    end
+  end
+
+  test "explicit blank responsibility assignments are rejected without clearing existing roles", ctx do
+    session = create_session(ctx)
+
+    for field <- [:facilitator_id, :decision_owner_id], value <- [nil, "", " "] do
+      assert {:error, changeset} =
+               Ideation.assign_session_responsibilities(ctx.editor_scope, ctx.project.id, session.id, 1, %{
+                 field => value
+               })
+
+      assert Map.fetch!(errors_on(changeset), field) != []
+      assert {:ok, ^session} = Ideation.get_session(ctx.editor_scope, ctx.project.id, session.id)
+      assert {:ok, [%{number: 1}]} = Ideation.list_session_revisions(ctx.editor_scope, ctx.project.id, session.id)
+    end
   end
 
   test "rechecks downgrade and explicit denial on an already obtained scope, and owner can replace a departed facilitator",

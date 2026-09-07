@@ -26,11 +26,14 @@ defmodule Storyarn.Ideation.Sessions.Session do
   def changeset(session, attrs) do
     session
     |> cast(attrs, [:title, :objective, :context])
-    |> update_change(:title, &String.trim/1)
+    |> update_change(:title, fn
+      title when is_binary(title) -> String.trim(title)
+      other -> other
+    end)
     |> validate_required([:title])
     |> validate_length(:title, max: 160)
     |> validate_length(:objective, max: 4000)
     |> validate_length(:context, max: 12_000)
-    |> cast_embed(:configuration, with: &Configuration.changeset/2)
+    |> cast_embed(:configuration, required: true, with: &Configuration.changeset/2)
   end
 end

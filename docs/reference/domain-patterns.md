@@ -2,7 +2,7 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-01
+> Last reviewed: 2026-09-07
 >
 > Source of truth: `lib/storyarn/`, `lib/storyarn_web/`,
 > `config/architecture_boundaries.exs`, and the Mix convention/architecture checks
@@ -10,7 +10,7 @@
 ## Architecture model
 
 Storyarn is a modular monolith: one Phoenix application, one supervision tree,
-one `Storyarn.Repo`, one PostgreSQL schema and ten bounded contexts. A bounded
+one `Storyarn.Repo`, one PostgreSQL schema and eleven bounded contexts. A bounded
 context is defined by language, invariants and ownership, not by having a
 directory or a Phoenix-style context module.
 
@@ -31,6 +31,7 @@ exceptions are documented in the [bounded-context map](context-map.md).
 | Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
 | AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
 | Platform        | `Storyarn.Platform`     | Notifications, product reactions, onboarding, provider-neutral object storage and platform-wide control-plane behavior           |
+| Ideation        | `Storyarn.Ideation`     | Brainstorming sessions, independent responsibilities, configuration and session revision history                                 |
 
 Commercial is an independent business boundary because plans, subscriptions,
 entitlements, billable usage and capacity accounting share commercial language,
@@ -205,7 +206,7 @@ capability owner.
 ### Architecture ratchet
 
 `mix architecture.check` classifies all backend, Web and operator Mix-task
-paths declared in `config/architecture_boundaries.exs`. All ten bounded
+paths declared in `config/architecture_boundaries.exs`. All eleven bounded
 contexts are sealed. Cross-boundary calls are denied unless they are exact,
 reviewed root-facade or technical contracts.
 

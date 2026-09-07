@@ -1,5 +1,5 @@
 defmodule Storyarn.Ideation.Sessions.Configuration do
-  @moduledoc false
+  @moduledoc "Session-owned configuration preferences; performs no persistence or execution."
   use Ecto.Schema
 
   import Ecto.Changeset

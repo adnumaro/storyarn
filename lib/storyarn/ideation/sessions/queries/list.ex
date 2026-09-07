@@ -2,13 +2,13 @@ defmodule Storyarn.Ideation.Sessions.Queries.List do
   @moduledoc false
   import Ecto.Query
 
-  alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
   alias Storyarn.Ideation.Sessions.Queries.Page
+  alias Storyarn.Ideation.Sessions.Queries.ProjectAccess
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Repo
 
   def run(scope, project_id, opts) do
-    with {:ok, _access} <- ProjectAccess.read(scope, project_id),
+    with :ok <- ProjectAccess.authorize(scope, project_id),
          status when status in [:open, :archived, :all] <- Keyword.get(opts, :status, :open),
          {:ok, limit, before_id} <- Page.options(opts) do
       query = from s in Session, where: s.project_id == ^project_id, order_by: [desc: s.id], limit: ^limit

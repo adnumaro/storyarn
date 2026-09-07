@@ -11,9 +11,8 @@ defmodule Storyarn.Ideation.Sessions.Commands.AssignResponsibilities do
       changeset =
         session
         |> cast(attrs, [:facilitator_id, :decision_owner_id])
-        |> validate_required([:facilitator_id, :decision_owner_id])
-        |> validate_delegate(:facilitator_id, project_id, attrs)
-        |> validate_delegate(:decision_owner_id, project_id, attrs)
+        |> validate_delegate(:facilitator_id, scope, project_id, attrs)
+        |> validate_delegate(:decision_owner_id, scope, project_id, attrs)
 
       cond do
         not changeset.valid? ->
@@ -34,10 +33,10 @@ defmodule Storyarn.Ideation.Sessions.Commands.AssignResponsibilities do
     end
   end
 
-  defp validate_delegate(changeset, field, project_id, attrs) do
+  defp validate_delegate(changeset, field, scope, project_id, attrs) do
     supplied? = Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field))
 
-    if supplied? and not ProjectAccess.eligible_delegate?(project_id, get_field(changeset, field)),
+    if supplied? and not ProjectAccess.eligible_delegate?(scope, project_id, get_field(changeset, field)),
       do: add_error(changeset, field, "must be a current project editor"),
       else: changeset
   end

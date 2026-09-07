@@ -830,7 +830,23 @@ defmodule Storyarn.Projects do
   `{:error, :authorization_transaction_required}`. This grants no bypass of
   effective membership, explicit denial, or project deletion checks.
   """
+  @spec authorize_locked(scope(), integer(), action()) ::
+          {:ok, project(), membership()}
+          | {:error, :not_found | :unauthorized | :ownership_invariant_violation | :authorization_transaction_required}
   defdelegate authorize_locked(scope, project_id, action), to: Access
+
+  @doc """
+  Checks a candidate's current project editing rights for a caller-owned assignment.
+
+  Requires the real actor's current editing access and an existing transaction.
+  Locks effective access for both actor and candidate without impersonating the
+  candidate. Returns eligibility only; this neither grants membership nor performs
+  the consumer's assignment. The consumer must authorize that assignment itself.
+  """
+  @spec check_editor_candidate_locked(scope(), integer(), integer()) ::
+          {:ok, boolean()}
+          | {:error, :not_found | :unauthorized | :invalid_candidate | :authorization_transaction_required}
+  defdelegate check_editor_candidate_locked(scope, project_id, candidate_user_id), to: Access
 
   # =============================================================================
   # Invitations
