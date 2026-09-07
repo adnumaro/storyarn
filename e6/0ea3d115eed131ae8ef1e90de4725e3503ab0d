@@ -1,0 +1,66 @@
+lib/storyarn/ideation/sessions/queries/get.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 5,10
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_7727581e25d728 1955-1987,3823-3824,3992-3997
+docs/reference/context-map.md
+  s_5af6a6d0a150f1::t_7727581e25d728 17-18
+lib/storyarn/projects/access/access.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 25
+test/storyarn/projects/access/memberships_test.exs
+  s_5af6a6d0a150f1::t_4b1ba825b2b0a5 129-188
+  s_5af6a6d0a150f1::t_bf1775d0c239d3 8,189-191
+lib/storyarn/projects.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 833-835,838-849
+  s_5af6a6d0a150f1::t_ab1d0b7ffcee9d 850
+lib/storyarn/ideation.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 11,13-15,17,19,22,24-25
+docs/reference/domain-patterns.md
+  s_5af6a6d0a150f1::t_7727581e25d728 5,13,34,209
+docs/reference/brainstorming-contract.md
+  s_5af6a6d0a150f1::t_7727581e25d728 16-21,35-40,54-59
+lib/storyarn/ideation/sessions/entities/revision.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 2
+lib/storyarn/ideation/sessions/entities/configuration.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 2
+test/storyarn/ideation/sessions_test.exs
+  s_5af6a6d0a150f1::t_4b1ba825b2b0a5 166,280-331,335
+  s_5af6a6d0a150f1::t_5154bcb7212a13 126-165,333-334
+  s_5af6a6d0a150f1::t_cfdb9c9bbb3ae1 8,167,332
+lib/storyarn/ideation/sessions/adapters/project_access.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 6-8,13-14
+lib/storyarn/ideation/sessions/queries/project_access.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 1-12
+lib/storyarn/ideation/sessions/commands/assign_responsibilities.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 14-15,36,39
+lib/storyarn/ideation/sessions/queries/list.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 6,11
+lib/storyarn/ideation/README.md
+  s_5af6a6d0a150f1::t_7727581e25d728 1-48
+lib/storyarn/ideation/sessions/sessions.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 1-23
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_7727581e25d728 1-104
+lib/storyarn/projects/access/memberships.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 154-164
+lib/storyarn/ideation/sessions/entities/session.ex
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 29-32,37
+test/storyarn/architecture/projects_facade_contract_test.exs
+  s_5af6a6d0a150f1::t_cda6ea8fb43d3a 13,28,316,345,348,388
+  s_5af6a6d0a150f1::t_f578ac5f01167d 311,313
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "e60ea3d115eed131ae8ef1e90de4725e3503ab0d",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
