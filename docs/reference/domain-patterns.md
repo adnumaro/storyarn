@@ -31,7 +31,7 @@ exceptions are documented in the [bounded-context map](context-map.md).
 | Localization    | `Storyarn.Localization` | Languages, localized text, glossary, extraction, translation runs, reports and localization transport                            |
 | AI              | `Storyarn.AI`           | AI policies, integrations, model/provider selection, execution, audit and future AI product behavior                             |
 | Platform        | `Storyarn.Platform`     | Notifications, product reactions, onboarding, provider-neutral object storage and platform-wide control-plane behavior           |
-| Ideation        | `Storyarn.Ideation`     | Brainstorming sessions, independent responsibilities, configuration and session revision history                                 |
+| Ideation        | `Storyarn.Ideation`     | Brainstorming sessions, responsibilities, configuration, authored ideas, retained edits and explicit publication                 |
 
 Commercial is an independent business boundary because plans, subscriptions,
 entitlements, billable usage and capacity accounting share commercial language,

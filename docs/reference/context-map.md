@@ -13,9 +13,11 @@ names semantic ownership, write authority and transitional relationships.
 
 ## Context relationships
 
-Ideation is the new brainstorming context (ENG-129/130). It owns session and
-configuration history and enters Projects through current read authorization and
-transaction-aware mutation authorization. Its empty architecture baseline is sealed. See the
+Ideation owns brainstorming sessions, configuration history, authored ideas,
+recoverable edits and explicit publication. Its Ideas capability enters Sessions
+through a capability facade for current Project authorization and session locking.
+Sessions enters Projects through current read authorization and transaction-aware
+mutation authorization. Its empty architecture baseline is sealed. See the
 [brainstorming contract](brainstorming-contract.md) for the authority matrix,
 staged delivery and explicit recovery gate before a user-facing release.
 
