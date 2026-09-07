@@ -1,0 +1,29 @@
+lib/storyarn/projects/versioning/execution/project_snapshot_build.ex
+  s_5af6a6d0a150f1::t_00ff6d6868cf4d 57,3022,3072-3073
+  s_5af6a6d0a150f1::t_4b047e510977c2 3074
+test/storyarn/ideation/recovery_limits_test.exs
+  s_5af6a6d0a150f1::t_d3020c810f37f9 9,73-98
+  s_5af6a6d0a150f1::t_4a6550b77059bf 99-100
+test/storyarn/ideation/recovery_test.exs
+  s_5af6a6d0a150f1::t_00ff6d6868cf4d 42
+  s_5af6a6d0a150f1::t_d3020c810f37f9 11-12,23-41,43-66
+  s_5af6a6d0a150f1::t_6d11937c80694c 67-68
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_5af6a6d0a150f1::t_00ff6d6868cf4d 66
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "f1fe49f751a624898edcd73c9a25b251d3391500",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
