@@ -7,6 +7,7 @@ defmodule Storyarn.Ideation.Sessions.Session do
   alias Storyarn.Ideation.Sessions.Configuration
 
   schema "ideation_sessions" do
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :project_id, :id
     field :created_by_id, :id
     field :facilitator_id, :id
@@ -15,6 +16,7 @@ defmodule Storyarn.Ideation.Sessions.Session do
     field :objective, :string
     field :context, :string
     field :status, Ecto.Enum, values: [:open, :archived], default: :open
+    field :deleted_at, :utc_datetime_usec
     field :archived_at, :utc_datetime
     field :revision, :integer, default: 1
     field :configuration_version, :integer, default: 1

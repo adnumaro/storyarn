@@ -69,6 +69,14 @@ defmodule Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder do
         |> lock_active_project_for_snapshot!()
         |> build_consistent_snapshot(Keyword.fetch!(opts, :localization_scope), :canonical)
 
+      capsule =
+        case Storyarn.Ideation.capture_recovery(project_id) do
+          {:ok, capsule} -> capsule
+          {:error, reason} -> Repo.rollback(reason)
+        end
+
+      snapshot = snapshot |> Map.put("format_version", 3) |> Map.put("ideation", capsule)
+
       if Keyword.get(opts, :include_referenced_tombstones, false),
         do: Map.put(snapshot, "referenced_tombstones", ReferencedTombstones.capture!(project_id)),
         else: snapshot

@@ -16,7 +16,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
 
   @format "storyarn.project_snapshot"
   @format_version 1
-  @project_format_version 2
+  @project_format_versions [2, 3]
   @manifest_path "manifest.json"
   @project_path "project.json"
   @sha256_regex ~r/\A[0-9a-f]{64}\z/
@@ -76,10 +76,11 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
   part of the exact captured project state.
   """
   @spec portable_project(map()) :: {:ok, map()} | {:error, term()}
-  def portable_project(%{"format_version" => @project_format_version} = project) do
+  def portable_project(%{"format_version" => version} = project) when version in @project_format_versions do
     project = scrub_storage_metadata(project)
 
-    with :ok <- validate_json_value(project),
+    with :ok <- validate_ideation_compartment(project),
+         :ok <- validate_json_value(project),
          :ok <- ReferencedTombstoneValidator.validate(project, @default_limits.max_objects),
          :ok <- reject_storage_metadata(project) do
       {:ok, project}
@@ -102,8 +103,9 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
 
   @doc false
   @spec validate_project(term()) :: :ok | {:error, term()}
-  def validate_project(%{"format_version" => @project_format_version} = project) do
-    with :ok <- validate_json_value(project),
+  def validate_project(%{"format_version" => version} = project) when version in @project_format_versions do
+    with :ok <- validate_ideation_compartment(project),
+         :ok <- validate_json_value(project),
          :ok <- ReferencedTombstoneValidator.validate(project, @default_limits.max_objects),
          :ok <- validate_project_source_refs(project) do
       reject_storage_metadata(project)
@@ -676,7 +678,7 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
     end
   end
 
-  defp validate_project_object(%{"format_version" => @project_format_version}), do: :ok
+  defp validate_project_object(%{"format_version" => version}) when version in @project_format_versions, do: :ok
   defp validate_project_object(_project), do: {:error, :invalid_project_object}
 
   defp validate_filename(filename) when is_binary(filename) do
@@ -1198,4 +1200,13 @@ defmodule Storyarn.Projects.Versioning.SnapshotObjectFormat do
 
   defp valid_logical_id?(id) when is_binary(id), do: Regex.match?(@logical_id_regex, id)
   defp valid_logical_id?(_id), do: false
+
+  defp validate_ideation_compartment(%{"format_version" => 2} = project) do
+    if Map.has_key?(project, "ideation"), do: {:error, :unexpected_ideation_recovery}, else: :ok
+  end
+
+  defp validate_ideation_compartment(%{"format_version" => 3, "ideation" => capsule}) when is_map(capsule),
+    do: Storyarn.Ideation.validate_recovery(capsule)
+
+  defp validate_ideation_compartment(_), do: {:error, :missing_ideation_recovery}
 end

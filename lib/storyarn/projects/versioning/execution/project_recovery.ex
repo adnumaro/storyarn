@@ -63,7 +63,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     :pin,
     :zone
   ]
-  @snapshot_format_version 2
+  @snapshot_format_versions [2, 3]
   @localization_actor_fields ~w(translated_by_id reviewed_by_id)
   @localization_actor_mode_key :project_recovery_localization_actor_mode
   @preserved_localization_actor_ids_key :preserved_localization_actor_ids
@@ -101,7 +101,12 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
           {:ok, Project.t()} | {:error, term()}
   def materialize_template(workspace_id, snapshot_data, user_id, opts \\ []) do
     opts = Keyword.put(opts, @localization_actor_mode_key, :discard)
-    recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
+
+    if is_map(snapshot_data) and Map.has_key?(snapshot_data, "ideation") and materialization_mode(opts) != :exact do
+      {:error, :template_excludes_ideation}
+    else
+      recover_project_with_asset_scope(snapshot_data, workspace_id, user_id, opts)
+    end
   end
 
   @doc """
@@ -487,7 +492,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
   end
 
   defp validate_project_snapshot_envelope(%{
-         "format_version" => @snapshot_format_version,
+         "format_version" => version,
          "entity_counts" => entity_counts,
          "project" => project,
          "sheets" => sheets,
@@ -507,24 +512,28 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
       "localization" => localization
     }
 
-    with :ok <- validate_project_snapshot_entries(sheets, :sheet),
+    with :ok <- validate_snapshot_format(version),
+         :ok <- validate_project_snapshot_entries(sheets, :sheet),
          :ok <- validate_project_snapshot_entries(flows, :flow),
          :ok <- validate_project_snapshot_entries(scenes, :scene) do
       validate_project_snapshot_counts(entity_counts, snapshot)
     end
   end
 
-  defp validate_project_snapshot_envelope(%{"format_version" => version}) when version != @snapshot_format_version do
+  defp validate_project_snapshot_envelope(%{"format_version" => version}) when version not in @snapshot_format_versions do
     {:error, {:unsupported_project_snapshot_format, version}}
   end
 
-  defp validate_project_snapshot_envelope(%{"format_version" => @snapshot_format_version}) do
+  defp validate_project_snapshot_envelope(%{"format_version" => version}) when version in @snapshot_format_versions do
     {:error, :invalid_project_snapshot_envelope}
   end
 
   defp validate_project_snapshot_envelope(_snapshot_data) do
     {:error, :invalid_project_snapshot_envelope}
   end
+
+  defp validate_snapshot_format(version) when version in @snapshot_format_versions, do: :ok
+  defp validate_snapshot_format(version), do: {:error, {:unsupported_project_snapshot_format, version}}
 
   defp validate_project_snapshot_entries(entries, entity_type) do
     if Enum.all?(entries, fn
@@ -1179,11 +1188,12 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
                user_id,
                opts,
                now
-             ) do
+             ),
+           {:ok, ideation_maps} <- Storyarn.Ideation.restore_recovery(project.id, snapshot_data["ideation"]) do
         {:ok,
          %{
            project: project,
-           id_maps: id_maps,
+           id_maps: Map.put(id_maps, :ideation, ideation_maps),
            preserved_localization_actor_ids: preserved_actor_ids
          }}
       end

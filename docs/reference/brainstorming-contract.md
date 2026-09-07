@@ -87,11 +87,11 @@ deletion nulls live user references without deleting history. Historical snapsho
 retain opaque user IDs, not copied names/emails; future displays must handle an
 unavailable author.
 
-**Existing Project snapshots do not include these tables.** There is no navigation,
-route or user-facing ingestion path for this foundation. Enabling the tool is
-gated by ENG-147 recovery coverage and ENG-129 private-content handling, not merely
-by completing a Vue board. No claim of complete brainstorming backup/export is
-valid until that integration ships.
+Canonical format-3 Project snapshots now cover sessions and ideas through an
+authenticated private compartment. See the [privacy and recovery contract](brainstorming-recovery-contract.md)
+for identity mapping, replaced sessions, old-format limitations and key custody.
+This foundation still has no navigation, route or board; ENG-134 owns that UI.
+Future persisted capabilities must extend ENG-147 coverage before release.
 
 ## Validation
 

@@ -9,7 +9,9 @@ defmodule Storyarn.Ideation.Sessions.Queries.Get do
   def run(scope, project_id, session_id) when is_integer(session_id) and session_id > 0 do
     with :ok <- ProjectAccess.authorize(scope, project_id),
          %Session{} = session <-
-           Repo.one(from s in Session, where: s.project_id == ^project_id and s.id == ^session_id) do
+           Repo.one(
+             from s in Session, where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id == ^session_id
+           ) do
       {:ok, session}
     else
       nil -> {:error, :not_found}

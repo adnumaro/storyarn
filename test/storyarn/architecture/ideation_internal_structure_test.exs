@@ -6,7 +6,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   @root "lib/storyarn/ideation"
   @session_roles ~w(adapters commands entities execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
-  @capabilities ~w(ideas sessions)
+  @capabilities ~w(ideas recovery sessions)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "execution"},
@@ -102,6 +102,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       list_sessions: 2,
       list_sessions: 3,
       reopen_session: 4,
+      recover_session: 4,
+      purge_replaced_session: 4,
       update_session: 5
     ]
 
@@ -125,9 +127,41 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       update_idea: 6
     ]
 
-    assert Storyarn.Ideation.__info__(:functions) == Enum.sort(expected ++ idea_operations)
+    assert Storyarn.Ideation.__info__(:functions) ==
+             Enum.sort(
+               expected ++
+                 idea_operations ++ [capture_recovery: 1, validate_recovery: 1, restore_recovery: 2, verify_recovery: 3]
+             )
+
     assert Storyarn.Ideation.Ideas.__info__(:functions) == idea_operations
     assert Storyarn.Ideation.Sessions.__info__(:functions) == Enum.sort(expected ++ [lock_for_contribution: 3])
+  end
+
+  test "the recovery inventory cannot silently omit newly persisted fields" do
+    schemas = %{
+      "sessions" => Storyarn.Ideation.Sessions.Session,
+      "session_revisions" => Storyarn.Ideation.Sessions.Revision,
+      "ideas" => Storyarn.Ideation.Ideas.Idea,
+      "revisions" => Storyarn.Ideation.Ideas.Revision,
+      "edits" => Storyarn.Ideation.Ideas.Edit,
+      "reveals" => Storyarn.Ideation.Ideas.Reveal,
+      "publications" => Storyarn.Ideation.Ideas.Publication
+    }
+
+    for {collection, table, _, fields} <- Storyarn.Ideation.Recovery.Inventory.tables() do
+      schema = Map.fetch!(schemas, collection)
+      assert schema.__schema__(:source) == table
+      assert Enum.sort(fields) == Enum.sort(schema.__schema__(:fields))
+    end
+  end
+
+  test "Ideation cannot read account identities through raw tables or Account schemas" do
+    violations =
+      Enum.filter(Path.wildcard("#{@root}/**/*.ex"), fn path ->
+        Regex.match?(~r/"users"|:users\b|\bStoryarn\.Accounts\.User\b/, File.read!(path))
+      end)
+
+    assert violations == [], "Recovery identities belong to Accounts: #{inspect(violations)}"
   end
 
   defp directories_in(path) do

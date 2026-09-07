@@ -2,7 +2,7 @@
 
 Ideation owns brainstorming sessions, responsibilities, configuration, ideas,
 authored revisions and publication. External callers enter `Storyarn.Ideation`;
-its root facade delegates through Sessions and Ideas without importing private
+its root facade delegates through Sessions, Ideas and Recovery without importing private
 roles. Capabilities collaborate through their own facades.
 
 ## Sessions capability
@@ -59,9 +59,20 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-No Project snapshot/reconstitution writer for these tables is implemented or
-authorized yet. This foundation has no user-facing entry point. Recovery and
-private-content policy remain release gates before accepting real content through
-the tool. See [the session contract](../../../docs/reference/brainstorming-contract.md).
-Private draft and conflict handling is specified in
-[the idea contract](../../../docs/reference/brainstorming-ideas-contract.md).
+Recovery is the privileged reconstitution capability for the seven session/idea
+tables. Its closed inventory uses raw encrypted fields and owns the derived
+`ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
+`adapters/` handles bounded persistence and encryption; `contracts/` owns the
+versioned record inventory. Ordinary commands cannot enter recovery internals.
+Project capture/materialization/verification call only the sealed root ports,
+inside the existing authorized Project transaction and exclusive lock.
+
+Restoration retains distinct replaced generations and reuses identical ones via
+stable record identities. Actors resolve through sealed Accounts ports; missing
+authors' drafts stay closed. Session recovery is an ordinary authorized command
+that restores an archived session without granting draft access. Only the owner
+may explicitly purge a replaced session; live/archived sessions are protected.
+Capture limits are typed failures, and restore checks the full retained inventory
+before commit so it cannot strand future backups above those bounds. See [privacy and recovery](../../../docs/reference/brainstorming-recovery-contract.md),
+[session behavior](../../../docs/reference/brainstorming-contract.md) and
+[idea publication](../../../docs/reference/brainstorming-ideas-contract.md).

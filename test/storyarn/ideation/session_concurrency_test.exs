@@ -125,6 +125,59 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
     end)
   end
 
+  test "recovery rejects a busy surviving author without waiting or orphaning their data", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      {:ok, capsule} =
+        Repo.transact(fn ->
+          Repo.one!(from p in Project, where: p.id == ^ctx.project.id, lock: "FOR UPDATE")
+          Ideation.capture_recovery(ctx.project.id)
+        end)
+
+      parent = self()
+
+      actor_lock =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transaction(fn ->
+              Repo.one!(from u in User, where: u.id == ^ctx.scope.user.id, lock: "FOR UPDATE")
+              send(parent, :recovery_actor_locked)
+
+              receive do
+                :release -> :ok
+              after
+                @timeout -> flunk("actor lock was not released")
+              end
+            end)
+          end)
+        end)
+
+      try do
+        assert_receive :recovery_actor_locked, @timeout
+
+        assert {:error, :ideation_recovery_actors_busy} =
+                 Repo.transact(fn ->
+                   {:ok, _, _} = Projects.authorize_locked(ctx.owner_scope, ctx.project.id, :edit_content)
+                   Repo.one!(from p in Project, where: p.id == ^ctx.project.id, lock: "FOR UPDATE")
+                   Ideation.restore_recovery(ctx.project.id, capsule)
+                 end)
+
+        assert {:ok, session} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+        assert session.created_by_id == ctx.scope.user.id
+        assert session.deleted_at == nil
+        send(actor_lock.pid, :release)
+        assert {:ok, :ok} = Task.await(actor_lock, @timeout)
+
+        assert {:ok, _} =
+                 Repo.transact(fn ->
+                   Repo.one!(from p in Project, where: p.id == ^ctx.project.id, lock: "FOR UPDATE")
+                   Ideation.restore_recovery(ctx.project.id, capsule)
+                 end)
+      after
+        Task.shutdown(actor_lock, :brutal_kill)
+      end
+    end)
+  end
+
   defp assert_waiting_on_lock(_pid, 0), do: flunk("edit did not wait for the permission transaction")
 
   defp assert_waiting_on_lock(pid, attempts) do

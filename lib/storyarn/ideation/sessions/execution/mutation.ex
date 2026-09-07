@@ -58,7 +58,11 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
   end
 
   defp lock_session(project_id, session_id) when is_integer(session_id) and session_id > 0 do
-    Repo.one(from s in Session, where: s.project_id == ^project_id and s.id == ^session_id, lock: "FOR UPDATE")
+    Repo.one(
+      from s in Session,
+        where: s.project_id == ^project_id and is_nil(s.deleted_at) and s.id == ^session_id,
+        lock: "FOR UPDATE"
+    )
   end
 
   defp lock_session(_project_id, _session_id), do: nil

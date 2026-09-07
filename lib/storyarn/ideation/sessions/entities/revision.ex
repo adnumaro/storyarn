@@ -3,10 +3,11 @@ defmodule Storyarn.Ideation.Sessions.Revision do
   use Ecto.Schema
 
   schema "ideation_session_revisions" do
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :session_id, :id
     field :actor_id, :id
     field :number, :integer
-    field :action, Ecto.Enum, values: [:created, :updated, :responsibilities_assigned, :archived, :reopened]
+    field :action, Ecto.Enum, values: [:created, :updated, :responsibilities_assigned, :archived, :reopened, :recovered]
     field :snapshot, :map
 
     timestamps(type: :utc_datetime_usec, updated_at: false)

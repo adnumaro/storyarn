@@ -8,6 +8,7 @@ defmodule Storyarn.Ideation.Ideas.Revision do
   alias Storyarn.Platform.Shared.EncryptedBinary
 
   schema "ideation_idea_revisions" do
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :idea_id, :id
     field :number, :integer
     field :actor_id, :id

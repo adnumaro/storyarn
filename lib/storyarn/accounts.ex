@@ -43,6 +43,14 @@ defmodule Storyarn.Accounts do
   # Users
   # =============================================================================
 
+  @doc "Captures stable identities inside an authorized recovery transaction; returns no profile data."
+  @spec capture_recovery_identities([pos_integer()]) :: {:ok, map()} | {:error, atom()}
+  defdelegate capture_recovery_identities(ids), to: Identity
+
+  @doc "Resolves and locks authenticated recovery identities without waiting behind an account deletion."
+  @spec resolve_recovery_identities_locked(map()) :: {:ok, map()} | {:error, atom()}
+  defdelegate resolve_recovery_identities_locked(identities), to: Identity
+
   @doc """
   Gets a user by email.
 

@@ -1451,6 +1451,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
 
   defp retryable_provider_failure?(reason), do: ProjectSnapshotArchiveReader.retryable_error?(reason)
 
+  defp retryable_database_failure?(:ideation_recovery_actors_busy), do: true
   defp retryable_database_failure?(%DBConnection.ConnectionError{}), do: true
 
   defp retryable_database_failure?(%Postgrex.Error{postgres: %{code: code}})
