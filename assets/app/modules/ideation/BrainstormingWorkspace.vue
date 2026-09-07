@@ -243,7 +243,12 @@ onUnmounted(() => {
 });
 </script>
 <template>
-  <div id="brainstorming-workspace" class="relative flex h-full min-h-0 flex-col">
+  <div
+    id="brainstorming-workspace"
+    :aria-busy="board.loading"
+    :data-persisted-note-count="board.ideas.length"
+    class="relative flex h-full min-h-0 flex-col"
+  >
     <div
       v-if="board.error || failure || !online"
       role="alert"

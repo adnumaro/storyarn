@@ -30,6 +30,7 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
     browser =
       browser
       |> press("[contenteditable=true]", "Escape")
+      |> assert_has("#brainstorming-workspace[aria-busy=false][data-persisted-note-count='1']")
       |> visit(path)
       |> assert_has(".canvas-note", text: "The city remembers every broken promise.")
 
@@ -75,7 +76,14 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
     browser = browser |> assert_has("#{selector}[aria-selected=true]") |> refute_has("#{selector} [contenteditable=true]")
     browser = browser |> press(selector, "Delete") |> refute_has(selector)
     assert_deleted(ctx, original.id)
-    browser |> visit(path) |> refute_has(selector)
+    # Reload only after the server projection has caught up with the optimistic
+    # deletion, so navigation cannot kill a reader using the test transaction.
+    browser
+    |> assert_has("#brainstorming-workspace[aria-busy=false][data-persisted-note-count='0']")
+    |> visit(path)
+    |> assert_has("#brainstorming-canvas")
+    |> refute_has(selector)
+
     assert {:error, :not_found} = Ideation.get_idea(ctx.author, project.id, ctx.session.id, original.id)
     saved = Repo.get!(Storyarn.Ideation.Ideas.Idea, original.id)
     revision = Repo.get_by!(Storyarn.Ideation.Ideas.Revision, idea_id: saved.id, number: saved.revision)
