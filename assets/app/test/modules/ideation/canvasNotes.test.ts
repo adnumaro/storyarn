@@ -96,6 +96,8 @@ describe("canvas persistence", () => {
     replies[1]({ status: "ok", value: { id: 10 } });
     await removing;
     expect(result.notes.value).toEqual([]);
+    result.reset();
+    expect(result.drafts.recovered.value).toEqual([]);
     app.unmount();
   });
   it("cancels only unsubmitted empty notes and isolates late acknowledgements after restore", async () => {

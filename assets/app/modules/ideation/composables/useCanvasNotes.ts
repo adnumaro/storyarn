@@ -210,6 +210,8 @@ export function useCanvasNotes(
       removed.add(id);
       deleteRequests.delete(id);
       errors.delete(id);
+      created.delete(id);
+      drafts.drafts.delete(id);
     } else errors.set(id, reply.status === "error" ? reply.code : "unavailable");
   }
   function move(id: number, canvas: CanvasPlacement) {
