@@ -822,6 +822,16 @@ defmodule Storyarn.Projects do
           | {:error, :not_found | :unauthorized | :ownership_invariant_violation}
   defdelegate authorize(scope, project_id, action), to: Access
 
+  @doc """
+  Revalidates project access under shared row locks in the caller's transaction.
+
+  Consumers must acquire this authorization before locking or writing their own
+  aggregate. Calling outside a transaction returns
+  `{:error, :authorization_transaction_required}`. This grants no bypass of
+  effective membership, explicit denial, or project deletion checks.
+  """
+  defdelegate authorize_locked(scope, project_id, action), to: Access
+
   # =============================================================================
   # Invitations
   # =============================================================================

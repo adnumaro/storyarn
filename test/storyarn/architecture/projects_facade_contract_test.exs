@@ -311,7 +311,7 @@ defmodule Storyarn.Architecture.ProjectsFacadeContractTest do
   @specs_digest "0e2ca5f35a9a51106f384b5f633a32ea0bd7c364cea1f4c48b8c5c24f7fa9c94"
 
   test "the root facade preserves every established function and arity" do
-    expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract)
+    expected = MapSet.new(@public_contract ++ @worker_contract ++ @comment_contract ++ [authorize_locked: 3])
     assert :functions |> Projects.__info__() |> MapSet.new() == expected
   end
 

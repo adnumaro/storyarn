@@ -1,0 +1,145 @@
+defmodule Storyarn.Ideation.SessionConcurrencyTest do
+  use ExUnit.Case, async: false
+
+  import Ecto.Query
+  import Storyarn.AccountsFixtures
+  import Storyarn.ProjectsFixtures
+
+  alias Ecto.Adapters.SQL.Sandbox
+  alias Storyarn.Accounts.User
+  alias Storyarn.Ideation
+  alias Storyarn.Projects
+  alias Storyarn.Projects.Project
+  alias Storyarn.Repo
+  alias Storyarn.Workspaces.Workspace
+
+  @timeout 10_000
+
+  setup do
+    Sandbox.unboxed_run(Repo, fn ->
+      owner = user_fixture()
+      project = project_fixture(owner)
+      editor = user_without_workspace()
+      membership = membership_fixture(project, editor)
+      scope = user_scope_fixture(editor)
+      {:ok, session} = Ideation.create_session(scope, project.id, %{title: "Original"})
+
+      on_exit(fn ->
+        Sandbox.unboxed_run(Repo, fn ->
+          Repo.delete_all(from p in Project, where: p.id == ^project.id)
+          Repo.delete_all(from w in Workspace, where: w.id == ^project.workspace_id)
+          Repo.delete_all(from u in User, where: u.id in ^[owner.id, editor.id])
+        end)
+      end)
+
+      {:ok,
+       project: project, owner_scope: user_scope_fixture(owner), scope: scope, membership: membership, session: session}
+    end)
+  end
+
+  test "competing edits commit exactly one head and one matching revision", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      parent = self()
+
+      tasks =
+        for title <- ["First edit", "Second edit"] do
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              send(parent, {:ready, self()})
+
+              receive do
+                :start -> Ideation.update_session(ctx.scope, ctx.project.id, ctx.session.id, 1, %{title: title})
+              after
+                @timeout -> flunk("edit was not released")
+              end
+            end)
+          end)
+        end
+
+      try do
+        for _task <- tasks, do: assert_receive({:ready, _pid}, @timeout)
+        Enum.each(tasks, &send(&1.pid, :start))
+        results = Task.await_many(tasks, @timeout)
+        assert Enum.count(results, &match?({:ok, _}, &1)) == 1
+        assert Enum.count(results, &(&1 == {:error, :stale_revision})) == 1
+        assert {:ok, current} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+        assert {:ok, [latest, original]} = Ideation.list_session_revisions(ctx.scope, ctx.project.id, ctx.session.id)
+        assert current.revision == 2
+        assert latest.number == 2
+        assert latest.snapshot["title"] == current.title
+        assert original.snapshot["title"] == "Original"
+      after
+        Enum.each(tasks, &Task.shutdown(&1, :brutal_kill))
+      end
+    end)
+  end
+
+  test "an edit blocked behind a membership downgrade reauthorizes after it commits", ctx do
+    Sandbox.unboxed_run(Repo, fn ->
+      parent = self()
+
+      downgrade =
+        Task.async(fn ->
+          Sandbox.unboxed_run(Repo, fn ->
+            Repo.transact(fn ->
+              result = Projects.update_member_role(ctx.owner_scope, ctx.project.id, ctx.membership.id, "viewer")
+              send(parent, :downgrade_pending)
+
+              receive do
+                :commit -> result
+              after
+                @timeout -> {:error, :downgrade_timeout}
+              end
+            end)
+          end)
+        end)
+
+      try do
+        assert_receive :downgrade_pending, @timeout
+
+        edit =
+          Task.async(fn ->
+            Sandbox.unboxed_run(Repo, fn ->
+              [[backend_pid]] = Repo.query!("SELECT pg_backend_pid()").rows
+              send(parent, {:editing, backend_pid})
+              Ideation.update_session(ctx.scope, ctx.project.id, ctx.session.id, 1, %{title: "Old permission"})
+            end)
+          end)
+
+        try do
+          assert_receive {:editing, backend_pid}, @timeout
+          assert_waiting_on_lock(backend_pid, 200)
+          send(downgrade.pid, :commit)
+          assert {:ok, _membership} = Task.await(downgrade, @timeout)
+          assert {:error, :unauthorized} = Task.await(edit, @timeout)
+          assert {:ok, current} = Ideation.get_session(ctx.scope, ctx.project.id, ctx.session.id)
+          assert current.title == "Original"
+          assert current.revision == 1
+          assert {:ok, [_original]} = Ideation.list_session_revisions(ctx.scope, ctx.project.id, ctx.session.id)
+        after
+          Task.shutdown(edit, :brutal_kill)
+        end
+      after
+        Task.shutdown(downgrade, :brutal_kill)
+      end
+    end)
+  end
+
+  defp assert_waiting_on_lock(_pid, 0), do: flunk("edit did not wait for the permission transaction")
+
+  defp assert_waiting_on_lock(pid, attempts) do
+    if Repo.query!("SELECT wait_event_type FROM pg_stat_activity WHERE pid = $1", [pid]).rows == [["Lock"]] do
+      :ok
+    else
+      Process.sleep(10)
+      assert_waiting_on_lock(pid, attempts - 1)
+    end
+  end
+
+  defp user_without_workspace do
+    %User{}
+    |> User.email_changeset(%{email: unique_user_email()})
+    |> User.confirm_changeset()
+    |> Repo.insert!()
+  end
+end

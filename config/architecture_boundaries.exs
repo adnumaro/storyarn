@@ -14,7 +14,8 @@ bounded_contexts = [
   :flows,
   :scenes,
   :localization,
-  :ai
+  :ai,
+  :ideation
 ]
 
 # ENG-110 is the first persistence-ownership slice under ENG-103. Localization
@@ -1757,6 +1758,7 @@ canonical_owner_membership_invariant = %{
 }
 
 boundaries = %{
+  ideation: ["lib/storyarn/ideation.ex", "lib/storyarn/ideation/"],
   accounts: [
     "lib/storyarn/accounts.ex",
     "lib/storyarn/accounts/",
@@ -3829,6 +3831,7 @@ policy = %{
   # when the current xref graph contains the exact same edge. Every partition
   # is sealed: the ENG-92 debt baseline is empty and can only stay empty.
   zero_debt_consumers: [
+    :ideation,
     :accounts,
     :ai,
     :commercial,
@@ -3847,6 +3850,7 @@ policy = %{
   # access to a public facade must use an exact exception; it cannot be
   # accepted by adding an inbound edge to another consumer's debt baseline.
   isolated_contexts: [
+    :ideation,
     :accounts,
     :ai,
     :commercial,
@@ -3950,6 +3954,12 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn/ideation/sessions/adapters/project_access.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "Ideation revalidates current project access through Projects before reading or writing its own sessions"
+    },
     %{
       source: "lib/storyarn_web/live/flow_live/handlers/comment_handlers.ex",
       target: "lib/storyarn/projects.ex",
