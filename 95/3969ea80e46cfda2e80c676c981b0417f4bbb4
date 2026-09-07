@@ -1,0 +1,91 @@
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_c6c0bdce4817aa 1957,3014-3055,4056-4085
+docs/reference/brainstorming-contract.md
+  s_5af6a6d0a150f1::t_e5a8238680b3ab 90-94
+docs/reference/brainstorming-ideas-contract.md
+  s_5af6a6d0a150f1::t_ae33ca27854fb4 167-171
+docs/reference/brainstorming-recovery-contract.md
+  s_5af6a6d0a150f1::t_12b9e5ff52383b 1-176
+lib/storyarn/accounts/identity/entities/user.ex
+  s_5af6a6d0a150f1::t_46b5e7ff667656 24-25
+lib/storyarn/ideation.ex
+  s_5af6a6d0a150f1::t_51d7481ceeff57 8,14,31-32,46-69
+lib/storyarn/ideation/README.md
+  s_5af6a6d0a150f1::t_804d24307d5625 5,62-75
+lib/storyarn/ideation/ideas/commands/create.ex
+  s_5af6a6d0a150f1::t_7757e558b868cc 29,35,38,42-46,85,90-98
+lib/storyarn/ideation/ideas/entities/idea.ex
+  s_5af6a6d0a150f1::t_620ea0a9a2a346 15-16
+lib/storyarn/ideation/recovery/adapters/capsule.ex
+  s_5af6a6d0a150f1::t_f0a78d04b37940 1-57
+lib/storyarn/ideation/recovery/adapters/records.ex
+  s_5af6a6d0a150f1::t_0afd42dfc7e72c 1-94
+lib/storyarn/ideation/recovery/contracts/inventory.ex
+  s_5af6a6d0a150f1::t_e9257bd5e3f5f0 1-104
+lib/storyarn/ideation/recovery/execution/capture.ex
+  s_5af6a6d0a150f1::t_cf105482f473b3 1-40
+lib/storyarn/ideation/recovery/execution/restore.ex
+  s_5af6a6d0a150f1::t_0225fb23fae55d 1-144
+lib/storyarn/ideation/recovery/recovery.ex
+  s_5af6a6d0a150f1::t_85434c890dddf9 1-24
+lib/storyarn/ideation/sessions/commands/recover.ex
+  s_5af6a6d0a150f1::t_fb0fcee5af037b 1-38
+lib/storyarn/ideation/sessions/entities/revision.ex
+  s_5af6a6d0a150f1::t_33e9a4c37f0b56 9
+lib/storyarn/ideation/sessions/entities/session.ex
+  s_5af6a6d0a150f1::t_512c4163e8e455 18
+lib/storyarn/ideation/sessions/execution/contribution_access.ex
+  s_5af6a6d0a150f1::t_3d47408eb8d951 14-18
+lib/storyarn/ideation/sessions/execution/mutation.ex
+  s_5af6a6d0a150f1::t_eeacb06840a7e2 61-65
+lib/storyarn/ideation/sessions/queries/get.ex
+  s_5af6a6d0a150f1::t_924de4cf5aab86 12-14
+lib/storyarn/ideation/sessions/queries/list.ex
+  s_5af6a6d0a150f1::t_00f9161fc92a7d 12,15-21
+lib/storyarn/ideation/sessions/sessions.ex
+  s_5af6a6d0a150f1::t_b6418f2bbebb3b 24-25
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_5af6a6d0a150f1::t_3553a5075fb062 1454
+lib/storyarn/projects/versioning/contracts/snapshot_object_format.ex
+  s_5af6a6d0a150f1::t_89d41818163f35 19,79,82-83,106-108,681,1203-1211
+lib/storyarn/projects/versioning/execution/builders/project_snapshot_builder.ex
+  s_5af6a6d0a150f1::t_b1f8994549ac14 72-74
+lib/storyarn/projects/versioning/execution/project_recovery.ex
+  s_5af6a6d0a150f1::t_ae941da945412b 66,104-109,495,515-516,523,527,535-537,1191-1192,1196
+lib/storyarn/projects/versioning/execution/project_snapshot_restore_executor.ex
+  s_5af6a6d0a150f1::t_6d2429ebacca14 855-856,897,1007
+lib/storyarn_web/live_vue_encoders.ex
+  s_5af6a6d0a150f1::t_ade457a554970e 17
+priv/repo/migrations/20260907140000_add_ideation_recovery_identity.exs
+  s_5af6a6d0a150f1::t_320b3e9628fc35 1-35
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_77ec0cf99b3ad2 9,105,129-134,139-156
+test/storyarn/architecture/privileged_entrypoint_boundary_test.exs
+  s_5af6a6d0a150f1::t_9d63a80c05a635 28
+test/storyarn/ideation/recovery_test.exs
+  s_5af6a6d0a150f1::t_2b5d2ed1929a53 1-348
+test/storyarn/ideation/session_concurrency_test.exs
+  s_5af6a6d0a150f1::t_8b98ffdc0b0d55 128-180
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_5af6a6d0a150f1::t_5057f182ddf5f5 310-330
+test/storyarn/projects/versioning/execution/builders/project_snapshot_builder_test.exs
+  s_5af6a6d0a150f1::t_23a22021a68f92 49,57,60
+test/storyarn/projects/versioning/execution/project_snapshot_restore_executor_test.exs
+  s_5af6a6d0a150f1::t_b570f8b6835698 2677-2711
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "953969ea80e46cfda2e80c676c981b0417f4bbb4",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
