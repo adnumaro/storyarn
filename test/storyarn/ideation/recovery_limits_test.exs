@@ -6,6 +6,7 @@ defmodule Storyarn.Ideation.RecoveryLimitsTest do
   import Storyarn.IdeationFixtures
 
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Projects
@@ -67,6 +68,34 @@ defmodule Storyarn.Ideation.RecoveryLimitsTest do
     assert Repo.one(from s in Session, where: s.id == ^ctx.session.id, select: is_nil(s.deleted_at))
     assert Repo.one(from s in Session, where: s.id == ^ctx.session.id, select: fragment("left(?, 1)", s.context)) == "b"
     assert {:ok, _} = capture(ctx)
+  end
+
+  test "invalid capture fails the background build with its own message on the first attempt", ctx do
+    idea_fixture(ctx, %{visibility: :shared})
+    # A malformed stored selection must still be rejected after allowing creation.
+    Repo.update_all(from(r in Reveal, where: r.session_id == ^ctx.session.id),
+      set: [selection: %{"mode" => "unsupported"}]
+    )
+
+    assert {:error, :ideation_recovery_capture_failed} = capture(ctx)
+
+    assert {:ok, requested} =
+             Projects.request_full_project_snapshot(ctx.owner, ctx.project, %{
+               idempotency_key: Ecto.UUID.generate()
+             })
+
+    job = Repo.get!(Oban.Job, requested.build_job_id)
+
+    job =
+      job
+      |> Ecto.Changeset.change(state: "executing", attempt: 1, attempted_at: %{TimeHelpers.now() | microsecond: {0, 6}})
+      |> Repo.update!()
+
+    assert {:discard, :ideation_recovery_capture_failed} = BuildProjectSnapshotWorker.perform(job)
+    failed = Repo.get!(ProjectSnapshot, requested.id)
+    assert failed.lifecycle_state == "failed"
+    assert failed.failure_code == "ideation_recovery_capture_failed"
+    assert failed.failure_message == "The brainstorming data could not be captured for this snapshot."
   end
 
   defp capture(ctx) do

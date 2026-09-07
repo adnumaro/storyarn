@@ -54,6 +54,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
   @progress_checkpoint_ms 2_000
   @safe_failure_messages %{
     "ideation_recovery_too_large" => "The brainstorming recovery history exceeds the snapshot size limit.",
+    "ideation_recovery_capture_failed" => "The brainstorming data could not be captured for this snapshot.",
     "build_failed" => "The snapshot could not be created.",
     "source_missing" => "A required asset was unavailable.",
     "source_corrupt" => "A required asset failed integrity verification.",
@@ -3018,6 +3019,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     not Enum.any?(
       [
         :ideation_recovery_too_large,
+        :ideation_recovery_capture_failed,
         :limit_reached,
         :snapshot_limit_reached,
         :snapshot_build_cancelled,
@@ -3066,6 +3068,9 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotBuild do
     cond do
       contains_reason?(reason, :ideation_recovery_too_large) ->
         :ideation_recovery_too_large
+
+      contains_reason?(reason, :ideation_recovery_capture_failed) ->
+        :ideation_recovery_capture_failed
 
       reason == :cleanup_unowned ->
         :cleanup_unowned

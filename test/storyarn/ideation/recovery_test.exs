@@ -8,6 +8,8 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Ideas.Publication
+  alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Projects
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
@@ -16,6 +18,52 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
   setup do
     ideation_fixture()
+  end
+
+  for {visibility_source, configuration, attrs} <- [
+        {:session_default, %{default_visibility: :shared}, %{}},
+        {:explicit_choice, %{}, %{visibility: :shared}}
+      ] do
+    @configuration configuration
+    @idea_attributes attrs
+
+    test "captures and restores ideas shared at creation through #{visibility_source}", ctx do
+      ctx = configure_session(ctx, @configuration)
+      attrs = Map.put(@idea_attributes, :configuration_version, ctx.session.configuration_version)
+      idea = idea_fixture(ctx, attrs)
+      assert idea.visibility == :shared
+      assert idea.published_revision == 1
+      operation = Repo.one!(from r in Reveal, where: r.session_id == ^ctx.session.id)
+      assert operation.selection == %{"mode" => "creation"}
+
+      assert {:ok, capsule} =
+               Repo.transact(fn ->
+                 {:ok, _, _} = Projects.authorize_locked(ctx.owner, ctx.project.id, :edit_content)
+                 Repo.one!(from p in "projects", where: p.id == ^ctx.project.id, select: p.id, lock: "FOR UPDATE")
+                 Ideation.capture_recovery(ctx.project.id)
+               end)
+
+      snapshot = snapshot(ctx)
+      assert snapshot["ideation"] == capsule
+      assert :ok = SnapshotObjectFormat.validate_project(snapshot)
+      Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
+      maps = restore(ctx, capsule)
+      session_id = maps["sessions"][ctx.session.id]
+      idea_id = maps["ideas"][idea.id]
+      operation_id = maps["reveals"][operation.id]
+
+      assert {:ok, %{body: "<p>Original idea</p>", revision: 1, visibility: :shared}} =
+               Ideation.get_idea(ctx.owner, ctx.project.id, session_id, idea_id)
+
+      restored = Repo.get!(Reveal, operation_id)
+      assert restored.selection == %{"mode" => "creation"}
+      assert restored.manifest == [%{"idea_id" => idea_id, "revision" => 1}]
+      assert restored.status == :completed
+      publication = Repo.one!(from p in Publication, where: p.idea_id == ^idea_id)
+      assert publication.operation_id == operation_id
+      assert publication.revision == 1
+      assert :ok = ctx |> snapshot() |> SnapshotObjectFormat.validate_project()
+    end
   end
 
   test "canonical capture includes an authenticated compartment; templates exclude it", ctx do

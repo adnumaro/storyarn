@@ -63,6 +63,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   end
 
   defp valid_selection?(%{"selection" => %{"mode" => "eligible"}}, _), do: true
+  defp valid_selection?(%{"selection" => %{"mode" => "creation"}}, _), do: true
 
   defp valid_selection?(%{"selection" => %{"mode" => "selected", "targets" => targets}} = row, index),
     do: valid_targets?(targets, row["session_id"], index)
