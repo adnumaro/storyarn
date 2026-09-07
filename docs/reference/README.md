@@ -39,6 +39,7 @@ in this directory.
 - [Domain patterns](domain-patterns.md)
 - [Bounded-context map](context-map.md)
 - [Shared utilities](shared-utilities.md)
+- [Flow sequence composition](flow-sequence-composition.md)
 - [Flow dialogue typography](flow-dialogue-typography.md)
 - [AI provider adapters](ai-provider-adapters.md)
 - [AI operations](ai-operations.md)

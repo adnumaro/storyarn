@@ -26,11 +26,14 @@ function state(): SequencePlaybackState {
 function player(overrides: Partial<SequencePlaybackState> = {}) {
   return mount(FlowSequencePlayback, {
     props: { state: { ...state(), ...overrides } },
-    global: { stubs: { PlayerAudioTracks: true } },
   });
 }
 
 describe("FlowSequencePlayback", () => {
+  beforeEach(() => {
+    vi.spyOn(HTMLMediaElement.prototype, "play").mockResolvedValue();
+    vi.spyOn(HTMLMediaElement.prototype, "pause").mockImplementation(() => {});
+  });
   afterEach(() => vi.restoreAllMocks());
 
   it("renders stage directions as plain text beneath the dialogue and omits empty directions", async () => {
@@ -112,5 +115,19 @@ describe("FlowSequencePlayback", () => {
     expect(wrapper.get<HTMLAudioElement>('audio[data-kind="sfx"]').element.loop).toBe(false);
     wrapper.unmount();
     expect(pause).toHaveBeenCalledTimes(2);
+  });
+  it("supports numbered choices and navigation without handling keys from controls", async () => {
+    const wrapper = player({ canGoBack: true });
+    const viewport = wrapper.get("[data-playback-viewport]");
+    await viewport.trigger("keydown", { key: "1" });
+    await viewport.trigger("keydown", { key: "2" });
+    await viewport.trigger("keydown", { key: "ArrowLeft" });
+    expect(wrapper.emitted("action")).toEqual([["choose", "yes"], ["back"]]);
+    await wrapper.get("[data-playback-response]").trigger("keydown", { key: "1" });
+    expect(wrapper.emitted("action")).toHaveLength(2);
+    await wrapper.setProps({ pending: true });
+    await viewport.trigger("keydown", { key: "1" });
+    expect(wrapper.emitted("action")).toHaveLength(2);
+    wrapper.unmount();
   });
 });

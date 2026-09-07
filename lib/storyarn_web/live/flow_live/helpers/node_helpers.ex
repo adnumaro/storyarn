@@ -339,7 +339,8 @@ defmodule StoryarnWeb.FlowLive.Helpers.NodeHelpers do
         graph.nodes,
         speakers_map,
         project.id,
-        nil
+        nil,
+        SequencePresentation.locale_context(socket.assigns)
       )
     )
   end

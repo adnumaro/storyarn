@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onUnmounted, ref, watch } from "vue";
+import { useElementSize } from "@vueuse/core";
 import {
   Layers,
   Library,
@@ -30,8 +31,13 @@ import type {
   SequenceStageState,
   SequenceVisualLayerRecord,
 } from "@modules/flows/sequence/types";
+import SequenceLocaleControls from "@modules/flows/sequence/components/SequenceLocaleControls.vue";
+import FlowSequenceAudio from "./FlowSequenceAudio.vue";
+import { Tabs, TabsList, TabsTrigger } from "@components/ui/tabs";
 import FlowSequenceStage from "./FlowSequenceStage.vue";
 import FlowSequencePlayback from "./FlowSequencePlayback.vue";
+import FlowSequenceComments from "./FlowSequenceComments.vue";
+import type { FlowCommentsPanelState, FlowCommentThread } from "@modules/flows/types/comments";
 import type { SequencePlaybackAction, SequencePlaybackState } from "./sequence-playback";
 import FlowSequenceLibrary from "./FlowSequenceLibrary.vue";
 import FlowSequenceLayerList from "./FlowSequenceLayerList.vue";
@@ -52,19 +58,27 @@ const {
   canEdit = false,
   fullscreen = false,
   playback = null,
+  comments = null,
+  debugging = false,
 } = defineProps<{
   stage: SequenceStageState;
   data?: SequenceConfigPanelData | null;
   sheets?: SequenceLibrarySheet[];
   canEdit?: boolean;
   fullscreen?: boolean;
+  debugging?: boolean;
   playback?: SequencePlaybackState | null;
+  comments?: { state: FlowCommentsPanelState; pins: FlowCommentThread[] } | null;
 }>();
 const emit = defineEmits<{ "toggle-fullscreen": [] }>();
 const live = useLive();
+const playbackPanel = ref<InstanceType<typeof FlowSequencePlayback> | null>(null);
+const audioPanel = ref<InstanceType<typeof FlowSequenceAudio> | null>(null);
 const playbackPending = ref(false);
 const playbackFailed = ref(false);
 const workspaceRoot = ref<HTMLElement | null>(null);
+const workspaceHeader = ref<HTMLElement | null>(null);
+const { height: headerHeight } = useElementSize(workspaceHeader);
 const uploadInput = ref<HTMLInputElement | null>(null);
 const uploadedAssets = ref<SequenceAssetEntry[]>([]);
 const dragDepth = ref(0);
@@ -86,6 +100,7 @@ const selectedLayerKey = ref<string | null>(null);
 const lockedLayerKeys = ref<string[]>([]);
 const libraryOpen = ref(true);
 const inspectorOpen = ref(true);
+const inspectorTab = ref("visual");
 const {
   libraryWidth,
   inspectorWidth,
@@ -164,8 +179,15 @@ function push(event: string, payload: Record<string, unknown>) {
   if (writable.value) live.pushEvent(event, { id: ownerId.value, ...payload });
 }
 
+function setContentLocale(locale: string) {
+  audioPanel.value?.stopVoicePreview();
+  playbackPanel.value?.stopVoice();
+  live.pushEvent("set_sequence_content_locale", { locale });
+}
+
 function playbackAction(action: SequencePlaybackAction, responseId?: string) {
   if (playbackPending.value) return;
+  if (action === "stop") playbackPanel.value?.stop();
   playbackPending.value = true;
   playbackFailed.value = false;
   live.pushEvent(
@@ -361,6 +383,11 @@ function selectLayer(key: string | null) {
   selectedLayerKey.value = key;
   if (key) inspectorOpen.value = true;
 }
+defineExpose({
+  stopVoicePreview: () => audioPanel.value?.stopVoicePreview(),
+  pausePreviews: () => audioPanel.value?.pausePreviews(),
+  stopPreviews: () => audioPanel.value?.stopPreviews(),
+});
 </script>
 
 <template>
@@ -390,7 +417,10 @@ function selectLayer(key: string | null) {
         }}
       </span>
     </div>
-    <header class="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2">
+    <header
+      ref="workspaceHeader"
+      class="flex shrink-0 flex-wrap items-center gap-2 border-b border-border px-3 py-2"
+    >
       <Layers class="size-4 shrink-0 text-muted-foreground" />
       <span class="text-xs font-medium">{{ $t("flows.sequence_workspace.title") }}</span>
       <template v-if="ownerReady && !playback">
@@ -427,10 +457,30 @@ function selectLayer(key: string | null) {
         {{ $t("flows.sequence_stage.diagnostics", { count: diagnostics.length }) }}
       </span>
       <span class="flex-1" />
+      <SequenceLocaleControls
+        id="sequence-workspace"
+        :language-options="playback?.languageOptions ?? stage.languageOptions"
+        :content-locale="playback?.contentLocale ?? stage.contentLocale"
+        :localization-status="playback ? playback.localizationStatus : stage.localizationStatus"
+        :voice="playback ? playback.voice : stage.voice"
+        @update:content-locale="setContentLocale"
+      />
+      <FlowSequenceComments
+        v-if="comments && !playback"
+        :node-id="ownerId"
+        :state="comments.state"
+        :top="headerHeight + 8"
+        :count="
+          comments.pins.filter(
+            (pin) => pin.source.type === 'flow_node' && String(pin.source.id) === String(ownerId),
+          ).length
+        "
+      />
       <Button
         variant="outline"
         size="xs"
         :disabled="
+          debugging ||
           playbackPending ||
           (!playback &&
             (!ownerReady ||
@@ -489,6 +539,7 @@ function selectLayer(key: string | null) {
       {{ $t("flows.sequence_playback.error") }}
     </p>
     <FlowSequencePlayback
+      ref="playbackPanel"
       v-if="playback"
       :state="playback"
       :pending="playbackPending"
@@ -628,51 +679,74 @@ function selectLayer(key: string | null) {
         class="sequence-workspace-inspector flex shrink-0 flex-col gap-3 overflow-y-auto bg-card/30 p-3"
         :class="{ 'sequence-panel-collapsed': !inspectorOpen }"
       >
-        <FlowSequenceLayerList
-          :layers="layers"
-          :selected-key="selectedLayerKey"
-          :locked-keys="lockedLayerKeys"
-          :can-edit="writable"
-          @select="selectLayer"
-          @visibility="(layer, visible) => updateLayer(layer, { visible })"
-          @lock="toggleLock"
-          @reorder="push('reorder_sequence_visual_layers', { layer_keys: $event })"
-        />
-        <FlowSequenceInspector
-          :key="`${ownerId}:${selectedLayerKey}`"
-          :layer="selectedLayer"
-          :image-assets="images"
-          :can-edit="writable"
-          :locked="selectedLayerKey != null && lockedLayerKeys.includes(selectedLayerKey)"
-          @update="updateSelected"
-          @remove="removeSelected"
-          @revert="
-            push('revert_sequence_visual_layer', { layer_key: selectedLayerKey, fields: $event })
-          "
-        />
-        <details
-          v-if="removed.length"
-          class="border-t border-border pt-2 text-xs text-muted-foreground"
-        >
-          <summary class="cursor-pointer">
-            {{ $t("flows.sequences.config_panel.removed_layers") }}
-          </summary>
-          <div
-            v-for="layer in removed"
-            :key="sequenceLayerKey(layer)"
-            class="mt-2 flex items-center gap-2"
+        <Tabs v-model="inspectorTab" class="shrink-0">
+          <TabsList class="grid w-full grid-cols-2"
+            ><TabsTrigger value="visual" class="text-xs">{{
+              $t("flows.sequences.visual_layers.title")
+            }}</TabsTrigger
+            ><TabsTrigger value="audio" class="text-xs">{{
+              $t("flows.sequences.config_panel.audio_title")
+            }}</TabsTrigger></TabsList
           >
-            <span class="min-w-0 flex-1 truncate">{{ layer.label }}</span
-            ><Button
-              variant="ghost"
-              size="icon-xs"
-              :disabled="!writable"
-              :aria-label="$t('flows.sequences.config_panel.restore')"
-              @click="push('restore_sequence_visual_layer', { layer_key: sequenceLayerKey(layer) })"
-              ><RotateCcw class="size-3.5"
-            /></Button>
-          </div>
-        </details>
+        </Tabs>
+        <FlowSequenceAudio
+          ref="audioPanel"
+          v-if="inspectorTab === 'audio' && ownerId != null && data && ownerReady && !playback"
+          :key="String(ownerId)"
+          :owner-id="ownerId"
+          :data="data"
+          :voice="stage.voice"
+          :can-edit="writable"
+        />
+        <template v-if="inspectorTab === 'visual'">
+          <FlowSequenceLayerList
+            :layers="layers"
+            :selected-key="selectedLayerKey"
+            :locked-keys="lockedLayerKeys"
+            :can-edit="writable"
+            @select="selectLayer"
+            @visibility="(layer, visible) => updateLayer(layer, { visible })"
+            @lock="toggleLock"
+            @reorder="push('reorder_sequence_visual_layers', { layer_keys: $event })"
+          />
+          <FlowSequenceInspector
+            :key="`${ownerId}:${selectedLayerKey}`"
+            :layer="selectedLayer"
+            :image-assets="images"
+            :can-edit="writable"
+            :locked="selectedLayerKey != null && lockedLayerKeys.includes(selectedLayerKey)"
+            @update="updateSelected"
+            @remove="removeSelected"
+            @revert="
+              push('revert_sequence_visual_layer', { layer_key: selectedLayerKey, fields: $event })
+            "
+          />
+          <details
+            v-if="removed.length"
+            class="border-t border-border pt-2 text-xs text-muted-foreground"
+          >
+            <summary class="cursor-pointer">
+              {{ $t("flows.sequences.config_panel.removed_layers") }}
+            </summary>
+            <div
+              v-for="layer in removed"
+              :key="sequenceLayerKey(layer)"
+              class="mt-2 flex items-center gap-2"
+            >
+              <span class="min-w-0 flex-1 truncate">{{ layer.label }}</span
+              ><Button
+                variant="ghost"
+                size="icon-xs"
+                :disabled="!writable"
+                :aria-label="$t('flows.sequences.config_panel.restore')"
+                @click="
+                  push('restore_sequence_visual_layer', { layer_key: sequenceLayerKey(layer) })
+                "
+                ><RotateCcw class="size-3.5"
+              /></Button>
+            </div>
+          </details>
+        </template>
       </aside>
     </div>
     <AssetUploadDecisionDialog

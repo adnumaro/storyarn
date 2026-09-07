@@ -356,6 +356,19 @@ export interface SequenceVisualLayerSnapshot {
   visible: boolean;
 }
 
+interface SequenceAudioTrackSnapshot {
+  track_key: string;
+  is_override: boolean;
+  overridden_fields: string[];
+  removed: boolean;
+  kind: string;
+  position: number;
+  asset_id: number | null;
+  start_time: string | null;
+  end_time: string | null;
+  volume: string | null;
+}
+
 export interface SequenceCompositionSnapshot {
   version: number;
   owner_id: number;
@@ -367,6 +380,8 @@ export interface SequenceCompositionSnapshot {
   position_y: number;
   config: { name: string; width: number; height: number } | null;
   visual_layers: SequenceVisualLayerSnapshot[];
+  /** Absent only in legacy version 1 history; version 2 captures audio. */
+  tracks?: SequenceAudioTrackSnapshot[];
 }
 
 interface SequenceCompositionHistoryRecord {

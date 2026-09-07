@@ -32,6 +32,7 @@ const crossModuleRules = productModules.map((moduleName) => ({
 const flowFrontendSources = "^assets/app/(modules/flows|live/flow)/";
 const flowSharedTechnicalPorts = [
   "^assets/app/components/ui/",
+  "^assets/app/components/language/(LanguagePicker\\.vue|types\\.ts)$",
   "^assets/app/components/ConfirmDialog\\.vue$",
   "^assets/app/components/collab/CollabToast\\.vue$",
   "^assets/app/components/comments/",

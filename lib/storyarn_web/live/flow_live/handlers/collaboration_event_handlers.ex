@@ -12,6 +12,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
 
   alias Phoenix.LiveView.Socket
   alias Storyarn.Platform.Collaboration
+  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
   alias StoryarnWeb.FlowLive.Helpers.CollaborationHelpers
   alias StoryarnWeb.FlowLive.Helpers.SocketHelpers
@@ -151,7 +152,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers do
         GenericNodeHandlers.refresh_sequence_editor(socket, owner_id)
 
       _other ->
-        socket
+        DebugExecutionHandlers.refresh_composition_graph(socket)
     end
   end
 end

@@ -160,6 +160,11 @@ defmodule Storyarn.Architecture.FlowsTestDependencyBoundaryTest do
     "test/storyarn_web/live/flow_live/comments_test.exs" => [
       "Storyarn.Projects"
     ],
+    # Previewing a translated dialogue consumes the public localization contract
+    # for source freshness and voice readiness without changing authored content.
+    "test/storyarn_web/live/flow_live/helpers/dialogue_localization_test.exs" => [
+      "Storyarn.Localization"
+    ],
     # Sequence versions integrate project-owned opt-out settings and uploaded
     # asset bytes. Keep those two contracts explicit for this LiveView test.
     "test/storyarn_web/live/flow_live/sequence_versioning_test.exs" => [

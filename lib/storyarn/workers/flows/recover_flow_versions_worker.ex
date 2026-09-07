@@ -3,7 +3,7 @@ defmodule Storyarn.Workers.RecoverFlowVersionsWorker do
   use Oban.Worker,
     queue: :flow_versions,
     max_attempts: 3,
-    unique: [period: 900, states: [:available, :scheduled, :executing, :retryable]]
+    unique: [period: 840, states: [:available, :scheduled, :executing, :retryable]]
 
   @impl Oban.Worker
   def perform(_job), do: Storyarn.Flows.recover_version_requests()

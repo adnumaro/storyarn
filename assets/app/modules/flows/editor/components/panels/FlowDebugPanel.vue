@@ -36,6 +36,7 @@ import {
   Zap,
 } from "@lucide/vue";
 import { computed, ref } from "vue";
+import FlowDebugComposition, { type DebugComposition } from "./FlowDebugComposition.vue";
 import { Badge } from "@components/ui/badge";
 import { Button } from "@components/ui/button";
 import { Checkbox } from "@components/ui/checkbox";
@@ -171,6 +172,7 @@ interface DebugNodeInfo {
   label?: string;
   type: string;
   data?: Record<string, unknown>;
+  sequence_config?: { name?: string } | null;
 }
 
 interface DebugControls {
@@ -188,6 +190,7 @@ const {
   embedded = false,
   state = null,
   nodes = {},
+  composition = null,
   controls = {
     activeTab: "console",
     autoPlaying: false,
@@ -202,7 +205,12 @@ const {
   embedded?: boolean;
   state: DebugState | null;
   nodes: Record<string, DebugNodeInfo>;
+  composition?: DebugComposition | null;
   controls: DebugControls;
+}>();
+
+const emit = defineEmits<{
+  "playback-action": [action: "step" | "back" | "choice" | "pause" | "reset" | "stop"];
 }>();
 
 const live = useLive();
@@ -234,7 +242,6 @@ const consoleEntries = computed<ConsoleEntry[]>(() =>
 const historyEntries = computed<HistoryEntry[]>(() =>
   state?.history ? [...state.history].reverse() : [],
 );
-
 const breakpointSet = computed<Set<number>>(() => new Set(state?.breakpoints ?? []));
 
 const pathEntries = computed<PathEntry[]>(() => {
@@ -302,6 +309,7 @@ const NODE_TYPE_ICON: Record<string, typeof Circle> = {
   jump: LogOut,
   subflow: Box,
   annotation: StickyNote,
+  sequence: Layers,
 };
 
 function pathIcon(type: string) {
@@ -527,18 +535,23 @@ function statusKey(status: DebugStatus): string | null {
 }
 
 function step() {
+  emit("playback-action", "step");
   live.pushEvent("debug_step", {});
 }
 function stepBack() {
+  emit("playback-action", "back");
   live.pushEvent("debug_step_back", {});
 }
 function reset() {
+  emit("playback-action", "reset");
   live.pushEvent("debug_reset", {});
 }
 function stop() {
+  emit("playback-action", "stop");
   live.pushEvent("debug_stop", {});
 }
 function togglePlay() {
+  if (controls.autoPlaying) emit("playback-action", "pause");
   live.pushEvent(controls.autoPlaying ? "debug_pause" : "debug_play", {});
 }
 function setSpeed(val: number[] | undefined): void {
@@ -546,6 +559,7 @@ function setSpeed(val: number[] | undefined): void {
   live.pushEvent("debug_set_speed", { speed: val[0] });
 }
 function selectChoice(choiceId: string | number): void {
+  emit("playback-action", "choice");
   live.pushEvent("debug_choose_response", { id: choiceId });
 }
 function switchTab(tab: string | number): void {
@@ -603,6 +617,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="controls.autoPlaying ? $t('flows.debug.pause') : $t('flows.debug.auto_play')"
+        data-debug-toggle-play
         @click="togglePlay"
       >
         <Pause v-if="controls.autoPlaying" class="size-3.5" />
@@ -617,6 +632,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.step_key')"
+        data-debug-step
         @click="step"
       >
         <Play class="size-3.5" />
@@ -628,6 +644,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.step_back_key')"
+        data-debug-step-back
         @click="stepBack"
       >
         <Undo2 class="size-3.5" />
@@ -639,6 +656,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7"
         :title="$t('flows.debug.reset_key')"
+        data-debug-reset
         @click="reset"
       >
         <RotateCcw class="size-3.5" />
@@ -652,6 +670,7 @@ function continuePastLimit() {
         size="icon-sm"
         class="size-7 text-destructive"
         :title="$t('flows.debug.stop')"
+        data-debug-stop
         @click="stop"
       >
         <Square class="size-3.5" />
@@ -759,6 +778,9 @@ function continuePastLimit() {
         <TabsTrigger value="variables" class="text-xs">
           {{ $t("flows.debug.tab_variables") }}
         </TabsTrigger>
+        <TabsTrigger value="composition" class="text-xs">
+          {{ $t("flows.debug.tab_composition") }}
+        </TabsTrigger>
         <TabsTrigger value="history" class="text-xs">
           {{ $t("flows.debug.tab_history") }}
         </TabsTrigger>
@@ -829,6 +851,7 @@ function continuePastLimit() {
                 "
                 :disabled="!choice.valid"
                 :title="!choice.valid ? $t('flows.debug.condition_not_met') : undefined"
+                :data-debug-choice="choice.id"
                 @click="selectChoice(choice.id)"
               >
                 {{ cleanResponseText(choice.text) ?? $t("flows.debug.empty_response") }}
@@ -1093,6 +1116,19 @@ function continuePastLimit() {
         >
           {{ $t("flows.debug.no_matching_vars") }}
         </div>
+      </TabsContent>
+
+      <!-- Effective static composition -->
+      <TabsContent
+        value="composition"
+        class="flex-1 min-h-0 overflow-y-auto text-xs"
+        data-debug-composition
+      >
+        <FlowDebugComposition
+          :composition="composition"
+          :nodes="nodes"
+          :current-node-id="state?.current_node_id"
+        />
       </TabsContent>
 
       <!-- History -->

@@ -134,7 +134,8 @@
           "invalid_composition_source": "The selected composition source is not valid.",
           "missing_composition_source": "The composition source is no longer available.",
           "missing_inherited_layer": "A visual override no longer has a source layer.",
-          "fallback": "This composition contains an issue that needs attention."
+          "fallback": "This composition contains an issue that needs attention.",
+          "missing_inherited_track": "An audio override no longer has a source track."
         },
         "local": "Local",
         "inherited": "Inherited",
@@ -162,8 +163,12 @@
           "opacity": "Opacity",
           "visible": "Visible",
           "anchor_x": "Horizontal anchor",
-          "anchor_y": "Vertical anchor"
-        }
+          "anchor_y": "Vertical anchor",
+          "volume": "Volume"
+        },
+        "add_track": "Add track",
+        "remove_track": "Remove track",
+        "removed_tracks": "Removed tracks"
       }
     },
     "sequence_stage": {
@@ -186,7 +191,10 @@
       "zoom_in": "Zoom in",
       "zoom_out": "Zoom out",
       "fit_view": "Fit view",
-      "canvas_hint": "Space + drag to pan · Arrows to move"
+      "canvas_hint": "Space + drag to pan · Arrows to move",
+      "play_audio_preview": "Play {track} preview",
+      "pause_audio_preview": "Pause {track} preview",
+      "retry_audio_preview": "Retry {track} preview"
     },
     "node_types": {
       "dialogue": "Dialogue",
@@ -297,7 +305,20 @@
       "no_options": "No options",
       "bool_true": "True",
       "bool_false": "False",
-      "bool_nil": "Unset"
+      "bool_nil": "Unset",
+      "tab_composition": "Composition",
+      "composition_for": "Effective composition · {node}",
+      "composition_visual_layers": "Visual layers",
+      "composition_audio_tracks": "Audio tracks",
+      "composition_local": "Local",
+      "composition_inherited": "Inherited",
+      "composition_from": "From {origin}",
+      "composition_removed": "Removed",
+      "composition_removed_by": "Removed by {origin}",
+      "composition_unknown_origin": "Unknown origin",
+      "composition_no_visual_layers": "No effective visual layers",
+      "composition_no_audio_tracks": "No effective audio tracks",
+      "composition_unavailable": "No executed speaker composition is available yet."
     },
     "minimap": {
       "toggle": "Toggle minimap",
@@ -461,7 +482,8 @@
       "back": "Back",
       "restart": "Restart",
       "toggle_mode": "Switch between player mode and review of blocked or conditional responses",
-      "no_content": "No content to display."
+      "no_content": "No content to display.",
+      "enable_audio": "Enable audio"
     },
     "health": {
       "review": "Review flow health",
@@ -632,6 +654,41 @@
       "finished": "End of playback",
       "error": "Playback could not continue. Try again or restart.",
       "voice": "Dialogue audio"
+    },
+    "presentation": {
+      "play_voice_preview": "Play dialogue voice preview",
+      "pause_voice_preview": "Pause dialogue voice preview",
+      "retry_voice_preview": "Retry dialogue voice preview",
+      "content_language": "Content language",
+      "select_language": "Select language",
+      "search_languages": "Search languages...",
+      "no_languages": "No content languages found.",
+      "translation_status": "Translation: {status}",
+      "translation": {
+        "source": "Source",
+        "current": "Current",
+        "missing": "Missing",
+        "fallback": "Fallback",
+        "stale": "Stale"
+      },
+      "voice_status": "Voice: {status}",
+      "voice": {
+        "none": "None",
+        "needed": "Needed",
+        "recorded": "Recorded",
+        "approved": "Approved",
+        "stale": "Stale",
+        "unavailable": "Unavailable"
+      }
+    },
+    "sequence_audio": {
+      "volume": "Volume",
+      "hint": "Audio continues from the composition source. Changes here only affect this intervention and its descendants.",
+      "removed": "Removed audio",
+      "voice_hint": "The voice comes from this dialogue. Attach or replace its recording in the dialogue inspector.",
+      "no_voice": "No voice recording for this dialogue.",
+      "enable": "Enable audio",
+      "upload_failed": "Audio upload failed. Try again."
     }
   }
 }

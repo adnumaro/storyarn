@@ -327,7 +327,7 @@ defmodule StoryarnWeb.FlowLive.ShowTest do
       flash = LiveVue.Test.get_vue(view, name: "live/layouts/flash/FlashGroup")
 
       assert flash.props["flash"]["error"] ==
-               "This composition or one of its descendants still depends on that source or layer. Reassign or revert those local changes first."
+               "This composition or one of its descendants still depends on that source, layer, or audio track. Reassign or revert those local changes first."
 
       assert Flows.get_sequence_visual_layer(base.id, layer.id)
     end

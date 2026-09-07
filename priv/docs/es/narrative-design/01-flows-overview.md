@@ -30,7 +30,7 @@ Los nodos se conectan mediante **pines** -- pequenos circulos en los bordes de c
 
 ## Tipos de nodos
 
-Storyarn tiene **10 tipos de nodos**, cada uno con un rol distinto en el grafo del flujo:
+La paleta ofrece **9 tipos de nodos**. Los proyectos antiguos pueden conservar contenedores Sequence; las composiciones nuevas se crean en el [editor de Sequence](/docs/narrative-design/sequence-editor).
 
 | Nodo            | Icono          | Proposito                                                                                                                                                                                                                 |
 | --------------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -42,7 +42,6 @@ Storyarn tiene **10 tipos de nodos**, cada uno con un rol distinto en el grafo d
 | **Hub**         | Log in         | Punto de convergencia con nombre donde multiples caminos se unen. Consulta [Nodos Hub y Jump](/docs/narrative-design/node-types/hub-jump).                                                                                |
 | **Salto**       | Log out        | Salta a un nodo Hub dentro del mismo flujo. Consulta [Nodos Hub y Jump](/docs/narrative-design/node-types/hub-jump).                                                                                                      |
 | **Subflujo**    | Box            | Incrusta otro flujo dentro de este. Consulta [Nodos Subflow](/docs/narrative-design/node-types/subflow).                                                                                                                  |
-| **Secuencia**   | Panels top     | Agrupa nodos relacionados dentro de un contenedor visual. Consulta [Nodos Sequence](/docs/narrative-design/node-types/sequence).                                                                                          |
 | **Anotacion**   | Sticky note    | Nota visual pura para intención, tareas o contexto en el lienzo. Consulta [Nodos de anotación](/docs/narrative-design/node-types/annotation).                                                                             |
 
 ---
@@ -50,15 +49,14 @@ Storyarn tiene **10 tipos de nodos**, cada uno con un rol distinto en el grafo d
 ## Una estructura tipica
 
 ```
-Sequence ("Tavern encounter")
-  Entry
-    -> Dialogue (NPC greeting)
-      -> Condition (has quest item?)
-        -> True: Dialogue (quest complete)
-             -> Instruction (give reward, mark quest done)
-               -> Exit (Terminal, outcome: "quest_complete")
-        -> False: Dialogue (come back later)
-             -> Exit (Terminal, outcome: "quest_pending")
+Entry
+  -> Dialogue (NPC greeting)
+    -> Condition (has quest item?)
+      -> True: Dialogue (quest complete)
+           -> Instruction (give reward, mark quest done)
+             -> Exit (Terminal, outcome: "quest_complete")
+      -> False: Dialogue (come back later)
+           -> Exit (Terminal, outcome: "quest_pending")
 ```
 
 Los flujos pueden ser tan simples como una conversacion lineal o tan complejos como un arbol de misiones completo. Usa nodos **Hub** y **Salto** para fusionar caminos convergentes sin duplicar dialogos. Usa nodos **Subflujo** para componer narrativas mas grandes a partir de fragmentos de flujo reutilizables.
@@ -71,25 +69,19 @@ Los flujos pueden ser tan simples como una conversacion lineal o tan complejos c
 
 Los nodos de subflujo te permiten incrustar un flujo dentro de otro. Cuando la ejecucion llega a un nodo de subflujo, entra al nodo de Entrada del flujo referenciado y lo recorre. Cuando alcanza un nodo de Salida con modo **Retornar al llamador**, la ejecucion vuelve al flujo padre y continua desde el pin de salida correspondiente.
 
-Cada nodo de Salida en el flujo referenciado crea un pin de salida separado en el nodo de subflujo, de modo que el flujo padre puede ramificarse segun la salida que tomo el subflujo. El depurador y el Story Player soportan navegacion completa entre flujos con pila de llamadas, asi que los subflujos anidados funcionan exactamente como esperarias.
+Cada nodo de Salida en el flujo referenciado crea un pin de salida separado en el nodo de subflujo, de modo que el flujo padre puede ramificarse segun la salida que tomo el subflujo. El depurador y la reproducción integrada soportan navegacion completa entre flujos con pila de llamadas, asi que los subflujos anidados funcionan exactamente como esperarias.
 
 ---
 
-## {accent}Story Player{/accent}
+## {accent}Editor de Sequence y reproducción{/accent}
 
-Haz clic en **Play** en la barra de herramientas para experimentar tu flujo como lo haria un jugador. El {accent}Story Player{/accent} es una vista cinematica a pantalla completa que avanza automaticamente a traves de nodos no interactivos (entrada, hubs, condiciones, instrucciones, saltos y subflujos) y se detiene solo en nodos de dialogo donde lees lineas o tomas decisiones.
+Flows se abre con el lienzo de nodos completo. Pulsa **Play** en la barra de herramientas para abrir el editor visual de Sequence encima; arrastra el separador para ajustar ambas vistas. Selecciona un diálogo para editar sus imágenes, capas y audio. Pulsa **Stop** en la barra para volver al lienzo de nodos completo.
 
-- Los fondos de escena de escenas vinculadas se atenuan detras del dialogo
-- Navega hacia atras en el historial con el boton de retroceso
-- **Controles de teclado**: 1-9 para seleccionar respuestas, Espacio/Enter para continuar, Escape para salir
-- **Reiniciar** el flujo en cualquier momento para reproducirlo desde el principio
-- Los subflujos se siguen automaticamente -- el reproductor gestiona la pila de llamadas completa
+Usa **Reproducir escena** dentro del editor para probar la narrativa sin salir de él. La reproducción evalúa condiciones e instrucciones, sigue subflujos y se detiene en diálogos o decisiones del jugador. Puedes retroceder, reiniciar, cambiar el idioma de prueba o ampliar el espacio a pantalla completa sin navegar a otra página.
 
-Activa el {accent}Modo de analisis{/accent} para ver respuestas ocultas que no cumplieron sus condiciones, mostradas como opciones en gris con texto tachado. Esto te ayuda a verificar que las respuestas condicionales funcionan como se espera sin editar el flujo.
+Las variables de la prueba pertenecen a la sesión de reproducción; probar una rama no escribe esos valores en las fichas. Usa Debug para inspeccionar el estado de ejecución y las respuestas no disponibles.
 
-Esto no es una vista previa. Es la experiencia real de reproduccion, con evaluacion de variables y cambios de estado reales.
-
-<img src="/images/docs/flows-player-current.png" alt="El Story Player mostrando un dialogo con opciones de respuesta y un fondo de escena" loading="lazy">
+Consulta la [guía del editor de Sequence](/docs/narrative-design/sequence-editor) para editar la composición, el audio, los comentarios y la reproducción.
 
 ---
 
@@ -103,7 +95,7 @@ La mayoria de herramientas narrativas te obligan a probar jugando el juego compl
 - **Reiniciar** reinicia desde el nodo de inicio
 - **Iniciar desde cualquier nodo** -- elige cualquier nodo del flujo como punto de partida
 - **Puntos de interrupcion** -- haz clic en el punto junto a cualquier nodo en la pestana Ruta para establecer un punto de interrupcion; la reproduccion automatica se detiene ahi
-- **4 pestanas de informacion**: Consola (registro con marcas de tiempo y detalles de evaluacion de reglas), Variables (valores en vivo con filtrado, edicion en linea y seguimiento de cambios), Historial (cada cambio de variable con atribucion de origen) y Ruta (traza visual de ejecucion con controles de puntos de interrupcion)
+- **5 pestañas de información**: Consola (registro con marcas de tiempo y detalles de evaluacion de reglas), Variables (valores en vivo con filtrado, edicion en linea y seguimiento de cambios), Historial (cada cambio de variable con atribucion de origen) Ruta (traza visual de ejecución con controles de puntos de interrupción) y Composición (capas visuales, audio y sus orígenes)
 - **Editar variables durante la sesion** -- haz clic en cualquier valor de variable en la pestana Variables para cambiarlo, luego continua la ejecucion para probar caminos alternativos
 
 Cambia un valor de variable, reinicia y vuelve a ejecutar para probar caminos alternativos. Sin necesidad de motor de juego, sin ciclo de exportacion -- verifica tu logica justo donde la escribes.

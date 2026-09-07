@@ -20,6 +20,32 @@ defmodule StoryarnWeb.FlowLive.CommentsTest do
     %{project: project, flow: flow, node: node, scope: user_scope_fixture(user)}
   end
 
+  test "Sequence workspace uses the dialogue's shared thread and preserves its presentation", context do
+    detail = create_comment(context)
+    view = open_flow(context)
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
+    assert panel(view)["presentation"] == "workspace"
+    assert panel(view)["selectedNodeId"] == context.node.id
+    render_hook(view, "comments_select_thread", %{thread_id: detail.thread.id})
+    assert panel(view)["presentation"] == "workspace"
+    assert panel(view)["thread"]["id"] == detail.thread.id
+    render_hook(view, "comments_open", %{node_id: context.node.id, presentation: "workspace"})
+
+    render_hook(view, "comments_create", %{
+      node_id: context.node.id,
+      body: "Move this character to the left",
+      client_request_id: Ecto.UUID.generate()
+    })
+
+    state = panel(view)
+    assert state["presentation"] == "workspace"
+    assert state["thread"]["source"]["id"] == context.node.id
+    render_hook(view, "comments_close", %{})
+    render_hook(view, "comments_select_thread", %{thread_id: state["thread"]["id"], presentation: "canvas"})
+    assert panel(view)["presentation"] == "canvas"
+    assert [%{"body" => "Move this character to the left"}] = panel(view)["messages"]
+  end
+
   test "creates and resolves a contextual conversation without acquiring an editor lock", context do
     view = open_flow(context)
     render_hook(view, "comments_open", %{node_id: context.node.id})

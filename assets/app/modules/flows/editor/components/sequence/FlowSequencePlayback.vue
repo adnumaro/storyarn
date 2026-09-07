@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref } from "vue";
 import { useElementSize } from "@vueuse/core";
-import { ArrowLeft, ArrowRight, RotateCcw } from "@lucide/vue";
+import { ArrowLeft, ArrowRight, RotateCcw, Volume2, Pause, Play } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@components/ui/avatar";
 import SequenceVisualLayers from "@modules/flows/sequence/components/SequenceVisualLayers.vue";
+import DialogueVoice from "@modules/flows/player/components/DialogueVoice.vue";
 import PlayerAudioTracks from "@modules/flows/player/components/PlayerAudioTracks.vue";
 import type { SequencePlaybackAction, SequencePlaybackState } from "./sequence-playback";
 
@@ -22,20 +23,50 @@ const responses = computed(() =>
   (state.slide.responses ?? []).filter((response) => response.valid),
 );
 const finished = computed(() => state.isFinished || state.slide.type === "outcome");
-let voiceElement: HTMLAudioElement | null = null;
-function setVoiceElement(element: unknown) {
-  if (voiceElement && voiceElement !== element) voiceElement.pause();
-  voiceElement = element instanceof HTMLAudioElement ? element : null;
+const voicePlayer = ref<InstanceType<typeof DialogueVoice> | null>(null);
+const tracksPlayer = ref<InstanceType<typeof PlayerAudioTracks> | null>(null);
+const voiceBlocked = ref(false);
+const tracksBlocked = ref(false);
+const voicePlaying = ref(false);
+function act(action: SequencePlaybackAction, responseId?: string) {
+  if (pending) return;
+  voicePlayer.value?.stop();
+  if (action === "restart") tracksPlayer.value?.stop();
+  if (responseId == null) emit("action", action);
+  else emit("action", action, responseId);
+  void nextTick(() => container.value?.focus({ preventScroll: true }));
 }
-onUnmounted(() => voiceElement?.pause());
+function retryAudio() {
+  voicePlayer.value?.retryBlockedAudio();
+  tracksPlayer.value?.retryBlockedAudio();
+}
 
 function keydown(event: KeyboardEvent) {
   if (event.target !== event.currentTarget || pending) return;
-  if ([" ", "Enter", "ArrowRight"].includes(event.key) && state.showContinue && !finished.value) {
+  const choice = responses.value[Number(event.key) - 1];
+  if (choice && !finished.value) {
     event.preventDefault();
-    emit("action", "continue");
+    act("choose", choice.id);
+  } else if (event.key === "ArrowLeft" && state.canGoBack) {
+    event.preventDefault();
+    act("back");
+  } else if (
+    [" ", "Enter", "ArrowRight"].includes(event.key) &&
+    state.showContinue &&
+    !finished.value
+  ) {
+    event.preventDefault();
+    act("continue");
   }
 }
+onMounted(() => container.value?.focus({ preventScroll: true }));
+defineExpose({
+  stopVoice: () => voicePlayer.value?.stop(),
+  stop: () => {
+    voicePlayer.value?.stop();
+    tracksPlayer.value?.stop();
+  },
+});
 </script>
 
 <template>
@@ -46,7 +77,7 @@ function keydown(event: KeyboardEvent) {
         size="xs"
         :disabled="pending || !state.canGoBack"
         data-playback-back
-        @click="emit('action', 'back')"
+        @click="act('back')"
       >
         <ArrowLeft class="size-3.5" />{{ $t("flows.player.back") }}
       </Button>
@@ -58,11 +89,20 @@ function keydown(event: KeyboardEvent) {
         size="xs"
         :disabled="pending"
         data-playback-restart
-        @click="emit('action', 'restart')"
+        @click="act('restart')"
       >
         <RotateCcw class="size-3.5" />{{ $t("flows.player.restart") }}
       </Button>
     </div>
+    <Button
+      v-if="voiceBlocked || tracksBlocked"
+      variant="outline"
+      size="sm"
+      class="mx-3 mt-2 self-start"
+      data-playback-retry-audio
+      @click="retryAudio"
+      ><Volume2 class="size-4" />{{ $t("flows.sequence_audio.enable") }}</Button
+    >
     <p v-if="state.error" class="shrink-0 px-4 py-2 text-sm text-destructive" role="alert">
       {{ $t("flows.sequence_playback.error") }}
     </p>
@@ -70,6 +110,7 @@ function keydown(event: KeyboardEvent) {
       ref="container"
       class="grid min-h-0 flex-1 place-items-center overflow-hidden"
       tabindex="0"
+      data-playback-viewport
       :aria-label="$t('flows.sequence_playback.title')"
       @keydown="keydown"
     >
@@ -79,7 +120,19 @@ function keydown(event: KeyboardEvent) {
         data-playback-frame
       >
         <SequenceVisualLayers :layers="state.visualLayers" />
-        <PlayerAudioTracks :tracks="finished ? [] : state.audioTracks" />
+        <PlayerAudioTracks
+          ref="tracksPlayer"
+          :tracks="finished ? [] : state.audioTracks"
+          @blocked-change="tracksBlocked = $event"
+        />
+        <DialogueVoice
+          ref="voicePlayer"
+          :voice="
+            finished || !state.voice ? null : { ...state.voice, continuityKey: state.voice.key }
+          "
+          @blocked-change="voiceBlocked = $event"
+          @playing-change="voicePlaying = $event"
+        />
         <div
           v-if="finished"
           class="absolute inset-0 z-10 grid place-content-center gap-3 bg-background/75 px-4 text-center"
@@ -87,7 +140,7 @@ function keydown(event: KeyboardEvent) {
           <h2 class="text-lg font-semibold">
             {{ state.slide.label || $t("flows.sequence_playback.finished") }}
           </h2>
-          <Button :disabled="pending" data-playback-play-again @click="emit('action', 'restart')"
+          <Button :disabled="pending" data-playback-play-again @click="act('restart')"
             ><RotateCcw class="size-4" />{{ $t("flows.player.play_again") }}</Button
           >
         </div>
@@ -124,16 +177,16 @@ function keydown(event: KeyboardEvent) {
               >
                 {{ state.slide.stage_directions }}
               </p>
-              <audio
+              <Button
                 v-if="state.voice"
-                :key="state.voice.key"
-                :ref="setVoiceElement"
-                :src="state.voice.url"
-                controls
-                autoplay
-                class="h-8 max-w-full"
-                :aria-label="$t('flows.sequence_playback.voice')"
-              />
+                variant="outline"
+                size="xs"
+                :disabled="pending"
+                @click="voicePlaying ? voicePlayer?.pause() : voicePlayer?.play()"
+                ><Pause v-if="voicePlaying" class="size-3" /><Play v-else class="size-3" />{{
+                  $t("flows.sequence_playback.voice")
+                }}</Button
+              >
               <div class="flex flex-col gap-1.5">
                 <Button
                   v-for="response in responses"
@@ -143,7 +196,7 @@ function keydown(event: KeyboardEvent) {
                   class="h-auto justify-start whitespace-normal border-white/20 bg-white/5 py-2 text-left text-white hover:bg-white/15 hover:text-white"
                   :disabled="pending"
                   :data-playback-response="response.id"
-                  @click="emit('action', 'choose', response.id)"
+                  @click="act('choose', response.id)"
                   >{{ response.text }}</Button
                 >
                 <Button
@@ -152,7 +205,7 @@ function keydown(event: KeyboardEvent) {
                   class="self-end"
                   :disabled="pending"
                   data-playback-continue
-                  @click="emit('action', 'continue')"
+                  @click="act('continue')"
                   >{{ $t("flows.player.continue") }}<ArrowRight class="size-4"
                 /></Button>
               </div>

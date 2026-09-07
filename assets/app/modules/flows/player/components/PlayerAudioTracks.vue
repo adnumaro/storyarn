@@ -1,28 +1,42 @@
 <script setup lang="ts">
-import { nextTick, onMounted, onUnmounted, watch } from "vue";
+import { nextTick, onUnmounted, watch } from "vue";
+import type { SequenceAudioTrack } from "@modules/flows/sequence/types";
 
-export interface PlayerAudioTrack {
-  id: string | number;
-  sequence_id?: string | number;
-  sequenceId?: string | number;
-  kind: "music" | "ambience" | "sfx" | string;
-  position?: number | null;
-  url: string;
-  volume?: number | null;
-  content_type?: string | null;
-  contentType?: string | null;
-  filename?: string | null;
-  depth?: number | null;
-}
+export type PlayerAudioTrack = SequenceAudioTrack;
 
 const { tracks = [] } = defineProps<{
-  tracks?: PlayerAudioTrack[];
+  tracks?: SequenceAudioTrack[];
+}>();
+
+const emit = defineEmits<{
+  "blocked-change": [blocked: boolean];
 }>();
 
 const audioElements = new Map<string, HTMLAudioElement>();
+const sourceUrls = new Map<string, string>();
 const blockedKeys = new Set<string>();
+const attempts = new Map<string, number>();
+let syncQueued = false;
+let syncGeneration = 0;
+let disposed = false;
+function scheduleSync() {
+  if (syncQueued || disposed) return;
+  syncQueued = true;
+  const generation = ++syncGeneration;
+  void nextTick(() => {
+    if (generation !== syncGeneration) return;
+    syncQueued = false;
+    if (!disposed) syncAudio();
+  });
+}
 
-function trackKey(track: PlayerAudioTrack): string {
+function trackIdentity(track: SequenceAudioTrack): string {
+  const continuityKey = track.continuityKey ?? track.continuity_key;
+
+  if (continuityKey !== null && continuityKey !== undefined && continuityKey !== "") {
+    return String(continuityKey);
+  }
+
   return [track.sequence_id ?? track.sequenceId ?? "sequence", track.kind, track.id].join(":");
 }
 
@@ -31,61 +45,110 @@ function normalizedVolume(volume: number | null | undefined): number {
   return Math.min(1, Math.max(0, volume));
 }
 
-function setAudioElement(key: string, el: unknown): void {
-  if (el instanceof HTMLAudioElement) {
-    audioElements.set(key, el);
+function updateBlocked(key: string, blocked: boolean): void {
+  const wasBlocked = blockedKeys.size > 0;
+
+  if (blocked) {
+    blockedKeys.add(key);
   } else {
-    const existing = audioElements.get(key);
-    existing?.pause();
-    audioElements.delete(key);
     blockedKeys.delete(key);
+  }
+
+  const isBlocked = blockedKeys.size > 0;
+  if (isBlocked !== wasBlocked) emit("blocked-change", isBlocked);
+}
+
+function stopElement(key: string, el: HTMLAudioElement): void {
+  attempts.set(key, (attempts.get(key) ?? 0) + 1);
+  el.pause();
+  updateBlocked(key, false);
+}
+
+function removeElement(key: string): void {
+  const el = audioElements.get(key);
+  if (el) stopElement(key, el);
+
+  audioElements.delete(key);
+  sourceUrls.delete(key);
+  attempts.delete(key);
+}
+
+function playElement(key: string, el: HTMLAudioElement): void {
+  const attempt = (attempts.get(key) ?? 0) + 1;
+  attempts.set(key, attempt);
+  const current = () => !disposed && audioElements.get(key) === el && attempts.get(key) === attempt;
+  try {
+    const playResult = el.play();
+
+    if (playResult && typeof playResult.then === "function") {
+      void playResult
+        .then(() => {
+          if (current()) updateBlocked(key, false);
+        })
+        .catch(() => {
+          if (current()) updateBlocked(key, true);
+        });
+    } else {
+      updateBlocked(key, false);
+    }
+  } catch {
+    if (current()) updateBlocked(key, true);
   }
 }
 
-function syncAudio(): void {
-  const activeKeys = new Set(tracks.map(trackKey));
+function activeTrackKeys(): Set<string> {
+  return new Set(tracks.map(trackIdentity));
+}
 
-  for (const [key, el] of audioElements) {
-    if (!activeKeys.has(key)) {
-      el.pause();
-      audioElements.delete(key);
-      blockedKeys.delete(key);
-    }
+function setAudioElement(key: string, el: unknown): void {
+  if (el instanceof HTMLAudioElement) {
+    const previous = audioElements.get(key);
+    if (previous && previous !== el) stopElement(key, previous);
+
+    if (previous === el) return;
+    sourceUrls.delete(key);
+    audioElements.set(key, el);
+    scheduleSync();
+    return;
   }
 
-  for (const track of tracks) {
-    const key = trackKey(track);
+  // Vue may refresh a function ref while retaining the keyed element. Only
+  // stop it when its serialized continuity identity has actually disappeared.
+  if (!activeTrackKeys().has(key)) removeElement(key);
+}
+
+function syncAudio(): void {
+  const activeTracks = new Map(tracks.map((track) => [trackIdentity(track), track]));
+
+  for (const key of audioElements.keys()) {
+    if (!activeTracks.has(key)) removeElement(key);
+  }
+
+  for (const [key, track] of activeTracks) {
     const el = audioElements.get(key);
     if (!el) continue;
 
-    el.volume = normalizedVolume(track.volume);
-
-    try {
-      const playResult = el.play();
-      if (playResult && typeof playResult.catch === "function") {
-        void playResult.catch(() => blockedKeys.add(key));
-      }
-    } catch {
-      blockedKeys.add(key);
+    const previousUrl = sourceUrls.get(key);
+    if (previousUrl && previousUrl !== track.url) {
+      stopElement(key, el);
+      el.currentTime = 0;
+      el.load();
     }
+
+    sourceUrls.set(key, track.url);
+    el.volume = normalizedVolume(track.volume);
+    if (previousUrl !== track.url) playElement(key, el);
   }
 }
 
 function retryBlockedAudio(): void {
   for (const key of blockedKeys) {
     const el = audioElements.get(key);
-    if (!el) {
-      blockedKeys.delete(key);
-      continue;
-    }
 
-    try {
-      const playResult = el.play();
-      if (playResult && typeof playResult.then === "function") {
-        void playResult.then(() => blockedKeys.delete(key)).catch(() => undefined);
-      }
-    } catch {
-      // Keep the key blocked; another user gesture may unlock playback.
+    if (el) {
+      playElement(key, el);
+    } else {
+      updateBlocked(key, false);
     }
   }
 }
@@ -93,35 +156,41 @@ function retryBlockedAudio(): void {
 watch(
   () => tracks,
   () => {
-    void nextTick(syncAudio);
+    scheduleSync();
   },
   { deep: true, immediate: true },
 );
 
-onMounted(() => {
-  document.addEventListener("pointerdown", retryBlockedAudio);
-  document.addEventListener("keydown", retryBlockedAudio);
-});
-
 onUnmounted(() => {
-  document.removeEventListener("pointerdown", retryBlockedAudio);
-  document.removeEventListener("keydown", retryBlockedAudio);
+  disposed = true;
+  for (const [key, el] of audioElements) stopElement(key, el);
 
-  for (const el of audioElements.values()) {
-    el.pause();
-  }
   audioElements.clear();
+  sourceUrls.clear();
   blockedKeys.clear();
 });
+
+function stop() {
+  syncGeneration++;
+  syncQueued = false;
+  for (const [key, el] of audioElements) {
+    stopElement(key, el);
+    el.currentTime = 0;
+  }
+  sourceUrls.clear();
+}
+
+defineExpose({ retryBlockedAudio, stop });
 </script>
 
 <template>
   <div class="player-audio-tracks" aria-hidden="true">
     <audio
       v-for="track in tracks"
-      :key="trackKey(track)"
-      :ref="(el) => setAudioElement(trackKey(track), el)"
+      :key="trackIdentity(track)"
+      :ref="(el) => setAudioElement(trackIdentity(track), el)"
       :src="track.url"
+      :data-continuity-key="trackIdentity(track)"
       :data-sequence-id="track.sequence_id ?? track.sequenceId"
       :data-kind="track.kind"
       :data-depth="track.depth ?? 0"
@@ -129,7 +198,6 @@ onUnmounted(() => {
       :data-filename="track.filename || undefined"
       :data-content-type="track.content_type ?? track.contentType ?? undefined"
       :loop="track.kind === 'music' || track.kind === 'ambience'"
-      autoplay
       preload="auto"
     />
   </div>

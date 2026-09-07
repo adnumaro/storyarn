@@ -7,7 +7,7 @@ description: "Prueba y verifica tus flujos con el depurador integrado."
 
 ---
 
-El editor de flujos incluye un {accent}depurador{/accent} integrado que te permite simular como se ejecuta un flujo -- paso a paso, con visibilidad completa de los valores de las variables, los caminos de decision y el historial de ejecucion. Esto es algo que ninguna otra herramienta de diseno narrativo ofrece: puedes verificar toda tu logica de ramificacion sin salir del editor, sin exportar y sin un motor de juego.
+El editor de flujos incluye un {accent}depurador{/accent} integrado que te permite simular como se ejecuta un flujo -- paso a paso, con visibilidad completa de los valores de las variables, los caminos de decision y el historial de ejecucion. Puedes verificar toda tu logica de ramificacion sin salir del editor, sin exportar y sin un motor de juego.
 
 <img src="/images/docs/flows-debug-current.png" alt="El editor de flujos con el panel de depuracion abierto en la parte inferior, mostrando la pestana de consola con registros de ejecucion" loading="lazy">
 
@@ -17,7 +17,7 @@ El editor de flujos incluye un {accent}depurador{/accent} integrado que te permi
 
 1. Abre un flujo en el editor
 2. Haz clic en el boton **Debug** en la barra de herramientas
-3. El panel de depuracion aparece anclado en la parte inferior del lienzo
+3. El panel de depuración se abre debajo de la composición visual del diálogo que se está ejecutando
 
 El depurador se inicializa en el nodo de **Entrada** del flujo, cargando todas las variables del proyecto con sus valores actuales desde las fichas.
 
@@ -65,9 +65,9 @@ El lienzo se centra automaticamente en el nodo activo mientras avanzas por el fl
 
 ---
 
-## Las cuatro pestanas
+## Las cinco pestañas
 
-El panel de depuracion tiene cuatro pestanas de informacion, cada una ofreciendo una vista diferente del estado de ejecucion.
+El panel de depuracion tiene cinco pestañas de información, cada una ofreciendo una vista diferente del estado de ejecucion.
 
 ### Consola
 
@@ -131,6 +131,16 @@ Una traza visual de **cada nodo visitado**, en orden de ejecucion. Cada entrada 
 El nodo actual se resalta en la ruta. Al depurar entre subflujos, aparecen **separadores de flujo** en la ruta mostrando marcadores "Entrando en subflujo" y "Retornando al padre", con entradas indentadas para mostrar la profundidad de la pila de llamadas.
 
 <img src="/images/docs/flows-debug-current.png" alt="La pestaña de Ruta mostrando el trazado de ejecución en el panel de depuración" loading="lazy">
+
+---
+
+## Composición
+
+La pestaña **Composición** muestra las capas visuales y el audio resueltos para el diálogo ejecutado: elementos heredados y locales, sus nodos de origen, cambios locales y elementos retirados. Sigue la ejecución aunque en el editor permanezca seleccionado otro diálogo.
+
+El visor superior muestra esa misma composición. Avanzar o retroceder detiene la voz anterior; pausar o detener Debug interrumpe sus previsualizaciones de audio. Para editar la composición, termina primero la sesión de depuración.
+
+Consulta la [guía del editor de Sequence](/docs/narrative-design/sequence-editor) para conocer la herencia y los controles de audio.
 
 ---
 

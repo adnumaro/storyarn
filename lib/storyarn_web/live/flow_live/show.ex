@@ -7,6 +7,7 @@ defmodule StoryarnWeb.FlowLive.Show do
   alias Storyarn.Platform.Collaboration
   alias StoryarnWeb.FlowLive.Handlers.CollaborationEventHandlers
   alias StoryarnWeb.FlowLive.Handlers.CommentHandlers
+  alias StoryarnWeb.FlowLive.Handlers.DebugExecutionHandlers
   alias StoryarnWeb.FlowLive.Handlers.DebugHandlers
   alias StoryarnWeb.FlowLive.Handlers.EditorInfoHandlers
   alias StoryarnWeb.FlowLive.Handlers.GenericNodeHandlers
@@ -213,6 +214,11 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:sequence_playback_session, nil)
       |> assign(:sequence_playback, nil)
       |> assign(:sequence_stage, SequencePresentation.empty_stage())
+      |> assign(:languages, [])
+      |> assign(:source_language, nil)
+      |> assign(:source_locale, nil)
+      |> assign(:content_locale, nil)
+      |> assign(:language_options, [])
       |> assign(:debug_panel_open, false)
       |> assign(:debug_state, nil)
       |> assign(:debug_active_tab, "console")
@@ -418,6 +424,7 @@ defmodule StoryarnWeb.FlowLive.Show do
     full_flow = Flows.get_flow!(project.id, flow.id)
     project_variables = VariableHelpers.list_all_variables(project.id)
     editor_catalog = Flows.load_editor_catalog(project.id)
+    languages = Flows.list_localization_languages(project.id)
 
     %{
       flow: full_flow,
@@ -426,7 +433,9 @@ defmodule StoryarnWeb.FlowLive.Show do
       gallery_by_sheet: editor_catalog.gallery_by_sheet,
       flow_hubs: Flows.list_hubs(flow.id),
       project_variables: project_variables,
-      available_scenes: editor_catalog.scenes
+      available_scenes: editor_catalog.scenes,
+      languages: languages,
+      source_language: Flows.get_localization_source_language(project.id)
     }
   end
 
@@ -447,6 +456,19 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("comments_" <> action, params, socket) do
     CommentHandlers.handle(action, params, socket)
   end
+
+  def handle_event("set_sequence_content_locale", %{"locale" => locale}, socket) do
+    case SequencePresentation.select_content_locale(locale, socket.assigns.languages) do
+      {:ok, content_locale} ->
+        socket = assign(socket, :content_locale, content_locale)
+        {:noreply, socket |> refresh_selected_sequence_stage() |> SequencePlaybackHandlers.refresh()}
+
+      :error ->
+        {:noreply, socket}
+    end
+  end
+
+  def handle_event("set_sequence_content_locale", _params, socket), do: {:noreply, socket}
 
   def handle_event("open_versions_panel", _params, %{assigns: %{compact: true}} = socket) do
     {:noreply, socket}
@@ -617,7 +639,8 @@ defmodule StoryarnWeb.FlowLive.Show do
 
   # Playback changes an ephemeral runtime session, never authored content or project variables.
   def handle_event("sequence_playback", params, socket) do
-    if socket.assigns.sequence_workspace_open && !socket.assigns.loading do
+    if socket.assigns.sequence_workspace_open && !socket.assigns.loading &&
+         (!socket.assigns.debug_panel_open || params["action"] == "stop") do
       SequencePlaybackHandlers.handle_event(params, socket)
     else
       {:noreply, socket}
@@ -738,6 +761,30 @@ defmodule StoryarnWeb.FlowLive.Show do
   def handle_event("restore_sequence_visual_layer", params, socket) do
     Authorize.with_authorization(socket, :edit_content, fn _socket ->
       GenericNodeHandlers.handle_restore_sequence_visual_layer(params, socket)
+    end)
+  end
+
+  def handle_event("override_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_override_sequence_track(params, authorized_socket)
+    end)
+  end
+
+  def handle_event("revert_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_revert_sequence_track(params, authorized_socket)
+    end)
+  end
+
+  def handle_event("remove_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_remove_sequence_track(params, authorized_socket)
+    end)
+  end
+
+  def handle_event("restore_sequence_track", params, socket) do
+    Authorize.with_authorization(socket, :edit_content, fn authorized_socket ->
+      GenericNodeHandlers.handle_restore_sequence_track(params, authorized_socket)
     end)
   end
 
@@ -1376,6 +1423,13 @@ defmodule StoryarnWeb.FlowLive.Show do
         CollaborationHelpers.get_initial_collab_state(socket, flow)
       end
 
+    locale_state =
+      SequencePresentation.locale_state(
+        data.languages,
+        data.source_language,
+        socket.assigns[:content_locale]
+      )
+
     socket =
       socket
       |> assign(:flow, flow)
@@ -1385,6 +1439,7 @@ defmodule StoryarnWeb.FlowLive.Show do
       |> assign(:gallery_by_sheet, data.gallery_by_sheet)
       |> assign(:flow_hubs, data.flow_hubs)
       |> assign(:project_variables, data.project_variables)
+      |> assign(locale_state)
       |> assign(:selected_node, nil)
       |> assign(:node_form, nil)
       |> assign(:sequence_panel_data, nil)
@@ -1664,10 +1719,12 @@ defmodule StoryarnWeb.FlowLive.Show do
   end
 
   defp flow_surface_props(assigns) do
+    presentation_node_id = debug_presentation_node_id(assigns)
+
     %{
       canvas: flow_surface_canvas(assigns),
       dock: flow_surface_dock(assigns),
-      stage: assigns.sequence_stage,
+      stage: flow_surface_stage(assigns, presentation_node_id),
       sequencePlayback: assigns.sequence_playback,
       sequencePanelOpen:
         !assigns.sequence_workspace_open && sequence_config_open?(assigns.editing_mode, assigns.selected_node),
@@ -1679,8 +1736,34 @@ defmodule StoryarnWeb.FlowLive.Show do
             else: []
           )
       },
-      debug: flow_panels_debug(assigns)
+      debug: flow_surface_debug(assigns, presentation_node_id)
     }
+  end
+
+  defp debug_presentation_node_id(%{debug_panel_open: true, debug_state: %{} = state} = assigns),
+    do: DebugExecutionHandlers.presentation_node_id(state, assigns.debug_nodes)
+
+  defp debug_presentation_node_id(_assigns), do: nil
+
+  defp flow_surface_stage(%{debug_panel_open: true, debug_state: %{} = state} = assigns, node_id) do
+    SequencePresentation.stage(
+      node_id,
+      assigns.debug_nodes,
+      sequence_speakers_map(assigns),
+      assigns.project.id,
+      state,
+      SequencePresentation.locale_context(assigns)
+    )
+  end
+
+  defp flow_surface_stage(assigns, _node_id), do: assigns.sequence_stage
+
+  defp flow_surface_debug(assigns, node_id) do
+    Map.put(
+      flow_panels_debug(assigns),
+      :composition,
+      DebugExecutionHandlers.present_debug_composition(node_id, assigns.debug_nodes)
+    )
   end
 
   defp load_sequence_stage(socket, %{type: type, id: node_id}) when type in ["sequence", "dialogue"] do
@@ -1691,11 +1774,22 @@ defmodule StoryarnWeb.FlowLive.Show do
       graph.nodes,
       sequence_speakers_map(socket.assigns),
       socket.assigns.project.id,
-      nil
+      nil,
+      SequencePresentation.locale_context(socket.assigns)
     )
   end
 
   defp load_sequence_stage(_socket, _node), do: SequencePresentation.empty_stage()
+
+  defp refresh_selected_sequence_stage(socket) do
+    case socket.assigns[:selected_node] do
+      %{type: type} = node when type in ["sequence", "dialogue"] ->
+        assign(socket, :sequence_stage, load_sequence_stage(socket, node))
+
+      _other ->
+        socket
+    end
+  end
 
   defp sequence_speakers_map(assigns) do
     FormHelpers.player_speakers_map(assigns.all_sheets)

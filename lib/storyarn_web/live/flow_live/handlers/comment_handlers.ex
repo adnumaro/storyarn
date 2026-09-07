@@ -80,7 +80,7 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
         socket
         |> put_state(%{
           open: true,
-          presentation: "panel",
+          presentation: if(params["presentation"] == "workspace", do: "workspace", else: "panel"),
           placing: false,
           draftPosition: nil,
           draftId: nil,
@@ -103,7 +103,14 @@ defmodule StoryarnWeb.FlowLive.Handlers.CommentHandlers do
   def handle("close", _params, socket), do: {:noreply, close(socket)}
 
   def handle("select_thread", params, socket) do
-    presentation = if params["presentation"] == "canvas", do: "canvas", else: "panel"
+    presentation =
+      case params["presentation"] do
+        "canvas" -> "canvas"
+        "workspace" -> "workspace"
+        nil -> socket.assigns.comments.presentation
+        _ -> "panel"
+      end
+
     socket = put_state(socket, %{presentation: presentation})
     {:noreply, select_thread(socket, positive_id(params["thread_id"]))}
   end

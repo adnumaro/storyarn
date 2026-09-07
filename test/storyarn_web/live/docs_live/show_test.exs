@@ -97,7 +97,7 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
                "Instruction Nodes",
                "Hub & Jump Nodes",
                "Subflow Nodes",
-               "Sequence Nodes",
+               "Legacy Sequence Nodes",
                "Annotation Nodes"
              ]
     end
@@ -122,7 +122,8 @@ defmodule StoryarnWeb.DocsLive.ShowTest do
                "Condition Editor",
                "Instruction Editor",
                "Debug Mode",
-               "Flow Health"
+               "Flow Health",
+               "Sequence Editor"
              ]
 
       content = LiveVue.Test.get_vue(view, name: "live/docs/show/DocsContent")
