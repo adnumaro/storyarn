@@ -1,0 +1,161 @@
+lib/storyarn/ideation.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 18,51
+.dependency-cruiser.cjs
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 7
+lib/storyarn/ideation/ideas/events/invalidation.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 15-19
+assets/app/modules/ideation/types.ts
+  s_5af6a6d0a150f1::t_6c5af96bc83d42 1-125
+lib/storyarn/ideation/sessions/execution/mutation.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 7,13,17-18,33
+  s_5af6a6d0a150f1::t_4509d0854432bc 19,23,34-35
+assets/app/modules/ideation/composables/useBoardConnection.ts
+  s_5af6a6d0a150f1::t_6c5af96bc83d42 1-55
+  s_5af6a6d0a150f1::t_a648b58166e16b 56-66
+assets/app/modules/ideation/components/RevealDialog.vue
+  s_5af6a6d0a150f1::t_e6d27d7498af47 1-52
+  s_5af6a6d0a150f1::t_27b96ca7c81e1a 53-95
+docs/features/brainstorming-board.md
+  s_5af6a6d0a150f1::t_440673d26f3690 1-75
+lib/storyarn_web/router.ex
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 299-302
+lib/storyarn/ideation/sessions/sessions.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 5,8-10
+  s_5af6a6d0a150f1::t_ffe6c81df1cf5a 11
+assets/app/modules/ideation/components/BoardSelect.vue
+  s_5af6a6d0a150f1::t_f78d1235758bcb 1-15
+  s_5af6a6d0a150f1::t_77040fdf0ebb06 16-31
+assets/app/test/modules/ideation/board.test.ts
+  s_5af6a6d0a150f1::t_b72a2c4642c96b 1-69
+  s_5af6a6d0a150f1::t_4ea6031683ca8b 70-106
+assets/app/modules/ideation/components/IdeaPanel.vue
+  s_5af6a6d0a150f1::t_dad74a599fdd8e 1-97
+  s_5af6a6d0a150f1::t_d606e0ec2ce77f 98-259
+assets/app/test/modules/ideation/drafts.test.ts
+  s_5af6a6d0a150f1::t_b72a2c4642c96b 1-109
+  s_5af6a6d0a150f1::t_b1542b38aa4677 110-138
+test/storyarn/ideation/board_events_test.exs
+  s_5af6a6d0a150f1::t_f4543d5dfc649a 1-34
+  s_5af6a6d0a150f1::t_252eb171903a7e 35-39
+assets/app/modules/ideation/components/SessionDialog.vue
+  s_5af6a6d0a150f1::t_dad74a599fdd8e 1-2,10-14,23-24,30-33,35-46,48,52-53,55,61-66,68-71,74-78,83-87,93-95,100-104,111,146,163-164,171-172,205-206,214-215,230,239-244
+  s_5af6a6d0a150f1::t_388af5d614d7da 3-9,15-22,25-29,34,47,49-51,54,56-60,67,72-73,79-82,88-92,96-99,105-110,112-145,147-162,165-170,173-204,207-213,216-229,231-238
+assets/app/live/ideation/BrainstormingBoard.vue
+  s_5af6a6d0a150f1::t_e6d27d7498af47 1-5
+assets/app/modules/ideation/components/SessionsPane.vue
+  s_5af6a6d0a150f1::t_f78d1235758bcb 1-47
+  s_5af6a6d0a150f1::t_35a6316ede6ed7 48-113
+lib/storyarn/ideation/recovery/contracts/graph_validation.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 65-68
+test/e2e/workspaces/projects/brainstorming_test.exs
+  s_5af6a6d0a150f1::t_5ecbd4e885aa7f 6-7,13,17-19,23,25,27-28,31,33,36-37,39,46-55,57-59,61,66-68
+  s_5af6a6d0a150f1::t_f4543d5dfc649a 1-5,8-12,14-16,20-22,24,26,29-30,32,34-35,38,40-45,56,62-65,69-71
+  s_5af6a6d0a150f1::t_7b5c9e9c2baf58 60
+lib/storyarn/ideation/sessions/events/invalidation.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 1-20
+lib/storyarn/ideation/sessions/commands/purge_replaced.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 6,15,30-31
+  s_5af6a6d0a150f1::t_e46cb153072a1f 32
+assets/app/live/layouts/project/Layout.vue
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 8,82
+assets/app/modules/ideation/components/IdeasCollection.vue
+  s_5af6a6d0a150f1::t_f78d1235758bcb 1-70
+  s_5af6a6d0a150f1::t_61065667694daa 71-175
+lib/storyarn_web/live/ideation_live/helpers/board_data.ex
+  s_5af6a6d0a150f1::t_759e0ebe642f11 1-87
+  s_5af6a6d0a150f1::t_657a9c6ea8d82e 88-117
+lib/storyarn_web/live/shared/project_chrome_helpers.ex
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 20,34-35
+  s_5af6a6d0a150f1::t_27cec4b06d7e22 36
+assets/app/modules/ideation/composables/useBoardText.ts
+  s_5af6a6d0a150f1::t_f78d1235758bcb 1-17
+assets/app/modules/ideation/components/IdeaComposer.vue
+  s_5af6a6d0a150f1::t_dad74a599fdd8e 1-68
+  s_5af6a6d0a150f1::t_dd1e12eaf63525 69-128
+priv/gettext/en/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_f0ee1f65a8e23f 138-142
+assets/app/modules/ideation/BrainstormingWorkspace.vue
+  s_5af6a6d0a150f1::t_e6d27d7498af47 1-195
+  s_5af6a6d0a150f1::t_864156aeb3e92d 196-435
+assets/app/shell/ProjectNavbarContext.vue
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 10,54
+test/storyarn_web/live/ideation_live/board_test.exs
+  s_5af6a6d0a150f1::t_4b00b49ed9347e 1-9,11-20,22-24,26-29,31-35,47,49-59,61-64,66-70,74-77,79-80,88-93,106-119,121-123,125-128,130-137,144-148,150-158,160-169,203,206-213,225-239,241-243,245-246,263
+  s_5af6a6d0a150f1::t_1cf12320bd65a0 21,25,30,48,60,65,71-72,105,120,124,149,159,170-184,188-197,199-202,204-205,240,247,251,260
+  s_5af6a6d0a150f1::t_4a2ac779fa8c29 10,36-46,73,78,81-87,94-104,129,138-143,185-187,198,214-224,244,248-250,252-259,261-262
+assets/app/locales/en/layout.json
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 4
+assets/app/test/modules/ideation/fixtures.ts
+  s_5af6a6d0a150f1::t_b72a2c4642c96b 1-26
+  s_5af6a6d0a150f1::t_81271c157d876f 27-62
+assets/app/locales/es/layout.json
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 4
+assets/app/modules/ideation/composables/useIdeaDrafts.ts
+  s_5af6a6d0a150f1::t_6c5af96bc83d42 1-142
+  s_5af6a6d0a150f1::t_e7fbfbafc269ea 143-165
+lib/storyarn/ideation/ideas/ideas.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 33-35
+lib/storyarn_web/live/ideation_live/handlers/idea_handlers.ex
+  s_5af6a6d0a150f1::t_759e0ebe642f11 1-88
+  s_5af6a6d0a150f1::t_a6c1b9f57273eb 89-111
+lib/storyarn_web/live/ideation_live/helpers/params.ex
+  s_5af6a6d0a150f1::t_759e0ebe642f11 1-49
+lib/storyarn/ideation/sessions/commands/recover.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 7,15,35-36
+  s_5af6a6d0a150f1::t_8191a2155003f7 37
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_816cb7ae23a8d7 4070-4082
+  s_5af6a6d0a150f1::t_b0bd3eb9222075 1761
+assets/app/modules/ideation/lib/paste.ts
+  s_5af6a6d0a150f1::t_6c5af96bc83d42 1-16
+  s_5af6a6d0a150f1::t_4622046861948d 17-37
+assets/app/modules/ideation/components/IdeaEditor.vue
+  s_5af6a6d0a150f1::t_6c5af96bc83d42 1-53
+  s_5af6a6d0a150f1::t_362be07494b69d 54-105
+lib/storyarn_web/live/ideation_live/helpers/replies.ex
+  s_5af6a6d0a150f1::t_759e0ebe642f11 1-18
+lib/storyarn_web/live/ideation_live/board.ex
+  s_5af6a6d0a150f1::t_4a2ac779fa8c29 8-12,17,23-33,35-45,53,59-71,83,85-88,94-97,101-115,122-128,130,132,137-144,158-170,190,196-198,201,213-219,222,228-245,262-268,272-273,282-298,301,307,310,319-322,327,332
+  s_5af6a6d0a150f1::t_ccedf993c94c6f 1-7,13-16,18-22,34,46-52,54-58,72-82,84,89-93,98-100,116-121,129,131,133-136,145-157,171-189,191-195,199-200,202-212,220-221,223-227,246-261,269-271,274-281,299-300,302-306,308-309,311-318,323-326,328-331,333-335
+assets/app/modules/ideation/index.ts
+  s_5af6a6d0a150f1::t_e6d27d7498af47 1-2
+priv/gettext/es/LC_MESSAGES/default.po
+  s_5af6a6d0a150f1::t_f0ee1f65a8e23f 138-142
+lib/storyarn/ideation/ideas/execution/reveal_manifest.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 9,11-12,17
+lib/storyarn_web/live/ideation_live/handlers/session_handlers.ex
+  s_5af6a6d0a150f1::t_759e0ebe642f11 1-7,18-23,25-29,36-39,44-48,50-51,53-54,56-60,70
+  s_5af6a6d0a150f1::t_0aedb8f1ee020d 8-17,24,30-35,40-43,49,52,55,61-69
+lib/storyarn/ideation/ideas/rules/selection.ex
+  s_5af6a6d0a150f1::t_1ccdc2a27cc0c3 9-16
+assets/app/locales/en/ideation.json
+  s_5af6a6d0a150f1::t_0d658be695026a 1-147
+assets/app/locales/es/ideation.json
+  s_5af6a6d0a150f1::t_67a4a772ca07db 1-147
+docs/reference/brainstorming-contract.md
+  s_5af6a6d0a150f1::t_693374ef82a86a 9-11,93
+docs/reference/brainstorming-ideas-contract.md
+  s_5af6a6d0a150f1::t_0de1d1007d8f4b 9-13,172-204
+priv/gettext/default.pot
+  s_5af6a6d0a150f1::t_396d99f2a8b588 138-142
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_1098c3fd55891b 7,107,128
+test/storyarn/ideation/recovery_test.exs
+  s_5af6a6d0a150f1::t_ef4f4ace8d4dd0 69-88
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "56591f793f4476fa19c47f1a98085a41eef40c2b",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
