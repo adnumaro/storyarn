@@ -1,0 +1,160 @@
+lib/storyarn/ideation.ex
+  s_5af6a6d0a150f1::t_47bf3d154e3229 5-7
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 13,29-41
+  s_5af6a6d0a150f1::t_e2bfb3f3802305 42
+lib/storyarn/ideation/README.md
+  s_5af6a6d0a150f1::t_47bf3d154e3229 3-6,24-38,56-57,66-67
+test/support/fixtures/ideation_fixtures.ex
+  s_5af6a6d0a150f1::t_92b6c05581246d 1-5,7-12,15-48
+  s_5af6a6d0a150f1::t_b6b181a0d522e0 14
+  s_5af6a6d0a150f1::t_9335000a579c21 6,13
+  s_5af6a6d0a150f1::t_8d11a157c8339f 49-59
+lib/storyarn/ideation/ideas/contracts/view.ex
+  s_5af6a6d0a150f1::t_d4b8933af02fae 5-7,19-20
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-4,8-18,21-51
+lib/storyarn/ideation/ideas/entities/reveal.ex
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-11,13-15
+  s_5af6a6d0a150f1::t_f5885fada67525 12
+test/storyarn/architecture/ideation_internal_structure_test.exs
+  s_5af6a6d0a150f1::t_e603bf17920258 7-9,25,30,40-47,50,62,73-75,81-91,108-129
+  s_5af6a6d0a150f1::t_e3cb9f5da41ad9 130
+lib/storyarn/ideation/sessions/sessions.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 23-28
+lib/storyarn/ideation/ideas/queries/access.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-2,5-6,8-12,15
+  s_5af6a6d0a150f1::t_b6b181a0d522e0 3,7,13-14
+  s_5af6a6d0a150f1::t_c44bd31fe534e5 4
+config/architecture_boundaries.exs
+  s_5af6a6d0a150f1::t_0e039709a2c0fa 1955,1957-1959,1961,1964-1974,1976,1981-1982,1986,1991-1996,2002-2003
+  s_5af6a6d0a150f1::t_8c96fe87a3b896 3845
+test/storyarn/ideation/ideas_test.exs
+  s_5af6a6d0a150f1::t_92b6c05581246d 1-2,4,6,10-25,27,29-35,38-41,52-59,72,74,76-81,90,102-107,109-110,112,124-134,136,139-146,148,151-157,169-173,181-185,197,199,202-204,209,211,214,219-225,230-234,246-247,252-256,274-278,282-288,300-301,323-325,347-349,361-363
+  s_5af6a6d0a150f1::t_d4b8933af02fae 3,5,7-9,26,28,36-37,42-51,60-71,73,75,82-89,91-101,108,111,113-123,135,137-138,147,149-150,158-168,174-180,186-196,198,200-201,205-208,210,212-213,215-218,226-229,235-245,248-251,257-273,279-281,289-299,302-322,326-339,341-342,344,346,351-356,358-360
+  s_5af6a6d0a150f1::t_33d861efe511f4 340,343,345,350
+  s_5af6a6d0a150f1::t_37df60beeedee2 357
+test/storyarn/ideation/reveals_test.exs
+  s_5af6a6d0a150f1::t_37a281eda6e830 1-188
+  s_5af6a6d0a150f1::t_343c6f9d22bd23 189-276
+lib/storyarn/ideation/ideas/ideas.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-24
+  s_5af6a6d0a150f1::t_6dcfaa64b318e0 25-33
+lib/storyarn/ideation/ideas/entities/revision.ex
+  s_5af6a6d0a150f1::t_33d861efe511f4 23
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-22,24-28
+lib/storyarn/ideation/ideas/rules/input.ex
+  s_5af6a6d0a150f1::t_47bf3d154e3229 6
+  s_5af6a6d0a150f1::t_0e039709a2c0fa 21-25
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-5,7-20,26-40
+  s_5af6a6d0a150f1::t_664f50ef4adbdc 41-42
+lib/storyarn/ideation/ideas/queries/get.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-10
+  s_5af6a6d0a150f1::t_ea4bfddf1c404f 11
+lib/storyarn/ideation/ideas/rules/selection.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-2,5-21,23-26
+  s_5af6a6d0a150f1::t_47bf3d154e3229 3,22
+  s_5af6a6d0a150f1::t_17526466004728 4
+lib/storyarn/ideation/ideas/commands/update.ex
+  s_5af6a6d0a150f1::t_0e039709a2c0fa 36
+  s_5af6a6d0a150f1::t_47bf3d154e3229 4,16
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 5-8,10,12,18-19,24-32,55-58,65-67
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-3,9,11,13-15,17,20-23,33-35,37-54,59-64,68-69
+  s_5af6a6d0a150f1::t_c67ce2a11aa7a2 70-75
+lib/storyarn/ideation/ideas/commands/create.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-3,10,15-23,31-34,46-52,70-77,79-82,84-87
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 4-9,11-14,24-30,35-45,53-69
+  s_5af6a6d0a150f1::t_0e039709a2c0fa 78,83
+lib/storyarn/ideation/ideas/execution/revisions.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-35
+  s_5af6a6d0a150f1::t_0320ecb28f0fd0 36-48
+lib/storyarn/ideation/ideas/entities/publication.ex
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-12
+lib/storyarn/ideation/sessions/execution/contribution_access.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-32
+  s_5af6a6d0a150f1::t_5bee4940e0cd4a 33-34
+lib/storyarn/ideation/ideas/rules/content.ex
+  s_5af6a6d0a150f1::t_33d861efe511f4 9-17
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-8,18-55
+  s_5af6a6d0a150f1::t_dae2c21bb881e0 56-58
+lib/storyarn/ideation/ideas/commands/prepare_reveal.ex
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 3-8,14,18-25,28-36
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-2,9-13,15-17,26-27,37-40
+test/storyarn/ideation/idea_concurrency_test.exs
+  s_5af6a6d0a150f1::t_07d26024cc2ecb 220,229-232
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 3,8,12-15,26-29,34-40,51,58-67,79,81,91,98-104,110,115,121-135,140-157,164,167-168,180-200,202,207-208,212,219,221,235-244,246
+  s_5af6a6d0a150f1::t_7fd5215a88834c 1-2,4-7,9-11,16-25,30-33,41-50,52-57,68-78,80,82-90,92-97,105-109,111-114,116-120,136-139,158-163,165-166,169-179,201,203-206,209-211,213-218,222-228,233-234,245,247-255
+priv/repo/migrations/20260907120000_create_ideation_ideas.exs
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-45,47-63,67-74,76-79,82-92,94-95
+  s_5af6a6d0a150f1::t_f5885fada67525 75
+  s_5af6a6d0a150f1::t_47bf3d154e3229 46,64-66,80-81,93
+  s_5af6a6d0a150f1::t_cdf85aad3b2f23 96-128
+lib/storyarn/ideation/ideas/entities/idea.ex
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-19
+lib/storyarn/ideation/ideas/queries/edits.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-32
+  s_5af6a6d0a150f1::t_b76c2bae4440e1 33-38
+docs/reference/context-map.md
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 16-20
+lib/storyarn/ideation/ideas/execution/reveal_manifest.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-48
+  s_5af6a6d0a150f1::t_cbc18cc6f67ef6 49-54
+lib/storyarn/ideation/ideas/entities/edit.ex
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-20
+lib/storyarn/ideation/ideas/queries/reveal.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-19
+  s_5af6a6d0a150f1::t_a4b8ced6dfbcf7 20-21
+docs/reference/domain-patterns.md
+  s_5af6a6d0a150f1::t_c19e0fb3e36a67 34
+test/storyarn/ideation/idea_privacy_test.exs
+  s_5af6a6d0a150f1::t_e0378da07dcd63 1-64,67-95,97-134,136-168,170
+  s_5af6a6d0a150f1::t_33d861efe511f4 65-66
+  s_5af6a6d0a150f1::t_e603bf17920258 96,135
+  s_5af6a6d0a150f1::t_5efef1100e89fe 169,171-262
+docs/plans/eng-132-133-ideas-publication.md
+  s_5af6a6d0a150f1::t_1f719709c9e8b5 1-47
+docs/reference/brainstorming-ideas-contract.md
+  s_5af6a6d0a150f1::t_47bf3d154e3229 1-60,64-70,79-171
+  s_5af6a6d0a150f1::t_d4b8933af02fae 61-63,71-78
+lib/storyarn/ideation/ideas/events/invalidation.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-16
+docs/reference/brainstorming-contract.md
+  s_5af6a6d0a150f1::t_47bf3d154e3229 10-11,67-68
+lib/storyarn/ideation/ideas/queries/list.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-3,7-16,22-56
+  s_5af6a6d0a150f1::t_d4b8933af02fae 4-6,18-21
+  s_5af6a6d0a150f1::t_b7ce9c8c27ea07 17
+lib/storyarn/ideation/ideas/rules/policy.ex
+  s_5af6a6d0a150f1::t_e603bf17920258 14-15,25,38-43
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-13,16-24,26-37,44-45
+lib/storyarn/ideation/ideas/execution/publication.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-32
+  s_5af6a6d0a150f1::t_ecb604c2a5f3bb 33-45
+lib/storyarn/ideation/ideas/execution/transaction.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-10,13,20-32
+  s_5af6a6d0a150f1::t_6c61c7716e2a8d 11-12,14-19
+lib/storyarn/ideation/ideas/queries/visible.ex
+  s_5af6a6d0a150f1::t_20b533ad34479b 1-3,9,11-16,23,25-27,30-35,37-38,46-64
+  s_5af6a6d0a150f1::t_47bf3d154e3229 4,36
+  s_5af6a6d0a150f1::t_d4b8933af02fae 5-8,10,17-22,24,28-29,39-45
+lib/storyarn/ideation/ideas/commands/reveal.ex
+  s_5af6a6d0a150f1::t_55ec9fad6ed388 1-26
+  s_5af6a6d0a150f1::t_998e49211648ce 27-30
+lib/storyarn/ideation/ideas/queries/history.ex
+  s_5af6a6d0a150f1::t_cff12bffc64c20 1-24
+  s_5af6a6d0a150f1::t_b1afe2b3eaabc1 25-28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "c4b92e39fed4fbb2ae9f9bd9f851ded36b84b456",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
