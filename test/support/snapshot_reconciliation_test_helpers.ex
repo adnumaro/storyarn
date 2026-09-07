@@ -5,7 +5,8 @@ defmodule Storyarn.SnapshotReconciliationTestHelpers do
 
   alias Storyarn.Projects.Versioning
 
-  @retry_window_ms 5_000
+  # Allow slow CI contention to clear while keeping setup retries bounded.
+  @retry_window_ms 30_000
   @retry_delay_ms 20
 
   def start_run(opts) when is_list(opts) do

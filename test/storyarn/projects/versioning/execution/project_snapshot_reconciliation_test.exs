@@ -901,7 +901,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
 
     try do
       assert {:error, :snapshot_reconciliation_boundary_busy} = start_run_once([])
-      Process.send_after(lock_holder_pid, :release_claim_writer, 50)
+      # Exercise contention beyond the former five-second setup retry window.
+      Process.send_after(lock_holder_pid, :release_claim_writer, 6_000)
       assert {:ok, _run} = start_run()
     after
       send(lock_holder_pid, :release_claim_writer)
@@ -2267,7 +2268,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliationTest do
             receive do
               :release_claim_writer -> :ok
             after
-              5_000 -> exit(:claim_writer_release_timeout)
+              15_000 -> exit(:claim_writer_release_timeout)
             end
           end)
         after
