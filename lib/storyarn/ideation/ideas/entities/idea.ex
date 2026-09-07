@@ -3,6 +3,7 @@ defmodule Storyarn.Ideation.Ideas.Idea do
   use Ecto.Schema
 
   schema "ideation_ideas" do
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :session_id, :id
     field :author_id, :id
     field :author_kind, Ecto.Enum, values: [:human, :ai], default: :human

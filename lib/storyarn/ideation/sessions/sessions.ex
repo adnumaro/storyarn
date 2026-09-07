@@ -22,6 +22,7 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate reopen_session(scope, project_id, session_id, revision), to: Commands.Reopen, as: :run
 
   defdelegate recover_session(scope, project_id, session_id, revision), to: Commands.Recover, as: :run
+  defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Commands.PurgeReplaced, as: :run
 
   # Internal capability port: the caller owns the transaction, Sessions owns
   # project access and the session lifecycle lock. Not exposed by Ideation.

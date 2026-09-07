@@ -130,6 +130,10 @@ defmodule Storyarn.Ideation.RecoveryTest do
   test "replacement keeps the previous session recoverable without exposing drafts", ctx do
     idea = idea_fixture(ctx)
     capsule = snapshot(ctx)["ideation"]
+
+    assert {:ok, _} =
+             Ideation.update_session(ctx.owner, ctx.project.id, ctx.session.id, 1, %{title: "Changed since capture"})
+
     restore(ctx, capsule)
     assert {:error, :not_found} = Ideation.get_session(ctx.owner, ctx.project.id, ctx.session.id)
     assert {:error, :not_found} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id)

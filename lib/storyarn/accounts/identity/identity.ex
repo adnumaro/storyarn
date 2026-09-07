@@ -8,11 +8,15 @@ defmodule Storyarn.Accounts.Identity do
   """
 
   alias Storyarn.Accounts.Identity.Commands.Profile
+  alias Storyarn.Accounts.Identity.Commands.RecoveryIdentities, as: RecoveryIdentityLocks
+  alias Storyarn.Accounts.Identity.Queries.RecoveryIdentities
   alias Storyarn.Accounts.Identity.Queries.Users
   alias Storyarn.Accounts.User
 
   defdelegate get_user_by_email(email), to: Users
   defdelegate get_user!(id), to: Users
+  defdelegate capture_recovery_identities(ids), to: RecoveryIdentities, as: :capture
+  defdelegate resolve_recovery_identities_locked(identities), to: RecoveryIdentityLocks, as: :resolve_locked
   defdelegate validate_email_format(changeset), to: User
 
   def new_user, do: %User{}

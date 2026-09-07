@@ -30,6 +30,10 @@ defmodule Storyarn.Ideation do
 
   defdelegate recover_session(scope, project_id, session_id, revision), to: Sessions
 
+  @doc "Permanently deletes one replaced session after checking current project ownership and its revision."
+  @spec purge_replaced_session(map(), pos_integer(), pos_integer(), pos_integer()) :: {:ok, :purged} | {:error, term()}
+  defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Sessions
+
   defdelegate create_idea(scope, project_id, session_id, attrs), to: Ideas
   defdelegate derive_idea(scope, project_id, session_id, source_id, source_revision, attrs), to: Ideas
   defdelegate update_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas

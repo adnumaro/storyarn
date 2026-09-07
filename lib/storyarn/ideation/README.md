@@ -67,9 +67,12 @@ versioned record inventory. Ordinary commands cannot enter recovery internals.
 Project capture/materialization/verification call only the sealed root ports,
 inside the existing authorized Project transaction and exclusive lock.
 
-Restoration retains replaced sessions, resolves actors through stable account
-recovery identities and keeps missing authors' drafts closed. Session recovery
-is an ordinary authorized command that restores an archived session; it grants
-no draft access. See [privacy and recovery](../../../docs/reference/brainstorming-recovery-contract.md),
+Restoration retains distinct replaced generations and reuses identical ones via
+stable record identities. Actors resolve through sealed Accounts ports; missing
+authors' drafts stay closed. Session recovery is an ordinary authorized command
+that restores an archived session without granting draft access. Only the owner
+may explicitly purge a replaced session; live/archived sessions are protected.
+Capture limits are typed failures, and restore checks the full retained inventory
+before commit so it cannot strand future backups above those bounds. See [privacy and recovery](../../../docs/reference/brainstorming-recovery-contract.md),
 [session behavior](../../../docs/reference/brainstorming-contract.md) and
 [idea publication](../../../docs/reference/brainstorming-ideas-contract.md).

@@ -2,6 +2,7 @@ defmodule Storyarn.Ideation.Recovery.Records do
   @moduledoc false
   import Ecto.Query
 
+  alias Storyarn.Accounts
   alias Storyarn.Ideation.Recovery.Inventory
   alias Storyarn.Repo
 
@@ -20,39 +21,26 @@ defmodule Storyarn.Ideation.Recovery.Records do
         {Map.put(rows, collection, entries), bytes, count}
       end)
 
-    actor_ids = actor_ids(rows)
-    actors = Repo.all(from u in "users", where: u.id in ^actor_ids, select: {u.id, type(u.recovery_identity, Ecto.UUID)})
-
-    {:ok,
-     %{
-       "format" => "storyarn.ideation",
-       "version" => 1,
-       "actors" => Map.new(actors, fn {id, identity} -> {Integer.to_string(id), identity} end),
-       "rows" =>
-         Map.new(rows, fn {collection, entries} ->
-           {collection, Enum.map(entries, &Inventory.encode_row(collection, &1))}
-         end)
-     }}
+    with {:ok, actors} <- Accounts.capture_recovery_identities(actor_ids(rows)) do
+      {:ok,
+       %{
+         "format" => "storyarn.ideation",
+         "version" => 1,
+         "actors" => actors,
+         "rows" =>
+           Map.new(rows, fn {collection, entries} ->
+             {collection, Enum.map(entries, &Inventory.encode_row(collection, &1))}
+           end)
+       }}
+    end
   catch
     :ideation_recovery_too_large -> {:error, :ideation_recovery_too_large}
   end
 
   def resolve_actors(actors) do
-    identities = Map.values(actors)
-
-    query =
-      from u in "users",
-        where: type(u.recovery_identity, Ecto.UUID) in ^identities,
-        order_by: u.id,
-        select: {type(u.recovery_identity, Ecto.UUID), u.id}
-
-    locked = query |> lock("FOR KEY SHARE SKIP LOCKED") |> Repo.all() |> Map.new()
-    existing = query |> Repo.all() |> Map.new()
-
-    if MapSet.new(Map.keys(existing)) == MapSet.new(Map.keys(locked)) do
-      {:ok, Map.new(actors, fn {id, identity} -> {String.to_integer(id), locked[identity]} end)}
-    else
-      {:error, :ideation_recovery_actors_busy}
+    case Accounts.resolve_recovery_identities_locked(actors) do
+      {:error, :recovery_identities_busy} -> {:error, :ideation_recovery_actors_busy}
+      result -> result
     end
   end
 

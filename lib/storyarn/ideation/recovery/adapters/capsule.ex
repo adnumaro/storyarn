@@ -13,6 +13,7 @@ defmodule Storyarn.Ideation.Recovery.Capsule do
          {:ok, encrypted} <- Vault.encrypt(json) do
       {:ok, %{"version" => 1, "ciphertext" => Base.encode64(encrypted)}}
     else
+      false -> {:error, :ideation_recovery_too_large}
       _ -> {:error, :ideation_recovery_capture_failed}
     end
   end

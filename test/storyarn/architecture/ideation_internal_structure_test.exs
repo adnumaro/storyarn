@@ -103,6 +103,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       list_sessions: 3,
       reopen_session: 4,
       recover_session: 4,
+      purge_replaced_session: 4,
       update_session: 5
     ]
 
@@ -152,6 +153,15 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       assert schema.__schema__(:source) == table
       assert Enum.sort(fields) == Enum.sort(schema.__schema__(:fields))
     end
+  end
+
+  test "Ideation cannot read account identities through raw tables or Account schemas" do
+    violations =
+      Enum.filter(Path.wildcard("#{@root}/**/*.ex"), fn path ->
+        Regex.match?(~r/"users"|:users\b|\bStoryarn\.Accounts\.User\b/, File.read!(path))
+      end)
+
+    assert violations == [], "Recovery identities belong to Accounts: #{inspect(violations)}"
   end
 
   defp directories_in(path) do

@@ -13,7 +13,8 @@ publication consent, reveal operations and conflicting input. Projects owns
 project identity, effective access, transfer, snapshots and their storage
 lifecycle. Accounts owns account identity; its server-generated recovery UUID
 is immutable through registration and profile forms and is not exposed in Vue
-user props. Platform provides the existing encryption mechanism. Commercial
+user props. Capture and nonblocking resolution of those identities enter through
+the Accounts facade; Ideation does not query or lock Accounts tables directly. Platform provides the existing encryption mechanism. Commercial
 continues to account for snapshot bytes through the existing object manifest.
 
 Every ordinary read first checks current project access. Every ordinary mutation
@@ -31,6 +32,7 @@ Project policy.
 | Change creative state                                           | Own idea with edit permission    | No                             | Own only                                            | Own only                                        |
 | Configure/archive/reopen a session                              | Only when also facilitator/owner | No                             | With edit permission                                | Yes                                             |
 | Recover a replaced session                                      | Only when also facilitator/owner | No                             | With edit permission                                | Yes                                             |
+| Permanently purge a replaced session                            | Only when also owner             | No                             | Only when also owner                                | Explicit action with current edit permission    |
 | Group, decide, invoke shared AI, attach private files           | Not implemented                  | Not implemented                | Not implemented                                     | Not implemented                                 |
 
 All managerial actions remain subject to current project edit permission. The
@@ -84,8 +86,8 @@ inventories under the same Project lock. This preserves exact project-checksum
 comparisons with randomized authenticated encryption. The cache is derived,
 excluded from snapshots and unnecessary for restoring a downloaded archive.
 
-Recovery validates the compartment version, authentication and availability of
-keys for the retained encrypted content. Invalid ciphertext or unavailable keys
+Recovery validates the compartment version, authentication, record identities,
+internal references and availability of keys for the retained encrypted content. Invalid ciphertext or unavailable keys
 fail before a restore can commit. Production key custody and retaining old Vault
 keys across rotation remain operational recovery requirements: **the ZIP does
 not contain encryption keys** and cannot decrypt private content by itself.
@@ -98,9 +100,12 @@ reconstitution transaction. The architecture ratchet restricts these ports to
 exact Project capture, validation, materialization and verification callers;
 ordinary Web code cannot use them as a draft-reading API.
 
-Restore creates fresh session, idea, revision, receipt, reveal and publication
-IDs. Typed foreign keys, source links, reveal selections/manifests and historical
-responsibility assignments are remapped explicitly. Authored integers and text
+Each persisted session, idea, revision, receipt, reveal and publication carries
+an immutable recovery UUID. Restore compares complete session generations using
+those identities and content, independent of database IDs and replacement time.
+An identical generation already present in the destination is reused; a distinct
+generation receives fresh database IDs. Typed foreign keys, source links, reveal
+selections/manifests and historical responsibility assignments are remapped explicitly. Authored integers and text
 are not rewritten. Creation receipts retain their original source identity so
 retrying a derivation with its remapped source still recognizes the request.
 Successful/conflicting saves remain replayable.
@@ -130,14 +135,30 @@ it does not invoke publication commands, restart timers, run AI, send messages o
 resume external work. Restored prepared reveals still require an explicit new
 execution against current session authority and the frozen revisions.
 
-Replacing a project marks previous live sessions as replaced, retaining their
-rows and all descendants. Ordinary reads/writes can no longer reach those session
-IDs. `list_sessions(..., status: :replaced)` exposes session metadata under current
+Replacing a project marks superseded live generations as replaced, retaining
+their rows and descendants. Ordinary reads/writes can no longer reach those IDs
+unless an identical generation is reused as part of the restored state. `list_sessions(..., status: :replaced)` exposes session metadata under current
 project access. `recover_session/4` requires the owner or current facilitator and
 the read revision; it restores an **archived** session, without publishing content
 or opening contribution automatically. The board's recovery presentation belongs
-to ENG-134. Repeated restores retain additional generations; capture bounds apply
-to that complete history. No automatic purge is introduced.
+to ENG-134. The retention policy is **keep distinct generations until explicit
+owner deletion**, including archived sessions and complete private history.
+Repeated restores of the same content reuse generations; capturing and restoring
+that history does not recursively multiply it. Before committing, restore checks
+that the complete resulting inventory still fits the snapshot bounds, so restoring
+cannot leave a previously capturable project over the limit. Exceeding a limit
+rolls back with `ideation_recovery_too_large`, including in the canonical builder;
+background builds record that specific failure without pointless retries.
+
+`purge_replaced_session/4` is a permanent, explicit owner action against one
+replaced session and its current revision. It rejects live/archived sessions,
+non-owners and stale revisions; no restore or scheduled job invokes it. Its
+session-owned descendants are deleted through foreign-key cascades. Independent
+retained archives keep their captured generations and can recover a purged one.
+There is no automatic age-based deletion or silent exclusion from snapshots.
+The board must explain the destructive action and require explicit confirmation.
+The 100,000-row/48-MiB bounds are safety limits, not measured throughput claims;
+bulk insertion remains a separate performance improvement.
 
 Project soft deletion or access revocation denies ordinary reads. Physical project
 or workspace deletion follows existing cascades, including the derived capture
@@ -150,9 +171,10 @@ trash, and never triggers byte deletion.
 ## Compatibility and deliberate exclusions
 
 Format-2 archives remain readable. They contain no Ideation compartment and cannot
-restore brainstorming. Exact restore into a project that already contains
-sessions rejects such an archive, preserving all current data instead of silently
-ignoring/replacing its brainstorming state. A format-3 archive missing its
+restore brainstorming. Exact restore into a project containing a non-replaced session (open or archived)
+rejects such an archive, preserving current content. When only replaced sessions
+remain, format 2 is accepted and that retained history is preserved. Users do not
+have to purge it merely to recover an older project snapshot. A format-3 archive missing its
 compartment, or format 2 with an unexpected compartment, is rejected.
 
 Portable templates stay on format 2 and exclude Ideation. The template installer
@@ -174,3 +196,13 @@ ordinary shared Project Assets are not a private-draft attachment store. Future
 conversations and references must resolve the containing idea's audience before
 reading a target, notifying, indexing or handing content to AI. A copied external
 URL never restores an external authorization.
+
+## Migration
+
+Accounts owns its recovery-identity migration. It adds the nullable column before
+setting its UUID default and backfilling existing rows, then enforces non-null
+identities and uniqueness. This avoids the full table rewrite caused by adding a
+volatile default with the column. The migration remains transactional and still
+requires DDL locks and a backfill; it is not a zero-downtime migration for an
+unbounded production table. Ideation record identities use the same staged
+column/backfill pattern in a separate migration.

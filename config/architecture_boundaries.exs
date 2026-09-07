@@ -3012,6 +3012,20 @@ analytics_transport_caller_denials =
 # accepted by the ratchet.
 privileged_entrypoints = [
   %{
+    module: "Storyarn.Accounts",
+    path: "lib/storyarn/accounts.ex",
+    functions: [capture_recovery_identities: 1, resolve_recovery_identities_locked: 1],
+    allowed_callers: ["lib/storyarn/ideation/recovery/adapters/records.ex"],
+    reason: "Recovery identity data and locks are restricted to the authorized Ideation recovery adapter"
+  },
+  %{
+    module: "Storyarn.Accounts.Identity",
+    path: "lib/storyarn/accounts/identity/identity.ex",
+    functions: [capture_recovery_identities: 1, resolve_recovery_identities_locked: 1],
+    allowed_callers: ["lib/storyarn/accounts.ex"],
+    reason: "Only Accounts may expose its recovery identity authority"
+  },
+  %{
     module: "Storyarn.Ideation",
     path: "lib/storyarn/ideation.ex",
     functions: [capture_recovery: 1],
@@ -4053,6 +4067,12 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn/ideation/recovery/adapters/records.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "Ideation resolves stable author identities and recovery locks through their owning Accounts facade"
+    },
     %{
       source: "lib/storyarn/ideation/recovery/adapters/capsule.ex",
       target: "lib/storyarn/platform/adapters/security/vault.ex",

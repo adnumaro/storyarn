@@ -5,6 +5,7 @@ defmodule Storyarn.Ideation.Ideas.Edit do
   alias Storyarn.Platform.Shared.EncryptedBinary
 
   schema "ideation_idea_edits" do
+    field :recovery_identity, Ecto.UUID, read_after_writes: true, redact: true
     field :idea_id, :id
     field :actor_id, :id
     field :request_key, Ecto.UUID

@@ -57,3 +57,11 @@ transaction through the `Storyarn.Workspaces` facade. This is an explicit
 application workflow and not a technical adapter. Account business events are
 published through `Storyarn.Platform`; mail layout and transport remain
 technical Platform services, while Accounts owns the intent and message copy.
+
+## Recovery identity boundary
+
+Accounts owns immutable account recovery UUIDs. Its two sealed facade ports
+capture ID-to-UUID mappings and resolve authenticated mappings under nonblocking
+account locks inside the caller's authorized recovery transaction. No profile
+fields or credentials are returned. Missing accounts stay unmapped; a busy
+surviving account returns a retryable error rather than silently losing authorship.

@@ -1,21 +1,24 @@
 defmodule Storyarn.Ideation.Recovery.Inventory do
   @moduledoc false
+  alias Storyarn.Ideation.Recovery.GraphValidation
 
   # Closed, versioned persistence contract. Ciphertext is copied as bytes, never
   # loaded through the ordinary encrypted-field schema or returned as plaintext.
   @tables [
     {"sessions", "ideation_sessions", :project_id,
-     ~w(id project_id created_by_id facilitator_id decision_owner_id title objective context status archived_at deleted_at revision configuration_version configuration inserted_at updated_at)a},
+     ~w(id recovery_identity project_id created_by_id facilitator_id decision_owner_id title objective context status archived_at deleted_at revision configuration_version configuration inserted_at updated_at)a},
     {"session_revisions", "ideation_session_revisions", :session_id,
-     ~w(id session_id actor_id number action snapshot inserted_at)a},
+     ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"ideas", "ideation_ideas", :session_id,
-     ~w(id session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision inserted_at updated_at)a},
-    {"revisions", "ideation_idea_revisions", :idea_id, ~w(id idea_id number actor_id title body state inserted_at)a},
+     ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision inserted_at updated_at)a},
+    {"revisions", "ideation_idea_revisions", :idea_id,
+     ~w(id recovery_identity idea_id number actor_id title body state inserted_at)a},
     {"edits", "ideation_idea_edits", :idea_id,
-     ~w(id idea_id actor_id request_key fingerprint outcome base_revision result_revision title body state inserted_at)a},
+     ~w(id recovery_identity idea_id actor_id request_key fingerprint outcome base_revision result_revision title body state inserted_at)a},
     {"reveals", "ideation_reveal_operations", :session_id,
-     ~w(id session_id actor_id request_key selection manifest status completed_at inserted_at updated_at)a},
-    {"publications", "ideation_idea_publications", :idea_id, ~w(id idea_id revision operation_id actor_id inserted_at)a}
+     ~w(id recovery_identity session_id actor_id request_key selection manifest status completed_at inserted_at updated_at)a},
+    {"publications", "ideation_idea_publications", :idea_id,
+     ~w(id recovery_identity idea_id revision operation_id actor_id inserted_at)a}
   ]
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id)a
   @dates ~w(archived_at deleted_at inserted_at updated_at completed_at)a
@@ -79,7 +82,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
          Enum.sum(Enum.map(rows, fn {_, entries} -> length(entries) end)) <= @max_rows and
          Enum.all?(actors, fn {id, identity} ->
            match?({_, ""}, Integer.parse(id)) and match?({:ok, _}, Ecto.UUID.cast(identity))
-         end) do
+         end) and GraphValidation.valid?(rows) do
       :ok
     else
       {:error, :invalid_ideation_recovery}
@@ -98,7 +101,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   defp binary_field?(collection, key) do
-    key in [:creation_key, :request_key, :fingerprint] or
+    key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
       (collection in ["revisions", "edits"] and key in [:title, :body])
   end
 end
