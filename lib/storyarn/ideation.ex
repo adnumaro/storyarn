@@ -45,14 +45,10 @@ defmodule Storyarn.Ideation do
   defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Sessions
 
   defdelegate create_idea(scope, project_id, session_id, attrs), to: Ideas
-  defdelegate derive_idea(scope, project_id, session_id, source_id, source_revision, attrs), to: Ideas
   defdelegate update_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Ideas
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
   defdelegate count_ideas(scope, project_id, session_id), to: Ideas
-  defdelegate list_idea_revisions(scope, project_id, session_id, idea_id, opts \\ []), to: Ideas
-  defdelegate list_idea_conflicts(scope, project_id, session_id, idea_id, opts \\ []), to: Ideas
-  defdelegate get_idea_edit(scope, project_id, session_id, idea_id, key), to: Ideas
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible), to: Ideas
   defdelegate reveal_ideas(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate get_idea_reveal(scope, project_id, session_id, operation_id), to: Ideas
@@ -86,12 +82,14 @@ defmodule Storyarn.Ideation do
   @spec delete_idea(map(), integer(), integer(), integer(), integer()) :: {:ok, map()} | {:error, term()}
   defdelegate delete_idea(scope, project_id, session_id, idea_id, revision), to: Ideas
 
+  @doc "Undoes the author's exact canvas deletion without restoring arbitrary historical content."
+  @spec restore_idea(map(), integer(), integer(), integer(), integer(), DateTime.t() | String.t()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate restore_idea(scope, project_id, session_id, idea_id, revision, deleted_at), to: Ideas
+
   @doc "Creates a canvas contribution under the current session visibility mode."
   @spec create_canvas_idea(map(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Ideas
-  @doc "Derives a canvas contribution while retaining its exact readable source revision."
-  @spec derive_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
-  defdelegate derive_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
   @doc "Saves a canvas note and publishes that revision atomically in shared mode."
   @spec update_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas

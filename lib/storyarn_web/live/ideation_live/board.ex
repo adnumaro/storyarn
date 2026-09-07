@@ -15,8 +15,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
-  @idea_writes ~w(create_idea derive_idea save_idea delete_idea move_idea connect_ideas prepare_reveal reveal_ideas)
-  @idea_reads ~w(inspect_idea idea_history idea_conflicts)
+  @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas prepare_reveal reveal_ideas)
 
   @impl true
   def render(assigns) do
@@ -120,25 +119,6 @@ defmodule StoryarnWeb.IdeationLive.Board do
                                                                                                           reason ->
       {:reply, Replies.error(reason), lose_access(socket)}
     end)
-  end
-
-  def handle_event(event, params, socket) when event in @idea_reads do
-    case current_session(params, socket) do
-      :ok ->
-        result =
-          IdeaHandlers.run(
-            event,
-            socket.assigns.current_scope,
-            socket.assigns.project.id,
-            socket.assigns.session_id,
-            params
-          )
-
-        {:reply, Replies.result(result), read_result_socket(socket, result)}
-
-      {:error, reason} ->
-        {:reply, Replies.error(reason), socket}
-    end
   end
 
   def handle_event("session_history", params, socket) do

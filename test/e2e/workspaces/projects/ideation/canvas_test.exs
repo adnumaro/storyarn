@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.E2E.IdeationCanvasTest do
   use PhoenixTest.Playwright.Case, async: false
 
-  import PhoenixTest.Playwright, only: [press: 3, type: 3]
+  import PhoenixTest.Playwright, only: [press: 3, type: 3, evaluate: 2, evaluate: 4]
   import Storyarn.IdeationFixtures
   import StoryarnWeb.E2EHelpers
 
@@ -178,6 +178,206 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
     |> assert_has(".canvas-note", count: 2)
 
     refute_has(peer, "[role=dialog]")
+  end
+
+  test "text undo survives the first autosave without replacing or duplicating its note", %{conn: conn} do
+    ctx = ideation_fixture()
+    browser = conn |> open_board(ctx) |> press("#brainstorming-canvas", "n")
+    browser = evaluate(browser, "window.firstNoteEditor = document.querySelector('[contenteditable=true]')")
+
+    browser =
+      browser
+      |> type("[contenteditable=true]", "One promise changes the city.")
+      |> persisted(1)
+
+    {:ok, [note]} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id)
+    assert note.body == "<p>One promise changes the city.</p>"
+    selector = "#canvas-note-#{note.id}"
+
+    browser
+    |> assert_has("#{selector} [contenteditable=true]", text: "One promise changes the city.")
+    |> press("#{selector} [contenteditable=true]", "ControlOrMeta+z")
+    |> assert_has("#{selector} [contenteditable=true] p.is-editor-empty")
+    |> assert_has(".canvas-note", count: 1)
+    |> evaluate(
+      "document.querySelector('[contenteditable=true]') === window.firstNoteEditor",
+      [],
+      &assert(&1 == true)
+    )
+    |> press("#{selector} [contenteditable=true]", "ControlOrMeta+Shift+z")
+    |> assert_has("#{selector} [contenteditable=true]", text: "One promise changes the city.")
+    |> assert_has(".canvas-note", count: 1)
+  end
+
+  test "duplicate persists without provenance and delete can undo and redo the same note", %{conn: conn} do
+    ctx = ideation_fixture()
+    original = canvas_note(ctx, "A door remembers its last visitor.", 0)
+    browser = conn |> open_board(ctx) |> select_note(original.id)
+    browser = browser |> press("#brainstorming-canvas", "ControlOrMeta+d") |> persisted(2)
+    {:ok, notes} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id)
+    copy = Enum.find(notes, &(&1.id != original.id))
+    assert copy.body == original.body
+    assert copy.source_idea_id == nil
+    assert copy.source_revision == nil
+    browser = browser |> visit(board_path(ctx)) |> assert_has(".canvas-note", count: 2) |> select_note(copy.id)
+    selector = "#canvas-note-#{copy.id}"
+
+    browser =
+      browser
+      |> press("#brainstorming-canvas", "Delete")
+      |> refute_has(selector)
+      |> persisted(1)
+      |> assert_has("#brainstorming-undo:not([disabled])")
+      |> press("#brainstorming-canvas", "ControlOrMeta+z")
+      |> assert_has(selector, text: "A door remembers its last visitor.")
+      |> persisted(2)
+      |> assert_has("#brainstorming-redo:not([disabled])")
+      |> press("#brainstorming-canvas", "ControlOrMeta+Shift+z")
+      |> refute_has(selector)
+      |> persisted(1)
+
+    assert_deleted(ctx, copy.id)
+    browser |> visit(board_path(ctx)) |> assert_has("#canvas-note-#{original.id}") |> refute_has(selector)
+  end
+
+  test "native copy cut and paste operate on selected notes and external text becomes a note", %{conn: conn} do
+    ctx = ideation_fixture()
+    original = canvas_note(ctx, "A map drawn from memories.", 0)
+    browser = conn |> open_board(ctx) |> select_note(original.id)
+
+    browser =
+      browser
+      |> press("#brainstorming-canvas", "ControlOrMeta+c")
+      |> press("#brainstorming-canvas", "ControlOrMeta+v")
+      |> persisted(2)
+      |> assert_has(".canvas-note", count: 2)
+      |> assert_has("#brainstorming-undo:not([disabled])")
+
+    {:ok, notes} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id)
+    copy = Enum.find(notes, &(&1.id != original.id))
+    assert copy.source_idea_id == nil
+
+    browser =
+      browser
+      |> press("#brainstorming-canvas", "ControlOrMeta+x")
+      |> refute_has("#canvas-note-#{copy.id}")
+      |> persisted(1)
+      |> assert_has("#brainstorming-undo:not([disabled])")
+      |> press("#brainstorming-canvas", "ControlOrMeta+v")
+      |> persisted(2)
+      |> assert_has(".canvas-note", count: 2)
+      |> assert_has("#brainstorming-undo:not([disabled])")
+      |> paste_external("The bridge forgets every name.")
+      |> persisted(3)
+      |> assert_has(".canvas-note", text: "The bridge forgets every name.")
+
+    assert_deleted(ctx, copy.id)
+    browser |> visit(board_path(ctx)) |> assert_has(".canvas-note", count: 3)
+  end
+
+  test "select all selects the canvas notes and Delete removes only the current author's notes", %{conn: conn} do
+    ctx = ideation_fixture()
+    first = canvas_note(ctx, "First own idea", -340)
+    second = canvas_note(ctx, "Second own idea", 0)
+    peer = canvas_note(ctx, "Another author's idea", 340, ctx.peer)
+
+    browser =
+      conn
+      |> open_board(ctx)
+      |> assert_has(".canvas-note", count: 3)
+      |> press("#brainstorming-canvas", "ControlOrMeta+a")
+      |> assert_has(".canvas-note[aria-selected=true]", count: 3)
+      |> press("#brainstorming-canvas", "Delete")
+      |> persisted(1)
+      |> assert_has(".canvas-note", count: 1)
+      |> assert_has("#canvas-note-#{peer.id}")
+
+    assert_deleted(ctx, first.id)
+    assert_deleted(ctx, second.id)
+    browser |> visit(board_path(ctx)) |> assert_has(".canvas-note", count: 1) |> assert_has("#canvas-note-#{peer.id}")
+  end
+
+  test "select all clipboard and Delete inside the editor affect text without changing the cards", %{conn: conn} do
+    ctx = ideation_fixture()
+    own = canvas_note(ctx, "Keep this text inside its note.", 0)
+    peer = canvas_note(ctx, "The other note stays unchanged.", 340, ctx.peer)
+    browser = open_board(conn, ctx)
+    selector = "#canvas-note-#{own.id}"
+    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: selector, clickCount: 2, timeout: 10_000)
+    editor = "#{selector} [contenteditable=true]"
+
+    browser =
+      browser
+      |> assert_has(editor)
+      |> press(editor, "ControlOrMeta+a")
+      |> press(editor, "ControlOrMeta+c")
+      |> press(editor, "Delete")
+      |> assert_has("#{editor} p.is-editor-empty")
+      |> assert_has(".canvas-note", count: 2)
+      |> press(editor, "ControlOrMeta+v")
+      |> assert_has(editor, text: "Keep this text inside its note.")
+      |> press(editor, "ControlOrMeta+a")
+      |> press(editor, "ControlOrMeta+x")
+      |> assert_has("#{editor} p.is-editor-empty")
+      |> assert_has(".canvas-note", count: 2)
+      |> press(editor, "ControlOrMeta+v")
+      |> assert_has(editor, text: "Keep this text inside its note.")
+      |> assert_has("#canvas-note-#{peer.id}", text: "The other note stays unchanged.")
+      |> assert_has(".canvas-note[aria-selected=true]", count: 1)
+      |> press(editor, "Escape")
+      |> persisted(2)
+
+    browser
+    |> assert_has(selector, text: "Keep this text inside its note.")
+    |> assert_has(".canvas-note", count: 2)
+  end
+
+  defp board_path(ctx) do
+    project = Repo.preload(ctx.project, :workspace)
+    "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming/#{ctx.session.id}"
+  end
+
+  defp open_board(conn, ctx) do
+    conn |> authenticate(ctx.author.user) |> visit(board_path(ctx)) |> assert_has("#brainstorming-canvas")
+  end
+
+  defp canvas_note(ctx, body, x, actor \\ nil) do
+    {:ok, note} =
+      Ideation.create_canvas_idea(
+        actor || ctx.author,
+        ctx.project.id,
+        ctx.session.id,
+        idea_attrs(%{body: "<p>#{body}</p>", canvas: %{"x" => x, "y" => 0, "width" => 280, "color" => "yellow"}})
+      )
+
+    note
+  end
+
+  defp select_note(browser, id) do
+    # The note footer is outside the Tiptap textbox and selects without entering text editing.
+    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "#canvas-note-#{id} footer", timeout: 10_000)
+    assert_has(browser, "#canvas-note-#{id}[aria-selected=true]")
+  end
+
+  defp persisted(browser, count) do
+    assert_has(browser, "#brainstorming-workspace[aria-busy=false][data-persisted-note-count='#{count}']")
+  end
+
+  defp paste_external(browser, text) do
+    evaluate(
+      browser,
+      """
+      text => {
+        const data = new DataTransfer();
+        data.setData("text/plain", text);
+        document.querySelector("#brainstorming-canvas").dispatchEvent(
+          new ClipboardEvent("paste", { clipboardData: data, bubbles: true, cancelable: true })
+        );
+      }
+      """,
+      [is_function: true, arg: text],
+      fn _ -> :ok end
+    )
   end
 
   defp assert_deleted(ctx, id, attempts \\ 100)

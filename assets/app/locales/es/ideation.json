@@ -52,11 +52,11 @@
     "bulletList": "Lista con viñetas",
     "orderedList": "Lista numerada",
     "quote": "Cita",
-    "stateHelp": "Cambiar el estado conserva la idea, su autoría y su historial. No cambia su publicación.",
+    "stateHelp": "Cambiar el estado conserva la idea y su autoría.",
     "save": "Guardar",
     "retry": "Reintentar",
     "conflictTitle": "Se guardó antes otro cambio",
-    "conflictHelp": "Tu texto se conserva arriba. Compáralo con la revisión guardada que aparece debajo antes de elegir. Ambos intentos quedan en el historial.",
+    "conflictHelp": "Tu texto se conserva arriba. Compáralo con el texto guardado que aparece abajo antes de elegir.",
     "currentVersion": "Revisión guardada actual",
     "useCurrent": "Usar revisión guardada",
     "saveMine": "Guardar mi texto",
@@ -64,12 +64,7 @@
     "privateHelp": "Solo tú puedes leer esta idea hasta que decidas compartirla.",
     "publishedHelp": "Los demás ven la revisión publicada {number}. Tus cambios posteriores son privados hasta que los publiques.",
     "publishRevision": "Publicar esta revisión",
-    "derive": "Desarrollar esta idea",
-    "source": "Origen · revisión {number}",
-    "history": "Historial de la idea",
-    "useText": "Usar este contenido como nueva revisión",
     "moreHistory": "Cargar entradas anteriores",
-    "recoveredConflict": "Intento en conflicto desde la revisión {number}",
     "newIdeaHelp": "Una pequeña contribución basta. El título es opcional; escribe la idea con tus palabras.",
     "createSharedHelp": "Esta idea se compartirá con los miembros del proyecto al crearla.",
     "assistedConsent": "Permitir que el facilitador o el propietario del proyecto publique esta idea.",
@@ -111,7 +106,7 @@
     "pendingDrafts": "Hay {count} borradores pendientes de guardar. Vuelve a su sesión para revisarlos.",
     "recoveredDrafts": "Texto conservado para recuperar",
     "recoveredDraftsHelp": "Copia el texto que quieras conservar en una idea nueva o existente después de comprobar la sesión actual. No se ha aplicado automáticamente.",
-    "archivedHelp": "Esta sesión está archivada. Puedes consultar sus ideas y su historial.",
+    "archivedHelp": "Esta sesión está archivada. Puedes consultar sus ideas.",
     "readOnly": "Tienes acceso de solo lectura.",
     "loading": "Cargando idea…",
     "sessionMissing": "Esta sesión ya no está activa",
@@ -136,7 +131,9 @@
       "invalid_canvas": "La posición no es válida.",
       "stale_canvas": "Otra persona ha movido esta nota. Se ha actualizado su posición.",
       "save_before_connect": "Escribe algo y espera a que se guarde la nota antes de conectarla.",
-      "session_private": "El facilitador controla la revelación de esta sesión."
+      "session_private": "El facilitador controla la revelación de esta sesión.",
+      "stale_deletion": "Esta eliminación ha cambiado. Actualiza el tablero antes de volver a intentarlo.",
+      "undo_unavailable": "No se ha podido completar la acción. La nota puede haber cambiado; actualiza el tablero o vuelve a intentarlo."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -146,7 +143,6 @@
       "conflict": "Revisa los cambios en conflicto"
     },
     "legacySnapshotHelp": "Los snapshots antiguos (formato 2) no contienen brainstorming. Solo se pueden restaurar si todas las sesiones están reemplazadas; se conserva el historial reemplazado.",
-    "moreConflicts": "Cargar conflictos anteriores",
     "canvas": {
       "label": "Canvas de brainstorming",
       "write": "Escribe tu idea…",
@@ -186,15 +182,20 @@
         "paper": "Papel"
       },
       "delete": "Eliminar nota",
-      "deleteHelp": "Eliminar nota · Supr / Retroceso. Se elimina del tablero; su historial queda conservado.",
+      "deleteHelp": "Eliminar nota · Supr / Retroceso",
       "discard": "Marcar como descartada",
       "privateMode": "Modo privado",
       "sharedMode": "Modo compartido",
       "startPrivate": "Activar modo privado para todos",
       "endPrivate": "Terminar modo privado y revelar para todos",
       "privateModeHelp": "Cada participante ve sus propias notas. El facilitador decide cuándo revelar las aportaciones.",
-      "sharedModeHelp": "Todos ven las aportaciones. El facilitador puede activar el modo privado para todos."
-    },
-    "conflicts": "Texto de conflictos anteriores"
+      "sharedModeHelp": "Todos ven las aportaciones. El facilitador puede activar el modo privado para todos.",
+      "duplicate": "Duplicar nota",
+      "duplicateHelp": "Duplicar · ⌘/Ctrl+D",
+      "undo": "Deshacer",
+      "redo": "Rehacer",
+      "undoHelp": "Deshacer · ⌘/Ctrl+Z",
+      "redoHelp": "Rehacer · ⇧⌘/Ctrl+Z"
+    }
   }
 }

@@ -52,11 +52,11 @@
     "bulletList": "Bullet list",
     "orderedList": "Numbered list",
     "quote": "Quote",
-    "stateHelp": "Changing state keeps the idea, its authorship and its history. It does not change publication.",
+    "stateHelp": "Changing state keeps the idea and its authorship.",
     "save": "Save",
     "retry": "Retry",
     "conflictTitle": "Another edit was saved first",
-    "conflictHelp": "Your text is kept above. Compare it with the current saved revision below before choosing. Both attempts remain in the history.",
+    "conflictHelp": "Your text is kept above. Compare it with the saved text below before choosing.",
     "currentVersion": "Current saved revision",
     "useCurrent": "Use saved revision",
     "saveMine": "Save my text instead",
@@ -64,12 +64,7 @@
     "privateHelp": "Only you can read this idea until you choose to share it.",
     "publishedHelp": "Others see published revision {number}. Your later edits stay private until published.",
     "publishRevision": "Publish this revision",
-    "derive": "Build on this idea",
-    "source": "Source · revision {number}",
-    "history": "Idea history",
-    "useText": "Use this content as a new revision",
     "moreHistory": "Load older entries",
-    "recoveredConflict": "Conflicting attempt from revision {number}",
     "newIdeaHelp": "A small contribution is enough. A title is optional; write the idea in your own words.",
     "createSharedHelp": "This idea will be shared with project members when you create it.",
     "assistedConsent": "Allow the facilitator or project owner to publish this idea.",
@@ -111,7 +106,7 @@
     "pendingDrafts": "{count} drafts still need saving. Return to their session to review them.",
     "recoveredDrafts": "Text kept for recovery",
     "recoveredDraftsHelp": "Copy the text you want to keep into a new or existing idea after checking the current session. It has not been applied automatically.",
-    "archivedHelp": "This session is archived. Its ideas and history are available to read.",
+    "archivedHelp": "This session is archived. You can read its ideas.",
     "readOnly": "You have read-only access.",
     "loading": "Loading idea…",
     "sessionMissing": "This session is no longer active",
@@ -136,7 +131,9 @@
       "invalid_canvas": "This canvas position is invalid.",
       "stale_canvas": "Someone else moved this note. Its position has been refreshed.",
       "save_before_connect": "Write something and let the note save before connecting it.",
-      "session_private": "The facilitator controls this session’s reveal."
+      "session_private": "The facilitator controls this session’s reveal.",
+      "stale_deletion": "This deletion has changed. Refresh the board before trying again.",
+      "undo_unavailable": "The action could not be completed. The note may have changed; refresh the board or retry."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -146,7 +143,6 @@
       "conflict": "Review conflicting changes"
     },
     "legacySnapshotHelp": "Older snapshots (format 2) have no brainstorming data. They can only be restored when all sessions are replaced; replaced history is kept.",
-    "moreConflicts": "Load older conflicts",
     "canvas": {
       "label": "Brainstorming canvas",
       "write": "Write your idea…",
@@ -186,15 +182,20 @@
         "paper": "Paper"
       },
       "delete": "Delete note",
-      "deleteHelp": "Delete note · Delete / Backspace. Removed from the board; its history is retained.",
+      "deleteHelp": "Delete note · Delete / Backspace",
       "discard": "Mark as discarded",
       "privateMode": "Private mode",
       "sharedMode": "Shared mode",
       "startPrivate": "Start private mode for everyone",
       "endPrivate": "End private mode and reveal to everyone",
       "privateModeHelp": "Each participant sees their own notes. The facilitator decides when to reveal contributions.",
-      "sharedModeHelp": "Everyone sees contributions. The facilitator can start private mode for everyone."
-    },
-    "conflicts": "Text from earlier conflicts"
+      "sharedModeHelp": "Everyone sees contributions. The facilitator can start private mode for everyone.",
+      "duplicate": "Duplicate note",
+      "duplicateHelp": "Duplicate · ⌘/Ctrl+D",
+      "undo": "Undo",
+      "redo": "Redo",
+      "undoHelp": "Undo · ⌘/Ctrl+Z",
+      "redoHelp": "Redo · ⇧⌘/Ctrl+Z"
+    }
   }
 }

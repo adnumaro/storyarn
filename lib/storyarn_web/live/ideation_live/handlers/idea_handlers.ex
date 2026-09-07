@@ -11,18 +11,19 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
     end
   end
 
-  def run("derive_idea", scope, project_id, session_id, params) do
-    with {:ok, id} <- Params.positive(params["idea_id"]),
-         {:ok, revision} <- Params.positive(params["revision"]),
-         {:ok, attrs} <- Params.creation(params) do
-      scope |> Ideation.derive_canvas_idea(project_id, session_id, id, revision, attrs) |> idea_result()
-    end
-  end
-
   def run("delete_idea", scope, project_id, session_id, params) do
     with {:ok, id} <- Params.positive(params["idea_id"]),
          {:ok, revision} <- Params.positive(params["revision"]) do
       Ideation.delete_idea(scope, project_id, session_id, id, revision)
+    end
+  end
+
+  def run("restore_idea", scope, project_id, session_id, params) do
+    with {:ok, id} <- Params.positive(params["idea_id"]),
+         {:ok, revision} <- Params.positive(params["revision"]) do
+      scope
+      |> Ideation.restore_idea(project_id, session_id, id, revision, params["deleted_at"])
+      |> idea_result()
     end
   end
 
@@ -54,38 +55,6 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
     end
   end
 
-  def run("inspect_idea", scope, project_id, session_id, params) do
-    with {:ok, id} <- Params.positive(params["idea_id"]),
-         {:ok, idea} <- Ideation.get_idea(scope, project_id, session_id, id),
-         {:ok, history} <- Ideation.list_idea_revisions(scope, project_id, session_id, id),
-         {:ok, conflicts} <- conflict_page(scope, project_id, session_id, idea, nil) do
-      {:ok,
-       %{
-         idea: BoardData.idea(idea),
-         history: history,
-         history_next: BoardData.page(history).next,
-         conflicts: conflicts.entries,
-         conflicts_next: conflicts.next
-       }}
-    end
-  end
-
-  def run("idea_history", scope, project_id, session_id, params) do
-    with {:ok, id} <- Params.positive(params["idea_id"]),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]),
-         {:ok, rows} <- Ideation.list_idea_revisions(scope, project_id, session_id, id, before_id: before_id) do
-      {:ok, BoardData.page(rows)}
-    end
-  end
-
-  def run("idea_conflicts", scope, project_id, session_id, params) do
-    with {:ok, id} <- Params.positive(params["idea_id"]),
-         {:ok, before_id} <- Params.optional_id(params["before_id"]),
-         {:ok, idea} <- Ideation.get_idea(scope, project_id, session_id, id) do
-      conflict_page(scope, project_id, session_id, idea, before_id)
-    end
-  end
-
   def run("prepare_reveal", scope, project_id, session_id, params) do
     with {:ok, selection} <- selection(params),
          {:ok, operation} <- Ideation.prepare_idea_reveal(scope, project_id, session_id, params["request_key"], selection) do
@@ -99,17 +68,6 @@ defmodule StoryarnWeb.IdeationLive.Handlers.IdeaHandlers do
     with {:ok, id} <- Params.positive(params["operation_id"]),
          {:ok, operation} <- Ideation.reveal_ideas(scope, project_id, session_id, id) do
       {:ok, %{id: operation.id, count: length(operation.manifest), status: operation.status}}
-    end
-  end
-
-  defp conflict_page(scope, project_id, session_id, idea, before_id) do
-    if idea.author_id == scope.user.id do
-      with {:ok, rows} <- Ideation.list_idea_conflicts(scope, project_id, session_id, idea.id, before_id: before_id) do
-        page = BoardData.page(rows)
-        {:ok, %{page | entries: Enum.reject(rows, &Replies.equivalent?(&1.attempted, idea))}}
-      end
-    else
-      {:ok, BoardData.page([])}
     end
   end
 

@@ -1,5 +1,5 @@
 import { computed, onUnmounted, reactive, watch } from "vue";
-import { useIdeaDrafts } from "./useIdeaDrafts";
+import { useIdeaDrafts, type Draft } from "./useIdeaDrafts";
 import type {
   Board,
   BoardContext,
@@ -24,6 +24,12 @@ interface PlacementAttempt {
   key: string;
   version: number;
 }
+export interface RemovedNote {
+  id: number;
+  revision: number;
+  deleted_at: string | null;
+  idea: Idea;
+}
 export function useCanvasNotes(
   board: () => Board,
   request: Request,
@@ -39,8 +45,11 @@ export function useCanvasNotes(
   const deleteRequests = reactive(new Set<number>());
   const errors = reactive(new Map<number, string>());
   const timers = new Map<number, ReturnType<typeof setTimeout>>();
-  const moving = new Set<number>();
+  const moving = reactive(new Set<number>());
   const attempts = new Map<number, PlacementAttempt>();
+  const keys = new Map<number, string>();
+  const aliases = new Map<number, number>();
+  const deletions = new Map<number, RemovedNote>();
   let nextId = -1,
     generation = 0;
   const notes = computed(() => {
@@ -57,32 +66,44 @@ export function useCanvasNotes(
         canvas: { ...idea.canvas, ...placements.get(idea.id) },
       }));
   });
-  function add(point: Point, color = "yellow", source?: Idea): number {
+  function resolveId(id: number): number {
+    while (aliases.has(id)) id = aliases.get(id)!;
+    return id;
+  }
+  function key(id: number): string {
+    return keys.get(resolveId(id)) ?? String(id);
+  }
+  function find(id: number): Idea | undefined {
+    return notes.value.find((note) => note.id === resolveId(id));
+  }
+  function add(
+    point: CanvasPlacement & Point,
+    color = "yellow",
+    seed?: Partial<IdeaContent>,
+  ): number {
     const id = nextId--;
-    const initial = source ?? {
+    const initial: Partial<IdeaContent> = seed ?? {
       title: null,
       body: "<p></p>",
-      preview: "",
-      id: null,
-      revision: null,
     };
     const idea: Idea = {
       id,
       session_id: board().session!.id,
       author_id: board().current_user_id,
       author_kind: "human",
-      title: initial.title,
-      body: initial.body,
-      preview: initial.preview,
-      state: "active",
+      title: initial.title ?? null,
+      body: initial.body ?? "<p></p>",
+      preview: "",
+      state: initial.state ?? "active",
       visibility: board().session?.configuration.private_mode ? "private" : "shared",
       revision: 0,
       published_revision: null,
-      source_idea_id: initial.id,
-      source_revision: initial.revision,
+      source_idea_id: null,
+      source_revision: null,
       inserted_at: new Date().toISOString(),
-      canvas: { ...point, width: 280, color },
+      canvas: { width: 280, color, ...point },
     };
+    keys.set(id, crypto.randomUUID());
     newNotes.set(id, {
       idea,
       key: crypto.randomUUID(),
@@ -116,15 +137,13 @@ export function useCanvasNotes(
     const snapshot = entry.attempt ?? { ...entry.idea, canvas: { ...entry.idea.canvas } };
     entry.attempt = snapshot;
     const reply = await request<Idea>(
-      entry.idea.source_idea_id ? "derive_idea" : "create_idea",
+      "create_idea",
       {
         request_key: entry.key,
         title: snapshot.title,
         body: snapshot.body,
         configuration_version: entry.version,
         canvas: snapshot.canvas,
-        idea_id: snapshot.source_idea_id,
-        revision: snapshot.source_revision,
       },
       entry.context,
     );
@@ -139,6 +158,8 @@ export function useCanvasNotes(
     }
   }
   function acceptCreated(id: number, entry: NewNote, snapshot: Idea, idea: Idea) {
+    keys.set(idea.id, key(id));
+    aliases.set(id, idea.id);
     created.set(idea.id, idea);
     drafts.open(idea);
     if (entry.idea.body !== snapshot.body || entry.idea.state !== snapshot.state)
@@ -152,6 +173,7 @@ export function useCanvasNotes(
     if (deleteRequests.has(idea.id)) void flushDelete(idea.id);
   }
   async function save(id: number) {
+    id = resolveId(id);
     const entry = newNotes.get(id);
     if (
       entry &&
@@ -168,38 +190,101 @@ export function useCanvasNotes(
     if (id < 0) await saveNew(id);
     else await drafts.save(id);
   }
-  async function remove(id: number) {
-    const entry = newNotes.get(id);
-    if (entry) {
-      clearTimeout(timers.get(id));
-      timers.delete(id);
-      if (entry.pending || entry.attempt) {
-        deleteRequests.add(id);
-        if (!entry.pending) await saveNew(id);
-      } else {
-        newNotes.delete(id);
-        errors.delete(id);
-      }
-      return;
+  function idle(id: number): Promise<void> {
+    const pending = () => {
+      const current = resolveId(id);
+      return (
+        newNotes.get(current)?.pending ||
+        moving.has(current) ||
+        deleting.has(current) ||
+        drafts.drafts.get(current)?.status === "saving"
+      );
+    };
+    if (!pending()) return Promise.resolve();
+    return new Promise((resolve) => {
+      const stop = watch(
+        pending,
+        (busy) => {
+          if (!busy) {
+            stop();
+            resolve();
+          }
+        },
+        { flush: "post" },
+      );
+    });
+  }
+  async function settle(id: number): Promise<boolean> {
+    const started = generation;
+    await idle(id);
+    if (started !== generation) return false;
+    const local = newNotes.get(resolveId(id));
+    if (local && !local.attempt && !local.idea.body.replace(/<[^>]*>/g, "").trim()) return true;
+    await save(resolveId(id));
+    await idle(id);
+    if (started !== generation) return false;
+    id = resolveId(id);
+    if (newNotes.has(id) || !find(id)) return false;
+    return settleDraft(id, started);
+  }
+  async function settleDraft(id: number, started: number): Promise<boolean> {
+    if (drafts.drafts.get(id)?.status === "unsaved") {
+      await drafts.save(id);
+      await idle(id);
+      if (started !== generation) return false;
     }
+    const draft = drafts.drafts.get(id);
+    // A rejected old placement must not block an unrelated content operation.
+    // Uncertain placement writes still need reconciliation before proceeding.
+    return (!draft || draft.status === "saved") && !attempts.has(id);
+  }
+  async function remove(id: number): Promise<RemovedNote | null> {
+    const started = generation;
+    await idle(id);
+    if (started !== generation) return null;
+    id = resolveId(id);
+    const entry = newNotes.get(id);
+    if (entry) return removeNew(id, entry, started);
     const note = notes.value.find((n) => n.id === id);
-    if (!note || note.author_id !== board().current_user_id) return;
+    if (!note || note.author_id !== board().current_user_id) return null;
     open(note);
     deleteRequests.add(id);
     await drafts.save(id);
+    await idle(id);
+    if (started !== generation) return null;
     await flushDelete(id);
+    await idle(id);
+    return started === generation ? (deletions.get(id) ?? null) : null;
+  }
+  async function removeNew(
+    id: number,
+    entry: NewNote,
+    started: number,
+  ): Promise<RemovedNote | null> {
+    clearTimeout(timers.get(id));
+    timers.delete(id);
+    if (entry.attempt) {
+      await saveNew(id);
+      if (started !== generation || newNotes.has(id)) return null;
+      return remove(resolveId(id));
+    }
+    const result = { id, revision: 0, deleted_at: null, idea: { ...entry.idea } };
+    newNotes.delete(id);
+    errors.delete(id);
+    return result;
+  }
+  function deletableDraft(draft: Draft): boolean {
+    // Invalid local text (including an emptied note) cannot prevent deletion.
+    // A validation rejection made no write; uncertain saves must still reconcile.
+    return draft.status === "saved" || (draft.status === "error" && draft.error === "validation");
   }
   async function flushDelete(id: number) {
     const draft = drafts.drafts.get(id);
     if (!deleteRequests.has(id) || deleting.has(id) || !draft) return;
-    // Invalid local text (including an emptied note) cannot prevent deletion.
-    // A validation rejection made no write; uncertain saves must still reconcile.
-    const settled =
-      draft.status === "saved" || (draft.status === "error" && draft.error === "validation");
-    if (!settled) return;
+    if (!deletableDraft(draft)) return;
     deleting.add(id);
     const started = generation;
-    const reply = await request<{ id: number }>(
+    const reply = await request<{ id: number; revision: number; deleted_at: string }>(
       "delete_idea",
       { idea_id: id, revision: draft.idea.revision },
       draft.context,
@@ -207,6 +292,7 @@ export function useCanvasNotes(
     if (started !== generation) return;
     deleting.delete(id);
     if (reply.status === "ok") {
+      deletions.set(id, { ...reply.value, idea: { ...draft.idea, canvas: find(id)?.canvas } });
       removed.add(id);
       deleteRequests.delete(id);
       errors.delete(id);
@@ -214,7 +300,37 @@ export function useCanvasNotes(
       drafts.drafts.delete(id);
     } else errors.set(id, reply.status === "error" ? reply.code : "unavailable");
   }
+  async function restore(deletion: RemovedNote): Promise<number | null> {
+    if (!deletion.deleted_at) {
+      const previous = deletion.idea;
+      const id = add(
+        { x: previous.canvas?.x ?? 0, y: previous.canvas?.y ?? 0, ...previous.canvas },
+        previous.canvas?.color,
+        previous,
+      );
+      aliases.set(deletion.id, id);
+      return id;
+    }
+    const started = generation;
+    const reply = await request<Idea>("restore_idea", {
+      idea_id: deletion.id,
+      revision: deletion.revision,
+      deleted_at: deletion.deleted_at,
+    });
+    if (started !== generation) return null;
+    if (reply.status !== "ok") {
+      errors.set(deletion.id, reply.status === "error" ? reply.code : "unavailable");
+      return null;
+    }
+    removed.delete(reply.value.id);
+    deletions.delete(reply.value.id);
+    errors.delete(reply.value.id);
+    created.set(reply.value.id, reply.value);
+    drafts.open(reply.value);
+    return reply.value.id;
+  }
   function move(id: number, canvas: CanvasPlacement) {
+    id = resolveId(id);
     const entry = newNotes.get(id);
     if (entry) {
       entry.idea.canvas = { ...entry.idea.canvas, ...canvas };
@@ -291,6 +407,9 @@ export function useCanvasNotes(
     errors.clear();
     moving.clear();
     attempts.clear();
+    keys.clear();
+    aliases.clear();
+    deletions.clear();
   }
   watch(
     () => board().ideas,
@@ -329,5 +448,10 @@ export function useCanvasNotes(
     reset,
     newNotes,
     remove,
+    restore,
+    settle,
+    resolveId,
+    key,
+    find,
   };
 }

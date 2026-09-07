@@ -70,7 +70,7 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
 
     Sandbox.unboxed_run(Repo, fn ->
       {:ok, current} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
-      {:ok, [conflict]} = Ideation.list_idea_conflicts(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
+      {:error, {:edit_conflict, conflict}} = Enum.find(results, &match?({:error, {:edit_conflict, _}}, &1))
       assert Enum.sort([current.body, conflict.attempted.body]) == ["First contender", "Second contender"]
       assert current.revision == 2
       assert Repo.aggregate(from(r in Revision, where: r.idea_id == ^ctx.idea.id), :count) == 2
@@ -79,6 +79,28 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
 
       assert {:error, {:edit_conflict, ^conflict}} =
                Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1, losing_request)
+    end)
+  end
+
+  test "simultaneous undo retries restore one head and stale deletes cannot remove it", ctx do
+    deleted =
+      Sandbox.unboxed_run(Repo, fn ->
+        {:ok, deleted} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1)
+        deleted
+      end)
+
+    undo = fn ->
+      Ideation.restore_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1, deleted.deleted_at)
+    end
+
+    [{:ok, first}, {:ok, second}] = race([undo, undo])
+    assert first == second
+    assert first.revision == 2
+
+    Sandbox.unboxed_run(Repo, fn ->
+      assert {:error, :stale_revision} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id, 1)
+      assert {:ok, %{revision: 2}} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, ctx.idea.id)
+      assert Repo.aggregate(from(r in Revision, where: r.idea_id == ^ctx.idea.id), :count) == 2
     end)
   end
 

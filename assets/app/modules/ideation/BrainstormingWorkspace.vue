@@ -3,8 +3,7 @@ import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   StickyNote,
   Plus,
-  History,
-  GitBranch,
+  Copy,
   Archive,
   Trash2,
   CircleX,
@@ -20,24 +19,23 @@ import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
 import SessionDialog from "./components/SessionDialog.vue";
-import IdeaHistory from "./components/IdeaHistory.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
 import { useBoardConnection } from "./composables/useBoardConnection";
-import { useCanvasNotes } from "./composables/useCanvasNotes";
+import { useCanvasNotes, type RemovedNote } from "./composables/useCanvasNotes";
+import { useCanvasHistory, type CanvasCommand } from "./composables/useCanvasHistory";
+import { readNotes, writeNotes, type NoteCopy } from "./lib/clipboard";
 import { useBoardText } from "./composables/useBoardText";
 import { notePosition } from "./lib/placement";
 import type { Point } from "./composables/useCanvasViewport";
-import type { Board, Idea, Inspection, HistoryPage, IdeaRevision, EditReceipt } from "./types";
+import type { Board, Idea, IdeaContent, CanvasPlacement } from "./types";
 const { board, baseUrl } = defineProps<{ board: Board; baseUrl: string }>();
 const { t, error, options, member } = useBoardText();
-const selected = ref<number | null>(null),
-  editing = ref<number | null>(null);
+const selectedIds = ref<number[]>([]);
+const selected = computed(() => selectedIds.value[0] ?? null);
+const editing = ref<number | null>(null);
 const settings = ref(false),
-  list = ref(false),
-  historyOpen = ref(false);
-const inspection = ref<Inspection | null>(null),
-  inspecting = ref(false);
+  list = ref(false);
 const failure = ref<string | null>(null),
   resetNotice = ref(false),
   starting = ref(false);
@@ -49,7 +47,7 @@ const notes = useCanvasNotes(
   request,
   context,
   (from, to) => {
-    if (selected.value === from) selected.value = to;
+    selectedIds.value = selectedIds.value.map((id) => (id === from ? to : id));
     if (editing.value === from) editing.value = to;
   },
 );
@@ -73,16 +71,18 @@ const colors = [
   { id: "violet", value: "#e2d5f4" },
   { id: "paper", value: "#f4f1e9" },
 ];
-let inspectionGeneration = 0,
-  headerEvent: number | undefined;
+const history = useCanvasHistory(() => {
+  failure.value = "undo_unavailable";
+});
+let editingBefore: Idea | undefined;
+let headerEvent: number | undefined;
 function reset(reason: string) {
   notes.reset(reason !== "access_changed");
-  selected.value = null;
+  selectedIds.value = [];
   editing.value = null;
   settings.value = false;
-  historyOpen.value = false;
-  inspection.value = null;
-  inspectionGeneration++;
+  history.clear();
+  editingBefore = undefined;
   resetNotice.value = reason !== "access_changed" && notes.drafts.recovered.value.length > 0;
 }
 async function locate(note: Idea) {
@@ -93,67 +93,300 @@ async function locate(note: Idea) {
   edit(note.id);
 }
 function finish() {
-  if (editing.value !== null) void notes.save(editing.value);
+  const id = editing.value;
+  const before = editingBefore;
   editing.value = null;
+  editingBefore = undefined;
+  if (id === null) return;
+  const after = notes.find(id);
+  void notes.save(id);
+  if (
+    before &&
+    before.revision > 0 &&
+    after &&
+    before.body !== after.body &&
+    after.body.replace(/<[^>]*>/g, "").trim()
+  ) {
+    history.push(contentCommand(id, { body: before.body }, { body: after.body }));
+  }
 }
-function select(id: number | null) {
-  if (id !== selected.value) finish();
-  selected.value = id;
-  historyOpen.value = false;
-  inspectionGeneration++;
+function select(ids: number[] | number | null) {
+  const next = typeof ids === "number" ? [ids] : (ids ?? []);
+  if (next.length !== 1 || next[0] !== selected.value) finish();
+  selectedIds.value = next;
 }
-function add(point: Point, source?: Idea) {
-  if (!writable.value) return;
+function presenceCommand(
+  id: number,
+  initiallyCreated: boolean,
+  deletion?: RemovedNote,
+): CanvasCommand {
+  const initial = notes.find(id);
+  const at = context();
+  const valid = () => at.epoch === board.epoch && at.session_id === board.session?.id;
+  let removed = deletion;
+  async function hide() {
+    if (!valid()) return false;
+    const result = await notes.remove(id);
+    if (!result) {
+      // Finishing an untouched local note already cancels it, without a server
+      // deletion. Its creation is still safely undoable/redoable in this session.
+      if (!initiallyCreated || !initial || notes.resolveId(id) >= 0 || notes.find(id)) return false;
+      removed = { id: notes.resolveId(id), revision: 0, deleted_at: null, idea: initial };
+      select([]);
+      return true;
+    }
+    removed = result;
+    select([]);
+    return true;
+  }
+  async function show() {
+    if (!removed || !valid()) return false;
+    const restored = await notes.restore(removed);
+    if (restored === null) return false;
+    id = restored;
+    select(id);
+    return true;
+  }
+  return initiallyCreated ? { undo: hide, redo: show } : { undo: show, redo: hide };
+}
+function contentCommand(
+  id: number,
+  before: Partial<IdeaContent>,
+  after: Partial<IdeaContent>,
+): CanvasCommand {
+  async function apply(expected: Partial<IdeaContent>, value: Partial<IdeaContent>) {
+    if (!(await notes.settle(id))) return false;
+    const note = notes.find(id);
+    if (
+      !note ||
+      Object.entries(expected).some(([key, value]) => note[key as keyof IdeaContent] !== value)
+    )
+      return false;
+    notes.open(note);
+    notes.drafts.change(note.id, value);
+    const saved = await notes.settle(note.id);
+    if (saved) select(note.id);
+    return saved;
+  }
+  return { undo: () => apply(after, before), redo: () => apply(before, after) };
+}
+function add(point: Point) {
+  if (!writable.value || history.busy.value) return;
   finish();
-  const id = notes.add(point, current.value?.canvas?.color, source);
-  selected.value = id;
+  const id = notes.add(point, current.value?.canvas?.color);
+  history.push(presenceCommand(id, true));
+  selectedIds.value = [id];
   editing.value = id;
 }
 function edit(id: number) {
-  const note = notes.notes.value.find((n) => n.id === id);
-  if (!note || !writable.value || note.author_id !== board.current_user_id) return;
+  const note = notes.find(id);
+  if (!note || !writable.value || history.busy.value || note.author_id !== board.current_user_id)
+    return;
+  if (editing.value === id) return;
   select(id);
   notes.open(note);
+  editingBefore = { ...note };
   editing.value = id;
 }
-function move(id: number, point: Point) {
-  const note = notes.notes.value.find((n) => n.id === id);
-  notes.move(id, {
-    ...point,
-    width: note?.canvas?.width ?? 280,
-    color: note?.canvas?.color ?? "yellow",
-  });
+function placementCommand(
+  id: number,
+  before: CanvasPlacement,
+  after: CanvasPlacement,
+): CanvasCommand {
+  async function apply(expected: CanvasPlacement, value: CanvasPlacement) {
+    if (!(await notes.settle(id))) return false;
+    const note = notes.find(id);
+    if (
+      !note ||
+      Object.entries(expected).some(
+        ([key, value]) => note.canvas?.[key as keyof CanvasPlacement] !== value,
+      )
+    )
+      return false;
+    notes.move(note.id, value);
+    if (!(await notes.settle(note.id))) return false;
+    const saved = notes.find(note.id)?.canvas;
+    return Object.entries(value).every(
+      ([key, value]) => saved?.[key as keyof CanvasPlacement] === value,
+    );
+  }
+  return { undo: () => apply(after, before), redo: () => apply(before, after) };
+}
+function group(commands: CanvasCommand[]): CanvasCommand {
+  // Track completed members so retrying an interrupted batch never repeats them.
+  let applied = commands.length;
+  return {
+    undo: async () => {
+      while (applied > 0) {
+        if (!(await commands[applied - 1].undo())) return false;
+        applied--;
+      }
+      return true;
+    },
+    redo: async () => {
+      while (applied < commands.length) {
+        if (!(await commands[applied].redo())) return false;
+        applied++;
+      }
+      return true;
+    },
+  };
+}
+function move(moves: Array<{ id: number; point: Point }>) {
+  if (!writable.value || history.busy.value) return;
+  finish();
+  const commands: CanvasCommand[] = [];
+  for (const { id, point } of moves) {
+    const note = notes.find(id);
+    if (!note) continue;
+    const before = notePosition(note);
+    if (before.x === point.x && before.y === point.y) continue;
+    notes.move(id, point);
+    commands.push(placementCommand(id, before, point));
+  }
+  if (commands.length) history.push(group(commands));
 }
 function color(value: string) {
-  if (!current.value) return;
-  notes.move(current.value.id, {
-    ...notePosition(current.value),
-    width: current.value.canvas?.width ?? 280,
-    color: value,
-  });
+  if (!current.value || history.busy.value) return;
+  const before = current.value.canvas?.color ?? "yellow";
+  if (before === value) return;
+  const id = current.value.id;
+  notes.move(id, { color: value });
+  history.push(placementCommand(id, { color: before }, { color: value }));
 }
-function remove(id: number) {
-  const note = notes.notes.value.find((n) => n.id === id);
-  if (!writable.value || !note || note.author_id !== board.current_user_id) return;
-  void notes.remove(id);
-  editing.value = null;
-  historyOpen.value = false;
+async function remove(ids: number[]) {
+  if (!writable.value || history.busy.value) return;
+  finish();
+  const at = context();
+  const commands = await history.run(async () => {
+    const commands: CanvasCommand[] = [];
+    for (const id of ids) {
+      if (at.epoch !== board.epoch || at.session_id !== board.session?.id) break;
+      const note = notes.find(id);
+      if (note?.author_id !== board.current_user_id) continue;
+      const deletion = await notes.remove(id);
+      if (deletion) commands.push(presenceCommand(id, false, deletion));
+    }
+    return commands;
+  });
+  if (commands?.length) {
+    history.push(group(commands));
+    select([]);
+  }
 }
 function changeState(value: "active" | "parked" | "discarded") {
-  if (!current.value || !own.value) return;
-  notes.open(current.value);
-  notes.drafts.change(current.value.id, { state: value });
-  void notes.save(current.value.id);
-  selected.value = null;
-  editing.value = null;
+  if (!current.value || !own.value || history.busy.value) return;
+  finish();
+  const note = current.value;
+  notes.open(note);
+  notes.drafts.change(note.id, { state: value });
+  void notes.save(note.id);
+  history.push(contentCommand(note.id, { state: note.state }, { state: value }));
+  select([]);
+}
+async function setConnection(source: number, target: number, connected: boolean) {
+  const reply = await request("connect_ideas", {
+    source_id: notes.resolveId(source),
+    target_id: notes.resolveId(target),
+    connected,
+  });
+  if (reply.status !== "ok") {
+    failure.value = reply.status === "error" ? reply.code : "unavailable";
+    return false;
+  }
+  return true;
 }
 async function connect(source: number, target: number, connected: boolean) {
   if (source < 0 || target < 0) {
     failure.value = "save_before_connect";
     return;
   }
-  const reply = await request("connect_ideas", { source_id: source, target_id: target, connected });
-  if (reply.status === "error") failure.value = reply.code;
+  if (!writable.value || history.busy.value) return;
+  if (Boolean(notes.find(source)?.canvas?.links?.includes(target)) === connected) return;
+  finish();
+  await history.run(() => setConnection(source, target, connected));
+}
+function selectedNotes(ids: number[]) {
+  return visible.value.filter((note) => ids.includes(note.id));
+}
+function copy(event: ClipboardEvent, ids: number[]) {
+  writeNotes(event, selectedNotes(ids));
+}
+function cut(event: ClipboardEvent, ids: number[]) {
+  if (!writable.value || history.busy.value) return;
+  const owned = selectedNotes(ids).filter((note) => note.author_id === board.current_user_id);
+  if (writeNotes(event, owned)) void remove(owned.map((note) => note.id));
+}
+async function insert(copies: NoteCopy[], point: Point) {
+  if (!writable.value || history.busy.value || !copies.length) return;
+  finish();
+  const at = context();
+  const valid = () => at.epoch === board.epoch && at.session_id === board.session?.id;
+  const minX = Math.min(...copies.map((note) => note.canvas.x ?? 0));
+  const minY = Math.min(...copies.map((note) => note.canvas.y ?? 0));
+  const ids = copies.map((copy) =>
+    notes.add(
+      {
+        ...copy.canvas,
+        x: point.x + (copy.canvas.x ?? 0) - minX,
+        y: point.y + (copy.canvas.y ?? 0) - minY,
+      },
+      copy.canvas.color,
+      copy,
+    ),
+  );
+  history.push(group(ids.map((id) => presenceCommand(id, true))));
+  select(ids);
+  canvas.value?.focus();
+  await history.run(async () => {
+    for (const id of ids) {
+      if (!valid()) return;
+      await notes.settle(id);
+    }
+    for (let index = 0; index < copies.length; index++) {
+      for (const target of copies[index].connections ?? []) {
+        if (!valid()) return;
+        if (notes.resolveId(ids[index]) > 0 && notes.resolveId(ids[target]) > 0)
+          await setConnection(ids[index], ids[target], true);
+      }
+    }
+  });
+}
+function duplicate(ids: number[]) {
+  const originals = selectedNotes(ids);
+  if (!originals.length) return;
+  const copies = originals.map(
+    (note): NoteCopy => ({
+      title: note.title,
+      body: note.body,
+      canvas: { ...note.canvas, ...notePosition(note), links: undefined },
+      connections: (note.canvas?.links ?? [])
+        .map((id) => originals.findIndex((n) => n.id === id))
+        .filter((index) => index >= 0),
+    }),
+  );
+  void insert(copies, {
+    x: Math.min(...originals.map((note) => notePosition(note).x)) + 40,
+    y: Math.min(...originals.map((note) => notePosition(note).y)) + 40,
+  });
+}
+function paste(event: ClipboardEvent, point: Point) {
+  if (!writable.value || history.busy.value) return;
+  const copies = readNotes(event);
+  if (copies?.length) {
+    event.preventDefault();
+    void insert(copies, point);
+  }
+}
+function undo() {
+  finish();
+  void history.undo();
+  canvas.value?.focus();
+}
+function redo() {
+  finish();
+  void history.redo();
+  canvas.value?.focus();
 }
 async function startSession() {
   if (starting.value) return;
@@ -167,45 +400,6 @@ async function startSession() {
   if (reply.status === "error" && reply.code === "offline")
     failure.value = "session_creation_unknown";
   else starting.value = false;
-}
-async function history(more = false) {
-  if (selected.value === null || selected.value < 0) return;
-  const generation = ++inspectionGeneration;
-  historyOpen.value = true;
-  inspecting.value = true;
-  const reply = more
-    ? await request<HistoryPage<IdeaRevision>>("idea_history", {
-        idea_id: selected.value,
-        before_id: inspection.value?.history_next,
-      })
-    : await request<Inspection>("inspect_idea", { idea_id: selected.value });
-  if (generation !== inspectionGeneration) return;
-  inspecting.value = false;
-  if (reply.status === "ok") {
-    appendHistory(reply.value);
-  } else failure.value = reply.status === "error" ? reply.code : "unavailable";
-}
-async function moreConflicts() {
-  if (!inspection.value || selected.value === null) return;
-  const generation = ++inspectionGeneration;
-  inspecting.value = true;
-  const reply = await request<HistoryPage<EditReceipt>>("idea_conflicts", {
-    idea_id: selected.value,
-    before_id: inspection.value.conflicts_next,
-  });
-  if (generation !== inspectionGeneration) return;
-  inspecting.value = false;
-  if (reply.status === "ok" && inspection.value) {
-    inspection.value.conflicts.push(...reply.value.entries);
-    inspection.value.conflicts_next = reply.value.next;
-  } else if (reply.status === "error") failure.value = reply.code;
-}
-function appendHistory(value: Inspection | HistoryPage<IdeaRevision>) {
-  if ("idea" in value) inspection.value = value;
-  else if (inspection.value) {
-    inspection.value.history.push(...value.entries);
-    inspection.value.history_next = value.next;
-  }
 }
 watch(
   () => board.session?.id,
@@ -225,9 +419,7 @@ watch(
 watch(
   () => board.session?.configuration.private_mode,
   () => {
-    historyOpen.value = false;
-    inspection.value = null;
-    inspectionGeneration++;
+    history.clear();
     if (current.value && current.value.author_id !== board.current_user_id) select(null);
   },
 );
@@ -315,10 +507,17 @@ onUnmounted(() => {
     </DashboardContent>
     <div v-else class="relative min-h-0 flex-1">
       <BrainstormingCanvas
-        v-if="!list"
+        v-show="!list"
         ref="canvas"
         :key="`${board.epoch}:${board.session.id}`"
         :notes="visible"
+        :note-key="notes.key"
+        :selected-ids="selectedIds"
+        :history-state="{
+          canUndo: history.canUndo.value,
+          canRedo: history.canRedo.value,
+          busy: history.busy.value,
+        }"
         :selected-id="selected"
         :editing-id="editing"
         :writable="writable"
@@ -333,6 +532,12 @@ onUnmounted(() => {
         @move="move"
         @connect="connect"
         @remove="remove"
+        @duplicate="duplicate"
+        @copy="copy"
+        @cut="cut"
+        @paste="paste"
+        @undo="undo"
+        @redo="redo"
         @list="list = true"
       >
         <template #session>
@@ -367,32 +572,17 @@ onUnmounted(() => {
                     :aria-pressed="current.canvas?.color === item.id"
                     @click="color(item.id)" /></PopoverContent></Popover
             ></template>
-            <ToolbarTooltip v-if="current.id > 0" :label="t('ideation.history')"
-              ><button
+            <ToolbarTooltip v-if="writable" :label="t('ideation.canvas.duplicateHelp')">
+              <button
                 type="button"
                 class="toolbar-btn"
-                :aria-label="t('ideation.history')"
-                @click="history()"
+                :aria-label="t('ideation.canvas.duplicate')"
+                :disabled="history.busy.value"
+                @click="duplicate(selectedIds)"
               >
-                <History class="size-3.5" /></button
-            ></ToolbarTooltip>
-            <ToolbarTooltip v-if="writable" :label="t('ideation.derive')"
-              ><button
-                type="button"
-                class="toolbar-btn"
-                :aria-label="t('ideation.derive')"
-                @click="
-                  add(
-                    {
-                      x: notePosition(current).x + (current.canvas?.width ?? 280) + 50,
-                      y: notePosition(current).y,
-                    },
-                    current,
-                  )
-                "
-              >
-                <GitBranch class="size-3.5" /></button
-            ></ToolbarTooltip>
+                <Copy class="size-3.5" />
+              </button>
+            </ToolbarTooltip>
             <Popover v-if="current.canvas?.links?.length"
               ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.connections')"
                 ><Unplug class="size-3.5" /></PopoverTrigger
@@ -446,7 +636,7 @@ onUnmounted(() => {
                   class="toolbar-btn"
                   :aria-label="t('ideation.canvas.delete')"
                   :disabled="notes.deleting.has(current.id)"
-                  @click="remove(current.id)"
+                  @click="remove(selectedIds)"
                 >
                   <Trash2 class="size-3.5" /></button></ToolbarTooltip
             ></template>
@@ -476,7 +666,7 @@ onUnmounted(() => {
           </div>
         </template>
       </BrainstormingCanvas>
-      <div v-else class="h-full overflow-auto p-4 lg:p-6">
+      <div v-if="list" class="h-full overflow-auto p-4 lg:p-6">
         <DashboardContent
           :title="board.session.title"
           :subtitle="board.session.objective ?? undefined"
@@ -544,23 +734,6 @@ onUnmounted(() => {
       @changed="
         settings = false;
         sync();
-      "
-    />
-    <IdeaHistory
-      v-if="historyOpen"
-      :inspection="inspection"
-      :loading="inspecting"
-      :can-edit="own && writable"
-      @close="
-        historyOpen = false;
-        inspectionGeneration++;
-      "
-      @more="history(true)"
-      @more-conflicts="moreConflicts"
-      @restore="
-        current && notes.open(current);
-        selected !== null && notes.drafts.change(selected, $event);
-        historyOpen = false;
       "
     />
   </div>

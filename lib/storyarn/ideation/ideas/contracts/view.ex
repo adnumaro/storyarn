@@ -35,10 +35,6 @@ defmodule Storyarn.Ideation.Ideas.View do
     end
   end
 
-  def revision(revision) do
-    Map.take(revision, [:number, :actor_id, :title, :body, :state, :inserted_at])
-  end
-
   def edit(edit) do
     receipt = Map.take(edit, [:id, :idea_id, :request_key, :outcome, :base_revision, :result_revision, :inserted_at])
 

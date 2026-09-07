@@ -8,6 +8,7 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Publication
   alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Recovery.Capsule
@@ -124,7 +125,15 @@ defmodule Storyarn.Ideation.RecoveryTest do
              Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, shared.id, 1, conflict_attrs)
 
     attrs = idea_attrs(%{body: "<p>Derived privately</p>"})
-    assert {:ok, derived} = Ideation.derive_idea(ctx.author, ctx.project.id, ctx.session.id, shared.id, 1, attrs)
+    # Simulate provenance written by the former derivation feature. Existing capsules
+    # must retain and remap it although the creation API has been removed.
+    derived = idea_fixture(ctx, attrs)
+
+    Idea
+    |> Repo.get!(derived.id)
+    |> Ecto.Changeset.change(source_idea_id: shared.id, creation_source_id: shared.id, source_revision: 1)
+    |> Repo.update!()
+
     snapshot = snapshot(ctx)
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, snapshot["ideation"])
@@ -146,16 +155,16 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     assert revision == shared_head.revision
 
-    assert {:ok, [%{attempted: %{body: "<p>Conflicting private input</p>"}}]} =
-             Ideation.list_idea_conflicts(ctx.author, ctx.project.id, session_id, shared_id)
+    assert Repo.get!(Storyarn.Ideation.Ideas.Edit, maps["edits"][conflict.id]).body ==
+             "<p>Conflicting private input</p>"
 
     assert {:error, {:edit_conflict, %{id: conflict_id}}} =
              Ideation.update_idea(ctx.author, ctx.project.id, session_id, shared_id, 1, conflict_attrs)
 
     assert conflict_id == maps["edits"][conflict.id]
 
-    assert {:ok, %{id: derived_id, source_idea_id: ^shared_id}} =
-             Ideation.derive_idea(ctx.author, ctx.project.id, session_id, shared_id, 1, attrs)
+    assert {:ok, %{id: derived_id, source_idea_id: ^shared_id, source_revision: 1}} =
+             Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][derived.id])
 
     assert derived_id == maps["ideas"][derived.id]
   end
@@ -434,7 +443,7 @@ defmodule Storyarn.Ideation.RecoveryTest do
     assert {:ok, []} = Ideation.list_ideas(ctx.author, ctx.project.id, session_id, state: :all)
     assert {:ok, session} = Ideation.get_session(ctx.author, ctx.project.id, session_id)
     assert session.configuration.private_mode
-    assert Repo.get!(Storyarn.Ideation.Ideas.Idea, maps["ideas"][note.id]).deleted_at
+    assert Repo.get!(Idea, maps["ideas"][note.id]).deleted_at
     assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
   end
 

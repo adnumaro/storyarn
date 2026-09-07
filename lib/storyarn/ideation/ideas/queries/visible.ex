@@ -1,7 +1,7 @@
 defmodule Storyarn.Ideation.Ideas.Queries.Visible do
   @moduledoc false
   import Ecto.Query
-  import Storyarn.Ideation.Ideas.Rules.Input, only: [valid_id: 1, valid_revision: 1]
+  import Storyarn.Ideation.Ideas.Rules.Input, only: [valid_id: 1]
 
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Publication
@@ -60,33 +60,6 @@ defmodule Storyarn.Ideation.Ideas.Queries.Visible do
             (i.author_id == ^actor_id or not is_nil(i.published_revision)),
         select: i.id
     )
-  end
-
-  def readable_revision(session_id, idea_id, number, actor_id) when valid_id(idea_id) and valid_revision(number) do
-    query =
-      readable_revision_query(session_id, idea_id, number, actor_id)
-
-    case Repo.one(query) do
-      {idea, revision} -> {:ok, idea, revision}
-      nil -> {:error, :not_found}
-    end
-  end
-
-  def readable_revision(_session_id, _idea_id, _number, _actor_id), do: {:error, :not_found}
-
-  defp readable_revision_query(session_id, idea_id, number, actor_id) do
-    from i in Idea,
-      join: r in Revision,
-      on: r.idea_id == i.id and r.number == ^number,
-      left_join: p in Publication,
-      on: p.idea_id == i.id and p.revision == r.number,
-      join: s in subquery(Sessions.canvas_settings_query()),
-      on: s.id == i.session_id,
-      where:
-        (i.author_id == ^actor_id or not s.private_mode) and
-          i.session_id == ^session_id and i.id == ^idea_id and is_nil(i.deleted_at) and
-          (i.author_id == ^actor_id or not is_nil(p.id)),
-      select: {i, r}
   end
 
   def owned(session_id, idea_id, actor_id) when valid_id(idea_id) do

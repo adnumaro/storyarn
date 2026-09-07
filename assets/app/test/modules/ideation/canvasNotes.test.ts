@@ -24,6 +24,11 @@ function setup() {
   );
   return { result, app, current, request, replies, selected };
 }
+async function flush() {
+  for (let i = 0; i < 6; i++) await nextTick();
+}
+const deletedAt = "2026-09-07T12:00:00Z";
+const deletion = { id: 10, revision: 1, deleted_at: deletedAt };
 afterEach(() => vi.useRealTimers());
 
 describe("canvas persistence", () => {
@@ -70,11 +75,11 @@ describe("canvas persistence", () => {
   it("deletes through a distinct command without changing creative state", async () => {
     const { result, app, request, replies } = setup();
     const removing = result.remove(10);
-    await nextTick();
+    await flush();
     expect(request.mock.calls[0][0]).toBe("delete_idea");
     expect(request.mock.calls[0][1]).toEqual({ idea_id: 10, revision: 1 });
     expect(result.notes.value[0].state).toBe("active");
-    replies[0]({ status: "ok", value: { id: 10 } });
+    replies[0]({ status: "ok", value: deletion });
     await removing;
     expect(result.notes.value).toEqual([]);
     app.unmount();
@@ -84,16 +89,16 @@ describe("canvas persistence", () => {
     result.open(result.notes.value[0]);
     result.change(10, "<p></p>");
     const removing = result.remove(10);
+    await flush();
     expect(request.mock.calls[0][0]).toBe("save_idea");
     replies[0]({ status: "error", code: "validation" });
-    await nextTick();
-    await nextTick();
+    await flush();
     expect(request.mock.calls[1]).toEqual([
       "delete_idea",
       { idea_id: 10, revision: 1 },
       { epoch: "epoch-one", session_id: 1 },
     ]);
-    replies[1]({ status: "ok", value: { id: 10 } });
+    replies[1]({ status: "ok", value: deletion });
     await removing;
     expect(result.notes.value).toEqual([]);
     result.reset();
@@ -116,6 +121,194 @@ describe("canvas persistence", () => {
     expect(result.notes.value.some((n) => n.id === 11)).toBe(false);
     result.reset(false);
     expect(result.drafts.recovered.value).toEqual([]);
+    app.unmount();
+  });
+});
+
+describe("canvas acknowledged undo primitives", () => {
+  it("keeps the same render key and resolves temporary references after first save", async () => {
+    const { result, app, replies } = setup();
+    const local = result.add({ x: 12, y: 34 }, "mint", { body: "<p>New note</p>" });
+    const key = result.key(local);
+    const saving = result.save(local);
+    replies[0]({ status: "ok", value: idea({ id: 44, body: "<p>New note</p>" }) });
+    await saving;
+    expect(result.key(44)).toBe(key);
+    expect(result.key(local)).toBe(key);
+    expect(result.resolveId(local)).toBe(44);
+    expect(result.find(local)?.id).toBe(44);
+    app.unmount();
+  });
+  it("restores the same deleted ID using its exact deletion revision and timestamp", async () => {
+    const { result, app, request, replies } = setup();
+    const removing = result.remove(10);
+    await flush();
+    replies[0]({ status: "ok", value: deletion });
+    const removed = await removing;
+    expect(removed).toMatchObject({
+      ...deletion,
+      idea: { id: 10, body: "<p>Original text</p>", state: "active" },
+    });
+    expect(result.find(10)).toBeUndefined();
+    const restoring = result.restore(removed!);
+    expect(request.mock.calls[1]).toEqual([
+      "restore_idea",
+      { idea_id: 10, revision: 1, deleted_at: deletedAt },
+    ]);
+    replies[1]({ status: "ok", value: idea({ id: 10, revision: 2, deleted_at: null }) });
+    expect(await restoring).toBe(10);
+    expect(result.find(10)).toMatchObject({
+      id: 10,
+      revision: 2,
+      state: "active",
+      deleted_at: null,
+    });
+    const deletingAgain = result.remove(10);
+    await flush();
+    expect(request.mock.calls[2][1]).toEqual({ idea_id: 10, revision: 2 });
+    replies[2]({
+      status: "ok",
+      value: { ...deletion, revision: 2, deleted_at: "2026-09-07T12:01:00Z" },
+    });
+    await deletingAgain;
+    app.unmount();
+  });
+  it("undoes deleting an unsaved local note without inventing a server deletion", async () => {
+    const { result, app, request, replies } = setup();
+    const local = result.add({ x: 70, y: 90 }, "blue", {
+      body: "<p>Not submitted</p>",
+      state: "parked",
+    });
+    const removed = await result.remove(local);
+    expect(removed).toMatchObject({ id: local, revision: 0, deleted_at: null });
+    expect(result.find(local)).toBeUndefined();
+    expect(request).not.toHaveBeenCalled();
+    const restored = await result.restore(removed!);
+    expect(restored).toBeLessThan(0);
+    expect(restored).not.toBe(local);
+    expect(result.resolveId(local)).toBe(restored);
+    expect(result.find(local)).toMatchObject({
+      body: "<p>Not submitted</p>",
+      state: "parked",
+      canvas: { x: 70, y: 90, color: "blue" },
+    });
+    const saving = result.save(local);
+    replies[0]({
+      status: "ok",
+      value: idea({ id: 50, body: "<p>Not submitted</p>", state: "parked" }),
+    });
+    await saving;
+    expect(result.resolveId(local)).toBe(50);
+    expect(result.resolveId(restored!)).toBe(50);
+    app.unmount();
+  });
+  it("waits for every coalesced move before deleting and snapshots the latest placement", async () => {
+    const { result, app, request, replies } = setup();
+    result.move(10, { x: 80, y: 90 });
+    result.move(10, { x: 110, y: 120 });
+    const removing = result.remove(10);
+    await flush();
+    expect(request.mock.calls.map(([event]) => event)).toEqual(["move_idea"]);
+    replies[0]({ status: "ok", value: { x: 80, y: 90, version: 1 } });
+    await flush();
+    expect(request.mock.calls.map(([event]) => event)).toEqual(["move_idea", "move_idea"]);
+    replies[1]({ status: "ok", value: { x: 110, y: 120, version: 2 } });
+    await flush();
+    expect(request.mock.calls[2][0]).toBe("delete_idea");
+    replies[2]({ status: "ok", value: deletion });
+    expect(await removing).toMatchObject({ idea: { canvas: { x: 110, y: 120, version: 2 } } });
+    app.unmount();
+  });
+  it("settles a note only after pending placement and text writes are acknowledged", async () => {
+    const { result, app, request, replies } = setup();
+    result.open(result.find(10)!);
+    result.change(10, "<p>Updated text</p>");
+    result.move(10, { x: 40, y: 80 });
+    let finished = false;
+    const settling = result.settle(10).then((value) => {
+      finished = true;
+      return value;
+    });
+    await flush();
+    expect(finished).toBe(false);
+    expect(request.mock.calls[0][0]).toBe("move_idea");
+    replies[0]({ status: "ok", value: { x: 40, y: 80, version: 1 } });
+    await flush();
+    expect(request.mock.calls[1][0]).toBe("save_idea");
+    expect(finished).toBe(false);
+    replies[1]({ status: "ok", value: idea({ revision: 2, body: "<p>Updated text</p>" }) });
+    expect(await settling).toBe(true);
+    expect(result.find(10)?.body).toBe("<p>Updated text</p>");
+    app.unmount();
+  });
+  it("rejects stale pending deletion and restoration replies after an epoch reset", async () => {
+    const { result, app, replies, current } = setup();
+    const removing = result.remove(10);
+    await flush();
+    replies[0]({ status: "ok", value: deletion });
+    const removed = await removing;
+    const restoring = result.restore(removed!);
+    current.value = board({ epoch: "new-epoch", ideas: [] });
+    result.reset(false);
+    replies[1]({ status: "ok", value: idea({ revision: 2 }) });
+    expect(await restoring).toBeNull();
+    expect(result.notes.value).toEqual([]);
+    expect(result.drafts.drafts.size).toBe(0);
+    expect(result.drafts.recovered.value).toEqual([]);
+    app.unmount();
+  });
+  it("allows content operations after a definitively rejected placement", async () => {
+    const { result, app, replies } = setup();
+    result.move(10, { x: 40, y: 80 });
+    replies[0]({ status: "error", code: "stale_canvas" });
+    await flush();
+    expect(result.find(10)?.canvas?.x).not.toBe(40);
+    expect(await result.settle(10)).toBe(true);
+    app.unmount();
+  });
+  it("does not settle an uncertain placement before its exact retry is reconciled", async () => {
+    const { result, app, replies } = setup();
+    result.move(10, { x: 40, y: 80 });
+    replies[0]({ status: "error", code: "offline" });
+    await flush();
+    expect(await result.settle(10)).toBe(false);
+    result.retry(10);
+    replies[1]({ status: "ok", value: { x: 40, y: 80, version: 1 } });
+    await flush();
+    expect(await result.settle(10)).toBe(true);
+    app.unmount();
+  });
+  it("releases operations waiting on a pending move when reset invalidates their session", async () => {
+    const { result, app, replies, current, request } = setup();
+    result.move(10, { x: 40, y: 80 });
+    const removing = result.remove(10);
+    const settling = result.settle(10);
+    current.value = board({ epoch: "new-epoch", ideas: [] });
+    result.reset(false);
+    await flush();
+    expect(await removing).toBeNull();
+    expect(await settling).toBe(false);
+    replies[0]({ status: "ok", value: { x: 40, y: 80, version: 1 } });
+    await flush();
+    expect(request).toHaveBeenCalledTimes(1);
+    expect(result.notes.value).toEqual([]);
+    app.unmount();
+  });
+  it("never recovers deleted local or persisted buffers when resetting", async () => {
+    const { result, app, replies } = setup();
+    const local = result.add({ x: 40, y: 80 }, "mint", { body: "<p>Delete me</p>" });
+    await result.remove(local);
+    result.open(result.find(10)!);
+    result.change(10, "<p></p>");
+    const removing = result.remove(10);
+    await flush();
+    replies[0]({ status: "error", code: "validation" });
+    await flush();
+    replies[1]({ status: "ok", value: deletion });
+    await removing;
+    result.reset();
+    expect(result.drafts.recovered.value).toEqual([]);
+    expect(result.newNotes.size).toBe(0);
     app.unmount();
   });
 });

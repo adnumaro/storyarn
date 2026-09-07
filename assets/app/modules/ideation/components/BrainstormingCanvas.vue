@@ -11,6 +11,8 @@ import {
   List,
   Search,
   X,
+  Undo2,
+  Redo2,
 } from "@lucide/vue";
 import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
@@ -21,9 +23,28 @@ import { useCanvasViewport, type Point } from "../composables/useCanvasViewport"
 import { useBoardText } from "../composables/useBoardText";
 import { notePosition } from "../lib/placement";
 import type { BoardContext, Idea, Member } from "../types";
-const { notes, selectedId, editingId, writable, members, statuses, context } = defineProps<{
+interface HistoryState {
+  canUndo: boolean;
+  canRedo: boolean;
+  busy: boolean;
+}
+const {
+  notes,
+  selectedId,
+  selectedIds,
+  noteKey,
+  editingId,
+  writable,
+  members,
+  statuses,
+  context,
+  historyState,
+} = defineProps<{
   notes: Idea[];
   selectedId: number | null;
+  selectedIds: number[];
+  noteKey: (id: number) => string;
+  historyState: HistoryState;
   editingId: number | null;
   writable: boolean;
   members: Member[];
@@ -32,13 +53,19 @@ const { notes, selectedId, editingId, writable, members, statuses, context } = d
 }>();
 const emit = defineEmits<{
   add: [point: Point];
-  select: [id: number | null];
+  select: [ids: number[]];
   edit: [id: number];
   change: [id: number, body: string];
   finish: [];
-  move: [id: number, point: Point];
+  move: [moves: Array<{ id: number; point: Point }>];
   connect: [source: number, target: number, connected: boolean];
-  remove: [id: number];
+  remove: [ids: number[]];
+  duplicate: [ids: number[]];
+  undo: [];
+  redo: [];
+  copy: [event: ClipboardEvent, ids: number[]];
+  cut: [event: ClipboardEvent, ids: number[]];
+  paste: [event: ClipboardEvent, point: Point];
   list: [];
 }>();
 const root = ref<HTMLElement | null>(null);
@@ -55,6 +82,7 @@ let drag: {
   id: number | null;
   start: Point;
   origin: Point;
+  notes: Array<{ id: number; origin: Point }>;
   moved: boolean;
   capture: HTMLElement | null;
 } | null = null;
@@ -77,7 +105,13 @@ function center(note: Idea) {
   view.x = view.width / 2 - (point.x + (note.canvas?.width ?? 280) / 2) * view.zoom;
   view.y = view.height / 2 - (point.y + 120) * view.zoom;
 }
-defineExpose({ center, fitAll });
+function focus() {
+  root.value?.focus({ preventScroll: true });
+}
+defineExpose({ center, fitAll, focus });
+const visibleSelection = computed(() =>
+  selectedIds.filter((id) => notes.some((note) => note.id === id)),
+);
 const matches = computed(() =>
   notes.filter((n) =>
     `${n.title ?? ""} ${n.body.replace(/<[^>]*>/g, " ")}`
@@ -111,7 +145,15 @@ function chooseTool(value: string) {
   linkSource.value = null;
   root.value?.focus();
 }
-function selectNote(id: number) {
+function selectionForNote(id: number, shift: boolean): number[] {
+  const included = visibleSelection.value.includes(id);
+  if (shift) {
+    if (included) return visibleSelection.value.filter((selected) => selected !== id);
+    return [...visibleSelection.value, id];
+  }
+  return included ? [...visibleSelection.value] : [id];
+}
+function selectNote(id: number, shift: boolean): number[] {
   if (tool.value === "connect" && writable) {
     if (linkSource.value !== null && linkSource.value !== id) {
       emit("connect", linkSource.value, id, true);
@@ -119,34 +161,53 @@ function selectNote(id: number) {
       tool.value = "select";
     } else linkSource.value = id;
   }
-  emit("select", id);
+  const ids = selectionForNote(id, shift);
+  emit("select", ids);
+  return ids;
 }
-function selectAtPointer(id: number | null, event: PointerEvent): boolean {
-  if (id !== null) {
-    const connecting = tool.value === "connect";
-    selectNote(id);
-    return writable && !connecting;
+function interactiveTarget(target: EventTarget | null): boolean {
+  return (
+    target instanceof Element &&
+    Boolean(
+      target.closest(
+        'input, textarea, select, button, a, [contenteditable="true"], [role="textbox"], [data-canvas-chrome]',
+      ),
+    )
+  );
+}
+function pointerDown(event: PointerEvent) {
+  if (interactiveTarget(event.target) || ![0, 1].includes(event.button)) return;
+  const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
+  const id = element ? Number(element.dataset.noteId) : null;
+  const panning = space.value || tool.value === "pan" || event.button === 1;
+  if (panning) {
+    event.preventDefault();
+    focus();
+    beginDrag(event, null, []);
+    return;
   }
+  if (historyState.busy) return;
+  if (id === null) selectBackground(event);
+  else dragSelection(id, event);
+}
+function selectBackground(event: PointerEvent) {
   emit("finish");
-  emit("select", null);
+  emit("select", []);
+  focus();
   if (tool.value === "note" && writable) {
     emit("add", world(event.clientX, event.clientY));
     tool.value = "select";
   }
-  return false;
 }
-function pointerDown(event: PointerEvent) {
-  if ((event.target as HTMLElement).closest('[data-canvas-chrome], [contenteditable="true"]'))
-    return;
-  if (![0, 1].includes(event.button)) return;
-  const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
-  const id = element ? Number(element.dataset.noteId) : null;
-  const panning = space.value || tool.value === "pan" || event.button === 1;
-  if (!panning && !selectAtPointer(id, event)) return;
+function dragSelection(id: number, event: PointerEvent) {
+  const connecting = tool.value === "connect";
+  const ids = selectNote(id, event.shiftKey);
+  if (!writable || connecting || !ids.includes(id)) return;
   event.preventDefault();
-  beginDrag(event, panning ? null : id);
+  focus();
+  beginDrag(event, id, ids);
 }
-function beginDrag(event: PointerEvent, id: number | null) {
+function beginDrag(event: PointerEvent, id: number | null, ids: number[]) {
   const note = notes.find((n) => n.id === id);
   const origin = note ? position(note) : { x: view.x, y: view.y };
   drag = {
@@ -154,6 +215,9 @@ function beginDrag(event: PointerEvent, id: number | null) {
     id,
     start: { x: event.clientX, y: event.clientY },
     origin,
+    notes: notes
+      .filter((note) => ids.includes(note.id))
+      .map((note) => ({ id: note.id, origin: position(note) })),
     moved: false,
     capture:
       id === null
@@ -172,35 +236,39 @@ function pointerMove(event: PointerEvent) {
   if (drag.id === null) {
     view.x = drag.origin.x + dx;
     view.y = drag.origin.y + dy;
-  } else
-    positions.value.set(drag.id, {
-      x: drag.origin.x + dx / view.zoom,
-      y: drag.origin.y + dy / view.zoom,
-    });
+  } else {
+    for (const note of drag.notes)
+      positions.value.set(note.id, {
+        x: note.origin.x + dx / view.zoom,
+        y: note.origin.y + dy / view.zoom,
+      });
+  }
 }
 function pointerUp(event: PointerEvent) {
   if (!drag || drag.pointer !== event.pointerId) return;
   if (drag.id !== null && drag.moved) {
-    emit("move", drag.id, positions.value.get(drag.id)!);
-    positions.value.delete(drag.id);
+    emit(
+      "move",
+      drag.notes.map((note) => ({ id: note.id, point: positions.value.get(note.id)! })),
+    );
+    for (const note of drag.notes) positions.value.delete(note.id);
   }
   if (drag.capture?.hasPointerCapture(event.pointerId))
     drag.capture.releasePointerCapture(event.pointerId);
   drag = null;
 }
 function cancelDrag() {
-  if (drag?.id !== null && drag?.id !== undefined) positions.value.delete(drag.id);
+  for (const note of drag?.notes ?? []) positions.value.delete(note.id);
   drag = null;
 }
 function doubleClick(event: MouseEvent) {
-  if ((event.target as HTMLElement).closest('[data-canvas-chrome], [contenteditable="true"]'))
-    return;
+  if (interactiveTarget(event.target) || historyState.busy) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   if (element) emit("edit", Number(element.dataset.noteId));
   else if (writable) emit("add", world(event.clientX, event.clientY));
 }
 function nudge(event: KeyboardEvent) {
-  if (selectedId === null || !writable) return;
+  if (!visibleSelection.value.length || !writable || historyState.busy) return;
   const directions: { [key: string]: Point } = {
     ArrowUp: { x: 0, y: -1 },
     ArrowDown: { x: 0, y: 1 },
@@ -208,44 +276,110 @@ function nudge(event: KeyboardEvent) {
     ArrowRight: { x: 1, y: 0 },
   };
   const direction = directions[event.key];
-  const note = notes.find((n) => n.id === selectedId);
-  if (!note || !direction) return;
+  if (!direction) return;
   event.preventDefault();
-  const point = position(note),
-    step = event.shiftKey ? 20 : 2;
-  emit("move", selectedId, { x: point.x + direction.x * step, y: point.y + direction.y * step });
+  const step = event.shiftKey ? 20 : 2;
+  emit(
+    "move",
+    notes
+      .filter((note) => visibleSelection.value.includes(note.id))
+      .map((note) => {
+        const point = position(note);
+        return {
+          id: note.id,
+          point: { x: point.x + direction.x * step, y: point.y + direction.y * step },
+        };
+      }),
+  );
 }
 function keydown(event: KeyboardEvent) {
   if (event.defaultPrevented) return;
-  if ((event.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')) return;
-  if (event.metaKey || event.ctrlKey) return;
+  if (interactiveTarget(event.target)) return;
+  if (event.metaKey || event.ctrlKey) {
+    modifiedShortcut(event);
+    return;
+  }
+  if (event.altKey || event.isComposing) return;
   if (event.key === "Escape") {
     chooseTool("select");
-    emit("select", null);
+    emit("select", []);
     return;
   }
   if (event.key === "Enter") {
-    const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
-    if (focused) {
-      event.preventDefault();
-      emit("edit", Number(focused.dataset.noteId));
-    }
+    editFocusedNote(event);
     return;
   }
   if (removeShortcut(event)) return;
   shortcut(event);
   nudge(event);
 }
+function editFocusedNote(event: KeyboardEvent) {
+  const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
+  const id = focused ? Number(focused.dataset.noteId) : selectedId;
+  if (id !== null && writable && !historyState.busy) {
+    event.preventDefault();
+    emit("edit", id);
+  }
+}
 function removeShortcut(event: KeyboardEvent) {
-  if (!["Delete", "Backspace"].includes(event.key) || selectedId === null || !writable)
+  if (
+    !["Delete", "Backspace"].includes(event.key) ||
+    !visibleSelection.value.length ||
+    !writable ||
+    historyState.busy
+  )
     return false;
   event.preventDefault();
-  emit("remove", selectedId);
+  emit("remove", [...visibleSelection.value]);
   return true;
+}
+function modifiedShortcut(event: KeyboardEvent) {
+  if (event.altKey || event.isComposing) return;
+  const key = event.key.toLowerCase();
+  if (key === "a") {
+    event.preventDefault();
+    emit("finish");
+    emit(
+      "select",
+      notes.map((note) => note.id),
+    );
+    return;
+  }
+  // Copy, cut and paste are handled by native clipboard events. Preventing
+  // their keydown would suppress the browser's clipboard access.
+  if (!["d", "z", "y"].includes(key)) return;
+  event.preventDefault();
+  if (!writable || historyState.busy || event.repeat) return;
+  if (key === "d") {
+    if (visibleSelection.value.length) emit("duplicate", [...visibleSelection.value]);
+  } else historyShortcut(event, key);
+}
+function historyShortcut(event: KeyboardEvent, key: string) {
+  const redo = (key === "z" && event.shiftKey) || (key === "y" && event.ctrlKey);
+  if (redo) {
+    if (historyState.canRedo) emit("redo");
+  } else if (key === "z" && historyState.canUndo) emit("undo");
+}
+function pastePoint(): Point {
+  return (
+    ghost.value ?? {
+      x: (view.width / 2 - view.x) / view.zoom,
+      y: (view.height / 2 - view.y) / view.zoom,
+    }
+  );
+}
+function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
+  if (interactiveTarget(event.target) || event.defaultPrevented) return;
+  if (operation !== "copy" && (!writable || historyState.busy)) return;
+  if (operation === "paste") emit("paste", event, pastePoint());
+  else if (visibleSelection.value.length) {
+    if (operation === "copy") emit("copy", event, [...visibleSelection.value]);
+    else emit("cut", event, [...visibleSelection.value]);
+  }
 }
 function shortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
-  if (key === "n" && writable) {
+  if (key === "n" && writable && !historyState.busy) {
     event.preventDefault();
     emit("add", {
       x: (view.width / 2 - view.x) / view.zoom - 140,
@@ -254,7 +388,7 @@ function shortcut(event: KeyboardEvent) {
   }
   if (key === "v") chooseTool("select");
   if (key === "h") chooseTool("pan");
-  if (key === "l" && writable) chooseTool("connect");
+  if (key === "l" && writable && !historyState.busy) chooseTool("connect");
   if (key === "1") fitAll();
 }
 onMounted(async () => {
@@ -290,6 +424,10 @@ onMounted(async () => {
     @lostpointercapture="cancelDrag"
     @dblclick="doubleClick"
     @keydown="keydown"
+    @copy="clipboard($event, 'copy')"
+    @cut="clipboard($event, 'cut')"
+    @paste="clipboard($event, 'paste')"
+    @pointerleave="ghost = null"
   >
     <div class="absolute left-0 top-0 origin-top-left" :style="{ transform }">
       <svg
@@ -309,10 +447,10 @@ onMounted(async () => {
       </svg>
       <div
         v-for="note in notes"
-        :key="note.id"
+        :key="noteKey(note.id)"
         :data-note-id="note.id"
         class="absolute left-0 top-0"
-        :class="selectedId === note.id ? 'z-10' : ''"
+        :class="selectedIds.includes(note.id) ? 'z-10' : ''"
         :style="{
           transform: `translate(${position(note).x}px, ${position(note).y}px)`,
           width: `${note.canvas?.width ?? 280}px`,
@@ -322,7 +460,7 @@ onMounted(async () => {
           :note="note"
           :body="note.body"
           :editing="editingId === note.id"
-          :selected="selectedId === note.id"
+          :selected="selectedIds.includes(note.id)"
           :author="member(note.author_id, members)"
           :status="statuses[note.id]"
           @change="emit('change', note.id, $event)"
@@ -386,7 +524,7 @@ onMounted(async () => {
             class="block w-full truncate rounded-md px-2 py-2 text-left text-sm hover:bg-accent"
             @click="
               center(note);
-              emit('select', note.id);
+              emit('select', [note.id]);
               searchOpen = false;
             "
           >
@@ -440,6 +578,35 @@ onMounted(async () => {
           :tooltip-title="t('ideation.canvas.connect')"
           @click="chooseTool('connect')"
       /></template>
+      <template v-if="writable">
+        <div class="mx-0.5 h-6 w-px bg-border" />
+        <ToolbarTooltip :label="t('ideation.canvas.undoHelp')">
+          <button
+            id="brainstorming-undo"
+            type="button"
+            class="dock-btn disabled:opacity-35"
+            :aria-label="t('ideation.canvas.undo')"
+            aria-keyshortcuts="Meta+Z Control+Z"
+            :disabled="!historyState.canUndo || historyState.busy"
+            @click="emit('undo')"
+          >
+            <Undo2 class="size-5" />
+          </button>
+        </ToolbarTooltip>
+        <ToolbarTooltip :label="t('ideation.canvas.redoHelp')">
+          <button
+            id="brainstorming-redo"
+            type="button"
+            class="dock-btn disabled:opacity-35"
+            :aria-label="t('ideation.canvas.redo')"
+            aria-keyshortcuts="Meta+Shift+Z Control+Shift+Z Control+Y"
+            :disabled="!historyState.canRedo || historyState.busy"
+            @click="emit('redo')"
+          >
+            <Redo2 class="size-5" />
+          </button>
+        </ToolbarTooltip>
+      </template>
       <div class="mx-0.5 h-6 w-px bg-border" />
       <DockToolButton
         :icon="List"

@@ -52,8 +52,6 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert board["counts"] == %{"active" => 1, "parked" => 0, "discarded" => 0}
     refute Jason.encode!(board) =~ "Private secret"
     refute Jason.encode!(board) =~ "New private draft"
-    render_hook(view, "inspect_idea", payload(view, %{idea_id: shared.id}))
-    assert_reply(view, %{status: "ok", value: %{history: [%{number: 1}], conflicts: []}})
   end
 
   test "viewer cannot bypass readonly controls and malformed routes do not retain old content", ctx do
@@ -105,15 +103,10 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
     render_hook(view, "save_idea", payload(view, edit_attrs(%{idea_id: idea.id, revision: 1, body: current.body})))
     assert_reply(view, %{status: "ok", value: %{revision: 2}})
-    {:ok, receipts} = Ideation.list_idea_conflicts(ctx.author, ctx.project.id, ctx.session.id, idea.id)
-    assert length(receipts) == 1
-    render_hook(view, "inspect_idea", payload(view, %{idea_id: idea.id}))
-    assert_reply(view, %{status: "ok", value: %{conflicts: []}})
+    assert Repo.get_by!(Storyarn.Ideation.Ideas.Edit, idea_id: idea.id, outcome: :conflict)
 
     render_hook(view, "save_idea", payload(view, edit_attrs(%{idea_id: idea.id, revision: 1, state: "parked"})))
     assert_reply(view, %{status: "conflict", value: %{receipt: %{attempted: %{state: :parked}}}})
-    render_hook(view, "inspect_idea", payload(view, %{idea_id: idea.id}))
-    assert_reply(view, %{status: "ok", value: %{conflicts: [_]}})
   end
 
   test "assisted preview exposes only a frozen count and excludes discarded ideas by default", ctx do
@@ -151,8 +144,24 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(view, %{status: "ok", value: %{id: id, body: body}})
     refute body =~ "<script"
     assert body =~ "alert(1)"
-    render_hook(view, "inspect_idea", payload(view, %{idea_id: id}))
-    assert_reply(view, %{status: "ok", value: %{idea: %{body: ^body}}})
+    assert {:ok, %{body: ^body}} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, id)
+  end
+
+  test "delete exposes an undo marker and restore returns the same authored note", ctx do
+    idea = idea_fixture(ctx)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    render_hook(view, "delete_idea", payload(view, %{idea_id: idea.id, revision: idea.revision}))
+    assert_reply(view, %{status: "ok", value: %{id: id, revision: revision, deleted_at: marker}})
+    assert id == idea.id
+
+    render_hook(
+      view,
+      "restore_idea",
+      payload(view, %{idea_id: id, revision: revision, deleted_at: DateTime.to_iso8601(marker)})
+    )
+
+    assert_reply(view, %{status: "ok", value: %{id: ^id, revision: 2, body: body, deleted_at: nil}})
+    assert body == idea.body
   end
 
   test "restore invalidates the client epoch even when IDs remain the same", ctx do
@@ -191,10 +200,10 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   test "revoked access clears old private props and blocks an already open editor", ctx do
     idea = idea_fixture(ctx)
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
-    old_payload = payload(view, %{idea_id: idea.id})
+    old_payload = payload(view, %{idea_id: idea.id, revision: idea.revision})
     membership = Projects.get_membership(ctx.project.id, ctx.author.user.id)
     assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, membership.id)
-    render_hook(view, "inspect_idea", old_payload)
+    render_hook(view, "delete_idea", old_payload)
     assert_reply(view, %{status: "error", code: "not_found"})
     assert data(view)["ideas"] == []
     assert data(view)["error"] == "unauthorized"

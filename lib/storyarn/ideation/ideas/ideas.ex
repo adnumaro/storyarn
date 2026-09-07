@@ -10,11 +10,11 @@ defmodule Storyarn.Ideation.Ideas do
 
   defdelegate delete_idea(scope, project_id, session_id, idea_id, revision), to: Commands.Delete, as: :run
 
-  defdelegate create_idea(scope, project_id, session_id, attrs), to: Commands.Create, as: :run
+  defdelegate restore_idea(scope, project_id, session_id, idea_id, revision, deleted_at),
+    to: Commands.Restore,
+    as: :run
 
-  defdelegate derive_idea(scope, project_id, session_id, source_id, source_revision, attrs),
-    to: Commands.Create,
-    as: :derive
+  defdelegate create_idea(scope, project_id, session_id, attrs), to: Commands.Create, as: :run
 
   defdelegate update_idea_canvas(scope, project_id, session_id, idea_id, revision, attrs),
     to: Commands.UpdateCanvas,
@@ -24,9 +24,6 @@ defmodule Storyarn.Ideation.Ideas do
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Queries.Get, as: :run
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Queries.List, as: :run
   defdelegate count_ideas(scope, project_id, session_id), to: Queries.List, as: :counts
-  defdelegate list_idea_revisions(scope, project_id, session_id, idea_id, opts \\ []), to: Queries.History, as: :run
-  defdelegate list_idea_conflicts(scope, project_id, session_id, idea_id, opts \\ []), to: Queries.Edits, as: :list
-  defdelegate get_idea_edit(scope, project_id, session_id, idea_id, key), to: Queries.Edits, as: :get
 
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible),
     to: Commands.PrepareReveal,
@@ -45,10 +42,6 @@ defmodule Storyarn.Ideation.Ideas do
     do: Invalidation.unsubscribe(project_id, session_id, scope.user.id)
 
   defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Commands.Create, as: :run_canvas
-
-  defdelegate derive_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs),
-    to: Commands.Create,
-    as: :derive_canvas
 
   defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs),
     to: Commands.Update,

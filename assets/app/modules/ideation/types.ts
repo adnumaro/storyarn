@@ -34,12 +34,6 @@ export interface Idea extends IdeaContent {
   inserted_at: string;
   preview: string;
 }
-export interface IdeaRevision extends IdeaContent {
-  id: number;
-  number: number;
-  actor_id: number | null;
-  inserted_at: string;
-}
 export interface EditReceipt {
   id: number;
   idea_id: number;
@@ -47,22 +41,14 @@ export interface EditReceipt {
   attempted: IdeaContent;
   inserted_at: string;
 }
-export interface HistoryPage<T> {
-  entries: T[];
-  next: number | null;
-}
-
-export interface Inspection {
-  idea: Idea;
-  history: IdeaRevision[];
-  history_next: number | null;
-  conflicts: EditReceipt[];
-  conflicts_next: number | null;
-}
 export interface SessionConfiguration {
   private_mode: boolean;
   default_visibility: Visibility;
   publication_policy: PublicationPolicy;
+}
+export interface HistoryPage<T> {
+  entries: T[];
+  next: number | null;
 }
 export interface Session {
   id: number;

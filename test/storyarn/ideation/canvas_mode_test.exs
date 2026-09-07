@@ -18,7 +18,6 @@ defmodule Storyarn.Ideation.CanvasModeTest do
     assert {:error, :unauthorized} = Ideation.set_private_mode(ctx.peer, ctx.project.id, ctx.session.id, 1, true)
     assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
     assert {:error, :not_found} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, first.id)
-    assert {:error, :not_found} = Ideation.list_idea_revisions(ctx.peer, ctx.project.id, ctx.session.id, first.id)
 
     assert {:ok, second} =
              Ideation.create_canvas_idea(ctx.peer, ctx.project.id, ctx.session.id, idea_attrs(%{visibility: :shared}))

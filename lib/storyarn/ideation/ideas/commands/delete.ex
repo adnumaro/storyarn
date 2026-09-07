@@ -25,15 +25,19 @@ defmodule Storyarn.Ideation.Ideas.Commands.Delete do
       not Policy.author?(idea, access.user_id) ->
         {:error, :not_found}
 
-      idea.deleted_at != nil ->
-        Transaction.success(%{id: idea.id, deleted_at: idea.deleted_at})
-
       idea.revision != revision ->
         {:error, :stale_revision}
 
+      idea.deleted_at != nil ->
+        Transaction.success(%{id: idea.id, revision: idea.revision, deleted_at: idea.deleted_at})
+
       true ->
         deleted = idea |> change(deleted_at: %{TimeHelpers.now() | microsecond: {0, 6}}) |> Repo.update!()
-        Transaction.success(%{id: deleted.id, deleted_at: deleted.deleted_at}, [:shared, access.user_id])
+
+        Transaction.success(%{id: deleted.id, revision: deleted.revision, deleted_at: deleted.deleted_at}, [
+          :shared,
+          access.user_id
+        ])
     end
   end
 end

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { onMounted, watch, nextTick, computed } from "vue";
 import { EditorContent, useEditor } from "@tiptap/vue-3";
+import { DOMParser } from "@tiptap/pm/model";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
 import { useI18n } from "vue-i18n";
@@ -68,8 +69,21 @@ watch(
 watch(
   () => body,
   (value) => {
-    if (editor.value?.getHTML() !== value)
-      editor.value?.commands.setContent(pasteContent(value), { emitUpdate: false });
+    const instance = editor.value;
+    if (!instance) return;
+    const container = document.createElement("div");
+    container.innerHTML = pasteContent(value);
+    const content = DOMParser.fromSchema(instance.schema).parse(container, {
+      preserveWhitespace: "full",
+    });
+    // Server echoes may normalize HTML without changing the document. Keep the
+    // same editor and native undo stack; remote replacements are not local edits.
+    if (!instance.state.doc.eq(content))
+      instance
+        .chain()
+        .setMeta("addToHistory", false)
+        .setContent(content, { emitUpdate: false })
+        .run();
   },
 );
 onMounted(focus);

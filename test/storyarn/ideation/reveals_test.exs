@@ -39,14 +39,12 @@ defmodule Storyarn.Ideation.RevealsTest do
       assert visible.revision == 1
       refute Map.has_key?(visible, :current_revision)
       refute Map.has_key?(visible, :has_unpublished_changes)
-      assert {:ok, [%{number: 1}]} = Ideation.list_idea_revisions(actor, ctx.project.id, ctx.session.id, original.id)
     end
 
     published = publish_idea(ctx, changed)
     assert published.published_revision == 2
 
-    assert {:ok, [%{number: 2}, %{number: 1}]} =
-             Ideation.list_idea_revisions(ctx.peer, ctx.project.id, ctx.session.id, original.id)
+    assert {:ok, %{revision: 2}} = Ideation.get_idea(ctx.peer, ctx.project.id, ctx.session.id, original.id)
   end
 
   test "unpublished historical drafts never become visible when a later revision is shared", ctx do
@@ -63,12 +61,10 @@ defmodule Storyarn.Ideation.RevealsTest do
              )
 
     publish_idea(ctx, edited)
-    assert {:ok, [revision]} = Ideation.list_idea_revisions(ctx.viewer, ctx.project.id, ctx.session.id, original.id)
-    assert revision.number == 2
-    assert revision.body == "Public contribution"
-
-    assert {:error, :not_found} =
-             Ideation.derive_idea(ctx.peer, ctx.project.id, ctx.session.id, original.id, 1, idea_attrs())
+    assert {:ok, visible} = Ideation.get_idea(ctx.viewer, ctx.project.id, ctx.session.id, original.id)
+    assert visible.revision == 2
+    assert visible.body == "Public contribution"
+    refute Jason.encode!(visible) =~ "Never share this draft"
   end
 
   test "facilitators can prepare and reveal consenting drafts without reading their content", ctx do

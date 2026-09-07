@@ -15,19 +15,38 @@ no navigation, route, upload, AI execution or shared export entry point.
 ## Canvas integration (ENG-134)
 
 The [canvas contract](../features/brainstorming-board.md) supersedes the earlier
-proposal of individual publication controls in the UI. `create_canvas_idea`,
-`derive_canvas_idea` and `update_canvas_idea` apply the facilitator's current
+proposal of individual publication controls in the UI. `create_canvas_idea`
+and `update_canvas_idea` apply the facilitator's current
 session mode, with publication atomic with shared-mode saves. `set_private_mode`
 is the manager-only operation that hides contributions or ends private work and
 reveals the session's saved heads. It deliberately replaces individual consent
 as the canvas facilitation policy. Deleted notes and orphaned authors are excluded
-from new session reveals. Old explicit-publication APIs/receipts remain readable
-for compatibility, but cannot reveal individual notes during private mode.
+from new session reveals. Existing explicit-publication ports and stored receipts
+remain for compatibility; these ports cannot reveal individual notes during
+private mode.
 
-`delete_idea` is distinct from creative state: it preserves recovery history and
+`delete_idea` is distinct from creative state: it preserves internal recovery data and
 excludes the note from ordinary authorized reads and writes. `discarded` remains
 a recoverable state. Geometry has an independent version and filtered connection
 endpoints; it does not create text revisions.
+
+`restore_idea/6` is the bounded inverse of deleting a note, not historical revision
+restoration. It accepts an idea identity, revision and deletion marker. It
+reauthorizes the original author, checks that exact deletion and restores the same
+idea with an incremented revision. It does not accept replacement text or an
+arbitrary historical state. Stale revisions or deletion markers are rejected.
+
+The canvas exposes Duplicate and native clipboard operations. They create new
+authored notes under the current session mode, copy content and appearance, and
+remap connections within the copied selection. They do not clone publication
+metadata or represent a new derived-idea workflow. `derive_idea` and
+`derive_canvas_idea` are no longer public APIs.
+
+The browser owns an ephemeral, 50-operation undo/redo stack for its own canvas
+actions. Undo waits for an acknowledged authorized write before advancing. The
+stack is cleared at session/synchronization/recovery resets. Internal revisions
+and receipts do not constitute a product history browser: there are no
+`list_idea_revisions`, `list_idea_conflicts` or `get_idea_edit` APIs.
 
 ## Ownership and locking
 
@@ -59,25 +78,25 @@ AI identity, source, current revision or publication pointers. The stored author
 kind reserves AI provenance, but authorized shared AI contributions remain a
 later AI integration delivery; this API cannot impersonate AI or another user.
 
-An idea has two distinct revision pointers: its current author draft and the
-last explicitly published revision. An author reads the current draft; everybody
-else reads only the published revision. The SQL read chooses that revision before
-decrypting any content. Later edits never silently update the public content.
-Published historical revisions remain readable; unpublished history and save
-conflicts remain author-only, even after another revision is published.
+An idea has two distinct revision pointers: its current author head and the last
+published revision. An author reads the current head; other participants read the
+published revision only when the session permits them to see the note. The SQL
+read chooses the authorized revision before decrypting any content. Shared-mode
+canvas saves advance publication atomically; private-mode saves do not. Revisions
+remain internal records for those pointers and for recovery, without an API for
+browsing or restoring historical note content.
 
 Creative state (`active`, `parked`, `discarded`) is independent of publication.
-Discarding does not erase content or withdraw a prior publication. Restoring an
-alternative is another authored revision. On shared ideas the current creative
+Discarding does not erase content or withdraw a prior publication. Returning an
+idea to active is another authored revision. On shared ideas the current creative
 state is visible even while the author has unpublished text changes.
 
-Developing another person's contribution uses `derive_idea/6`: a new authored
-idea retains the exact authorized source idea/revision. It neither overwrites
-the source nor grants access to its unpublished revisions. Cross-tool links and
-materialization belong to ENG-143 and subsequent deliveries.
-Publishing a derivation does not publish its source: readers receive source
-identifiers only when that exact source revision has itself been published.
-The derivation's author retains the stored provenance.
+New contributions do not have a derivation API or a **Develop this idea** action.
+Existing source identities and revisions remain in compatible recovery capsules;
+restoration retains and remaps that provenance without granting access to private
+source content. Cross-tool links and materialization remain separate work.
+[ENG-164](https://linear.app/sunset/issue/ENG-164/spike-definir-el-valor-y-la-experiencia-de-desarrollar-una-idea)
+evaluates whether a future development workflow adds value beyond duplication.
 
 ## Effective permission matrix
 
@@ -85,24 +104,29 @@ Every permission below additionally requires current project access. Read-only
 project members cannot contribute, including when they authored older material.
 Direct project roles override inherited workspace roles.
 
-| Operation                                                   | Author                        | Other editor | Facilitator / project owner           | Viewer   |
-| ----------------------------------------------------------- | ----------------------------- | ------------ | ------------------------------------- | -------- |
-| Read shared content and published history                   | Yes                           | Yes          | Yes                                   | Yes      |
-| Read a private draft, unpublished history or saved conflict | Own only                      | No           | No                                    | Own only |
-| Create or derive from a readable revision                   | With editing access           | Yes          | Yes                                   | No       |
-| Edit text, park, discard or restore                         | Own only, with editing access | No           | No                                    | No       |
-| Publish an exact own revision                               | With editing access           | No           | Only their own, unless consented      | No       |
-| Prepare/reveal others' consenting contributions             | No special right              | No           | With editing access and prior consent | No       |
+| Operation                                       | Author                        | Other editor | Facilitator / project owner           | Viewer   |
+| ----------------------------------------------- | ----------------------------- | ------------ | ------------------------------------- | -------- |
+| Read currently visible shared content           | Yes                           | Yes          | Yes                                   | Yes      |
+| Read a private current draft                    | Own only                      | No           | No                                    | Own only |
+| Create notes or duplicate readable content      | With editing access           | Yes          | Yes                                   | No       |
+| Edit text, park, discard or return to active    | Own only, with editing access | No           | No                                    | No       |
+| Delete a note or undo its matching deletion     | Own only, with editing access | No           | No                                    | No       |
+| Publish an exact own revision                   | With editing access           | No           | Only their own, unless consented      | No       |
+| Prepare/reveal others' consenting contributions | No special right              | No           | With editing access and prior consent | No       |
 
 Facilitation and ownership never grant a draft-reading permission. A manager may
 receive opaque identities/revision numbers of contributions that authorized
 assisted publication, solely to prepare a reveal. Ordinary lists, counts and
-history still exclude those private drafts.
+current read surfaces still exclude those private drafts. The publication rows
+in the matrix describe the retained explicit-publication ports below, not
+individual canvas controls.
 
 ## Save and retry contract
 
-Creation requires a UUID `request_key`, the `configuration_version` shown to the
-contributor, and content. It captures the contribution's publication consent.
+Creation requires a UUID `request_key` and content. The retained explicit-
+publication ports additionally require the `configuration_version` shown to the
+contributor and capture publication consent. Canvas creation follows the current
+session mode under the contribution lock instead of an individual consent choice.
 Updates require the revision read by the author and a new UUID request key.
 Atom/string parameter keys are accepted; identity is supplied by authorization.
 
@@ -114,13 +138,17 @@ receipt without inventing a content revision.
 
 A stale valid update stores the losing input in an encrypted conflict receipt
 and returns `{:error, {:edit_conflict, receipt}}`. It does not change the head.
-`get_idea_edit/5` and `list_idea_conflicts/5` let the author recover that input after
-reconnecting. Applying a chosen alternative is a new save against the currently
-read revision; original alternatives and history remain intact. Invalid input
-returns a changeset without a write. ENG-134 must retain invalid input locally
-and must not apply a late save acknowledgement over a newer local edit.
+The immediate response lets the caller retain the conflicting input for a new
+save against the current revision. Receipts remain encrypted internal data for
+idempotency and recovery; there is no API for browsing old conflicts or receipts.
+Invalid input returns a changeset without a write. ENG-134 retains invalid input
+locally and must not apply a late save acknowledgement over a newer local edit.
 
-## Explicit publication and frozen manifests
+## Retained explicit-publication ports and frozen manifests
+
+The following rules describe existing domain ports and their stored receipts.
+They are not per-card publication controls in the canvas. Canvas contributions
+use the session-wide mode described above.
 
 By default a new contribution is private and author-controlled. A session may
 default new contributions to shared, but the creator must submit the current
@@ -131,8 +159,8 @@ Assisted publication requires the contributor to explicitly submit
 `publication_consent: :facilitator_assisted` against a currently assisted session
 configuration. Omitting consent always means author-only, even in that mode.
 Consent is retained on the idea; subsequent session changes cannot broaden it.
-The UI must explain that this consent covers that idea's subsequent revisions
-and remains applicable if its author disconnects or loses project membership.
+For these ports, consent covers that idea's subsequent revisions and remains
+applicable if its author disconnects or loses project membership.
 Physical account deletion makes unpublished contributions ineligible for assisted
 publication; it never transfers their authorship to a manager.
 
@@ -157,7 +185,7 @@ back to private work never promises to make published information secret again.
 
 ## Read surfaces, events and recovery
 
-Lists/history/conflicts use descending ID cursors with limits of 1–200 (default
+Idea lists use descending ID cursors with limits of 1–200 (default
 50). The default idea list shows active ideas; parked/discarded/all and
 private/shared/all are explicit filters. Counts use the same authorized visible
 set. Future search and UI props must use these views, not raw entities. They must
@@ -174,7 +202,7 @@ Titles, bodies and retained conflicting input are encrypted at rest and redacted
 from Ecto inspection. This does not make operators or database/key recovery an
 ordinary project-owner permission. Private attachments remain disabled.
 
-Archive preserves ideas, history and receipts while blocking mutations. Project
+Archive preserves ideas, internal revisions and receipts while blocking mutations. Project
 soft deletion denies access; physical project deletion cascades all these rows.
 Loss of access does not erase a draft or reassign it. Physical account deletion
 nulls live actor references and preserves published attribution as unavailable;
@@ -184,5 +212,10 @@ purge, private export or identity reassignment is introduced.
 Canonical snapshots now capture these tables, including private conflict receipts,
 through an authenticated compartment. See the [privacy and recovery contract](brainstorming-recovery-contract.md)
 for author identity, retained replacement history, ZIP confidentiality and explicit
-format-2/template exclusions. ENG-147 remains open for future entities; this slice
-covers only the currently persisted sessions and ideas.
+format-2/template exclusions. This slice covers the currently persisted sessions
+and ideas; future entities must explicitly join that recovery contract.
+
+[ENG-163](https://linear.app/sunset/issue/ENG-163/evaluar-recuperacion-de-versiones-anteriores-desde-la-sesion-de)
+evaluates whether a secondary session-level recovery experience is useful. It
+does not authorize reintroducing a per-note history menu or substitute for
+interactive undo/redo.
