@@ -12,6 +12,23 @@ belong to ENG-134. Recovery and private-content release gates from the
 [session contract](brainstorming-contract.md) remain in force. This delivery adds
 no navigation, route, upload, AI execution or shared export entry point.
 
+## Canvas integration (ENG-134)
+
+The [canvas contract](../features/brainstorming-board.md) supersedes the earlier
+proposal of individual publication controls in the UI. `create_canvas_idea`,
+`derive_canvas_idea` and `update_canvas_idea` apply the facilitator's current
+session mode, with publication atomic with shared-mode saves. `set_private_mode`
+is the manager-only operation that hides contributions or ends private work and
+reveals the session's saved heads. It deliberately replaces individual consent
+as the canvas facilitation policy. Deleted notes and orphaned authors are excluded
+from new session reveals. Old explicit-publication APIs/receipts remain readable
+for compatibility, but cannot reveal individual notes during private mode.
+
+`delete_idea` is distinct from creative state: it preserves recovery history and
+excludes the note from ordinary authorized reads and writes. `discarded` remains
+a recoverable state. Geometry has an independent version and filtered connection
+endpoints; it does not create text revisions.
+
 ## Ownership and locking
 
 Ideas owns idea identities, immutable content revisions, save receipts, retained

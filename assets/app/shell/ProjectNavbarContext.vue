@@ -7,6 +7,7 @@ import {
   Image,
   Languages,
   LayoutDashboard,
+  Lightbulb,
   Map,
   PanelLeft,
   PanelLeftClose,
@@ -50,6 +51,7 @@ const toolDefs = [
   { key: "flows", icon: GitBranch },
   { key: "scenes", icon: Map },
   { key: "assets", icon: Image },
+  { key: "brainstorming", icon: Lightbulb },
   { key: "localization", icon: Languages },
 ];
 

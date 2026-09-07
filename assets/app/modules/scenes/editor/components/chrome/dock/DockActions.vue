@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { History, Play } from "@lucide/vue";
-import DockToolButton from "./DockToolButton.vue";
+import DockToolButton from "@components/toolbar/DockToolButton.vue";
 
 const { playUrl } = defineProps<{
   playUrl: string;

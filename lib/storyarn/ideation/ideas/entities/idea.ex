@@ -7,6 +7,8 @@ defmodule Storyarn.Ideation.Ideas.Idea do
     field :session_id, :id
     field :author_id, :id
     field :author_kind, Ecto.Enum, values: [:human, :ai], default: :human
+    field :canvas, :map, default: %{}
+    field :deleted_at, :utc_datetime_usec
     field :creation_key, Ecto.UUID
     field :revision, :integer, default: 1
     field :published_revision, :integer

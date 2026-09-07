@@ -15,6 +15,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.PrepareReveal do
     end
   end
 
+  defp prepare_locked(%{configuration: %{private_mode: true}}, _key, _selection), do: {:error, :session_private}
+
   defp prepare_locked(access, key, selection) do
     case Repo.get_by(Reveal, session_id: access.session_id, actor_id: access.user_id, request_key: key) do
       nil -> prepare(access, key, selection)

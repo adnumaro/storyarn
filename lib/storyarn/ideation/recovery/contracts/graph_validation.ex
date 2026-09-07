@@ -32,7 +32,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
   defp valid_links?(row, "ideas", index) do
     Map.has_key?(index.sessions, row["session_id"]) and revision?(index, row["id"], row["revision"]) and
       (is_nil(row["published_revision"]) or revision?(index, row["id"], row["published_revision"])) and
-      source_valid?(row, index)
+      source_valid?(row, index) and canvas_valid?(row, index)
   end
 
   defp valid_links?(row, "revisions", index), do: Map.has_key?(index.ideas, row["idea_id"]) and positive?(row["number"])
@@ -53,6 +53,31 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       revision?(index, row["idea_id"], row["revision"])
   end
 
+  defp canvas_valid?(row, index) do
+    canvas = Map.get(row, "canvas", %{})
+
+    is_map(canvas) and
+      (map_size(canvas) == 0 or valid_placement?(canvas)) and
+      is_list(Map.get(canvas, "links", [])) and length(Map.get(canvas, "links", [])) <= 100 and
+      Enum.all?(Map.get(canvas, "links", []), fn id ->
+        target = index.ideas[id]
+        is_map(target) and id != row["id"] and target["session_id"] == row["session_id"]
+      end)
+  end
+
+  defp valid_placement?(canvas) do
+    # Connections may precede the first explicit positioning of legacy notes.
+    Enum.all?(["x", "y"], &optional_range?(canvas[&1], -1_000_000, 1_000_000)) and
+      optional_range?(canvas["width"], 180, 800) and
+      (is_nil(canvas["color"]) or canvas["color"] in ~w(yellow coral mint blue violet paper)) and
+      valid_canvas_version?(canvas["version"])
+  end
+
+  defp optional_range?(nil, _, _), do: true
+  defp optional_range?(value, minimum, maximum), do: is_number(value) and value >= minimum and value <= maximum
+  defp valid_canvas_version?(nil), do: true
+  defp valid_canvas_version?(value), do: is_integer(value) and value >= 0
+
   defp source_valid?(%{"source_idea_id" => nil}, _), do: true
 
   defp source_valid?(row, index) do
@@ -62,8 +87,12 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       revision?(index, source["id"], row["source_revision"])
   end
 
+  defp valid_selection?(%{"selection" => %{"mode" => "eligible", "states" => states}}, _) do
+    is_list(states) and length(states) in 1..3 and Enum.all?(states, &(&1 in ~w(active parked discarded)))
+  end
+
   defp valid_selection?(%{"selection" => %{"mode" => "eligible"}}, _), do: true
-  defp valid_selection?(%{"selection" => %{"mode" => "creation"}}, _), do: true
+  defp valid_selection?(%{"selection" => %{"mode" => mode}}, _) when mode in ["creation", "session"], do: true
 
   defp valid_selection?(%{"selection" => %{"mode" => "selected", "targets" => targets}} = row, index),
     do: valid_targets?(targets, row["session_id"], index)

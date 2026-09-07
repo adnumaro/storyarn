@@ -1,6 +1,7 @@
 {
   "layout": {
     "tools": {
+      "brainstorming": "Brainstorming",
       "dashboard": "Dashboard",
       "sheets": "Fichas",
       "flows": "Flujos",

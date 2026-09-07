@@ -26,7 +26,7 @@ adapters cannot become application orchestrators. The architecture ratchet and
 Ideas owns `ideation_ideas`, immutable `ideation_idea_revisions`, idempotent
 `ideation_idea_edits` (including private conflicting input), frozen
 `ideation_reveal_operations` and `ideation_idea_publications`. Its `commands/`
-implement creation/derivation, save, prepare and reveal; `execution/` retains
+implement creation/derivation, save, delete, placement, connections and session-mode reveal; `execution/` retains
 atomic transaction/revision/publication workflows. `queries/` selects authorized
 revisions before decryption; `contracts/` builds safe views; `rules/` validates
 content, policy and selection; `events/` sends content-free invalidations.
@@ -76,3 +76,7 @@ Capture limits are typed failures, and restore checks the full retained inventor
 before commit so it cannot strand future backups above those bounds. See [privacy and recovery](../../../docs/reference/brainstorming-recovery-contract.md),
 [session behavior](../../../docs/reference/brainstorming-contract.md) and
 [idea publication](../../../docs/reference/brainstorming-ideas-contract.md).
+
+The canvas uses facilitator-controlled session privacy and direct editing. See
+[canvas behavior](../../../docs/features/brainstorming-board.md) for interaction,
+delete/discard semantics and the compatibility boundary of publication ports.

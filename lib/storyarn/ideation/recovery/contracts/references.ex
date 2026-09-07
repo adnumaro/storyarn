@@ -23,8 +23,11 @@ defmodule Storyarn.Ideation.Recovery.References do
 
   # Delegation to managers belongs to the source project. Importing a private
   # draft must not give a destination owner permission to publish/read it.
-  defp rewrite_payload(row, "ideas", _, %{"review_assisted_consent" => true}),
-    do: %{row | publication_consent: "author_only"}
+  defp rewrite_payload(row, "ideas", _, maps) do
+    row = if maps["review_assisted_consent"], do: %{row | publication_consent: "author_only"}, else: row
+    canvas = Map.update(row.canvas, "links", [], &Enum.map(&1, fn id -> lookup(maps, "ideas", id) end))
+    %{row | canvas: canvas}
+  end
 
   defp rewrite_payload(row, "session_revisions", actors, _) do
     snapshot =

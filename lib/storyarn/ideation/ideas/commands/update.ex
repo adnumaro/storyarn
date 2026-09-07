@@ -4,6 +4,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
   import Storyarn.Ideation.Ideas.Rules.Input, only: [valid_revision: 1]
 
   alias Storyarn.Ideation.Ideas.Edit
+  alias Storyarn.Ideation.Ideas.Execution.Publication
   alias Storyarn.Ideation.Ideas.Execution.Revisions
   alias Storyarn.Ideation.Ideas.Execution.Transaction
   alias Storyarn.Ideation.Ideas.Queries.Visible
@@ -11,6 +12,11 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.View
   alias Storyarn.Repo
+
+  def run_canvas(scope, project_id, session_id, idea_id, revision, attrs) when is_map(attrs),
+    do: run(scope, project_id, session_id, idea_id, revision, Map.put(attrs, :canvas_contribution, true))
+
+  def run_canvas(_, _, _, _, _, _), do: {:error, :invalid_edit}
 
   def run(scope, project_id, session_id, idea_id, expected_revision, attrs)
       when valid_revision(expected_revision) and is_map(attrs) do
@@ -58,17 +64,25 @@ defmodule Storyarn.Ideation.Ideas.Commands.Update do
         updated = idea |> change(revision: idea.revision + 1, state: content.state) |> Repo.update!()
         revision = Revisions.insert(updated, content, access.user_id)
         Revisions.record_edit(updated, access, key, fingerprint, expected, :saved)
+        publish? = Input.get(attrs, :canvas_contribution) == true and access.configuration.private_mode != true
+        updated = if publish?, do: Publication.publish_creation(updated, access.user_id), else: updated
 
-        audiences =
-          if idea.published_revision && idea.state != updated.state, do: [:shared, access.user_id], else: [access.user_id]
-
-        Transaction.success(View.idea(updated, revision, access.user_id), audiences)
+        Transaction.success(
+          View.idea(updated, revision, access.user_id),
+          audiences(idea, updated, publish?, access.user_id)
+        )
     end
+  end
+
+  defp audiences(idea, updated, publish?, actor_id) do
+    if publish? or (idea.published_revision && idea.state != updated.state),
+      do: [:shared, actor_id],
+      else: [actor_id]
   end
 
   # Preserve presence as well as value: an omitted field differs from clearing it.
   defp normalized_attrs(attrs) do
-    for field <- [:title, :body, :state],
+    for field <- [:title, :body, :state, :canvas_contribution],
         Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
         do: {field, Input.get(attrs, field)}
   end

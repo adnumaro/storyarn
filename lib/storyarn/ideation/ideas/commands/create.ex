@@ -9,10 +9,21 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Queries.Visible
   alias Storyarn.Ideation.Ideas.Revision
+  alias Storyarn.Ideation.Ideas.Rules.Canvas
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.Rules.Policy
   alias Storyarn.Ideation.Ideas.View
   alias Storyarn.Repo
+
+  def run_canvas(scope, project_id, session_id, attrs) when is_map(attrs),
+    do: run(scope, project_id, session_id, Map.put(attrs, :canvas_contribution, true))
+
+  def run_canvas(_, _, _, _), do: {:error, :invalid_idea}
+
+  def derive_canvas(scope, project_id, session_id, id, revision, attrs) when is_map(attrs),
+    do: derive(scope, project_id, session_id, id, revision, Map.put(attrs, :canvas_contribution, true))
+
+  def derive_canvas(_, _, _, _, _, _), do: {:error, :invalid_idea}
 
   def run(scope, project_id, session_id, attrs), do: create(scope, project_id, session_id, nil, attrs)
 
@@ -22,7 +33,16 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   defp create(scope, project_id, session_id, source, attrs) when is_map(attrs) do
     with {:ok, key} <- Input.request_key(attrs) do
       fields =
-        for field <- [:title, :body, :state, :configuration_version, :publication_consent, :visibility],
+        for field <- [
+              :title,
+              :body,
+              :state,
+              :configuration_version,
+              :publication_consent,
+              :visibility,
+              :canvas,
+              :canvas_contribution
+            ],
             Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
             do: {field, Input.get(attrs, field)}
 
@@ -49,6 +69,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp insert(access, key, fingerprint, source, attrs) do
     with {:ok, policy} <- Policy.contribution_policy(access, attrs),
+         {:ok, canvas} <- initial_canvas(Input.get(attrs, :canvas)),
          {:ok, source_fields, content_attrs} <- source_content(source, access, attrs),
          changeset = Revision.changeset(%Revision{}, content_attrs),
          true <- changeset.valid? || {:error, changeset} do
@@ -59,6 +80,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
           struct!(
             Idea,
             Map.merge(source_fields, %{
+              canvas: canvas,
               session_id: access.session_id,
               author_id: access.user_id,
               author_kind: :human,
@@ -77,6 +99,9 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
       Transaction.success(View.idea(idea, revision, access.user_id), audiences)
     end
   end
+
+  defp initial_canvas(nil), do: {:ok, %{}}
+  defp initial_canvas(attrs), do: Canvas.normalize(attrs)
 
   defp source_content(nil, _access, attrs), do: {:ok, %{}, Input.content_attrs(attrs)}
 

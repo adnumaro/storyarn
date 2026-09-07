@@ -10,7 +10,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"ideas", "ideation_ideas", :session_id,
-     ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision inserted_at updated_at)a},
+     ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision canvas deleted_at inserted_at updated_at)a},
     {"revisions", "ideation_idea_revisions", :idea_id,
      ~w(id recovery_identity idea_id number actor_id title body state inserted_at)a},
     {"edits", "ideation_idea_edits", :idea_id,
@@ -48,6 +48,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
           is_nil(value) -> nil
           key in @dates -> NaiveDateTime.to_iso8601(value)
           binary_field?(collection, key) -> Base.encode64(value)
+          key == :canvas -> Map.put_new(value, "links", [])
           true -> value
         end
 
@@ -59,7 +60,12 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {_, _, _, fields} = Enum.find(@tables, &(elem(&1, 0) == collection))
 
     Map.new(fields, fn key ->
-      value = Map.fetch!(row, Atom.to_string(key))
+      value =
+        case key do
+          :canvas -> Map.get(row, "canvas", %{})
+          :deleted_at when collection == "ideas" -> Map.get(row, "deleted_at")
+          _ -> Map.fetch!(row, Atom.to_string(key))
+        end
 
       decoded =
         cond do
@@ -96,7 +102,14 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     keys = Enum.sort(Enum.map(fields, &Atom.to_string/1))
 
     is_list(entries) and length(entries) <= @max_rows and
-      Enum.all?(entries, &(is_map(&1) and Enum.sort(Map.keys(&1)) == keys and is_integer(&1["id"]))) and
+      Enum.all?(
+        entries,
+        &(is_map(&1) and
+            (Enum.sort(Map.keys(&1)) == keys or
+               (collection == "ideas" and
+                  Enum.sort(Map.keys(Map.drop(&1, ["canvas", "deleted_at"]))) == keys -- ["canvas", "deleted_at"])) and
+            is_integer(&1["id"]))
+      ) and
       length(Enum.uniq_by(entries, & &1["id"])) == length(entries)
   end
 

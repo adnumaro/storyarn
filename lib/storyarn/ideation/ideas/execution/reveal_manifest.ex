@@ -6,13 +6,16 @@ defmodule Storyarn.Ideation.Ideas.Execution.RevealManifest do
   alias Storyarn.Ideation.Ideas.Rules.Policy
   alias Storyarn.Repo
 
-  def capture(%{"mode" => "eligible"}, access) do
+  def capture(%{"mode" => "eligible"} = selection, access) do
     if Policy.manager?(access) do
+      states = Map.get(selection, "states", ~w(active parked discarded))
+
       ideas =
         Repo.all(
           from i in Idea,
             where:
-              i.session_id == ^access.session_id and not is_nil(i.author_id) and
+              i.session_id == ^access.session_id and is_nil(i.deleted_at) and i.state in ^states and
+                not is_nil(i.author_id) and
                 i.publication_consent == :facilitator_assisted and
                 (is_nil(i.published_revision) or i.revision > i.published_revision),
             order_by: [asc: i.id],
@@ -33,7 +36,14 @@ defmodule Storyarn.Ideation.Ideas.Execution.RevealManifest do
 
   def validate(manifest, access) do
     ids = Enum.map(manifest, & &1["idea_id"])
-    ideas = Repo.all(from i in Idea, where: i.session_id == ^access.session_id and i.id in ^ids, order_by: [asc: i.id])
+
+    ideas =
+      Repo.all(
+        from i in Idea,
+          where: i.session_id == ^access.session_id and is_nil(i.deleted_at) and i.id in ^ids,
+          order_by: [asc: i.id]
+      )
+
     by_id = Map.new(ideas, &{&1.id, &1})
 
     Enum.reduce_while(manifest, {:ok, []}, fn target, {:ok, accepted} ->

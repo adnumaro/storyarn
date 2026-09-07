@@ -6,6 +6,14 @@ defmodule Storyarn.Ideation.Ideas.Rules.Selection do
 
   def normalize(:eligible), do: {:ok, %{"mode" => "eligible"}}
 
+  def normalize(%{states: states}) when is_list(states) and length(states) in 1..3 do
+    if Enum.all?(states, &(&1 in [:active, :parked, :discarded])) do
+      {:ok, %{"mode" => "eligible", "states" => states |> Enum.map(&Atom.to_string/1) |> Enum.uniq() |> Enum.sort()}}
+    else
+      {:error, :invalid_selection}
+    end
+  end
+
   def normalize(targets) when is_list(targets) and length(targets) in 1..200 do
     normalized = Enum.map(targets, &target/1)
 

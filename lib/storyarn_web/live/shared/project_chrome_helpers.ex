@@ -17,6 +17,7 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
     %{key: :flows, section: "flows"},
     %{key: :scenes, section: "scenes"},
     %{key: :assets, section: "assets"},
+    %{key: :brainstorming, section: "brainstorming"},
     %{key: :localization, section: "localization"}
   ]
 
@@ -29,6 +30,9 @@ defmodule StoryarnWeb.Live.Shared.ProjectChromeHelpers do
   defp tool_path(workspace, project, "scenes"), do: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/scenes"
 
   defp tool_path(workspace, project, "assets"), do: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/assets"
+
+  defp tool_path(workspace, project, "brainstorming"),
+    do: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/brainstorming"
 
   defp tool_path(workspace, project, "localization"),
     do: ~p"/workspaces/#{workspace.slug}/projects/#{project.slug}/localization"

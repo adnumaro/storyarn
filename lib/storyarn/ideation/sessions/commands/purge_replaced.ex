@@ -3,6 +3,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.PurgeReplaced do
   import Ecto.Query
 
   alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
+  alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Repo
 
@@ -11,7 +12,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.PurgeReplaced do
   # archives have an independent lifecycle and retain their captured bytes.
   def run(scope, project_id, session_id, revision)
       when is_integer(session_id) and session_id > 0 and is_integer(revision) and revision > 0 do
-    Repo.transact(fn ->
+    fn ->
       with {:ok, access} <- ProjectAccess.write(scope, project_id),
            true <- access.owner?,
            %Session{} = session <-
@@ -26,7 +27,9 @@ defmodule Storyarn.Ideation.Sessions.Commands.PurgeReplaced do
         true -> {:error, :session_not_replaced}
         {:error, reason} -> {:error, reason}
       end
-    end)
+    end
+    |> Repo.transact()
+    |> Invalidation.notify(project_id)
   end
 
   def run(_, _, _, _), do: {:error, :invalid_revision}
