@@ -1952,34 +1952,55 @@ web_to_context_internal_denials =
     }
   end
 
-# Ideation begins with one capability. Root calls remain declarative, reads
+# Ideation capabilities collaborate through their facades. Root calls remain declarative, reads
 # cannot enter effectful roles, and entities cannot orchestrate persistence.
+ideation_capabilities = ~w(sessions ideas)
+ideation_private_roles = ~w(adapters commands entities execution queries rules events contracts)
+
 ideation_root_facade_path_denials =
-  for role <- ~w(adapters commands entities execution queries) do
+  for capability <- ideation_capabilities, role <- ideation_private_roles do
     %{
       source_root: "lib/storyarn/ideation.ex",
-      target_root: "lib/storyarn/ideation/sessions/#{role}/",
+      target_root: "lib/storyarn/ideation/#{capability}/#{role}/",
       kinds: ["runtime", "export", "compile"],
-      reason: "The Ideation root facade must enter Sessions through its capability facade"
+      reason: "The Ideation root facade must enter each capability through its facade"
+    }
+  end
+
+ideation_internal_path_denials =
+  for source <- ideation_capabilities, target <- ideation_capabilities -- [source], role <- ideation_private_roles do
+    %{
+      source_root: "lib/storyarn/ideation/#{source}/",
+      target_root: "lib/storyarn/ideation/#{target}/#{role}/",
+      kinds: ["runtime", "export", "compile"],
+      reason: "Ideation capabilities cannot bypass another capability's facade"
     }
   end
 
 ideation_role_dependency_denials =
-  for {source_role, target_role} <- [
+  for capability <- ideation_capabilities,
+      {source_role, target_role} <- [
         {"queries", "commands"},
         {"queries", "execution"},
         {"queries", "adapters"},
+        {"queries", "events"},
         {"entities", "commands"},
         {"entities", "queries"},
         {"entities", "execution"},
         {"entities", "adapters"},
+        {"entities", "events"},
+        {"rules", "commands"},
+        {"rules", "queries"},
+        {"rules", "execution"},
+        {"rules", "adapters"},
+        {"rules", "events"},
         {"adapters", "commands"},
         {"adapters", "queries"},
         {"adapters", "execution"}
       ] do
     %{
-      source_root: "lib/storyarn/ideation/sessions/#{source_role}/",
-      target_root: "lib/storyarn/ideation/sessions/#{target_role}/",
+      source_root: "lib/storyarn/ideation/#{capability}/#{source_role}/",
+      target_root: "lib/storyarn/ideation/#{capability}/#{target_role}/",
       kinds: ["runtime", "export", "compile"],
       reason: "Ideation roles preserve read-only queries, passive entities, and adapter direction"
     }
@@ -3821,6 +3842,7 @@ policy = %{
     ] ++
       web_to_context_internal_denials ++
       ideation_root_facade_path_denials ++
+      ideation_internal_path_denials ++
       ideation_role_dependency_denials ++
       account_internal_path_denials ++
       account_role_dependency_denials ++

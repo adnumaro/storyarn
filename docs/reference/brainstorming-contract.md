@@ -7,7 +7,8 @@
 > Source of truth: `Storyarn.Ideation` and its session commands/queries
 
 This is the internal session foundation of ENG-130, not a released brainstorming
-tool. The board, ideas and publication are separate deliveries in ENG-132/133/134.
+tool. The [ideas and publication contract](brainstorming-ideas-contract.md) describes
+the ENG-132/133 capability built on it. The board remains a separate ENG-134 delivery.
 The broader plan remains in Linear's Brainstorming initiative.
 
 ## Ownership and entry points
@@ -63,7 +64,8 @@ Configuration stores separate round and timer preferences, optional duration,
 new-idea default visibility and publication policy. Defaults disable rounds and
 timer and specify private, author-controlled drafts. Enabling the timer requires
 a duration between 15 seconds and 24 hours. These are preferences only: this
-delivery contains no running rounds, clock, drafts or reveal operation.
+capability contains no running rounds or clock. Ideas owns contributions and
+explicit publication through the separately documented capability.
 
 Writes take Project authorization locks before the session row lock and validate
 any requested delegate under current access locks. Updates require the revision

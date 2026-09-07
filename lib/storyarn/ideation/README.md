@@ -1,8 +1,9 @@
 # Ideation context
 
-Ideation owns brainstorming sessions, responsibilities, independent configuration
-and their revision history. External callers enter `Storyarn.Ideation`; its root
-facade delegates to `Storyarn.Ideation.Sessions` without importing private roles.
+Ideation owns brainstorming sessions, responsibilities, configuration, ideas,
+authored revisions and publication. External callers enter `Storyarn.Ideation`;
+its root facade delegates through Sessions and Ideas without importing private
+roles. Capabilities collaborate through their own facades.
 
 ## Sessions capability
 
@@ -19,6 +20,21 @@ Schema module identities are stable even though their files live in `entities/`.
 Queries cannot enter command, execution or mutation-adapter roles. Entities and
 adapters cannot become application orchestrators. The architecture ratchet and
 `ideation_internal_structure_test.exs` enforce these directions and locations.
+
+## Ideas capability
+
+Ideas owns `ideation_ideas`, immutable `ideation_idea_revisions`, idempotent
+`ideation_idea_edits` (including private conflicting input), frozen
+`ideation_reveal_operations` and `ideation_idea_publications`. Its `commands/`
+implement creation/derivation, save, prepare and reveal; `execution/` retains
+atomic transaction/revision/publication workflows. `queries/` selects authorized
+revisions before decryption; `contracts/` builds safe views; `rules/` validates
+content, policy and selection; `events/` sends content-free invalidations.
+
+Sessions exposes a transaction-participating contribution port to Ideas. It locks
+current Project access and the session lifecycle without granting managerial
+draft access. Ideas owns the outer transaction and emits invalidations only after
+commit. Other capabilities cannot import private implementation modules.
 
 ## Project authority
 
@@ -37,7 +53,8 @@ a blank or ineligible candidate is rejected; an omitted assignment is preserved.
 ## Write ownership and recovery
 
 Only session commands and their atomic mutation workflow ordinarily write
-`ideation_sessions` and `ideation_session_revisions`. Creating a revision is part
+`ideation_sessions` and `ideation_session_revisions`. Only Ideas commands and their
+execution workflows write the idea, edit, reveal and publication tables. Creating a revision is part
 of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
@@ -46,3 +63,5 @@ No Project snapshot/reconstitution writer for these tables is implemented or
 authorized yet. This foundation has no user-facing entry point. Recovery and
 private-content policy remain release gates before accepting real content through
 the tool. See [the session contract](../../../docs/reference/brainstorming-contract.md).
+Private draft and conflict handling is specified in
+[the idea contract](../../../docs/reference/brainstorming-ideas-contract.md).
