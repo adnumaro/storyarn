@@ -2,9 +2,9 @@
 
 > Owner: Engineering
 >
-> Last reviewed: 2026-09-07
+> Last reviewed: 2026-09-08
 >
-> Scope: ENG-129 and the sessions/ideas slice of ENG-147
+> Scope: ENG-129, ENG-136 and the sessions/ideas slice of ENG-147
 
 ## Ownership and permissions
 
@@ -53,13 +53,16 @@ Canonical `project.json` format **3** requires an `ideation` compartment. The
 existing manifest framing and persisted snapshot/archive protocol versions do
 not change. The compartment is version **1**, containing an authenticated,
 encrypted JSON inventory with its own `storyarn.ideation` format identifier.
+The inner inventory is version **2**; version **1** inventories are still accepted
+and normalized with no rounds and unassigned, non-late contributions.
 The inventory covers:
 
 - Open, archived and previously replaced sessions, their independent
   configuration, responsibilities and complete session revision history.
+- Planned, active and closed rounds, their prompts and lifecycle timestamps.
 - Every idea, current creative state, authorship, publication consent,
   configuration version, source idea/revision and immutable creation-request
-  source identity.
+  source identity, immutable round membership and late-contribution flag.
 - All authored revisions and successful/conflicting edit receipts.
 - Prepared/completed reveal operations, exact selections/manifests, and the
   immutable publication ledger.
@@ -100,7 +103,7 @@ reconstitution transaction. The architecture ratchet restricts these ports to
 exact Project capture, validation, materialization and verification callers;
 ordinary Web code cannot use them as a draft-reading API.
 
-Each persisted session, idea, revision, receipt, reveal and publication carries
+Each persisted session, round, idea, revision, receipt, reveal and publication carries
 an immutable recovery UUID. Restore compares complete session generations using
 those identities and content, independent of database IDs and replacement time.
 An identical generation already present in the destination is reused; a distinct
@@ -109,6 +112,13 @@ selections/manifests and historical responsibility assignments are remapped expl
 are not rewritten. Creation receipts retain their original source identity so
 retrying a derivation with its remapped source still recognizes the request.
 Successful/conflicting saves remain replayable.
+
+Rounds are inserted before ideas, and idea-to-round references are remapped
+within the restored session. Validation rejects cross-session round references,
+multiple active rounds, invalid lifecycle timestamps and impossible late-note
+flags before any replacement. Round actions in session revisions carry the
+stable round number and its metadata, not database IDs. Restoring an active
+round restores that state without starting a timer or revealing any contribution.
 
 Captured actor IDs resolve only through authenticated account recovery UUIDs.
 There is no fallback to numeric ID, email, project owner, facilitator or a
@@ -182,7 +192,7 @@ rejects an Ideation compartment outside the exact snapshot-import path. Runtime
 exports (Yarn/Ink and the existing tool-oriented exports) do not export
 brainstorming. They are not whole-project backups.
 
-No private attachments, shared AI outputs, rounds, groups, decisions,
+No private attachments, shared AI outputs, groups, decisions,
 brainstorming conversations, cross-tool references or external credentials exist
 in this persisted slice. Their tickets must extend this contract and its
 restoration tests before admitting those data. ENG-147 remains open for that

@@ -19,15 +19,29 @@ defmodule StoryarnWeb.IdeationLive.Helpers.Params do
   def fields(params, keys), do: Map.take(params, Enum.map(keys, &Atom.to_string/1))
 
   def creation(params) when is_map(params) do
-    with {:ok, version} <- positive(params["configuration_version"]) do
+    with {:ok, version} <- positive(params["configuration_version"]),
+         {:ok, round} <- creation_round(params) do
       {:ok,
        params
        |> fields([:title, :body, :state, :request_key, :canvas])
-       |> Map.put("configuration_version", version)}
+       |> Map.put("configuration_version", version)
+       |> Map.merge(round)}
     end
   end
 
   def creation(_), do: {:error, :invalid_parameters}
+
+  def round_filter("all"), do: {:ok, :all}
+  def round_filter(nil), do: {:ok, nil}
+  def round_filter(value), do: positive(value)
+
+  defp creation_round(%{"round_id" => nil}), do: {:ok, %{"round_id" => nil}}
+
+  defp creation_round(%{"round_id" => value}) do
+    with {:ok, id} <- positive(value), do: {:ok, %{"round_id" => id}}
+  end
+
+  defp creation_round(_), do: {:ok, %{}}
 
   def filter(value, allowed, default) do
     Enum.find(allowed, default, &(Atom.to_string(&1) == value))

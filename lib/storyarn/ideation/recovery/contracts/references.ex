@@ -11,6 +11,7 @@ defmodule Storyarn.Ideation.Recovery.References do
     row
     |> remap(:project_id, fn _ -> project_id end)
     |> remap(:session_id, &lookup(maps, "sessions", &1))
+    |> remap(:round_id, &lookup(maps, "rounds", &1))
     |> remap(:idea_id, &lookup(maps, "ideas", &1))
     |> remap(:operation_id, &lookup(maps, "reveals", &1))
     |> remap(:source_idea_id, &lookup(maps, "ideas", &1))

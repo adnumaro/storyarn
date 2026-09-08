@@ -12,6 +12,19 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate create_session(scope, project_id, attrs), to: Commands.Create, as: :run
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Queries.List, as: :run
   defdelegate get_session(scope, project_id, session_id), to: Queries.Get, as: :run
+  defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Queries.Rounds, as: :run
+  defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Queries.RoundContext, as: :run
+  defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Commands.CreateRound, as: :run
+  defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Commands.UpdateRound, as: :run
+  defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Commands.CancelRound, as: :run
+  defdelegate start_round(scope, project_id, session_id, round_id, revision), to: Commands.StartRound, as: :run
+  defdelegate close_round(scope, project_id, session_id, round_id, revision), to: Commands.CloseRound, as: :run
+
+  defdelegate validate_round_filter(session_id, round_id), to: Queries.Rounds, as: :validate_filter
+
+  defdelegate select_contribution_round(access, selection),
+    to: Storyarn.Ideation.Sessions.Execution.RoundContribution,
+    as: :resolve
 
   defdelegate list_session_revisions(scope, project_id, session_id, opts \\ []),
     to: Queries.History,

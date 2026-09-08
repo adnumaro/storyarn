@@ -9,15 +9,18 @@ defmodule StoryarnWeb.IdeationLive.Board do
   alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Handlers.IdeaHandlers
+  alias StoryarnWeb.IdeationLive.Handlers.RoundHandlers
   alias StoryarnWeb.IdeationLive.Handlers.SessionHandlers
   alias StoryarnWeb.IdeationLive.Helpers.BoardData
   alias StoryarnWeb.IdeationLive.Helpers.Params
   alias StoryarnWeb.IdeationLive.Helpers.Replies
+  alias StoryarnWeb.IdeationLive.Helpers.RoundData
   alias StoryarnWeb.Live.Shared.CollaborationHelpers
   alias StoryarnWeb.Live.Shared.ProjectChromeHelpers
 
   @session_writes ~w(create_session update_session assign_responsibilities archive_session reopen_session recover_session purge_session)
   @idea_writes ~w(create_idea save_idea delete_idea restore_idea move_idea connect_ideas prepare_reveal reveal_ideas)
+  @round_writes ~w(create_round update_round cancel_round start_round close_round)
 
   @impl true
   def render(assigns) do
@@ -55,6 +58,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
         can-manage={@board.can_manage}
         can-edit={@board.can_edit}
         epoch={@epoch}
+        rounds={@board.rounds}
+        rounds-next={@board.rounds_next}
+        active-round={@board.active_round}
       />
       <.vue
         v-component="live/ideation/BrainstormingBoard"
@@ -101,7 +107,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:canvas_scope, nil)
      |> assign(:canvas_ready, false)
      |> assign(:last_cursor_at, 0)
-     |> assign(:filters, %{session_status: :open, session_before: nil, idea_before: nil})
+     |> assign(:filters, %{
+       session_status: :open,
+       session_before: nil,
+       idea_before: nil,
+       round_id: :all,
+       round_before: nil
+     })
      |> assign(:refresh_timer, nil)
      |> assign(:refresh_running, nil)
      |> assign(:refresh_dirty, false)
@@ -113,7 +125,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
     case Params.optional_id(params["id"]) do
       {:ok, id} ->
         socket = socket |> subscribe_session(id) |> assign(:session_id, id)
-        socket = assign(socket, :filters, %{socket.assigns.filters | idea_before: nil})
+        filters = %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil}
+        socket = assign(socket, :filters, filters)
         # A route transition invalidates reads started for the previous session.
         socket = assign(socket, :refresh_running, nil)
         {:noreply, load_now(socket)}
@@ -128,7 +141,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
   end
 
   @impl true
-  def handle_event(event, params, socket) when event in @session_writes or event in @idea_writes do
+  def handle_event(event, params, socket)
+      when event in @session_writes or event in @idea_writes or event in @round_writes do
     Authorize.with_authorization(socket, :edit_content, fn socket -> write(event, params, socket) end, fn socket,
                                                                                                           reason ->
       {:reply, Replies.error(reason), reload_access(socket)}
@@ -168,6 +182,34 @@ defmodule StoryarnWeb.IdeationLive.Board do
     with :ok <- current_session(params, socket),
          {:ok, before_id} <- Params.optional_id(params["before_id"]) do
       filters = %{socket.assigns.filters | idea_before: before_id}
+      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
+    else
+      {:error, reason} -> {:reply, Replies.error(reason), socket}
+    end
+  end
+
+  def handle_event("filter_round", params, socket) do
+    with :ok <- current_session(params, socket),
+         {:ok, round_id} <- Params.round_filter(params["round_id"]),
+         {:ok, before_id} <- Params.optional_id(params["before_id"]),
+         :ok <-
+           RoundData.validate_filter(
+             socket.assigns.current_scope,
+             socket.assigns.project.id,
+             socket.assigns.session_id,
+             round_id
+           ) do
+      filters = %{socket.assigns.filters | round_id: round_id, idea_before: before_id}
+      {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
+    else
+      {:error, reason} -> {:reply, Replies.error(reason), read_result_socket(socket, {:error, reason})}
+    end
+  end
+
+  def handle_event("browse_rounds", params, socket) do
+    with :ok <- current_session(params, socket),
+         {:ok, before_id} <- Params.optional_id(params["before_id"]) do
+      filters = %{socket.assigns.filters | round_before: before_id}
       {:reply, %{status: "ok"}, socket |> assign(:filters, filters) |> refresh()}
     else
       {:error, reason} -> {:reply, Replies.error(reason), socket}
@@ -318,6 +360,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       socket
       |> canvas_subscription(nil)
       |> reset_epoch("project_restored")
+      |> assign(:filters, %{socket.assigns.filters | idea_before: nil, round_id: :all, round_before: nil})
       |> assign(:board, BoardData.empty())
       |> refresh()
 
@@ -363,11 +406,22 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   defp write(event, params, socket) do
     with :ok <- current_epoch(params, socket),
-         :ok <- if(event in @idea_writes, do: current_session(params, socket), else: :ok) do
+         :ok <- if(event in @idea_writes or event in @round_writes, do: current_session(params, socket), else: :ok) do
       result =
-        if event in @session_writes,
-          do: SessionHandlers.run(event, socket.assigns.current_scope, socket.assigns.project.id, params),
-          else:
+        cond do
+          event in @session_writes ->
+            SessionHandlers.run(event, socket.assigns.current_scope, socket.assigns.project.id, params)
+
+          event in @round_writes ->
+            RoundHandlers.run(
+              event,
+              socket.assigns.current_scope,
+              socket.assigns.project.id,
+              socket.assigns.session_id,
+              params
+            )
+
+          true ->
             IdeaHandlers.run(
               event,
               socket.assigns.current_scope,
@@ -375,6 +429,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
               socket.assigns.session_id,
               params
             )
+        end
 
       reply =
         case result do

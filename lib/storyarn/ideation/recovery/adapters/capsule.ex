@@ -25,7 +25,7 @@ defmodule Storyarn.Ideation.Recovery.Capsule do
          {:ok, data} <- Jason.decode(json),
          :ok <- Inventory.validate(data),
          :ok <- validate_content_keys(data) do
-      {:ok, data}
+      {:ok, Inventory.normalize(data)}
     else
       _ -> {:error, :invalid_ideation_recovery}
     end

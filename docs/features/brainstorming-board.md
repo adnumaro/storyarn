@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
 > Last reviewed: 2026-09-08
-> Scope: ENG-134, replacement for PR #137
+> Scope: ENG-134 and ENG-136
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -70,6 +70,39 @@ operations. Other editors can arrange or connect shared notes and duplicate
 readable notes as their own contributions. Read-only members can inspect authorized content
 but cannot write.
 
+## Optional rounds
+
+The Rounds control in the existing header lets the facilitator prepare a round
+with an optional question, start it, close it and consult previous rounds.
+Prepared questions can be edited or cancelled before starting. Cancelled rounds
+remain in the round history, without becoming active or accepting notes.
+Participants can read that context without managing the session. The canvas
+remains the working surface throughout; no round or timer is required to create
+notes. Only one round can be active at a time.
+The current question also appears above the canvas; longer questions can be
+expanded in place without opening the round controls.
+
+The round filter changes which notes are shown, independently of the active
+round. It offers all rounds, notes without a round, and each loaded round.
+Pagination applies to that view. Creating, duplicating or pasting while viewing
+a previous round returns the view to all rounds so the new note remains visible;
+new contributions belong to the currently active round, or to no round.
+
+A note keeps the round active when writing began. If its first save arrives
+after closing, its footer identifies it as a late contribution to the original
+round. Closing does not publish, discard or freeze notes. Editing existing notes
+preserves their provenance, and undoing an unsaved deletion restores the original
+round. Switching filters retains drafts and local undo state. Existing connections
+can relate readable notes across rounds.
+
+Undo and redo preserve the current view when their notes belong to that view,
+including restoring a deleted note. When a target is hidden or outside the loaded
+range, the canvas loads all rounds through the previously displayed range before
+acting. Failed or interrupted reads preserve the pending undo entry.
+
+The [round contract](../reference/brainstorming-rounds-contract.md) defines
+concurrency, authorization and snapshot compatibility.
+
 ## Eliminate versus discard
 
 **Delete note** (trash action, Delete or Backspace outside the text editor) removes
@@ -111,9 +144,10 @@ They are not exposed as a card-history feature. Provenance already stored in old
 capsules remains recoverable; no API creates new derived ideas.
 
 The encrypted project recovery inventory includes canvas geometry, connections,
-deletions and session mode. Restoring remaps connection IDs after all ideas exist.
-Old capsules without canvas/deletion fields remain readable. No image upload,
-AI generation, rounds, timers, grouping or cross-tool materialization is added here.
+deletions, session mode, rounds and contribution provenance. Restoring remaps
+connection and round IDs. Old capsules without canvas/deletion or round fields
+remain readable. No image upload, AI generation, timers, grouping or cross-tool
+materialization is added here.
 
 ## Follow-up product work
 

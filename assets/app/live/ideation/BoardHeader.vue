@@ -2,12 +2,15 @@
 import { Settings2, Eye, EyeOff } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { ref } from "vue";
-import { useBoardText } from "@modules/ideation";
+import { useBoardText, RoundControls } from "@modules/ideation";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import type { Session } from "@modules/ideation";
-const { session, epoch, canManage, canEdit } = defineProps<{
+import type { Session, Round } from "@modules/ideation";
+const { session, epoch, canManage, canEdit, rounds, roundsNext, activeRound } = defineProps<{
   session: Session;
+  rounds: Round[];
+  roundsNext: number | null;
+  activeRound: Round | null;
   epoch: string;
   canManage: boolean;
   canEdit: boolean;
@@ -30,7 +33,7 @@ function setMode() {
     },
     (reply) => {
       pending.value = false;
-      if (reply.status === "error") failure.value = String(reply.code);
+      if (reply?.status !== "ok") failure.value = String(reply?.code ?? "unavailable");
     },
     () => {
       pending.value = false;
@@ -47,7 +50,7 @@ function rename(title: string) {
     "update_session",
     { title, epoch, session_id: session.id, revision: session.revision },
     (reply) => {
-      if (reply.status === "error") failure.value = String(reply.code);
+      if (reply?.status !== "ok") failure.value = String(reply?.code ?? "unavailable");
     },
     () => {
       failure.value = "offline";
@@ -80,6 +83,15 @@ function rename(title: string) {
       >
         <Settings2 class="size-3.5" /></button
     ></ToolbarTooltip>
+    <RoundControls
+      :session="session"
+      :epoch="epoch"
+      :rounds="rounds"
+      :rounds-next="roundsNext"
+      :active-round="activeRound"
+      :can-manage="canManage"
+      :can-edit="canEdit"
+    />
     <ToolbarTooltip
       :label="
         t(

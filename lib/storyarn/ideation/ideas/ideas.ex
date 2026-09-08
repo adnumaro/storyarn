@@ -23,7 +23,7 @@ defmodule Storyarn.Ideation.Ideas do
   defdelegate update_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Commands.Update, as: :run
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Queries.Get, as: :run
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Queries.List, as: :run
-  defdelegate count_ideas(scope, project_id, session_id), to: Queries.List, as: :counts
+  defdelegate count_ideas(scope, project_id, session_id, opts \\ []), to: Queries.List, as: :counts
 
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible),
     to: Commands.PrepareReveal,

@@ -1,6 +1,12 @@
 import { computed, ref, shallowRef } from "vue";
 
+export interface CanvasTarget {
+  id: number;
+  restoring?: { roundId: number | null };
+}
+
 export interface CanvasCommand {
+  targets: (undo: boolean) => CanvasTarget[];
   undo: () => Promise<boolean>;
   redo: () => Promise<boolean>;
 }
@@ -8,7 +14,11 @@ export interface CanvasCommand {
 /** Session-local commands, acknowledged before moving between stacks. The shared
  * useUndoRedo dispatches fire-and-forget server events and cannot acknowledge
  * these composed, asynchronous canvas operations. No version history is stored. */
-export function useCanvasHistory(onError: () => void, shouldRetry = () => false) {
+export function useCanvasHistory(
+  onError: () => void,
+  shouldRetry = () => false,
+  prepare?: (targets: CanvasTarget[]) => Promise<boolean>,
+) {
   const past = shallowRef<CanvasCommand[]>([]);
   const future = shallowRef<CanvasCommand[]>([]);
   const busy = ref(false);
@@ -36,7 +46,12 @@ export function useCanvasHistory(onError: () => void, shouldRetry = () => false)
     const destination = undo ? future : past;
     const command = source.value.at(-1);
     if (!command || busy.value) return;
-    const result = await run(() => (undo ? command.undo() : command.redo()));
+    const started = generation;
+    const result = await run(async () => {
+      if (prepare && (!(await prepare(command.targets(undo))) || started !== generation))
+        return undefined;
+      return undo ? command.undo() : command.redo();
+    });
     if (result === undefined) return;
     if (!result) {
       // A rejected command is no longer applicable. Keep uncertain offline

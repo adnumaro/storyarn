@@ -7,13 +7,13 @@ roles. Capabilities collaborate through their own facades.
 
 ## Sessions capability
 
-| Role         | Responsibility                                                  |
-| ------------ | --------------------------------------------------------------- |
-| `commands/`  | Create, update, assign responsibilities, archive and reopen     |
-| `queries/`   | Authorized, bounded reads of session data and revision history  |
-| `entities/`  | Session, configuration and revision schemas; no persistence I/O |
-| `execution/` | Locked, atomic session mutation and revision recording          |
-| `adapters/`  | Project authorization and candidate eligibility for mutations   |
+| Role         | Responsibility                                                         |
+| ------------ | ---------------------------------------------------------------------- |
+| `commands/`  | Session lifecycle, responsibilities and optional round lifecycle       |
+| `queries/`   | Authorized, bounded reads of session data and revision history         |
+| `entities/`  | Session, configuration, round and revision schemas; no persistence I/O |
+| `execution/` | Locked, atomic session mutation and revision recording                 |
+| `adapters/`  | Project authorization and candidate eligibility for mutations          |
 
 The capability facade is the only implementation file at `sessions/` root.
 Schema module identities are stable even though their files live in `entities/`.
@@ -70,7 +70,7 @@ of the session transaction, not a background side effect. Queries and entities
 never write or acquire locks. Physical project deletion cascades its records;
 archive only changes the session lifecycle and records a revision.
 
-Recovery is the privileged reconstitution capability for the seven session/idea
+Recovery is the privileged reconstitution capability for the eight session/round/idea
 tables. Its closed inventory uses raw encrypted fields and owns the derived
 `ideation_recovery_captures` cache. `execution/` coordinates capture/reconstitution;
 `adapters/` handles bounded persistence and encryption; `contracts/` owns the
@@ -91,3 +91,9 @@ before commit so it cannot strand future backups above those bounds. See [privac
 The canvas uses facilitator-controlled session privacy and direct editing. See
 [canvas behavior](../../../docs/features/brainstorming-board.md) for interaction,
 delete/discard semantics and the compatibility boundary of publication ports.
+
+Optional rounds are Session-owned children. Their start/close operations share
+the session lock with contributions and record session revisions atomically.
+Ideas asks the Sessions contribution port to bind its immutable round provenance;
+closing a round never publishes or freezes content. See the
+[round contract](../../../docs/reference/brainstorming-rounds-contract.md).

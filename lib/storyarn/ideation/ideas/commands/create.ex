@@ -12,6 +12,7 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
   alias Storyarn.Ideation.Ideas.Rules.Input
   alias Storyarn.Ideation.Ideas.Rules.Policy
   alias Storyarn.Ideation.Ideas.View
+  alias Storyarn.Ideation.Sessions
   alias Storyarn.Repo
 
   def run_canvas(scope, project_id, session_id, attrs) when is_map(attrs),
@@ -32,7 +33,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
               :publication_consent,
               :visibility,
               :canvas,
-              :canvas_contribution
+              :canvas_contribution,
+              :round_id
             ],
             Map.has_key?(attrs, field) or Map.has_key?(attrs, Atom.to_string(field)),
             do: {field, Input.get(attrs, field)}
@@ -58,6 +60,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp insert(access, key, fingerprint, attrs) do
     with {:ok, policy} <- Policy.contribution_policy(access, attrs),
+         {:ok, selected_round} <- selected_round(attrs),
+         {:ok, round} <- Sessions.select_contribution_round(access, selected_round),
          {:ok, canvas} <- initial_canvas(Input.get(attrs, :canvas)),
          changeset = Revision.changeset(%Revision{}, Input.content_attrs(attrs)),
          true <- changeset.valid? || {:error, changeset} do
@@ -70,6 +74,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
             %{
               canvas: canvas,
               session_id: access.session_id,
+              round_id: round.round_id,
+              late_contribution: round.late_contribution,
               author_id: access.user_id,
               author_kind: :human,
               creation_key: key,
@@ -90,4 +96,16 @@ defmodule Storyarn.Ideation.Ideas.Commands.Create do
 
   defp initial_canvas(nil), do: {:ok, %{}}
   defp initial_canvas(attrs), do: Canvas.normalize(attrs)
+
+  defp selected_round(attrs) do
+    if Map.has_key?(attrs, :round_id) or Map.has_key?(attrs, "round_id") do
+      case Input.get(attrs, :round_id) do
+        nil -> {:ok, nil}
+        id when is_integer(id) and id > 0 and id <= 9_223_372_036_854_775_807 -> {:ok, id}
+        _invalid -> {:error, :invalid_round}
+      end
+    else
+      {:ok, :active}
+    end
+  end
 end

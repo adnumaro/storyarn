@@ -13,6 +13,7 @@ const {
   editing,
   selected,
   author,
+  roundNumber,
   status = "saved",
 } = defineProps<{
   note: Idea;
@@ -20,6 +21,7 @@ const {
   editing: boolean;
   selected: boolean;
   author: string;
+  roundNumber?: number;
   status?: string;
 }>();
 const emit = defineEmits<{ change: [body: string]; finish: []; quickCreate: [] }>();
@@ -107,6 +109,8 @@ const color = computed(
     tabindex="0"
     :aria-label="note.title || note.preview || t('ideation.untitled')"
     :aria-selected="selected"
+    :data-round-id="note.round_id"
+    :data-late-contribution="note.late_contribution"
     class="canvas-note flex min-h-60 flex-col rounded-sm p-5 text-[#292d35] shadow-md outline-none transition-shadow"
     :class="
       selected
@@ -123,7 +127,15 @@ const color = computed(
       @pointerdown="editing && $event.stopPropagation()"
     />
     <footer class="mt-5 flex items-center justify-between gap-3 text-[11px] opacity-65">
-      <span class="truncate">{{ author }}</span
+      <span class="min-w-0">
+        <span class="block truncate">{{ author }}</span>
+        <span v-if="note.round_id" class="mt-1 block"
+          >{{
+            roundNumber
+              ? t("ideation.rounds.number", { number: roundNumber })
+              : t("ideation.rounds.assigned")
+          }}<span v-if="note.late_contribution"> · {{ t("ideation.rounds.late") }}</span></span
+        > </span
       ><span class="flex shrink-0 items-center gap-1">{{
         editing && status !== "saved" ? t(`ideation.saveStatus.${status}`) : ""
       }}</span>

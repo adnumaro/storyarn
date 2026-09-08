@@ -39,7 +39,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
 
   # Only called inside the command transaction: the session and audit record
   # either both commit or neither does. No asynchronous history write.
-  def record(session, actor_id, action) do
+  def record(session, actor_id, action, additions \\ %{}) do
     snapshot = %{
       "title" => session.title,
       "objective" => session.objective,
@@ -56,7 +56,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.Mutation do
       actor_id: actor_id,
       number: session.revision,
       action: action,
-      snapshot: snapshot
+      snapshot: Map.merge(snapshot, additions)
     })
 
     {:ok, session}

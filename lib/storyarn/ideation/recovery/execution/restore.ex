@@ -133,6 +133,7 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   # Literal table targets keep privileged write ownership statically auditable.
   defp insert_row("sessions", row), do: insert_one("ideation_sessions", row)
   defp insert_row("session_revisions", row), do: insert_one("ideation_session_revisions", row)
+  defp insert_row("rounds", row), do: insert_one("ideation_rounds", row)
   defp insert_row("ideas", row), do: insert_one("ideation_ideas", row)
   defp insert_row("revisions", row), do: insert_one("ideation_idea_revisions", row)
   defp insert_row("edits", row), do: insert_one("ideation_idea_edits", row)

@@ -19,6 +19,38 @@ defmodule Storyarn.Ideation do
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Sessions
   defdelegate get_session(scope, project_id, session_id), to: Sessions
 
+  @doc "Lists optional rounds from a readable session, newest first, with bounded cursor pagination."
+  @spec list_rounds(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, [struct()]} | {:error, term()}
+  defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Sessions
+
+  @doc "Reads a round history range and its active and referenced context after one access check."
+  @spec get_round_context(map(), pos_integer(), pos_integer(), keyword()) :: {:ok, map()} | {:error, term()}
+  defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Sessions
+
+  @doc "Prepares an optional round without starting a timer or changing session visibility."
+  @spec create_round(map(), pos_integer(), pos_integer(), pos_integer(), map()) :: {:ok, struct()} | {:error, term()}
+  defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Sessions
+
+  @doc "Edits a prepared round's question after checking current facilitator authority and session revision."
+  @spec update_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer(), map()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Sessions
+
+  @doc "Cancels a prepared round while retaining its session record and recovery provenance."
+  @spec cancel_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Sessions
+
+  @doc "Starts a prepared round after checking facilitator authority and the current session revision."
+  @spec start_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate start_round(scope, project_id, session_id, round_id, revision), to: Sessions
+
+  @doc "Closes the active round without publishing ideas or restricting further contribution and editing."
+  @spec close_round(map(), pos_integer(), pos_integer(), pos_integer(), pos_integer()) ::
+          {:ok, struct()} | {:error, term()}
+  defdelegate close_round(scope, project_id, session_id, round_id, revision), to: Sessions
+
   defdelegate list_session_revisions(scope, project_id, session_id, opts \\ []), to: Sessions
 
   defdelegate update_session(scope, project_id, session_id, revision, attrs), to: Sessions
@@ -48,7 +80,7 @@ defmodule Storyarn.Ideation do
   defdelegate update_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Ideas
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
-  defdelegate count_ideas(scope, project_id, session_id), to: Ideas
+  defdelegate count_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible), to: Ideas
   defdelegate reveal_ideas(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate get_idea_reveal(scope, project_id, session_id, operation_id), to: Ideas

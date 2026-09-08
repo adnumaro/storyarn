@@ -16,6 +16,8 @@ export interface CanvasPlacement {
   version?: number;
 }
 export interface Idea extends IdeaContent {
+  round_id: number | null;
+  late_contribution: boolean;
   deleted_at?: string | null;
   canvas?: CanvasPlacement;
   id: number;
@@ -33,6 +35,9 @@ export interface Idea extends IdeaContent {
   source_revision: number | null;
   inserted_at: string;
   preview: string;
+}
+export interface CanvasIdea extends Idea {
+  round_number?: number;
 }
 export interface EditReceipt {
   id: number;
@@ -78,6 +83,18 @@ export interface Member {
   display_name: string;
   avatar_url: string | null;
 }
+export interface Round {
+  id: number;
+  session_id: number;
+  number: number;
+  prompt: string | null;
+  status: "planned" | "active" | "closed" | "cancelled";
+  started_at: string | null;
+  closed_at: string | null;
+  inserted_at: string;
+  updated_at: string;
+}
+export type RoundFilter = "all" | null | number;
 export interface Board {
   epoch: string;
   loading: boolean;
@@ -88,6 +105,10 @@ export interface Board {
   session_status: "open" | "archived" | "replaced";
   session: Session | null;
   session_missing: boolean;
+  rounds: Round[];
+  rounds_next: number | null;
+  active_round: Round | null;
+  round_filter: RoundFilter;
   ideas: Idea[];
   ideas_next: number | null;
   idea_before: number | null;

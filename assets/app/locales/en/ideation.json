@@ -86,7 +86,14 @@
       "stale_deletion": "This deletion has changed. Refresh the board before trying again.",
       "undo_unavailable": "This action is no longer available because the note changed. You can continue undoing earlier actions.",
       "selection_too_large": "This selection is too large. Select fewer notes and try again.",
-      "session_not_replaced": "This session has not been replaced and does not need recovery. Refresh the session list."
+      "session_not_replaced": "This session has not been replaced and does not need recovery. Refresh the session list.",
+      "round_already_active": "A round is already in progress. Close it before starting another.",
+      "round_not_active": "This round is no longer in progress. Review the current round.",
+      "invalid_round": "This round is unavailable. Refresh the board and review its rounds.",
+      "round_not_started": "This round has not started. Start it before contributing notes.",
+      "round_closed": "This round is closed. Prepare another round to continue.",
+      "round_not_found": "This round is no longer available. Refresh the board.",
+      "round_not_planned": "Only a prepared round can be changed or cancelled. Review the current round."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -142,6 +149,37 @@
       "redo": "Redo",
       "undoHelp": "Undo · ⌘/Ctrl+Z",
       "redoHelp": "Redo · ⇧⌘/Ctrl+Z"
+    },
+    "rounds": {
+      "title": "Rounds",
+      "controls": "Manage and browse rounds",
+      "number": "Round {number}",
+      "help": "Explore one question at a time. Closing a round keeps notes editable and preserves their visibility.",
+      "empty": "No rounds yet. You can keep brainstorming freely or prepare a round.",
+      "prompt": "Question or context (optional)",
+      "promptPlaceholder": "What should we explore next?",
+      "prepare": "Prepare round",
+      "start": "Start round",
+      "close": "Close round",
+      "planned": "Prepared",
+      "active": "In progress",
+      "closed": "Closed",
+      "earlier": "Show earlier rounds",
+      "filter": "Filter notes by round",
+      "all": "All rounds",
+      "none": "Without a round",
+      "assigned": "Round contribution",
+      "late": "Added after closing",
+      "edit": "Edit question",
+      "save": "Save question",
+      "cancelRound": "Cancel round",
+      "cancelled": "Cancelled",
+      "context": "Current round question",
+      "promptChanged": "The session changed while you were editing. Compare the current question with your draft before replacing it.",
+      "currentPrompt": "Current question",
+      "noPrompt": "No question",
+      "replacePrompt": "Use my question",
+      "loadingPrompt": "Loading the current question…"
     }
   }
 }

@@ -3,22 +3,22 @@ import { shallowMount, flushPromises, type VueWrapper } from "@vue/test-utils";
 import { defineComponent, h, nextTick } from "vue";
 import BrainstormingWorkspace from "@modules/ideation/BrainstormingWorkspace.vue";
 import { createMockLive } from "../../setup";
-import { board, idea } from "./fixtures";
-import type { Idea } from "@modules/ideation/types";
+import { board, idea, round } from "./fixtures";
+import type { Board, Idea } from "@modules/ideation/types";
 
 const Canvas = defineComponent({
   name: "BrainstormingCanvas",
-  props: ["notes", "editingId", "writable", "historyState", "cursorEnabled"],
+  props: ["notes", "editingId", "writable", "historyState", "cursorEnabled", "selectedIds"],
   setup(_props, { expose }) {
     expose({ focus: vi.fn() });
     return () => h("div");
   },
 });
 let wrapper: VueWrapper;
-function workspace(serialize = (body: string) => body) {
+function workspace(serialize = (body: string) => body, overrides: Partial<Board> = {}) {
   vi.useFakeTimers();
   const live = createMockLive();
-  const current = board({ ideas: [idea(), idea({ id: 11, body: "<p>Second</p>" })] });
+  const current = board({ ideas: [idea(), idea({ id: 11, body: "<p>Second</p>" })], ...overrides });
   const save = vi.fn();
   vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
     if (event === "save_idea") {
@@ -26,6 +26,7 @@ function workspace(serialize = (body: string) => body) {
       callback?.({
         status: "ok",
         value: idea({
+          ...current.ideas.find((note) => note.id === payload!.idea_id),
           ...payload,
           body: serialize(String(payload!.body)),
           id: payload!.idea_id,
@@ -167,5 +168,279 @@ describe("workspace editing transitions", () => {
     expect(canvas.props("historyState").canUndo).toBe(false);
     expect(canvas.props("historyState").canRedo).toBe(true);
     expect(canvas.props("notes")).toHaveLength(2);
+  });
+});
+
+describe("workspace round filters", () => {
+  it("preserves note drafts and undo when browsing another round and returning", async () => {
+    const { current, canvas, live } = workspace((body) => body, { rounds: [round()] });
+    canvas.vm.$emit("edit", 10);
+    canvas.vm.$emit("change", 10, "<p>Draft before filtering</p>");
+    canvas.vm.$emit("finish");
+    await flushPromises();
+    expect(canvas.props("historyState").canUndo).toBe(true);
+    await wrapper.setProps({ board: { ...current, ideas: [], round_filter: 20 } });
+    expect(canvas.props("notes")).toHaveLength(0);
+    expect(canvas.props("historyState").canUndo).toBe(true);
+    await wrapper.setProps({
+      board: {
+        ...current,
+        ideas: [idea({ body: "<p>Draft before filtering</p>", revision: 2 })],
+        round_filter: "all",
+      },
+    });
+    expect(canvas.props("notes")[0].body).toBe("<p>Draft before filtering</p>");
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(live.pushEvent).toHaveBeenLastCalledWith(
+      "save_idea",
+      expect.objectContaining({ body: "<p>Original text</p>" }),
+      expect.any(Function),
+    );
+  });
+
+  it.each([20, null] as const)(
+    "keeps round filter %s during visible text undo and redo, including refreshes",
+    async (roundId) => {
+      const { canvas, live, save, current } = workspace((body) => body, {
+        rounds: [round()],
+        round_filter: roundId,
+        ideas: [idea({ round_id: roundId })],
+      });
+      canvas.vm.$emit("edit", 10);
+      canvas.vm.$emit("change", 10, "<p>Visible edit</p>");
+      canvas.vm.$emit("finish");
+      await flushPromises();
+      await wrapper.setProps({ board: { ...current, loading: true } });
+      save.mockClear();
+      canvas.vm.$emit("undo");
+      await flushPromises();
+      expect(save).toHaveBeenCalledWith(
+        expect.objectContaining({ idea_id: 10, body: "<p>Original text</p>" }),
+      );
+      expect(canvas.props("historyState").canRedo).toBe(true);
+      canvas.vm.$emit("redo");
+      await flushPromises();
+      expect(save).toHaveBeenLastCalledWith(
+        expect.objectContaining({ idea_id: 10, body: "<p>Visible edit</p>" }),
+      );
+      expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+        false,
+      );
+      expect(canvas.props("notes")).toHaveLength(1);
+    },
+  );
+
+  it("restores a removed note in the current round without clearing the filter", async () => {
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round()],
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 })],
+    });
+    const send = vi.mocked(live.pushEvent).getMockImplementation()!;
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "delete_idea")
+        callback?.({
+          status: "ok",
+          value: { id: 10, revision: 1, deleted_at: "2026-09-08T10:00:00Z" },
+        });
+      else if (event === "restore_idea")
+        callback?.({ status: "ok", value: idea({ round_id: 20 }) });
+      else send(event, payload, callback);
+    });
+    canvas.vm.$emit("remove", [10]);
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(0);
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(1);
+    canvas.vm.$emit("redo");
+    await flushPromises();
+    expect(canvas.props("notes")).toHaveLength(0);
+    expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+      false,
+    );
+  });
+
+  it("keeps the round filter when undoing a visible multi-note move", async () => {
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round()],
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 }), idea({ id: 11, round_id: 20 })],
+    });
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "move_idea")
+        callback?.({
+          status: "ok",
+          value: { x: payload!.x, y: payload!.y, version: Number(payload!.version) + 1 },
+        });
+    });
+    canvas.vm.$emit("move", [
+      { id: 10, point: { x: 45, y: 60 } },
+      { id: 11, point: { x: 60, y: 75 } },
+    ]);
+    await flushPromises();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("historyState").canRedo).toBe(true);
+    expect(vi.mocked(live.pushEvent).mock.calls.some(([event]) => event === "filter_round")).toBe(
+      false,
+    );
+  });
+
+  it("loads all rounds before undoing a persisted note hidden by the current filter", async () => {
+    const { current, canvas, live, save } = workspace((body) => body, { rounds: [round()] });
+    canvas.vm.$emit("edit", 10);
+    canvas.vm.$emit("change", 10, "<p>Last edit</p>");
+    canvas.vm.$emit("finish");
+    await flushPromises();
+    await wrapper.setProps({ board: { ...current, ideas: [], round_filter: 20 } });
+    const send = vi.mocked(live.pushEvent).getMockImplementation()!;
+    vi.mocked(live.pushEvent).mockImplementation((event, payload, callback) => {
+      if (event === "filter_round") callback?.({ status: "ok" });
+      else send(event, payload, callback);
+    });
+    save.mockClear();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("historyState").busy).toBe(true);
+    expect(canvas.props("historyState").canUndo).toBe(true);
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "filter_round",
+      expect.objectContaining({ round_id: "all", before_id: 10 }),
+      expect.any(Function),
+    );
+    expect(save).not.toHaveBeenCalled();
+    await wrapper.setProps({
+      board: { ...current, ideas: [], ideas_next: 50, round_filter: "all", idea_before: null },
+    });
+    await flushPromises();
+    expect(canvas.props("historyState").busy).toBe(true);
+    expect(save).not.toHaveBeenCalled();
+    await wrapper.setProps({
+      board: {
+        ...current,
+        ideas: [idea({ revision: 2, body: "<p>Last edit</p>" })],
+        round_filter: "all",
+        idea_before: 10,
+      },
+    });
+    await flushPromises();
+    expect(save).toHaveBeenCalledExactlyOnceWith(
+      expect.objectContaining({ body: "<p>Original text</p>" }),
+    );
+    expect(canvas.props("historyState").canUndo).toBe(false);
+    expect(canvas.props("historyState").canRedo).toBe(true);
+    expect(canvas.props("historyState").busy).toBe(false);
+  });
+
+  it("keeps the undo entry when the all-rounds refresh fails and never executes it later", async () => {
+    const { current, canvas, live, save } = workspace((body) => body, { rounds: [round()] });
+    canvas.vm.$emit("edit", 10);
+    canvas.vm.$emit("change", 10, "<p>Last edit</p>");
+    canvas.vm.$emit("finish");
+    await flushPromises();
+    await wrapper.setProps({ board: { ...current, ideas: [], round_filter: 20 } });
+    vi.mocked(live.pushEvent).mockImplementation((_event, _payload, callback) =>
+      callback?.({ status: "error", code: "offline" }),
+    );
+    save.mockClear();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("historyState").canUndo).toBe(true);
+    expect(canvas.props("historyState").busy).toBe(false);
+    await wrapper.setProps({
+      board: {
+        ...current,
+        ideas: [idea({ revision: 2, body: "<p>Last edit</p>" })],
+        round_filter: "all",
+        idea_before: 10,
+      },
+    });
+    await flushPromises();
+    expect(save).not.toHaveBeenCalled();
+    expect(canvas.props("historyState").canUndo).toBe(true);
+  });
+
+  it("cancels pending undo preparation when the board epoch changes", async () => {
+    const { current, canvas, live, save } = workspace((body) => body, { rounds: [round()] });
+    canvas.vm.$emit("edit", 10);
+    canvas.vm.$emit("change", 10, "<p>Last edit</p>");
+    canvas.vm.$emit("finish");
+    await flushPromises();
+    await wrapper.setProps({ board: { ...current, ideas: [], round_filter: 20 } });
+    vi.mocked(live.pushEvent).mockImplementation((_event, _payload, callback) =>
+      callback?.({ status: "ok" }),
+    );
+    save.mockClear();
+    canvas.vm.$emit("undo");
+    await flushPromises();
+    expect(canvas.props("historyState").busy).toBe(true);
+    await wrapper.setProps({
+      board: { ...current, epoch: "replacement", ideas: [idea()], round_filter: "all" },
+    });
+    await flushPromises();
+    expect(save).not.toHaveBeenCalled();
+    const replacement = wrapper.getComponent(Canvas);
+    expect(replacement.props("historyState").busy).toBe(false);
+    expect(replacement.props("notes")[0].body).toBe("<p>Original text</p>");
+  });
+
+  it("creates a new note in the current active round while viewing an older round", async () => {
+    const previous = round({ status: "closed", closed_at: "2026-09-08T10:30:00Z" });
+    const active = round({ id: 21, number: 2 });
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [previous, active],
+      active_round: active,
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 })],
+    });
+    canvas.vm.$emit("add", { x: 20, y: 30 });
+    await nextTick();
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "filter_round",
+      expect.objectContaining({ round_id: "all" }),
+      expect.any(Function),
+    );
+    const created = canvas.props("notes").find((note: Idea) => note.id < 0);
+    expect(created?.round_id).toBe(21);
+    expect(canvas.props("editingId")).toBe(created.id);
+  });
+
+  it("keeps the new note visible if switching to all rounds loses connection", async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const active = round({ id: 21, number: 2 });
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round(), active],
+      active_round: active,
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 })],
+    });
+    vi.mocked(live.pushEvent).mockImplementation(() => {
+      throw new Error("offline");
+    });
+    canvas.vm.$emit("add", { x: 20, y: 30 });
+    await flushPromises();
+    const created = canvas.props("notes").find((note: Idea) => note.id < 0);
+    expect(created?.round_id).toBe(21);
+    expect(canvas.props("editingId")).toBe(created.id);
+  });
+
+  it("duplicates a previous-round note into the current round, preserving its original", async () => {
+    const active = round({ id: 21, number: 2 });
+    const { canvas, live } = workspace((body) => body, {
+      rounds: [round(), active],
+      active_round: active,
+      round_filter: 20,
+      ideas: [idea({ round_id: 20 })],
+    });
+    canvas.vm.$emit("duplicate", [10]);
+    await flushPromises();
+    expect(live.pushEvent).toHaveBeenCalledWith(
+      "create_idea",
+      expect.objectContaining({ round_id: 21, body: "<p>Original text</p>" }),
+      expect.any(Function),
+    );
+    expect(canvas.props("notes").find((note: Idea) => note.id === 10)?.round_id).toBe(20);
   });
 });
