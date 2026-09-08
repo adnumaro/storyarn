@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { defineComponent, h, nextTick, reactive, ref } from "vue";
 import { mount, type VueWrapper } from "@vue/test-utils";
 import BrainstormingCanvas from "@modules/ideation/components/BrainstormingCanvas.vue";
-import { idea } from "./fixtures";
+import { idea, ideaGroup } from "./fixtures";
 
 vi.mock("@modules/ideation/composables/useCanvasViewport", () => ({
   useCanvasViewport: () => ({
@@ -35,7 +35,7 @@ function canvas(props = {}) {
       historyState: { canUndo: true, canRedo: true, busy: false },
       members: [],
       statuses: {},
-      context: { epoch: "a", session_id: 1 },
+      collaboration: { context: { epoch: "a", session_id: 1 }, cursors: true },
       ...props,
     },
     global: { stubs: { CanvasNote: NoteStub, CanvasCursors: true } },
@@ -46,6 +46,7 @@ function canvas(props = {}) {
 afterEach(() => {
   for (const wrapper of mounted.splice(0)) wrapper.unmount();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 function key(
   wrapper: VueWrapper,
@@ -143,6 +144,36 @@ describe("canvas keyboard and selection", () => {
     ])
       expect(wrapper.emitted(event)).toBeUndefined();
   });
+  it.each(["Control", "Meta"] as const)(
+    "clears group selection before %s+A selects notes and Delete removes only those notes",
+    async (modifier) => {
+      const selectedIds = reactive<number[]>([]);
+      const selectedGroup = ref<number | null>(40);
+      const groupState = reactive({
+        groups: [ideaGroup()],
+        selectedId: selectedGroup,
+        save: vi.fn(),
+        move: vi.fn(),
+      });
+      const wrapper = canvas({
+        selectedIds,
+        groupState,
+        onSelect: (ids: number[]) => {
+          selectedIds.splice(0, selectedIds.length, ...ids);
+        },
+        onSelectGroup: (id: number | null) => {
+          selectedGroup.value = id;
+        },
+      });
+      key(wrapper, "a", { ctrlKey: modifier === "Control", metaKey: modifier === "Meta" });
+      await nextTick();
+      expect(selectedGroup.value).toBeNull();
+      expect(selectedIds).toEqual([10, 11]);
+      key(wrapper, "Delete");
+      expect(wrapper.emitted("remove")).toEqual([[[10, 11]]]);
+      expect(wrapper.emitted("deleteGroup")).toBeUndefined();
+    },
+  );
   it("selects all, deselects with Escape and edits a selected note with Enter", () => {
     const wrapper = canvas();
     key(wrapper, "a", { ctrlKey: true });
@@ -223,5 +254,223 @@ describe("canvas keyboard and selection", () => {
     await wrapper.get('[data-test-note="10"]').trigger("dblclick");
     expect(wrapper.emitted("edit")?.[0]).toEqual([10]);
     expect(wrapper.emitted("add")).toBeUndefined();
+  });
+  it("selects the frame independently while notes retain their own editing and selection", async () => {
+    const wrapper = canvas({
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move: vi.fn() },
+    });
+    await pointer(wrapper.get("#canvas-group-40").element, "pointerdown", {
+      button: 0,
+      pointerId: 1,
+    });
+    expect(wrapper.emitted("selectGroup")?.[0]).toEqual([40]);
+    expect(wrapper.emitted("select")?.[0]).toEqual([[]]);
+    await pointer(wrapper.get('[data-note-id="10"]').element, "pointerdown", {
+      button: 0,
+      pointerId: 2,
+      shiftKey: true,
+    });
+    expect(wrapper.emitted("selectGroup")?.at(-1)).toEqual([null]);
+    await wrapper.get('[data-note-id="10"]').trigger("dblclick");
+    expect(wrapper.emitted("edit")?.at(-1)).toEqual([10]);
+  });
+  it("moves all group members from the title handle and retains the preview until acknowledgement", async () => {
+    let resolve: () => void = () => {};
+    const move = vi.fn(
+      () =>
+        new Promise<void>((done) => {
+          resolve = done;
+        }),
+    );
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    const frame = wrapper.get("#canvas-group-40");
+    Object.assign(frame.element, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
+    await pointer(frame.get("header").element, "pointerdown", {
+      button: 0,
+      pointerId: 1,
+      clientX: 10,
+      clientY: 20,
+    });
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 35, clientY: 50 });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    expect(move).toHaveBeenCalledWith(
+      40,
+      { x: 7, y: -14 },
+      {
+        version: 1,
+        member_versions: ideaGroup().members.map((member) => ({
+          id: member.idea_id,
+          version: member.canvas.version ?? 0,
+        })),
+      },
+    );
+    expect(wrapper.get('[data-note-id="10"]').attributes("style")).toContain(
+      "translate(35px, 50px)",
+    );
+    expect(wrapper.get('[data-note-id="11"]').attributes("style")).toContain(
+      "translate(425px, 80px)",
+    );
+    resolve();
+    await nextTick();
+    await nextTick();
+    expect(wrapper.emitted("move")).toBeUndefined();
+  });
+  it("keeps pointer-down group and member versions when remote props change during a drag", async () => {
+    const group = reactive(ideaGroup());
+    const move = vi.fn(async () => {});
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [group], selectedId: 40, save: vi.fn(), move },
+    });
+    const frame = wrapper.get("#canvas-group-40");
+    Object.assign(frame.element, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
+    await pointer(frame.get("header").element, "pointerdown", {
+      button: 0,
+      pointerId: 1,
+      clientX: 10,
+      clientY: 20,
+    });
+    group.version = 2;
+    group.canvas.x = 982;
+    group.members[0].canvas.x = 1010;
+    group.members[0].canvas.version = 7;
+    group.members[1].canvas.version = 9;
+    await nextTick();
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 35, clientY: 50 });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    expect(move).toHaveBeenCalledExactlyOnceWith(
+      40,
+      { x: 7, y: -14 },
+      {
+        version: 1,
+        member_versions: [
+          { id: 10, version: 1 },
+          { id: 11, version: 1 },
+        ],
+      },
+    );
+    expect(group.version).toBe(2);
+    expect(group.members[0].canvas.version).toBe(7);
+  });
+  it("deletes the selected group with the keyboard while leaving source notes untouched", () => {
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move: vi.fn() },
+    });
+    key(wrapper, "Delete");
+    expect(wrapper.emitted("deleteGroup")).toEqual([[40]]);
+    expect(wrapper.emitted("remove")).toBeUndefined();
+    expect(wrapper.find("#group-delete-40").exists()).toBe(true);
+  });
+  it("merges consecutive arrow presses on a group into one movement", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    key(wrapper, "ArrowRight", { shiftKey: true });
+    key(wrapper, "ArrowDown");
+    await nextTick();
+    expect(move).not.toHaveBeenCalled();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain("translate(4px, -42px)");
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(
+      40,
+      { x: 4, y: -42 },
+      {
+        version: 1,
+        member_versions: [
+          { id: 10, version: 1 },
+          { id: 11, version: 1 },
+        ],
+      },
+    );
+  });
+  it("moves a synthesis-only frame by its anchor and sends the anchor", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const group = ideaGroup({ idea_ids: [], members: [] });
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [group], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    key(wrapper, "ArrowRight");
+    await nextTick();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain(
+      "translate(-14px, -44px)",
+    );
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledWith(40, { x: -14, y: -44 }, { version: 1, member_versions: [] });
+  });
+  it("keeps a queued movement while another write is in flight and sends it afterwards", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    await wrapper.setProps({ historyState: { canUndo: true, canRedo: true, busy: true } });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(move).not.toHaveBeenCalled();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain(
+      "translate(-16px, -44px)",
+    );
+    await wrapper.setProps({ historyState: { canUndo: true, canRedo: true, busy: false } });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(40, { x: -16, y: -44 }, expect.anything());
+  });
+  it("commits a settling movement on pointer-down and keeps the click as a selection", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowDown");
+    const header = wrapper.get("#canvas-group-40 header").element as HTMLElement;
+    Object.assign(header, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
+    await pointer(header, "pointerdown", { button: 0, pointerId: 1, clientX: 5, clientY: 5 });
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(40, { x: -18, y: -42 }, expect.anything());
+    expect(wrapper.emitted("selectGroup")?.at(-1)).toEqual([40]);
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 60, clientY: 60 });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    expect(move).toHaveBeenCalledTimes(1);
+    // A note click inside the window selects without starting a drag: jsdom has
+    // no setPointerCapture, so beginning one here would throw.
+    key(wrapper, "ArrowDown");
+    await pointer(wrapper.get('[data-note-id="11"]').element, "pointerdown", {
+      button: 0,
+      pointerId: 2,
+    });
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(wrapper.emitted("select")?.at(-1)).toEqual([[11]]);
+  });
+  it("does not drag, nudge or ungroup unseen members through a filter", async () => {
+    const move = vi.fn();
+    const wrapper = canvas({
+      notes: [idea({ canvas: { x: 10, y: 20 } })],
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    const frame = wrapper.get("#canvas-group-40");
+    await pointer(frame.get("header").element, "pointerdown", { button: 0, pointerId: 1 });
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 100, clientY: 100 });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    key(wrapper, "ArrowRight");
+    key(wrapper, "g", { ctrlKey: true, shiftKey: true });
+    expect(move).not.toHaveBeenCalled();
+    expect(wrapper.emitted("separateGroup")).toBeUndefined();
+    expect(frame.text()).toContain("1 of 2 notes visible");
+    expect(frame.get("#group-separate-40").attributes("disabled")).toBeDefined();
   });
 });

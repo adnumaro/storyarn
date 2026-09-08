@@ -1,7 +1,7 @@
 # Brainstorming canvas
 
 > Last reviewed: 2026-09-08
-> Scope: ENG-134 and ENG-136
+> Scope: ENG-134, ENG-136, ENG-137 and ENG-138
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
 surface is a spatial canvas inside the same ProjectLayout, SidebarFrame and
@@ -146,8 +146,8 @@ capsules remains recoverable; no API creates new derived ideas.
 The encrypted project recovery inventory includes canvas geometry, connections,
 deletions, session mode, rounds and contribution provenance. Restoring remaps
 connection and round IDs. Old capsules without canvas/deletion or round fields
-remain readable. No image upload, AI generation, timers, grouping or cross-tool
-materialization is added here.
+remain readable. Group recovery is described in the
+[group contract](../reference/brainstorming-groups-contract.md).
 
 ## Follow-up product work
 
@@ -171,3 +171,27 @@ separate opt-in actions. Closing new contributions preserves edits and undo on
 existing notes, and a manager can reopen them. Rounds and timers never control
 each other automatically. See the
 [timer contract](../reference/brainstorming-timer-contract.md).
+
+## Groups and synthesis
+
+Select shared notes and use **Group** to give related contributions a named space
+on the canvas. A frame surrounds the notes in their existing positions. Its title
+and optional synthesis are editable directly on the canvas. The synthesis has its
+own space beside the source notes, so writing it does not obscure their content.
+Original notes retain their identity, authorship, round and connections.
+
+Drag the group header to move its notes together. Notes remain individually
+selectable and editable under their existing permissions. Membership can change
+without rewriting source text. Separating the notes preserves the synthesis as a
+standalone canvas object; removing a group never deletes its source notes.
+
+Group actions participate in the participant's local undo/redo. A concurrent
+change must not be overwritten by a stale undo or drag. When a state or round
+filter, or the loaded range, hides group members, the frame indicates the missing notes and
+offers a way to show them before moving the whole group.
+
+Groups organize shared contributions. They are hidden during private mode and
+cannot reveal unpublished sources. Other editors can organize shared groups and
+edit their synthesis; viewers can read them. A synthesis does not accept a
+decision or start a new round. Title and synthesis authorship, source references,
+and group recovery are covered by the [group contract](../reference/brainstorming-groups-contract.md).

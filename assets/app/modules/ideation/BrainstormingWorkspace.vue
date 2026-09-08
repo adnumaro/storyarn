@@ -18,6 +18,8 @@ import DashboardContent from "@shell/DashboardContent.vue";
 import LiveLink from "@components/navigation/LiveLink.vue";
 import { useLive } from "@shared/composables/useLive";
 import BrainstormingCanvas from "./components/BrainstormingCanvas.vue";
+import GroupSelectionTools from "./components/GroupSelectionTools.vue";
+import { useCanvasGroups } from "./composables/useCanvasGroups";
 import SessionDialog from "./components/SessionDialog.vue";
 import IdeaEditor from "./components/IdeaEditor.vue";
 import BoardSelect from "./components/BoardSelect.vue";
@@ -112,6 +114,61 @@ const history = useCanvasHistory(
   () => !online.value,
   prepareHistory,
 );
+const groups = useCanvasGroups(
+  () => board,
+  request,
+  history,
+  (code, replacing) => {
+    if (replacing === undefined || failure.value === replacing) failure.value = code;
+  },
+  (id) => {
+    if (id !== null) select([]);
+  },
+  async (ids) => {
+    for (const id of ids) if (!(await notes.settle(id))) return false;
+    return true;
+  },
+);
+function groupingProblem(ids: number[], sources: ReturnType<typeof selectedNotes>) {
+  if (sources.some((note) => groups.groups.value.some((group) => group.idea_ids.includes(note.id))))
+    return "already_grouped";
+  const shared = sources.every((note) => note.id > 0 && note.visibility === "shared");
+  return sources.length >= 2 && sources.length === ids.length && shared ? null : "invalid_group";
+}
+async function createGroup(ids = selectedIds.value) {
+  if (!groups.allowed.value || history.busy.value) return;
+  const sources = selectedNotes(ids);
+  const problem = groupingProblem(ids, sources);
+  if (problem) {
+    // The toolbar disables its button; the keyboard shortcut still needs an answer.
+    if (ids.length) failure.value = problem;
+    return;
+  }
+  finish();
+  const x = Math.min(...sources.map((note) => notePosition(note).x)) - 28;
+  const y = Math.min(...sources.map((note) => notePosition(note).y)) - 64;
+  const width =
+    Math.max(...sources.map((note) => notePosition(note).x + (note.canvas?.width ?? 280))) - x + 28;
+  const height = Math.max(...sources.map((note) => notePosition(note).y + 260)) - y + 28;
+  await groups.create(ids, { x, y, width, height });
+  canvas.value?.focus();
+}
+function separateGroup(id: number) {
+  return groups.separate(id, canvas.value?.summaryAnchor?.(id));
+}
+function groupMembership(id: number, ids: number[], add: boolean) {
+  return groups.membership(id, ids, add, canvas.value?.summaryAnchor?.(id));
+}
+async function revealGroup(id: number) {
+  const group = groups.groups.value.find((group) => group.id === id);
+  if (!group) return;
+  state.value = "all";
+  if (group.idea_ids.some((noteId) => !notes.find(noteId)) || roundFilter.value !== "all") {
+    await filterRound("all", true, Math.min(...group.idea_ids));
+  }
+  await nextTick();
+  canvas.value?.fitAll();
+}
 let editingBefore: Idea | undefined;
 let headerEvent: number | undefined;
 function reset(reason: string) {
@@ -123,6 +180,7 @@ function reset(reason: string) {
   requestedRoundBefore.value = undefined;
   roundFilter.value = board.round_filter;
   notes.reset(reason !== "access_changed");
+  groups.reset();
   selectedIds.value = [];
   editing.value = null;
   settings.value = false;
@@ -709,6 +767,12 @@ onUnmounted(() => {
         ref="canvas"
         :key="`${board.epoch}:${board.session.id}`"
         :notes="visible"
+        :group-state="{
+          groups: groups.groups.value,
+          selectedId: groups.selected.value,
+          save: groups.save,
+          move: groups.move,
+        }"
         :note-key="notes.key"
         :selected-ids="selectedIds"
         :history-state="{
@@ -718,12 +782,16 @@ onUnmounted(() => {
         }"
         :editing-id="editing"
         :permissions="{ edit: writable, create: canCreate }"
-        :cursor-enabled="!board.session.configuration.private_mode"
+        :collaboration="{ context: context(), cursors: !board.session.configuration.private_mode }"
         :members="board.members"
         :statuses="statuses"
-        :context="context()"
         @add="add"
         @select="select"
+        @select-group="groups.choose"
+        @create-group="createGroup"
+        @separate-group="separateGroup"
+        @delete-group="groups.remove"
+        @reveal-group="revealGroup"
         @edit="edit"
         @change="notes.change"
         @finish="finish"
@@ -757,6 +825,15 @@ onUnmounted(() => {
         </template>
         <template #selection>
           <div v-if="current" class="surface-panel flex items-center gap-1 p-1.5 whitespace-nowrap">
+            <GroupSelectionTools
+              v-if="writable"
+              :notes="selectedNotes(selectedIds)"
+              :groups="groups.groups.value"
+              :private-mode="board.session.configuration.private_mode"
+              :busy="history.busy.value"
+              @create="createGroup()"
+              @membership="groupMembership"
+            />
             <template v-if="writable"
               ><Popover
                 ><PopoverTrigger class="toolbar-btn" :aria-label="t('ideation.canvas.color')"

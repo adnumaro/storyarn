@@ -9,6 +9,7 @@ defmodule Storyarn.Ideation.Recovery.Generations do
   def split(rows) do
     sessions = Map.new(rows["sessions"], &{&1["id"], &1["id"]})
     ideas = Map.new(rows["ideas"], &{&1["id"], &1["session_id"]})
+    groups = Map.new(rows["groups"], &{&1["id"], &1["session_id"]})
 
     grouped =
       Map.new(Inventory.tables(), fn {collection, _, parent, _} ->
@@ -18,6 +19,7 @@ defmodule Storyarn.Ideation.Recovery.Generations do
              :project_id -> sessions[row["id"]]
              :session_id -> row["session_id"]
              :idea_id -> ideas[row["idea_id"]]
+             :group_id -> groups[row["group_id"]]
            end
          end)}
       end)

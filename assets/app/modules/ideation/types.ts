@@ -36,6 +36,28 @@ export interface Idea extends IdeaContent {
   inserted_at: string;
   preview: string;
 }
+export interface IdeaGroup {
+  id: number;
+  session_id: number;
+  title: string | null;
+  synthesis: string | null;
+  author_id: number | null;
+  version: number;
+  canvas: { x: number; y: number; width: number; height: number };
+  idea_ids: number[];
+  members: Array<{ idea_id: number; source_revision: number; canvas: CanvasPlacement }>;
+  deleted_at: string | null;
+  inserted_at: string;
+}
+export interface GroupVersions {
+  version: number;
+  member_versions: Array<{ id: number; version: number }>;
+}
+
+export interface GroupText {
+  title?: string;
+  synthesis?: string;
+}
 export interface CanvasIdea extends Idea {
   round_number?: number;
 }
@@ -129,6 +151,7 @@ export interface Board {
   active_round: Round | null;
   round_filter: RoundFilter;
   ideas: Idea[];
+  groups: IdeaGroup[];
   ideas_next: number | null;
   idea_before: number | null;
   counts: { active: number; parked: number; discarded: number };

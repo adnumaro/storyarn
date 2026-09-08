@@ -37,9 +37,14 @@ defmodule Storyarn.Ideation.Recovery.Capsule do
   def open(_), do: {:error, :invalid_ideation_recovery}
 
   defp validate_content_keys(data) do
-    for collection <- ["revisions", "edits"],
-        row <- data["rows"][collection],
-        field <- ["title", "body"],
+    for {collection, fields} <- [
+          {"revisions", ["title", "body"]},
+          {"edits", ["title", "body"]},
+          {"groups", ["title", "synthesis"]},
+          {"group_revisions", ["title", "synthesis"]}
+        ],
+        row <- Map.get(data["rows"], collection, []),
+        field <- fields,
         encoded = row[field],
         not is_nil(encoded),
         reduce: :ok do

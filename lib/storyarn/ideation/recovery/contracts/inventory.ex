@@ -22,10 +22,17 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     {"reveals", "ideation_reveal_operations", :session_id,
      ~w(id recovery_identity session_id actor_id request_key selection manifest status completed_at inserted_at updated_at)a},
     {"publications", "ideation_idea_publications", :idea_id,
-     ~w(id recovery_identity idea_id revision operation_id actor_id inserted_at)a}
+     ~w(id recovery_identity idea_id revision operation_id actor_id inserted_at)a},
+    {"groups", "ideation_groups", :session_id,
+     ~w(id recovery_identity session_id author_id title synthesis version canvas deleted_at inserted_at updated_at)a},
+    {"group_memberships", "ideation_group_memberships", :group_id,
+     ~w(id recovery_identity session_id group_id idea_id source_revision actor_id removed_at inserted_at)a},
+    {"group_revisions", "ideation_group_revisions", :group_id,
+     ~w(id recovery_identity session_id group_id actor_id number operation request_key fingerprint title synthesis canvas idea_ids sources deleted_at inserted_at)a}
   ]
+  @group_collections ~w(groups group_memberships group_revisions)
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id)a
-  @dates ~w(archived_at deleted_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
+  @dates ~w(archived_at deleted_at removed_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
   @max_rows 100_000
 
   def tables, do: @tables
@@ -52,7 +59,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
           is_nil(value) -> nil
           key in @dates -> NaiveDateTime.to_iso8601(value)
           binary_field?(collection, key) -> Base.encode64(value)
-          key == :canvas -> Map.put_new(value, "links", [])
+          collection == "ideas" and key == :canvas -> Map.put_new(value, "links", [])
           true -> value
         end
 
@@ -84,7 +91,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2, 3] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3, 4] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -115,15 +122,19 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   def normalize(%{"version" => 2, "rows" => rows} = data) do
     sessions = Enum.map(rows["sessions"], &Map.put(&1, "contributions_open", true))
-    %{data | "version" => 3, "rows" => rows |> Map.put("sessions", sessions) |> Map.put("timers", [])}
+    normalize(%{data | "version" => 3, "rows" => rows |> Map.put("sessions", sessions) |> Map.put("timers", [])})
   end
+
+  def normalize(%{"version" => 3, "rows" => rows} = data),
+    do: %{data | "version" => 4, "rows" => Enum.reduce(@group_collections, rows, &Map.put(&2, &1, []))}
 
   def normalize(data), do: data
 
-  defp tables_for(3), do: @tables
+  defp tables_for(4), do: @tables
+  defp tables_for(3), do: Enum.reject(@tables, &(elem(&1, 0) in @group_collections))
 
   defp tables_for(2) do
-    for {collection, table, parent, fields} <- @tables, collection != "timers" do
+    for {collection, table, parent, fields} <- tables_for(3), collection != "timers" do
       fields = if collection == "sessions", do: fields -- [:contributions_open], else: fields
       {collection, table, parent, fields}
     end
@@ -157,7 +168,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     |> Enum.filter(&(&1 in @dates))
     |> Enum.all?(fn field ->
       case Map.get(row, Atom.to_string(field)) do
-        nil -> field in [:archived_at, :deleted_at, :completed_at, :started_at, :closed_at, :deadline_at]
+        nil -> field in [:archived_at, :deleted_at, :removed_at, :completed_at, :started_at, :closed_at, :deadline_at]
         value when is_binary(value) -> valid_timestamp?(value)
         _ -> false
       end
@@ -175,6 +186,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   defp binary_field?(collection, key) do
     key in [:recovery_identity, :creation_key, :request_key, :fingerprint] or
-      (collection in ["revisions", "edits"] and key in [:title, :body])
+      (collection in ["revisions", "edits"] and key in [:title, :body]) or
+      (collection in ["groups", "group_revisions"] and key in [:title, :synthesis])
   end
 end

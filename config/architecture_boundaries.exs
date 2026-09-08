@@ -1959,7 +1959,7 @@ web_to_context_internal_denials =
 
 # Ideation capabilities collaborate through their facades. Root calls remain declarative, reads
 # cannot enter effectful roles, and entities cannot orchestrate persistence.
-ideation_capabilities = ~w(sessions ideas recovery)
+ideation_capabilities = ~w(sessions ideas groups recovery)
 ideation_private_roles = ~w(adapters commands entities execution queries rules events contracts)
 
 ideation_root_facade_path_denials =
@@ -3050,6 +3050,25 @@ privileged_entrypoints = [
     functions: [timer_runtime_child_specs: 0],
     allowed_callers: ["lib/storyarn/application.ex"],
     reason: "Only the application composition root starts the timer runtime"
+  },
+  %{
+    module: "Storyarn.Ideation.Ideas",
+    path: "lib/storyarn/ideation/ideas/ideas.ex",
+    functions: [group_sources: 2],
+    allowed_callers: [
+      "lib/storyarn/ideation/groups/execution/memberships.ex",
+      "lib/storyarn/ideation/groups/execution/mutation.ex",
+      "lib/storyarn/ideation/groups/execution/transaction.ex",
+      "lib/storyarn/ideation/groups/queries/list.ex"
+    ],
+    reason: "Groups receives only shared source provenance and canvas geometry through the Ideas capability"
+  },
+  %{
+    module: "Storyarn.Ideation.Ideas",
+    path: "lib/storyarn/ideation/ideas/ideas.ex",
+    functions: [move_group_sources: 5],
+    allowed_callers: ["lib/storyarn/ideation/groups/execution/mutation.ex"],
+    reason: "Atomic group movement enters the Ideas-owned placement port under the session contribution lock"
   },
   %{
     module: "Storyarn.Ideation.Ideas",

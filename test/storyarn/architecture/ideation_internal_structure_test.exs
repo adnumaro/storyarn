@@ -6,7 +6,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   @root "lib/storyarn/ideation"
   @session_roles ~w(adapters commands entities events execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
-  @capabilities ~w(ideas recovery sessions)
+  @capabilities ~w(groups ideas recovery sessions)
   @forbidden_role_edges [
     {"queries", "commands"},
     {"queries", "execution"},
@@ -45,6 +45,14 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
 
     assert "#{@root}/ideas/entities/*.ex" |> Path.wildcard() |> Enum.map(&Path.basename/1) ==
              ~w(edit.ex idea.ex publication.ex reveal.ex revision.ex)
+  end
+
+  test "Groups preserves its capability and passive schema boundaries" do
+    assert directories_in("#{@root}/groups") == ~w(commands contracts entities events execution queries rules)
+    assert Path.wildcard("#{@root}/groups/*.ex") == ["#{@root}/groups/groups.ex"]
+
+    assert "#{@root}/groups/entities/*.ex" |> Path.wildcard() |> Enum.map(&Path.basename/1) ==
+             ~w(group.ex membership.ex revision.ex)
   end
 
   test "queries stay read-only and do not acquire locks or own transactions" do
@@ -153,14 +161,29 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       update_idea: 6
     ]
 
+    group_operations = [
+      list_groups: 3,
+      create_group: 4,
+      update_group: 6,
+      move_group: 6,
+      delete_group: 6,
+      restore_group: 6
+    ]
+
+    assert Storyarn.Ideation.Groups.__info__(:functions) == Enum.sort(group_operations)
+
     assert Storyarn.Ideation.__info__(:functions) ==
              Enum.sort(
                expected ++
+                 group_operations ++
                  idea_operations ++ [capture_recovery: 1, validate_recovery: 1, restore_recovery: 2, verify_recovery: 3]
              )
 
     assert Storyarn.Ideation.Ideas.__info__(:functions) ==
-             Enum.sort(idea_operations ++ [set_private_mode_locked: 3, notify_timer_reveal: 2])
+             Enum.sort(
+               idea_operations ++
+                 [set_private_mode_locked: 3, notify_timer_reveal: 2, group_sources: 2, move_group_sources: 5]
+             )
 
     assert Storyarn.Ideation.Sessions.__info__(:functions) ==
              Enum.sort(
@@ -183,6 +206,9 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       "session_revisions" => Storyarn.Ideation.Sessions.Revision,
       "rounds" => Storyarn.Ideation.Sessions.Round,
       "timers" => Storyarn.Ideation.Sessions.Timer,
+      "groups" => Storyarn.Ideation.Groups.Group,
+      "group_memberships" => Storyarn.Ideation.Groups.Membership,
+      "group_revisions" => Storyarn.Ideation.Groups.Revision,
       "ideas" => Storyarn.Ideation.Ideas.Idea,
       "revisions" => Storyarn.Ideation.Ideas.Revision,
       "edits" => Storyarn.Ideation.Ideas.Edit,

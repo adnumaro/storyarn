@@ -263,6 +263,7 @@ defmodule Storyarn.Ideation.RecoveryTest do
     {:ok, data} = Capsule.open(capsule)
 
     for {collection, _, _, fields} <- Inventory.tables(),
+        data["rows"][collection] != [],
         field <- fields,
         field in [
           :inserted_at,

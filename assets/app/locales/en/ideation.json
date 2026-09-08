@@ -105,7 +105,16 @@
       "contributions_closed": "New contributions are closed. Your draft is kept here; retry when the facilitator reopens contributions.",
       "timer_reveal_requires_private": "Start private mode before choosing to reveal notes when time ends.",
       "timer_not_found": "This timer is no longer available. Refresh the board.",
-      "invalid_timer_version": "The timer state is invalid. Refresh the board and try again."
+      "invalid_timer_version": "The timer state is invalid. Refresh the board and try again.",
+      "stale_group": "This group changed elsewhere. Your text is kept; review the latest version and try again.",
+      "already_grouped": "A selected note already belongs to a group. Remove it from that group first.",
+      "private_mode": "Groups are available when private mode is off.",
+      "invalid_group": "Choose at least two shared notes to create a group.",
+      "group_sync_pending": "The group save is taking longer than expected. Your draft is kept. Refresh or try again.",
+      "stale_group_canvas": "Some notes moved elsewhere. Refresh and try moving the group again.",
+      "invalid_group_members": "Some selected notes are no longer shared or available. Refresh and choose the notes again.",
+      "group_limit_reached": "This session has reached the maximum number of groups. Delete a group before creating another.",
+      "idempotency_conflict": "This request was already used for a different change. Refresh and try again."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -221,6 +230,33 @@
         "skipped_configuration": "Time ended. Automatic actions were skipped because the session settings changed.",
         "skipped_session": "Time ended. Automatic actions were skipped because the session is no longer open."
       }
+    },
+    "groups": {
+      "untitled": "Untitled group",
+      "title": "Group title",
+      "count": "No notes | 1 note | {count} notes",
+      "rename": "Rename group",
+      "create": "Group",
+      "createHelp": "Group selected shared notes · Cmd/Ctrl G",
+      "synthesis": "Synthesis",
+      "synthesisHelp": "Capture the thread that connects these notes.",
+      "editSynthesis": "Write synthesis",
+      "synthesisPlaceholder": "What connects these ideas? Capture the essence without changing the source notes.",
+      "separate": "Ungroup",
+      "separateHelp": "Separate the notes. Your synthesis stays on the canvas.",
+      "privateHelp": "Groups are available when private mode is off.",
+      "sharedHelp": "Share these notes before grouping them.",
+      "alreadyGrouped": "Remove notes from their current group to regroup them.",
+      "addTo": "Add to group",
+      "remove": "Remove from group",
+      "removeHelp": "Remove selected notes from “{title}”. The notes stay on the canvas.",
+      "partial": "{visible} of {total} notes visible. Show all to move or ungroup.",
+      "showAll": "Show all",
+      "saveDraft": "Save my draft",
+      "draftKept": "The group could not be saved. Your draft is kept here. Review the latest text and try again.",
+      "latestText": "Latest saved text",
+      "delete": "Delete group",
+      "deleteHelp": "Delete this group and its synthesis. Source notes stay on the canvas."
     }
   }
 }
