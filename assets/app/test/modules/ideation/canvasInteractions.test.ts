@@ -46,6 +46,7 @@ function canvas(props = {}) {
 afterEach(() => {
   for (const wrapper of mounted.splice(0)) wrapper.unmount();
   vi.restoreAllMocks();
+  vi.useRealTimers();
 });
 function key(
   wrapper: VueWrapper,
@@ -390,7 +391,69 @@ describe("canvas keyboard and selection", () => {
         ],
       },
     );
-    vi.useRealTimers();
+  });
+  it("moves a synthesis-only frame by its anchor and sends the anchor", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const group = ideaGroup({ idea_ids: [], members: [] });
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [group], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    key(wrapper, "ArrowRight");
+    await nextTick();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain(
+      "translate(-14px, -44px)",
+    );
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledWith(40, { x: -14, y: -44 }, { version: 1, member_versions: [] });
+  });
+  it("keeps a queued movement while another write is in flight and sends it afterwards", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowRight");
+    await wrapper.setProps({ historyState: { canUndo: true, canRedo: true, busy: true } });
+    await vi.advanceTimersByTimeAsync(400);
+    expect(move).not.toHaveBeenCalled();
+    expect(wrapper.get("#canvas-group-40").attributes("style")).toContain(
+      "translate(-16px, -44px)",
+    );
+    await wrapper.setProps({ historyState: { canUndo: true, canRedo: true, busy: false } });
+    await vi.advanceTimersByTimeAsync(200);
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(40, { x: -16, y: -44 }, expect.anything());
+  });
+  it("commits a settling movement on pointer-down and keeps the click as a selection", async () => {
+    vi.useFakeTimers();
+    const move = vi.fn(() => Promise.resolve());
+    const wrapper = canvas({
+      selectedIds: [],
+      groupState: { groups: [ideaGroup()], selectedId: 40, save: vi.fn(), move },
+    });
+    key(wrapper, "ArrowDown");
+    const header = wrapper.get("#canvas-group-40 header").element as HTMLElement;
+    Object.assign(header, { setPointerCapture: vi.fn(), hasPointerCapture: () => false });
+    await pointer(header, "pointerdown", { button: 0, pointerId: 1, clientX: 5, clientY: 5 });
+    expect(move).toHaveBeenCalledTimes(1);
+    expect(move).toHaveBeenCalledWith(40, { x: -18, y: -42 }, expect.anything());
+    expect(wrapper.emitted("selectGroup")?.at(-1)).toEqual([40]);
+    await pointer(wrapper.element, "pointermove", { pointerId: 1, clientX: 60, clientY: 60 });
+    await pointer(wrapper.element, "pointerup", { pointerId: 1 });
+    expect(move).toHaveBeenCalledTimes(1);
+    // A note click inside the window selects without starting a drag: jsdom has
+    // no setPointerCapture, so beginning one here would throw.
+    key(wrapper, "ArrowDown");
+    await pointer(wrapper.get('[data-note-id="11"]').element, "pointerdown", {
+      button: 0,
+      pointerId: 2,
+    });
+    expect(move).toHaveBeenCalledTimes(2);
+    expect(wrapper.emitted("select")?.at(-1)).toEqual([[11]]);
   });
   it("does not drag, nudge or ungroup unseen members through a filter", async () => {
     const move = vi.fn();

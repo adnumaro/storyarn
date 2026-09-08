@@ -211,7 +211,7 @@ describe("acknowledged group operations", () => {
   });
   it("treats a late projection as committed, keeps the sync notice and resyncs", async () => {
     vi.useFakeTimers();
-    const { groups, history, requests, request, error } = setup();
+    const { current, groups, history, requests, request, error } = setup();
     const first = groups.save(40, { title: "Delayed", synthesis: "" }, 1);
     await nextTick();
     requests[0].resolve({ status: "ok", value: ideaGroup({ title: "Delayed", version: 2 }) });
@@ -227,6 +227,10 @@ describe("acknowledged group operations", () => {
     expect(writes[1].payload.request_key).not.toBe(writes[0].payload.request_key);
     writes[1].resolve({ status: "error", code: "offline" });
     await next;
+    current.groups[0].title = "Delayed";
+    current.groups[0].version = 2;
+    await flushPromises();
+    expect(error).toHaveBeenLastCalledWith(null, "group_sync_pending");
   });
   it("reports a rejected member placement with group copy", async () => {
     const { groups, requests, error } = setup();

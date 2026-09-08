@@ -54,7 +54,7 @@ export function useCanvasGroups(
   board: () => Board,
   request: Request,
   history: History,
-  notify: (code: string | null) => void,
+  notify: (code: string | null, replacing?: string) => void,
   select: (id: number | null) => void,
   settleNotes: (ids: number[]) => Promise<boolean>,
 ) {
@@ -82,11 +82,13 @@ export function useCanvasGroups(
   }
   function applied(result: IdeaGroup, at: { epoch: string; sessionId: number | undefined }) {
     return new Promise<Acknowledged>((resolve) => {
+      let settled = false;
       const complete = (value: Acknowledged) => {
         stop();
         clearTimeout(timeout);
         pending.delete(cancel);
-        resolve(value);
+        if (!settled) resolve(value);
+        settled = true;
       };
       const cancel = () => complete("cancelled");
       const check = () => {
@@ -94,8 +96,11 @@ export function useCanvasGroups(
           return complete("cancelled");
         if (board().error) return complete("cancelled");
         const current = find(result.id);
-        if (result.deleted_at ? !current : current && current.version >= result.version)
+        if (result.deleted_at ? !current : current && current.version >= result.version) {
+          // A projection arriving after the sync notice retires that notice.
+          if (settled) notify(null, "group_sync_pending");
           complete("applied");
+        }
       };
       // LiveVue can mutate nested fields without replacing the array.
       const stop = watch(
@@ -103,12 +108,13 @@ export function useCanvasGroups(
         check,
         { deep: true, flush: "post" },
       );
-      // The server committed the write; only its projection is late. Resync
-      // instead of reporting a failure the user would retry.
+      // The server committed the write; only its projection is late. Let the
+      // caller proceed and keep watching so the notice clears when it lands.
       const timeout = setTimeout(() => {
         notify("group_sync_pending");
         void request("sync_board", {});
-        complete("unconfirmed");
+        settled = true;
+        resolve("unconfirmed");
       }, 12_000);
       pending.add(cancel);
       check();

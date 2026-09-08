@@ -118,8 +118,8 @@ const groups = useCanvasGroups(
   () => board,
   request,
   history,
-  (code) => {
-    failure.value = code;
+  (code, replacing) => {
+    if (replacing === undefined || failure.value === replacing) failure.value = code;
   },
   (id) => {
     if (id !== null) select([]);

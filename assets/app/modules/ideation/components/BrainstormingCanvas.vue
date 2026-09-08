@@ -270,9 +270,17 @@ function pointerDown(event: PointerEvent) {
     beginDrag(event, null, []);
     return;
   }
+  if (groupNudge) return settleThenSelect(id, event);
   if (historyState.busy) return;
   if (id === null) selectBackground(event);
   else dragSelection(id, event);
+}
+// Commit the settling keyboard movement first. Selection proceeds; a drag
+// would race the movement's version check, so it waits for the next press.
+function settleThenSelect(id: number | null, event: PointerEvent) {
+  void flushGroupNudge();
+  if (id === null) selectBackground(event);
+  else selectNote(id, event.shiftKey);
 }
 function ensureGroupReadability(id: number, field: "title" | "synthesis") {
   const layout = layouts.value.find((layout) => layout.group.id === id);
@@ -305,8 +313,10 @@ function groupPointer(event: PointerEvent, group: IdeaGroup, move: boolean) {
     return;
   }
   if (groupNudge) {
-    // A keyboard movement is still settling; commit it before any pointer work.
+    // Commit the settling keyboard movement; keep the click as a selection.
     void flushGroupNudge();
+    selectGroup(group.id);
+    focus();
     return;
   }
   if (historyState.busy) return;
@@ -447,13 +457,12 @@ function doubleClick(event: MouseEvent) {
   if (element) emit("edit", Number(element.dataset.noteId));
   else if (canCreate.value) emit("add", world(event.clientX, event.clientY));
 }
+function nudgeBlocked() {
+  const nothingSelected = !visibleSelection.value.length && selectedGroupId.value === null;
+  return nothingSelected || !permissions.edit || historyState.busy || drag !== null;
+}
 function nudge(event: KeyboardEvent) {
-  if (
-    (!visibleSelection.value.length && selectedGroupId.value === null) ||
-    !permissions.edit ||
-    historyState.busy
-  )
-    return;
+  if (nudgeBlocked()) return;
   const directions: { [key: string]: Point } = {
     ArrowUp: { x: 0, y: -1 },
     ArrowDown: { x: 0, y: 1 },
@@ -505,7 +514,10 @@ function groupVersions(group: IdeaGroup): GroupVersions {
 // Consecutive arrow presses become one movement, one write and one history
 // step, moving the frame and its notes immediately like a drag does.
 function nudgeGroup(group: IdeaGroup, direction: Point, step: number) {
-  if (groupNudge && groupNudge.id !== group.id) void flushGroupNudge();
+  if (groupNudge && groupNudge.id !== group.id) {
+    void flushGroupNudge();
+    if (groupNudge) return;
+  }
   groupNudge ??= {
     id: group.id,
     origin: { x: group.canvas.x, y: group.canvas.y },
@@ -530,16 +542,21 @@ function nudgeGroup(group: IdeaGroup, direction: Point, step: number) {
     });
   nudge.timer = setTimeout(() => void flushGroupNudge(), NUDGE_SETTLE_MS);
 }
+function nudgeTarget(nudge: GroupNudge): Point {
+  return { x: nudge.origin.x + nudge.delta.x, y: nudge.origin.y + nudge.delta.y };
+}
 async function flushGroupNudge() {
   const nudge = groupNudge;
-  groupNudge = null;
   if (!nudge) return;
   clearTimeout(nudge.timer);
-  await moveGroup(
-    nudge.id,
-    { x: nudge.origin.x + nudge.delta.x, y: nudge.origin.y + nudge.delta.y },
-    nudge.versions,
-  );
+  if (historyState.busy) {
+    // Another canvas write is in flight. Keep the movement queued with its
+    // preview in place rather than dropping it without a word.
+    nudge.timer = setTimeout(() => void flushGroupNudge(), NUDGE_SETTLE_MS);
+    return;
+  }
+  groupNudge = null;
+  await moveGroup(nudge.id, nudgeTarget(nudge), nudge.versions);
   for (const note of nudge.notes) positions.value.delete(note.id);
   groupAnchors.value.delete(nudge.id);
 }
@@ -711,8 +728,11 @@ watch(
 );
 onUnmounted(() => {
   noteObserver?.disconnect();
-  clearTimeout(groupNudge?.timer);
+  const nudge = groupNudge;
   groupNudge = null;
+  clearTimeout(nudge?.timer);
+  // Best effort: a movement the user already saw should not vanish with the view.
+  if (nudge) void moveGroup(nudge.id, nudgeTarget(nudge), nudge.versions);
 });
 </script>
 <template>
