@@ -93,7 +93,19 @@
       "round_not_started": "Esta ronda no ha comenzado. Iníciala antes de aportar notas.",
       "round_closed": "Esta ronda está cerrada. Prepara otra ronda para continuar.",
       "round_not_found": "Esta ronda ya no está disponible. Actualiza el tablero.",
-      "round_not_planned": "Sólo puedes editar o cancelar una ronda preparada. Revisa el estado actual de la ronda."
+      "round_not_planned": "Sólo puedes editar o cancelar una ronda preparada. Revisa el estado actual de la ronda.",
+      "timer_already_running": "Ya hay un cronómetro en marcha o en pausa. Revisa el cronómetro actual.",
+      "timer_not_running": "Este cronómetro ya no está en marcha. Revisa su estado actual.",
+      "timer_not_paused": "Este cronómetro ya no está en pausa. Revisa su estado actual.",
+      "timer_expired": "Este cronómetro ha terminado. Puedes iniciar otro.",
+      "stale_timer": "Alguien ha cambiado el cronómetro. Revisa su estado actual antes de volver a intentarlo.",
+      "invalid_timer_duration": "Elige una duración entre 15 segundos y 24 horas.",
+      "invalid_timer_options": "Revisa las acciones seleccionadas para el final del cronómetro.",
+      "contributions_closed": "Las nuevas aportaciones están cerradas. Tu borrador se conserva aquí; vuelve a intentarlo cuando el facilitador las reabra.",
+      "timer_reveal_requires_private": "Activa el modo privado antes de elegir revelar las notas al terminar el tiempo.",
+      "timer_not_found": "Este cronómetro ya no está disponible. Actualiza el tablero.",
+      "invalid_timer_version": "El estado del cronómetro no es válido. Actualiza el tablero y vuelve a intentarlo.",
+      "timer_scheduling_failed": "No se pudo programar el cronómetro. No se ha guardado ningún cambio. Inténtalo de nuevo."
     },
     "saveStatus": {
       "saved": "Guardado",
@@ -180,6 +192,35 @@
       "noPrompt": "Sin pregunta",
       "replacePrompt": "Usar mi pregunta",
       "loadingPrompt": "Cargando la pregunta actual…"
+    },
+    "timer": {
+      "title": "Cronómetro",
+      "help": "Define el tiempo de la sesión. Todos siguen la misma cuenta atrás.",
+      "elapsed": "Se acabó el tiempo",
+      "paused": "En pausa",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "oneMinute": "1 min",
+      "cancel": "Cancelar cronómetro",
+      "preset": "{minutes} min",
+      "duration": "Duración (segundos)",
+      "durationHelp": "Entre 15 segundos y 24 horas.",
+      "whenElapsed": "Cuando termine el tiempo",
+      "notifyOnly": "Avisar a todos. Las demás acciones son opcionales.",
+      "reveal": "Finalizar el modo privado y revelar las notas",
+      "revealHelp": "Disponible mientras el modo privado esté activo.",
+      "close": "Cerrar nuevas aportaciones",
+      "start": "Iniciar cronómetro",
+      "contributionsOpen": "Las nuevas aportaciones están abiertas.",
+      "contributionsClosed": "Las nuevas aportaciones están cerradas.",
+      "closedHelp": "Las nuevas aportaciones están cerradas. Puedes seguir editando las notas existentes y tus borradores se conservan.",
+      "closeNow": "Cerrar nuevas aportaciones ahora",
+      "reopen": "Reabrir aportaciones",
+      "outcomes": {
+        "skipped_authorization": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió el acceso del facilitador.",
+        "skipped_configuration": "Terminó el tiempo. No se aplicaron las acciones automáticas porque cambió la configuración de la sesión.",
+        "skipped_session": "Terminó el tiempo. No se aplicaron las acciones automáticas porque la sesión ya no está abierta."
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from "vue";
+import { computed, nextTick, onMounted, ref, watch } from "vue";
 import {
   MousePointer2,
   Hand,
@@ -33,7 +33,7 @@ const {
   selectedIds,
   noteKey,
   editingId,
-  writable,
+  permissions,
   cursorEnabled = true,
   members,
   statuses,
@@ -45,12 +45,13 @@ const {
   noteKey: (id: number) => string;
   historyState: HistoryState;
   editingId: number | null;
-  writable: boolean;
+  permissions: { edit: boolean; create: boolean };
   cursorEnabled?: boolean;
   members: Member[];
   statuses: { [id: number]: string };
   context: BoardContext;
 }>();
+const canCreate = computed(() => permissions.edit && permissions.create);
 const emit = defineEmits<{
   add: [point: Point];
   select: [ids: number[]];
@@ -155,7 +156,7 @@ function selectionForNote(id: number, shift: boolean): number[] {
   return included ? [...visibleSelection.value] : [id];
 }
 function selectNote(id: number, shift: boolean): number[] {
-  if (tool.value === "connect" && writable) {
+  if (tool.value === "connect" && permissions.edit) {
     if (linkSource.value !== null && linkSource.value !== id) {
       emit("connect", linkSource.value, id, true);
       linkSource.value = null;
@@ -195,7 +196,7 @@ function selectBackground(event: PointerEvent) {
   emit("finish");
   emit("select", []);
   focus();
-  if (tool.value === "note" && writable) {
+  if (tool.value === "note" && canCreate.value) {
     emit("add", world(event.clientX, event.clientY));
     tool.value = "select";
   }
@@ -203,7 +204,7 @@ function selectBackground(event: PointerEvent) {
 function dragSelection(id: number, event: PointerEvent) {
   const connecting = tool.value === "connect";
   const ids = selectNote(id, event.shiftKey);
-  if (!writable || connecting || !ids.includes(id)) return;
+  if (!permissions.edit || connecting || !ids.includes(id)) return;
   event.preventDefault();
   focus();
   beginDrag(event, id, ids);
@@ -266,10 +267,10 @@ function doubleClick(event: MouseEvent) {
   if (interactiveTarget(event.target) || historyState.busy) return;
   const element = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   if (element) emit("edit", Number(element.dataset.noteId));
-  else if (writable) emit("add", world(event.clientX, event.clientY));
+  else if (canCreate.value) emit("add", world(event.clientX, event.clientY));
 }
 function nudge(event: KeyboardEvent) {
-  if (!visibleSelection.value.length || !writable || historyState.busy) return;
+  if (!visibleSelection.value.length || !permissions.edit || historyState.busy) return;
   const directions: { [key: string]: Point } = {
     ArrowUp: { x: 0, y: -1 },
     ArrowDown: { x: 0, y: 1 },
@@ -317,7 +318,7 @@ function keydown(event: KeyboardEvent) {
 function editFocusedNote(event: KeyboardEvent) {
   const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
   const id = focused ? Number(focused.dataset.noteId) : selectedId.value;
-  if (id !== null && writable && !historyState.busy) {
+  if (id !== null && permissions.edit && !historyState.busy) {
     event.preventDefault();
     emit("edit", id);
   }
@@ -326,7 +327,7 @@ function removeShortcut(event: KeyboardEvent) {
   if (
     !["Delete", "Backspace"].includes(event.key) ||
     !visibleSelection.value.length ||
-    !writable ||
+    !permissions.edit ||
     historyState.busy
   )
     return false;
@@ -350,10 +351,13 @@ function modifiedShortcut(event: KeyboardEvent) {
   // their keydown would suppress the browser's clipboard access.
   if (!["d", "z", "y"].includes(key)) return;
   event.preventDefault();
-  if (!writable || historyState.busy || event.repeat) return;
-  if (key === "d") {
-    if (visibleSelection.value.length) emit("duplicate", [...visibleSelection.value]);
-  } else historyShortcut(event, key);
+  if (!permissions.edit || historyState.busy || event.repeat) return;
+  if (key === "d") duplicateSelection();
+  else historyShortcut(event, key);
+}
+function duplicateSelection() {
+  if (canCreate.value && visibleSelection.value.length)
+    emit("duplicate", [...visibleSelection.value]);
 }
 function historyShortcut(event: KeyboardEvent, key: string) {
   const redo = (key === "z" && event.shiftKey) || (key === "y" && event.ctrlKey);
@@ -371,16 +375,17 @@ function pastePoint(): Point {
 }
 function clipboard(event: ClipboardEvent, operation: "copy" | "cut" | "paste") {
   if (interactiveTarget(event.target) || event.defaultPrevented) return;
-  if (operation !== "copy" && (!writable || historyState.busy)) return;
-  if (operation === "paste") emit("paste", event, pastePoint());
-  else if (visibleSelection.value.length) {
+  if (operation !== "copy" && (!permissions.edit || historyState.busy)) return;
+  if (operation === "paste") {
+    if (canCreate.value) emit("paste", event, pastePoint());
+  } else if (visibleSelection.value.length) {
     if (operation === "copy") emit("copy", event, [...visibleSelection.value]);
     else emit("cut", event, [...visibleSelection.value]);
   }
 }
 function shortcut(event: KeyboardEvent) {
   const key = event.key.toLowerCase();
-  if (key === "n" && writable && !historyState.busy) {
+  if (key === "n" && canCreate.value && !historyState.busy) {
     event.preventDefault();
     emit("add", {
       x: (view.width / 2 - view.x) / view.zoom - 140,
@@ -389,9 +394,15 @@ function shortcut(event: KeyboardEvent) {
   }
   if (key === "v") chooseTool("select");
   if (key === "h") chooseTool("pan");
-  if (key === "l" && writable && !historyState.busy) chooseTool("connect");
+  if (key === "l" && permissions.edit && !historyState.busy) chooseTool("connect");
   if (key === "1") fitAll();
 }
+watch(
+  () => canCreate.value,
+  (allowed) => {
+    if (!allowed && tool.value === "note") tool.value = "select";
+  },
+);
 onMounted(async () => {
   await nextTick();
   fitAll();
@@ -459,6 +470,7 @@ onMounted(async () => {
       >
         <CanvasNote
           :note="note"
+          :can-create="canCreate"
           :round-number="note.round_number"
           :body="note.body"
           :editing="editingId === note.id"
@@ -498,7 +510,15 @@ onMounted(async () => {
       <StickyNote class="size-9 text-muted-foreground/35" />
       <p class="text-lg font-medium">{{ t("ideation.canvas.empty") }}</p>
       <p class="max-w-sm text-sm text-muted-foreground">
-        {{ t(writable ? "ideation.canvas.emptyHelp" : "ideation.readOnly") }}
+        {{
+          t(
+            !permissions.edit
+              ? "ideation.readOnly"
+              : canCreate
+                ? "ideation.canvas.emptyHelp"
+                : "ideation.timer.closedHelp",
+          )
+        }}
       </p>
     </div>
     <div data-canvas-chrome class="absolute left-3 top-3 z-20">
@@ -566,9 +586,10 @@ onMounted(async () => {
         :tooltip-title="t('ideation.canvas.pan')"
         @click="chooseTool('pan')"
       />
-      <template v-if="writable"
+      <template v-if="permissions.edit"
         ><div class="mx-0.5 h-6 w-px bg-border" />
         <DockToolButton
+          v-if="canCreate"
           id="new-brainstorming-idea"
           :icon="StickyNote"
           :active="tool === 'note'"
@@ -580,7 +601,7 @@ onMounted(async () => {
           :tooltip-title="t('ideation.canvas.connect')"
           @click="chooseTool('connect')"
       /></template>
-      <template v-if="writable">
+      <template v-if="permissions.edit">
         <div class="mx-0.5 h-6 w-px bg-border" />
         <ToolbarTooltip :label="t('ideation.canvas.undoHelp')">
           <button

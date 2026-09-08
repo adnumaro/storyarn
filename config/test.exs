@@ -177,6 +177,9 @@ config :storyarn, StoryarnWeb.Endpoint,
   server: true,
   check_origin: false
 
+# Timer tests start their own supervised runtime with an isolated schedule.
+config :storyarn, :ideation_timer_runtime, false
+
 # Enable SQL sandbox for E2E tests with Playwright
 config :storyarn, :sql_sandbox, true
 

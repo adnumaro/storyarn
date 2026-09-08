@@ -1758,7 +1758,12 @@ canonical_owner_membership_invariant = %{
 }
 
 boundaries = %{
-  ideation: ["lib/storyarn/ideation.ex", "lib/storyarn/ideation/", "lib/storyarn_web/live/ideation_live/"],
+  ideation: [
+    "lib/storyarn/ideation.ex",
+    "lib/storyarn/ideation/",
+    "lib/storyarn/workers/ideation/",
+    "lib/storyarn_web/live/ideation_live/"
+  ],
   accounts: [
     "lib/storyarn/accounts.ex",
     "lib/storyarn/accounts/",
@@ -2444,6 +2449,13 @@ localization_role_dependency_denials =
     }
   end
 
+ideation_worker_facade_denial = %{
+  source_root: "lib/storyarn/workers/ideation/",
+  target_root: "lib/storyarn/ideation/",
+  kinds: ["runtime", "export", "compile"],
+  reason: "Ideation workers must orchestrate through the Storyarn.Ideation facade"
+}
+
 flow_worker_facade_denial = %{
   source_root: "lib/storyarn/workers/flows/",
   target_root: "lib/storyarn/flows/",
@@ -3011,6 +3023,41 @@ analytics_transport_caller_denials =
 # default module; opaque field or ambiguously rebound module receivers are not
 # accepted by the ratchet.
 privileged_entrypoints = [
+  %{
+    module: "Storyarn.Projects.Access",
+    path: "lib/storyarn/projects/access/access.ex",
+    functions: [lock_background_write: 1],
+    allowed_callers: ["lib/storyarn/projects.ex"],
+    reason: "Only the Projects root facade exposes the durable-write snapshot boundary"
+  },
+  %{
+    module: "Storyarn.Projects",
+    path: "lib/storyarn/projects.ex",
+    functions: [lock_background_write: 1],
+    allowed_callers: ["lib/storyarn/ideation/sessions/adapters/project_access.ex"],
+    reason: "Timer bookkeeping serializes with project recovery without granting actor authorization"
+  },
+  %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [expire_timer: 2],
+    allowed_callers: ["lib/storyarn/workers/ideation/expire_ideation_timer_worker.ex"],
+    reason: "Only the durable timer worker enters actorless expiry through the root facade"
+  },
+  %{
+    module: "Storyarn.Ideation",
+    path: "lib/storyarn/ideation.ex",
+    functions: [timer_runtime_child_specs: 0],
+    allowed_callers: ["lib/storyarn/application.ex"],
+    reason: "Only the application composition root starts the timer runtime"
+  },
+  %{
+    module: "Storyarn.Ideation.Ideas",
+    path: "lib/storyarn/ideation/ideas/ideas.ex",
+    functions: [set_private_mode_locked: 3],
+    allowed_callers: ["lib/storyarn/ideation/sessions/commands/expire_timer.ex"],
+    reason: "Scheduled reveal participates in the timer transaction after locked authorization"
+  },
   %{
     module: "Storyarn.Accounts",
     path: "lib/storyarn/accounts.ex",
@@ -3914,7 +3961,7 @@ policy = %{
       [projects_worker_facade_denial] ++
       localization_internal_path_denials ++
       localization_role_dependency_denials ++
-      [flow_worker_facade_denial, localization_worker_facade_denial] ++
+      [flow_worker_facade_denial, localization_worker_facade_denial, ideation_worker_facade_denial] ++
       sheet_internal_path_denials ++
       sheet_root_facade_path_denials ++
       sheet_role_dependency_denials ++
@@ -4067,6 +4114,18 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn/application.ex",
+      target: "lib/storyarn/ideation.ex",
+      kinds: ["runtime"],
+      reason: "The application composition root starts the owner-provided Ideation timer runtime"
+    },
+    %{
+      source: "lib/storyarn/ideation/sessions/adapters/timer_actor.ex",
+      target: "lib/storyarn/accounts.ex",
+      kinds: ["runtime"],
+      reason: "A persisted timer actor is resolved through Accounts before current authorization is revalidated"
+    },
     %{
       source: "lib/storyarn_web/live/ideation_live/board.ex",
       target: "lib/storyarn/projects.ex",

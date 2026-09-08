@@ -73,6 +73,22 @@ defmodule Storyarn.Ideation.Recovery.Restore do
     row = Inventory.decode_row("sessions", session)
     id = maps["sessions"][session["id"]]
     Repo.update_all(from(s in "ideation_sessions", where: s.id == ^id), set: [deleted_at: row.deleted_at])
+
+    # A live generation can match the normalized paused recovery image. Fence
+    # its current timer too; merely reviving the session would keep old jobs live.
+    for timer <- rows["timers"] do
+      restored =
+        "timers"
+        |> Inventory.decode_row(timer)
+        |> Storyarn.Ideation.Recovery.TimerState.restore()
+
+      timer_id = maps["timers"][timer["id"]]
+
+      Repo.update_all(from(t in "ideation_timers", where: t.id == ^timer_id),
+        set: [status: restored.status, deadline_at: restored.deadline_at, version: restored.version]
+      )
+    end
+
     maps
   end
 
@@ -134,6 +150,7 @@ defmodule Storyarn.Ideation.Recovery.Restore do
   defp insert_row("sessions", row), do: insert_one("ideation_sessions", row)
   defp insert_row("session_revisions", row), do: insert_one("ideation_session_revisions", row)
   defp insert_row("rounds", row), do: insert_one("ideation_rounds", row)
+  defp insert_row("timers", row), do: insert_one("ideation_timers", row)
   defp insert_row("ideas", row), do: insert_one("ideation_ideas", row)
   defp insert_row("revisions", row), do: insert_one("ideation_idea_revisions", row)
   defp insert_row("edits", row), do: insert_one("ideation_idea_edits", row)

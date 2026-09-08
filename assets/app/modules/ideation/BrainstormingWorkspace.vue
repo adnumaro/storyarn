@@ -77,6 +77,7 @@ const notes = useCanvasNotes(
 );
 const current = computed(() => notes.notes.value.find((n) => n.id === selected.value));
 const writable = computed(() => board.can_edit && board.session?.status === "open");
+const canCreate = computed(() => writable.value && board.session?.contributions_open !== false);
 const own = computed(() => current.value?.author_id === board.current_user_id);
 const draft = computed(() =>
   selected.value !== null ? notes.drafts.drafts.get(selected.value) : undefined,
@@ -328,7 +329,7 @@ function showNewContributions() {
   if (roundFilter.value !== "all") void filterRound("all", true);
 }
 function add(point: Point) {
-  if (!writable.value || history.busy.value) return;
+  if (!canCreate.value || history.busy.value) return;
   finish();
   showNewContributions();
   const id = notes.add(point, current.value?.canvas?.color);
@@ -484,7 +485,7 @@ function cut(event: ClipboardEvent, ids: number[]) {
   if (writeNotes(event, owned)) void remove(owned.map((note) => note.id));
 }
 async function insert(copies: NoteCopy[], point: Point) {
-  if (!writable.value || history.busy.value || !copies.length) return;
+  if (!canCreate.value || history.busy.value || !copies.length) return;
   finish();
   showNewContributions();
   const at = context();
@@ -538,7 +539,7 @@ function duplicate(ids: number[]) {
   });
 }
 function paste(event: ClipboardEvent, point: Point) {
-  if (!writable.value || history.busy.value) return;
+  if (!canCreate.value || history.busy.value) return;
   const copies = readNotes(event);
   if (copies?.length) {
     event.preventDefault();
@@ -645,6 +646,14 @@ onUnmounted(() => {
       <span>{{ error(board.error || failure || "offline") }}</span
       ><Button variant="ghost" size="sm" @click="refresh">{{ t("ideation.refresh") }}</Button>
     </div>
+    <div
+      v-if="board.session?.status === 'open' && !board.session.contributions_open"
+      id="brainstorming-contributions-closed"
+      role="status"
+      class="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground"
+    >
+      {{ t(writable ? "ideation.timer.closedHelp" : "ideation.timer.contributionsClosed") }}
+    </div>
     <details
       v-if="resetNotice && notes.drafts.recovered.value.length"
       class="z-40 border-b bg-background p-3 text-xs"
@@ -708,7 +717,7 @@ onUnmounted(() => {
           busy: history.busy.value,
         }"
         :editing-id="editing"
-        :writable="writable"
+        :permissions="{ edit: writable, create: canCreate }"
         :cursor-enabled="!board.session.configuration.private_mode"
         :members="board.members"
         :statuses="statuses"
@@ -768,7 +777,7 @@ onUnmounted(() => {
                     :aria-pressed="current.canvas?.color === item.id"
                     @click="color(item.id)" /></PopoverContent></Popover
             ></template>
-            <ToolbarTooltip v-if="writable" :label="t('ideation.canvas.duplicateHelp')">
+            <ToolbarTooltip v-if="canCreate" :label="t('ideation.canvas.duplicateHelp')">
               <button
                 type="button"
                 class="toolbar-btn"
@@ -880,7 +889,7 @@ onUnmounted(() => {
               :pending="filteringRound"
               @change="filterRound"
             /><Button
-              v-if="writable"
+              v-if="canCreate"
               size="sm"
               @click="
                 list = false;

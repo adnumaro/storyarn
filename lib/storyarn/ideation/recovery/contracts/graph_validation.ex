@@ -1,5 +1,6 @@
 defmodule Storyarn.Ideation.Recovery.GraphValidation do
   @moduledoc false
+  alias Storyarn.Ideation.Recovery.TimerState
 
   # Authentication proves who produced the capsule, not referential integrity.
   # Validate links before issuing writes; never turn a bad archive into a DB error.
@@ -15,7 +16,8 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
       Enum.all?(entries, &valid_row?(&1, collection, index)) and unique_identities?(entries, collection, index)
     end) and unique_numbers?(rows["revisions"], "idea_id") and
       unique_numbers?(rows["session_revisions"], "session_id") and
-      unique_numbers?(rows["rounds"], "session_id") and one_active_round?(rows["rounds"])
+      unique_numbers?(rows["rounds"], "session_id") and one_active_round?(rows["rounds"]) and
+      length(rows["timers"]) == length(Enum.uniq_by(rows["timers"], & &1["session_id"]))
   end
 
   defp valid_row?(row, collection, index) do
@@ -25,15 +27,17 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp valid_links?(row, "sessions", _) do
     is_integer(row["project_id"]) and is_map(row["configuration"]) and
-      row["status"] in ~w(open archived) and is_binary(row["title"])
+      row["status"] in ~w(open archived) and is_binary(row["title"]) and is_boolean(row["contributions_open"])
   end
 
   defp valid_links?(row, "session_revisions", index) do
     Map.has_key?(index.sessions, row["session_id"]) and positive?(row["number"]) and
-      is_map(row["snapshot"]) and round_snapshot?(row, index)
+      is_map(row["snapshot"]) and round_snapshot?(row, index) and timer_snapshot?(row)
   end
 
   defp valid_links?(row, "rounds", index), do: Map.has_key?(index.sessions, row["session_id"]) and round_metadata?(row)
+
+  defp valid_links?(row, "timers", index), do: Map.has_key?(index.sessions, row["session_id"]) and TimerState.valid?(row)
 
   defp valid_links?(row, "ideas", index) do
     Map.has_key?(index.sessions, row["session_id"]) and revision?(index, row["id"], row["revision"]) and
@@ -145,6 +149,12 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp round_snapshot?(_, _), do: true
 
+  defp timer_snapshot?(%{"action" => action, "snapshot" => snapshot})
+       when action in ~w(timer_started timer_paused timer_resumed timer_extended timer_cancelled timer_elapsed),
+       do: TimerState.snapshot_valid?(snapshot["timer"])
+
+  defp timer_snapshot?(_), do: true
+
   defp valid_selection?(%{"selection" => %{"mode" => "eligible", "states" => states}}, _) do
     is_list(states) and length(states) in 1..3 and Enum.all?(states, &(&1 in ~w(active parked discarded)))
   end
@@ -188,7 +198,7 @@ defmodule Storyarn.Ideation.Recovery.GraphValidation do
 
   defp session_id(row, "sessions", _), do: row["id"]
 
-  defp session_id(row, collection, _) when collection in ["session_revisions", "rounds", "ideas", "reveals"],
+  defp session_id(row, collection, _) when collection in ["session_revisions", "rounds", "timers", "ideas", "reveals"],
     do: row["session_id"]
 
   defp session_id(row, _, index), do: get_in(index.ideas, [row["idea_id"], "session_id"])

@@ -6,11 +6,13 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   # loaded through the ordinary encrypted-field schema or returned as plaintext.
   @tables [
     {"sessions", "ideation_sessions", :project_id,
-     ~w(id recovery_identity project_id created_by_id facilitator_id decision_owner_id title objective context status archived_at deleted_at revision configuration_version configuration inserted_at updated_at)a},
+     ~w(id recovery_identity project_id created_by_id facilitator_id decision_owner_id title objective context status archived_at deleted_at revision configuration_version configuration contributions_open inserted_at updated_at)a},
     {"session_revisions", "ideation_session_revisions", :session_id,
      ~w(id recovery_identity session_id actor_id number action snapshot inserted_at)a},
     {"rounds", "ideation_rounds", :session_id,
      ~w(id recovery_identity session_id number prompt status started_at closed_at inserted_at updated_at)a},
+    {"timers", "ideation_timers", :session_id,
+     ~w(id recovery_identity session_id actor_id version status deadline_at remaining_seconds duration_seconds started_at completed_at reveal_on_expiry close_contributions_on_expiry configuration_version expiry_outcome inserted_at updated_at)a},
     {"ideas", "ideation_ideas", :session_id,
      ~w(id recovery_identity session_id author_id author_kind creation_key revision published_revision state publication_consent configuration_version creation_source_id source_idea_id source_revision canvas round_id late_contribution deleted_at inserted_at updated_at)a},
     {"revisions", "ideation_idea_revisions", :idea_id,
@@ -23,7 +25,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
      ~w(id recovery_identity idea_id revision operation_id actor_id inserted_at)a}
   ]
   @actor_fields ~w(created_by_id facilitator_id decision_owner_id author_id actor_id)a
-  @dates ~w(archived_at deleted_at inserted_at updated_at completed_at started_at closed_at)a
+  @dates ~w(archived_at deleted_at inserted_at updated_at completed_at started_at closed_at deadline_at)a
   @max_rows 100_000
 
   def tables, do: @tables
@@ -82,7 +84,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
   end
 
   def validate(%{"format" => "storyarn.ideation", "version" => version, "rows" => rows, "actors" => actors} = data)
-      when version in [1, 2] and is_map(rows) and is_map(actors) do
+      when version in [1, 2, 3] and is_map(rows) and is_map(actors) do
     tables = tables_for(version)
     expected = Enum.map(tables, &elem(&1, 0))
 
@@ -100,23 +102,35 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
 
   def validate(_), do: {:error, :invalid_ideation_recovery}
 
-  # Call only after validation: older capsules have no rounds. Normalize their
-  # inventory before remapping and equality checks, keeping old backups usable.
+  # Call only after validation. Normalize older inventories before remapping and
+  # equality checks, keeping backups made before rounds and timers usable.
   def normalize(%{"version" => 1, "rows" => rows} = data) do
     ideas =
       Enum.map(rows["ideas"], fn row ->
         row |> Map.put("round_id", nil) |> Map.put("late_contribution", false)
       end)
 
-    %{data | "version" => 2, "rows" => rows |> Map.put("rounds", []) |> Map.put("ideas", ideas)}
+    normalize(%{data | "version" => 2, "rows" => rows |> Map.put("rounds", []) |> Map.put("ideas", ideas)})
+  end
+
+  def normalize(%{"version" => 2, "rows" => rows} = data) do
+    sessions = Enum.map(rows["sessions"], &Map.put(&1, "contributions_open", true))
+    %{data | "version" => 3, "rows" => rows |> Map.put("sessions", sessions) |> Map.put("timers", [])}
   end
 
   def normalize(data), do: data
 
-  defp tables_for(2), do: @tables
+  defp tables_for(3), do: @tables
+
+  defp tables_for(2) do
+    for {collection, table, parent, fields} <- @tables, collection != "timers" do
+      fields = if collection == "sessions", do: fields -- [:contributions_open], else: fields
+      {collection, table, parent, fields}
+    end
+  end
 
   defp tables_for(1) do
-    for {collection, table, parent, fields} <- @tables, collection != "rounds" do
+    for {collection, table, parent, fields} <- tables_for(2), collection != "rounds" do
       fields = if collection == "ideas", do: fields -- [:round_id, :late_contribution], else: fields
       {collection, table, parent, fields}
     end
@@ -143,7 +157,7 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
     |> Enum.filter(&(&1 in @dates))
     |> Enum.all?(fn field ->
       case Map.get(row, Atom.to_string(field)) do
-        nil -> field in [:archived_at, :deleted_at, :completed_at, :started_at, :closed_at]
+        nil -> field in [:archived_at, :deleted_at, :completed_at, :started_at, :closed_at, :deadline_at]
         value when is_binary(value) -> valid_timestamp?(value)
         _ -> false
       end

@@ -22,6 +22,26 @@ afterEach(() => {
 });
 
 describe("canvas note native undo", () => {
+  it("keeps the current editor and local undo when quick-create is unavailable", async () => {
+    const { wrapper, editor } = await note();
+    await wrapper.setProps({ canCreate: false });
+    editor.commands.setTextSelection(6);
+    editor.commands.insertContent(" changed");
+    editor.view.dom.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Enter",
+        metaKey: true,
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(wrapper.emitted("quickCreate")).toBeUndefined();
+    expect(wrapper.emitted("finish")).toBeUndefined();
+    expect(editor.isEditable).toBe(true);
+    expect(editor.commands.undo()).toBe(true);
+    expect(editor.getHTML()).toBe("<p>Start</p>");
+  });
+
   it("preserves spaces while each keystroke is echoed through its body prop", async () => {
     const { wrapper, editor } = await note();
     editor.commands.setTextSelection(6);

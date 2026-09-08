@@ -2,12 +2,13 @@
 import { Settings2, Eye, EyeOff } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive";
 import { ref } from "vue";
-import { useBoardText, RoundControls } from "@modules/ideation";
+import { useBoardText, RoundControls, TimerControls } from "@modules/ideation";
 import EditableText from "@components/forms/EditableText.vue";
 import ToolbarTooltip from "@components/toolbar/ToolbarTooltip.vue";
-import type { Session, Round } from "@modules/ideation";
-const { session, epoch, canManage, canEdit, rounds, roundsNext, activeRound } = defineProps<{
+import type { Session, Round, SessionTimer } from "@modules/ideation";
+const { session, epoch, canManage, canEdit, rounds, roundsNext, activeRound, timer } = defineProps<{
   session: Session;
+  timer: SessionTimer | null;
   rounds: Round[];
   roundsNext: number | null;
   activeRound: Round | null;
@@ -89,6 +90,13 @@ function rename(title: string) {
       :rounds="rounds"
       :rounds-next="roundsNext"
       :active-round="activeRound"
+      :can-manage="canManage"
+      :can-edit="canEdit"
+    />
+    <TimerControls
+      :session="session"
+      :epoch="epoch"
+      :timer="timer"
       :can-manage="canManage"
       :can-edit="canEdit"
     />

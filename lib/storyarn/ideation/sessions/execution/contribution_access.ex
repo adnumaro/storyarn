@@ -17,14 +17,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.ContributionAccess do
                  lock: "FOR UPDATE"
              ),
            :open <- session.status do
-        {:ok,
-         Map.merge(access, %{
-           session_id: session.id,
-           session_revision: session.revision,
-           facilitator_id: session.facilitator_id,
-           configuration: Ecto.embedded_dump(session.configuration, :json),
-           configuration_version: session.configuration_version
-         })}
+        {:ok, from_session(session, access)}
       else
         nil -> {:error, :not_found}
         :archived -> {:error, :session_archived}
@@ -36,4 +29,15 @@ defmodule Storyarn.Ideation.Sessions.Execution.ContributionAccess do
   end
 
   def lock(_scope, _project_id, _session_id), do: {:error, :not_found}
+
+  def from_session(session, access) do
+    Map.merge(access, %{
+      session_id: session.id,
+      session_revision: session.revision,
+      facilitator_id: session.facilitator_id,
+      configuration: Ecto.embedded_dump(session.configuration, :json),
+      configuration_version: session.configuration_version,
+      contributions_open: session.contributions_open
+    })
+  end
 end

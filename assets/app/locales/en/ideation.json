@@ -93,7 +93,19 @@
       "round_not_started": "This round has not started. Start it before contributing notes.",
       "round_closed": "This round is closed. Prepare another round to continue.",
       "round_not_found": "This round is no longer available. Refresh the board.",
-      "round_not_planned": "Only a prepared round can be changed or cancelled. Review the current round."
+      "round_not_planned": "Only a prepared round can be changed or cancelled. Review the current round.",
+      "timer_already_running": "A timer is already running or paused. Review the current timer.",
+      "timer_not_running": "This timer is no longer running. Review its current state.",
+      "timer_not_paused": "This timer is no longer paused. Review its current state.",
+      "timer_expired": "This timer has ended. You can start another one.",
+      "stale_timer": "Someone changed the timer. Review its current state before trying again.",
+      "invalid_timer_duration": "Choose a duration from 15 seconds to 24 hours.",
+      "invalid_timer_options": "Review the actions selected for the end of the timer.",
+      "timer_scheduling_failed": "The timer could not be scheduled. No changes were saved. Try again.",
+      "contributions_closed": "New contributions are closed. Your draft is kept here; retry when the facilitator reopens contributions.",
+      "timer_reveal_requires_private": "Start private mode before choosing to reveal notes when time ends.",
+      "timer_not_found": "This timer is no longer available. Refresh the board.",
+      "invalid_timer_version": "The timer state is invalid. Refresh the board and try again."
     },
     "saveStatus": {
       "saved": "Saved",
@@ -180,6 +192,35 @@
       "noPrompt": "No question",
       "replacePrompt": "Use my question",
       "loadingPrompt": "Loading the current question…"
+    },
+    "timer": {
+      "title": "Timer",
+      "help": "Set time for the session. Everyone follows the same countdown.",
+      "elapsed": "Time’s up",
+      "paused": "Paused",
+      "pause": "Pause",
+      "resume": "Resume",
+      "oneMinute": "1 min",
+      "cancel": "Cancel timer",
+      "preset": "{minutes} min",
+      "duration": "Duration (seconds)",
+      "durationHelp": "From 15 seconds to 24 hours.",
+      "whenElapsed": "When time ends",
+      "notifyOnly": "Notify everyone. Other actions are optional.",
+      "reveal": "End private mode and reveal notes",
+      "revealHelp": "Available while private mode is active.",
+      "close": "Close new contributions",
+      "start": "Start timer",
+      "contributionsOpen": "New contributions are open.",
+      "contributionsClosed": "New contributions are closed.",
+      "closedHelp": "New contributions are closed. Existing notes remain editable and your drafts are kept.",
+      "closeNow": "Close new contributions now",
+      "reopen": "Reopen contributions",
+      "outcomes": {
+        "skipped_authorization": "Time ended. Automatic actions were skipped because facilitator access changed.",
+        "skipped_configuration": "Time ended. Automatic actions were skipped because the session settings changed.",
+        "skipped_session": "Time ended. Automatic actions were skipped because the session is no longer open."
+      }
     }
   }
 }

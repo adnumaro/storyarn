@@ -4,6 +4,12 @@ defmodule Storyarn.Ideation.Ideas do
   alias Storyarn.Ideation.Ideas.Events.Invalidation
   alias Storyarn.Ideation.Ideas.Queries
 
+  defdelegate set_private_mode_locked(access, revision, enabled),
+    to: Storyarn.Ideation.Ideas.Execution.PrivateMode,
+    as: :set_locked
+
+  def notify_timer_reveal(project_id, session_id), do: Invalidation.broadcast(project_id, session_id, :shared)
+
   defdelegate connect_ideas(scope, project_id, session_id, source_id, target_id, connected?),
     to: Commands.Connect,
     as: :run

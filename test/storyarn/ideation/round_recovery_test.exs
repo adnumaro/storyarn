@@ -29,7 +29,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, ordinary.id, next.id, true)
     capsule = capture(ctx)
 
-    assert {:ok, %{"version" => 2, "rows" => rows}} = Capsule.open(capsule)
+    assert {:ok, %{"version" => 3, "rows" => rows}} = Capsule.open(capsule)
     assert length(rows["rounds"]) == 3
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, capsule)
@@ -70,7 +70,8 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     legacy =
       data
       |> Map.put("version", 1)
-      |> update_in(["rows"], &Map.delete(&1, "rounds"))
+      |> update_in(["rows"], &Map.drop(&1, ["rounds", "timers"]))
+      |> update_in(["rows", "sessions"], &Enum.map(&1, fn row -> Map.delete(row, "contributions_open") end))
       |> update_in(["rows", "ideas"], fn rows ->
         Enum.map(rows, &Map.drop(&1, ["round_id", "late_contribution", "canvas", "deleted_at"]))
       end)
@@ -104,7 +105,7 @@ defmodule Storyarn.Ideation.RoundRecoveryTest do
     ctx = %{ctx | session: cancelled}
     capsule = capture(ctx)
     assert {:ok, data} = Capsule.open(capsule)
-    assert data["version"] == 2
+    assert data["version"] == 3
     assert [saved] = data["rows"]["rounds"]
     assert saved["status"] == "cancelled"
     assert saved["started_at"] == nil

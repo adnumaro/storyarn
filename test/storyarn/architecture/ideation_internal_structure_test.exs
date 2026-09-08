@@ -34,7 +34,8 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
              "#{@root}/sessions/entities/configuration.ex",
              "#{@root}/sessions/entities/revision.ex",
              "#{@root}/sessions/entities/round.ex",
-             "#{@root}/sessions/entities/session.ex"
+             "#{@root}/sessions/entities/session.ex",
+             "#{@root}/sessions/entities/timer.ex"
            ]
   end
 
@@ -94,6 +95,17 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
 
   test "only the agreed transport-neutral operations are exposed" do
     expected = [
+      start_timer: 5,
+      pause_timer: 5,
+      resume_timer: 5,
+      extend_timer: 6,
+      cancel_timer: 5,
+      get_timer: 3,
+      get_canvas_context: 3,
+      get_canvas_context: 4,
+      expire_timer: 2,
+      timer_runtime_child_specs: 0,
+      set_contributions_open: 5,
       archive_session: 4,
       assign_session_responsibilities: 5,
       create_session: 3,
@@ -147,12 +159,14 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  idea_operations ++ [capture_recovery: 1, validate_recovery: 1, restore_recovery: 2, verify_recovery: 3]
              )
 
-    assert Storyarn.Ideation.Ideas.__info__(:functions) == Enum.sort(idea_operations)
+    assert Storyarn.Ideation.Ideas.__info__(:functions) ==
+             Enum.sort(idea_operations ++ [set_private_mode_locked: 3, notify_timer_reveal: 2])
 
     assert Storyarn.Ideation.Sessions.__info__(:functions) ==
              Enum.sort(
                expected ++
                  [
+                   scheduled_timers: 0,
                    lock_for_contribution: 3,
                    set_canvas_mode_locked: 3,
                    notify_canvas_mode: 2,
@@ -168,6 +182,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       "sessions" => Storyarn.Ideation.Sessions.Session,
       "session_revisions" => Storyarn.Ideation.Sessions.Revision,
       "rounds" => Storyarn.Ideation.Sessions.Round,
+      "timers" => Storyarn.Ideation.Sessions.Timer,
       "ideas" => Storyarn.Ideation.Ideas.Idea,
       "revisions" => Storyarn.Ideation.Ideas.Revision,
       "edits" => Storyarn.Ideation.Ideas.Edit,

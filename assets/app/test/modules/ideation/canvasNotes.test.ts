@@ -413,3 +413,42 @@ describe("round contribution provenance", () => {
     app.unmount();
   });
 });
+
+describe("closed contributions and pending drafts", () => {
+  it("resolves an uncertain creation using its original request after contributions close", async () => {
+    const { result, app, current, request, replies } = setup();
+    const local = result.add({ x: 10, y: 20 }, "mint", { body: "<p>May already be saved</p>" });
+    const saving = result.save(local);
+    replies[0]({ status: "error", code: "offline" });
+    await saving;
+    current.value = {
+      ...current.value,
+      session: { ...current.value.session!, contributions_open: false },
+    };
+    const retry = result.save(local);
+    expect(request.mock.calls[1]).toEqual(request.mock.calls[0]);
+    replies[1]({ status: "ok", value: idea({ id: 44, body: "<p>May already be saved</p>" }) });
+    await retry;
+    expect(result.find(local)?.id).toBe(44);
+    app.unmount();
+  });
+  it("keeps a rejected unfinished draft and can restore it locally while new contributions are closed", async () => {
+    const { result, app, current, replies } = setup();
+    const local = result.add({ x: 10, y: 20 }, "mint", {
+      body: "<p>Keep this unfinished idea</p>",
+    });
+    current.value = {
+      ...current.value,
+      session: { ...current.value.session!, contributions_open: false },
+    };
+    const saving = result.save(local);
+    replies[0]({ status: "error", code: "contributions_closed" });
+    await saving;
+    expect(result.find(local)?.body).toBe("<p>Keep this unfinished idea</p>");
+    expect(result.errors.get(local)).toBe("contributions_closed");
+    const removed = await result.remove(local);
+    const restored = await result.restore(removed!);
+    expect(result.find(restored!)?.body).toBe("<p>Keep this unfinished idea</p>");
+    app.unmount();
+  });
+});

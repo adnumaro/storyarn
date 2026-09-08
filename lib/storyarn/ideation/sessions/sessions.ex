@@ -5,6 +5,25 @@ defmodule Storyarn.Ideation.Sessions do
   alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Queries
 
+  defdelegate start_timer(scope, project_id, session_id, revision, attrs), to: Commands.StartTimer, as: :run
+  defdelegate pause_timer(scope, project_id, session_id, revision, version), to: Commands.PauseTimer, as: :run
+  defdelegate resume_timer(scope, project_id, session_id, revision, version), to: Commands.ResumeTimer, as: :run
+
+  defdelegate extend_timer(scope, project_id, session_id, revision, version, seconds),
+    to: Commands.ExtendTimer,
+    as: :run
+
+  defdelegate cancel_timer(scope, project_id, session_id, revision, version), to: Commands.CancelTimer, as: :run
+  defdelegate expire_timer(timer_id, version), to: Commands.ExpireTimer, as: :run
+
+  defdelegate set_contributions_open(scope, project_id, session_id, revision, enabled),
+    to: Commands.SetContributionsOpen,
+    as: :run
+
+  defdelegate get_timer(scope, project_id, session_id), to: Queries.Timers, as: :get
+  defdelegate scheduled_timers(), to: Queries.Timers, as: :scheduled
+  defdelegate timer_runtime_child_specs(), to: Storyarn.Ideation.Sessions.Execution.TimerRuntime, as: :child_specs
+
   def subscribe_sessions(scope, project_id) do
     with :ok <- Queries.ProjectAccess.authorize(scope, project_id), do: Invalidation.subscribe(project_id)
   end
@@ -14,6 +33,7 @@ defmodule Storyarn.Ideation.Sessions do
   defdelegate get_session(scope, project_id, session_id), to: Queries.Get, as: :run
   defdelegate list_rounds(scope, project_id, session_id, opts \\ []), to: Queries.Rounds, as: :run
   defdelegate get_round_context(scope, project_id, session_id, opts \\ []), to: Queries.RoundContext, as: :run
+  defdelegate get_canvas_context(scope, project_id, session_id, opts \\ []), to: Queries.CanvasContext, as: :run
   defdelegate create_round(scope, project_id, session_id, revision, attrs), to: Commands.CreateRound, as: :run
   defdelegate update_round(scope, project_id, session_id, round_id, revision, attrs), to: Commands.UpdateRound, as: :run
   defdelegate cancel_round(scope, project_id, session_id, round_id, revision), to: Commands.CancelRound, as: :run

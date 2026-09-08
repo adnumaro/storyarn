@@ -436,7 +436,10 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert_reply(view, %{status: "ok"})
     assert_board_eventually(participant, fn board -> assert board["active_round"]["id"] == round["id"] end)
     assert_board_eventually(view, fn board -> assert board["active_round"]["id"] == round["id"] end)
-    header = LiveVue.Test.get_vue(view, name: "live/ideation/BoardHeader")
+    # Read initial header props; subsequent updates use production prop diffs.
+    {:ok, header_view, _} = live(log_in_user(build_conn(), ctx.author.user), board_path(ctx, session.id))
+    assert_board_eventually(header_view, fn board -> assert board["active_round"]["id"] == round["id"] end)
+    header = LiveVue.Test.get_vue(header_view, name: "live/ideation/BoardHeader")
     assert header.props["active-round"]["prompt"] == round["prompt"]
     epoch = data(participant)["epoch"]
 

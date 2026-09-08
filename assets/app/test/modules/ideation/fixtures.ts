@@ -1,4 +1,4 @@
-import type { Board, Idea, Round } from "@modules/ideation/types";
+import type { Board, Idea, Round, SessionTimer } from "@modules/ideation/types";
 
 export function idea(overrides: Partial<Idea> = {}): Idea {
   return {
@@ -42,6 +42,7 @@ export function board(overrides: Partial<Board> = {}): Board {
       status: "open",
       revision: 1,
       configuration_version: 1,
+      contributions_open: true,
       facilitator_id: 1,
       decision_owner_id: 1,
       deleted_at: null,
@@ -54,6 +55,7 @@ export function board(overrides: Partial<Board> = {}): Board {
       },
     },
     session_missing: false,
+    timer: null,
     rounds: [],
     rounds_next: null,
     active_round: null,
@@ -82,6 +84,22 @@ export function round(overrides: Partial<Round> = {}): Round {
     closed_at: null,
     inserted_at: "2026-09-08T09:00:00Z",
     updated_at: "2026-09-08T10:00:00Z",
+    ...overrides,
+  };
+}
+
+export function timer(overrides: Partial<SessionTimer> = {}): SessionTimer {
+  return {
+    id: 30,
+    version: 1,
+    status: "running",
+    deadline_at: "2026-09-08T10:05:00Z",
+    server_now: "2026-09-08T10:00:00Z",
+    remaining_seconds: 300,
+    duration_seconds: 300,
+    reveal_on_expiry: false,
+    close_contributions_on_expiry: false,
+    outcome: null,
     ...overrides,
   };
 }

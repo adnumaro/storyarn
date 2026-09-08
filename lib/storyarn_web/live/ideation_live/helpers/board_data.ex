@@ -50,6 +50,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       rounds: [],
       rounds_next: nil,
       active_round: nil,
+      timer: nil,
       round_filter: :all,
       can_edit: false,
       can_manage: false,
@@ -69,6 +70,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :status,
       :revision,
       :configuration_version,
+      :contributions_open,
       :facilitator_id,
       :decision_owner_id,
       :deleted_at,
@@ -144,6 +146,7 @@ defmodule StoryarnWeb.IdeationLive.Helpers.BoardData do
       :rounds,
       :rounds_next,
       :active_round,
+      :timer,
       :round_filter
     ]
 
