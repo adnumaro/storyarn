@@ -258,7 +258,6 @@ defmodule Storyarn.Architecture.DependencyPolicy do
             "durable_contracts, and migration_exceptions"
   end
 
-  defp forbidden?(_source, nil, _target, _target_boundary, _kind, _policy), do: false
   defp forbidden?(_source, boundary, _target, boundary, _kind, _policy), do: false
   defp forbidden?(_source, _source_boundary, _target, nil, _kind, _policy), do: false
 

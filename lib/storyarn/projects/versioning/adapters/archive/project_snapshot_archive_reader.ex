@@ -934,7 +934,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReader do
     metadata_size = name_length + extra_length + comment_length
 
     with true <- metadata_size <= byte_size(rest),
-         <<path::binary-size(name_length), extra::binary-size(extra_length), comment::binary-size(comment_length),
+         <<path::binary-size(^name_length), extra::binary-size(^extra_length), comment::binary-size(^comment_length),
            remaining::binary>> <- rest,
          :ok <-
            validate_central_entry(path, paths, %{

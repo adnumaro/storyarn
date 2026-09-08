@@ -1539,10 +1539,8 @@ defmodule Storyarn.Projects.Assets.MultipartCleanup do
   defp safe_phase(_phase), do: "unknown"
 
   defp safe_exception(exception) when is_exception(exception), do: inspect(exception.__struct__)
-  defp safe_exception(_exception), do: "unknown_exception"
 
   defp safe_failure_kind(kind) when kind in [:throw, :exit, :error], do: Atom.to_string(kind)
-  defp safe_failure_kind(_kind), do: "unknown_failure"
 
   defp emit_transition(from, to) do
     :telemetry.execute(

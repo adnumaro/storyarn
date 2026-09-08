@@ -397,13 +397,13 @@ msgid "Sequence created"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/execution/reference_scanner.ex:133
-#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:151
+#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:150
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence track #%{track} — audio"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/execution/reference_scanner.ex:152
-#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:170
+#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:169
 #, elixir-autogen, elixir-format
 msgid "Node #%{n} sequence visual layer #%{layer}"
 msgstr ""
@@ -417,7 +417,7 @@ msgid "Flow"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/execution/reference_scanner.ex:173
-#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:191
+#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:190
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — voice-over"
 msgstr ""
@@ -435,7 +435,7 @@ msgid "Sequence"
 msgstr ""
 
 #: lib/storyarn/flows/versioning/execution/reference_scanner.ex:179
-#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:197
+#: lib/storyarn/projects/versioning/rules/snapshot_references/flow_scanner.ex:196
 #, elixir-autogen, elixir-format
 msgid "Localization row #%{n} — speaker"
 msgstr ""

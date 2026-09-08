@@ -28,7 +28,6 @@ defmodule StoryarnWeb.PrivateDownload do
       {:ok, conn, _metadata} -> {:ok, conn}
       {:error, {:storage_stat_failed, reason}} -> {:error, reason}
       {:error, {:storage_stream_start_failed, reason}} -> {:error, reason}
-      {:error, _reason} = error -> error
     end
   end
 

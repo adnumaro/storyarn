@@ -186,7 +186,6 @@ defmodule StoryarnWeb.SnapshotDownloadController do
 
   defp local_preflight_error({:storage_stat_failed, _reason}), do: :stat_unavailable
   defp local_preflight_error({:storage_stream_start_failed, _reason}), do: :stream_unavailable
-  defp local_preflight_error(_reason), do: :unexpected_local_error
 
   defp request_error(conn, started_at, error_code, response) do
     emit_download_stop(

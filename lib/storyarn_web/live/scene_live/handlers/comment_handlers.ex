@@ -66,28 +66,29 @@ defmodule StoryarnWeb.SceneLive.Handlers.CommentHandlers do
   end
 
   def handle("open", _params, socket) do
-    with {:ok, _project, _membership} <- authorize_read(socket),
-         true <- not is_nil(socket.assigns.scene) do
-      socket =
-        socket
-        |> put_state(%{
-          open: true,
-          presentation: "panel",
-          placing: false,
-          draftPosition: nil,
-          draftId: nil,
-          thread: nil,
-          messages: [],
-          messageNextCursor: nil,
-          error: nil
-        })
-        |> assign(:right_panel, nil)
-        |> assign(:comment_focus_thread_id, nil)
-        |> refresh()
+    case authorize_read(socket) do
+      {:ok, _project, _membership} ->
+        socket =
+          socket
+          |> put_state(%{
+            open: true,
+            presentation: "panel",
+            placing: false,
+            draftPosition: nil,
+            draftId: nil,
+            thread: nil,
+            messages: [],
+            messageNextCursor: nil,
+            error: nil
+          })
+          |> assign(:right_panel, nil)
+          |> assign(:comment_focus_thread_id, nil)
+          |> refresh()
 
-      {:reply, %{ok: true}, socket}
-    else
-      _error -> failure(clear(socket), :not_found)
+        {:reply, %{ok: true}, socket}
+
+      _error ->
+        failure(clear(socket), :not_found)
     end
   end
 

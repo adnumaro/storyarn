@@ -329,8 +329,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     end
   end
 
-  defp validate_materialization_options(_opts), do: {:error, :invalid_project_materialization_options}
-
   defp materialization_mode(opts), do: Keyword.get(opts, @materialization_mode_key, :portable)
 
   defp validate_materialization_transaction do
@@ -377,8 +375,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
       PortableVariableSnapshot.prepare_portable_project_snapshot(snapshot_data)
     end
   end
-
-  defp maybe_put_portable_variable_plan(opts, nil), do: opts
 
   defp maybe_put_portable_variable_plan(opts, variable_plan),
     do: Keyword.put(opts, :portable_variable_plan, variable_plan)
@@ -1066,8 +1062,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
       _missing_or_invalid -> {:error, :snapshot_import_project_id_required}
     end
   end
-
-  defp validate_snapshot_import_project_id(_opts), do: {:error, :snapshot_import_project_id_required}
 
   defp materialize_snapshot_import_asset_catalog(project, snapshot_data, user_id, opts) do
     if MaterializationHelpers.exact_materialization?(opts) do
@@ -2987,8 +2981,6 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
     {:ok, zone_data["action_data"] || %{}}
   end
 
-  defp maybe_update_scene_zone([], _new_zone_id), do: :ok
-
   defp maybe_update_scene_zone(updates, new_zone_id) do
     case Repo.update_all(
            from(zone in SceneZone, where: zone.id == ^new_zone_id),
@@ -4421,9 +4413,7 @@ defmodule Storyarn.Projects.Versioning.ProjectRecovery do
 
   defp cleanup_owned_asset_copies(_tracker, false), do: :ok
 
-  defp cleanup_error_code(reason) when is_atom(reason), do: reason
   defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
-  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp restore_glossary(_project_id, [], _opts, _now), do: :ok
 

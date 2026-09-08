@@ -32,7 +32,7 @@ msgstr "Anotación duplicada."
 msgid "Annotation pasted."
 msgstr "Anotación pegada."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2030
+#: lib/storyarn_web/live/scene_live/show.ex:2029
 #, elixir-autogen, elixir-format
 msgid "Background image updated."
 msgstr "Imagen de fondo actualizada."
@@ -231,7 +231,7 @@ msgstr "No se pudo subir el banner."
 msgid "Could not update annotation."
 msgstr "No se pudo actualizar la anotación."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2034
+#: lib/storyarn_web/live/scene_live/show.ex:2033
 #, elixir-autogen, elixir-format
 msgid "Could not update background."
 msgstr "No se pudo actualizar el bloque."
@@ -270,7 +270,7 @@ msgstr "No se pudieron actualizar los waypoints."
 msgid "Could not update zone."
 msgstr "No se pudo actualizar la zona."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2015
+#: lib/storyarn_web/live/scene_live/show.ex:2014
 #, elixir-autogen, elixir-format
 msgid "Could not upload background."
 msgstr "No se pudo subir el fondo."
@@ -740,17 +740,17 @@ msgstr "Área transitable"
 msgid "this flow is already linked to this scene"
 msgstr "este flujo ya está vinculado a esta escena"
 
-#: lib/storyarn_web/live/scene_live/show.ex:2159
+#: lib/storyarn_web/live/scene_live/show.ex:2158
 #, elixir-autogen, elixir-format
 msgid "Could not upload file."
 msgstr "No se pudo subir el archivo."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2150
+#: lib/storyarn_web/live/scene_live/show.ex:2149
 #, elixir-autogen, elixir-format
 msgid "File is too large. Maximum size is 50 MB."
 msgstr "El archivo es demasiado grande. El tamaño máximo es 50 MB."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2153
+#: lib/storyarn_web/live/scene_live/show.ex:2152
 #, elixir-autogen, elixir-format
 msgid "File type not supported. Please upload a JPEG, PNG, GIF, or WebP image."
 msgstr "Tipo de archivo no compatible. Sube una imagen JPEG, PNG, GIF o WebP."
@@ -766,12 +766,12 @@ msgstr "el disparador temporizado requiere interval_ms >= 1000"
 msgid "Could not upload pin icon."
 msgstr "No se pudo subir el icono del pin."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2140
+#: lib/storyarn_web/live/scene_live/show.ex:2139
 #, elixir-autogen, elixir-format
 msgid "Only SVG, PNG, or GIF icons are allowed."
 msgstr "Solo se permiten iconos SVG, PNG o GIF."
 
-#: lib/storyarn_web/live/scene_live/show.ex:2144
+#: lib/storyarn_web/live/scene_live/show.ex:2143
 #, elixir-autogen, elixir-format
 msgid "Icon is too large. Maximum size is 256 KB."
 msgstr "El icono es demasiado grande. El máximo es 256 KB."
@@ -931,17 +931,17 @@ msgstr "Sesión de depuración iniciada"
 msgid "The End"
 msgstr "Fin"
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:415
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:416
 #, elixir-autogen, elixir-format
 msgid "This conversation changed. Review the latest state and try again."
 msgstr "Esta conversación ha cambiado. Revisa el estado más reciente e inténtalo de nuevo."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:418
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:419
 #, elixir-autogen, elixir-format
 msgid "This conversation or its source is no longer available."
 msgstr "Esta conversación o su origen ya no está disponible."
 
-#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:421
+#: lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex:422
 #, elixir-autogen, elixir-format
 msgid "Could not save the comment. Check the text and selected mentions."
 msgstr "No se pudo guardar el comentario. Revisa el texto y las menciones seleccionadas."

@@ -70,15 +70,12 @@ defmodule StoryarnWeb.FlowLive.Nodes.Subflow.Node do
   end
 
   defp persist_reference(node, flow_id, socket) do
-    case NodeHelpers.persist_node_update(socket, node.id, :put_subflow_reference, %{value: flow_id}) do
-      {:noreply, updated_socket} ->
-        current_flow_id = updated_socket.assigns.selected_node.data["referenced_flow_id"]
-        exit_nodes = load_exit_nodes(current_flow_id)
-        {:noreply, assign(updated_socket, :subflow_exits, exit_nodes)}
+    {:noreply, updated_socket} =
+      NodeHelpers.persist_node_update(socket, node.id, :put_subflow_reference, %{value: flow_id})
 
-      other ->
-        other
-    end
+    current_flow_id = updated_socket.assigns.selected_node.data["referenced_flow_id"]
+    exit_nodes = load_exit_nodes(current_flow_id)
+    {:noreply, assign(updated_socket, :subflow_exits, exit_nodes)}
   end
 
   defp load_exit_nodes(nil), do: []

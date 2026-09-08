@@ -54,7 +54,7 @@ defmodule Storyarn.AI.PersonalRoles do
   @spec assignable?(atom(), Entry.t()) :: boolean()
   def assignable?(slot, %Entry{} = entry) when slot in @visible_roles do
     required = required_capabilities(slot)
-    required != [] and Enum.all?(required, &(&1 in entry.capabilities))
+    Enum.all?(required, &(&1 in entry.capabilities))
   end
 
   def assignable?(_slot, %Entry{}), do: false

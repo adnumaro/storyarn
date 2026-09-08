@@ -62,7 +62,7 @@ defmodule Storyarn.Projects.Versioning.WorkspaceSnapshotImports do
       {:error, :snapshot_import_unavailable}
   catch
     kind, reason ->
-      Logger.warning("Workspace snapshot import admission failed error=#{safe_error({kind, reason})}")
+      Logger.warning("Workspace snapshot import admission failed error=#{inspect(safe_error({kind, reason}))}")
       {:error, :snapshot_import_unavailable}
   end
 

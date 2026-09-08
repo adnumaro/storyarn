@@ -2026,11 +2026,7 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotReconciliation do
   end
 
   defp failed_finalization_finding(claim, reservation, snapshot, reason) do
-    project_id =
-      case provider_subject(%{key: claim.object_prefix <> "/manifest.json"}) do
-        %{project_id: id} -> id
-        _subject -> nil
-      end
+    project_id = provider_subject(%{key: claim.object_prefix <> "/manifest.json"}).project_id
 
     attrs = %{
       category: "failed_snapshot_finalization",

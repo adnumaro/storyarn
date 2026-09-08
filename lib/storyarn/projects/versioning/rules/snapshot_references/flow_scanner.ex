@@ -136,7 +136,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotReferences.FlowScanner do
        when is_integer(id) or is_binary(id) or is_nil(id), do: id
 
   defp malformed_flow_mention_id({:invalid_project_reference, _context, details}), do: inspect(details)
-  defp malformed_flow_mention_id(_reason), do: nil
 
   defp add_sequence_asset_refs(refs, node, node_index) do
     refs =
