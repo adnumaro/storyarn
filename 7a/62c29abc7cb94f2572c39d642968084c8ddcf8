@@ -1,0 +1,108 @@
+priv/gettext/assets.pot
+  s_f733ea872095fd::t_7e96d90c8f4b53 57
+lib/storyarn/projects/versioning/commands/workspace_snapshot_imports.ex
+  s_5af6a6d0a150f1::t_bdd7831dcbb52c 65
+CLAUDE.md
+  s_f733ea872095fd::t_6c2574cb6ab90a 7
+priv/gettext/en/LC_MESSAGES/scenes.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 35,234,273,743,748,753,769,774,934,939,944
+lib/storyarn/projects/interchange/imports/adapters/input/source_bundle.ex
+  s_f733ea872095fd::t_72584f82061af2 319-321
+  s_f733ea872095fd::t_bf87f57b28254d 339
+priv/gettext/en/LC_MESSAGES/projects.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 730,735,740,1089,1094,1104,1109,1114,1119,1159,1164,1169,1174,1179,1317
+test/storyarn/projects/interchange/imports/adapters/input/source_bundle_test.exs
+  s_f733ea872095fd::t_ab46dfdd75ae62 492
+  s_f733ea872095fd::t_5367ccf01bffba 479,485
+lib/storyarn/projects/overview/rules/scene_health_checker.ex
+  s_f733ea872095fd::t_8c39b3a9d2930f 486-487
+priv/gettext/projects.pot
+  s_f733ea872095fd::t_7e96d90c8f4b53 730,735,740,1089,1094,1104,1109,1114,1119,1159,1164,1169,1174,1179,1317
+lib/storyarn/projects/interchange/exports/contracts/export_options.ex
+  s_f733ea872095fd::t_8c39b3a9d2930f 151
+priv/gettext/es/LC_MESSAGES/projects.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 730,735,740,1089,1094,1104,1109,1114,1119,1159,1164,1169,1174,1179,1317
+lib/storyarn/platform/object_storage/adapters/local.ex
+  s_f733ea872095fd::t_1a645819b7616c 552,612
+README.md
+  s_f733ea872095fd::t_7949f134009161 4-5
+  s_f733ea872095fd::t_ec5d6296c0db40 3,6
+priv/gettext/es/LC_MESSAGES/assets.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 57
+priv/gettext/es/LC_MESSAGES/flows.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 400,406,420,438
+test/storyarn/projects/versioning/adapters/archive/project_snapshot_archive_reader_test.exs
+  s_f733ea872095fd::t_5bec2fc899afaa 615-616
+lib/storyarn_web/live/flow_live/nodes/subflow/node.ex
+  s_f733ea872095fd::t_36ecfd493d14e0 73-78
+priv/gettext/en/LC_MESSAGES/flows.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 400,406,420,438
+test/storyarn/projects/content/localization/integration/owned_primitives_test.exs
+  s_f733ea872095fd::t_1a825e21a3498a 21-22
+  s_f733ea872095fd::t_b2085a2a24347d 20
+test/storyarn/projects/versioning/commands/workspace_snapshot_imports_integration_test.exs
+  s_f733ea872095fd::t_7e1a841fbfd2a6 39,120
+  s_f733ea872095fd::t_316d6f98d9be94 5,111-119,121-125
+  s_f733ea872095fd::t_5e51bfe1d0d07c 126-127
+Dockerfile
+  s_f733ea872095fd::t_ec5d6296c0db40 10,14-16
+  s_5af6a6d0a150f1::t_c28a0ce95606eb 12
+lib/storyarn/localization/translation/execution/batch_translation_job.ex
+  s_f733ea872095fd::t_ce8dce0a3c5fa1 169-170
+lib/storyarn/scenes/health/rules/checker.ex
+  s_f733ea872095fd::t_1a645819b7616c 486-487
+priv/gettext/en/LC_MESSAGES/assets.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 57
+priv/gettext/flows.pot
+  s_f733ea872095fd::t_7e96d90c8f4b53 400,406,420,438
+.github/workflows/ci.yml
+  s_f733ea872095fd::t_473fbab8e7cae6 11,46,48-49,55,57-59,152,154-155,161,163-165,233,235,241,243-244,377,379,385,387-388
+  s_f733ea872095fd::t_8b87423f9340bf 12
+mix.exs
+  s_f733ea872095fd::t_67761932873446 151-152
+  s_f733ea872095fd::t_f16c1a553c22b6 123
+  s_f733ea872095fd::t_ec5d6296c0db40 8
+  s_f733ea872095fd::t_d4d234cadf67dd 114-115
+.tool-versions
+  s_f733ea872095fd::t_7949f134009161 1-2
+test/support/throwing_snapshot_archive_reader.ex
+  s_f733ea872095fd::t_7e1a841fbfd2a6 1-5
+priv/gettext/scenes.pot
+  s_f733ea872095fd::t_7e96d90c8f4b53 35,234,273,743,748,753,769,774,934,939,944
+priv/gettext/es/LC_MESSAGES/scenes.po
+  s_f733ea872095fd::t_7e96d90c8f4b53 35,234,273,743,748,753,769,774,934,939,944
+lib/storyarn/ai/integrations/rules/personal_roles.ex
+  s_f733ea872095fd::t_1a645819b7616c 57
+lib/storyarn/projects/versioning/adapters/archive/project_snapshot_archive_reader.ex
+  s_5af6a6d0a150f1::t_1dd5bc5f61faf5 937
+lib/storyarn/projects/versioning/execution/project_snapshot_reconciliation.ex
+  s_f733ea872095fd::t_e4303a1ebbee46 2029
+lib/storyarn_web/live/scene_live/handlers/comment_handlers.ex
+  s_f733ea872095fd::t_f4d07047076e39 69-91
+mix.lock
+  s_5af6a6d0a150f1::t_f5c65d42d76f0f 13,30,90
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "7a62c29abc7cb94f2572c39d642968084c8ddcf8",
+  "prompts": {},
+  "sessions": {
+    "s_5af6a6d0a150f1": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a06c0e-8620-7e31-b045-e66d2bd71aec",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    },
+    "s_f733ea872095fd": {
+      "agent_id": {
+        "tool": "codex",
+        "id": "01a08111-0371-73b3-97c1-cb14c52835f8",
+        "model": "gpt-6-astra"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
