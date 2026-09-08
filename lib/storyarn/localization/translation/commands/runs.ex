@@ -82,7 +82,6 @@ defmodule Storyarn.Localization.Translation.Commands.Runs do
       {:ok, cancelled}
     else
       {:error, :inactive} -> {:ok, RunQueries.get(run.id) || run}
-      {:error, _reason} = error -> error
     end
   end
 

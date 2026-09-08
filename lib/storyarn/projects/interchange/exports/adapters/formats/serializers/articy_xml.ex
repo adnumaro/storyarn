@@ -416,8 +416,6 @@ defmodule Storyarn.Projects.Exports.Serializers.ArticyXML do
   # Expression helpers
   # ---------------------------------------------------------------------------
 
-  defp transpile_or_nil(nil, _engine, _type), do: nil
-
   defp transpile_or_nil(data, engine, :condition) do
     case ExpressionTranspiler.transpile_condition(data, engine) do
       {:ok, expr, _} when expr != "" -> expr

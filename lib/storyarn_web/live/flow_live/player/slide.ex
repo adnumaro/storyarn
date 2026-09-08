@@ -133,8 +133,6 @@ defmodule StoryarnWeb.FlowLive.Player.Slide do
     end
   end
 
-  defp parse_speaker_id(_), do: nil
-
   defp resolved_value(nil, _key, fallback), do: fallback
 
   defp resolved_value(resolved_content, key, fallback) when is_map(resolved_content) do

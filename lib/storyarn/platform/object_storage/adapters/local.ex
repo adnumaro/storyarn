@@ -549,7 +549,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   defp copy_chunks(source, destination) do
     case IO.binread(source, @stream_chunk_size) do
       data when is_binary(data) ->
-        case IO.binwrite(destination, data) do
+        case :file.write(destination, data) do
           :ok -> copy_chunks(source, destination)
           {:error, reason} -> {:error, reason}
         end
@@ -609,7 +609,7 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.Local do
   end
 
   defp write_stream_chunk({:ok, chunk}, :ok, destination) when is_binary(chunk) do
-    case IO.binwrite(destination, chunk) do
+    case :file.write(destination, chunk) do
       :ok -> {:cont, :ok}
       {:error, reason} -> {:halt, {:error, reason}}
     end

@@ -1118,9 +1118,7 @@ defmodule Storyarn.Projects.ProjectTemplates.Audit do
       :ok
   end
 
-  defp cleanup_error_code(reason) when is_atom(reason), do: reason
   defp cleanup_error_code({reason, _details}) when is_atom(reason), do: reason
-  defp cleanup_error_code(_reason), do: :unexpected_error
 
   defp recover_project_transaction_result(snapshot, workspace_id, user_id, opts) do
     name = Keyword.get(opts, :name, "Template Materialization Audit")

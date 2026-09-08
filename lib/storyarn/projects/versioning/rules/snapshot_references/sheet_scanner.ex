@@ -101,8 +101,6 @@ defmodule Storyarn.Projects.Versioning.SnapshotReferences.SheetScanner do
 
   defp malformed_reference_id({:invalid_project_reference, _context, details}), do: inspect(details)
 
-  defp malformed_reference_id(_reason), do: nil
-
   defp maybe_add_ref(refs, _type, nil, _context), do: refs
 
   defp maybe_add_ref(refs, type, id, context), do: [%{type: type, id: id, context: context} | refs]

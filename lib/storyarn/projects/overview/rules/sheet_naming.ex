@@ -11,7 +11,6 @@ defmodule Storyarn.Projects.SheetNaming do
   def variablify(""), do: nil
   def variablify(name), do: normalize(name, "_", ".") || nil
 
-  defp normalize(nil, _sep, _extra), do: ""
   defp normalize("", _sep, _extra), do: ""
 
   defp normalize(name, separator, extra_chars) do

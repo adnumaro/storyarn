@@ -1963,7 +1963,6 @@ defmodule StoryarnWeb.SceneLive.Show do
   end
 
   defp refresh_scene_health_result({:noreply, socket}), do: {:noreply, assign_scene_health(socket)}
-  defp refresh_scene_health_result(result), do: result
 
   # ---------------------------------------------------------------------------
   # Private helpers

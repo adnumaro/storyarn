@@ -483,8 +483,8 @@ defmodule Storyarn.Scenes.Health.Rules.Checker do
 
   defp invalid_connection_route?(connection, from_id, to_id, waypoints) do
     not is_list(waypoints) or length(waypoints) > @max_waypoints or
-      (is_list(waypoints) and not Enum.all?(waypoints, &RoutePoints.valid_waypoint?/1)) or
-      (is_list(waypoints) and not RoutePoints.enough_points?(from_id, to_id, waypoints)) or
+      not Enum.all?(waypoints, &RoutePoints.valid_waypoint?/1) or
+      not RoutePoints.enough_points?(from_id, to_id, waypoints) or
       not valid_endpoint_pause?(field(connection, :from_pause_ms)) or
       not valid_endpoint_pause?(field(connection, :to_pause_ms))
   end

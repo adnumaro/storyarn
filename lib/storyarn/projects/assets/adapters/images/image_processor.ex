@@ -11,8 +11,6 @@ defmodule Storyarn.Projects.Assets.ImageProcessor do
   making it a much safer choice for processing untrusted image uploads.
   """
 
-  require Logger
-
   @thumbnail_size 200
   @max_dimension 2048
   @default_quality 85

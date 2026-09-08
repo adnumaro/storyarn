@@ -203,8 +203,6 @@ defmodule Storyarn.Flows.References.Rules.StaleVariableReferenceData do
     Enum.map(rules, &repair_condition_rule(&1, read_references))
   end
 
-  defp repair_condition_rules(rules, _read_references), do: rules
-
   defp repair_condition_rule(%{} = rule, read_references) do
     matching_reference =
       Enum.find(read_references, fn reference ->

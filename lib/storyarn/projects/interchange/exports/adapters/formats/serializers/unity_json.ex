@@ -134,8 +134,6 @@ defmodule Storyarn.Projects.Exports.Serializers.UnityJSON do
     "[#{Enum.join(refs, ",")}]"
   end
 
-  defp image_asset?(nil), do: false
-
   defp image_asset?(asset) do
     asset
     |> asset_attr(:content_type)
@@ -144,8 +142,6 @@ defmodule Storyarn.Projects.Exports.Serializers.UnityJSON do
       _ -> false
     end
   end
-
-  defp voiceover_file(nil), do: ""
 
   defp voiceover_file(asset) do
     asset
@@ -1319,7 +1315,6 @@ defmodule Storyarn.Projects.Exports.Serializers.UnityJSON do
     end
   end
 
-  defp transpile_or_empty(nil, _engine, _type), do: ""
   defp transpile_or_empty([], _engine, _type), do: ""
 
   defp transpile_or_empty(data, engine, :instruction) do

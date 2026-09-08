@@ -775,7 +775,6 @@ defmodule Storyarn.Projects.SheetHealthChecker do
 
   defp positive_constraint_invalid?({:ok, nil}), do: false
   defp positive_constraint_invalid?({:ok, value}), do: value <= 0
-  defp positive_constraint_invalid?(:error), do: false
 
   defp invalid_positive_constraint?({:ok, nil}), do: false
   defp invalid_positive_constraint?({:ok, value}), do: value < 1

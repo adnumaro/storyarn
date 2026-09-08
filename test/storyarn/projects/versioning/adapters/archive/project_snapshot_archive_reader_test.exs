@@ -612,8 +612,8 @@ defmodule Storyarn.Projects.Versioning.ProjectSnapshotArchiveReaderTest do
       _disk_start::little-16, _attrs::binary-size(6), local::little-32, rest::binary>> =
       directory
 
-    <<path::binary-size(name_len), _extra::binary-size(extra_len), _comment::binary-size(comment_len), tail::binary>> =
-      rest
+    <<path::binary-size(^name_len), _extra_fields::binary-size(^extra_len), _comment::binary-size(^comment_len),
+      tail::binary>> = rest
 
     if path == wanted_path do
       %{central_offset: absolute_offset, local_offset: local}
