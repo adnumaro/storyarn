@@ -1,0 +1,19 @@
+pnpm-lock.yaml
+  s_865ec50f67bad5::t_7c899835b5a84f 6529
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.7.2",
+  "base_commit_sha": "564a3b0daf43c3ba8625c9bbae37999cdd3aacd7",
+  "prompts": {},
+  "sessions": {
+    "s_865ec50f67bad5": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "2a175978-450f-4e9a-9d93-a33004368740",
+        "model": "unknown"
+      },
+      "human_author": "Adrián Nuhacet <adnumaro@gmail.com>"
+    }
+  }
+}
