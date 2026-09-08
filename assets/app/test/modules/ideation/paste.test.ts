@@ -27,4 +27,11 @@ describe("body comparison across server serialization", () => {
   it("keeps pasteContent inert while comparing", () => {
     expect(pasteContent('<p style="color:red">x</p>')).toBe("<p>x</p>");
   });
+  it("drops document metadata and executable content from pasted Office HTML", () => {
+    expect(
+      pasteContent(
+        '<html><head><title>Office document</title><style>.MsoNormal { color:red }</style></head><body><div><p class="MsoNormal"><span>Actual </span><strong>note</strong></p><script>alert(1)</script></div></body></html>',
+      ),
+    ).toBe("<p><span>Actual </span><strong>note</strong></p>");
+  });
 });

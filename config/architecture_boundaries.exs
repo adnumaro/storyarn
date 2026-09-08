@@ -4074,6 +4074,24 @@ policy = %{
       reason: "The brainstorming Web adapter rechecks project access through its owning Projects facade"
     },
     %{
+      source: "lib/storyarn_web/live/ideation_live/board.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The brainstorming Web adapter subscribes to inherited access invalidation through the Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/sidebar.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The sticky brainstorming sidebar subscribes to project access invalidation through the Projects facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/sidebar.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The sticky brainstorming sidebar subscribes to inherited access invalidation through the Workspaces facade"
+    },
+    %{
       source: "lib/storyarn_web/live/ideation_live/helpers/board_data.ex",
       target: "lib/storyarn/projects.ex",
       kinds: ["runtime"],

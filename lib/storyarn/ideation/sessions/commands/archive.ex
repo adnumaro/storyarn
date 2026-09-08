@@ -14,10 +14,24 @@ defmodule Storyarn.Ideation.Sessions.Commands.Archive do
       session, access ->
         with {:ok, archived} <-
                session
-               |> change(status: :archived, archived_at: TimeHelpers.now(), revision: session.revision + 1)
+               |> archive_changeset()
                |> Repo.update() do
           Mutation.record(archived, access.user_id, :archived)
         end
     end)
+  end
+
+  defp archive_changeset(session) do
+    changeset = change(session, status: :archived, archived_at: TimeHelpers.now(), revision: session.revision + 1)
+
+    # Archiving freezes publication. End the temporary visibility mask so past
+    # publications can be read, but never publish any new private draft.
+    if session.configuration.private_mode do
+      changeset
+      |> change(configuration_version: session.configuration_version + 1)
+      |> put_embed(:configuration, %{private_mode: false})
+    else
+      changeset
+    end
   end
 end

@@ -3,6 +3,8 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
   use StoryarnWeb, :live_view
 
   alias Storyarn.Ideation
+  alias Storyarn.Projects
+  alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Handlers.SessionHandlers
   alias StoryarnWeb.IdeationLive.Helpers.BoardData
@@ -15,16 +17,22 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
     if locale = session["locale"], do: Gettext.put_locale(Storyarn.Gettext, locale)
     scope = session["current_scope"]
     project_id = session["project_id"]
+    workspace_id = session["workspace_id"]
 
     if connected?(socket) do
       Ideation.subscribe_sessions(scope, project_id)
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project_id))
+      Projects.subscribe_project_ownership_changes(project_id)
+      Projects.subscribe_project_membership_changes(project_id)
+      Workspaces.subscribe_workspace_ownership_changes(workspace_id)
+      Workspaces.subscribe_workspace_membership_changes(workspace_id)
     end
 
     socket =
       assign(socket,
         current_scope: scope,
         project_id: project_id,
+        workspace_id: workspace_id,
         base_url: session["base_url"],
         epoch: Ecto.UUID.generate(),
         board: BoardData.empty(),
@@ -82,13 +90,16 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
   @impl true
   def handle_info({:ideation_sessions_changed, _}, socket), do: {:noreply, load(socket)}
 
+  def handle_info({event, %{project_id: id}}, %{assigns: %{project_id: id}} = socket)
+      when event in [:project_membership_changed, :project_ownership_transferred], do: {:noreply, load(socket)}
+
+  def handle_info({event, %{workspace_id: id}}, %{assigns: %{workspace_id: id}} = socket)
+      when event in [:workspace_membership_changed, :workspace_ownership_transferred], do: {:noreply, load(socket)}
+
   def handle_info({:project_restored, _}, socket) do
     socket = socket |> assign(:epoch, Ecto.UUID.generate()) |> load()
     {:noreply, push_event(socket, "brainstorming_reset", %{reason: "project_restored", epoch: socket.assigns.epoch})}
   end
-
-  def handle_info({:open_created_session, id}, socket),
-    do: {:noreply, push_navigate(socket, to: "#{socket.assigns.base_url}/#{id}")}
 
   def handle_info(_, socket), do: {:noreply, socket}
 
@@ -108,11 +119,15 @@ defmodule StoryarnWeb.IdeationLive.Sidebar do
 
   defp session_params(_, params), do: params
 
-  # A sticky child cannot reply and navigate in the same event: LiveView replaces
-  # the reply with the redirect and the client resolves `null`, leaving the
-  # sidebar pending forever. Acknowledge first; the navigation follows.
+  # The page owns navigation, as in the other tool sidebars. Keeping the same
+  # Board LiveView also preserves in-flight reads and the sticky child's reply.
   defp navigate_created(socket, "create_session", {:ok, %{id: id}}) do
-    send(self(), {:open_created_session, id})
+    Phoenix.PubSub.broadcast(
+      Storyarn.PubSub,
+      "project:#{socket.assigns.project_id}:ideation-navigation:#{node(socket.transport_pid)}:#{inspect(socket.transport_pid)}",
+      {:open_ideation_session, %{project_id: socket.assigns.project_id, session_id: id}}
+    )
+
     socket
   end
 

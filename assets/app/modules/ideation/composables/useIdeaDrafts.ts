@@ -1,4 +1,4 @@
-import { onUnmounted, reactive, ref } from "vue";
+import { onUnmounted, reactive, ref, watch } from "vue";
 import type { BoardContext, Conflict, Idea, IdeaContent, Request } from "../types";
 
 interface SaveAttempt {
@@ -25,7 +25,11 @@ function content(idea: IdeaContent): IdeaContent {
 
 /** Drafts stay in this mounted board, never in browser storage. A reset unbinds
  * unsaved text from all entity IDs; it can only be copied back deliberately. */
-export function useIdeaDrafts(request: Request, context: () => BoardContext) {
+export function useIdeaDrafts(
+  request: Request,
+  context: () => BoardContext,
+  canWrite = () => true,
+) {
   const drafts = reactive(new Map<number, Draft>());
   const recovered = ref<IdeaContent[]>([]);
   const timers = new Map<number, ReturnType<typeof setTimeout>>();
@@ -61,6 +65,7 @@ export function useIdeaDrafts(request: Request, context: () => BoardContext) {
 
   function schedule(id: number) {
     clearTimeout(timers.get(id));
+    if (!canWrite()) return;
     timers.set(
       id,
       setTimeout(() => {
@@ -84,6 +89,7 @@ export function useIdeaDrafts(request: Request, context: () => BoardContext) {
 
   async function save(id: number) {
     clearTimeout(timers.get(id));
+    if (!canWrite()) return;
     const draft = drafts.get(id);
     if (!draft || ["saving", "saved", "conflict"].includes(draft.status)) return;
     const started = generation;
@@ -107,17 +113,7 @@ export function useIdeaDrafts(request: Request, context: () => BoardContext) {
     );
     if (started !== generation || drafts.get(id) !== draft) return;
     if (reply.status === "ok") {
-      draft.idea = reply.value;
-      draft.savedEdit = attempt.edit;
-      draft.attempt = null;
-      draft.error = null;
-      if (draft.edit === attempt.edit) {
-        draft.content = content(reply.value);
-        draft.status = "saved";
-      } else {
-        draft.status = "unsaved";
-        schedule(id);
-      }
+      acceptSave(draft, attempt, reply.value);
     } else if (reply.status === "conflict") {
       draft.status = "conflict";
       draft.conflict = reply.value;
@@ -126,6 +122,20 @@ export function useIdeaDrafts(request: Request, context: () => BoardContext) {
       draft.status = "error";
       draft.error = reply.code;
       if (reply.code !== "offline") draft.attempt = null;
+    }
+  }
+
+  function acceptSave(draft: Draft, attempt: SaveAttempt, idea: Idea) {
+    draft.idea = idea;
+    draft.savedEdit = attempt.edit;
+    draft.attempt = null;
+    draft.error = null;
+    if (draft.edit === attempt.edit) {
+      draft.content = content(idea);
+      draft.status = "saved";
+    } else {
+      draft.status = "unsaved";
+      schedule(idea.id);
     }
   }
 
@@ -160,6 +170,12 @@ export function useIdeaDrafts(request: Request, context: () => BoardContext) {
     drafts.clear();
   }
 
+  watch(canWrite, (allowed) => {
+    if (!allowed) {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    }
+  });
   onUnmounted(() => reset(false));
   return { drafts, recovered, open, receive, change, save, resolve, reset };
 }

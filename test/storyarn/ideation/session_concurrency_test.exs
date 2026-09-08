@@ -82,7 +82,15 @@ defmodule Storyarn.Ideation.SessionConcurrencyTest do
         Task.async(fn ->
           Sandbox.unboxed_run(Repo, fn ->
             Repo.transact(fn ->
-              result = Projects.update_member_role(ctx.owner_scope, ctx.project.id, ctx.membership.id, "viewer")
+              # Hold the internal writer's commit; the public facade publishes only after its own commit.
+              result =
+                Storyarn.Projects.Memberships.update_member_role(
+                  ctx.owner_scope,
+                  ctx.project.id,
+                  ctx.membership.id,
+                  "viewer"
+                )
+
               send(parent, :downgrade_pending)
 
               receive do

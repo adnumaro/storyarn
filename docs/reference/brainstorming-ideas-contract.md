@@ -19,16 +19,21 @@ proposal of individual publication controls in the UI. `create_canvas_idea`
 and `update_canvas_idea` apply the facilitator's current
 session mode, with publication atomic with shared-mode saves. `set_private_mode`
 is the manager-only operation that hides contributions or ends private work and
-reveals the session's saved heads. It deliberately replaces individual consent
-as the canvas facilitation policy. Deleted notes and orphaned authors are excluded
-from new session reveals. Existing explicit-publication ports and stored receipts
+reveals the saved heads of consenting, non-discarded contributions. Canvas notes
+record facilitator-assisted consent at creation; ending private work never broadens
+legacy author-only consent. Discarded notes require an explicit publication selection.
+Deleted notes and orphaned authors are also excluded from new session reveals.
+Existing explicit-publication ports and stored receipts
 remain for compatibility; these ports cannot reveal individual notes during
 private mode.
 
 `delete_idea` is distinct from creative state: it preserves internal recovery data and
 excludes the note from ordinary authorized reads and writes. `discarded` remains
 a recoverable state. Geometry has an independent version and filtered connection
-endpoints; it does not create text revisions.
+endpoints; it does not create text revisions. Connecting notes preserves the last
+placement version and request receipt, so a delayed move can still be retried.
+Position writes default omitted width/color to the canvas defaults (280/yellow)
+so notes created before canvas placement existed can be moved.
 
 `restore_idea/6` is the bounded inverse of deleting a note, not historical revision
 restoration. It accepts an idea identity, revision and deletion marker. It
@@ -193,7 +198,8 @@ not index or render unpublished text from other authors.
 
 `subscribe_ideas/3` authorizes access to the shared session and the caller's private
 topic. The only event is `{:ideation_changed, session_id}` after commit. Private
-edits notify the author topic; publication and shared creative-state changes
+edits and deletion of never-published notes notify only the author topic;
+publication and shared creative-state changes
 invalidate the shared topic. There are no content-bearing notifications, metrics,
 AI requests, search documents or downloads in this delivery. A stale subscriber
 can receive an invalidation but must pass current authorization to read data.
@@ -202,7 +208,10 @@ Titles, bodies and retained conflicting input are encrypted at rest and redacted
 from Ecto inspection. This does not make operators or database/key recovery an
 ordinary project-owner permission. Private attachments remain disabled.
 
-Archive preserves ideas, internal revisions and receipts while blocking mutations. Project
+Archive preserves ideas, internal revisions and receipts while blocking mutations.
+It disables private mode atomically with the archive so prior publications can be
+read, but does not publish any new draft. Reopening retains those publication
+pointers; discarded and author-only drafts remain private. Project
 soft deletion denies access; physical project deletion cascades all these rows.
 Loss of access does not erase a draft or reassign it. Physical account deletion
 nulls live actor references and preserves published attribution as unavailable;

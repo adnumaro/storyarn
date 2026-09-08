@@ -70,6 +70,48 @@ defmodule Storyarn.Ideation.CanvasTest do
              Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, idea.id, 0, placement())
   end
 
+  test "connecting and disconnecting preserve the acknowledged placement request", ctx do
+    source = idea_fixture(ctx)
+    target = idea_fixture(ctx)
+    attrs = placement()
+
+    assert {:ok, %{"version" => 1}} =
+             Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, source.id, 0, attrs)
+
+    for connected? <- [true, false] do
+      assert {:ok, _} =
+               Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, source.id, target.id, connected?)
+
+      assert {:ok, placement} =
+               Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, source.id, 0, attrs)
+
+      assert placement["version"] == 1
+      assert placement["x"] == attrs["x"]
+      assert placement["links"] == if(connected?, do: [target.id], else: [])
+    end
+  end
+
+  test "notes without canvas appearance can move using the displayed defaults", ctx do
+    idea = idea_fixture(ctx)
+    attrs = %{"x" => 30, "y" => 50, "request_key" => Ecto.UUID.generate()}
+
+    for _ <- 1..2 do
+      assert {:ok, %{"x" => 30, "y" => 50, "width" => 280, "color" => "yellow", "version" => 1}} =
+               Ideation.update_idea_canvas(ctx.author, ctx.project.id, ctx.session.id, idea.id, 0, attrs)
+    end
+
+    assert {:ok, note} =
+             Ideation.create_canvas_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea_attrs(%{canvas: %{"x" => 0, "y" => 0, "width" => 320}})
+             )
+
+    assert note.canvas["width"] == 320
+    assert note.canvas["color"] == "yellow"
+  end
+
   test "connections never expose private endpoints, including after source publication", ctx do
     source = idea_fixture(ctx)
     target = idea_fixture(ctx)
@@ -83,7 +125,7 @@ defmodule Storyarn.Ideation.CanvasTest do
              Ideation.connect_ideas(ctx.peer, ctx.project.id, ctx.session.id, source.id, target.id, true)
 
     # A collaborator moving the shared source must preserve its private edges.
-    assert {:ok, _} = Ideation.update_idea_canvas(ctx.peer, ctx.project.id, ctx.session.id, source.id, 1, placement())
+    assert {:ok, _} = Ideation.update_idea_canvas(ctx.peer, ctx.project.id, ctx.session.id, source.id, 0, placement())
     {:ok, owned} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, source.id)
     assert owned.canvas["links"] == [target.id]
     publish_idea(ctx, target)

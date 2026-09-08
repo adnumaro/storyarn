@@ -27,12 +27,14 @@ defmodule Storyarn.Ideation.Ideas.Commands.SetPrivateMode do
 
   defp reveal_session(access) do
     # One session lock freezes the heads and mode change. Later saves follow the
-    # new mode; deleted notes and orphaned authors are never newly published.
+    # new mode. Ending private work never broadens legacy consent or explicitly
+    # selects discarded ideas for publication.
     ideas =
       Repo.all(
         from i in Idea,
           where:
             i.session_id == ^access.session_id and is_nil(i.deleted_at) and not is_nil(i.author_id) and
+              i.publication_consent == :facilitator_assisted and i.state != :discarded and
               (is_nil(i.published_revision) or i.revision > i.published_revision)
       )
 

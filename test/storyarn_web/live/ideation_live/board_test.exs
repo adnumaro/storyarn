@@ -4,6 +4,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   import Phoenix.LiveViewTest
   import Storyarn.IdeationFixtures
 
+  alias Phoenix.LiveView.Socket
   alias Storyarn.Ideation
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -220,7 +221,7 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
   end
 
   test "double invalidations coalesce and an invalidation during a read queues another read", ctx do
-    socket = %Phoenix.LiveView.Socket{
+    socket = %Socket{
       assigns: %{
         __changed__: %{},
         refresh_running: nil,
@@ -246,15 +247,179 @@ defmodule StoryarnWeb.IdeationLive.BoardTest do
     assert {:noreply, ^next} = Board.handle_async({:board, make_ref()}, {:ok, {:ok, %{}}}, next)
   end
 
-  test "creating a session from the sidebar acknowledges the request before navigating", ctx do
+  test "consecutive sidebar creations acknowledge each request and patch the existing board", ctx do
     {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx))
+    {:ok, another_tab, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    {:ok, peer, _} = live(log_in_user(ctx.conn, ctx.peer.user), board_path(ctx, ctx.session.id))
+    transports = Enum.map([view, another_tab, peer], fn board -> :sys.get_state(board.pid).socket.transport_pid end)
+    assert length(Enum.uniq(transports)) == 3
     sidebar = find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}")
     epoch = LiveVue.Test.get_vue(sidebar, name: "live/ideation/BoardSidebar").props["board"]["epoch"]
-    render_hook(sidebar, "create_session", %{epoch: epoch, session_id: nil})
-    assert_reply(sidebar, %{status: "ok", value: %{id: id}})
-    # The sticky child navigates the whole page, which the test proxy reports on the root view.
-    assert_redirect(view, board_path(ctx, id))
-    assert {:ok, %{title: "Untitled session"}} = Ideation.get_session(ctx.author, ctx.project.id, id)
+
+    for _ <- 1..2 do
+      render_hook(sidebar, "create_session", %{epoch: epoch, session_id: nil})
+      assert_reply(sidebar, %{status: "ok", value: %{id: id}})
+      assert_patch(view, board_path(ctx, id))
+      assert data(view)["session"]["id"] == id
+      assert {:ok, %{title: "Untitled session"}} = Ideation.get_session(ctx.author, ctx.project.id, id)
+      assert find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}").pid == sidebar.pid
+
+      for other <- [another_tab, peer] do
+        render_async(other)
+        assert data(other)["session"]["id"] == ctx.session.id
+      end
+    end
+  end
+
+  test "unknown board actions return a typed error without terminating the board", ctx do
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+
+    for params <- [%{action: "unknown"}, %{}] do
+      render_hook(view, "board_action", params)
+      assert_reply(view, %{status: "error", code: "invalid_parameters"})
+      assert data(view)["session"]["id"] == ctx.session.id
+    end
+  end
+
+  test "a role downgrade preserves readable notes and the draft epoch after a rejected write", ctx do
+    idea = idea_fixture(ctx)
+    hidden = idea_fixture(ctx, %{body: "A peer's private text"}, ctx.peer)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    old_epoch = data(view)["epoch"]
+    membership = Projects.get_membership(ctx.project.id, ctx.author.user.id)
+    assert {:ok, _} = Projects.update_member_role(ctx.owner, ctx.project.id, membership.id, "viewer")
+
+    assert_board_eventually(view, fn board ->
+      refute board["can_edit"]
+      assert board["epoch"] == old_epoch
+      assert [%{"id" => id}] = board["ideas"]
+      assert id == idea.id
+      refute Enum.any?(board["ideas"], &(&1["id"] == hidden.id))
+      assert board["error"] == nil
+    end)
+
+    render_hook(
+      view,
+      "save_idea",
+      payload(view, edit_attrs(%{idea_id: idea.id, revision: idea.revision, body: "Unsaved"}))
+    )
+
+    assert_reply(view, %{status: "error", code: "unauthorized"})
+    assert data(view)["epoch"] == old_epoch
+    assert [%{"id" => id}] = data(view)["ideas"]
+    assert id == idea.id
+    refute_push_event(view, "brainstorming_reset", %{reason: "access_changed"})
+  end
+
+  test "membership removal invalidates the board and sticky sidebar without polling or a write", ctx do
+    idea_fixture(ctx)
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    sidebar = find_live_child(view, "sidebar-brainstorming-#{ctx.project.id}")
+    membership = Projects.get_membership(ctx.project.id, ctx.author.user.id)
+    assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, membership.id)
+
+    assert_board_eventually(view, fn board ->
+      assert board["error"] == "unauthorized"
+      assert board["session"] == nil
+      assert board["ideas"] == []
+    end)
+
+    sidebar_board = LiveVue.Test.get_vue(sidebar, name: "live/ideation/BoardSidebar").props["board"]
+    assert sidebar_board["error"] == "unauthorized"
+    assert sidebar_board["sessions"] == []
+  end
+
+  test "workspace role changes invalidate inherited access", ctx do
+    direct = Projects.get_membership(ctx.project.id, ctx.author.user.id)
+    assert {:ok, _} = Projects.remove_member(ctx.owner, ctx.project.id, direct.id)
+    inherited = Storyarn.WorkspacesFixtures.workspace_membership_fixture(ctx.project.workspace, ctx.author.user, "member")
+    {:ok, view, _} = live(log_in_user(ctx.conn, ctx.author.user), board_path(ctx, ctx.session.id))
+    assert data(view)["can_edit"]
+
+    assert {:ok, _} =
+             Storyarn.Workspaces.update_member_role(ctx.owner, ctx.project.workspace.id, inherited.id, "viewer")
+
+    assert_board_eventually(view, fn board ->
+      refute board["can_edit"]
+      assert board["session"]["id"] == ctx.session.id
+    end)
+
+    assert {:ok, _} = Storyarn.Workspaces.remove_member(ctx.owner, ctx.project.workspace.id, inherited.id)
+    assert_board_eventually(view, fn board -> assert board["error"] == "unauthorized" end)
+  end
+
+  test "cursor delivery uses the authorized board without queries and hides private-mode cursors", ctx do
+    socket = cursor_socket(ctx)
+    parent = self()
+    marker = make_ref()
+
+    listener =
+      Task.async(fn ->
+        Storyarn.Platform.Collaboration.subscribe_changes({:ideation, ctx.session.id})
+        send(parent, :cursor_listener_ready)
+
+        receive do
+          {:remote_change, :brainstorming_cursor, payload} -> payload
+        after
+          1_000 -> :missing
+        end
+      end)
+
+    assert_receive :cursor_listener_ready
+    handler = "ideation-cursor-#{inspect(marker)}"
+
+    :ok =
+      :telemetry.attach(
+        handler,
+        [:storyarn, :repo, :query],
+        fn _, _, _, _ ->
+          if self() == parent, do: send(parent, {:cursor_query, marker})
+        end,
+        nil
+      )
+
+    try do
+      params = %{"epoch" => "cursor-epoch", "session_id" => ctx.session.id, "x" => 20, "y" => 30}
+      assert {:noreply, sent} = Board.handle_event("canvas_cursor", params, socket)
+      assert sent.assigns.last_cursor_at != 0
+      payload = Task.await(listener)
+      assert payload.name == "Member"
+      refute Jason.encode!(payload) =~ ctx.author.user.email
+      assert {:noreply, received} = Board.handle_info({:remote_change, :brainstorming_cursor, payload}, socket)
+      assert [["canvas_cursor", %{x: 20, y: 30}]] = Phoenix.LiveView.Utils.get_push_events(received)
+      private_board = put_in(socket.assigns.board.session.configuration.private_mode, true)
+      assert {:noreply, ^private_board} = Board.handle_event("canvas_cursor", params, private_board)
+
+      assert {:noreply, ^private_board} =
+               Board.handle_info({:remote_change, :brainstorming_cursor, payload}, private_board)
+
+      invalidated = Phoenix.Component.assign(socket, :canvas_ready, false)
+      assert {:noreply, ^invalidated} = Board.handle_info({:remote_change, :brainstorming_cursor, payload}, invalidated)
+      refute_receive {:cursor_query, ^marker}
+    after
+      :telemetry.detach(handler)
+      Task.shutdown(listener, :brutal_kill)
+    end
+  end
+
+  defp cursor_socket(ctx) do
+    %Socket{
+      private: %{live_temp: %{}},
+      assigns: %{
+        __changed__: %{},
+        current_scope: ctx.author,
+        session_id: ctx.session.id,
+        epoch: "cursor-epoch",
+        last_cursor_at: 0,
+        canvas_scope: {:ideation, ctx.session.id},
+        canvas_ready: true,
+        board_error: nil,
+        board: %{
+          session: %{id: ctx.session.id, configuration: %{private_mode: false}},
+          members: [%{id: ctx.author.user.id}]
+        }
+      }
+    }
   end
 
   defp board_path(ctx, id \\ nil) do

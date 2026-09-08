@@ -13,7 +13,6 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
   alias Storyarn.Ideation.Ideas.Publication
   alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Ideas.Revision
-  alias Storyarn.Projects
   alias Storyarn.Projects.Project
   alias Storyarn.Repo
   alias Storyarn.Workspaces.Workspace
@@ -145,7 +144,10 @@ defmodule Storyarn.Ideation.IdeaConcurrencyTest do
       Task.async(fn ->
         Sandbox.unboxed_run(Repo, fn ->
           Repo.transact(fn ->
-            result = Projects.update_member_role(ctx.owner, ctx.project.id, ctx.membership.id, "viewer")
+            # Hold the internal writer's commit; the public facade publishes only after its own commit.
+            result =
+              Storyarn.Projects.Memberships.update_member_role(ctx.owner, ctx.project.id, ctx.membership.id, "viewer")
+
             send(parent, :downgrade_locked)
 
             receive do

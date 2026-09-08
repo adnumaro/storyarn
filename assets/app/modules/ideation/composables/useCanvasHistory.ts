@@ -8,7 +8,7 @@ export interface CanvasCommand {
 /** Session-local commands, acknowledged before moving between stacks. The shared
  * useUndoRedo dispatches fire-and-forget server events and cannot acknowledge
  * these composed, asynchronous canvas operations. No version history is stored. */
-export function useCanvasHistory(onError: () => void) {
+export function useCanvasHistory(onError: () => void, shouldRetry = () => false) {
   const past = shallowRef<CanvasCommand[]>([]);
   const future = shallowRef<CanvasCommand[]>([]);
   const busy = ref(false);
@@ -39,6 +39,9 @@ export function useCanvasHistory(onError: () => void) {
     const result = await run(() => (undo ? command.undo() : command.redo()));
     if (result === undefined) return;
     if (!result) {
+      // A rejected command is no longer applicable. Keep uncertain offline
+      // writes retryable, but never let an invalid command block older ones.
+      if (!shouldRetry()) source.value = source.value.slice(0, -1);
       onError();
       return;
     }

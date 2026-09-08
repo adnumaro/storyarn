@@ -6,7 +6,6 @@ export function useBoardConnection(board: () => Board, reset: (reason: string) =
   const live = useLive();
   const online = ref(true);
   let disposed = false;
-  let interval: ReturnType<typeof setInterval> | undefined;
   let eventRef: number | undefined;
   let generation = 0;
   const context = (): BoardContext => ({
@@ -46,21 +45,28 @@ export function useBoardConnection(board: () => Board, reset: (reason: string) =
     void request("sync_board", {});
   }
 
+  function visible() {
+    if (document.visibilityState === "visible") sync();
+  }
+
   watch(
     () => board().epoch,
-    () => invalidate("reconnected"),
+    () => {
+      online.value = true;
+      invalidate("reconnected");
+    },
   );
   onMounted(() => {
     eventRef = live.handleEvent("brainstorming_reset", (payload) => {
       invalidate(String(payload.reason));
     });
-    interval = setInterval(sync, 20_000);
     window.addEventListener("online", sync);
+    document.addEventListener("visibilitychange", visible);
   });
   onUnmounted(() => {
     disposed = true;
-    clearInterval(interval);
     window.removeEventListener("online", sync);
+    document.removeEventListener("visibilitychange", visible);
     if (eventRef !== undefined) live.removeHandleEvent(eventRef);
   });
   return { request, online, context, sync };

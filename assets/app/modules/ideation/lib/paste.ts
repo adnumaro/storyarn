@@ -26,6 +26,7 @@ const tags = new Set([
 export function pasteContent(html: string): string {
   const template = document.createElement("template");
   template.innerHTML = html;
+  for (const element of template.content.querySelectorAll("style, script, title")) element.remove();
   for (const element of [...template.content.querySelectorAll("*")].reverse()) {
     if (!tags.has(element.tagName.toLowerCase())) {
       element.replaceWith(...element.childNodes);

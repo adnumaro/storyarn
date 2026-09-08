@@ -36,7 +36,9 @@ defmodule Storyarn.Ideation.Ideas.Commands.Connect do
   end
 
   defp persist(idea, links) do
-    canvas = idea.canvas |> Map.put("links", links) |> Map.update("version", 1, &(&1 + 1)) |> Map.delete("request_key")
+    # Links have independent idempotent membership; preserve the last placement
+    # receipt so a delayed move acknowledgement can still be replayed.
+    canvas = Map.put(idea.canvas, "links", links)
     idea |> change(canvas: canvas) |> Repo.update!()
     audiences = if idea.published_revision, do: [:shared, idea.author_id], else: [idea.author_id]
     Transaction.success(%{id: idea.id}, Enum.reject(audiences, &is_nil/1))

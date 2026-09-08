@@ -108,9 +108,30 @@ defmodule Storyarn.Ideation.Recovery.Inventory do
             (Enum.sort(Map.keys(&1)) == keys or
                (collection == "ideas" and
                   Enum.sort(Map.keys(Map.drop(&1, ["canvas", "deleted_at"]))) == keys -- ["canvas", "deleted_at"])) and
-            is_integer(&1["id"]))
+            is_integer(&1["id"]) and valid_dates?(&1, fields))
       ) and
       length(Enum.uniq_by(entries, & &1["id"])) == length(entries)
+  end
+
+  defp valid_dates?(row, fields) do
+    fields
+    |> Enum.filter(&(&1 in @dates))
+    |> Enum.all?(fn field ->
+      case Map.get(row, Atom.to_string(field)) do
+        nil -> field in [:archived_at, :deleted_at, :completed_at]
+        value when is_binary(value) -> valid_timestamp?(value)
+        _ -> false
+      end
+    end)
+  end
+
+  defp valid_timestamp?(value) do
+    case NaiveDateTime.from_iso8601(value) do
+      # ISO accepts earlier years than PostgreSQL's timestamp storage supports.
+      # Its upper bound exceeds the ISO parser's maximum year of 9999.
+      {:ok, date} -> NaiveDateTime.compare(date, ~N[-4713-11-24 00:00:00]) != :lt
+      _ -> false
+    end
   end
 
   defp binary_field?(collection, key) do

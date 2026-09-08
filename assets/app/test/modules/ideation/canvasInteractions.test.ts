@@ -28,7 +28,6 @@ function canvas(props = {}) {
     attachTo: document.body,
     props: {
       notes: [idea({ canvas: { x: 10, y: 20 } }), idea({ id: 11, canvas: { x: 400, y: 50 } })],
-      selectedId: 10,
       selectedIds: [10],
       editingId: null,
       writable: true,

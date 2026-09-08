@@ -12,7 +12,9 @@ defmodule Storyarn.Ideation.RecoveryTest do
   alias Storyarn.Ideation.Ideas.Publication
   alias Storyarn.Ideation.Ideas.Reveal
   alias Storyarn.Ideation.Recovery.Capsule
+  alias Storyarn.Ideation.Recovery.Inventory
   alias Storyarn.Ideation.Sessions.Session
+  alias Storyarn.Platform.Vault
   alias Storyarn.Projects
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Projects.Versioning.ProjectRecovery
@@ -238,6 +240,51 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     assert {:error, :invalid_ideation_recovery} = Ideation.validate_recovery(%{capsule | "version" => 99})
     assert {:error, :legacy_snapshot_excludes_ideation} = restore_result(ctx, nil)
+  end
+
+  test "authenticated capsules reject malformed timestamps before replacing current data", ctx do
+    idea = idea_fixture(ctx, %{visibility: :shared})
+
+    assert {:ok, _} =
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               idea.revision,
+               edit_attrs(%{body: "<p>Current text</p>"})
+             )
+
+    capsule = snapshot(ctx)["ideation"]
+    {:ok, data} = Capsule.open(capsule)
+
+    for {collection, _, _, fields} <- Inventory.tables(),
+        field <- fields,
+        field in [:inserted_at, :updated_at, :archived_at, :deleted_at, :completed_at] do
+      assert [_ | _] = data["rows"][collection]
+      key = Atom.to_string(field)
+
+      values = ["not-a-date", "-9999-01-01T00:00:00", "-4713-01-01T00:00:00"]
+      values = values ++ if field in [:inserted_at, :updated_at], do: [nil], else: [42]
+
+      for invalid <- values do
+        changed =
+          update_in(data, ["rows", collection], fn [row | rest] ->
+            [Map.put(row, key, invalid) | rest]
+          end)
+
+        # Bypass sealing to exercise validation of an authenticated but invalid archive.
+        {:ok, encrypted} = changed |> Jason.encode!() |> Vault.encrypt()
+        malformed = %{"version" => 1, "ciphertext" => Base.encode64(encrypted)}
+        assert {:error, :invalid_ideation_recovery} = Ideation.validate_recovery(malformed)
+        assert {:error, :invalid_ideation_recovery} = restore_result(ctx, malformed)
+      end
+    end
+
+    assert {:ok, %{body: "<p>Current text</p>"}} =
+             Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+
+    assert snapshot(ctx)["ideation"] == capsule
   end
 
   test "the Project materializer integrates recovery and remaps IDs without changing project access", ctx do

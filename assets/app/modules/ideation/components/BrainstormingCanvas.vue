@@ -30,23 +30,23 @@ interface HistoryState {
 }
 const {
   notes,
-  selectedId,
   selectedIds,
   noteKey,
   editingId,
   writable,
+  cursorEnabled = true,
   members,
   statuses,
   context,
   historyState,
 } = defineProps<{
   notes: Idea[];
-  selectedId: number | null;
   selectedIds: number[];
   noteKey: (id: number) => string;
   historyState: HistoryState;
   editingId: number | null;
   writable: boolean;
+  cursorEnabled?: boolean;
   members: Member[];
   statuses: { [id: number]: string };
   context: BoardContext;
@@ -112,6 +112,7 @@ defineExpose({ center, fitAll, focus });
 const visibleSelection = computed(() =>
   selectedIds.filter((id) => notes.some((note) => note.id === id)),
 );
+const selectedId = computed(() => selectedIds[0] ?? null);
 const matches = computed(() =>
   notes.filter((n) =>
     `${n.title ?? ""} ${n.body.replace(/<[^>]*>/g, " ")}`
@@ -315,7 +316,7 @@ function keydown(event: KeyboardEvent) {
 }
 function editFocusedNote(event: KeyboardEvent) {
   const focused = (event.target as HTMLElement).closest<HTMLElement>("[data-note-id]");
-  const id = focused ? Number(focused.dataset.noteId) : selectedId;
+  const id = focused ? Number(focused.dataset.noteId) : selectedId.value;
   if (id !== null && writable && !historyState.busy) {
     event.preventDefault();
     emit("edit", id);
@@ -488,7 +489,7 @@ onMounted(async () => {
         :style="{ left: `${ghost.x}px`, top: `${ghost.y}px` }"
       />
     </div>
-    <CanvasCursors :container="root" :view="view" :context="context" />
+    <CanvasCursors v-if="cursorEnabled" :container="root" :view="view" :context="context" />
     <div
       v-if="!notes.length"
       class="pointer-events-none absolute inset-0 flex flex-col items-center justify-center gap-3 px-8 pb-20 text-center"

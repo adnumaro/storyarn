@@ -222,6 +222,7 @@ defmodule Storyarn.Workspaces do
 
   Cannot change the owner's role.
   Cannot promote an ordinary membership to owner.
+  Must run outside a caller-owned transaction so access invalidation follows commit.
   """
   @spec update_member_role(scope(), pos_integer(), pos_integer(), role()) ::
           {:ok, membership()}
@@ -231,13 +232,15 @@ defmodule Storyarn.Workspaces do
              | :cannot_change_owner_role
              | :not_found
              | :ownership_invariant_violation
-             | :unauthorized}
+             | :unauthorized
+             | :membership_change_requires_top_level_transaction}
   defdelegate update_member_role(scope, workspace_id, membership_id, role), to: Memberships
 
   @doc """
   Removes a member from a workspace.
 
   Cannot remove the owner.
+  Must run outside a caller-owned transaction so access invalidation follows commit.
   """
   @spec remove_member(scope(), pos_integer(), pos_integer()) ::
           {:ok, membership()}
@@ -246,7 +249,8 @@ defmodule Storyarn.Workspaces do
              | :cannot_remove_owner
              | :not_found
              | :ownership_invariant_violation
-             | :unauthorized}
+             | :unauthorized
+             | :membership_change_requires_top_level_transaction}
   defdelegate remove_member(scope, workspace_id, membership_id), to: Memberships
 
   @doc "Transfers canonical workspace ownership to an existing direct member."
@@ -269,6 +273,10 @@ defmodule Storyarn.Workspaces do
   defdelegate subscribe_workspace_ownership_changes(workspace_id),
     to: Memberships,
     as: :subscribe_ownership_changes
+
+  @doc "Subscribes the caller to committed workspace membership changes that invalidate access."
+  @spec subscribe_workspace_membership_changes(pos_integer()) :: :ok | {:error, :invalid_workspace_id}
+  defdelegate subscribe_workspace_membership_changes(workspace_id), to: Memberships, as: :subscribe_membership_changes
 
   @doc """
   Authorizes a user action on a workspace.

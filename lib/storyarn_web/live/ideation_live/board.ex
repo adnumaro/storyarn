@@ -4,7 +4,9 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
   alias Storyarn.Ideation
   alias Storyarn.Platform.Collaboration
+  alias Storyarn.Platform.Shared.StringUtils
   alias Storyarn.Projects
+  alias Storyarn.Workspaces
   alias StoryarnWeb.Helpers.Authorize
   alias StoryarnWeb.IdeationLive.Handlers.IdeaHandlers
   alias StoryarnWeb.IdeationLive.Handlers.SessionHandlers
@@ -36,6 +38,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
       sidebar_session={
         %{
           "project_id" => @project.id,
+          "workspace_id" => @workspace.id,
           "current_scope" => @current_scope,
           "base_url" => @urls.tools["brainstorming"],
           "locale" => @locale
@@ -74,7 +77,17 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
     if connected?(socket) do
       Phoenix.PubSub.subscribe(Storyarn.PubSub, ProjectChromeHelpers.shell_topic(project_id))
+
+      Phoenix.PubSub.subscribe(
+        Storyarn.PubSub,
+        "project:#{project_id}:ideation-navigation:#{node(socket.transport_pid)}:#{inspect(socket.transport_pid)}"
+      )
+
       Ideation.subscribe_sessions(socket.assigns.current_scope, project_id)
+      Projects.subscribe_project_ownership_changes(project_id)
+      Projects.subscribe_project_membership_changes(project_id)
+      Workspaces.subscribe_workspace_ownership_changes(socket.assigns.workspace.id)
+      Workspaces.subscribe_workspace_membership_changes(socket.assigns.workspace.id)
     end
 
     {:ok,
@@ -86,6 +99,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
      |> assign(:session_id, nil)
      |> assign(:subscribed_session, nil)
      |> assign(:canvas_scope, nil)
+     |> assign(:canvas_ready, false)
      |> assign(:last_cursor_at, 0)
      |> assign(:filters, %{session_status: :open, session_before: nil, idea_before: nil})
      |> assign(:refresh_timer, nil)
@@ -117,7 +131,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
   def handle_event(event, params, socket) when event in @session_writes or event in @idea_writes do
     Authorize.with_authorization(socket, :edit_content, fn socket -> write(event, params, socket) end, fn socket,
                                                                                                           reason ->
-      {:reply, Replies.error(reason), lose_access(socket)}
+      {:reply, Replies.error(reason), reload_access(socket)}
     end)
   end
 
@@ -194,7 +208,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
           {:error, reason} -> {:reply, Replies.error(reason), socket}
         end
       end,
-      fn socket, reason -> {:reply, Replies.error(reason), lose_access(socket)} end
+      fn socket, reason -> {:reply, Replies.error(reason), reload_access(socket)} end
     )
   end
 
@@ -204,14 +218,13 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
     with :ok <- current_session(params, socket),
          true <- socket.assigns.last_cursor_at == 0 or now - socket.assigns.last_cursor_at >= 80,
-         {:ok, _} <-
-           Ideation.get_session(socket.assigns.current_scope, socket.assigns.project.id, socket.assigns.session_id) do
+         true <- cursors_enabled?(socket) do
       user = socket.assigns.current_scope.user
 
       payload = %{
         session_id: socket.assigns.session_id,
         user_id: user.id,
-        name: user.display_name || user.email,
+        name: StringUtils.present_label(user.display_name, gettext("Member")),
         color: Collaboration.user_color(user.id),
         x: x,
         y: y
@@ -241,6 +254,8 @@ defmodule StoryarnWeb.IdeationLive.Board do
     end
   end
 
+  def handle_event("board_action", _params, socket), do: {:reply, Replies.error(:invalid_parameters), socket}
+
   def handle_event("sync_board", _params, socket) do
     case Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view) do
       {:ok, _, _} -> {:reply, %{status: "ok", epoch: socket.assigns.epoch}, refresh(socket)}
@@ -253,15 +268,50 @@ defmodule StoryarnWeb.IdeationLive.Board do
         {:remote_change, :brainstorming_cursor, %{session_id: id} = payload},
         %{assigns: %{session_id: id}} = socket
       ) do
-    case Ideation.get_session(socket.assigns.current_scope, socket.assigns.project.id, id) do
-      {:ok, _} -> {:noreply, push_event(socket, "canvas_cursor", Map.put(payload, :epoch, socket.assigns.epoch))}
-      _ -> {:noreply, lose_access(socket)}
-    end
+    socket =
+      if cursors_enabled?(socket) and Enum.any?(socket.assigns.board.members, &(&1.id == payload.user_id)),
+        do: push_event(socket, "canvas_cursor", Map.put(payload, :epoch, socket.assigns.epoch)),
+        else: socket
+
+    {:noreply, socket}
   end
 
-  def handle_info({:online_users, users}, socket), do: {:noreply, assign(socket, :online_users, users)}
-  def handle_info({:ideation_sessions_changed, _project_id}, socket), do: {:noreply, refresh(socket)}
+  def handle_info({:online_users, users}, socket) do
+    known_ids = MapSet.new(socket.assigns.online_users, & &1.user_id)
+    member_ids = MapSet.new(socket.assigns.board.members, & &1.id)
+    new_member? = Enum.any?(users, &(!MapSet.member?(known_ids, &1.user_id) and !MapSet.member?(member_ids, &1.user_id)))
+    socket = assign(socket, :online_users, users)
+    {:noreply, if(new_member?, do: refresh(socket), else: socket)}
+  end
+
+  def handle_info({:ideation_sessions_changed, _project_id}, socket),
+    do: {:noreply, socket |> assign(:canvas_ready, false) |> refresh()}
+
   def handle_info({:ideation_changed, id}, %{assigns: %{session_id: id}} = socket), do: {:noreply, refresh(socket)}
+
+  def handle_info({event, %{project_id: id}}, %{assigns: %{project: %{id: id}}} = socket)
+      when event in [:project_membership_changed, :project_ownership_transferred], do: {:noreply, reload_access(socket)}
+
+  def handle_info({event, %{workspace_id: id}}, %{assigns: %{workspace: %{id: id}}} = socket)
+      when event in [:workspace_membership_changed, :workspace_ownership_transferred],
+      do: {:noreply, reload_access(socket)}
+
+  def handle_info(
+        {:open_ideation_session, %{project_id: project_id, session_id: id}},
+        %{assigns: %{project: %{id: project_id}}} = socket
+      ) do
+    case Ideation.get_session(socket.assigns.current_scope, project_id, id) do
+      {:ok, _session} ->
+        {:noreply,
+         push_patch(socket,
+           to:
+             ~p"/workspaces/#{socket.assigns.workspace.slug}/projects/#{socket.assigns.project.slug}/brainstorming/#{id}"
+         )}
+
+      {:error, _reason} ->
+        {:noreply, reload_access(socket)}
+    end
+  end
 
   def handle_info({:project_restored, _restore_id}, socket) do
     socket =
@@ -365,6 +415,12 @@ defmodule StoryarnWeb.IdeationLive.Board do
     accept_read(socket, {:ok, BoardData.load(scope, project.id, id, filters)})
   end
 
+  defp reload_access(socket) do
+    # Losing edit permission does not imply losing read permission. Reload the
+    # authorized projection before deciding whether the client must drop drafts.
+    socket |> assign(:refresh_running, nil) |> load_now()
+  end
+
   defp accept_read(socket, {:ok, {:ok, data}}) do
     # A result calculated before access was revoked must not repopulate props.
     case Projects.authorize(socket.assigns.current_scope, socket.assigns.project.id, :view) do
@@ -383,7 +439,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
 
         socket
         |> canvas_subscription(if(data.session, do: data.session.id))
-        |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit)
+        |> assign(board: data, board_error: nil, membership: membership, can_edit: can_edit, canvas_ready: true)
 
       {:error, _} ->
         lose_access(socket)
@@ -405,8 +461,15 @@ defmodule StoryarnWeb.IdeationLive.Board do
     socket
     |> canvas_subscription(nil)
     |> reset_epoch("access_changed")
-    |> assign(board: BoardData.empty(), board_error: "unauthorized")
+    |> assign(board: BoardData.empty(), board_error: "unauthorized", canvas_ready: false)
   end
+
+  defp cursors_enabled?(%{assigns: %{canvas_ready: true, board_error: nil, board: %{session: session}}} = socket)
+       when not is_nil(session) do
+    socket.assigns.canvas_scope == {:ideation, session.id} and session.configuration.private_mode != true
+  end
+
+  defp cursors_enabled?(_socket), do: false
 
   defp reset_epoch(socket, reason) do
     epoch = Ecto.UUID.generate()

@@ -34,10 +34,8 @@ defmodule Storyarn.Ideation.Ideas.Commands.Delete do
       true ->
         deleted = idea |> change(deleted_at: %{TimeHelpers.now() | microsecond: {0, 6}}) |> Repo.update!()
 
-        Transaction.success(%{id: deleted.id, revision: deleted.revision, deleted_at: deleted.deleted_at}, [
-          :shared,
-          access.user_id
-        ])
+        audiences = if deleted.published_revision, do: [:shared, access.user_id], else: [access.user_id]
+        Transaction.success(%{id: deleted.id, revision: deleted.revision, deleted_at: deleted.deleted_at}, audiences)
     end
   end
 end

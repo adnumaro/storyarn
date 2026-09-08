@@ -72,9 +72,12 @@ const colors = [
   { id: "violet", value: "#e2d5f4" },
   { id: "paper", value: "#f4f1e9" },
 ];
-const history = useCanvasHistory(() => {
-  failure.value = "undo_unavailable";
-});
+const history = useCanvasHistory(
+  () => {
+    failure.value = online.value ? "undo_unavailable" : "offline";
+  },
+  () => !online.value,
+);
 let editingBefore: Idea | undefined;
 let headerEvent: number | undefined;
 function reset(reason: string) {
@@ -418,7 +421,13 @@ watch(
 watch(
   () => board.can_edit,
   (now, before) => {
-    if (before && !now) reset("access_changed");
+    if (before && !now) {
+      editing.value = null;
+      editingBefore = undefined;
+      settings.value = false;
+      history.clear();
+      selectedIds.value = selectedIds.value.filter((id) => notes.find(id));
+    }
   },
 );
 watch(
@@ -523,9 +532,9 @@ onUnmounted(() => {
           canRedo: history.canRedo.value,
           busy: history.busy.value,
         }"
-        :selected-id="selected"
         :editing-id="editing"
         :writable="writable"
+        :cursor-enabled="!board.session.configuration.private_mode"
         :members="board.members"
         :statuses="statuses"
         :context="context()"
@@ -652,7 +661,7 @@ onUnmounted(() => {
             class="surface-panel mt-2 flex max-w-sm items-center gap-2 whitespace-normal p-2 text-xs"
           >
             <span>{{ error(notes.errors.get(selected) || draft?.error || "unavailable") }}</span
-            ><Button size="sm" variant="ghost" @click="notes.retry(selected!)">{{
+            ><Button v-if="writable" size="sm" variant="ghost" @click="notes.retry(selected!)">{{
               t("ideation.retry")
             }}</Button>
           </div>
@@ -665,7 +674,7 @@ onUnmounted(() => {
             /><Button size="sm" variant="ghost" @click="notes.drafts.resolve(selected!, false)">{{
               t("ideation.useCurrent")
             }}</Button
-            ><Button size="sm" @click="notes.drafts.resolve(selected!, true)">{{
+            ><Button v-if="writable" size="sm" @click="notes.drafts.resolve(selected!, true)">{{
               t("ideation.saveMine")
             }}</Button>
           </div>

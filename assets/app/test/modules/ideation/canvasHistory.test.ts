@@ -38,16 +38,55 @@ describe("canvas local command history", () => {
     expect(history.canUndo.value).toBe(true);
     expect(history.canRedo.value).toBe(false);
   });
-  it("keeps failed or thrown commands retryable and reports each failure once", async () => {
+  it("drops a rejected command so the next undo reaches the previous action", async () => {
     const error = vi.fn();
     const history = useCanvasHistory(error);
+    const previous = command();
     const action = command();
-    action.undo.mockResolvedValueOnce(false).mockRejectedValueOnce(new Error("offline"));
+    action.undo.mockResolvedValue(false);
+    history.push(previous);
     history.push(action);
     await history.undo();
     expect(error).toHaveBeenCalledTimes(1);
     expect(history.canUndo.value).toBe(true);
     expect(history.canRedo.value).toBe(false);
+    await history.undo();
+    expect(action.undo).toHaveBeenCalledTimes(1);
+    expect(previous.undo).toHaveBeenCalledTimes(1);
+    expect(history.canUndo.value).toBe(false);
+    expect(history.canRedo.value).toBe(true);
+    await history.redo();
+    expect(previous.redo).toHaveBeenCalledTimes(1);
+    expect(action.redo).not.toHaveBeenCalled();
+    expect(error).toHaveBeenCalledTimes(1);
+  });
+  it("also drops a rejected redo without blocking later redo commands", async () => {
+    const history = useCanvasHistory(vi.fn());
+    const first = command();
+    const second = command();
+    first.redo.mockResolvedValue(false);
+    history.push(first);
+    history.push(second);
+    await history.undo();
+    await history.undo();
+    await history.redo();
+    await history.redo();
+    expect(first.redo).toHaveBeenCalledTimes(1);
+    expect(second.redo).toHaveBeenCalledTimes(1);
+    expect(history.canRedo.value).toBe(false);
+  });
+  it("keeps uncertain offline or thrown commands retryable and reports failures once", async () => {
+    const error = vi.fn();
+    let offline = true;
+    const history = useCanvasHistory(error, () => offline);
+    const action = command();
+    action.undo.mockResolvedValueOnce(false).mockRejectedValueOnce(new Error("uncertain"));
+    history.push(action);
+    await history.undo();
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(history.canUndo.value).toBe(true);
+    expect(history.canRedo.value).toBe(false);
+    offline = false;
     await history.undo();
     expect(error).toHaveBeenCalledTimes(2);
     expect(history.canUndo.value).toBe(true);

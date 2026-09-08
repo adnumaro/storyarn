@@ -27,9 +27,9 @@ function routeChanged() {
 }
 onMounted(() => {
   routeChanged();
-  window.addEventListener("phx:page-loading-stop", routeChanged);
+  window.addEventListener("phx:navigate", routeChanged);
 });
-onUnmounted(() => window.removeEventListener("phx:page-loading-stop", routeChanged));
+onUnmounted(() => window.removeEventListener("phx:navigate", routeChanged));
 function closeMobile() {
   if (!window.matchMedia("(min-width: 1024px)").matches)
     window.dispatchEvent(

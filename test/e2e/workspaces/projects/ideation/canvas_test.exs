@@ -11,6 +11,41 @@ defmodule StoryarnWeb.E2E.IdeationCanvasTest do
 
   @moduletag :e2e
 
+  test "creating consecutive sessions from the sticky sidebar keeps its controls usable", %{conn: conn} do
+    ctx = ideation_fixture()
+    project = Repo.preload(ctx.project, :workspace)
+    base = "/workspaces/#{project.workspace.slug}/projects/#{project.slug}/brainstorming"
+
+    browser =
+      conn
+      |> authenticate(ctx.author.user)
+      |> visit("#{base}/#{ctx.session.id}")
+      |> assert_has("#brainstorming-canvas")
+
+    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "#new-brainstorming-session", timeout: 10_000)
+
+    browser =
+      browser
+      |> assert_has("a[aria-current=page]", text: "Untitled session")
+      |> assert_has("#new-brainstorming-session:not([disabled])")
+
+    {:ok, sessions} = Ideation.list_sessions(ctx.author, ctx.project.id)
+    assert length(sessions) == 2
+    created = Enum.find(sessions, &(&1.id != ctx.session.id))
+
+    browser = assert_path(browser, "#{base}/#{created.id}")
+    {:ok, _} = PlaywrightEx.Frame.click(browser.frame_id, selector: "#new-brainstorming-session", timeout: 10_000)
+
+    browser
+    |> refute_has("a[href='#{base}/#{created.id}'][aria-current=page]")
+    |> assert_has("a[aria-current=page]", text: "Untitled session")
+    |> assert_has("#new-brainstorming-session:not([disabled])")
+    |> assert_has("#brainstorming-canvas")
+
+    assert {:ok, sessions} = Ideation.list_sessions(ctx.author, ctx.project.id)
+    assert length(sessions) == 3
+  end
+
   test "write on the canvas without a form, save, reload, and receive another author's contribution", %{conn: conn} do
     ctx = configure_session(ideation_fixture(), %{default_visibility: :shared})
     project = Repo.preload(ctx.project, :workspace)

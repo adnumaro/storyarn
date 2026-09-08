@@ -32,6 +32,31 @@ const deletion = { id: 10, revision: 1, deleted_at: deletedAt };
 afterEach(() => vi.useRealTimers());
 
 describe("canvas persistence", () => {
+  it("pauses pending autosaves after becoming a viewer without discarding local text", async () => {
+    const { result, app, current, request } = setup();
+    result.open(result.notes.value[0]);
+    result.change(10, "<p>Unsaved existing text</p>");
+    const id = result.add({ x: 40, y: 60 });
+    result.change(id, "<p>Unsaved new note</p>");
+    current.value = { ...current.value, can_edit: false };
+    await nextTick();
+    await vi.advanceTimersByTimeAsync(1_000);
+    result.retry(10);
+    result.retry(id);
+    expect(request).not.toHaveBeenCalled();
+    expect(result.find(10)?.body).toBe("<p>Unsaved existing text</p>");
+    expect(result.find(id)?.body).toBe("<p>Unsaved new note</p>");
+    expect(result.drafts.drafts.get(10)?.status).toBe("unsaved");
+    current.value = { ...current.value, can_edit: true };
+    await nextTick();
+    result.retry(10);
+    expect(request.mock.calls[0]).toEqual([
+      "save_idea",
+      expect.objectContaining({ idea_id: 10, body: "<p>Unsaved existing text</p>" }),
+      expect.anything(),
+    ]);
+    app.unmount();
+  });
   it("replays an uncertain creation unchanged and retains subsequent typing", async () => {
     const { result, app, request, replies, selected } = setup();
     const id = result.add({ x: 40, y: 60 });

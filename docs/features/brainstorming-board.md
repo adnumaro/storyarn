@@ -1,6 +1,6 @@
 # Brainstorming canvas
 
-> Last reviewed: 2026-09-07
+> Last reviewed: 2026-09-08
 > Scope: ENG-134, replacement for PR #137
 
 Brainstorming is a project tool for developing narrative ideas together. Its main
@@ -58,9 +58,12 @@ shared-mode saves publish their exact revision in the same transaction.
 
 In private mode, each participant sees only their own notes. The facilitator
 cannot read other people's private text or previews while it is active.
-Ending private mode publishes the saved heads of non-deleted contributions in the
-same session transaction as the mode change. An overlapping save either precedes
-that reveal or follows shared-mode behavior. No round or timer is forced.
+Ending private mode publishes the saved heads of consenting contributions in the
+same session transaction as the mode change. Discarded notes and legacy author-only
+drafts are excluded; selecting a discarded contribution for publication is an
+explicit action. An overlapping save either precedes that reveal or follows
+shared-mode behavior. No round or timer is forced. Archiving ends the private
+visibility mask without publishing drafts, leaving prior publications readable.
 
 Authorship is retained. Editing content and marking creative state remain author
 operations. Other editors can arrange or connect shared notes and duplicate
@@ -92,11 +95,15 @@ Canvas position/color has its own version, so dragging does not create content
 revisions. Connection endpoints are filtered for each reader; hidden/deleted
 endpoints never reach another participant's props.
 
-LiveView coalesces invalidations and rereads authorized projections. Cursor
-presence uses the existing collaboration transport and expires locally. A project
+LiveView coalesces invalidations and rereads authorized projections. Committed
+membership and ownership changes invalidate access without polling. Cursor
+presence uses the authorized board without per-movement queries, is hidden in
+private mode and expires locally. Reconnection or returning to a hidden tab
+refreshes the board; an idle tab does not repeatedly fetch it. A project
 restore or reconnect invalidates pending requests. Unsaved text can be retained
 as unbound buffers, never automatically attached to restored or reused IDs.
-Losing access clears those buffers and content.
+Losing read access clears those buffers and content. Losing only editing access
+preserves readable drafts and stops autosave until editing is allowed again.
 
 Internal content revisions and save receipts remain necessary for current heads,
 concurrent saves, pinned publications, retries and compatible recovery capsules.

@@ -197,4 +197,33 @@ defmodule Storyarn.Projects.MembershipsTest do
 
     result
   end
+
+  test "membership invalidation follows committed changes and nested changes publish nothing" do
+    owner = user_fixture()
+    project = project_fixture(owner)
+    member = user_fixture()
+    membership = membership_fixture(project, member, "editor")
+    scope = user_scope_fixture(owner)
+    project_id = project.id
+    member_id = member.id
+    Projects.subscribe_project_membership_changes(project_id)
+
+    assert {:error, :forced_rollback} =
+             Repo.transaction(fn ->
+               assert {:error, :membership_change_requires_top_level_transaction} =
+                        Projects.update_member_role(scope, project_id, membership.id, "viewer")
+
+               assert {:error, :membership_change_requires_top_level_transaction} =
+                        Projects.remove_member(scope, project_id, membership.id)
+
+               Repo.rollback(:forced_rollback)
+             end)
+
+    assert Repo.reload!(membership).role == "editor"
+    refute_receive {:project_membership_changed, _}
+    assert {:ok, %{role: "viewer"}} = Projects.update_member_role(scope, project_id, membership.id, "viewer")
+    assert_receive {:project_membership_changed, %{project_id: ^project_id, user_id: ^member_id}}
+    assert {:ok, _} = Projects.remove_member(scope, project_id, membership.id)
+    assert_receive {:project_membership_changed, %{project_id: ^project_id, user_id: ^member_id}}
+  end
 end

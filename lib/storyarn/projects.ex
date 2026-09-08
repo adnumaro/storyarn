@@ -762,6 +762,7 @@ defmodule Storyarn.Projects do
   Authorizes and updates a direct project membership under the project lock.
 
   Cannot change the owner's role or promote an ordinary membership to owner.
+  Must run outside a caller-owned transaction so access invalidation follows commit.
   """
   @spec update_member_role(scope(), integer(), integer(), role()) ::
           {:ok, membership()}
@@ -771,17 +772,25 @@ defmodule Storyarn.Projects do
              | :unauthorized
              | :ownership_invariant_violation
              | :cannot_assign_owner_role
-             | :cannot_change_owner_role}
+             | :cannot_change_owner_role
+             | :membership_change_requires_top_level_transaction}
   defdelegate update_member_role(scope, project_id, membership_id, role), to: Access
 
   @doc """
   Authorizes and removes a direct project membership under the project lock.
 
   Cannot remove the owner.
+  Must run outside a caller-owned transaction so access invalidation follows commit.
   """
   @spec remove_member(scope(), integer(), integer()) ::
           {:ok, membership()}
-          | {:error, changeset() | :not_found | :unauthorized | :ownership_invariant_violation | :cannot_remove_owner}
+          | {:error,
+             changeset()
+             | :not_found
+             | :unauthorized
+             | :ownership_invariant_violation
+             | :cannot_remove_owner
+             | :membership_change_requires_top_level_transaction}
   defdelegate remove_member(scope, project_id, membership_id), to: Access
 
   @doc "Transfers canonical project ownership to an existing direct member."
@@ -802,6 +811,10 @@ defmodule Storyarn.Projects do
   defdelegate subscribe_project_ownership_changes(project_id),
     to: Access,
     as: :subscribe_ownership_changes
+
+  @doc "Subscribes the caller to committed project membership changes that invalidate access."
+  @spec subscribe_project_membership_changes(integer()) :: :ok | {:error, :invalid_project_id}
+  defdelegate subscribe_project_membership_changes(project_id), to: Access, as: :subscribe_membership_changes
 
   @doc """
   Authorizes a user action on a project.

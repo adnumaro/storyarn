@@ -36,7 +36,8 @@ export function useCanvasNotes(
   context: () => BoardContext,
   replaceSelection: (from: number, to: number) => void,
 ) {
-  const drafts = useIdeaDrafts(request, context);
+  const canWrite = () => board().can_edit && board().session?.status === "open";
+  const drafts = useIdeaDrafts(request, context, canWrite);
   const newNotes = reactive(new Map<number, NewNote>());
   const created = reactive(new Map<number, Idea>());
   const placements = reactive(new Map<number, CanvasPlacement>());
@@ -129,6 +130,7 @@ export function useCanvasNotes(
     } else drafts.change(id, { body });
   }
   async function saveNew(id: number) {
+    if (!canWrite()) return;
     const entry = newNotes.get(id);
     if (!entry || entry.pending || !entry.idea.body.replace(/<[^>]*>/g, "").trim()) return;
     // Preserve the original idempotent create request across uncertain outcomes.
@@ -279,6 +281,7 @@ export function useCanvasNotes(
     return draft.status === "saved" || (draft.status === "error" && draft.error === "validation");
   }
   async function flushDelete(id: number) {
+    if (!canWrite()) return;
     const draft = drafts.drafts.get(id);
     if (!deleteRequests.has(id) || deleting.has(id) || !draft) return;
     if (!deletableDraft(draft)) return;
@@ -301,16 +304,8 @@ export function useCanvasNotes(
     } else errors.set(id, reply.status === "error" ? reply.code : "unavailable");
   }
   async function restore(deletion: RemovedNote): Promise<number | null> {
-    if (!deletion.deleted_at) {
-      const previous = deletion.idea;
-      const id = add(
-        { x: previous.canvas?.x ?? 0, y: previous.canvas?.y ?? 0, ...previous.canvas },
-        previous.canvas?.color,
-        previous,
-      );
-      aliases.set(deletion.id, id);
-      return id;
-    }
+    if (!canWrite()) return null;
+    if (!deletion.deleted_at) return restoreLocal(deletion);
     const started = generation;
     const reply = await request<Idea>("restore_idea", {
       idea_id: deletion.id,
@@ -329,6 +324,16 @@ export function useCanvasNotes(
     drafts.open(reply.value);
     return reply.value.id;
   }
+  function restoreLocal(deletion: RemovedNote): number {
+    const previous = deletion.idea;
+    const id = add(
+      { x: previous.canvas?.x ?? 0, y: previous.canvas?.y ?? 0, ...previous.canvas },
+      previous.canvas?.color,
+      previous,
+    );
+    aliases.set(deletion.id, id);
+    return id;
+  }
   function move(id: number, canvas: CanvasPlacement) {
     id = resolveId(id);
     const entry = newNotes.get(id);
@@ -340,6 +345,7 @@ export function useCanvasNotes(
     void flushMove(id);
   }
   async function flushMove(id: number) {
+    if (!canWrite()) return;
     if (moving.has(id)) return;
     const note = notes.value.find((n) => n.id === id);
     const canvas = placements.get(id);
@@ -380,6 +386,7 @@ export function useCanvasNotes(
     }
   }
   function retry(id: number) {
+    if (!canWrite()) return;
     if (id < 0) void saveNew(id);
     else {
       void save(id);
@@ -433,6 +440,12 @@ export function useCanvasNotes(
       for (const id of deleteRequests) void flushDelete(id);
     },
   );
+  watch(canWrite, (allowed) => {
+    if (!allowed) {
+      for (const timer of timers.values()) clearTimeout(timer);
+      timers.clear();
+    }
+  });
   onUnmounted(() => reset(false));
   return {
     notes,

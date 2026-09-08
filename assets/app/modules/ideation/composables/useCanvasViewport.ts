@@ -56,16 +56,32 @@ export function useCanvasViewport(container: Ref<HTMLElement | null>) {
     view.x = (view.width - width * view.zoom) / 2 - left * view.zoom;
     view.y = (view.height - height * view.zoom) / 2 - top * view.zoom;
   }
+  function canvasTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof Element &&
+      Boolean(container.value?.contains(target)) &&
+      !target.closest(
+        'button, a, input, textarea, select, summary, [contenteditable]:not([contenteditable="false"]), [role="textbox"], [role="button"], [role="link"], [data-canvas-chrome]',
+      )
+    );
+  }
   function key(event: KeyboardEvent) {
-    if (event.type === "keyup" && event.code === "Space") {
+    if (event.code !== "Space") return;
+    if (event.type === "keyup") {
       space.value = false;
       return;
     }
-    if ((event.target as HTMLElement).closest('input, textarea, [contenteditable="true"]')) return;
-    if (event.code === "Space") {
-      event.preventDefault();
-      space.value = event.type === "keydown";
-    }
+    if (
+      event.defaultPrevented ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.isComposing ||
+      !canvasTarget(event.target)
+    )
+      return;
+    event.preventDefault();
+    space.value = true;
   }
   function blur() {
     space.value = false;
