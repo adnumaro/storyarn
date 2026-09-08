@@ -11,7 +11,7 @@ defmodule Storyarn.Ideation.Sessions.Execution.TimerDelivery do
       |> Oban.insert()
       |> case do
         {:ok, _job} -> :ok
-        {:error, changeset} -> {:error, changeset}
+        {:error, _changeset} -> {:error, :timer_scheduling_failed}
       end
     else
       {:error, :timer_transaction_required}

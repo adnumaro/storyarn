@@ -51,7 +51,21 @@ export function useSessionTimer(
     if (mounted && current?.status === "running" && seconds.value > 0)
       interval = setInterval(tick, 250);
   }
-  watch([timer, context], calibrate, { immediate: true });
+  // LiveVue applies nested prop patches in place. Watch the clock inputs rather
+  // than the timer object's identity so every persisted update recalibrates it.
+  watch(
+    [
+      context,
+      () => timer()?.id,
+      () => timer()?.version,
+      () => timer()?.status,
+      () => timer()?.deadline_at,
+      () => timer()?.server_now,
+      () => timer()?.remaining_seconds,
+    ],
+    calibrate,
+    { immediate: true },
+  );
   onMounted(() => {
     mounted = true;
     calibrate();

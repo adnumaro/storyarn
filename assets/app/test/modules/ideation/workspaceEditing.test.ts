@@ -49,6 +49,16 @@ afterEach(() => {
 });
 
 describe("workspace editing transitions", () => {
+  it("does not promise editing to viewers or show the contributions banner on archived sessions", async () => {
+    const session = { ...board().session!, contributions_open: false };
+    workspace((body) => body, { session, can_edit: false });
+    expect(wrapper.get("#brainstorming-contributions-closed").text()).toBe(
+      "New contributions are closed.",
+    );
+    await wrapper.setProps({ board: board({ session: { ...session, status: "archived" } }) });
+    expect(wrapper.find("#brainstorming-contributions-closed").exists()).toBe(false);
+  });
+
   it("keeps an in-progress edit when contributions close and blocks add, duplicate and paste", async () => {
     const { current, canvas, live } = workspace();
     canvas.vm.$emit("edit", 10);

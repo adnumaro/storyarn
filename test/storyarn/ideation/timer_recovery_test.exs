@@ -70,6 +70,62 @@ defmodule Storyarn.Ideation.TimerRecoveryTest do
     assert Repo.aggregate(Session, :count) == 1
   end
 
+  for status <- [:running, :paused] do
+    @tag timer_status: status
+    test "recovering and reopening a replaced session cancels its #{status} timer", ctx do
+      {:ok, _} =
+        Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, ctx.session.revision, true)
+
+      {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, ctx.session.id)
+      ctx = %{ctx | session: session}
+      idea = idea_fixture(ctx, %{configuration_version: session.configuration_version})
+      {ctx, timer} = start(ctx, %{reveal_on_expiry: true, close_contributions_on_expiry: true})
+
+      if ctx.timer_status == :paused do
+        assert {:ok, _} =
+                 Ideation.pause_timer(ctx.facilitator, ctx.project.id, session.id, ctx.session.revision, timer.version)
+      end
+
+      assert {:ok, timer} = Ideation.get_timer(ctx.facilitator, ctx.project.id, session.id)
+      assert {:ok, session} = Ideation.get_session(ctx.facilitator, ctx.project.id, session.id)
+      capsule = capture(ctx)
+
+      assert {:ok, replaced} =
+               Ideation.update_session(ctx.facilitator, ctx.project.id, session.id, session.revision, %{
+                 title: "Changed after the timer snapshot"
+               })
+
+      maps = restore(ctx, capsule)
+      refute maps["sessions"][session.id] == session.id
+      assert {:error, :not_found} = Ideation.get_session(ctx.owner, ctx.project.id, session.id)
+
+      assert {:ok, recovered} =
+               Ideation.recover_session(ctx.owner, ctx.project.id, replaced.id, replaced.revision)
+
+      assert recovered.status == :archived
+      assert {:ok, reopened} = Ideation.reopen_session(ctx.owner, ctx.project.id, recovered.id, recovered.revision)
+
+      # Deliver the old job after its deadline. A cancelled timer has no deadline;
+      # only a timer incorrectly left running needs to be made due for this probe.
+      Repo.update_all(from(t in Timer, where: t.id == ^timer.id and t.status == :running),
+        set: [deadline_at: timer.started_at]
+      )
+
+      assert {:ok, %{outcome: :stale}} = Ideation.expire_timer(timer.id, timer.version)
+      assert {:ok, cancelled} = Ideation.get_timer(ctx.owner, ctx.project.id, reopened.id)
+      assert cancelled.status == :cancelled
+      assert cancelled.version == timer.version + 1
+      assert cancelled.deadline_at == nil
+      assert cancelled.remaining_seconds == 0
+
+      assert {:ok, current} = Ideation.get_session(ctx.owner, ctx.project.id, reopened.id)
+      assert current.contributions_open
+      assert current.configuration.private_mode
+      assert {:error, :not_found} = Ideation.get_idea(ctx.owner, ctx.project.id, reopened.id, idea.id)
+      assert {:ok, _} = Ideation.get_idea(ctx.author, ctx.project.id, reopened.id, idea.id)
+    end
+  end
+
   test "canonical capture is stable while a countdown is running", ctx do
     {ctx, _timer} = start(ctx)
     assert {:ok, first} = Repo.transact(fn -> Records.capture(ctx.project.id) end)

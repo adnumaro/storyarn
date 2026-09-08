@@ -31,7 +31,7 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
       })
     )
 
-    assert_reply(manager, %{status: "ok", value: %{id: id}})
+    assert_reply(manager, %{status: "ok", value: %{id: id, revision: 2}})
     assert id == ctx.session.id
     assert_board_eventually(manager, fn board -> assert board["timer"]["status"] == "running" end)
     assert_board_eventually(viewer, fn board -> assert board["timer"]["version"] == 1 end)
@@ -49,8 +49,11 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
     assert {:ok, deadline, 0} = DateTime.from_iso8601(timer["deadline_at"])
     assert {:ok, server_now, 0} = DateTime.from_iso8601(timer["server_now"])
     assert DateTime.diff(deadline, server_now, :second) in 0..600
-    header = LiveVue.Test.get_vue(viewer, name: "live/ideation/BoardHeader")
-    assert header.props["timer"] == timer
+    # The header uses production prop diffs; inspect a fresh mount's full state.
+    {:ok, fresh_viewer, _} = live(log_in_user(build_conn(), ctx.viewer.user), board_path(ctx))
+    assert_board_eventually(fresh_viewer, fn board -> assert board["timer"]["status"] == "running" end)
+    header = LiveVue.Test.get_vue(fresh_viewer, name: "live/ideation/BoardHeader")
+    assert Map.delete(header.props["timer"], "server_now") == Map.delete(timer, "server_now")
     refute header.props["can-manage"]
     assert {:ok, stored} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
     assert stored.actor_id == ctx.facilitator.user.id
@@ -74,7 +77,8 @@ defmodule StoryarnWeb.IdeationLive.TimerBoardTest do
         Map.merge(extra, %{revision: to_string(data(manager)["session"]["revision"]), timer_version: to_string(version)})
 
       render_hook(manager, event, payload(manager, attrs))
-      assert_reply(manager, %{status: "ok"})
+      expected_revision = version + 2
+      assert_reply(manager, %{status: "ok", value: %{revision: ^expected_revision}})
 
       assert_board_eventually(manager, fn board ->
         assert board["timer"]["version"] == version + 1

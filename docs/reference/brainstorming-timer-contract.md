@@ -12,6 +12,8 @@ A session can have one shared countdown. It is independent of optional rounds an
 private mode: starting, pausing, extending or cancelling the clock never creates,
 starts or closes a round. A round never starts or stops a clock. Session archive
 cancels a running or paused timer; reopening does not restart it.
+Recovering a session replaced by a snapshot also cancels its old timer before
+archiving it. Reopening that generation cannot reactivate an old expiry job.
 
 The existing board header shows the same deadline to all participants, including
 viewers. A facilitator or project owner with current edit permission can start,
@@ -69,6 +71,10 @@ controls. The runtime invokes the same command within the owning capability.
 Public board projections omit actor identity, recovery identity and internal
 policy version. Countdown updates are local; a browser reaching zero requests
 one fresh board state and never applies expiry actions itself.
+The header recalibrates from individual clock fields when LiveVue patches props
+in place. Controls wait for the acknowledged session revision and timer version
+to be rendered before accepting another write; pausing and resuming preserve
+the focused button.
 
 ## Scheduling and recovery after failure
 

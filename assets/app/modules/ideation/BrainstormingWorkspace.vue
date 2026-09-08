@@ -647,12 +647,12 @@ onUnmounted(() => {
       ><Button variant="ghost" size="sm" @click="refresh">{{ t("ideation.refresh") }}</Button>
     </div>
     <div
-      v-if="board.session && !board.session.contributions_open"
+      v-if="board.session?.status === 'open' && !board.session.contributions_open"
       id="brainstorming-contributions-closed"
       role="status"
       class="border-b bg-muted/30 px-4 py-2 text-xs text-muted-foreground"
     >
-      {{ t("ideation.timer.closedHelp") }}
+      {{ t(writable ? "ideation.timer.closedHelp" : "ideation.timer.contributionsClosed") }}
     </div>
     <details
       v-if="resetNotice && notes.drafts.recovered.value.length"

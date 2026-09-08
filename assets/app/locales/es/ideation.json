@@ -104,7 +104,8 @@
       "contributions_closed": "Las nuevas aportaciones están cerradas. Tu borrador se conserva aquí; vuelve a intentarlo cuando el facilitador las reabra.",
       "timer_reveal_requires_private": "Activa el modo privado antes de elegir revelar las notas al terminar el tiempo.",
       "timer_not_found": "Este cronómetro ya no está disponible. Actualiza el tablero.",
-      "invalid_timer_version": "El estado del cronómetro no es válido. Actualiza el tablero y vuelve a intentarlo."
+      "invalid_timer_version": "El estado del cronómetro no es válido. Actualiza el tablero y vuelve a intentarlo.",
+      "timer_scheduling_failed": "No se pudo programar el cronómetro. No se ha guardado ningún cambio. Inténtalo de nuevo."
     },
     "saveStatus": {
       "saved": "Guardado",

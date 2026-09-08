@@ -1,7 +1,7 @@
 defmodule StoryarnWeb.E2E.IdeationTimerTest do
   use PhoenixTest.Playwright.Case, async: false
 
-  import PhoenixTest.Playwright, only: [press: 3, type: 3]
+  import PhoenixTest.Playwright, only: [press: 3, type: 3, evaluate: 3]
   import Storyarn.IdeationFixtures
   import StoryarnWeb.E2EHelpers
 
@@ -14,7 +14,16 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
   test "the facilitator controls a shared countdown while a viewer can only consult it", %{conn: conn} = test_context do
     ctx = ideation_fixture()
     path = board_path(ctx)
-    manager = conn |> authenticate(ctx.facilitator.user) |> visit(path) |> assert_has("#brainstorming-canvas")
+
+    manager =
+      conn
+      |> authenticate(ctx.facilitator.user)
+      |> visit(path)
+      |> assert_has("#brainstorming-canvas")
+      |> evaluate("document.querySelector('#brainstorming-header').dataset.useDiff", fn mode ->
+        assert mode == "true"
+      end)
+
     viewer_config = test_context |> Map.take(Config.setup_keys()) |> Config.validate!()
 
     viewer =
@@ -31,8 +40,9 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
       |> type("#brainstorming-timer-duration", "600")
       |> click("#brainstorming-timer-start:not([disabled])")
       |> assert_has("#brainstorming-timer-pause:not([disabled])")
-      |> click("#brainstorming-timer-pause:not([disabled])")
-      |> assert_has("#brainstorming-timer-resume:not([disabled])")
+      |> press("#brainstorming-timer-pause[aria-disabled=false]", "Enter")
+      |> assert_has("#brainstorming-timer-resume[aria-disabled=false]")
+      |> evaluate("document.activeElement.id", fn id -> assert id == "brainstorming-timer-resume" end)
       |> assert_has("#brainstorming-canvas")
 
     assert {:ok, paused} = Ideation.get_timer(ctx.facilitator, ctx.project.id, ctx.session.id)
@@ -63,13 +73,13 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     assert extended.remaining_seconds == paused.remaining_seconds + 60
     assert extended.duration_seconds == 660
 
-    manager
-    |> click("#brainstorming-timer-resume:not([disabled])")
-    |> assert_has("#brainstorming-timer-pause:not([disabled])")
-    |> click("#brainstorming-timer-cancel:not([disabled])")
-    |> assert_has("#brainstorming-timer-start:not([disabled])")
-    |> click("#brainstorming-timer-trigger")
-    |> assert_has("#brainstorming-canvas")
+    manager =
+      manager
+      |> press("#brainstorming-timer-resume[aria-disabled=false]", "Enter")
+      |> assert_has("#brainstorming-timer-pause[aria-disabled=false]")
+      |> evaluate("document.activeElement.id", fn id -> assert id == "brainstorming-timer-pause" end)
+      |> click("#brainstorming-timer-cancel:not([disabled])")
+      |> assert_has("#brainstorming-timer-start:not([disabled])")
 
     assert_has(viewer, "#brainstorming-timer-countdown", text: "Timer")
     assert {:ok, cancelled} = Ideation.get_timer(ctx.viewer, ctx.project.id, ctx.session.id)
@@ -78,6 +88,19 @@ defmodule StoryarnWeb.E2E.IdeationTimerTest do
     assert session.configuration == ctx.session.configuration
     assert session.contributions_open
     assert session.status == :open
+
+    # Starting a second clock reuses the timer row and patches the same prop object.
+    manager
+    |> click("#brainstorming-timer-start:not([disabled])")
+    |> assert_has("#brainstorming-timer-pause[aria-disabled=false]")
+    |> press("#brainstorming-timer-pause[aria-disabled=false]", "Enter")
+    |> assert_has("#brainstorming-timer-resume[aria-disabled=false]")
+
+    assert {:ok, restarted} = Ideation.get_timer(ctx.viewer, ctx.project.id, ctx.session.id)
+    assert restarted.id == cancelled.id
+    assert restarted.version > cancelled.version
+    assert restarted.remaining_seconds > 0
+    assert_has(viewer, "#brainstorming-timer-countdown", text: format_seconds(restarted.remaining_seconds))
   end
 
   test "closing contributions preserves existing editing and reopening restores creation", %{conn: conn} do

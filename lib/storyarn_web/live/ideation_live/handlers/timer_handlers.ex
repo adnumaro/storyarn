@@ -6,7 +6,7 @@ defmodule StoryarnWeb.IdeationLive.Handlers.TimerHandlers do
   def run(event, scope, project_id, session_id, params) do
     with {:ok, revision} <- Params.positive(params["revision"]),
          {:ok, session} <- execute(event, scope, project_id, session_id, revision, params) do
-      {:ok, %{id: session.id}}
+      {:ok, %{id: session.id, revision: session.revision}}
     end
   end
 

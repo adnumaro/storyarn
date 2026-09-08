@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onUnmounted, ref, watch } from "vue";
+import { computed, onUnmounted, ref, shallowRef, watch } from "vue";
 import { Timer, Play, Pause, Plus, Square, LockKeyhole } from "@lucide/vue";
 import { Button } from "@components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@components/ui/popover";
@@ -23,7 +23,19 @@ const { t, error } = useBoardText();
 const duration = ref<string | number>(300);
 const reveal = ref(false);
 const closeContributions = ref(false);
-const pending = ref(false);
+interface TimerWriteReceipt {
+  id: number;
+  revision: number;
+}
+interface PendingWrite {
+  epoch: string;
+  sessionId: number;
+  revision: number;
+  timerVersion: number | null;
+  acknowledgedRevision: number | null;
+}
+const pendingWrite = shallowRef<PendingWrite | null>(null);
+const pending = computed(() => pendingWrite.value !== null);
 const failure = ref<string | null>(null);
 const mayManage = computed(() => canManage && canEdit && session.status === "open");
 const active = computed(() => timer?.status === "running" || timer?.status === "paused");
@@ -33,7 +45,6 @@ const validDuration = computed(
     Number(duration.value) >= 15 &&
     Number(duration.value) <= 86400,
 );
-let generation = 0;
 const { seconds, display } = useSessionTimer(
   () => timer,
   () => `${epoch}:${session.id}`,
@@ -49,9 +60,15 @@ const label = computed(() => {
 });
 function send(event: string, payload: Record<string, unknown>) {
   if (!mayManage.value || pending.value) return;
-  pending.value = true;
   failure.value = null;
-  const started = generation;
+  const attempt: PendingWrite = {
+    epoch,
+    sessionId: session.id,
+    revision: session.revision,
+    timerVersion: event === "set_contributions_open" ? null : (timer?.version ?? 0),
+    acknowledgedRevision: null,
+  };
+  pendingWrite.value = attempt;
   live.pushEvent(
     event,
     {
@@ -61,16 +78,55 @@ function send(event: string, payload: Record<string, unknown>) {
       revision: session.revision,
     },
     (reply) => {
-      if (started !== generation) return;
-      pending.value = false;
-      if (reply?.status !== "ok") failure.value = String(reply?.code ?? "unavailable");
+      if (!currentAttempt(attempt)) return;
+      const revision = receiptRevision(reply?.value as TimerWriteReceipt | undefined, attempt);
+      if (reply?.status !== "ok" || revision === null) {
+        pendingWrite.value = null;
+        const code = String(reply?.code ?? "unavailable");
+        failure.value = code === "stale_revision" ? "stale_timer" : code;
+        return;
+      }
+      attempt.acknowledgedRevision = revision;
+      releaseAcknowledgedWrite();
     },
     () => {
-      if (started !== generation) return;
-      pending.value = false;
+      if (!currentAttempt(attempt)) return;
+      pendingWrite.value = null;
       failure.value = "offline";
     },
   );
+}
+function receiptRevision(receipt: TimerWriteReceipt | undefined, attempt: PendingWrite) {
+  if (
+    !receipt ||
+    receipt.id !== attempt.sessionId ||
+    !Number.isInteger(receipt.revision) ||
+    receipt.revision < attempt.revision
+  )
+    return null;
+  return receipt.revision;
+}
+function currentAttempt(attempt: PendingWrite) {
+  return (
+    pendingWrite.value === attempt && attempt.epoch === epoch && attempt.sessionId === session.id
+  );
+}
+function releaseAcknowledgedWrite() {
+  const attempt = pendingWrite.value;
+  if (!attempt || !currentAttempt(attempt) || attempt.acknowledgedRevision === null) return;
+  if (session.revision < attempt.acknowledgedRevision) return;
+  // An effective timer write advances both counters. Wait for both props even
+  // when LiveVue patches them in place or the reply arrives before the refresh.
+  const changed = attempt.acknowledgedRevision > attempt.revision;
+  if (
+    attempt.timerVersion !== null &&
+    (timer?.version ?? 0) < attempt.timerVersion + Number(changed)
+  )
+    return;
+  pendingWrite.value = null;
+}
+function onOpenChange(open: boolean) {
+  if (!open) failure.value = null;
 }
 function start() {
   if (!validDuration.value || active.value) return;
@@ -93,18 +149,34 @@ watch(
     if (!enabled) reveal.value = false;
   },
 );
-watch([() => epoch, () => session.id], () => {
-  generation++;
-  pending.value = false;
-  failure.value = null;
-  duration.value = 300;
-  reveal.value = false;
-  closeContributions.value = false;
+watch([() => session.revision, () => timer?.version], releaseAcknowledgedWrite);
+watch(
+  [() => epoch, () => session.id],
+  () => {
+    pendingWrite.value = null;
+    failure.value = null;
+    duration.value = 300;
+    reveal.value = false;
+    closeContributions.value = false;
+  },
+  { flush: "sync" },
+);
+watch(
+  mayManage,
+  (allowed) => {
+    if (!allowed) {
+      pendingWrite.value = null;
+      failure.value = null;
+    }
+  },
+  { flush: "sync" },
+);
+onUnmounted(() => {
+  pendingWrite.value = null;
 });
-onUnmounted(() => generation++);
 </script>
 <template>
-  <Popover>
+  <Popover @update:open="onOpenChange">
     <PopoverTrigger as-child>
       <button
         id="brainstorming-timer-trigger"
@@ -120,7 +192,6 @@ onUnmounted(() => generation++);
           :class="!active && !elapsed ? 'hidden sm:inline' : ''"
           >{{ label }}</span
         >
-        <span v-if="elapsed" role="status" class="sr-only">{{ t("ideation.timer.elapsed") }}</span>
         <Pause
           v-if="timer?.status === 'paused'"
           class="size-3"
@@ -133,6 +204,7 @@ onUnmounted(() => generation++);
         />
       </button>
     </PopoverTrigger>
+    <span role="status" class="sr-only">{{ elapsed ? t("ideation.timer.elapsed") : "" }}</span>
     <PopoverContent
       align="start"
       class="w-80 space-y-4 p-4"
@@ -147,12 +219,7 @@ onUnmounted(() => generation++);
       <p v-if="failure" role="alert" class="text-xs text-destructive">{{ error(failure) }}</p>
       <div v-if="active || timer?.status === 'elapsed'" class="space-y-3 text-center">
         <p class="text-3xl font-medium tabular-nums">{{ display }}</p>
-        <p
-          v-if="elapsed"
-          id="brainstorming-timer-finished"
-          role="status"
-          class="text-xs text-primary"
-        >
+        <p v-if="elapsed" id="brainstorming-timer-finished" class="text-xs text-primary">
           {{ t("ideation.timer.elapsed") }}
         </p>
         <p v-else-if="timer?.status === 'paused'" class="text-xs text-muted-foreground">
@@ -175,22 +242,23 @@ onUnmounted(() => generation++);
         </p>
         <div v-if="mayManage && active" class="flex flex-wrap items-center justify-center gap-1">
           <Button
-            v-if="timer?.status === 'running' && seconds > 0"
-            id="brainstorming-timer-pause"
+            v-if="seconds > 0"
+            :id="
+              timer?.status === 'running'
+                ? 'brainstorming-timer-pause'
+                : 'brainstorming-timer-resume'
+            "
             size="sm"
             variant="outline"
-            :disabled="pending"
-            @click="control('pause_timer')"
-            ><Pause class="size-3" />{{ t("ideation.timer.pause") }}</Button
-          >
-          <Button
-            v-else-if="timer?.status === 'paused' && seconds > 0"
-            id="brainstorming-timer-resume"
-            size="sm"
-            variant="outline"
-            :disabled="pending"
-            @click="control('resume_timer')"
-            ><Play class="size-3" />{{ t("ideation.timer.resume") }}</Button
+            :aria-disabled="pending"
+            :class="pending ? 'opacity-50' : ''"
+            @click="control(timer?.status === 'running' ? 'pause_timer' : 'resume_timer')"
+            ><Pause v-if="timer?.status === 'running'" class="size-3" /><Play
+              v-else
+              class="size-3"
+            />{{
+              t(timer?.status === "running" ? "ideation.timer.pause" : "ideation.timer.resume")
+            }}</Button
           >
           <Button
             v-if="seconds > 0"

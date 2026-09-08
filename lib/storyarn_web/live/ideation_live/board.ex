@@ -54,6 +54,7 @@ defmodule StoryarnWeb.IdeationLive.Board do
         :if={@board.session}
         v-component="live/ideation/BoardHeader"
         v-socket={@socket}
+        v-diff={true}
         v-inject:top-left="project-layout"
         id="brainstorming-header"
         session={@board.session}

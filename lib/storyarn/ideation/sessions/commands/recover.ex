@@ -5,7 +5,10 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
 
   alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
   alias Storyarn.Ideation.Sessions.Events.Invalidation
+  alias Storyarn.Ideation.Sessions.Events.TimerInvalidation
+  alias Storyarn.Ideation.Sessions.Execution.ArchiveTimer
   alias Storyarn.Ideation.Sessions.Execution.Mutation
+  alias Storyarn.Ideation.Sessions.Execution.TimerMutation
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Shared.TimeHelpers
   alias Storyarn.Repo
@@ -22,11 +25,13 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
              ),
            true <- access.owner? or session.facilitator_id == access.user_id,
            true <- session.revision == revision or {:error, :stale_revision},
+           {:ok, timer} <- ArchiveTimer.cancel(session.id),
            {:ok, recovered} <-
              session
              |> change(deleted_at: nil, status: :archived, archived_at: TimeHelpers.now(), revision: revision + 1)
              |> Repo.update() do
-        Mutation.record(recovered, access.user_id, :recovered)
+        additions = if timer, do: %{"timer" => TimerMutation.snapshot(timer)}, else: %{}
+        Mutation.record(recovered, access.user_id, :recovered, additions)
       else
         nil -> {:error, :not_found}
         false -> {:error, :unauthorized}
@@ -35,6 +40,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
     end
     |> Repo.transact()
     |> Invalidation.notify(project_id)
+    |> TimerInvalidation.notify()
   end
 
   def run(_, _, _, _), do: {:error, :invalid_revision}

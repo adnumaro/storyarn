@@ -101,6 +101,7 @@
       "stale_timer": "Someone changed the timer. Review its current state before trying again.",
       "invalid_timer_duration": "Choose a duration from 15 seconds to 24 hours.",
       "invalid_timer_options": "Review the actions selected for the end of the timer.",
+      "timer_scheduling_failed": "The timer could not be scheduled. No changes were saved. Try again.",
       "contributions_closed": "New contributions are closed. Your draft is kept here; retry when the facilitator reopens contributions.",
       "timer_reveal_requires_private": "Start private mode before choosing to reveal notes when time ends.",
       "timer_not_found": "This timer is no longer available. Refresh the board.",
