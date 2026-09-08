@@ -35,6 +35,7 @@ defmodule Storyarn.Platform.Collaboration do
           {:flow, integer()}
           | {:sheet, integer()}
           | {:scene, integer()}
+          | {:ideation, integer()}
 
   defp normalize_scope({_type, _id} = scope), do: scope
 

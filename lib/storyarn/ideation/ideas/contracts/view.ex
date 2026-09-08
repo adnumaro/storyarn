@@ -2,10 +2,12 @@ defmodule Storyarn.Ideation.Ideas.View do
   @moduledoc "Authorized idea projections. Raw persistence schemas must not be sent to clients."
   alias Storyarn.Ideation.Ideas.Rules.Policy
 
-  def idea(idea, revision, actor_id, source_published? \\ false) do
+  def idea(idea, revision, actor_id, source_published? \\ false, visible_links \\ []) do
     source_visible? = Policy.author?(idea, actor_id) or source_published?
 
     public = %{
+      deleted_at: idea.deleted_at,
+      canvas: idea.canvas |> Map.delete("request_key") |> Map.put("links", visible_links),
       id: idea.id,
       session_id: idea.session_id,
       author_id: idea.author_id,
@@ -31,10 +33,6 @@ defmodule Storyarn.Ideation.Ideas.View do
     else
       public
     end
-  end
-
-  def revision(revision) do
-    Map.take(revision, [:number, :actor_id, :title, :body, :state, :inserted_at])
   end
 
   def edit(edit) do

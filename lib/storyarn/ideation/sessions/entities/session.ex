@@ -1,5 +1,5 @@
 defmodule Storyarn.Ideation.Sessions.Session do
-  @moduledoc false
+  @moduledoc "Session metadata and embedded collaboration settings."
   use Ecto.Schema
 
   import Ecto.Changeset

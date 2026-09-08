@@ -4,6 +4,7 @@ const productModules = [
   "auth",
   "docs",
   "flows",
+  "ideation",
   "localization",
   "projects",
   "public",

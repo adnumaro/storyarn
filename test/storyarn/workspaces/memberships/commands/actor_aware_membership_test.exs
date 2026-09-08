@@ -25,6 +25,33 @@ defmodule Storyarn.Workspaces.Memberships.Commands.ActorAwareMembershipTest do
     }
   end
 
+  test "membership invalidation follows committed changes and nested changes publish nothing", context do
+    workspace_id = context.workspace.id
+    member_id = context.member.id
+    Memberships.subscribe_membership_changes(workspace_id)
+
+    assert {:error, :forced_rollback} =
+             Repo.transaction(fn ->
+               assert {:error, :membership_change_requires_top_level_transaction} =
+                        Memberships.update_member_role(context.owner_scope, workspace_id, context.membership.id, "viewer")
+
+               assert {:error, :membership_change_requires_top_level_transaction} =
+                        Memberships.remove_member(context.owner_scope, workspace_id, context.membership.id)
+
+               Repo.rollback(:forced_rollback)
+             end)
+
+    assert Repo.reload!(context.membership).role == "member"
+    refute_receive {:workspace_membership_changed, _}
+
+    assert {:ok, %{role: "viewer"}} =
+             Memberships.update_member_role(context.owner_scope, workspace_id, context.membership.id, "viewer")
+
+    assert_receive {:workspace_membership_changed, %{workspace_id: ^workspace_id, user_id: ^member_id}}
+    assert {:ok, _} = Memberships.remove_member(context.owner_scope, workspace_id, context.membership.id)
+    assert_receive {:workspace_membership_changed, %{workspace_id: ^workspace_id, user_id: ^member_id}}
+  end
+
   test "the current owner can update a locked current membership", context do
     assert {:ok, %{role: "admin"}} =
              Memberships.update_member_role(

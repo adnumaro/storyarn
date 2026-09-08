@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { Cable, Hand, MousePointer2, Ruler, StickyNote } from "@lucide/vue";
 import { useLive } from "@shared/composables/useLive.ts";
-import DockToolButton from "./DockToolButton.vue";
+import DockToolButton from "@components/toolbar/DockToolButton.vue";
 import ZonesDropdown from "./ZonesDropdown.vue";
 import PinsDropdown from "./PinsDropdown.vue";
 import DockActions from "./DockActions.vue";

@@ -23,11 +23,13 @@ defmodule Storyarn.Workspaces.Memberships do
   defdelegate get_membership(workspace_or_id, user_or_id), to: Members, as: :get
   defdelegate create_membership(workspace_id, user_id, role), to: CreateMembership, as: :create
 
-  defdelegate update_member_role(scope, workspace_id, membership_id, role),
-    to: ChangeMemberRole,
-    as: :change
+  def update_member_role(scope, workspace_id, membership_id, role) do
+    change_membership(workspace_id, fn -> ChangeMemberRole.change(scope, workspace_id, membership_id, role) end)
+  end
 
-  defdelegate remove_member(scope, workspace_id, membership_id), to: RemoveMember, as: :remove
+  def remove_member(scope, workspace_id, membership_id) do
+    change_membership(workspace_id, fn -> RemoveMember.remove(scope, workspace_id, membership_id) end)
+  end
 
   def transfer_owner(scope, workspace_id, target_user_id) do
     if Repo.in_transaction?() do
@@ -55,6 +57,12 @@ defmodule Storyarn.Workspaces.Memberships do
 
   def subscribe_ownership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
 
+  def subscribe_membership_changes(workspace_id) when is_integer(workspace_id) and workspace_id > 0 do
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, membership_topic(workspace_id))
+  end
+
+  def subscribe_membership_changes(_workspace_id), do: {:error, :invalid_workspace_id}
+
   @doc false
   defdelegate transact_as_owner(scope, workspace_id, operation), to: OwnerAuthority
 
@@ -66,5 +74,26 @@ defmodule Storyarn.Workspaces.Memberships do
   defdelegate authorize(scope, workspace_id, action), to: Authorize, as: :call
   defdelegate can?(role, action), to: Permissions, as: :allowed?
 
+  defp change_membership(workspace_id, operation) do
+    if Repo.in_transaction?() do
+      {:error, :membership_change_requires_top_level_transaction}
+    else
+      case operation.() do
+        {:ok, membership} = result ->
+          Phoenix.PubSub.broadcast(
+            Storyarn.PubSub,
+            membership_topic(workspace_id),
+            {:workspace_membership_changed, %{workspace_id: workspace_id, user_id: membership.user_id}}
+          )
+
+          result
+
+        error ->
+          error
+      end
+    end
+  end
+
   defp ownership_topic(workspace_id), do: "workspaces:#{workspace_id}:ownership"
+  defp membership_topic(workspace_id), do: "workspaces:#{workspace_id}:memberships"
 end

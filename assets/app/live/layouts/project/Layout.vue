@@ -5,6 +5,7 @@ import {
   Image,
   Languages,
   LayoutDashboard,
+  Lightbulb,
   Map,
   Settings,
   Trash2,
@@ -78,6 +79,7 @@ const paletteToolIcons: Record<string, PaletteCommand["icon"]> = {
   flows: GitBranch,
   scenes: Map,
   assets: Image,
+  brainstorming: Lightbulb,
   localization: Languages,
 };
 

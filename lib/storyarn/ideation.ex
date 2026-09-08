@@ -2,9 +2,9 @@ defmodule Storyarn.Ideation do
   @moduledoc """
   Owns brainstorming sessions and their creative collaboration policy.
 
-  Provides sessions, authored ideas, recoverable saves and explicit publication,
-  not a released board. Private drafts remain author-only; other readers receive
-  published revisions through authorized projections.
+  Provides sessions, authored canvas ideas, recoverable saves and facilitator-controlled
+  visibility. Private-mode contributions remain author-only until the facilitator
+  reveals them; other readers receive authorized published revisions.
   Every ordinary operation requires current project access. All mutations are atomic and
   updates require the revision the caller actually read. Project ownership and
   membership remain authoritative in Projects.
@@ -15,6 +15,7 @@ defmodule Storyarn.Ideation do
   alias Storyarn.Ideation.Sessions
 
   defdelegate create_session(scope, project_id, attrs), to: Sessions
+  defdelegate subscribe_sessions(scope, project_id), to: Sessions
   defdelegate list_sessions(scope, project_id, opts \\ []), to: Sessions
   defdelegate get_session(scope, project_id, session_id), to: Sessions
 
@@ -30,23 +31,29 @@ defmodule Storyarn.Ideation do
 
   defdelegate recover_session(scope, project_id, session_id, revision), to: Sessions
 
+  @doc "Connects or disconnects two readable ideas in the same session."
+  @spec connect_ideas(map(), integer(), integer(), integer(), integer(), boolean()) :: {:ok, map()} | {:error, term()}
+  defdelegate connect_ideas(scope, project_id, session_id, source_id, target_id, connected?), to: Ideas
+
+  @doc "Updates an authorized idea's canvas placement, independently of its text revision."
+  @spec update_idea_canvas(map(), integer(), integer(), integer(), non_neg_integer(), map()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate update_idea_canvas(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
+
   @doc "Permanently deletes one replaced session after checking current project ownership and its revision."
   @spec purge_replaced_session(map(), pos_integer(), pos_integer(), pos_integer()) :: {:ok, :purged} | {:error, term()}
   defdelegate purge_replaced_session(scope, project_id, session_id, revision), to: Sessions
 
   defdelegate create_idea(scope, project_id, session_id, attrs), to: Ideas
-  defdelegate derive_idea(scope, project_id, session_id, source_id, source_revision, attrs), to: Ideas
   defdelegate update_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
   defdelegate get_idea(scope, project_id, session_id, idea_id), to: Ideas
   defdelegate list_ideas(scope, project_id, session_id, opts \\ []), to: Ideas
   defdelegate count_ideas(scope, project_id, session_id), to: Ideas
-  defdelegate list_idea_revisions(scope, project_id, session_id, idea_id, opts \\ []), to: Ideas
-  defdelegate list_idea_conflicts(scope, project_id, session_id, idea_id, opts \\ []), to: Ideas
-  defdelegate get_idea_edit(scope, project_id, session_id, idea_id, key), to: Ideas
   defdelegate prepare_idea_reveal(scope, project_id, session_id, key, selection \\ :eligible), to: Ideas
   defdelegate reveal_ideas(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate get_idea_reveal(scope, project_id, session_id, operation_id), to: Ideas
   defdelegate subscribe_ideas(scope, project_id, session_id), to: Ideas
+  defdelegate unsubscribe_ideas(scope, project_id, session_id), to: Ideas
 
   @doc """
   Captures a sealed Ideation recovery capsule. Privileged Project capture port:
@@ -71,4 +78,22 @@ defmodule Storyarn.Ideation do
   @doc false
   @spec verify_recovery(integer(), map() | nil, map()) :: :ok | {:error, atom()}
   defdelegate verify_recovery(project_id, capsule, maps), to: Recovery, as: :verify
+  @doc "Removes an authored note from all current views while retaining its recovery history."
+  @spec delete_idea(map(), integer(), integer(), integer(), integer()) :: {:ok, map()} | {:error, term()}
+  defdelegate delete_idea(scope, project_id, session_id, idea_id, revision), to: Ideas
+
+  @doc "Undoes the author's exact canvas deletion without restoring arbitrary historical content."
+  @spec restore_idea(map(), integer(), integer(), integer(), integer(), DateTime.t() | String.t()) ::
+          {:ok, map()} | {:error, term()}
+  defdelegate restore_idea(scope, project_id, session_id, idea_id, revision, deleted_at), to: Ideas
+
+  @doc "Creates a canvas contribution under the current session visibility mode."
+  @spec create_canvas_idea(map(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate create_canvas_idea(scope, project_id, session_id, attrs), to: Ideas
+  @doc "Saves a canvas note and publishes that revision atomically in shared mode."
+  @spec update_canvas_idea(map(), integer(), integer(), integer(), integer(), map()) :: {:ok, map()} | {:error, term()}
+  defdelegate update_canvas_idea(scope, project_id, session_id, idea_id, revision, attrs), to: Ideas
+  @doc "Lets the facilitator change private mode for everyone; ending it reveals current contributions atomically."
+  @spec set_private_mode(map(), integer(), integer(), integer(), boolean()) :: {:ok, map()} | {:error, term()}
+  defdelegate set_private_mode(scope, project_id, session_id, revision, enabled), to: Ideas
 end

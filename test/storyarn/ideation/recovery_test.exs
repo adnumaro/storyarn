@@ -8,9 +8,13 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
   alias Storyarn.Accounts.User
   alias Storyarn.Ideation
+  alias Storyarn.Ideation.Ideas.Idea
   alias Storyarn.Ideation.Ideas.Publication
   alias Storyarn.Ideation.Ideas.Reveal
+  alias Storyarn.Ideation.Recovery.Capsule
+  alias Storyarn.Ideation.Recovery.Inventory
   alias Storyarn.Ideation.Sessions.Session
+  alias Storyarn.Platform.Vault
   alias Storyarn.Projects
   alias Storyarn.Projects.Versioning.Builders.ProjectSnapshotBuilder
   alias Storyarn.Projects.Versioning.ProjectRecovery
@@ -66,6 +70,26 @@ defmodule Storyarn.Ideation.RecoveryTest do
     end
   end
 
+  test "filtered assisted reveal selections survive capture and restore", ctx do
+    ctx = configure_session(ctx, %{publication_policy: :facilitator_assisted})
+    attrs = %{publication_consent: :facilitator_assisted, configuration_version: ctx.session.configuration_version}
+    idea = idea_fixture(ctx, attrs)
+    idea_fixture(ctx, Map.put(attrs, :state, :discarded))
+
+    {:ok, operation} =
+      Ideation.prepare_idea_reveal(ctx.facilitator, ctx.project.id, ctx.session.id, Ecto.UUID.generate(), %{
+        states: [:active, :parked]
+      })
+
+    assert operation.manifest == [%{"idea_id" => idea.id, "revision" => 1}]
+    capsule = snapshot(ctx)["ideation"]
+    assert :ok = Ideation.validate_recovery(capsule)
+    maps = restore(ctx, capsule)
+    restored = Repo.get!(Reveal, maps["reveals"][operation.id])
+    assert restored.selection == %{"mode" => "eligible", "states" => ["active", "parked"]}
+    assert restored.manifest == [%{"idea_id" => maps["ideas"][idea.id], "revision" => 1}]
+  end
+
   test "canonical capture includes an authenticated compartment; templates exclude it", ctx do
     idea_fixture(ctx, %{body: "<p>Private motive never visible in a download</p>"})
     snapshot = snapshot(ctx)
@@ -103,7 +127,15 @@ defmodule Storyarn.Ideation.RecoveryTest do
              Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, shared.id, 1, conflict_attrs)
 
     attrs = idea_attrs(%{body: "<p>Derived privately</p>"})
-    assert {:ok, derived} = Ideation.derive_idea(ctx.author, ctx.project.id, ctx.session.id, shared.id, 1, attrs)
+    # Simulate provenance written by the former derivation feature. Existing capsules
+    # must retain and remap it although the creation API has been removed.
+    derived = idea_fixture(ctx, attrs)
+
+    Idea
+    |> Repo.get!(derived.id)
+    |> Ecto.Changeset.change(source_idea_id: shared.id, creation_source_id: shared.id, source_revision: 1)
+    |> Repo.update!()
+
     snapshot = snapshot(ctx)
     Repo.delete_all(from s in Session, where: s.project_id == ^ctx.project.id)
     maps = restore(ctx, snapshot["ideation"])
@@ -125,16 +157,16 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     assert revision == shared_head.revision
 
-    assert {:ok, [%{attempted: %{body: "<p>Conflicting private input</p>"}}]} =
-             Ideation.list_idea_conflicts(ctx.author, ctx.project.id, session_id, shared_id)
+    assert Repo.get!(Storyarn.Ideation.Ideas.Edit, maps["edits"][conflict.id]).body ==
+             "<p>Conflicting private input</p>"
 
     assert {:error, {:edit_conflict, %{id: conflict_id}}} =
              Ideation.update_idea(ctx.author, ctx.project.id, session_id, shared_id, 1, conflict_attrs)
 
     assert conflict_id == maps["edits"][conflict.id]
 
-    assert {:ok, %{id: derived_id, source_idea_id: ^shared_id}} =
-             Ideation.derive_idea(ctx.author, ctx.project.id, session_id, shared_id, 1, attrs)
+    assert {:ok, %{id: derived_id, source_idea_id: ^shared_id, source_revision: 1}} =
+             Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][derived.id])
 
     assert derived_id == maps["ideas"][derived.id]
   end
@@ -208,6 +240,51 @@ defmodule Storyarn.Ideation.RecoveryTest do
 
     assert {:error, :invalid_ideation_recovery} = Ideation.validate_recovery(%{capsule | "version" => 99})
     assert {:error, :legacy_snapshot_excludes_ideation} = restore_result(ctx, nil)
+  end
+
+  test "authenticated capsules reject malformed timestamps before replacing current data", ctx do
+    idea = idea_fixture(ctx, %{visibility: :shared})
+
+    assert {:ok, _} =
+             Ideation.update_idea(
+               ctx.author,
+               ctx.project.id,
+               ctx.session.id,
+               idea.id,
+               idea.revision,
+               edit_attrs(%{body: "<p>Current text</p>"})
+             )
+
+    capsule = snapshot(ctx)["ideation"]
+    {:ok, data} = Capsule.open(capsule)
+
+    for {collection, _, _, fields} <- Inventory.tables(),
+        field <- fields,
+        field in [:inserted_at, :updated_at, :archived_at, :deleted_at, :completed_at] do
+      assert [_ | _] = data["rows"][collection]
+      key = Atom.to_string(field)
+
+      values = ["not-a-date", "-9999-01-01T00:00:00", "-4713-01-01T00:00:00"]
+      values = values ++ if field in [:inserted_at, :updated_at], do: [nil], else: [42]
+
+      for invalid <- values do
+        changed =
+          update_in(data, ["rows", collection], fn [row | rest] ->
+            [Map.put(row, key, invalid) | rest]
+          end)
+
+        # Bypass sealing to exercise validation of an authenticated but invalid archive.
+        {:ok, encrypted} = changed |> Jason.encode!() |> Vault.encrypt()
+        malformed = %{"version" => 1, "ciphertext" => Base.encode64(encrypted)}
+        assert {:error, :invalid_ideation_recovery} = Ideation.validate_recovery(malformed)
+        assert {:error, :invalid_ideation_recovery} = restore_result(ctx, malformed)
+      end
+    end
+
+    assert {:ok, %{body: "<p>Current text</p>"}} =
+             Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+
+    assert snapshot(ctx)["ideation"] == capsule
   end
 
   test "the Project materializer integrates recovery and remaps IDs without changing project access", ctx do
@@ -374,6 +451,47 @@ defmodule Storyarn.Ideation.RecoveryTest do
                same_project_maps["sessions"][ctx.session.id],
                same_project_maps["ideas"][idea.id]
              )
+  end
+
+  test "canvas placement and private connections survive ID remapping and legacy capsules", ctx do
+    source = idea_fixture(ctx, %{canvas: %{"x" => -800, "y" => 120, "width" => 320, "color" => "violet"}})
+    target = idea_fixture(ctx)
+    assert {:ok, _} = Ideation.connect_ideas(ctx.author, ctx.project.id, ctx.session.id, source.id, target.id, true)
+    capsule = snapshot(ctx)["ideation"]
+    maps = restore(ctx, capsule)
+    id = maps["ideas"][source.id]
+    session_id = maps["sessions"][ctx.session.id]
+    assert {:ok, restored} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, id)
+    assert restored.canvas["x"] == -800
+    assert restored.canvas["width"] == 320
+    assert restored.canvas["links"] == [maps["ideas"][target.id]]
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
+
+    {:ok, data} = Capsule.open(capsule)
+    legacy = update_in(data, ["rows", "ideas"], &Enum.map(&1, fn row -> Map.drop(row, ["canvas", "deleted_at"]) end))
+    {:ok, legacy_capsule} = Capsule.seal(legacy)
+    maps = restore(ctx, legacy_capsule)
+
+    assert {:ok, old} =
+             Ideation.get_idea(ctx.author, ctx.project.id, maps["sessions"][ctx.session.id], maps["ideas"][source.id])
+
+    assert old.canvas == %{"links" => []}
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, legacy_capsule, maps)} end)
+  end
+
+  test "deleted notes remain deleted after snapshot restore and session private mode is preserved", ctx do
+    note = idea_fixture(ctx)
+    assert {:ok, _} = Ideation.delete_idea(ctx.author, ctx.project.id, ctx.session.id, note.id, 1)
+    assert {:ok, _} = Ideation.set_private_mode(ctx.facilitator, ctx.project.id, ctx.session.id, 1, true)
+    capsule = snapshot(ctx)["ideation"]
+    maps = restore(ctx, capsule)
+    session_id = maps["sessions"][ctx.session.id]
+    assert {:error, :not_found} = Ideation.get_idea(ctx.author, ctx.project.id, session_id, maps["ideas"][note.id])
+    assert {:ok, []} = Ideation.list_ideas(ctx.author, ctx.project.id, session_id, state: :all)
+    assert {:ok, session} = Ideation.get_session(ctx.author, ctx.project.id, session_id)
+    assert session.configuration.private_mode
+    assert Repo.get!(Idea, maps["ideas"][note.id]).deleted_at
+    assert {:ok, :ok} = Repo.transact(fn -> {:ok, Ideation.verify_recovery(ctx.project.id, capsule, maps)} end)
   end
 
   defp snapshot(ctx) do

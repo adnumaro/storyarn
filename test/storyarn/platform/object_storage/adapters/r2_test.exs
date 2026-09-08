@@ -1133,47 +1133,49 @@ defmodule Storyarn.Platform.ObjectStorage.Adapters.R2Test do
     test "shares one total deadline across diagnostic inventory pages" do
       original_storage = Application.get_env(:storyarn, :storage, [])
       original_deadline = Application.get_env(:storyarn, ObjectStorage)
-      {:ok, request_count} = Agent.start_link(fn -> 0 end)
+      test_pid = self()
 
       Application.put_env(:storyarn, :storage, adapter: R2)
-      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 300)
+      Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 5_000)
 
       on_exit(fn ->
         Application.put_env(:storyarn, :storage, original_storage)
         restore_env(:storyarn, ObjectStorage, original_deadline)
       end)
 
-      Req.Test.expect(__MODULE__, 2, fn conn ->
-        request_number = Agent.get_and_update(request_count, &{&1 + 1, &1 + 1})
+      Req.Test.expect(__MODULE__, fn conn ->
+        # A fresh per-page deadline would now allow 30 seconds. The operation
+        # must retain the original budget captured before this first request.
+        Application.put_env(:storyarn, ObjectStorage, multipart_upload_part_deadline_ms: 30_000)
 
-        case request_number do
-          1 ->
-            Process.sleep(220)
+        Plug.Conn.send_resp(
+          conn,
+          200,
+          multipart_inventory_page(
+            [{"projects/9/archive.bin", "upload-1", "2026-09-01T10:00:00Z"}],
+            true,
+            "projects/9/archive.bin",
+            "upload-1"
+          )
+        )
+      end)
 
-            Plug.Conn.send_resp(
-              conn,
-              200,
-              multipart_inventory_page(
-                [{"projects/9/archive.bin", "upload-1", "2026-09-01T10:00:00Z"}],
-                true,
-                "projects/9/archive.bin",
-                "upload-1"
-              )
-            )
+      Req.Test.expect(__MODULE__, fn conn ->
+        send(test_pid, :second_inventory_page_started)
 
-          2 ->
-            Process.sleep(600)
-            Plug.Conn.send_resp(conn, 200, multipart_inventory_page([], false, nil, nil))
+        receive do
+          :finish_inventory_page -> Plug.Conn.send_resp(conn, 200, multipart_inventory_page([], false, nil, nil))
         end
       end)
 
-      started_at = System.monotonic_time(:millisecond)
+      task = Task.async(fn -> ObjectStorage.incomplete_multipart_upload_summary(:all, max_uploads: 151) end)
 
-      assert {:error, :multipart_inventory_provider_error} =
-               ObjectStorage.incomplete_multipart_upload_summary(:all, max_uploads: 151)
-
-      elapsed_ms = System.monotonic_time(:millisecond) - started_at
-      assert elapsed_ms < 450
+      try do
+        assert_receive :second_inventory_page_started, 10_000
+        assert {:ok, {:error, :multipart_inventory_provider_error}} = Task.yield(task, 7_500)
+      after
+        Task.shutdown(task, :brutal_kill)
+      end
     end
 
     test "paginates the complete provider namespace and returns only bounded aggregate evidence" do

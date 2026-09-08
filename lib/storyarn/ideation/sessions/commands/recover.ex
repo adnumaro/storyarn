@@ -4,6 +4,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
   import Ecto.Query
 
   alias Storyarn.Ideation.Sessions.Adapters.ProjectAccess
+  alias Storyarn.Ideation.Sessions.Events.Invalidation
   alias Storyarn.Ideation.Sessions.Execution.Mutation
   alias Storyarn.Ideation.Sessions.Session
   alias Storyarn.Platform.Shared.TimeHelpers
@@ -11,7 +12,7 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
 
   def run(scope, project_id, session_id, revision)
       when is_integer(session_id) and session_id > 0 and is_integer(revision) and revision > 0 do
-    Repo.transact(fn ->
+    fn ->
       with {:ok, access} <- ProjectAccess.write(scope, project_id),
            %Session{} = session <-
              Repo.one(
@@ -31,7 +32,9 @@ defmodule Storyarn.Ideation.Sessions.Commands.Recover do
         false -> {:error, :unauthorized}
         {:error, _} = error -> error
       end
-    end)
+    end
+    |> Repo.transact()
+    |> Invalidation.notify(project_id)
   end
 
   def run(_, _, _, _), do: {:error, :invalid_revision}

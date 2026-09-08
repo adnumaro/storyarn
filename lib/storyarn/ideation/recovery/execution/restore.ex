@@ -111,10 +111,13 @@ defmodule Storyarn.Ideation.Recovery.Restore do
         Map.put(maps, collection, ids)
       end)
 
-    for entry <- rows["ideas"], source = entry["source_idea_id"], not is_nil(source) do
+    for entry <- rows["ideas"] do
       id = Map.fetch!(maps["ideas"], entry["id"])
-      source_id = Map.fetch!(maps["ideas"], source)
-      Repo.update_all(from(i in "ideation_ideas", where: i.id == ^id), set: [source_idea_id: source_id])
+      row = "ideas" |> Inventory.decode_row(entry) |> rewrite("ideas", project_id, actors, maps)
+
+      Repo.update_all(from(i in "ideation_ideas", where: i.id == ^id),
+        set: [source_idea_id: row.source_idea_id, canvas: row.canvas]
+      )
     end
 
     maps

@@ -24,8 +24,7 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert {:ok, ^idea} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id)
     assert {:ok, [^idea]} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id)
 
-    assert {:ok, [%{number: 1, body: "<p>Wants <strong>peace</strong>.</p>"}]} =
-             Ideation.list_idea_revisions(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+    assert Repo.get_by!(Revision, idea_id: idea.id, number: 1).body == "<p>Wants <strong>peace</strong>.</p>"
   end
 
   test "body and title are encrypted in storage and redacted from inspection", ctx do
@@ -103,6 +102,19 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert idea.body == "<p>Safe <b>text</b></p>"
   end
 
+  test "keeps the space between adjacent inline marks and normalizes it idempotently", ctx do
+    idea = idea_fixture(ctx, %{body: "<p><strong>bold</strong> <em>and</em>\t\t<u>more</u> plain\uE000</p>"})
+    assert idea.body == "<p><strong>bold</strong> <em>and</em> <u>more</u> plain</p>"
+
+    assert {:ok, %{revision: 1}} =
+             Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1, edit_attrs(%{body: idea.body}))
+
+    for body <- ["<p> </p>", "<p>\t</p>", "<p><strong> </strong></p>"] do
+      assert {:error, %Ecto.Changeset{valid?: false}} =
+               Ideation.create_idea(ctx.author, ctx.project.id, ctx.session.id, idea_attrs(%{body: body}))
+    end
+  end
+
   test "updates preserve immutable revisions and reject blank input on existing content", ctx do
     idea = idea_fixture(ctx)
 
@@ -122,7 +134,8 @@ defmodule Storyarn.Ideation.IdeasTest do
              )
 
     assert updated.revision == 2
-    assert {:ok, [second, first]} = Ideation.list_idea_revisions(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+    second = Repo.get_by!(Revision, idea_id: idea.id, number: 2)
+    first = Repo.get_by!(Revision, idea_id: idea.id, number: 1)
     assert second.body == "<p>Developed idea</p>"
     assert first.body == "<p>Original idea</p>"
   end
@@ -133,8 +146,8 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert {:ok, saved} = Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1, attrs)
     assert saved.revision == 1
 
-    assert {:ok, %{outcome: :saved, result_revision: 1}} =
-             Ideation.get_idea_edit(ctx.author, ctx.project.id, ctx.session.id, idea.id, attrs.request_key)
+    assert %{outcome: :saved, result_revision: 1} =
+             Repo.get_by!(Edit, idea_id: idea.id, request_key: attrs.request_key)
 
     assert Repo.aggregate(Revision, :count) == 1
   end
@@ -203,10 +216,7 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert conflict.result_revision == 2
     assert conflict.attempted.body == "Unsent alternative"
 
-    assert {:ok, ^conflict} =
-             Ideation.get_idea_edit(ctx.author, ctx.project.id, ctx.session.id, idea.id, attrs.request_key)
-
-    assert {:ok, [^conflict]} = Ideation.list_idea_conflicts(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+    assert Repo.get_by!(Edit, idea_id: idea.id, request_key: attrs.request_key).id == conflict.id
 
     assert {:error, {:edit_conflict, ^conflict}} =
              Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, 1, attrs)
@@ -218,7 +228,7 @@ defmodule Storyarn.Ideation.IdeasTest do
 
     assert recovered.body == "Unsent alternative"
     assert recovered.revision == 3
-    assert {:ok, [^conflict]} = Ideation.list_idea_conflicts(ctx.author, ctx.project.id, ctx.session.id, idea.id)
+    assert Repo.get!(Edit, conflict.id).body == "Unsent alternative"
   end
 
   test "creative state stays independent from visibility and can be restored", ctx do
@@ -252,36 +262,7 @@ defmodule Storyarn.Ideation.IdeasTest do
     assert restored.visibility == :shared
   end
 
-  test "derivation keeps the visible source revision without overwriting its author", ctx do
-    source = ctx |> idea_fixture() |> then(&publish_idea(ctx, &1))
-
-    assert {:ok, _} =
-             Ideation.update_idea(
-               ctx.author,
-               ctx.project.id,
-               ctx.session.id,
-               source.id,
-               1,
-               edit_attrs(%{body: "Hidden new development"})
-             )
-
-    assert {:ok, derived} =
-             Ideation.derive_idea(ctx.peer, ctx.project.id, ctx.session.id, source.id, 1, %{
-               request_key: Ecto.UUID.generate(),
-               configuration_version: 1
-             })
-
-    assert derived.author_id == ctx.peer.user.id
-    assert derived.source_idea_id == source.id
-    assert derived.source_revision == 1
-    assert derived.body == source.body
-    assert derived.visibility == :private
-
-    assert {:error, :not_found} =
-             Ideation.derive_idea(ctx.peer, ctx.project.id, ctx.session.id, source.id, 2, idea_attrs())
-  end
-
-  test "bounded lists and history reject malformed filters and cursors", ctx do
+  test "bounded lists reject malformed filters and cursors", ctx do
     first = idea_fixture(ctx)
     second = idea_fixture(ctx)
     assert {:ok, [^second]} = Ideation.list_ideas(ctx.author, ctx.project.id, ctx.session.id, limit: 1)
@@ -304,8 +285,15 @@ defmodule Storyarn.Ideation.IdeasTest do
   test "publishing a derivation does not expose its private source identity or revision", ctx do
     source = idea_fixture(ctx)
 
-    assert {:ok, derived} =
-             Ideation.derive_idea(ctx.author, ctx.project.id, ctx.session.id, source.id, 1, idea_attrs())
+    # Legacy provenance remains readable even though creating derivatives is no longer public.
+    derived = idea_fixture(ctx)
+
+    Idea
+    |> Repo.get!(derived.id)
+    |> Ecto.Changeset.change(source_idea_id: source.id, creation_source_id: source.id, source_revision: 1)
+    |> Repo.update!()
+
+    {:ok, derived} = Ideation.get_idea(ctx.author, ctx.project.id, ctx.session.id, derived.id)
 
     derived = publish_idea(ctx, derived)
     assert derived.source_idea_id == source.id
@@ -355,9 +343,6 @@ defmodule Storyarn.Ideation.IdeasTest do
     for revision <- [nil, "1", 0, -1, 2_147_483_648] do
       assert {:error, :invalid_edit} =
                Ideation.update_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, revision, edit_attrs(%{}))
-
-      assert {:error, :not_found} =
-               Ideation.derive_idea(ctx.author, ctx.project.id, ctx.session.id, idea.id, revision, idea_attrs())
     end
   end
 end

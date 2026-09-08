@@ -4,7 +4,7 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
   alias Storyarn.Architecture.DependencyPolicy
 
   @root "lib/storyarn/ideation"
-  @session_roles ~w(adapters commands entities execution queries)
+  @session_roles ~w(adapters commands entities events execution queries)
   @roles ~w(adapters commands contracts entities events execution queries rules)
   @capabilities ~w(ideas recovery sessions)
   @forbidden_role_edges [
@@ -104,26 +104,29 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
       reopen_session: 4,
       recover_session: 4,
       purge_replaced_session: 4,
+      subscribe_sessions: 2,
       update_session: 5
     ]
 
     idea_operations = [
+      create_canvas_idea: 4,
+      update_canvas_idea: 6,
+      set_private_mode: 5,
+      delete_idea: 5,
+      restore_idea: 6,
       count_ideas: 3,
       create_idea: 4,
-      derive_idea: 6,
       get_idea: 4,
-      get_idea_edit: 5,
       get_idea_reveal: 4,
-      list_idea_conflicts: 4,
-      list_idea_conflicts: 5,
-      list_idea_revisions: 4,
-      list_idea_revisions: 5,
       list_ideas: 3,
       list_ideas: 4,
       prepare_idea_reveal: 4,
       prepare_idea_reveal: 5,
       reveal_ideas: 4,
       subscribe_ideas: 3,
+      unsubscribe_ideas: 3,
+      connect_ideas: 6,
+      update_idea_canvas: 6,
       update_idea: 6
     ]
 
@@ -133,8 +136,13 @@ defmodule Storyarn.Architecture.IdeationInternalStructureTest do
                  idea_operations ++ [capture_recovery: 1, validate_recovery: 1, restore_recovery: 2, verify_recovery: 3]
              )
 
-    assert Storyarn.Ideation.Ideas.__info__(:functions) == idea_operations
-    assert Storyarn.Ideation.Sessions.__info__(:functions) == Enum.sort(expected ++ [lock_for_contribution: 3])
+    assert Storyarn.Ideation.Ideas.__info__(:functions) == Enum.sort(idea_operations)
+
+    assert Storyarn.Ideation.Sessions.__info__(:functions) ==
+             Enum.sort(
+               expected ++
+                 [lock_for_contribution: 3, set_canvas_mode_locked: 3, notify_canvas_mode: 2, canvas_settings_query: 0]
+             )
   end
 
   test "the recovery inventory cannot silently omit newly persisted fields" do

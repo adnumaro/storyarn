@@ -10,6 +10,10 @@ defmodule Storyarn.Ideation.Ideas.Rules.Policy do
       (not is_nil(idea.author_id) and manager?(access) and idea.publication_consent == :facilitator_assisted)
   end
 
+  def contribution_policy(access, %{canvas_contribution: true}) do
+    {:ok, %{consent: :facilitator_assisted, shared?: access.configuration.private_mode != true}}
+  end
+
   def contribution_policy(access, attrs) do
     consent = provided_or(attrs, :publication_consent, :author_only)
     visibility = provided_or(attrs, :visibility, access.configuration.default_visibility)

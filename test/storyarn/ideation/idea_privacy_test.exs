@@ -20,7 +20,7 @@ defmodule Storyarn.Ideation.IdeaPrivacyTest do
     ideation_fixture()
   end
 
-  test "all read projections deny others' private drafts, revisions, conflicts and counts", ctx do
+  test "all read projections deny others' private drafts and counts", ctx do
     idea = idea_fixture(ctx, %{title: "Private title", body: "Private draft"})
 
     assert {:ok, _} =
@@ -40,11 +40,6 @@ defmodule Storyarn.Ideation.IdeaPrivacyTest do
 
     for actor <- [ctx.peer, ctx.facilitator, ctx.owner, ctx.viewer] do
       assert {:error, :not_found} = Ideation.get_idea(actor, ctx.project.id, ctx.session.id, idea.id)
-      assert {:error, :not_found} = Ideation.list_idea_revisions(actor, ctx.project.id, ctx.session.id, idea.id)
-      assert {:error, :not_found} = Ideation.list_idea_conflicts(actor, ctx.project.id, ctx.session.id, idea.id)
-
-      assert {:error, :not_found} =
-               Ideation.get_idea_edit(actor, ctx.project.id, ctx.session.id, idea.id, attrs.request_key)
 
       assert {:ok, []} = Ideation.list_ideas(actor, ctx.project.id, ctx.session.id, state: :all, visibility: :private)
       assert {:ok, %{active: 0, parked: 0, discarded: 0}} = Ideation.count_ideas(actor, ctx.project.id, ctx.session.id)
@@ -72,15 +67,10 @@ defmodule Storyarn.Ideation.IdeaPrivacyTest do
     for actor <- [ctx.peer, ctx.facilitator, ctx.owner, ctx.viewer] do
       {:ok, visible} = Ideation.get_idea(actor, ctx.project.id, ctx.session.id, idea.id)
       {:ok, listed} = Ideation.list_ideas(actor, ctx.project.id, ctx.session.id)
-      {:ok, history} = Ideation.list_idea_revisions(actor, ctx.project.id, ctx.session.id, idea.id)
-      payload = Jason.encode!(%{idea: visible, ideas: listed, history: history})
+      payload = Jason.encode!(%{idea: visible, ideas: listed})
       refute payload =~ "DO_NOT_LEAK"
       refute Map.has_key?(visible, :current_revision)
       refute Map.has_key?(visible, :publication_consent)
-      assert {:error, :not_found} = Ideation.list_idea_conflicts(actor, ctx.project.id, ctx.session.id, idea.id)
-
-      assert {:error, :not_found} =
-               Ideation.get_idea_edit(actor, ctx.project.id, ctx.session.id, idea.id, attrs.request_key)
     end
   end
 
@@ -129,8 +119,6 @@ defmodule Storyarn.Ideation.IdeaPrivacyTest do
 
       assert {:error, :not_found} =
                Ideation.update_idea(ctx.author, project_id, session_id, idea.id, 1, edit_attrs(%{body: "Wrong context"}))
-
-      assert {:error, :not_found} = Ideation.derive_idea(ctx.author, project_id, session_id, idea.id, 1, idea_attrs())
     end
 
     outsider = user_scope_fixture()

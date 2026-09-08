@@ -17,8 +17,15 @@ defmodule Storyarn.Projects.Access do
   defdelegate get_membership(project_id, user_id), to: Memberships
   defdelegate get_effective_membership(project_id, user_id, workspace_id), to: Memberships
   defdelegate create_membership(project_id, user_id, role), to: Memberships
-  defdelegate update_member_role(scope, project_id, membership_id, role), to: Memberships
-  defdelegate remove_member(scope, project_id, membership_id), to: Memberships
+
+  def update_member_role(scope, project_id, membership_id, role) do
+    change_membership(project_id, fn -> Memberships.update_member_role(scope, project_id, membership_id, role) end)
+  end
+
+  def remove_member(scope, project_id, membership_id) do
+    change_membership(project_id, fn -> Memberships.remove_member(scope, project_id, membership_id) end)
+  end
+
   defdelegate authorize(scope, project_id, action), to: Memberships
   defdelegate authorize_locked(scope, project_id, action), to: Memberships
   defdelegate authorize_locked(scope, project_id, action, lock_mode), to: Memberships
@@ -44,6 +51,12 @@ defmodule Storyarn.Projects.Access do
   end
 
   def subscribe_ownership_changes(_project_id), do: {:error, :invalid_project_id}
+
+  def subscribe_membership_changes(project_id) when is_integer(project_id) and project_id > 0 do
+    Phoenix.PubSub.subscribe(Storyarn.PubSub, membership_topic(project_id))
+  end
+
+  def subscribe_membership_changes(_project_id), do: {:error, :invalid_project_id}
 
   defdelegate workspace_can?(role, action), to: WorkspaceAccess, as: :can?
   defdelegate authorize_workspace(scope, workspace_id, action), to: WorkspaceAccess, as: :authorize
@@ -90,5 +103,26 @@ defmodule Storyarn.Projects.Access do
 
   defp maybe_broadcast_ownership_transfer(_scope, _project), do: :ok
 
+  defp change_membership(project_id, operation) do
+    if Repo.in_transaction?() do
+      {:error, :membership_change_requires_top_level_transaction}
+    else
+      case operation.() do
+        {:ok, membership} = result ->
+          Phoenix.PubSub.broadcast(
+            Storyarn.PubSub,
+            membership_topic(project_id),
+            {:project_membership_changed, %{project_id: project_id, user_id: membership.user_id}}
+          )
+
+          result
+
+        error ->
+          error
+      end
+    end
+  end
+
   defp ownership_topic(project_id), do: "projects:#{project_id}:ownership"
+  defp membership_topic(project_id), do: "projects:#{project_id}:memberships"
 end

@@ -1758,7 +1758,7 @@ canonical_owner_membership_invariant = %{
 }
 
 boundaries = %{
-  ideation: ["lib/storyarn/ideation.ex", "lib/storyarn/ideation/"],
+  ideation: ["lib/storyarn/ideation.ex", "lib/storyarn/ideation/", "lib/storyarn_web/live/ideation_live/"],
   accounts: [
     "lib/storyarn/accounts.ex",
     "lib/storyarn/accounts/",
@@ -4067,6 +4067,37 @@ policy = %{
   # module remains visible as migration debt. The checker rejects stale entries
   # in both groups, so deleting an edge must also repay its policy entry.
   reviewed_cross_boundary_edges: [
+    %{
+      source: "lib/storyarn_web/live/ideation_live/board.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The brainstorming Web adapter rechecks project access through its owning Projects facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/board.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The brainstorming Web adapter subscribes to inherited access invalidation through the Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/sidebar.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason: "The sticky brainstorming sidebar subscribes to project access invalidation through the Projects facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/sidebar.ex",
+      target: "lib/storyarn/workspaces.ex",
+      kinds: ["runtime"],
+      reason: "The sticky brainstorming sidebar subscribes to inherited access invalidation through the Workspaces facade"
+    },
+    %{
+      source: "lib/storyarn_web/live/ideation_live/helpers/board_data.ex",
+      target: "lib/storyarn/projects.ex",
+      kinds: ["runtime"],
+      reason:
+        "The brainstorming presentation combines authorized Ideation data with project permissions and member display names through the Projects facade"
+    },
     %{
       source: "lib/storyarn/ideation/recovery/adapters/records.ex",
       target: "lib/storyarn/accounts.ex",

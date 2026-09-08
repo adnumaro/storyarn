@@ -15,10 +15,15 @@ defmodule Storyarn.Ideation.Ideas.Queries.List do
       query = query |> order_by([i], desc: i.id) |> limit(^limit)
       query = if before_id, do: where(query, [i], i.id < ^before_id), else: query
 
+      rows = Repo.all(query)
+      link_ids = Enum.flat_map(rows, fn {idea, _, _} -> Map.get(idea.canvas, "links", []) end)
+      readable = session_id |> Visible.visible_link_ids(actor_id, Enum.uniq(link_ids)) |> MapSet.new()
+
       {:ok,
-       query
-       |> Repo.all()
-       |> Enum.map(fn {idea, revision, source_published?} -> View.idea(idea, revision, actor_id, source_published?) end)}
+       Enum.map(rows, fn {idea, revision, source_published?} ->
+         links = Enum.filter(Map.get(idea.canvas, "links", []), &MapSet.member?(readable, &1))
+         View.idea(idea, revision, actor_id, source_published?, links)
+       end)}
     end
   end
 
